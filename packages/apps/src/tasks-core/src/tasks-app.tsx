@@ -52,6 +52,11 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
     });
   }, []);
 
+  // A refused write left the queue: there is nothing left to choose for that task.
+  const handleWriteRefused = useCallback((taskId: string) => {
+    setConflictQueue((prev) => prev.filter((id) => id !== taskId));
+  }, []);
+
   const {
     phase,
     error,
@@ -64,7 +69,10 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
     session,
     operations,
     offlineUsername,
-  } = useTasksAPI(apiSource, { onSyncConflict: handleSyncConflict });
+  } = useTasksAPI(apiSource, {
+    onSyncConflict: handleSyncConflict,
+    onWriteRefused: handleWriteRefused,
+  });
 
   tasksRef.current = data.tasks;
 

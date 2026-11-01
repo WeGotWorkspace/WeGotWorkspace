@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { announceTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { useTasksAPI } from "./use-tasks-api";
 import type { TasksApiSource } from "./tasks-api-source";
@@ -151,5 +152,35 @@ describe("useTasksAPI", () => {
 
     expect(mockShow).not.toHaveBeenCalled();
     expect(mockShowError).toHaveBeenCalledWith(defaultTasksLabels.toastListRefreshFailed);
+  });
+
+  it("says why a refused offline write was dropped and repaints from the cache (#1825)", async () => {
+    const onWriteRefused = vi.fn();
+    const source: TasksApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    renderHook(() => useTasksAPI(source, { onWriteRefused }));
+
+    act(() => {
+      announceTaskWriteRefused({
+        username: "demo@example.com",
+        taskId: "task-1",
+        title: "Pay rent",
+        reason: "gone",
+      });
+      announceTaskWriteRefused({
+        username: "someone-else@example.com",
+        taskId: "task-2",
+        title: "Not mine",
+        reason: "gone",
+      });
+    });
+
+    expect(onWriteRefused).toHaveBeenCalledExactlyOnceWith("task-1");
+    expect(mockShowError).toHaveBeenCalledExactlyOnceWith(
+      defaultTasksLabels.taskWriteRefused("Pay rent", "gone"),
+    );
+    await waitFor(() => expect(mockPatchBootstrap).toHaveBeenCalled());
   });
 });

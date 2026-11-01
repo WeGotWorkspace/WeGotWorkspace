@@ -17,6 +17,7 @@ import {
   resolveTasksOfflineUsername,
 } from "@/lib/offline/offline-session";
 import { setTasksSyncConflictListener } from "@/lib/offline/tasks-sync-conflicts";
+import { subscribeTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-write";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
@@ -28,6 +29,8 @@ import {
 
 export type UseTasksAPIOptions = {
   onSyncConflict?: (taskIds: string[]) => void;
+  /** The server refused a queued write for good; the task shows the server copy again. */
+  onWriteRefused?: (taskId: string) => void;
 };
 
 export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOptions) {
@@ -83,6 +86,19 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       setBootstrapRevision((revision) => revision + 1);
     }
   }, [offlineUsername, patchBootstrap]);
+
+  const onWriteRefused = options?.onWriteRefused;
+  useEffect(() => {
+    if (!offlineUsername) return;
+    return subscribeTaskWriteRefused(({ username, taskId, title, reason }) => {
+      if (username !== offlineUsername) return;
+      onWriteRefused?.(taskId);
+      void patchFromCache();
+      showError(
+        defaultTasksLabels.taskWriteRefused(title || defaultTasksLabels.untitledTask, reason),
+      );
+    });
+  }, [offlineUsername, onWriteRefused, patchFromCache, showError]);
 
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
