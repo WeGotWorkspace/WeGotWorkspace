@@ -772,15 +772,17 @@ function watchChanges(tabs: Tab[]) {
   const calls = {
     since: 0,
     full: 0,
-    firstWasFull: null as boolean | null,
+    /** The `since` of each finished changes request, in order; `null` for a full list. */
+    sinces: [] as (string | null)[],
     relisted: new Set<string>(),
   };
   for (const tab of tabs) {
-    tab.on("request", (request) => {
+    // `requestfinished`, not `request`: a request `blockChanges` aborts never finishes and applies nothing.
+    tab.on("requestfinished", (request) => {
       const url = new URL(request.url());
       if (url.pathname.endsWith("/tasks/tasklists/changes")) {
         const full = !url.searchParams.has("since");
-        calls.firstWasFull ??= full;
+        calls.sinces.push(url.searchParams.get("since"));
         if (full) calls.full += 1;
         else calls.since += 1;
       }
@@ -1149,7 +1151,10 @@ test.describe("inbound", () => {
         (cache) => cache.tasks.some((t) => t.title === `T2 ${id} v2`),
         "the full list lands",
       ).toBe(true);
-      expect(calls.firstWasFull, "the first pull after the edits had no `since`").toBe(true);
+      expect(
+        calls.sinces.slice(0, 2),
+        "the stale token was tried, then a full list followed",
+      ).toEqual(["expired-token", null]);
       expect(calls.full, "the unknown token fell back to a full list").toBeGreaterThan(0);
       const cache = await tabCache(c.tab, id);
       expect(cache.token, "a fresh token").not.toBe("expired-token");
@@ -1186,7 +1191,7 @@ test.describe("inbound", () => {
       const calls = watchChanges([c.tab]);
       await unblock();
       expect(await converge([c.tab], id, MIRROR_MS), "the tab mirrors the server").toEqual({});
-      expect(calls.firstWasFull, "the first pull after the edits had no `since`").toBe(true);
+      expect(calls.sinces[0], "the first pull after the edits had no `since`").toBeNull();
       expect(calls.full, "no token: a full list").toBeGreaterThan(0);
       expect((await tabCache(c.tab, id)).token, "a token again").not.toBeNull();
     } finally {
