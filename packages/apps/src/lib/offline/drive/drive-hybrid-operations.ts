@@ -1,4 +1,5 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
+import { driveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
@@ -55,6 +56,10 @@ import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidec
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
+import {
+  describeDriveUploadBatchConflicts,
+  driveUploadSessionVersionCheck,
+} from "@/lib/offline/drive/upload/drive-upload-conflicts";
 import {
   cancelDriveUploadBatch,
   enqueueDriveUploadBatch,
@@ -310,6 +315,17 @@ export function createHybridDriveOperations(
       return { batchId: batch.batchId, itemIds: batch.itemIds };
     },
     releaseUploadBatch: (batchId, answers) => releaseDriveUploadBatch(username, batchId, answers),
+    describeUploadConflicts: async (batchId) => {
+      // The live Session decides when there is one; offline, the last one this device saw.
+      const live = readBrowserOnline()
+        ? await driveJmapSession().then(
+            (session) => session.uploadCapabilities,
+            () => null,
+          )
+        : null;
+      const versionCheck = driveUploadSessionVersionCheck(username, live);
+      return describeDriveUploadBatchConflicts(username, batchId, versionCheck);
+    },
     cancelUploadBatch: (batchId) => cancelDriveUploadBatch(username, batchId),
     removeQueuedUpload: (itemId) => removeDriveUploadItem(username, itemId),
     retryQueuedUpload: (itemId) => retryDriveUploadItem(username, itemId),
