@@ -15,6 +15,7 @@ import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";
 
 /** Waits before each automatic retry of a failed listing. Try again works at any time. */
@@ -48,6 +49,8 @@ export type UseDriveFolderListingSyncArgs = {
   setHydratedFolderPath: (path: string | null) => void;
   commitView: (view: ViewKey) => void;
   showError: (message: string) => void;
+  /** The listing the shell last painted from; upload placeholders are merged in again on change. */
+  listing?: unknown;
 };
 
 /** A live folder load that failed, keyed by the folder UI path it belongs to. */
@@ -78,7 +81,16 @@ export function useDriveFolderListingSync({
   setHydratedFolderPath,
   commitView,
   showError,
+  listing,
 }: UseDriveFolderListingSyncArgs): DriveFolderListingSync {
+  useDriveUploadListingRefresh({
+    operations,
+    folderViewPath,
+    currentUsername,
+    groupRootNamesRef,
+    setFiles,
+    listing,
+  });
   // Latest callbacks: an unstable identity must not restart (and re-paint) the load.
   const commitViewRef = useRef(commitView);
   commitViewRef.current = commitView;

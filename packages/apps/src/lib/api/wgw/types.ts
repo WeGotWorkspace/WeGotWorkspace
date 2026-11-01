@@ -157,11 +157,50 @@ export type WgwSearchReindexStateResponse = {
 export type WgwDriveEntryType = DriveEntryType;
 export type WgwDriveRootPath = DriveRootPath;
 /**
+ * Why a queued upload failed (#1520). `too_large`: refused even at the
+ * smallest part size. `quota`: the device refused to store the file.
+ * `server_full`: 507 or `overQuota`; pauses the whole queue. `auth`: a 401
+ * (sign in again). `forbidden`: a 403, e.g. write access to the folder is
+ * gone; never retried, no sign-in. `target_missing`: the target folder was
+ * deleted or trashed. `no_local_copy`: a direct upload whose bytes are gone
+ * after a reload. `insecure_context`: a large file on an `http://` install
+ * (#1519). `transient`: server or network hiccups that kept coming back after
+ * the retries with backoff. `permanent`: anything else retrying will not fix.
+ */
+export type WgwDriveUploadErrorCode =
+  | "too_large"
+  | "quota"
+  | "server_full"
+  | "auth"
+  | "forbidden"
+  | "target_missing"
+  | "no_local_copy"
+  | "insecure_context"
+  | "transient"
+  | "permanent";
+/** UI-only marker on a cached placeholder row for a file still in the upload queue. */
+export type WgwDriveUploadPlaceholder = {
+  /** Upload queue item id. */
+  id: string;
+  batchId: string;
+  status: "queued" | "uploading" | "failed";
+  /** Set while `status` is `failed`. */
+  reason?: WgwDriveUploadErrorCode;
+};
+/**
  * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
  * unset: guests have no offline cache, so the id is not backfilled there.
  */
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;
+  /**
+   * The file's version as the listing saw it (signed-in JMAP listings only).
+   * A *Replace* sends it back as `expectedBlobId`.
+   */
+  blobId?: string;
+  /** The server is still hashing a file that arrived outside WGW: no *Replace*. */
+  contentHashPending?: boolean;
+  upload?: WgwDriveUploadPlaceholder;
 };
 /** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */
 export type WgwDriveDirectoryData = Omit<DriveDirectoryData, "files"> & {

@@ -1,0 +1,160 @@
+@import "../../styles.css" reference;
+
+/*
+ * Upload progress (#1502): ring in the offline control's slot, status line,
+ * Uploads sidebar badge, and the Uploads view. Colours derive from workspace
+ * tokens, so light and dark follow the theme.
+ */
+
+.drive-workspace {
+  --drive-upload-error-fg: color-mix(in oklab, var(--color-error) 75%, var(--workspace-foreground));
+  --drive-upload-muted-fg: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
+}
+
+/* Same footprint as the small icon button it replaces. */
+.drive-upload-ring {
+  @apply inline-flex shrink-0 items-center justify-center;
+  width: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  --progress-ring-color: var(--workspace-accent);
+  --progress-ring-size: 1.125rem;
+}
+
+.drive-upload-ring--waiting,
+.drive-upload-ring--waitingOffline,
+.drive-upload-ring--waitingForAnswer,
+.drive-upload-ring--waitingServerFull {
+  --progress-ring-color: var(--drive-upload-muted-fg);
+}
+
+.drive-upload-ring--failed {
+  color: var(--drive-upload-error-fg);
+}
+
+.drive-upload-ring__failed-icon {
+  @apply size-4;
+}
+
+/* Status line (list name cell, grid tile footer, Uploads view). */
+.drive-workspace .drive-upload-status {
+  @apply min-w-0 shrink-0 truncate text-xs;
+  color: var(--drive-upload-muted-fg);
+}
+
+.drive-workspace .drive-upload-status--failed {
+  color: var(--drive-upload-error-fg);
+}
+
+/* Sidebar count; an error badge while any upload failed. */
+.drive-uploads-badge__visual {
+  @apply inline-flex items-center gap-0.5;
+}
+
+.drive-uploads-badge__icon {
+  @apply size-3;
+}
+
+.menu-item__badge:has(> .drive-uploads-badge--error),
+.sidebar-section .menu-item__badge:has(> .drive-uploads-badge--error),
+.sidebar-section
+  .menu-item.menu-item--selected
+  .menu-item__badge:has(> .drive-uploads-badge--error) {
+  background-color: var(--color-destructive);
+  color: var(--color-destructive-foreground);
+}
+
+/* ----- Uploads view ----- */
+
+.drive-uploads {
+  @apply flex flex-col gap-3 px-4 pb-6 pt-2 md:px-6;
+}
+
+.drive-uploads__header {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.drive-uploads__summary {
+  @apply text-sm font-medium;
+  color: var(--drive-upload-muted-fg);
+}
+
+.drive-uploads__list {
+  @apply flex flex-col;
+  border-top: 1px solid var(--border);
+}
+
+.drive-uploads__row {
+  @apply grid items-center gap-x-3 gap-y-1 py-2.5;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "kind text ring"
+    "kind actions actions";
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+  .drive-uploads__row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "kind text ring actions";
+  }
+}
+
+.drive-uploads__kind {
+  grid-area: kind;
+  @apply flex size-8 items-center justify-center self-start [&>svg]:size-4;
+  color: var(--workspace-accent);
+}
+
+.drive-uploads__text {
+  grid-area: text;
+  @apply flex min-w-0 flex-col gap-0.5;
+}
+
+.drive-uploads__name {
+  @apply truncate text-sm font-medium;
+}
+
+.drive-uploads__meta {
+  @apply flex min-w-0 items-center gap-2 text-xs;
+  color: var(--drive-upload-muted-fg);
+}
+
+.drive-uploads__folder {
+  @apply min-w-0 truncate rounded-sm underline underline-offset-2;
+  color: inherit;
+}
+
+.drive-uploads__folder:hover {
+  color: var(--workspace-foreground);
+}
+
+.drive-uploads__folder:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 2px;
+}
+
+.drive-uploads__size {
+  @apply shrink-0 tabular-nums;
+}
+
+.drive-uploads .drive-upload-status {
+  @apply whitespace-normal;
+}
+
+.drive-uploads__note {
+  @apply text-xs;
+  color: var(--drive-upload-muted-fg);
+}
+
+.drive-uploads .drive-upload-ring {
+  grid-area: ring;
+}
+
+.drive-uploads__actions {
+  grid-area: actions;
+  @apply flex items-center justify-end gap-1.5;
+}
+
+.drive-uploads__done-link {
+  @apply mt-3;
+}

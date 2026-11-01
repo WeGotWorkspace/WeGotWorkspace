@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Drive;
 
 use App\Events\EventDispatch;
+use App\Http\Support\RangeResponder;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Collab\CollabSidecarPaths;
@@ -14,8 +15,9 @@ use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 final class DriveService
 {
@@ -32,6 +34,7 @@ final class DriveService
         private DriveTrashNames $trashNames,
         private FileNodeRelocator $relocator,
         private DrivePathBookkeeping $pathBookkeeping,
+        private RangeResponder $ranges,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -165,7 +168,7 @@ final class DriveService
             }
             $disk->put($key, '');
         }
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key, $type === 'dir' ? null : hash('sha256', '')));
         $this->eventDispatch->fireMutation($username, 'drive', 'created', 'files/'.$key);
 
         return 'Created';
@@ -386,22 +389,22 @@ final class DriveService
     }
 
     /** @param array{username: string, role: string} $principal */
-    public function downloadResponse(array $principal, string $path): StreamedResponse
+    public function downloadResponse(array $principal, string $path, Request $request): Response
     {
         $this->assertReadableFile($principal, $path);
         $virtual = $this->paths->normalizeVirtualPath($path);
 
-        return $this->streamDownload($virtual);
+        return $this->streamDownload($virtual, $request);
     }
 
     /**
      * @param  array{username: string, role: string}  $principal
      */
-    public function downloadResponseByNodeId(array $principal, string $nodeId): StreamedResponse
+    public function downloadResponseByNodeId(array $principal, string $nodeId, Request $request): Response
     {
         $virtual = $this->assertReadableNodeId($principal, $nodeId);
 
-        return $this->streamDownload($virtual);
+        return $this->streamDownload($virtual, $request);
     }
 
     /**
@@ -429,29 +432,20 @@ final class DriveService
         return $virtual;
     }
 
-    private function streamDownload(string $virtual): StreamedResponse
+    /** Streamed with Range support; Content-Length from the file at stream time (#1500). */
+    private function streamDownload(string $virtual, Request $request): Response
     {
-        $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
+        $name = str_replace('"', '', basename($virtual));
+        $stream = $this->disk()->readStream($key);
+        if (! is_resource($stream)) {
+            throw new \RuntimeException('File not found.');
+        }
 
-        $name = basename($virtual);
-        $mime = $disk->mimeType($key) ?: 'application/octet-stream';
-
-        return response()->streamDownload(
-            static function () use ($disk, $key): void {
-                $stream = $disk->readStream($key);
-                if (! is_resource($stream)) {
-                    return;
-                }
-                fpassthru($stream);
-                fclose($stream);
-            },
-            $name,
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $name).'"',
-            ]
-        );
+        return $this->ranges->respond($request, $stream, [
+            'Content-Type' => $this->disk()->mimeType($key) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
+        ]);
     }
 
     /**

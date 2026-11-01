@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Models\JmapBlob;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobReferenceCheckerInterface;
+use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Carbon;
@@ -58,10 +59,19 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$blobId.'/note.txt')
             ->assertOk();
-        $this->assertSame('hello blob world', $download->getContent());
+        $this->assertSame('hello blob world', $download->streamedContent());
         // Symfony appends "; charset=utf-8" to text/* types — harmless.
         $this->assertStringStartsWith('text/plain', (string) $download->headers->get('Content-Type'));
         $this->assertStringContainsString('filename="note.txt"', (string) $download->headers->get('Content-Disposition'));
+    }
+
+    public function test_a_json_typed_upload_is_stored_as_a_blob_with_its_own_type(): void
+    {
+        $body = '{"a": 1, "b": [1, 2, 3]}';
+        $upload = $this->upload($body, 'application/json')->assertStatus(201);
+
+        $this->assertSame('application/json', $upload->json('type'));
+        $this->assertSame(strlen($body), $upload->json('size'));
     }
 
     public function test_download_honours_the_type_query_parameter(): void
@@ -153,7 +163,7 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
             }
         };
 
-        $result = (new JmapBlobGarbageCollector($service, [$checker]))->collect();
+        $result = (new JmapBlobGarbageCollector($service, new JmapBlobReferenceGuard([$checker])))->collect();
 
         $this->assertSame(['deleted' => 1, 'retained' => 1], $result);
         $this->assertNull($service->retrieve('bob', $expiredId));
@@ -204,7 +214,7 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$mediaEntry['blobId'].'/photo.png')
             ->assertOk();
-        $this->assertSame('fake png bytes', $download->getContent());
+        $this->assertSame('fake png bytes', $download->streamedContent());
     }
 
     public function test_non_image_media_type_is_rejected_for_photos(): void

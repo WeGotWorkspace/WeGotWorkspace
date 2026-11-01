@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
@@ -315,7 +316,10 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         ])->assertOk();
         $this->assertSame('report (2).txt', $renamed->json('methodResponses.0.1.created.k1.name'));
 
-        // replace: the existing node is destroyed and listed as such.
+        // replace: the existing node is destroyed and listed as such. The
+        // rename above attached the blob by moving it (#1500: the last
+        // reference consumes the upload), so this create uploads again.
+        $blobId = $this->uploadBlob('incoming');
         $replaced = $this->jmap([
             ['FileNode/set', ['accountId' => 'bob', 'onExists' => 'replace', 'create' => [
                 'k2' => ['parentId' => $homeId, 'name' => 'report.txt', 'blobId' => $blobId],
@@ -514,7 +518,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->assertNull($index->liveByKey($archivedKey));
         $this->assertNull($index->liveByKey($groupKey));
 
-        $result = $index->reindexAll();
+        $result = app(FileNodeReindexer::class)->reindexAll();
 
         $this->assertGreaterThanOrEqual(3, $result['indexed']);
         $this->assertNotNull($index->liveByKey('users/bob/.notes'));
@@ -590,7 +594,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$blobId.'/download-me.txt')
             ->assertOk();
-        $this->assertSame('file content here', $download->getContent());
+        $this->assertSame('file content here', $download->streamedContent());
 
         // carol cannot reach it through her own account path.
         $this->withBearer($this->carolBearerToken())

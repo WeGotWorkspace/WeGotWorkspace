@@ -3,11 +3,14 @@ import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import { DriveItemIconButton } from "@/drive-core/src/drive-item-icon-button";
 
+/** A row menu action; `description` explains a disabled one. */
+export type DriveFileMenuAction = ActionBarAction & { description?: string };
+
 export function DriveFileItemActionsMenu({
   actions,
   disabled = false,
 }: {
-  actions: ActionBarAction[];
+  actions: DriveFileMenuAction[];
   disabled?: boolean;
 }) {
   return (
@@ -18,6 +21,7 @@ export function DriveFileItemActionsMenu({
       items={actions.map((action) => ({
         id: action.id,
         label: action.label,
+        ...(action.description ? { description: action.description } : {}),
         icon: action.icon,
         onClick: action.onClick,
         checked: action.active,

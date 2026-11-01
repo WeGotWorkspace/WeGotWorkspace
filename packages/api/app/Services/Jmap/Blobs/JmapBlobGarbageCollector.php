@@ -5,57 +5,56 @@ declare(strict_types=1);
 namespace App\Services\Jmap\Blobs;
 
 use App\Models\JmapBlob;
+use App\Services\Jmap\Assembly\BlobAssemblyClaimChecker;
+use App\Services\Jmap\FileNodes\FileNodeAttachChecker;
 use Illuminate\Support\Carbon;
 
 /**
  * Deletes expired, unreferenced envelope blobs. Reference checks are
- * domain-owned (spec constraint: reference protection from day one, so the
- * filenode chunk doesn't retrofit GC): every registered
- * JmapBlobReferenceCheckerInterface gets a veto per blob.
+ * domain-owned: every registered JmapBlobReferenceCheckerInterface gets a
+ * veto per blob (assemblies in progress through their part claims, and
+ * FileNode attaches that still stream a copy of the blob — #1500).
  */
 final class JmapBlobGarbageCollector
 {
     /**
-     * Domain reference-checker classes; future envelope domains that hold
-     * long-lived blob references (filenode, mail drafts) append theirs here.
-     * Resolved by the container binding in WgwServiceProvider.
+     * Domain reference-checker classes; envelope domains that hold
+     * blob references append theirs here (mail drafts next). Resolved by the
+     * container binding in WgwServiceProvider.
      *
      * @var list<class-string<JmapBlobReferenceCheckerInterface>>
      */
-    public const CHECKERS = [];
+    public const CHECKERS = [
+        BlobAssemblyClaimChecker::class,
+        FileNodeAttachChecker::class,
+    ];
 
-    /** @var list<JmapBlobReferenceCheckerInterface> */
-    private array $checkers;
-
-    /**
-     * @param  list<JmapBlobReferenceCheckerInterface>  $checkers
-     */
     public function __construct(
         private readonly JmapBlobService $blobs,
-        array $checkers,
-    ) {
-        $this->checkers = $checkers;
-    }
+        private readonly JmapBlobReferenceGuard $references,
+    ) {}
 
     /**
      * @return array{deleted: int, retained: int}
      */
-    public function collect(?Carbon $now = null): array
+    public function collect(?Carbon $now = null, ?int $limit = null): array
     {
         $now ??= Carbon::now();
         $deleted = 0;
         $retained = 0;
 
-        $expired = JmapBlob::query()
+        $query = JmapBlob::query()
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', $now)
-            ->orderBy('id')
-            ->get(['username', 'blob_id']);
+            ->orderBy('id');
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
 
-        foreach ($expired as $row) {
+        foreach ($query->get(['username', 'blob_id']) as $row) {
             $username = (string) $row->username;
             $blobId = (string) $row->blob_id;
-            if ($this->isReferenced($username, $blobId)) {
+            if ($this->references->isReferenced($username, $blobId)) {
                 $retained++;
 
                 continue;
@@ -65,16 +64,5 @@ final class JmapBlobGarbageCollector
         }
 
         return ['deleted' => $deleted, 'retained' => $retained];
-    }
-
-    private function isReferenced(string $username, string $blobId): bool
-    {
-        foreach ($this->checkers as $checker) {
-            if ($checker->isReferenced($username, $blobId)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

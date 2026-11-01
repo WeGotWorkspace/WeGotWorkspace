@@ -13,7 +13,8 @@ use App\Services\Jmap\JmapMethodDispatcher;
  * them. Derived — never hardcoded — from two sources:
  *
  *  1. the dispatcher's registered methods (a URN with no registered methods
- *     is never supported, so the two can't drift), and
+ *     is never supported, so the two can't drift — except a methodless
+ *     extension capability, which only changes existing methods), and
  *  2. each domain provider's feature gate (a gated-off domain drops out of
  *     the session document and `using` in the same request).
  *
@@ -35,6 +36,10 @@ final class JmapCapabilitySet
         FilesCapabilityProvider::class,
         NotesCapabilityProvider::class,
         ChatCapabilityProvider::class,
+        BlobCapabilityProvider::class,
+        BlobAssemblyCapabilityProvider::class,
+        QuotaCapabilityProvider::class,
+        FileNodeVersionCheckCapabilityProvider::class,
     ];
 
     /** @var list<JmapCapabilityProviderInterface> */
@@ -85,15 +90,18 @@ final class JmapCapabilitySet
     }
 
     /**
-     * Account-level `accountCapabilities` map for the (single) account.
+     * Account-level `accountCapabilities` map for the (single) account. An
+     * empty capability is the empty JSON object (RFC 9425 §2.1, RFC 9404),
+     * never `[]`.
      *
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array<string, mixed>|object>
      */
     public function accountCapabilities(): array
     {
         $capabilities = [];
         foreach ($this->enabledProviders() as $provider) {
-            $capabilities[$provider->urn()] = $provider->accountCapability();
+            $capability = $provider->accountCapability();
+            $capabilities[$provider->urn()] = $capability === [] ? new \stdClass : $capability;
         }
 
         return $capabilities;
@@ -138,7 +146,8 @@ final class JmapCapabilitySet
         return array_values(array_filter(
             $this->providers,
             static fn (JmapCapabilityProviderInterface $provider): bool => $provider->isEnabled()
-                && in_array($provider->urn(), $registered, true),
+                && ($provider instanceof JmapMethodlessCapabilityProviderInterface
+                    || in_array($provider->urn(), $registered, true)),
         ));
     }
 }

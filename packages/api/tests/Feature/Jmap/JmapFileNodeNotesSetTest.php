@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Services\Jmap\FileNodes\FileNodeNoteContent;
 use App\Services\Jmap\FileNodes\FileNodeSetError;
-use App\Services\Jmap\FileNodes\FileNodeSetService;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Storage\WgwStorage;
 use Tests\Support\DriveTestFixtures;
@@ -107,8 +107,8 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
     public function test_title_only_update_keeps_legacy_markdown_tags(): void
     {
         $markdown = "title: Legacy tags\ntags: v2, focus\n----\nkept";
-        $compose = new \ReflectionMethod(app(FileNodeSetService::class), 'composeNoteMarkdown');
-        $rewritten = $compose->invoke(app(FileNodeSetService::class), 'welcome.md', ['title' => 'Renamed'], $markdown);
+        $compose = new \ReflectionMethod(app(FileNodeNoteContent::class), 'compose');
+        $rewritten = $compose->invoke(app(FileNodeNoteContent::class), 'welcome.md', ['title' => 'Renamed'], $markdown);
 
         $codec = new NoteMarkdownCodec;
         [$title, $tags, $body] = $codec->parse($rewritten, 'welcome');
@@ -117,14 +117,14 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
         $this->assertSame('kept', $body);
 
         try {
-            $compose->invoke(app(FileNodeSetService::class), 'welcome.md', ['tags' => ['a,b']], $markdown);
+            $compose->invoke(app(FileNodeNoteContent::class), 'welcome.md', ['tags' => ['a,b']], $markdown);
             $this->fail('A new tag outside a-z and hyphen should be rejected.');
         } catch (FileNodeSetError $error) {
             $this->assertSame('invalidProperties', $error->shape['type']);
         }
 
         $kept = $compose->invoke(
-            app(FileNodeSetService::class),
+            app(FileNodeNoteContent::class),
             'welcome.md',
             ['tags' => ['v2', 'focus', 'new-tag']],
             $markdown,

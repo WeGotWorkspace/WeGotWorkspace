@@ -356,4 +356,131 @@ test.describe("Drive first sync on a new device", () => {
     });
     await expect(page.getByText(LISTING_FAILED)).toHaveCount(0);
   });
+
+  test("row spinners follow the first copy: only files still to copy spin", async ({ browser }) => {
+    const rowFolder = `Row state ${RUN}`;
+    const rowUrl = `/drive?view=folder&path=${encodeURIComponent(`My Drive/${rowFolder}`)}`;
+    const small = Array.from({ length: 16 }, (_, i) => `Small ${RUN} ${pad(i + 1)}.md`);
+    const big = `Big ${RUN}.bin`;
+    const uploaded = `Upl ${RUN}.md`;
+    const folder = encodeURIComponent(rowFolder);
+    await dav("MKCOL", `${folder}/`);
+    for (const name of small) {
+      await dav("PUT", `${folder}/${encodeURIComponent(name)}`, `# ${name}\n`, "text/markdown");
+    }
+    await dav(
+      "PUT",
+      `${folder}/${encodeURIComponent(big)}`,
+      new Uint8Array(2 * 1024 * 1024),
+      "application/octet-stream",
+    );
+
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      if (!localStorage.getItem("wgw.offline.deviceContentSettings")) {
+        localStorage.setItem(
+          "wgw.offline.deviceContentSettings",
+          JSON.stringify({ contentSyncEnabled: true, maxFileSizeBytes: 1024 * 1024 }),
+        );
+      }
+    });
+    const page = await context.newPage();
+    const spinner = page.getByRole("button", { name: "Downloading for offline use" });
+    const row = (name: string) => {
+      const others = [...small, big, uploaded]
+        .filter((other) => other !== name)
+        .map((other) => other.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      return page
+        .locator("div,li,tr")
+        .filter({ has: page.getByText(name, { exact: true }) })
+        .filter({ hasNotText: new RegExp(others.join("|")) })
+        .first();
+    };
+    const syncedInFolder = async () => {
+      const entries = await page.evaluate(async (name) => {
+        const out: string[] = [];
+        for (const info of await indexedDB.databases()) {
+          if (!info.name?.startsWith("wgw-offline-")) continue;
+          const db = await new Promise<IDBDatabase | null>((resolve) => {
+            const request = indexedDB.open(info.name!);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+          });
+          if (!db) continue;
+          if (db.objectStoreNames.contains("drive_availability")) {
+            const rows = await new Promise<Array<{ id: string; lastSyncedAt: number | null }>>(
+              (resolve) => {
+                const get = db
+                  .transaction("drive_availability", "readonly")
+                  .objectStore("drive_availability")
+                  .getAll();
+                get.onsuccess = () => resolve(get.result as never);
+                get.onerror = () => resolve([]);
+              },
+            );
+            for (const r of rows) {
+              const at = r.id.indexOf(`/${name}/`);
+              if (r.lastSyncedAt && at >= 0) out.push(r.id.slice(at + name.length + 2));
+            }
+          }
+          db.close();
+        }
+        return out;
+      }, rowFolder);
+      return entries;
+    };
+
+    try {
+      await page.goto(rowUrl);
+      await expect(page.getByText(small[0]!, { exact: true }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+
+      // The oversized file is offered, not spinning, while the copy runs.
+      await expect(row(big).getByRole("button", { name: "Make available offline" })).toBeEnabled({
+        timeout: 30_000,
+      });
+      // Not every row spins: the big file never does.
+      expect(await spinner.count()).toBeLessThan(small.length + 1);
+
+      // A file added during the run is not queued by it: no spinner.
+      await page.getByLabel("Upload files").setInputFiles({
+        name: uploaded,
+        mimeType: "text/markdown",
+        buffer: Buffer.from("# uploaded\n"),
+      });
+      await expect(page.getByText(uploaded, { exact: true }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(
+        row(uploaded).getByRole("button", { name: "Downloading for offline use" }),
+      ).toHaveCount(0);
+
+      // A stored file stops spinning without a reload.
+      let first = "";
+      await expect
+        .poll(
+          async () => {
+            first = (await syncedInFolder()).find((name) => small.includes(name)) ?? "";
+            return first;
+          },
+          { timeout: 60_000, intervals: [250] },
+        )
+        .not.toBe("");
+      await expect(
+        row(first).getByRole("button", { name: "Downloading for offline use" }),
+      ).toHaveCount(0, { timeout: 10_000 });
+
+      // When the copy is done, nothing spins.
+      await expect
+        .poll(async () => (await syncedInFolder()).filter((n) => small.includes(n)).length, {
+          timeout: 90_000,
+        })
+        .toBe(small.length);
+      // A later pass may still copy the file uploaded mid-run; then it settles too.
+      await expect(spinner).toHaveCount(0, { timeout: 30_000 });
+    } finally {
+      await context.close();
+    }
+  });
 });

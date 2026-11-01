@@ -10,11 +10,15 @@ use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
 use App\Services\Installer\InstallerIpv4Resolver;
 use App\Services\Installer\WgwConfigMigrator;
+use App\Services\Jmap\Blobs\DiskFreeSpaceSource;
+use App\Services\Jmap\Blobs\FreeSpaceSource;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
-use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
+use App\Services\Jmap\FileNodes\FileNodeContentHasher;
 use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
 use App\Services\Jmap\JmapMethodDispatcher;
+use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -32,6 +36,10 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+        $this->app->scoped(JmapRequestContext::class);
+        $this->app->scoped(FileNodeContentHasher::class);
+        $this->app->singleton(FreeSpaceSource::class, DiskFreeSpaceSource::class);
+
         // One marker batch per request: every index write in it shares the pending root set.
         $this->app->scoped(FileNodeRootMarkers::class);
 
@@ -52,6 +60,7 @@ final class WgwServiceProvider extends ServiceProvider
             JmapMethodDispatcher::class,
             fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
                 array_map($app->make(...), JmapMethodDispatcher::METHODS),
+                $app->make(JmapRequestContext::class),
             ),
         );
         $this->app->singleton(
@@ -62,9 +71,8 @@ final class WgwServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(
-            JmapBlobGarbageCollector::class,
-            fn ($app): JmapBlobGarbageCollector => new JmapBlobGarbageCollector(
-                $app->make(JmapBlobService::class),
+            JmapBlobReferenceGuard::class,
+            fn ($app): JmapBlobReferenceGuard => new JmapBlobReferenceGuard(
                 array_map($app->make(...), JmapBlobGarbageCollector::CHECKERS),
             ),
         );

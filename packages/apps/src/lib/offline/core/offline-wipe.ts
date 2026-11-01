@@ -61,6 +61,12 @@ export async function releasePushOnLogout(authorizedFetch: AuthorizedFetch): Pro
 export async function wipeOfflineAccountData(): Promise<void> {
   const Dexie = (await import("dexie")).default;
   const { resetOfflineDatabaseCache } = await import("@/lib/offline/core/offline-db");
+  // Sign-out wipes the upload queue too; stop uploading before its database goes away.
+  const { stopAllDriveUploaders } = await import("@/lib/offline/drive/upload/drive-upload-runner");
+  await stopAllDriveUploaders();
+  const { resetSharedDriveUploadQueueWatches } =
+    await import("@/lib/offline/drive/upload/drive-upload-queue-watch");
+  resetSharedDriveUploadQueueWatches();
   const names = await databasesToWipe();
   resetOfflineDatabaseCache();
   let failure: unknown = null;

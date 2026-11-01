@@ -5,7 +5,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useIsTouch } from "@/hooks/use-is-touch";
 import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key-change";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
-import { filterDriveVisibleItems } from "@/drive-core/src/drive-visible-items";
+import { useDriveVisibleItems } from "@/drive-core/src/use-drive-visible-items";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
@@ -27,11 +27,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     files,
     setFiles,
     liveSearchResults,
-    starredItems,
-    sharedItems,
-    starred,
-    view,
-    searchQuery,
     currentUsername,
     operations,
     viewResetKey,
@@ -53,31 +48,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const isTouch = useIsTouch();
   const lastTouchTapRef = useRef<{ id: string; at: number } | null>(null);
 
-  const visibleItems = useMemo(
-    () =>
-      filterDriveVisibleItems({
-        files,
-        liveSearchResults,
-        starredItems,
-        sharedItems,
-        starred,
-        view,
-        searchQuery,
-        currentUsername,
-        operations,
-      }),
-    [
-      currentUsername,
-      files,
-      liveSearchResults,
-      operations,
-      searchQuery,
-      sharedItems,
-      starred,
-      starredItems,
-      view,
-    ],
-  );
+  const visibleItems = useDriveVisibleItems(shell);
 
   const visibleIds = useMemo(() => visibleItems.map((file) => file.id), [visibleItems]);
 

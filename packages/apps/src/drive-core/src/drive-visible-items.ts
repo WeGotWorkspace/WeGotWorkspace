@@ -26,6 +26,7 @@ export function filterDriveVisibleItems({
   searchQuery,
   currentUsername,
   operations,
+  uploadFiles,
 }: {
   files: DriveFile[];
   liveSearchResults: DriveFile[] | null;
@@ -36,8 +37,12 @@ export function filterDriveVisibleItems({
   searchQuery: string;
   currentUsername: string;
   operations: unknown;
+  /** Rows of the Uploads view (every queued, uploading, and failed file). */
+  uploadFiles?: readonly DriveFile[] | null;
 }): DriveFile[] {
   const q = searchQuery.trim().toLowerCase();
+  // The Uploads view lists the queue across folders, never folder rows or server search.
+  if (view.type === "uploads") return (uploadFiles ?? []).filter((f) => matchesLocalSearch(f, q));
   const sourceFiles = liveSearchResults ?? files;
   const starredSourceFiles = operations ? (starredItems ?? []) : sourceFiles;
   const filtered = sourceFiles.filter((f) => {

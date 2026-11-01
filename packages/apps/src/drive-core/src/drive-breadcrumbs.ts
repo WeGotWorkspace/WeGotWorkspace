@@ -1,5 +1,6 @@
 import type { PathBreadcrumbItem } from "@/path-breadcrumb/src/path-breadcrumb";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
+import type { ViewKey } from "@/drive-core/src/drive-models";
 
 const GROUPS_ROOT = "Groups";
 
@@ -8,6 +9,34 @@ export const DRIVE_FOLDER_PICKER_ROOT = "";
 
 export function isDriveSharedGroupPath(path: string): boolean {
   return path === GROUPS_ROOT || path.startsWith(`${GROUPS_ROOT}/`);
+}
+
+type DriveViewBreadcrumbLabels = Pick<
+  DriveUILabels,
+  | "accessTitle"
+  | "sidebarMyDrive"
+  | "sidebarRecent"
+  | "sidebarSharedDrives"
+  | "sidebarSharedWithMe"
+  | "sidebarStarred"
+  | "sidebarUploads"
+>;
+
+/** Breadcrumbs of any Drive view. A view without folders gets its own title. */
+export function buildDriveViewBreadcrumbs(
+  view: ViewKey,
+  labels: DriveViewBreadcrumbLabels,
+  rootLabels?: Readonly<Record<string, string>>,
+): PathBreadcrumbItem[] {
+  if (view.type === "folder") return buildDriveFolderBreadcrumbs(view.path, labels, rootLabels);
+  const titles: Record<Exclude<ViewKey["type"], "folder">, string> = {
+    access: labels.accessTitle,
+    recent: labels.sidebarRecent,
+    starred: labels.sidebarStarred,
+    shared: labels.sidebarSharedWithMe,
+    uploads: labels.sidebarUploads,
+  };
+  return [{ label: titles[view.type], path: null }];
 }
 
 export function buildDriveFolderBreadcrumbs(

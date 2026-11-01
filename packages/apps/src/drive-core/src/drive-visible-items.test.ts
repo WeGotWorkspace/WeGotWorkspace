@@ -105,4 +105,28 @@ describe("filterDriveVisibleItems", () => {
 
     expect(visible.map((file) => file.id)).toEqual(["/users/bob/deck"]);
   });
+
+  it("shows the Uploads list (search applied) instead of an empty view", () => {
+    const uploadFiles = [
+      sampleFile({ id: "upload:1", title: "report.pdf", parent: "My Drive" }),
+      sampleFile({ id: "upload:2", title: "photo.jpg", parent: "My Drive/Trips" }),
+    ];
+    const args = {
+      files: [sampleFile({ id: "/users/demo/a.txt", title: "a.txt", parent: "My Drive" })],
+      liveSearchResults: null,
+      starredItems: null,
+      starred: {},
+      view: { type: "uploads" } as const,
+      currentUsername: "demo",
+      operations: {},
+      uploadFiles,
+    };
+    expect(filterDriveVisibleItems({ ...args, searchQuery: "" }).map((f) => f.id)).toEqual([
+      "upload:1",
+      "upload:2",
+    ]);
+    expect(filterDriveVisibleItems({ ...args, searchQuery: "photo" }).map((f) => f.id)).toEqual([
+      "upload:2",
+    ]);
+  });
 });
