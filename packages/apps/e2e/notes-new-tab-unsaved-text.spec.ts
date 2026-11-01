@@ -5,7 +5,7 @@
 // same browser context opens the note meanwhile: it loads that copy, then the
 // older server snapshot. It used to delete the sentence as a stale local seed,
 // and the delete spread to tab A and, on the next save, to the server.
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { expect, test, type Page, type Request } from "./helpers/live-test";
 import {
   api,
   openNotesTab,
