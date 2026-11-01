@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Assembly;
 
+use App\Database\GuardedUpdate;
 use App\Models\JmapBlobAssembly;
 use App\Models\JmapBlobAssemblyPart;
 use App\Services\Jmap\Blobs\FreeSpaceSource;
@@ -568,9 +569,11 @@ final class BlobAssemblyService
 
     private function renewLease(JmapBlobAssembly $row, string $token): void
     {
-        $renewed = JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)
-            ->update(['locked_until' => Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)]);
-        if ($renewed !== 1) {
+        $held = GuardedUpdate::matched(
+            JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token),
+            ['locked_until' => Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)],
+        );
+        if (! $held) {
             throw new JmapMethodException('serverUnavailable', 'The lease on this assembly was lost; retry.');
         }
     }
@@ -585,8 +588,7 @@ final class BlobAssemblyService
         if ($dirty === []) {
             return;
         }
-        $updated = JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)->update($dirty);
-        if ($updated !== 1) {
+        if (! GuardedUpdate::matched(JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token), $dirty)) {
             throw new JmapMethodException('serverUnavailable', 'The lease on this assembly was lost; retry.');
         }
         $row->syncOriginal();

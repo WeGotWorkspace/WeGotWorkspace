@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Database\GuardedUpdate;
 use App\Models\JmapAttachStaging;
 use App\Models\JmapBlob;
 use App\Services\Jmap\Blobs\FreeSpaceSource;
@@ -229,9 +230,11 @@ final class FileNodeBlobAttacher
                     // the lease alive while bytes flow, and stop if it was lost.
                     if (time() - $renewedAt >= 5) {
                         $renewedAt = time();
-                        $renewed = JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token)
-                            ->update(['locked_until' => Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)]);
-                        if ($renewed !== 1) {
+                        $held = GuardedUpdate::matched(
+                            JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token),
+                            ['locked_until' => Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)],
+                        );
+                        if (! $held) {
                             throw $this->stagingBusy($staging->copied_bytes, $row->size_bytes);
                         }
                     }
@@ -252,8 +255,7 @@ final class FileNodeBlobAttacher
             if (! $final) {
                 $update += ['locked_until' => null, 'lease_token' => null];
             }
-            $kept = JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token)->update($update);
-            if ($kept !== 1) {
+            if (! GuardedUpdate::matched(JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token), $update)) {
                 throw $this->stagingBusy($copied, $row->size_bytes);
             }
             if (! $final) {
