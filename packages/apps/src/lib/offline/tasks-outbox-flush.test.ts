@@ -7,6 +7,7 @@ import {
   enqueueCoalescedTaskUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
+  readTasksBootstrapFromCache,
   upsertTaskInCache,
   writeTasksBootstrapToCache,
 } from "@/lib/offline/tasks-offline-store";
@@ -23,8 +24,9 @@ const bootstrap = createTasksAppBootstrap({
 });
 const task = bootstrap.data.tasks[0]!;
 
-const { patchTask } = vi.hoisted(() => ({
+const { patchTask, deleteTaskList } = vi.hoisted(() => ({
   patchTask: vi.fn(),
+  deleteTaskList: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
@@ -32,6 +34,7 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
   return {
     ...actual,
     patchTask,
+    deleteTaskList,
     TasksRequestError: actual.TasksRequestError,
   };
 });
@@ -39,6 +42,7 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
 describe("flushTasksOutbox", () => {
   beforeEach(async () => {
     patchTask.mockReset();
+    deleteTaskList.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await tasksItemsTable(db).clear();
@@ -95,5 +99,27 @@ describe("flushTasksOutbox", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     const cached = await tasksItemsTable(db).get(task.id);
     expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Second" });
+  });
+
+  it("drops only the deleted list's tasks from the cache on a queued list delete (#1812)", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "queued-list-delete",
+      domain: TASKS_DOMAIN,
+      op: "listDelete",
+      payload: JSON.stringify({ taskListId: "work", onDestroyRemoveContents: true }),
+    });
+    deleteTaskList.mockResolvedValue(undefined);
+
+    await flushTasksOutbox(username);
+
+    expect(deleteTaskList).toHaveBeenCalledWith("work", { onDestroyRemoveContents: true });
+    const cached = await readTasksBootstrapFromCache(username);
+    const kept = bootstrap.data.tasks.filter((entry) => entry.taskListId !== "work");
+    expect(kept.length).toBeGreaterThan(0);
+    expect(cached?.data.tasks.map((entry) => entry.id).sort()).toEqual(
+      kept.map((entry) => entry.id).sort(),
+    );
+    expect(cached?.data.taskLists.map((list) => list.id)).not.toContain("work");
+    expect(await listOutboxMutations(username)).toEqual([]);
   });
 });

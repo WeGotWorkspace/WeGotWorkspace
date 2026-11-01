@@ -160,4 +160,70 @@ describe("useTasksAPI inbound sync", () => {
     expect(calls).toEqual(["flush", "pull", "read-cache"]);
     expect(patchBootstrap).toHaveBeenCalledTimes(1);
   });
+
+  describe("other tabs of this browser (#1815)", () => {
+    const heard: unknown[] = [];
+    let otherTab: BroadcastChannel;
+    const delivered = async () => {
+      vi.useRealTimers();
+      await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    };
+
+    beforeEach(() => {
+      heard.length = 0;
+      otherTab = new BroadcastChannel("wgw.tasks.bootstrap");
+      otherTab.onmessage = (event) => heard.push(event.data);
+    });
+
+    afterEach(() => {
+      otherTab.close();
+    });
+
+    it("tells the other tabs when its poll changed the shared cache", async () => {
+      renderHook(() => useTasksAPI(source));
+
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      await delivered();
+
+      expect(heard).toEqual([{ type: "tasks-bootstrap-updated", username: "ada" }]);
+    });
+
+    it("tells no one when the poll found nothing", async () => {
+      syncTasksInbound.mockResolvedValue({ changed: false, usedFullResync: false });
+      renderHook(() => useTasksAPI(source));
+
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      await delivered();
+
+      expect(heard).toEqual([]);
+    });
+
+    it("tells the other tabs after a reconnect flush", async () => {
+      renderHook(() => useTasksAPI(source));
+
+      await act(async () => {
+        reconnect!();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await delivered();
+
+      expect(heard).toEqual([{ type: "tasks-bootstrap-updated", username: "ada" }]);
+    });
+
+    it("repaints from the cache when another tab changed it, without a pull", async () => {
+      vi.useRealTimers();
+      renderHook(() => useTasksAPI(source));
+
+      otherTab.postMessage({ type: "tasks-bootstrap-updated", username: "someone-else" });
+      await delivered();
+      expect(readCache).not.toHaveBeenCalled();
+
+      otherTab.postMessage({ type: "tasks-bootstrap-updated", username: "ada" });
+      await delivered();
+
+      expect(syncTasksInbound).not.toHaveBeenCalled();
+      expect(calls).toEqual(["read-cache"]);
+      expect(patchBootstrap).toHaveBeenCalledTimes(1);
+    });
+  });
 });

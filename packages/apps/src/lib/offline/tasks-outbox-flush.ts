@@ -105,7 +105,7 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
         await deleteTaskList(taskListId, { onDestroyRemoveContents });
         await removeTaskListFromCache(username, taskListId);
         if (onDestroyRemoveContents) {
-          const dbTasks = cached.data.tasks.filter((task) => task.taskListId !== taskListId);
+          const dbTasks = cached.data.tasks.filter((task) => task.taskListId === taskListId);
           for (const task of dbTasks) {
             await removeTaskFromCache(username, task.id);
           }

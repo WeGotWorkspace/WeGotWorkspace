@@ -11,6 +11,10 @@ import {
   getTasksSyncRunner,
 } from "@/lib/offline/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
+import {
+  notifyTasksBootstrapUpdated,
+  subscribeTasksBootstrapUpdated,
+} from "@/lib/offline/tasks-bootstrap-sync";
 import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
@@ -95,8 +99,17 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
         await syncTasksInbound(offlineUsername, { waitForLock: true }).catch(() => undefined);
       }
       await patchFromCache();
+      notifyTasksBootstrapUpdated(offlineUsername);
     },
   });
+
+  // Another tab pulled or flushed into the shared cache (#1815).
+  useEffect(() => {
+    if (!offlineUsername) return;
+    return subscribeTasksBootstrapUpdated(offlineUsername, () => {
+      void patchFromCache().catch(() => undefined);
+    });
+  }, [offlineUsername, patchFromCache]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
@@ -106,7 +119,10 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     const tick = () => {
       void syncTasksInbound(username)
         .then((result) => {
-          if (!cancelled && result?.changed) return patchFromCache();
+          if (!result?.changed) return;
+          // The token is shared: the other tabs' next pull sees no change.
+          notifyTasksBootstrapUpdated(username);
+          if (!cancelled) return patchFromCache();
         })
         .catch(() => undefined);
     };
@@ -125,6 +141,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .then((next) => {
         patchBootstrap(() => next);
         setBootstrapRevision((revision) => revision + 1);
+        if (offlineUsername) notifyTasksBootstrapUpdated(offlineUsername);
         show(defaultTasksLabels.toastListUpdated, {
           icon: createElement(Check, { className: "size-4" }),
         });
@@ -135,7 +152,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [listRefreshing, patchBootstrap, resolvedSource, show, showError]);
+  }, [listRefreshing, offlineUsername, patchBootstrap, resolvedSource, show, showError]);
 
   return {
     phase,

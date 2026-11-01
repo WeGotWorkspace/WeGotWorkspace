@@ -67,6 +67,66 @@ final class TaskListMetadataStateTest extends WgwDatabaseTestCase
         $this->assertSame('#00ff00', $owned->json('color'));
     }
 
+    public function test_owner_rename_and_recolour_reach_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedList('Errands');
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/tasks/tasklists/'.$ownerId, ['name' => 'Errands 2027', 'color' => '#ff0000'])
+            ->assertOk();
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$shareeId)->assertOk();
+        $this->assertSame('Errands 2027', $seen->json('name'));
+        $this->assertSame('#ff0000', $seen->json('color'));
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/tasks/tasklists/'.$ownerId, ['color' => '#00ff00'])
+            ->assertOk();
+        $this->assertSame('#00ff00', $this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$shareeId)->json('color'));
+    }
+
+    public function test_owner_dav_rename_reaches_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedList('Chores');
+
+        $this->davProppatch('bob', '/calendars/bob/'.$ownerId, [
+            '{DAV:}displayname' => 'Chores 2027',
+            self::APPLE_CALENDAR_COLOR => '#00ff00',
+        ]);
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$shareeId)->assertOk();
+        $this->assertSame('Chores 2027', $seen->json('name'));
+        $this->assertSame('#00ff00', $seen->json('color'));
+    }
+
+    public function test_a_sharees_own_name_and_colour_survive_the_owners_change(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedList('Errands');
+        $this->asUser('alice')
+            ->patchJson('/api/v1/tasks/tasklists/'.$shareeId, ['name' => 'Bob errands', 'color' => '#0000ff'])
+            ->assertOk();
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/tasks/tasklists/'.$ownerId, ['name' => 'Errands 2027', 'color' => '#ff0000'])
+            ->assertOk()
+            ->assertJsonPath('name', 'Errands 2027');
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$shareeId)->assertOk();
+        $this->assertSame('Bob errands', $seen->json('name'));
+        $this->assertSame('#0000ff', $seen->json('color'));
+    }
+
+    public function test_a_sharees_rename_stays_their_own(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedList('Errands');
+
+        $this->asUser('alice')
+            ->patchJson('/api/v1/tasks/tasklists/'.$shareeId, ['name' => 'Bob errands'])
+            ->assertOk();
+
+        $this->assertSame('Errands', $this->asUser('bob')->getJson('/api/v1/tasks/tasklists/'.$ownerId)->json('name'));
+    }
+
     public function test_group_list_rename_reaches_every_member(): void
     {
         $id = (string) $this->asUser('bob')
