@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; app adoption and the mesh `check-now` still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; the notification inbox uses it since #1668; the other apps and the mesh `check-now` still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 
@@ -208,7 +208,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
 | Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.sync()` |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
-| Notification inbox | `Notification` | inbox fetch, local-ack, toast ([notifications.md](notifications.md#active-news-on-the-client)) |
+| Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); toast to do ([notifications.md](notifications.md#active-news-on-the-client)) |
 | Drive, Docs home | `FileNode` | `FileNode/changes` for the visible folder (`use-drive-file-node-inbound.ts`) |
 | Tasks | `Task`, `TaskList` | `refreshList` |
 
