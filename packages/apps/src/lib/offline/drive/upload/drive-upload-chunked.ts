@@ -140,6 +140,8 @@ class ChunkedUpload {
         blobId = await this.uploadPart(part, whole);
       } catch (error) {
         if (!(error instanceof DriveUploadPartRejectedError)) throw error;
+        // Without subtle a refused whole file cannot be split into checksummed parts.
+        if (whole && !this.subtle) throw new DriveUploadTooLargeError(this.input.name, length);
         await this.shrinkAfterRefusal(length);
         continue;
       }

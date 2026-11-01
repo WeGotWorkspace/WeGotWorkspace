@@ -186,10 +186,10 @@ test.describe("Drive upload queue (live app)", () => {
     await page.unroute("**/jmap/upload**");
 
     let afterReload = 0;
-    await page.reload();
     page.on("request", (request) => {
       if (request.url().includes("/jmap/upload") && request.method() === "POST") afterReload += 1;
     });
+    await page.reload();
     await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
     await expect(page.locator(".drive-upload-status")).toHaveCount(0, { timeout: 90_000 });
     await expect(page.getByText(name, { exact: true })).toBeVisible();

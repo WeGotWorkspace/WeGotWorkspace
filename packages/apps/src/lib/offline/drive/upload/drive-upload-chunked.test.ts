@@ -328,6 +328,16 @@ describe("chunked upload", () => {
       expect(blobId).toMatch(/^jb-/);
     });
 
+    it("fails once as too large when the host refuses a whole file, instead of retrying it", async () => {
+      server.maxSizeUpload = 2_000;
+      server.stepBudgetBytes = 600;
+      server.hostLimit = 1_000;
+      await expect(send(patternedFile("mid.bin", 1_500))).rejects.toBeInstanceOf(
+        DriveUploadTooLargeError,
+      );
+      expect(server.uploads).toHaveLength(1);
+    });
+
     it("still uploads a small file, with its length declared", async () => {
       const blobId = await send(patternedFile("small.bin", 500));
       expect(server.uploads).toEqual([{ length: 500, declaredLength: "500" }]);
