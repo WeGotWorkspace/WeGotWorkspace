@@ -180,10 +180,11 @@ async function pick(tab: Tab, scope: Locator, label: string, name: string) {
   await pickOption(tab, scope.getByRole("combobox", { name: label }), name);
 }
 
-async function addTask(tab: Tab, title: string, list: string) {
+async function addTask(tab: Tab, title: string, list: string, dues: Due[] = []) {
   await showAllTasks(tab);
   await tab.getByRole("textbox", { name: "Task name" }).fill(title);
   await pick(tab, tab.locator("body"), "List", list);
+  for (const due of dues) await setDue(tab, tab.locator("body"), due);
   await tab.getByRole("button", { name: "Add task" }).click();
   await row(tab, title).waitFor({ timeout: 15_000 });
   await sleep(2_000);
@@ -600,6 +601,40 @@ const ACTIONS = {
     },
     landed: (s, f) => titled(s, `N ${f.id} v2`)?.listId === f.listAId && !titled(s, `N ${f.id}`),
   },
+  // A new task with a due, moved before it reached the server: the queued move
+  // rides on the server id and must keep the due's time. The composer sets no
+  // zone, so the due stays floating.
+  createMove: {
+    nets: COMPOUND,
+    async run(tab, f) {
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "addTime"]);
+      await editTask(tab, `N ${f.id}`, { list: f.listB });
+    },
+    landed: (s, f) => {
+      const t = titled(s, `N ${f.id}`);
+      return (
+        t?.listId === f.listBId &&
+        t.due === `${D1}T09:00 floating` &&
+        s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
+      );
+    },
+  },
+  // The same with an all-day due.
+  createMoveAllDay: {
+    nets: COMPOUND,
+    async run(tab, f) {
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }]);
+      await editTask(tab, `N ${f.id}`, { list: f.listB });
+    },
+    landed: (s, f) => {
+      const t = titled(s, `N ${f.id}`);
+      return (
+        t?.listId === f.listBId &&
+        t.due === D1 &&
+        s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
+      );
+    },
+  },
 } satisfies Record<string, ActionDef>;
 type Action = keyof typeof ACTIONS;
 
@@ -666,7 +701,9 @@ async function withOutboxes(tabs: Tab[], id: string, error: unknown): Promise<ne
   }
   const server = await serverState(id).catch(() => null);
   if (server) {
-    const { etag: _etag, ...task } = server.tasks.find((t) => t.title.startsWith("T ")) ?? {};
+    const task = server.tasks
+      .filter((t) => /^[TN] /.test(t.title))
+      .map(({ etag: _etag, ...t }) => t);
     message += `\nserver: lists ${JSON.stringify(server.lists)}\nserver: task ${JSON.stringify(task)}`;
   }
   throw new Error(message);
