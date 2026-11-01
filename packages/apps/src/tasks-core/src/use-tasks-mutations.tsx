@@ -29,6 +29,44 @@ type UseTasksMutationsArgs = {
   exitAnimation: TasksExitAnimationState;
 };
 
+function taskEditValues(input: TasksTaskFormValue) {
+  const due = input.due ?? null;
+  return {
+    title: input.title.trim(),
+    description: input.description.trim() || null,
+    workflowStatus: input.workflowStatus ?? "needs-action",
+    priority: input.priority === TASK_PRIORITY_NONE ? null : input.priority,
+    due,
+    showWithoutTime: due ? (input.showWithoutTime ?? true) : undefined,
+    timeZone: due && input.showWithoutTime === false ? (input.timeZone ?? null) : null,
+    alerts: input.alerts,
+  };
+}
+
+function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): TaskPatch {
+  const patch: TaskPatch = {};
+  if (next.title !== (task.title ?? "")) patch.title = next.title;
+  if (next.description !== (task.description?.trim() || null)) {
+    patch.description = next.description;
+  }
+  if (next.due !== (task.due ?? null)) patch.due = next.due;
+  if (next.due && next.showWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime)) {
+    patch.showWithoutTime = next.showWithoutTime;
+  }
+  if (next.due && next.timeZone !== (task.timeZone ?? null)) patch.timeZone = next.timeZone;
+  if (!next.due && (task.due ?? null) !== null) {
+    patch.due = null;
+    patch.showWithoutTime = true;
+    patch.timeZone = null;
+  }
+  if (next.workflowStatus !== (task.workflowStatus ?? "needs-action")) {
+    patch.workflowStatus = next.workflowStatus;
+  }
+  if (next.priority !== normalizeTaskPriority(task.priority)) patch.priority = next.priority;
+  if (!taskAlertsEqual(next.alerts, task.alerts)) patch.alerts = next.alerts ?? null;
+  return patch;
+}
+
 export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutationsArgs) {
   const {
     L,
@@ -213,40 +251,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       if (!task || !input.title.trim()) return;
       if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
 
-      const trimmedTitle = input.title.trim();
-      const trimmedDescription = input.description.trim() || null;
-      const status = input.workflowStatus ?? "needs-action";
-      const taskPriority = input.priority === TASK_PRIORITY_NONE ? null : input.priority;
-      const taskDue = input.due ?? null;
-      const taskShowWithoutTime = taskDue ? (input.showWithoutTime ?? true) : undefined;
-      const taskTimeZone =
-        taskDue && input.showWithoutTime === false ? (input.timeZone ?? null) : null;
-      const taskAlerts = input.alerts;
+      const next = taskEditValues(input);
       const listChanged = input.listId !== task.taskListId;
-
-      const patch: TaskPatch = {};
-      if (trimmedTitle !== (task.title ?? "")) patch.title = trimmedTitle;
-      if (trimmedDescription !== (task.description?.trim() || null)) {
-        patch.description = trimmedDescription;
-      }
-      if (taskDue !== (task.due ?? null)) patch.due = taskDue;
-      if (taskDue && taskShowWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime)) {
-        patch.showWithoutTime = taskShowWithoutTime;
-      }
-      if (taskDue && taskTimeZone !== (task.timeZone ?? null)) {
-        patch.timeZone = taskTimeZone;
-      }
-      if (!taskDue && (task.due ?? null) !== null) {
-        patch.due = null;
-        patch.showWithoutTime = true;
-        patch.timeZone = null;
-      }
-      if (status !== (task.workflowStatus ?? "needs-action")) patch.workflowStatus = status;
-      const beforePriority = normalizeTaskPriority(task.priority);
-      if (taskPriority !== beforePriority) patch.priority = taskPriority;
-      if (!taskAlertsEqual(taskAlerts, task.alerts)) {
-        patch.alerts = taskAlerts ?? null;
-      }
+      const patch = taskEditPatch(task, next);
 
       const hasPatch = Object.keys(patch).length > 0;
       if (!hasPatch && !listChanged) {
@@ -255,18 +262,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       }
 
       const snapshot = task;
-      const optimistic: Task = {
-        ...task,
-        title: trimmedTitle,
-        description: trimmedDescription,
-        due: taskDue,
-        showWithoutTime: taskShowWithoutTime,
-        timeZone: taskTimeZone,
-        workflowStatus: status,
-        priority: taskPriority,
-        taskListId: input.listId,
-        alerts: taskAlerts,
-      };
+      const optimistic: Task = { ...task, ...next, taskListId: input.listId };
 
       setTasks((prev) => prev.map((item) => (item.id === taskId ? optimistic : item)));
       setEditDialog(null);
