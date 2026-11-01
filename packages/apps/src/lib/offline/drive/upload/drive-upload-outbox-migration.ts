@@ -140,7 +140,13 @@ export async function migrateDriveOutboxUploads(
       waiting += legacy.length;
       continue;
     }
-    moved += await moveIntoQueue(username, folderPath, targetFolder, legacy);
+    try {
+      moved += await moveIntoQueue(username, folderPath, targetFolder, legacy);
+    } catch (error) {
+      // The rows stay in the outbox; the folders after this one still move.
+      console.warn("[drive-upload] outbox upload could not move into the queue", error);
+      waiting += legacy.length;
+    }
   }
   if (moved > 0) notifyDriveUploadQueueChanged(username);
   return { moved, waiting };

@@ -19,6 +19,19 @@ const QUOTAS_META_KEY = "drive:upload-quotas";
 
 const UNKNOWN: DriveUploadSpaceCheck = { status: "unknown" };
 
+/** How long the pre-check waits for the server before it uses the stored reading. */
+const QUOTA_FETCH_TIMEOUT_MS = 5_000;
+
+/** Rejects when `signal` aborts, even if `work` never settles. */
+function abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) return onAbort();
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
 /** Quotas as the server last reported them; `fresh` is false for a stored answer. */
 export type DriveQuotaReading = { quotas: DriveQuota[]; measuredAt: number; fresh: boolean };
 
@@ -56,7 +69,12 @@ export async function readDriveQuotas(
 ): Promise<DriveQuotaReading | null> {
   if (readBrowserOnline()) {
     try {
-      const quotas = await fetchDriveQuotas(await driveJmapSession());
+      // Bounded: the batch is only released once the pre-check is done.
+      const signal = AbortSignal.timeout(QUOTA_FETCH_TIMEOUT_MS);
+      const quotas = await abortable(
+        driveJmapSession().then((session) => fetchDriveQuotas(session, signal)),
+        signal,
+      );
       if (quotas === null) return null;
       const stored = { quotas, measuredAt: Date.now() };
       await writeMeta(username, QUOTAS_META_KEY, JSON.stringify(stored));

@@ -159,6 +159,30 @@ describe("moving old outbox uploads into the upload queue", () => {
     expect(await listOutboxMutations(user)).toEqual([]);
   });
 
+  it("keeps going with the next folder when one folder fails to move", async () => {
+    const other = "/users/ada/other";
+    await upsertDriveEntry(user, entry(folder, "fn-docs", "dir"));
+    await upsertDriveEntry(user, entry(other, "fn-other", "dir"));
+    await legacyUploadRow(folder, "bad.bin", new Uint8Array([1]), "application/octet-stream");
+    await legacyUploadRow(other, "good.bin", new Uint8Array([2, 3]), "application/octet-stream");
+    // The first folder's file cannot be decoded; atob throws for it only.
+    const realAtob = globalThis.atob;
+    const bad = Buffer.from(new Uint8Array([1])).toString("base64");
+    vi.spyOn(globalThis, "atob").mockImplementation((data) => {
+      if (data === bad) throw new Error("bad payload");
+      return realAtob(data);
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(await migrateDriveOutboxUploads(user)).toEqual({ moved: 1, waiting: 1 });
+
+    expect(await listOutboxMutations(user)).toHaveLength(1);
+    const { items } = await readDriveUploadQueueRows(user);
+    expect(items.map((item) => item.name)).toEqual(["good.bin"]);
+    expect(await blobBytes(items[0]!.id)).toEqual(new Uint8Array([2, 3]));
+    vi.restoreAllMocks();
+  });
+
   it("flushing the outbox moves old uploads instead of sending them as base64", async () => {
     await upsertDriveEntry(user, entry(folder, "fn-docs", "dir"));
     await legacyUploadRow(folder, "a.bin", new Uint8Array([7, 7]), "application/octet-stream");

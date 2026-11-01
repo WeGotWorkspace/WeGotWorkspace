@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDriveServer } from "@/lib/offline/drive/upload/drive-upload-fake-server.fixture";
 
 const online = vi.hoisted(() => ({ value: true }));
-const fake = vi.hoisted(() => ({ server: null as unknown as FakeDriveServer }));
+const fake = vi.hoisted(() => ({ server: null as unknown as FakeDriveServer, hang: false }));
 
 vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/offline/core/browser-online")>()),
@@ -13,7 +13,7 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => ({
 
 vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/wgw/drive-jmap")>()),
-  driveJmapSession: async () => fake.server.session(),
+  driveJmapSession: async () => (fake.hang ? new Promise<never>(() => {}) : fake.server.session()),
 }));
 
 import { resetDriveUploadEventsForTests } from "@/lib/offline/drive/upload/drive-upload-events";
@@ -50,12 +50,19 @@ async function add(folderPath: string, files: File[], targetId = "fn-docs") {
   });
 }
 
+/** Quota/get never answers, and the pre-check's time limit is already over. */
+function hangQuotaGet() {
+  fake.hang = true;
+  vi.spyOn(AbortSignal, "timeout").mockImplementation(() => AbortSignal.abort());
+}
+
 describe("drive upload space pre-check", () => {
   let server: FakeDriveServer;
   let restoreStorage: () => void = () => undefined;
 
   beforeEach(async () => {
     online.value = true;
+    fake.hang = false;
     server = new FakeDriveServer();
     fake.server = server;
     resetDriveUploadEventsForTests();
@@ -165,6 +172,24 @@ describe("drive upload space pre-check", () => {
     expect(check).toMatchObject({ status: "does_not_fit", freeBytes: 500, fresh: false });
     expect(check.status !== "unknown" && check.measuredAt).toBeGreaterThanOrEqual(before);
     expect(server.callsNamed("Quota/get")).toHaveLength(1);
+  });
+
+  it("falls back to the stored reading when Quota/get never answers", async () => {
+    const first = await add(`${HOME}/docs`, [bytes("a.bin", 100)]);
+    await checkDriveUploadBatchSpace(user, first.batchId);
+
+    const { batchId } = await add(`${HOME}/docs`, [bytes("b.bin", 100)]);
+    hangQuotaGet();
+    expect(await checkDriveUploadBatchSpace(user, batchId)).toMatchObject({
+      status: "fits",
+      fresh: false,
+    });
+  });
+
+  it("is unknown when Quota/get never answers and nothing is stored", async () => {
+    const { batchId } = await add(`${HOME}/docs`, [bytes("b.bin", 100)]);
+    hangQuotaGet();
+    expect(await checkDriveUploadBatchSpace(user, batchId)).toEqual({ status: "unknown" });
   });
 
   it("is unknown offline when this device never saw a quota", async () => {
