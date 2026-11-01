@@ -56,7 +56,7 @@ function browserReportsOnline(): boolean {
  * Waits for an authenticated (non-guest) session, resolves RTC settings and the
  * member identity, then starts the store with the environment-appropriate join timing.
  * When either request fails (offline start, API unreachable) no mesh is created; the
- * boot runs again on the `online` event and on a short bounded backoff.
+ * boot runs again on the `online` event and on a backoff that repeats its last delay.
  */
 export function PresenceProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<PresenceStore | null>(null);
@@ -79,8 +79,11 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       clearRetryTimer();
       // Offline: a request now fails the same way; wait for the `online` event.
       if (!browserReportsOnline()) return;
-      const delay = PRESENCE_BOOT_RETRY_DELAYS_MS[retryAttempt];
-      if (delay === undefined) return;
+      // The last delay repeats: `online` never fires while the browser keeps reporting online.
+      const delay =
+        PRESENCE_BOOT_RETRY_DELAYS_MS[
+          Math.min(retryAttempt, PRESENCE_BOOT_RETRY_DELAYS_MS.length - 1)
+        ];
       retryAttempt += 1;
       retryTimer = setTimeout(() => {
         retryTimer = null;

@@ -141,24 +141,31 @@ describe("PresenceProvider", () => {
       view.unmount();
     });
 
-    it("retries on a bounded backoff while the browser reports online", async () => {
+    it("keeps retrying at the last delay while the browser reports online", async () => {
       vi.useFakeTimers();
       rtcSettings.mockRejectedValue(new TypeError("Failed to fetch"));
 
       const view = renderProvider();
       const total = PRESENCE_BOOT_RETRY_DELAYS_MS.reduce((sum, delay) => sum + delay, 0);
+      const lastDelay = PRESENCE_BOOT_RETRY_DELAYS_MS[PRESENCE_BOOT_RETRY_DELAYS_MS.length - 1];
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(total * 2);
+        await vi.advanceTimersByTimeAsync(total);
       });
 
       expect(rtcSettings).toHaveBeenCalledTimes(1 + PRESENCE_BOOT_RETRY_DELAYS_MS.length);
       expect(storeFactory).not.toHaveBeenCalled();
 
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(lastDelay);
+      });
+      expect(rtcSettings).toHaveBeenCalledTimes(2 + PRESENCE_BOOT_RETRY_DELAYS_MS.length);
+      expect(storeFactory).not.toHaveBeenCalled();
+
       rtcSettings.mockImplementation(async () => SERVER_SETTINGS);
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(PRESENCE_BOOT_RETRY_DELAYS_MS[0]);
+        await vi.advanceTimersByTimeAsync(lastDelay);
       });
-      expect(storeFactory).not.toHaveBeenCalled();
+      expect(storeFactory).toHaveBeenCalledTimes(1);
       expect(unhandled).toEqual([]);
       view.unmount();
     });
