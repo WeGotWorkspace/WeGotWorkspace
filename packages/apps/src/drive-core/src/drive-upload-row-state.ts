@@ -85,10 +85,14 @@ export function driveUploadRowState(
 
   if (status === "uploading") {
     if (item?.phase === "assembling") {
-      return withDeviceNote(
-        { ...base, kind: "assembling", percent: null },
-        driveLabels.uploadState.assembling,
-      );
+      // Its own progress, so the ring does not sit at 100% while the server works.
+      const percent = driveUploadPercent({
+        bytesDone: item.assembledBytes ?? 0,
+        bytesTotal: item.bytesTotal,
+      });
+      const words = driveLabels.uploadState.assembling;
+      const text = percent === null ? words : `${words} · ${driveLabels.uploadPercent(percent)}`;
+      return withDeviceNote({ ...base, kind: "assembling", percent }, text);
     }
     const percent = driveUploadPercent(item);
     const words = driveLabels.uploadState.uploading;

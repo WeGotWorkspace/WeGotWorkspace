@@ -19,9 +19,12 @@ import {
   driveUploadBatchesTable,
   driveUploadBlobsTable,
   driveUploadItemsTable,
+  type DriveUploadChunkState,
+  type DriveUploadConflictChoice,
   type DriveUploadItemError,
   type DriveUploadKeepOffline,
   type DriveUploadNotice,
+  type DriveUploadReplaceTarget,
   type DriveUploadTargetFolder,
   type OfflineDriveUploadBatchRow,
   type OfflineDriveUploadItemRow,
@@ -150,16 +153,34 @@ async function storeItem(
   }
 }
 
+/** The batch dialog's answers. */
+export type DriveUploadBatchReleaseAnswers = {
+  keepOffline: DriveUploadKeepOffline;
+  /** Only when the batch had name conflicts when it was queued. */
+  conflict?: DriveUploadConflictChoice;
+  /** *Replace*: per colliding item, the existing file as the user saw it. */
+  replaceTargets?: Readonly<Record<string, DriveUploadReplaceTarget>>;
+};
+
 /** Hand a batch to the uploader with the dialog's answers. */
 export async function releaseDriveUploadBatch(
   username: string,
   batchId: string,
-  answers: { keepOffline: DriveUploadKeepOffline },
+  answers: DriveUploadBatchReleaseAnswers,
 ): Promise<void> {
-  const { batches } = tables(username);
-  const updated = await batches.update(batchId, {
-    status: "released",
-    keepOffline: answers.keepOffline,
+  const { db, batches, items } = tables(username);
+  const updated = await db.transaction("rw", batches, items, async () => {
+    const count = await batches.update(batchId, {
+      status: "released",
+      keepOffline: answers.keepOffline,
+      ...(answers.conflict ? { conflict: answers.conflict } : {}),
+    });
+    if (!count) return false;
+    for (const [itemId, replaceTarget] of Object.entries(answers.replaceTargets ?? {})) {
+      const item = await items.get(itemId);
+      if (item?.batchId === batchId) await items.put({ ...item, replaceTarget });
+    }
+    return true;
   });
   if (updated) notifyDriveUploadQueueChanged(username);
 }
@@ -204,7 +225,20 @@ export async function removeDriveUploadItem(username: string, itemId: string): P
  */
 export function canRetryDriveUpload(item: Pick<OfflineDriveUploadItemRow, "status" | "error">) {
   if (item.status !== "failed") return false;
-  return item.error?.code !== "no_local_copy" && item.error?.code !== "quota";
+  return !NOT_RETRYABLE.has(item.error?.code ?? "upload_failed");
+}
+
+/**
+ * Retrying cannot help: the bytes are gone (`no_local_copy`, `quota`), or the
+ * page has no Web Crypto for part checksums (`insecure_context`, fixed only
+ * by opening the app over https).
+ */
+const NOT_RETRYABLE = new Set(["no_local_copy", "quota", "insecure_context"]);
+
+/** Octets of the file the server already has as parts. */
+function chunkBytes(chunk: DriveUploadChunkState | undefined): number {
+  const last = chunk?.parts.at(-1);
+  return last ? last.offset + last.length : 0;
 }
 
 /**
@@ -229,8 +263,14 @@ async function requeueFailedItems(username: string, itemIds: readonly string[]):
     for (const itemId of itemIds) {
       const item = await items.get(itemId);
       if (!item || !canRetryDriveUpload(item)) continue;
+      // Parts already on the server stay: a retry resumes from the next one.
       const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
-      await items.put({ ...rest, status: "queued", bytesDone: 0, transientFailures: 0 });
+      await items.put({
+        ...rest,
+        status: "queued",
+        bytesDone: chunkBytes(item.chunk),
+        transientFailures: 0,
+      });
       await setUploadPlaceholderStatus(username, itemId, "queued");
       count += 1;
     }
@@ -342,13 +382,17 @@ export async function listStartableDriveUploads(
   );
 }
 
-/** Mark one item `uploading`. False when it was removed or changed meanwhile. */
+/**
+ * Mark one item `uploading`. Parts already on the server count as done.
+ * False when it was removed or changed meanwhile.
+ */
 export async function markDriveUploadStarted(username: string, itemId: string): Promise<boolean> {
   const { db, items, entries } = tables(username);
   const started = await db.transaction("rw", items, entries, async () => {
     const item = await items.get(itemId);
     if (!item || item.status === "failed") return false;
-    await items.put({ ...item, status: "uploading", bytesDone: 0 });
+    const { phase: _phase, assembledBytes: _assembled, ...rest } = item;
+    await items.put({ ...rest, status: "uploading", bytesDone: chunkBytes(item.chunk) });
     await setUploadPlaceholderStatus(username, itemId, "uploading");
     return true;
   });
@@ -356,14 +400,73 @@ export async function markDriveUploadStarted(username: string, itemId: string): 
   return started;
 }
 
-/** Remember the node the server created, so a retry never creates a second one. */
+/** Chunk progress of an item that is uploading, stored after every part and step. */
+export type DriveUploadProgressRecord = {
+  chunk: DriveUploadChunkState;
+  bytesDone: number;
+  phase?: "assembling";
+  assembledBytes?: number;
+};
+
+/**
+ * Store chunk progress, so a reload or reconnect resumes from the next part
+ * or assembly step. Ignored for an item that is gone or no longer uploading.
+ */
+export async function saveDriveUploadProgress(
+  username: string,
+  itemId: string,
+  progress: DriveUploadProgressRecord,
+): Promise<void> {
+  const { db, items } = tables(username);
+  const saved = await db.transaction("rw", items, async () => {
+    const item = await items.get(itemId);
+    if (!item || item.status !== "uploading") return false;
+    const { phase: _phase, assembledBytes: _assembled, ...rest } = item;
+    await items.put({
+      ...rest,
+      chunk: progress.chunk,
+      bytesDone: progress.bytesDone,
+      ...(progress.phase ? { phase: progress.phase } : {}),
+      ...(progress.phase && progress.assembledBytes !== undefined
+        ? { assembledBytes: progress.assembledBytes }
+        : {}),
+    });
+    return true;
+  });
+  if (saved) notifyDriveUploadQueueChanged(username);
+}
+
+/**
+ * Remember the node the server created (or replaced), so a retry never
+ * creates a second one, and store the batch notice that goes with it.
+ */
 export async function recordDriveUploadCreated(
   username: string,
   itemId: string,
   nodeId: string,
+  notice?: DriveUploadNotice,
 ): Promise<void> {
-  const { items } = tables(username);
-  await items.update(itemId, { createdNodeId: nodeId });
+  const { db, batches, items } = tables(username);
+  await db.transaction("rw", batches, items, async () => {
+    const item = await items.get(itemId);
+    if (!item) return;
+    await items.put({ ...item, createdNodeId: nodeId });
+    if (!notice) return;
+    const batch = await batches.get(item.batchId);
+    if (batch) await batches.put({ ...batch, notices: [...batch.notices, notice] });
+  });
+  if (notice) notifyDriveUploadQueueChanged(username);
+}
+
+/** `skip` met a taken name: the item and its placeholder go, nothing was created. */
+export async function skipDriveUploadItem(username: string, itemId: string): Promise<void> {
+  const { db, batches, items, blobs, entries } = tables(username);
+  await db.transaction("rw", batches, items, blobs, entries, async () => {
+    const item = await items.get(itemId);
+    if (item) await dropItemRows(username, item);
+  });
+  forgetUploadInMemory(itemId);
+  notifyDriveUploadQueueChanged(username);
 }
 
 /** Back to `queued` after a hiccup; fails the item after too many in a row. */
@@ -384,11 +487,12 @@ export async function requeueDriveUpload(
       await setUploadPlaceholderStatus(username, itemId, "failed", error.code);
       return;
     }
+    // Stored parts and assembly steps stay: the next attempt resumes from them.
     const { retryAt: _previous, ...rest } = item;
     await items.put({
       ...rest,
       status: "queued",
-      bytesDone: 0,
+      bytesDone: chunkBytes(item.chunk),
       transientFailures,
       ...(options.retryAt ? { retryAt: options.retryAt } : {}),
     });
@@ -401,17 +505,30 @@ function failure(message: string): DriveUploadItemError {
   return { code: "upload_failed", message };
 }
 
+/**
+ * Fail an item. Its `Blob` stays until it is retried or removed. Stored chunk
+ * progress stays only with `keepProgress` (a full server: *Retry* resumes);
+ * otherwise a retry starts the file over.
+ */
 export async function failDriveUpload(
   username: string,
   itemId: string,
   error: DriveUploadItemError,
+  options: { keepProgress?: boolean } = {},
 ): Promise<void> {
   const { db, items, entries } = tables(username);
   await db.transaction("rw", items, entries, async () => {
     const item = await items.get(itemId);
     if (!item) return;
-    // The `Blob` stays: a failed item keeps its bytes until it is retried or removed.
-    await items.put({ ...item, status: "failed", bytesDone: 0, error });
+    const { chunk, phase: _phase, assembledBytes: _assembled, ...rest } = item;
+    const kept = options.keepProgress && chunk ? { chunk } : {};
+    await items.put({
+      ...rest,
+      ...kept,
+      status: "failed",
+      bytesDone: options.keepProgress ? chunkBytes(chunk) : 0,
+      error,
+    });
     await setUploadPlaceholderStatus(username, itemId, "failed", error.code);
   });
   notifyDriveUploadQueueChanged(username);

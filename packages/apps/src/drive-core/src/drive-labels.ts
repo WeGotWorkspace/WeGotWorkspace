@@ -47,6 +47,8 @@ export const driveLabels = {
     quota: "No room on this device",
     no_local_copy: "File no longer on this device",
     upload_failed: "Server did not accept it",
+    server_full: "The server is full",
+    insecure_context: "Large files need a secure connection (https)",
   },
   /** After a `no_local_copy` or `quota` reason: the bytes are gone. */
   uploadAddAgain: "Add the file again",

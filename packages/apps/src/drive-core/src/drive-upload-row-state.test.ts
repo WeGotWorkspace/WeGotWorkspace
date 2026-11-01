@@ -77,6 +77,37 @@ describe("driveUploadRowState", () => {
     expect(state.statusText).toBe("Finishing on the server");
   });
 
+  it("shows the assembling progress once the server reports it", () => {
+    const state = driveUploadRowState(
+      { id: "u1", status: "uploading" },
+      {
+        item: item({
+          status: "uploading",
+          bytesDone: 1000,
+          phase: "assembling",
+          assembledBytes: 400,
+        }),
+      },
+    );
+    expect(state).toMatchObject({ kind: "assembling", percent: 40 });
+    expect(state.statusText).toBe("Finishing on the server · 40%");
+  });
+
+  it("says a large file needs https, and offers no Retry for it", () => {
+    const state = driveUploadRowState(
+      { id: "u1", status: "failed", reason: "insecure_context" },
+      {
+        item: item({
+          status: "failed",
+          canRetry: false,
+          error: { code: "insecure_context", message: "https" },
+        }),
+      },
+    );
+    expect(state.statusText).toBe("Upload failed · Large files need a secure connection (https)");
+    expect(state.canRetry).toBe(false);
+  });
+
   it("offers only Remove when the bytes are gone", () => {
     const state = driveUploadRowState(
       { id: "u1", status: "failed", reason: "no_local_copy" },

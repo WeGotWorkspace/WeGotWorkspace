@@ -1,9 +1,8 @@
-import { DriveTransportError, driveJmapSession } from "@/lib/api/wgw/drive-jmap";
-import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
+import { driveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import { withCrossTabLock, type WithCrossTabLock } from "@/lib/cross-tab/cross-tab-lock";
-import { JmapRequestError } from "@/lib/jmap-client";
-import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
+import { classifyDriveUploadFailure } from "@/lib/offline/drive/upload/drive-upload-failure";
 import { completeDriveUpload } from "@/lib/offline/drive/upload/drive-upload-handoff";
 import { driveUploaderLockName } from "@/lib/offline/drive/upload/drive-upload-lock-name";
 import {
@@ -21,11 +20,10 @@ import {
   readDriveUploadBlob,
   recordDriveUploadCreated,
   requeueDriveUpload,
+  saveDriveUploadProgress,
+  skipDriveUploadItem,
 } from "@/lib/offline/drive/upload/drive-upload-store";
-import {
-  DriveUploadTooLargeError,
-  transferDriveUpload,
-} from "@/lib/offline/drive/upload/drive-upload-transfer";
+import { transferDriveUpload } from "@/lib/offline/drive/upload/drive-upload-transfer";
 
 /** Wait before trying again after a server hiccup or a failed token renewal. */
 export const DRIVE_UPLOAD_RETRY_DELAY_MS = 30_000;
@@ -170,19 +168,37 @@ export class DriveUploader {
     if (!(await markDriveUploadStarted(this.username, item.id))) return "next";
     try {
       const session = await driveJmapSession();
+      const batch = await readDriveUploadBatch(this.username, item.batchId);
       const result = await transferDriveUpload(
         session,
         {
+          username: this.username,
           folderId: item.targetFolder.id,
           name: item.name,
           mimeType: item.mimeType,
           blob,
+          ...(batch?.conflict ? { conflict: batch.conflict } : {}),
+          ...(item.replaceTarget ? { replaceTarget: item.replaceTarget } : {}),
+          ...(item.chunk ? { chunk: item.chunk } : {}),
           ...(item.createdNodeId ? { createdNodeId: item.createdNodeId } : {}),
-          onCreated: (nodeId) => recordDriveUploadCreated(this.username, item.id, nodeId),
+          onCreated: (nodeId, notice) =>
+            recordDriveUploadCreated(this.username, item.id, nodeId, notice),
+          onProgress: (update) =>
+            saveDriveUploadProgress(this.username, item.id, {
+              chunk: update.state,
+              bytesDone: update.bytesDone,
+              ...(update.phase ? { phase: update.phase } : {}),
+              ...(update.assembledBytes !== undefined
+                ? { assembledBytes: update.assembledBytes }
+                : {}),
+            }),
         },
         signal,
       );
-      const batch = await readDriveUploadBatch(this.username, item.batchId);
+      if (result.kind === "skipped") {
+        await skipDriveUploadItem(this.username, item.id);
+        return "next";
+      }
       await completeDriveUpload(this.username, {
         item,
         keepOffline: batch?.keepOffline ?? "remove",
@@ -202,10 +218,13 @@ export class DriveUploader {
     error: unknown,
     signal: AbortSignal,
   ): Promise<UploadOutcome> {
-    if (isTooLarge(error)) {
-      const message =
-        error instanceof Error ? error.message : "The file is too large for this server.";
-      await failDriveUpload(this.username, item.id, { code: "too_large", message });
+    const failure = classifyDriveUploadFailure(error);
+    // A reason of its own (too large, server full, https needed) stands even
+    // when the lock was lost meanwhile.
+    if (failure.kind === "fail" && failure.error.code !== "upload_failed") {
+      await failDriveUpload(this.username, item.id, failure.error, {
+        keepProgress: failure.keepProgress,
+      });
       return "next";
     }
     if (signal.aborted || !readBrowserOnline()) {
@@ -215,17 +234,20 @@ export class DriveUploader {
     }
     // The item waits in every tab, not just this one, before it is tried again.
     const retryAt = Date.now() + DRIVE_UPLOAD_RETRY_DELAY_MS;
-    if (isNetworkFailure(error)) {
+    if (failure.kind === "network") {
       // The browser says online but the request never arrived: try again later.
       await requeueDriveUpload(this.username, item.id, { countFailure: false, retryAt });
       return "retry_later";
     }
-    const message = error instanceof Error ? error.message : String(error);
-    if (isTransientFailure(error)) {
-      await requeueDriveUpload(this.username, item.id, { countFailure: true, message, retryAt });
+    if (failure.kind === "transient") {
+      await requeueDriveUpload(this.username, item.id, {
+        countFailure: true,
+        message: failure.message,
+        retryAt,
+      });
       return "retry_later";
     }
-    await failDriveUpload(this.username, item.id, { code: "upload_failed", message });
+    await failDriveUpload(this.username, item.id, failure.error);
     return "next";
   }
 
@@ -245,27 +267,6 @@ function eitherSignal(a: AbortSignal, b: AbortSignal): AbortSignal {
   a.addEventListener("abort", abort, { once: true });
   b.addEventListener("abort", abort, { once: true });
   return controller.signal;
-}
-
-function httpStatusOf(error: unknown): number | undefined {
-  if (error instanceof DriveTransportError) return error.status;
-  if (error instanceof JmapRequestError) return error.status;
-  return undefined;
-}
-
-function isTooLarge(error: unknown): boolean {
-  return error instanceof DriveUploadTooLargeError || httpStatusOf(error) === 413;
-}
-
-function isNetworkFailure(error: unknown): boolean {
-  if (error instanceof DOMException && error.name === "AbortError") return true;
-  return isFetchNetworkError(error);
-}
-
-function isTransientFailure(error: unknown): boolean {
-  if (error instanceof WgwSessionRenewalError) return true;
-  const status = httpStatusOf(error);
-  return status === 408 || status === 429 || (typeof status === "number" && status >= 500);
 }
 
 const uploaders = new Map<string, DriveUploader>();
