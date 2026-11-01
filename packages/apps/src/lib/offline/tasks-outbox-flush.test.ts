@@ -27,7 +27,8 @@ const bootstrap = createTasksAppBootstrap({
 });
 const task = bootstrap.data.tasks[0]!;
 
-const { patchTask, getTask, deleteTask } = vi.hoisted(() => ({
+const { patchTask, getTask, deleteTask, createTask } = vi.hoisted(() => ({
+  createTask: vi.fn(),
   patchTask: vi.fn(),
   getTask: vi.fn(),
   deleteTask: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
     patchTask,
     getTask,
     deleteTask,
+    createTask,
     TasksRequestError: actual.TasksRequestError,
   };
 });
@@ -49,6 +51,7 @@ describe("flushTasksOutbox", () => {
     patchTask.mockReset();
     getTask.mockReset();
     deleteTask.mockReset();
+    createTask.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await tasksItemsTable(db).clear();
@@ -146,6 +149,38 @@ describe("flushTasksOutbox", () => {
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.lastStatus).toBe(403);
     expect((await cachedTask())?.title).toBe("Mine");
+    expect(refusals).toEqual([]);
+  });
+
+  it("leaves an offline-created task and its edit queued when the edit gets a 404", async () => {
+    const refusals = watchRefusals();
+    const tempId = "local-x";
+    await upsertTaskInCache(username, { ...task, id: tempId, title: "New" }, true);
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        tempTaskId: tempId,
+        body: { title: "New", taskListId: task.taskListId },
+      }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "queued-edit",
+      domain: TASKS_DOMAIN,
+      op: "update",
+      payload: JSON.stringify({ taskId: tempId, patch: { title: "Newer" } }),
+    });
+    createTask.mockRejectedValue(new TasksRequestError("POST /tasks/items failed (500)", 500));
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    const ids = (await listOutboxMutations(username)).map((row) => row.id).sort();
+    expect(ids).toEqual(["queued-create", "queued-edit"]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await tasksItemsTable(db).get(tempId)).toBeDefined();
     expect(refusals).toEqual([]);
   });
 

@@ -41,6 +41,8 @@ const topic = crossTabTopic(
 export const announceTaskWriteRefused = (event: TaskWriteRefused): void => topic.publish(event);
 export const subscribeTaskWriteRefused = topic.subscribe;
 
+/** Prefix of `createTempTaskId`. */
+const TEMP_TASK_ID_PREFIX = "local-";
 const TASK_OPS = new Set(["update", "move", "delete"]);
 
 function isRefusedStatus(error: unknown): boolean {
@@ -48,9 +50,13 @@ function isRefusedStatus(error: unknown): boolean {
   return status === 403 || status === 404;
 }
 
-/** A 403 or 404 on a queued write to an existing task. Other rows keep the usual handling. */
+/**
+ * A 403 or 404 on a queued write to a task the server has. Other rows keep the
+ * usual handling, also writes to a temp id: that task is not on the server (yet).
+ */
 export function isRefusedTaskWrite(row: OfflineOutboxRow, error: unknown): boolean {
-  return TASK_OPS.has(row.op) && isRefusedStatus(error);
+  if (!TASK_OPS.has(row.op) || !isRefusedStatus(error)) return false;
+  return !tasksOutboxTaskId(row)?.startsWith(TEMP_TASK_ID_PREFIX);
 }
 
 /**
@@ -78,7 +84,7 @@ export async function settleRefusedTaskWrite(
   const local = cached?.data.tasks.find((task) => task.id === taskId);
   const title = (serverTask?.title || local?.title)?.trim() ?? "";
   for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
-    if (tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
+    if (queued.op !== "create" && tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
   }
   if (serverTask) await upsertTaskInCache(username, serverTask, false);
   else await removeTaskFromCache(username, taskId);
