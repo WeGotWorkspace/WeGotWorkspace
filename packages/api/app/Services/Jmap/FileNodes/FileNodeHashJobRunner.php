@@ -23,7 +23,7 @@ final class FileNodeHashJobRunner
 {
     public function __construct(
         private readonly WgwStorage $storage,
-        private readonly FileNodeIndexService $index,
+        private readonly FileNodeContentClaims $claims,
         private readonly FileNodeContentHasher $hasher,
     ) {}
 
@@ -101,7 +101,7 @@ final class FileNodeHashJobRunner
 
                 return [$spent, false];
             }
-            $this->index->recordHashResolved($node, hash_final($context), $size);
+            $this->claims->recordHashResolved($node, hash_final($context), $size);
 
             return [$spent, true];
         }

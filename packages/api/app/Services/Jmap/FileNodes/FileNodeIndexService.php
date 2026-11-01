@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
-use App\Models\JmapContentHashJob;
 use App\Models\JmapFileNode;
-use App\Models\JmapFileNodeMeta;
 use App\Services\Collab\CollabSidecarMover;
 use App\Services\Collab\DocYjsStateStore;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -29,7 +26,8 @@ use Illuminate\Support\Str;
  *
  * Every seq bump also touches the Drive root markers of the key
  * ({@see FileNodeRootMarkers}); each public write is one marker batch, so a
- * write bumps each root once.
+ * write bumps each root once. The sequence itself is {@see FileNodeSequence};
+ * guarded-write claims and resolved hashes are {@see FileNodeContentClaims}.
  */
 final class FileNodeIndexService
 {
@@ -41,6 +39,7 @@ final class FileNodeIndexService
         private readonly DocYjsStateStore $sidecarLinks,
         private readonly FileNodeContentHasher $hasher,
         private readonly FileNodeRootMarkers $markers,
+        private readonly FileNodeSequence $seq,
     ) {}
 
     // ---------------------------------------------------------------
@@ -48,32 +47,12 @@ final class FileNodeIndexService
 
     public function currentSeq(): int
     {
-        return (int) ($this->meta()->seq ?? 0);
+        return $this->seq->current();
     }
 
     public function prunedSeq(): int
     {
-        return (int) ($this->meta()->pruned_seq ?? 0);
-    }
-
-    private function nextSeq(): int
-    {
-        return DB::connection('wgw')->transaction(function (): int {
-            $meta = JmapFileNodeMeta::query()->lockForUpdate()->first();
-            if ($meta === null) {
-                $meta = JmapFileNodeMeta::query()->create(['seq' => 0, 'pruned_seq' => 0]);
-            }
-            $meta->seq = (int) $meta->seq + 1;
-            $meta->save();
-
-            return (int) $meta->seq;
-        });
-    }
-
-    private function meta(): JmapFileNodeMeta
-    {
-        return JmapFileNodeMeta::query()->first()
-            ?? JmapFileNodeMeta::query()->create(['seq' => 0, 'pruned_seq' => 0]);
+        return $this->seq->pruned();
     }
 
     // ---------------------------------------------------------------
@@ -250,7 +229,7 @@ final class FileNodeIndexService
         }
 
         $sha256 ??= $isDir ? null : $this->hasher->discover($key);
-        $seq = $this->nextSeq();
+        $seq = $this->seq->next();
 
         $node = JmapFileNode::query()->create([
             'node_id' => $this->mintNodeId(),
@@ -307,94 +286,12 @@ final class FileNodeIndexService
                 $this->hasher->markPending($row);
             }
         }
-        $row->change_seq = $this->nextSeq();
+        $row->change_seq = $this->seq->next();
         $row->save();
         $this->markers->touch($key);
         $this->syncSearch($key);
 
         return $row;
-    }
-
-    /**
-     * Compare-and-swap before a guarded content write: succeeds only while
-     * the row still has the change_seq the caller read and is not hash
-     * pending, then marks it pending (a provisional version that never
-     * equals an expectedBlobId) and bumps change_seq. The write's
-     * recordContentWrite stores the true hash and clears it.
-     */
-    public function claimContentWrite(JmapFileNode $loaded): bool
-    {
-        $seq = $this->nextSeq();
-        $claimed = JmapFileNode::query()
-            ->where('node_id', (string) $loaded->node_id)
-            ->whereNull('deleted_at')
-            ->where('change_seq', $loaded->change_seq)
-            ->where('hash_pending', false)
-            ->update(['hash_pending' => true, 'change_seq' => $seq]);
-        if ($claimed !== 1) {
-            return false;
-        }
-        $fresh = JmapFileNode::query()->where('node_id', (string) $loaded->node_id)->first();
-        if ($fresh !== null) {
-            $this->hasher->markPending($fresh);
-        }
-
-        return true;
-    }
-
-    /**
-     * Undoes claimContentWrite when the write failed before any byte
-     * changed: the node is no longer hash-pending, so a retry with the same
-     * expectedBlobId is not a versionMismatch.
-     */
-    public function releaseContentWrite(JmapFileNode $loaded): void
-    {
-        $seq = $this->nextSeq();
-        JmapFileNode::query()
-            ->where('node_id', (string) $loaded->node_id)
-            ->where('hash_pending', true)
-            ->update(['hash_pending' => false, 'change_seq' => $seq]);
-        JmapContentHashJob::query()->where('node_id', (string) $loaded->node_id)->delete();
-    }
-
-    /**
-     * Stores the true hash a hash job computed for a hash-pending node and
-     * bumps change_seq, so FileNode/changes tells clients the blobId moved
-     * (once per discovered file).
-     */
-    public function recordHashResolved(JmapFileNode $node, string $sha256, int $size): void
-    {
-        // One transaction: the job row is deleted only while the runner's
-        // lease on it is intact (a write that restarted or cleared the job
-        // resets it), and the node is updated only while still pending. A
-        // PUT that landed meanwhile is never overwritten with old bytes.
-        $seq = $this->nextSeq();
-        try {
-            $applied = DB::connection('wgw')->transaction(function () use ($node, $sha256, $size, $seq): bool {
-                $deleted = JmapContentHashJob::query()
-                    ->where('node_id', (string) $node->node_id)
-                    ->whereNotNull('locked_until')
-                    ->delete();
-                if ($deleted !== 1) {
-                    return false;
-                }
-                $updated = JmapFileNode::query()
-                    ->where('node_id', (string) $node->node_id)
-                    ->where('hash_pending', true)
-                    ->update(['content_sha256' => $sha256, 'size_bytes' => $size, 'hash_pending' => false, 'change_seq' => $seq]);
-                if ($updated !== 1) {
-                    // Rolls the job delete back; the node is no longer pending.
-                    throw new \RuntimeException('The node is no longer hash-pending.');
-                }
-
-                return true;
-            });
-        } catch (\RuntimeException) {
-            return;
-        }
-        if ($applied) {
-            $this->markers->touch((string) $node->storage_key);
-        }
     }
 
     /**
@@ -426,7 +323,7 @@ final class FileNodeIndexService
             $this->recordDelete($toKey);
         }
         $parent = $this->ensureParentIndexed($toKey);
-        $seq = $this->nextSeq();
+        $seq = $this->seq->next();
         $now = now();
         $idMap = [];
         $rows = [];
@@ -523,7 +420,7 @@ final class FileNodeIndexService
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $row->change_seq = $this->nextSeq();
+        $row->change_seq = $this->seq->next();
         $row->save();
         // Old and new root sets, including share roots inside a moved folder.
         $this->markers->touch($fromKey, withDescendantShares: true);
@@ -569,7 +466,7 @@ final class FileNodeIndexService
                 continue;
             }
             $node->deleted_at = now();
-            $node->change_seq = $this->nextSeq();
+            $node->change_seq = $this->seq->next();
             $node->save();
         }
         $this->markers->touch($key, withDescendantShares: true);
@@ -657,7 +554,7 @@ final class FileNodeIndexService
                     continue;
                 }
             }
-            $seq = $this->nextSeq();
+            $seq = $this->seq->next();
             $this->markers->touch($root);
             JmapFileNode::query()->create([
                 'node_id' => $this->mintNodeId(),
@@ -720,11 +617,7 @@ final class FileNodeIndexService
         }
 
         $maxSeq = (int) $stale->max('change_seq');
-        $meta = $this->meta();
-        if ($maxSeq > (int) $meta->pruned_seq) {
-            $meta->pruned_seq = $maxSeq;
-            $meta->save();
-        }
+        $this->seq->raisePruned($maxSeq);
         JmapFileNode::query()->whereIn('id', $stale->pluck('id'))->delete();
 
         return $stale->count();
@@ -823,7 +716,7 @@ final class FileNodeIndexService
         }
         if ($this->storage->files()->directoryExists($parentKey)) {
             $grand = $this->ensureParentIndexed($parentKey);
-            $seq = $this->nextSeq();
+            $seq = $this->seq->next();
             $this->markers->touch($parentKey);
 
             return JmapFileNode::query()->create([

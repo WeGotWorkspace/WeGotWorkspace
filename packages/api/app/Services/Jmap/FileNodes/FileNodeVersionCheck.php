@@ -22,7 +22,7 @@ final class FileNodeVersionCheck
     public function __construct(
         private readonly FileNodeMapper $mapper,
         private readonly JmapRequestContext $context,
-        private readonly FileNodeIndexService $index,
+        private readonly FileNodeContentClaims $claims,
     ) {}
 
     /**
@@ -71,7 +71,7 @@ final class FileNodeVersionCheck
      */
     public function claim(JmapFileNode $loaded): void
     {
-        if ($this->index->claimContentWrite($loaded)) {
+        if ($this->claims->claim($loaded)) {
             return;
         }
         $fresh = JmapFileNode::query()->where('node_id', $loaded->node_id)->first() ?? $loaded;
@@ -84,7 +84,7 @@ final class FileNodeVersionCheck
      */
     public function release(JmapFileNode $loaded): void
     {
-        $this->index->releaseContentWrite($loaded);
+        $this->claims->release($loaded);
     }
 
     private function mismatch(JmapFileNode $node, string $current): FileNodeSetError

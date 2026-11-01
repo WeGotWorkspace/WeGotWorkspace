@@ -11,9 +11,6 @@ use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Blobs\StorageFullException;
-use App\Services\Notes\NoteMarkdownCodec;
-use App\Services\Notes\NoteTag;
-use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
 /**
@@ -78,8 +75,7 @@ final class FileNodeSetService
         private readonly FileNodeAccountSupport $accounts,
         private readonly JmapBlobService $blobs,
         private readonly WgwStorage $storage,
-        private readonly NoteMarkdownCodec $codec,
-        private readonly StoragePaths $paths,
+        private readonly FileNodeNoteContent $notes,
         private readonly DriveStarService $stars,
         private readonly DriveShareAuthorizer $authorizer,
         private readonly FileNodeRelocator $relocator,
@@ -264,7 +260,7 @@ final class FileNodeSetService
         }
 
         $name = $this->validName($payload['name'] ?? null);
-        $note = $this->notePatch($payload);
+        $note = $this->notes->patch($payload);
         $blobId = $payload['blobId'] ?? null;
         $hasBlob = is_string($blobId) && $blobId !== '';
         $nodeType = $payload['nodeType'] ?? ($hasBlob || $note !== null ? 'file' : 'directory');
@@ -343,7 +339,7 @@ final class FileNodeSetService
         }
 
         $serverSet = [];
-        $note = $this->notePatch($patch);
+        $note = $this->notes->patch($patch);
         // Destroying a replaced sibling and renaming run together, just
         // before the content changes: an attach that is refused leaves both
         // undone.
@@ -479,7 +475,7 @@ final class FileNodeSetService
     {
         $expectedSize = is_int($size) ? $size : null;
         try {
-            if ($blobId !== null && ! $this->isNoteMarkdownKey($key, $name)) {
+            if ($blobId !== null && ! $this->notes->isNoteMarkdownKey($key, $name)) {
                 if ($note !== null) {
                     throw new FileNodeSetError($this->invalidProperties('note is only valid on markdown files under .notes.', ['note']));
                 }
@@ -513,7 +509,7 @@ final class FileNodeSetService
             if ($beforePlace !== null) {
                 $beforePlace();
             }
-            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
+            $contents = $this->notes->contentsForWrite($key, $name, $note, $blobContents);
             $this->index->recordBeforeContentWrite($key);
             $this->storage->files()->put($key, $contents);
 
@@ -700,121 +696,6 @@ final class FileNodeSetService
         }
 
         return $name;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array{title?: string, tags?: list<string>}|null
-     */
-    private function notePatch(array $payload): ?array
-    {
-        if (! array_key_exists('note', $payload)) {
-            return null;
-        }
-        $note = $payload['note'];
-        if (! is_array($note) || array_is_list($note)) {
-            throw new FileNodeSetError($this->invalidProperties('note must be an object.', ['note']));
-        }
-        $unsupported = array_diff(array_keys($note), ['title', 'tags']);
-        if ($unsupported !== []) {
-            throw new FileNodeSetError($this->invalidProperties(
-                'Unsupported note properties: '.implode(', ', array_map(strval(...), $unsupported)).'.',
-                ['note'],
-            ));
-        }
-        $out = [];
-        if (array_key_exists('title', $note)) {
-            if (! is_string($note['title'])) {
-                throw new FileNodeSetError($this->invalidProperties('note.title must be a string.', ['note']));
-            }
-            $out['title'] = $note['title'];
-        }
-        if (array_key_exists('tags', $note)) {
-            if (! is_array($note['tags'])) {
-                throw new FileNodeSetError($this->invalidProperties('note.tags must be an array.', ['note']));
-            }
-            $tags = [];
-            foreach ($note['tags'] as $tag) {
-                if (! is_string($tag)) {
-                    throw new FileNodeSetError($this->invalidProperties('note.tags must be an array of strings.', ['note']));
-                }
-                $tags[] = $tag;
-            }
-            $out['tags'] = $tags;
-        }
-
-        return $out;
-    }
-
-    private function isNoteMarkdownKey(string $key, string $name): bool
-    {
-        return $this->paths->isNotePath('/'.ltrim($key, '/')) && $this->codec->isNoteFilename($name);
-    }
-
-    private function readMarkdown(string $key): string
-    {
-        $disk = $this->storage->files();
-        try {
-            return $disk->exists($key) ? (string) $disk->get($key) : '';
-        } catch (\Throwable) {
-            return '';
-        }
-    }
-
-    /**
-     * @param  array{title?: string, tags?: list<string>}|null  $note
-     */
-    private function composeNoteMarkdown(string $name, ?array $note, string $sourceMarkdown): string
-    {
-        $fallback = pathinfo($name, PATHINFO_FILENAME);
-        [$title, $tags, $body] = $this->codec->parse($sourceMarkdown, $fallback);
-        if ($note !== null) {
-            if (array_key_exists('title', $note)) {
-                $title = $note['title'] !== '' ? $note['title'] : $fallback;
-            }
-            if (array_key_exists('tags', $note)) {
-                $submitted = $note['tags'];
-                $merged = NoteTag::mergeForUpdate($submitted, $tags);
-                if ($merged !== NoteTag::normalizeStored($submitted)) {
-                    throw new FileNodeSetError($this->invalidProperties(
-                        'A tag may only use letters a-z and hyphen.',
-                        ['note'],
-                    ));
-                }
-                $tags = $merged;
-            }
-        }
-
-        return $this->codec->serialize($title, $tags, $body);
-    }
-
-    /**
-     * @param  array{title?: string, tags?: list<string>}|null  $note
-     */
-    private function contentsForNoteWrite(
-        string $key,
-        string $name,
-        ?array $note,
-        ?string $blobContents,
-    ): string {
-        $isNote = $this->isNoteMarkdownKey($key, $name);
-        if ($note !== null && ! $isNote) {
-            throw new FileNodeSetError($this->invalidProperties('note is only valid on markdown files under .notes.', ['note']));
-        }
-        if (! $isNote) {
-            if ($blobContents === null) {
-                throw new FileNodeSetError($this->invalidProperties('File nodes require a blobId.', ['blobId']));
-            }
-
-            return $blobContents;
-        }
-
-        $source = $blobContents ?? $this->readMarkdown($key);
-        if ($note === null) {
-            return $source;
-        }
-
-        return $this->composeNoteMarkdown($name, $note, $source);
     }
 
     /**
