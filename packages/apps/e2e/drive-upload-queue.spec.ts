@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_USERNAME, expectOfflineIndicator } from "./helpers/notes-live";
 
 const WAITING = "Waiting for a connection";
