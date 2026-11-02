@@ -16,9 +16,20 @@ afterEach(() => {
 
 describe("parseDocsPageSetupPrefs", () => {
   it("keeps known values", () => {
+    expect(parseDocsPageSetupPrefs('{"format":"a3","orientation":"landscape"}')).toEqual({
+      format: "a3",
+      orientation: "landscape",
+    });
+    expect(parseDocsPageSetupPrefs('{"format":"none"}')).toEqual({ format: "none" });
+  });
+
+  it("reads the old Continuous switch as no paper", () => {
     expect(
       parseDocsPageSetupPrefs('{"format":"a3","orientation":"landscape","layout":"continuous"}'),
-    ).toEqual({ format: "a3", orientation: "landscape", layout: "continuous" });
+    ).toEqual({ format: "none", orientation: "landscape" });
+    expect(parseDocsPageSetupPrefs('{"format":"a3","layout":"pages"}')).toEqual({
+      format: "a3",
+    });
   });
 
   it("drops unknown values and survives bad JSON", () => {
@@ -42,8 +53,16 @@ describe("resolveDocsPageSetup", () => {
   });
 
   it("keeps the person's choices over the defaults", () => {
-    expect(resolveDocsPageSetup({ format: "legal", layout: "continuous" }, ["en-US"])).toEqual({
+    expect(resolveDocsPageSetup({ format: "legal", orientation: "landscape" }, ["en-US"])).toEqual({
       format: "legal",
+      orientation: "landscape",
+      layout: "pages",
+    });
+  });
+
+  it("shows no pages when the paper is none", () => {
+    expect(resolveDocsPageSetup({ format: "none" }, ["nl-NL"])).toEqual({
+      format: "none",
       orientation: "portrait",
       layout: "continuous",
     });
@@ -65,6 +84,17 @@ describe("writeDocsPageSetupPrefs", () => {
     unsubscribe();
   });
 
+  it("drops the old layout key on the next write", () => {
+    window.localStorage.setItem(
+      DOCS_PAGE_SETUP_STORAGE_KEY,
+      JSON.stringify({ format: "a4", layout: "continuous" }),
+    );
+    writeDocsPageSetupPrefs({ format: "a5" });
+    expect(JSON.parse(window.localStorage.getItem(DOCS_PAGE_SETUP_STORAGE_KEY) ?? "")).toEqual({
+      format: "a5",
+    });
+  });
+
   it("follows a change from another tab", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeDocsPageSetup(listener);
@@ -80,7 +110,7 @@ describe("writeDocsPageSetupPrefs", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");
     });
-    expect(writeDocsPageSetupPrefs({ layout: "continuous" })).toBe(false);
+    expect(writeDocsPageSetupPrefs({ format: "none" })).toBe(false);
     expect(listener).toHaveBeenCalledTimes(1);
     setItem.mockRestore();
     unsubscribe();

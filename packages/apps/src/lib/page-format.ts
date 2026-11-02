@@ -11,8 +11,11 @@ export type TextEditorPageOrientation = (typeof TEXT_EDITOR_PAGE_ORIENTATIONS)[n
 /** `pages` shows separate sheets on screen; `continuous` shows one long sheet. */
 export type TextEditorPageLayout = (typeof TEXT_EDITOR_PAGE_LAYOUTS)[number];
 
+/** A paper size, or `none`: no pages on screen and the print dialog picks the paper. */
+export type TextEditorPaperChoice = TextEditorPageFormat | "none";
+
 export type TextEditorPageSetup = {
-  format: TextEditorPageFormat;
+  format: TextEditorPaperChoice;
   orientation: TextEditorPageOrientation;
   layout: TextEditorPageLayout;
 };
@@ -49,7 +52,8 @@ export type TextEditorPageBox = {
 export function textEditorPageBox(
   setup: Pick<TextEditorPageSetup, "format" | "orientation">,
 ): TextEditorPageBox {
-  const spec = TEXT_EDITOR_PAGE_FORMAT_SPECS[setup.format];
+  // `none` never shows pages; A4 only keeps the library options valid.
+  const spec = TEXT_EDITOR_PAGE_FORMAT_SPECS[setup.format === "none" ? "a4" : setup.format];
   const landscape = setup.orientation === "landscape";
   return {
     width: landscape ? spec.height : spec.width,
@@ -58,12 +62,17 @@ export function textEditorPageBox(
   };
 }
 
-/** `@page` rule for print: paper size, orientation and the fixed margin. */
+/**
+ * `@page` rule for print: paper size, orientation and the fixed margin. The browser's
+ * print dialog starts on that size; with `none` it keeps its own paper choice.
+ */
 export function textEditorPageCssRule(
   setup: Pick<TextEditorPageSetup, "format" | "orientation">,
 ): string {
+  const margin = `margin: ${TEXT_EDITOR_PAGE_MARGIN_CSS} !important;`;
+  if (setup.format === "none") return `@page { ${margin} }`;
   const size = `${TEXT_EDITOR_PAGE_FORMAT_SPECS[setup.format].cssSize} ${setup.orientation}`;
-  return `@page { size: ${size}; margin: ${TEXT_EDITOR_PAGE_MARGIN_CSS} !important; }`;
+  return `@page { size: ${size}; ${margin} }`;
 }
 
 /** Regions that use US Letter: the United States and Canada (#1810). */
@@ -88,6 +97,10 @@ export function defaultTextEditorPageFormat(locales: readonly string[]): TextEdi
 
 export function isTextEditorPageFormat(value: unknown): value is TextEditorPageFormat {
   return (TEXT_EDITOR_PAGE_FORMATS as readonly unknown[]).includes(value);
+}
+
+export function isTextEditorPaperChoice(value: unknown): value is TextEditorPaperChoice {
+  return value === "none" || isTextEditorPageFormat(value);
 }
 
 export function isTextEditorPageOrientation(value: unknown): value is TextEditorPageOrientation {

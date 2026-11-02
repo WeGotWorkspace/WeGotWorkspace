@@ -17,7 +17,7 @@ export type DocsPageSetupState = {
 
 /**
  * The person's page setup, live across editors and tabs on this device. Phones always
- * get the continuous sheet: a page does not fit (the menu is hidden there too).
+ * get the continuous sheet: a page does not fit. The paper choice still sets print.
  */
 export function useDocsPageSetup(): DocsPageSetupState {
   const raw = useSyncExternalStore(subscribeDocsPageSetup, readDocsPageSetupRaw, () => null);

@@ -41,6 +41,12 @@ describe("page format table", () => {
     );
   });
 
+  it("leaves the paper to the print dialog when none is chosen", () => {
+    expect(textEditorPageCssRule({ format: "none", orientation: "landscape" })).toBe(
+      "@page { margin: 1in !important; }",
+    );
+  });
+
   it("offers the five formats", () => {
     expect(TEXT_EDITOR_PAGE_FORMATS).toEqual(["a4", "a3", "a5", "letter", "legal"]);
   });

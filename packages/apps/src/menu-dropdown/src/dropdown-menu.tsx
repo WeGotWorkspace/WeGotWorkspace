@@ -5,6 +5,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MenuItem, type MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
 import "@/menu-dropdown/src/dropdown-menu.css";
@@ -16,7 +18,23 @@ export type DropdownMenuSeparatorProps = {
   id?: string;
 };
 
-export type DropdownMenuEntry = DropdownMenuItemProps | DropdownMenuSeparatorProps;
+/** A row that swaps the menu to its own entries, with a back row on top (one level deep). */
+export type DropdownMenuSubmenuProps = {
+  type: "submenu";
+  /** Required: the menu remembers which submenu is open by this id. */
+  id: string;
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  /** Short current value shown before the chevron, e.g. the chosen paper size. */
+  hint?: React.ReactNode;
+  disabled?: boolean;
+  items: DropdownMenuEntry[];
+  /** Class on the wrapper of the open submenu's rows. */
+  contentClassName?: string;
+};
+
+export type DropdownMenuEntry =
+  DropdownMenuItemProps | DropdownMenuSeparatorProps | DropdownMenuSubmenuProps;
 
 export type DropdownMenuProps = {
   trigger: React.ReactNode;
@@ -30,6 +48,10 @@ export type DropdownMenuProps = {
 
 function isSeparator(item: DropdownMenuEntry): item is DropdownMenuSeparatorProps {
   return "type" in item && item.type === "separator";
+}
+
+function isSubmenu(item: DropdownMenuEntry): item is DropdownMenuSubmenuProps {
+  return "type" in item && item.type === "submenu";
 }
 
 /** `id` keys the entry; it must not land on the DOM row MenuItem renders. */
@@ -46,9 +68,22 @@ export function DropdownMenu({
   contentClassName,
   contentStyle,
 }: DropdownMenuProps) {
+  // A submenu opens in place of the list (drill-down): a side flyout does not fit on phones.
+  const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
+  // After "back", focus returns to the row that opened the submenu.
+  const [returnFocusId, setReturnFocusId] = useState<string | null>(null);
   if (disabled) return <>{trigger}</>;
+  const openSubmenu = items.find(
+    (item): item is DropdownMenuSubmenuProps => isSubmenu(item) && item.id === openSubmenuId,
+  );
   return (
-    <RadixDropdownMenu>
+    <RadixDropdownMenu
+      onOpenChange={(open) => {
+        if (open) return;
+        setOpenSubmenuId(null);
+        setReturnFocusId(null);
+      }}
+    >
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent
         align={align}
@@ -56,24 +91,144 @@ export function DropdownMenu({
         className={cn("dropdown-menu__content", contentClassName)}
         style={contentStyle}
       >
-        {items.map((item, index) =>
-          isSeparator(item) ? (
-            <DropdownMenuSeparator key={item.id ?? `separator-${index}`} />
-          ) : (
-            <DropdownMenuItem
-              key={item.id ?? `${index}-${String(item.label)}`}
-              asChild
-              disabled={item.disabled}
-              className="dropdown-menu__item"
-            >
-              <MenuItem
-                {...menuItemProps(item)}
-                className={cn("dropdown-menu__menu-item", item.className)}
-              />
-            </DropdownMenuItem>
-          ),
+        {openSubmenu ? (
+          <DropdownMenuSubmenuList
+            submenu={openSubmenu}
+            onBack={() => {
+              setReturnFocusId(openSubmenu.id);
+              setOpenSubmenuId(null);
+            }}
+          />
+        ) : (
+          <DropdownMenuEntries
+            items={items}
+            focusSubmenuId={returnFocusId}
+            onOpenSubmenu={setOpenSubmenuId}
+          />
         )}
       </DropdownMenuContent>
     </RadixDropdownMenu>
+  );
+}
+
+function DropdownMenuEntries({
+  items,
+  focusSubmenuId,
+  onOpenSubmenu,
+}: {
+  items: DropdownMenuEntry[];
+  focusSubmenuId?: string | null;
+  onOpenSubmenu?: (id: string) => void;
+}) {
+  return items.map((item, index) => {
+    if (isSeparator(item)) {
+      return <DropdownMenuSeparator key={item.id ?? `separator-${index}`} />;
+    }
+    if (isSubmenu(item)) {
+      const id = item.id;
+      return (
+        <DropdownMenuStayOpenRow
+          key={id}
+          label={item.label}
+          icon={item.icon}
+          disabled={item.disabled}
+          badge={
+            <span className="dropdown-menu__submenu-end">
+              {item.hint ? <span className="dropdown-menu__submenu-hint">{item.hint}</span> : null}
+              <ChevronRight className="dropdown-menu__submenu-chevron" aria-hidden />
+            </span>
+          }
+          className="dropdown-menu__submenu-row"
+          autoFocus={focusSubmenuId === id}
+          aria-haspopup="menu"
+          onActivate={() => onOpenSubmenu?.(id)}
+        />
+      );
+    }
+    return (
+      <DropdownMenuItem
+        key={item.id ?? `${index}-${String(item.label)}`}
+        asChild
+        disabled={item.disabled}
+        className="dropdown-menu__item"
+      >
+        <MenuItem
+          {...menuItemProps(item)}
+          className={cn("dropdown-menu__menu-item", item.className)}
+        />
+      </DropdownMenuItem>
+    );
+  });
+}
+
+/** The open submenu: a back row with its name, then its entries. */
+function DropdownMenuSubmenuList({
+  submenu,
+  onBack,
+}: {
+  submenu: DropdownMenuSubmenuProps;
+  onBack: () => void;
+}) {
+  return (
+    <div className={cn("dropdown-menu__submenu", submenu.contentClassName)}>
+      <DropdownMenuStayOpenRow
+        label={submenu.label}
+        icon={<ChevronLeft aria-hidden />}
+        className="dropdown-menu__submenu-back"
+        autoFocus
+        onActivate={onBack}
+      />
+      <DropdownMenuSeparator />
+      <DropdownMenuEntries items={submenu.items} />
+    </div>
+  );
+}
+
+/** A row that changes what the menu shows instead of choosing something (menu stays open). */
+function DropdownMenuStayOpenRow({
+  label,
+  icon,
+  badge,
+  disabled,
+  className,
+  autoFocus,
+  onActivate,
+  ...aria
+}: {
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
+  disabled?: boolean;
+  className?: string;
+  autoFocus?: boolean;
+  onActivate: () => void;
+  "aria-haspopup"?: "menu";
+}) {
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // The row that had focus is gone after the swap; keep keyboard focus inside the menu.
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
+  return (
+    <DropdownMenuItem
+      asChild
+      disabled={disabled}
+      className="dropdown-menu__item"
+      onSelect={(event) => {
+        event.preventDefault();
+        onActivate();
+      }}
+    >
+      <MenuItem
+        ref={ref as React.Ref<HTMLButtonElement>}
+        label={label}
+        icon={icon}
+        badge={badge}
+        disabled={disabled}
+        onClick={() => {}}
+        className={cn("dropdown-menu__menu-item", className)}
+        {...aria}
+      />
+    </DropdownMenuItem>
   );
 }
