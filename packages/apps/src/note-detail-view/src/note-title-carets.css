@@ -4,7 +4,7 @@
  * Remote carets over the note title textarea. Same look as the body carets
  * (`.collaboration-carets__*` in text-editor.css): a 2px bar in the author's
  * color and a name tag above it, and selected text tinted in that color at
- * the body's 0.25 opacity. Unlike the body, the tag text is black or white
+ * 25%, as in the body. Unlike the body, the tag text is black or white
  * per color. Position and color come from inline custom properties; the
  * overlay never takes pointer events.
  */
