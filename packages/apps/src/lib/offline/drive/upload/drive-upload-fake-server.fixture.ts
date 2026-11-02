@@ -368,6 +368,12 @@ export class FakeDriveServer {
         if (this.folders.get(create.parentId)?.mayAddChildren === false) {
           throw new JmapSetItemError("create", "upload", { type: "forbidden" });
         }
+        if (!this.blobs.has(create.blobId)) {
+          throw new JmapSetItemError("create", "upload", {
+            type: "invalidProperties",
+            properties: ["blobId"],
+          });
+        }
         if (
           this.nodes.some((row) => row.parentId === create.parentId && row.name === create.name)
         ) {

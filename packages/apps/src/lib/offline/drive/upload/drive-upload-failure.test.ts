@@ -63,8 +63,12 @@ describe("drive upload error classes", () => {
     }
   });
 
-  it("target_missing for a folder that is gone or in the trash", () => {
-    expect(codeOf(new DriveUploadTargetMissingError("fn-docs"))).toBe("target_missing");
+  it("target_missing for a folder that is gone or in the trash, keeping the parts", () => {
+    expect(classifyDriveUploadFailure(new DriveUploadTargetMissingError("fn-docs"))).toMatchObject({
+      kind: "fail",
+      error: { code: "target_missing" },
+      keepProgress: true,
+    });
     expect(
       codeOf(
         new JmapSetItemError("create", "upload", {

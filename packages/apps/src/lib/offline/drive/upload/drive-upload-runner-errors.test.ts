@@ -35,7 +35,11 @@ import { readDirectoryEntriesFromCache } from "@/lib/offline/drive/drive-directo
 import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { resetPersistentStorageRequestForTests } from "@/lib/offline/drive/upload/drive-upload-device-storage";
 import { resetDriveUploadEventsForTests } from "@/lib/offline/drive/upload/drive-upload-events";
-import { DriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
+import {
+  DRIVE_UPLOAD_FULL_PROBE_MS,
+  DriveUploader,
+  driveUploadSpaceCheckDelay,
+} from "@/lib/offline/drive/upload/drive-upload-runner";
 import {
   driveUploadBlobsTable,
   driveUploadItemsTable,
@@ -200,6 +204,34 @@ describe("drive uploader error classes, server-full pause, and re-targeting", ()
       expect(server.uploads.map((upload) => upload.length)).toEqual([200, 200, 200, 100]);
       expect(await items()).toEqual([]);
     });
+
+    it("tries the file again by itself, ever less often, when the server reports no quota", async () => {
+      await fillUpDuringFirstFile();
+      const [held] = await items();
+      const sent = server.uploads.length;
+
+      // Still full: one try, after which the next one waits five minutes.
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      const once = (await items())[0]!;
+      expect(once).toMatchObject({ status: "failed", serverFullProbes: 1 });
+      expect(once.error?.code).toBe("server_full");
+      expect(server.uploads).toHaveLength(sent + 1);
+      expect(once.retryAt! - Date.now()).toBeGreaterThan(DRIVE_UPLOAD_FULL_PROBE_MS - 5_000);
+
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      const twice = (await items())[0]!;
+      expect(twice.serverFullProbes).toBe(2);
+      expect(twice.retryAt! - Date.now()).toBeGreaterThan(2 * DRIVE_UPLOAD_FULL_PROBE_MS - 5_000);
+
+      // Space came back: the next try finishes the queue.
+      server.full = false;
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      expect(await items()).toEqual([]);
+      expect(server.callsNamed("Quota/get")).toHaveLength(0);
+    });
   });
 
   it("fails as forbidden when write access to the folder is gone, without a sign-in", async () => {
@@ -274,6 +306,71 @@ describe("drive uploader error classes, server-full pause, and re-targeting", ()
     expect(node.parentId).toBe("fn-other");
     expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
     expect(await items()).toEqual([]);
+  });
+
+  it("waits a minute, then 5, 10, … up to an hour between checks of a full server", () => {
+    expect(
+      [0, 1, 2, 3, 4, 5, 6].map((probes) => driveUploadSpaceCheckDelay(probes) / 60_000),
+    ).toEqual([1, 5, 10, 20, 40, 60, 60]);
+  });
+
+  describe("re-targeting after the bytes were sent", () => {
+    /** The folder goes away while the file is sent; the create then fails. */
+    async function loseFolderBeforeCreate(file: File) {
+      const set = server.fileNodes.setFileNodes;
+      server.fileNodes.setFileNodes = async (args) => {
+        server.folders.delete("fn-docs");
+        return set(args);
+      };
+      const [id] = (await queue([file])).itemIds;
+      await runUploader();
+      server.fileNodes.setFileNodes = set;
+      server.folders.set("fn-other", { id: "fn-other", parentId: "fn-home", name: "other" });
+      return id!;
+    }
+
+    async function retargetToOther(id: string) {
+      expect(
+        await retargetDriveUploadItem(user, id, {
+          folderPath: "/users/ada/other",
+          targetFolder: { kind: "server", id: "fn-other" },
+        }),
+      ).toBe(true);
+    }
+
+    it("keeps the bytes on the server and does not send the file again", async () => {
+      const file = patternedFile("big.bin", 1_000);
+      const id = await loseFolderBeforeCreate(file);
+      const [failed] = await items();
+      expect(failed).toMatchObject({ status: "failed", error: { code: "target_missing" } });
+      expect(failed?.chunk?.blobId).toBeDefined();
+      const sent = server.uploads.length;
+
+      await retargetToOther(id);
+      await runUploader();
+
+      expect(server.uploads).toHaveLength(sent);
+      const node = server.nodes.find((row) => row.name === "big.bin")!;
+      expect(node.parentId).toBe("fn-other");
+      expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
+      expect(await items()).toEqual([]);
+    });
+
+    it("sends the file again when the server let its bytes expire meanwhile", async () => {
+      const file = patternedFile("big.bin", 1_000);
+      const id = await loseFolderBeforeCreate(file);
+      server.expire([(await items())[0]!.chunk!.blobId!]);
+      const sent = server.uploads.length;
+
+      await retargetToOther(id);
+      await runUploader();
+
+      expect(server.uploads.length).toBeGreaterThan(sent);
+      const node = server.nodes.find((row) => row.name === "big.bin")!;
+      expect(node.parentId).toBe("fn-other");
+      expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
+      expect(await items()).toEqual([]);
+    });
   });
 
   it("keeps failed files with their stored file across a reload and a folder refresh", async () => {

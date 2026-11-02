@@ -21,7 +21,7 @@ import { resetPersistentStorageRequestForTests } from "@/lib/offline/drive/uploa
 import {
   checkDriveUploadBatchSpace,
   driveUploadRootPath,
-  serverHasSpaceForDriveUpload,
+  serverSpaceForDriveUpload,
 } from "@/lib/offline/drive/upload/drive-upload-space-check";
 import {
   enqueueDriveUploadBatch,
@@ -212,11 +212,12 @@ describe("drive upload space pre-check", () => {
 
   it("only resumes from a fresh answer with room in the item's own root", async () => {
     const item = { size: 600, bytesDone: 200 };
-    expect(await serverHasSpaceForDriveUpload(user, item, `${HOME}/docs`)).toBe(true);
-    expect(await serverHasSpaceForDriveUpload(user, { ...item, bytesDone: 0 }, HOME)).toBe(false);
-    expect(await serverHasSpaceForDriveUpload(user, { ...item, bytesDone: 0 }, TEAM)).toBe(true);
+    expect(await serverSpaceForDriveUpload(user, item, `${HOME}/docs`)).toBe("room");
+    expect(await serverSpaceForDriveUpload(user, { ...item, bytesDone: 0 }, HOME)).toBe("full");
+    expect(await serverSpaceForDriveUpload(user, { ...item, bytesDone: 0 }, TEAM)).toBe("room");
+    expect(await serverSpaceForDriveUpload(user, item, "/elsewhere")).toBe("unknown");
 
     online.value = false;
-    expect(await serverHasSpaceForDriveUpload(user, item, `${HOME}/docs`)).toBe(false);
+    expect(await serverSpaceForDriveUpload(user, item, `${HOME}/docs`)).toBe("unknown");
   });
 });
