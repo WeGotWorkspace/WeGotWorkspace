@@ -64,7 +64,7 @@ export async function uploadJmapPart(
     body: part,
     signal,
   };
-  const res = await wgwFetch(toApiRelativePath(url), init, onSent);
+  const res = await wgwFetch(toApiRelativePath(url), { ...init, onUploadProgress: onSent });
   if (res.ok) {
     const payload = (await res.json()) as { blobId?: string; size?: number };
     if (!payload.blobId) throw new Error("JMAP upload returned no blobId");

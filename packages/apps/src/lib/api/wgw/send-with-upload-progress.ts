@@ -1,3 +1,16 @@
+import { fetchKeepaliveOnPageExit } from "@/lib/api/wgw/page-exit-keepalive";
+
+/** `RequestInit` for `wgwFetch`, plus the octets of the body sent so far. */
+export type WgwRequestInit = RequestInit & { onUploadProgress?: (sentBytes: number) => void };
+
+/** With `onUploadProgress`, sends so it can report it; otherwise as before. */
+export function sendWgwRequest(url: string, init: WgwRequestInit): Promise<Response> {
+  const { onUploadProgress, ...rest } = init;
+  return onUploadProgress
+    ? sendWithUploadProgress(url, rest, onUploadProgress)
+    : fetchKeepaliveOnPageExit(url, rest);
+}
+
 /**
  * `fetch` cannot report how much of a request body is sent, so a file sent in
  * one request showed no progress until it was done. This sends the request with

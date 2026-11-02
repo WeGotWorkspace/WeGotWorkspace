@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendWithUploadProgress } from "@/lib/api/wgw/send-with-upload-progress";
+import { sendWgwRequest, sendWithUploadProgress } from "@/lib/api/wgw/send-with-upload-progress";
 
 /** Just enough of XMLHttpRequest to drive one request by hand. */
 class FakeXhr {
@@ -115,5 +115,23 @@ describe("sendWithUploadProgress", () => {
     const response = await sendWithUploadProgress("/x", { method: "POST" }, () => {});
     expect(await response.text()).toBe("ok");
     expect(fetchMock).toHaveBeenCalledWith("/x", { method: "POST" });
+  });
+
+  it("sends through XMLHttpRequest only when progress is asked for", async () => {
+    const xhr = useFakeXhr();
+    const fetchMock = vi.fn(async () => new Response("plain"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await (await sendWgwRequest("/x", { method: "GET" })).text()).toBe("plain");
+    expect(xhr()).toBeNull();
+
+    const sent: number[] = [];
+    const pending = sendWgwRequest("/x", { method: "POST", onUploadProgress: (n) => sent.push(n) });
+    xhr().upload.onprogress?.({ loaded: 3 });
+    Object.assign(xhr(), { status: 200, response: new Blob(["ok"]) });
+    xhr().onload?.();
+    expect(await (await pending).text()).toBe("ok");
+    expect(sent).toEqual([3]);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

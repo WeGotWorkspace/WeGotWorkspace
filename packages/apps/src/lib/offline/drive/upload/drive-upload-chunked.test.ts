@@ -9,12 +9,15 @@ import {
   patternedFile,
 } from "@/lib/offline/drive/upload/drive-upload-fake-server.fixture";
 
+import type { WgwRequestInit } from "@/lib/api/wgw/send-with-upload-progress";
+
 const fake = vi.hoisted(() => ({ server: null as unknown as FakeDriveServer }));
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/wgw/http")>()),
   // Like the browser: half the body is "sent", then all of it, before the answer.
-  wgwFetch: (path: string, init?: RequestInit, onSent?: (bytes: number) => void) => {
+  wgwFetch: (path: string, init?: WgwRequestInit) => {
+    const onSent = init?.onUploadProgress;
     if (onSent && init?.body instanceof Blob) {
       onSent(Math.floor(init.body.size / 2));
       onSent(init.body.size);
