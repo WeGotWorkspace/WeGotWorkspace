@@ -48,7 +48,7 @@ Signed-in Drive uploads stop going straight to the server. Picking or dropping f
 
 ## Technical constraints
 
-- Uploads go through `wgwFetch` (`uploadJmapBlob`), never `XMLHttpRequest`. Progress is per file.
+- Uploads go through `wgwFetch` (`uploadJmapBlob`), which keeps auth, token renewal and error handling in one place. For byte progress, `wgwFetch` sends the body with `XMLHttpRequest` (`sendWithUploadProgress`), because `fetch` cannot report sent bytes; without `XMLHttpRequest` (tests, workers) it falls back to `fetch`. No other code calls `XMLHttpRequest` directly. Progress is per file.
 - No base64 for queued files; `Blob`s are stored as-is.
 - `navigator.storage`, `estimate()`, and `persist()` are each optional. Missing `estimate()` means "enough room". `persist()` is called once per tab, the first time a file is queued, and only when it is a function.
 - New Dexie version 34 inside the drive block (30–39): `drive_entries` gains an `uploadId` index; new tables `drive_upload_batches`, `drive_upload_items`, `drive_upload_blobs`. Sign-out already deletes the whole account database, so it wipes the queue.
