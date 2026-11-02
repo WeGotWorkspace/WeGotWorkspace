@@ -4,6 +4,7 @@ import {
   computeSaveDelayMs,
   computeShouldPersist,
   SAVE_DELAY_MS,
+  SAVE_MAX_WAIT_MS,
   SAVE_RETRY_MAX_MS,
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
@@ -47,6 +48,15 @@ describe("docs-collab-save-queue", () => {
     const now = 1000;
     expect(computeSaveDelayMs(now + 5000, now)).toBe(5000);
     expect(computeSaveDelayMs(now, now)).toBe(SAVE_DELAY_MS);
+  });
+
+  it("computeSaveDelayMs caps the wait since the first edit at SAVE_MAX_WAIT_MS", () => {
+    const now = 10_000;
+    expect(computeSaveDelayMs(0, now, SAVE_DELAY_MS, now)).toBe(SAVE_DELAY_MS);
+    expect(computeSaveDelayMs(0, now, SAVE_DELAY_MS, now - 2500)).toBe(SAVE_MAX_WAIT_MS - 2500);
+    expect(computeSaveDelayMs(0, now, SAVE_DELAY_MS, now - 9000)).toBe(0);
+    // The retry backoff still wins over the cap.
+    expect(computeSaveDelayMs(now + 5000, now, SAVE_DELAY_MS, now - 9000)).toBe(5000);
   });
 
   it("shouldMarkPendingWhenUnsaved requires dirty + changed signature", () => {
