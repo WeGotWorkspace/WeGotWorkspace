@@ -217,8 +217,8 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
       if (isTrash) {
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
         to = resolveFreeName(input.to, trashNames);
-        await applyOfflineTrashSideEffects(username, from);
         moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
+        await applyOfflineTrashSideEffects(username, from);
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }
