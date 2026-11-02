@@ -913,30 +913,13 @@ async function inboundCase(browser: Browser, id: string, taskCount: number) {
  * passed": then drop the entry.
  */
 const BUGS = {
-  listDeleteOffline: 1812, // an offline list delete drops the cached tasks of other lists
-  sameBrowserTabStale: 1815, // a second tab of one browser keeps an old view
   dueAddMidnight: 1821, // a due date added in Edit is saved at midnight, not all day
-  shareeKeepsOldName: 1822, // an owner's rename or colour does not reach the sharee
   refusedWriteStuck: 1825, // a queued edit refused with 403/404 stays on screen and queued
 };
 
-function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
+function knownBugs(action: Action): number[] {
   const bugs: number[] = [];
   if (action === "dueAdd" || action === "edit") bugs.push(BUGS.dueAddMidnight);
-  if (tabs === "diff" && (action === "listRename" || action === "listColor")) {
-    bugs.push(BUGS.shareeKeepsOldName);
-  }
-  if (action === "listDelete" && ["off", "both", "aOff"].includes(net)) {
-    bugs.push(BUGS.listDeleteOffline);
-  }
-  // The other tab stays online while tab A changes the shared cache. After a
-  // move the other tab catches up (it passed 3 of 3 runs once #1813 was fixed).
-  if (tabs === "same" && ["on", "aOff"].includes(net) && bugs.length === 0 && action !== "move") {
-    bugs.push(BUGS.sameBrowserTabStale);
-  }
-  if (tabs === "same" && net === "aOff" && action === "listDelete") {
-    bugs.push(BUGS.sameBrowserTabStale);
-  }
   return bugs;
 }
 
@@ -972,7 +955,7 @@ for (const action of Object.keys(ACTIONS) as Action[]) {
   for (const tabs of Object.keys(nets) as Tabs[]) {
     for (const net of nets[tabs] ?? []) {
       test(`${action} · ${tabs} · ${net}`, async ({ browser }) => {
-        expectKnownBugs(knownBugs(action, tabs, net));
+        expectKnownBugs(knownBugs(action));
         await runCase(browser, action, tabs, net, caseId());
       });
     }
@@ -1122,7 +1105,6 @@ test.describe("inbound", () => {
   for (const tabs of ["one", "same", "diff"] as const) {
     for (const net of ["on", "both"] as const) {
       test(`elsewhere · token · ${tabs} · ${net}`, async ({ browser }) => {
-        if (tabs === "same" && net === "on") expectKnownBugs([BUGS.sameBrowserTabStale]);
         const id = caseId();
         let session: Session | null = null;
         try {
@@ -1404,7 +1386,6 @@ test.describe("inbound", () => {
   });
 
   test("list delete · queued here, changes elsewhere do not bring it back", async ({ browser }) => {
-    expectKnownBugs([BUGS.listDeleteOffline]);
     const id = caseId();
     let session: Session | null = null;
     try {
