@@ -89,6 +89,21 @@ describe("canChangeCalendarOwner", () => {
     ).toBe(false);
     expect(canChangeCalendarOwner({ id: "family", mayShare: false, mayWrite: false })).toBe(false);
   });
+
+  it("locks a group calendar for members without the delete right", () => {
+    const group = {
+      id: "roadmap",
+      scope: "group" as const,
+      groupSlug: "team",
+      mayShare: true,
+      mayWrite: true,
+    };
+    expect(canChangeCalendarOwner({ ...group, mayDelete: false })).toBe(false);
+    expect(canChangeCalendarOwner({ ...group, mayDelete: true })).toBe(true);
+    expect(
+      canChangeCalendarOwner({ id: "mine", mayShare: true, mayWrite: true, mayDelete: false }),
+    ).toBe(true);
+  });
 });
 
 describe("canWriteCalendarCollection", () => {

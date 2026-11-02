@@ -364,7 +364,8 @@ export function canShareTaskList(list?: { myRights?: { mayShare?: boolean } | nu
 
 /**
  * Move Owner between personal and group (same options as create).
- * Inbox, default, provisioned group, and sharees stay locked.
+ * Inbox, default, provisioned group, and sharees stay locked. Moving a group
+ * list out of its group needs the delete right (`myRights.mayDelete`).
  */
 export function canChangeTaskListOwner(list?: TaskListWriteInfo): boolean {
   const listId = list?.id;
@@ -382,6 +383,7 @@ export function canChangeTaskListOwner(list?: TaskListWriteInfo): boolean {
   if (list.isDefault) return false;
   if (list.isSharee) return false;
   if (!canShareTaskList(list)) return false;
+  if (list.scope === "group" && list.myRights?.mayDelete === false) return false;
   if (isProvisionedGroupTaskList(list)) return false;
   return true;
 }
