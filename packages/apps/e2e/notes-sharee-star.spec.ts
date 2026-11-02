@@ -1,7 +1,7 @@
 // A view-only sharee stars a shared note (live app). The star is theirs alone:
 // it survives a reload, the owner never sees it, and an unstar made offline
 // reaches the server on reconnect without a PATCH a view-only sharee would be refused.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   api,
   openNotesTab,
