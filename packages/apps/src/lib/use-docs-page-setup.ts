@@ -5,7 +5,6 @@ import {
   readDocsPageSetupOverridesRaw,
   readDocsPageSetupRaw,
   resolveDocPageSetup,
-  resolveDocsPageSetup,
   subscribeDocsPageSetup,
   writeDocsPageSetupOverride,
   writeDocsPageSetupPrefs,
@@ -65,15 +64,5 @@ export function useDocsPageSetup(docPath?: string | null): DocsPageSetupState {
     },
     [docPath, resolved],
   );
-  return { pageSetup, setPageSetup };
-}
-
-/** The default new documents start with (Docs settings). */
-export function useDocsDefaultPageSetup(): DocsPageSetupState {
-  const { prefs } = useDocsPageSetupRecords();
-  const pageSetup = useMemo(() => resolveDocsPageSetup(prefs), [prefs]);
-  const setPageSetup = useCallback((change: DocsPageSetupPrefs) => {
-    writeDocsPageSetupPrefs(change);
-  }, []);
   return { pageSetup, setPageSetup };
 }
