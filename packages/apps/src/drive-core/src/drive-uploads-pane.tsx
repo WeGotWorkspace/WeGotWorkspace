@@ -98,8 +98,8 @@ function DriveUploadsRow({
           ) : null}
           <span className="drive-uploads__size">{file.size}</span>
         </span>
-        {/* While uploading, the percentage beside the ring says it all. */}
-        {state.kind === "uploading" ? null : (
+        {/* Once a percentage shows beside the ring, it says it all. */}
+        {state.kind === "uploading" && state.percent !== null ? null : (
           <span className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}>
             {state.statusText}
           </span>

@@ -148,7 +148,7 @@
 
 .drive-uploads__progress {
   grid-area: ring;
-  @apply flex items-center gap-1;
+  @apply flex items-center justify-end gap-1;
 }
 
 .drive-uploads__percent {
