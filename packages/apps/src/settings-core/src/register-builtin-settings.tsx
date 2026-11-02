@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Contact,
+  FileText,
   HardDrive,
   Info,
   Palette,
@@ -15,6 +16,8 @@ import { SettingsAboutPane } from "@/settings-core/src/settings-about-pane";
 import { SettingsAppearancePane } from "@/settings-core/src/settings-appearance-pane";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
+import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
+import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
 import {
   SettingsContactsPane,
   SettingsNotesPane,
@@ -107,6 +110,14 @@ export function registerBuiltinSettings(): void {
     appId: "notes",
   });
   registerPanel({
+    id: "docs",
+    label: "Docs",
+    description: docsPageSetupLabels.settingsDescription,
+    icon: <FileText className="size-3.5" />,
+    group: "apps",
+    appId: "docs",
+  });
+  registerPanel({
     id: "meet",
     label: "Meet",
     description: "Low data mode on this device",
@@ -166,6 +177,11 @@ export function registerBuiltinSettings(): void {
     id: "notes-default-collection",
     panelIds: ["notes"],
     render: () => <SettingsNotesPane />,
+  });
+  registerSlice({
+    id: "docs-page-setup",
+    panelIds: ["docs"],
+    render: () => <SettingsDocsPane />,
   });
   registerSlice({
     id: "meet-device",

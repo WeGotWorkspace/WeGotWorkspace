@@ -134,7 +134,8 @@ function DocsWorkspaceShell({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [viewSource, setViewSource] = useState(false);
   const [activeOutlineIndex, setActiveOutlineIndex] = useState<number | null>(null);
-  const pageSetup = useDocsPageSetup();
+  // Page setup is per document; the "mock" key is a preview without a file.
+  const pageSetup = useDocsPageSetup(fileKey === "mock" ? null : fileKey);
 
   useEffect(() => {
     setViewSource(false);

@@ -1,7 +1,15 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  DOCS_PAGE_SETUP_MAX_OVERRIDES,
+  DOCS_PAGE_SETUP_OVERRIDES_KEY,
   DOCS_PAGE_SETUP_STORAGE_KEY,
+  moveDocsPageSetupOverride,
+  parseDocsPageSetupOverrides,
+  readDocsPageSetupOverrides,
+  resolveDocPageSetup,
+  startDocWithDefaultPageSetup,
+  writeDocsPageSetupOverride,
   parseDocsPageSetupPrefs,
   readDocsPageSetupPrefs,
   resolveDocsPageSetup,
@@ -10,7 +18,9 @@ import {
 } from "@/lib/docs-page-setup";
 
 afterEach(() => {
-  writeDocsPageSetupPrefs({}); // a saved write drops any unsaved in-memory choice
+  // A saved write drops any unsaved in-memory value.
+  writeDocsPageSetupPrefs({});
+  moveDocsPageSetupOverride("/x", "/y");
   window.localStorage.clear();
 });
 
@@ -131,6 +141,97 @@ describe("writeDocsPageSetupPrefs", () => {
     window.localStorage.setItem(DOCS_PAGE_SETUP_STORAGE_KEY, JSON.stringify({ format: "legal" }));
     window.dispatchEvent(new StorageEvent("storage", { key: DOCS_PAGE_SETUP_STORAGE_KEY }));
     expect(readDocsPageSetupPrefs()).toEqual({ format: "legal" });
+    unsubscribe();
+  });
+});
+
+describe("per-document page setup", () => {
+  it("parses entries with both choices and drops the rest", () => {
+    expect(
+      parseDocsPageSetupOverrides(
+        JSON.stringify({
+          "/a.md": { format: "legal", orientation: "landscape", at: 5 },
+          "/b.md": { format: "b5", orientation: "portrait" },
+          "/c.md": { format: "a4" },
+          "/d.md": { format: "none", orientation: "portrait" },
+          "/e.md": "a4",
+        }),
+      ),
+    ).toEqual({
+      "/a.md": { format: "legal", orientation: "landscape", at: 5 },
+      "/d.md": { format: "none", orientation: "portrait", at: 0 },
+    });
+    expect(parseDocsPageSetupOverrides("{not json")).toEqual({});
+  });
+
+  it("uses a document's own choice, else the default", () => {
+    const overrides = {
+      "/users/ann/plan.md": { format: "legal", orientation: "landscape", at: 1 },
+    } as const;
+    expect(
+      resolveDocPageSetup("users/ann/plan.md", { format: "a5" }, overrides, ["nl-NL"]),
+    ).toEqual({
+      format: "legal",
+      orientation: "landscape",
+      layout: "pages",
+    });
+    expect(
+      resolveDocPageSetup("/users/ann/other.md", { format: "a5" }, overrides, ["nl-NL"]),
+    ).toEqual({
+      format: "a5",
+      orientation: "portrait",
+      layout: "pages",
+    });
+    expect(resolveDocPageSetup(null, {}, overrides, ["en-US"]).format).toBe("letter");
+  });
+
+  it("changing one document leaves the default and other documents alone", () => {
+    writeDocsPageSetupPrefs({ format: "a4" });
+    writeDocsPageSetupOverride("/plan.md", { format: "legal", orientation: "landscape" }, 10);
+    expect(readDocsPageSetupPrefs()).toEqual({ format: "a4" });
+    expect(readDocsPageSetupOverrides()).toEqual({
+      "/plan.md": { format: "legal", orientation: "landscape", at: 10 },
+    });
+  });
+
+  it("a new document starts with the default and keeps it when the default changes", () => {
+    writeDocsPageSetupPrefs({ format: "a5", orientation: "landscape" });
+    startDocWithDefaultPageSetup("/new.md");
+    writeDocsPageSetupPrefs({ format: "letter", orientation: "portrait" });
+    expect(
+      resolveDocPageSetup("/new.md", readDocsPageSetupPrefs(), readDocsPageSetupOverrides()),
+    ).toMatchObject({ format: "a5", orientation: "landscape" });
+  });
+
+  it("a renamed document keeps its page setup", () => {
+    writeDocsPageSetupOverride("/old.md", { format: "a3", orientation: "portrait" }, 3);
+    expect(moveDocsPageSetupOverride("/old.md", "/new.md")).toBe(true);
+    expect(readDocsPageSetupOverrides()).toEqual({
+      "/new.md": { format: "a3", orientation: "portrait", at: 3 },
+    });
+    expect(moveDocsPageSetupOverride("/missing.md", "/other.md")).toBe(false);
+  });
+
+  it("keeps the most recently changed documents only", () => {
+    const many = Object.fromEntries(
+      Array.from({ length: DOCS_PAGE_SETUP_MAX_OVERRIDES }, (_, i) => [
+        `/doc-${i}.md`,
+        { format: "a4", orientation: "portrait", at: i + 1 },
+      ]),
+    );
+    window.localStorage.setItem(DOCS_PAGE_SETUP_OVERRIDES_KEY, JSON.stringify(many));
+    writeDocsPageSetupOverride("/latest.md", { format: "a5", orientation: "portrait" }, 10_000);
+    const kept = readDocsPageSetupOverrides();
+    expect(Object.keys(kept)).toHaveLength(DOCS_PAGE_SETUP_MAX_OVERRIDES);
+    expect(kept["/latest.md"]).toBeDefined();
+    expect(kept["/doc-0.md"]).toBeUndefined();
+  });
+
+  it("follows another tab's change to a document", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeDocsPageSetup(listener);
+    window.dispatchEvent(new StorageEvent("storage", { key: DOCS_PAGE_SETUP_OVERRIDES_KEY }));
+    expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 });

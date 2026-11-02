@@ -1,5 +1,6 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
+import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
 
 export const docsLabels = {
   toastSaved: "Document saved",
@@ -81,10 +82,7 @@ export const docsLabels = {
   saveError: "Could not save this document.",
   renameError: "Could not rename this document.",
   print: "Print",
-  pageSetup: "Page setup",
-  pagePaperNone: "None",
-  pageOrientationPortrait: "Portrait",
-  pageOrientationLandscape: "Landscape",
+  ...docsPageSetupLabels,
   share: driveLabels.detailShare,
   insertImageError: "Could not insert the image.",
   insertImageTitle: "Insert image",

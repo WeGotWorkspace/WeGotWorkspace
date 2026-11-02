@@ -1,28 +1,17 @@
 import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
-import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsPageSetupState } from "@/lib/use-docs-page-setup";
+import type { TextEditorPageSetup } from "@/lib/page-format";
 import {
-  TEXT_EDITOR_PAGE_FORMATS,
-  TEXT_EDITOR_PAGE_FORMAT_SPECS,
-  type TextEditorPageSetup,
-  type TextEditorPaperChoice,
-} from "@/lib/page-format";
+  DOCS_PAPER_CHOICES,
+  docsPaperLabel,
+  type DocsPageSetupLabels,
+} from "@/lib/docs-page-setup-labels";
 
-export type DocsPageSetupLabels = Pick<
-  DocsUILabels,
-  "pageSetup" | "pagePaperNone" | "pageOrientationPortrait" | "pageOrientationLandscape"
->;
+export { docsPaperLabel, type DocsPageSetupLabels };
 
 export type DocsPageSetupMenuInput = DocsPageSetupState & {
   labels: DocsPageSetupLabels;
 };
-
-const PAPER_CHOICES: readonly TextEditorPaperChoice[] = ["none", ...TEXT_EDITOR_PAGE_FORMATS];
-
-/** Short name of the paper choice, as the menu and its button show it. */
-export function docsPaperLabel(format: TextEditorPaperChoice, labels: DocsPageSetupLabels): string {
-  return format === "none" ? labels.pagePaperNone : TEXT_EDITOR_PAGE_FORMAT_SPECS[format].label;
-}
 
 /** Accessible name of the page setup button: what it is and what is chosen now. */
 export function docsPageSetupButtonLabel(
@@ -49,7 +38,7 @@ export function docsPageSetupMenuItems({
 }: DocsPageSetupMenuInput): DropdownMenuEntry[] {
   const noPaper = pageSetup.format === "none";
   return [
-    ...PAPER_CHOICES.map((format) => ({
+    ...DOCS_PAPER_CHOICES.map((format) => ({
       id: `format-${format}`,
       label: docsPaperLabel(format, labels),
       checked: pageSetup.format === format,
