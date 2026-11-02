@@ -2,7 +2,7 @@
 // downloads the address book 40 cards per request and paints after each page.
 // The All Contacts header must show the number of contacts (groups left out)
 // from the first paint on, not the rows loaded so far.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const USER = process.env.WGW_E2E_USERNAME ?? "admin";

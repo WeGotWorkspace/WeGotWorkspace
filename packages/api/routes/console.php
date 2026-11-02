@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -11,6 +12,7 @@ use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\DevNoteCatalog;
 use App\Services\Installer\DevNoteSeeder;
+use App\Services\Installer\DevSeedGuard;
 use App\Services\Installer\DevSeedRunner;
 use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\InstallerVapidKeyGenerator;
@@ -377,6 +379,27 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
 
     return Command::SUCCESS;
 })->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
+
+Artisan::command('wgw:e2e-reset-api-budget {usernames*}', function (DevSeedGuard $guard): int {
+    try {
+        $guard->assertAllowed('an API budget reset');
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $used = [];
+    foreach ((array) $this->argument('usernames') as $raw) {
+        $username = strtolower(trim((string) $raw));
+        if ($username !== '') {
+            $used[$username] = WgwApiRateLimiters::resetAccountBudget($username);
+        }
+    }
+    $this->line((string) json_encode(['limit' => WgwApiRateLimiters::API_REQUESTS_PER_MINUTE, 'used' => $used]));
+
+    return Command::SUCCESS;
+})->purpose('Local e2e only: print and clear the wgw-api request budget of the named accounts (refused outside a local checkout)');
 
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
     $rawName = $this->option('username');

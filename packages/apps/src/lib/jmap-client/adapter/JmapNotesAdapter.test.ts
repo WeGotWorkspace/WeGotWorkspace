@@ -173,4 +173,40 @@ describe("JmapNotesAdapter", () => {
       notes: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
     });
   });
+
+  describe("syncIfStale", () => {
+    it("skips /changes when the pushed states equal its own", async () => {
+      const adapter = new JmapNotesAdapter({
+        client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      });
+      await expect(adapter.syncIfStale({ Notebook: "nb-1", Note: "n-1" }, "bob")).resolves.toBe(
+        true,
+      );
+      expect(notebookChanges).not.toHaveBeenCalled();
+      expect(noteChanges).not.toHaveBeenCalled();
+    });
+
+    it("syncs when a pushed state differs", async () => {
+      const adapter = new JmapNotesAdapter({
+        client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      });
+      notebookChanges.mockResolvedValue({
+        created: [],
+        updated: [],
+        destroyed: [],
+        newState: "nb-1",
+      });
+      noteChanges.mockResolvedValue({ created: [], updated: [], destroyed: [], newState: "n-2" });
+      await expect(adapter.syncIfStale({ Note: "n-2" })).resolves.toBe(true);
+      expect(noteChanges).toHaveBeenCalledWith("bob", "n-1");
+    });
+
+    it("reports a failed sync, and still tells onSyncError", async () => {
+      const onSyncError = vi.fn();
+      const adapter = new JmapNotesAdapter({ client: clientStub({ Note: "n-1" }), onSyncError });
+      noteChanges.mockRejectedValue(new TypeError("Failed to fetch"));
+      await expect(adapter.syncIfStale({ Note: "n-2" })).resolves.toBe(false);
+      expect(onSyncError).toHaveBeenCalledTimes(1);
+    });
+  });
 });

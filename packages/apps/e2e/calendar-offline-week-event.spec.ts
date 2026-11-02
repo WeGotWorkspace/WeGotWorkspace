@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   CALENDAR_WEEK_DATE,
   countEventCardsByTitle,
