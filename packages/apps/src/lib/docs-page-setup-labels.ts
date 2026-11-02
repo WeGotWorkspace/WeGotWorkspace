@@ -14,10 +14,10 @@ export const docsPageSetupLabels = {
   pageOrientationPortrait: "Portrait",
   pageOrientationLandscape: "Landscape",
   settingsDescription: "Default paper for new documents",
-  settingsPaper: "Paper size",
-  settingsOrientation: "Orientation",
-  settingsHint:
-    "New documents start with this paper. Page setup in a document changes only that document.",
+  settingsPaper: "Default paper size",
+  settingsOrientation: "Default orientation",
+  settingsSaved: "Docs settings saved",
+  settingsSaveError: "Could not save Docs settings",
 } as const;
 
 export type DocsPageSetupLabels = Pick<

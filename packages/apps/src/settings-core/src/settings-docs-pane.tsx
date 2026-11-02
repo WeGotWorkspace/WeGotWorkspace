@@ -4,9 +4,10 @@ import {
   docsPaperLabel,
 } from "@/lib/docs-page-setup-labels";
 import { isTextEditorPageOrientation, isTextEditorPaperChoice } from "@/lib/page-format";
-import { useDocsDefaultPageSetup } from "@/lib/use-docs-page-setup";
-import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
+import { useSettingsDocsForm } from "@/settings-core/src/use-settings-docs-form";
+import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { FormField } from "@/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 /**
@@ -14,48 +15,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * this browser, not on the account; a document's own Page setup overrides it.
  */
 export function SettingsDocsPane() {
-  const { pageSetup, setPageSetup } = useDocsDefaultPageSetup();
+  const controller = useSettingsDocsForm();
+  const { form } = controller;
+  const format = form.watch("format");
   return (
-    <SettingsPaneCard>
-      <div className="settings-docs-pane max-w-lg space-y-4">
-        <p className="text-sm text-muted-foreground">{labels.settingsHint}</p>
-        <FieldLabelRow label={labels.settingsPaper}>
-          <Select
-            value={pageSetup.format}
-            onValueChange={(value) => {
-              if (isTextEditorPaperChoice(value)) setPageSetup({ format: value });
-            }}
-          >
-            <SelectTrigger aria-label={labels.settingsPaper}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DOCS_PAPER_CHOICES.map((format) => (
-                <SelectItem key={format} value={format}>
-                  {docsPaperLabel(format)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FieldLabelRow>
-        <FieldLabelRow label={labels.settingsOrientation}>
-          <Select
-            value={pageSetup.orientation}
-            disabled={pageSetup.format === "none"}
-            onValueChange={(value) => {
-              if (isTextEditorPageOrientation(value)) setPageSetup({ orientation: value });
-            }}
-          >
-            <SelectTrigger aria-label={labels.settingsOrientation}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="portrait">{labels.pageOrientationPortrait}</SelectItem>
-              <SelectItem value="landscape">{labels.pageOrientationLandscape}</SelectItem>
-            </SelectContent>
-          </Select>
-        </FieldLabelRow>
-      </div>
-    </SettingsPaneCard>
+    <SettingsPrefsFormPane controller={controller}>
+      <FormField
+        control={form.control}
+        name="format"
+        render={({ field }) => (
+          <FieldLabelRow label={labels.settingsPaper}>
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                if (isTextEditorPaperChoice(value)) field.onChange(value);
+              }}
+            >
+              <SelectTrigger aria-label={labels.settingsPaper}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DOCS_PAPER_CHOICES.map((choice) => (
+                  <SelectItem key={choice} value={choice}>
+                    {docsPaperLabel(choice)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="orientation"
+        render={({ field }) => (
+          <FieldLabelRow label={labels.settingsOrientation}>
+            <Select
+              value={field.value}
+              disabled={format === "none"}
+              onValueChange={(value) => {
+                if (isTextEditorPageOrientation(value)) field.onChange(value);
+              }}
+            >
+              <SelectTrigger aria-label={labels.settingsOrientation}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="portrait">{labels.pageOrientationPortrait}</SelectItem>
+                <SelectItem value="landscape">{labels.pageOrientationLandscape}</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+    </SettingsPrefsFormPane>
   );
 }

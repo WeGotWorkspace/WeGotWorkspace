@@ -2,11 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import { writeDocsPageSetupPrefs } from "@/lib/docs-page-setup";
 import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
+import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
 import { SettingsStoryScope } from "./settings-story-scope";
 
 const meta = {
   title: "Features/Settings/Docs pane",
   component: SettingsDocsPane,
+  // The shared Save shell every app settings form pane uses.
+  subcomponents: { SettingsPrefsFormPane },
   parameters: { layout: "padded" },
   decorators: [
     (Story) => (
@@ -28,8 +31,11 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("combobox", { name: "Paper size" })).toHaveTextContent("A4");
-    await expect(canvas.getByRole("combobox", { name: "Orientation" })).toBeEnabled();
+    await expect(canvas.getByRole("combobox", { name: "Default paper size" })).toHaveTextContent(
+      "A4",
+    );
+    await expect(canvas.getByRole("combobox", { name: "Default orientation" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
   },
 };
 
@@ -40,7 +46,9 @@ export const NoPaper: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("combobox", { name: "Paper size" })).toHaveTextContent("None");
-    await expect(canvas.getByRole("combobox", { name: "Orientation" })).toBeDisabled();
+    await expect(canvas.getByRole("combobox", { name: "Default paper size" })).toHaveTextContent(
+      "None",
+    );
+    await expect(canvas.getByRole("combobox", { name: "Default orientation" })).toBeDisabled();
   },
 };
