@@ -250,6 +250,29 @@ final class JmapDownloadTicketTest extends WgwDatabaseTestCase
         $this->postRefresh($second['refresh'])->assertOk();
     }
 
+    public function test_a_dropped_ticket_download_resumes_only_against_the_same_bytes(): void
+    {
+        $this->seedPrivateFile('bob', 'resume.txt', self::BODY);
+        $token = $this->userBearerToken();
+        $blobId = $this->blobIdFor('resume.txt', $token);
+        $path = $this->ticketPath($this->issueTicket($token, $blobId, 'resume.txt'));
+        $this->flushHeaders();
+
+        $first = $this->get($path)->assertOk();
+        $etag = (string) $first->headers->get('ETag');
+        $this->assertSame('"'.$blobId.'"', $etag);
+        $this->assertSame('no', $first->headers->get('X-Accel-Buffering'));
+
+        $resume = $this->withHeaders(['Range' => 'bytes=9-', 'If-Range' => $etag])->get($path);
+        $resume->assertStatus(206);
+        $this->assertSame(substr(self::BODY, 9), $resume->streamedContent());
+
+        $this->flushHeaders();
+        $restart = $this->withHeaders(['Range' => 'bytes=9-', 'If-Range' => '"jb-0000"'])->get($path);
+        $restart->assertOk();
+        $this->assertSame(self::BODY, $restart->streamedContent());
+    }
+
     public function test_revoking_all_sessions_ends_every_ticket(): void
     {
         $this->seedPrivateFile('bob', 'all.txt', self::BODY);

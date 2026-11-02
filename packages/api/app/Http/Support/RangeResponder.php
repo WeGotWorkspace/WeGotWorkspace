@@ -18,6 +18,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *  - an unsatisfiable range → 416 with `Content-Range: bytes * /size`
  *  - several ranges, a non-bytes unit, or a malformed value → the full 200
  *    (RFC 9110 §14.2 lets a server ignore a Range it does not support)
+ *  - `If-Range` (RFC 9110 §13.1.5) against the caller's `ETag` or
+ *    `Last-Modified`: no match → the full 200, so a resume never glues
+ *    bytes of two versions; without a validator the Range is ignored too
+ *  - `If-None-Match` matching the caller's `ETag` → 304 without a body
+ *  - `X-Accel-Buffering: no`, so a buffering proxy passes chunks on as they
+ *    are written (a ticket counts as active only while chunks are written)
+ *
+ * Callers send a strong `ETag` only when the bytes can never change under it.
  *
  * `Content-Length` and the range arithmetic use the opened stream's size at
  * stream time, never a stored size that can be stale. Memory use does not
@@ -40,8 +48,22 @@ class RangeResponder
     {
         $size = $this->streamSize($stream);
         $headers['Accept-Ranges'] = 'bytes';
+        $headers['X-Accel-Buffering'] = 'no';
+        $etag = $headers['ETag'] ?? null;
 
-        $range = $this->parseRange($request->headers->get('Range'), $size);
+        if ($etag !== null && $request->isMethodCacheable() && $this->noneMatchHits($request->headers->get('If-None-Match'), $etag)) {
+            fclose($stream);
+
+            return new Response('', 304, array_intersect_key($headers, array_flip(['ETag', 'Last-Modified', 'Cache-Control', 'X-Accel-Buffering'])));
+        }
+
+        $rangeHeader = $request->headers->get('Range');
+        $ifRange = $request->headers->get('If-Range');
+        if ($rangeHeader !== null && $ifRange !== null && ! $this->ifRangeMatches($ifRange, $etag, $headers['Last-Modified'] ?? null)) {
+            $rangeHeader = null;
+        }
+
+        $range = $this->parseRange($rangeHeader, $size);
         if ($range === false) {
             fclose($stream);
 
@@ -86,6 +108,70 @@ class RangeResponder
                 }
             }
         }, $status, $headers);
+    }
+
+    /**
+     * Validators for a file served straight from disk, from the opened
+     * stream itself so they describe exactly the bytes being sent: a strong
+     * ETag from inode, size, and mtime, plus Last-Modified. Both are left
+     * out while the mtime is in the current second: a second write in that
+     * same second could keep size and mtime (RFC 9110 §8.8.2.2).
+     *
+     * @param  resource  $stream
+     * @return array<string, string>
+     */
+    public static function fileValidators($stream): array
+    {
+        $stat = fstat($stream);
+        if (! is_array($stat) || (int) $stat['mtime'] <= 0 || (int) $stat['mtime'] >= time()) {
+            return [];
+        }
+        $mtime = (int) $stat['mtime'];
+
+        return [
+            'ETag' => '"'.substr(hash('sha256', $stat['dev'].':'.$stat['ino'].':'.$stat['size'].':'.$mtime), 0, 32).'"',
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $mtime).' GMT',
+        ];
+    }
+
+    /**
+     * RFC 9110 §13.1.5: a strong entity-tag compared strongly with the
+     * current ETag, or an HTTP-date equal to the current Last-Modified.
+     */
+    public function ifRangeMatches(string $ifRange, ?string $etag, ?string $lastModified): bool
+    {
+        $ifRange = trim($ifRange);
+        if (str_starts_with($ifRange, '"')) {
+            return $etag !== null && ! str_starts_with($etag, 'W/') && $ifRange === $etag;
+        }
+        if (str_starts_with($ifRange, 'W/') || $lastModified === null) {
+            return false;
+        }
+        $requested = strtotime($ifRange);
+        $current = strtotime($lastModified);
+
+        return $requested !== false && $current !== false && $requested === $current;
+    }
+
+    /**
+     * RFC 9110 §13.1.2: `*` or any listed tag that weakly matches.
+     */
+    private function noneMatchHits(?string $ifNoneMatch, string $etag): bool
+    {
+        if ($ifNoneMatch === null) {
+            return false;
+        }
+        if (trim($ifNoneMatch) === '*') {
+            return true;
+        }
+        $opaque = static fn (string $tag): string => str_starts_with($tag, 'W/') ? substr($tag, 2) : $tag;
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            if ($opaque(trim($candidate)) === $opaque($etag)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
