@@ -32,9 +32,11 @@ type PageFormatSpec = {
 const MM = 96 / 25.4;
 
 export const TEXT_EDITOR_PAGE_FORMAT_SPECS: Record<TextEditorPageFormat, PageFormatSpec> = {
-  a4: { label: "A4", width: Math.round(210 * MM), height: Math.round(297 * MM), cssSize: "A4" },
-  a3: { label: "A3", width: Math.round(297 * MM), height: Math.round(420 * MM), cssSize: "A3" },
-  a5: { label: "A5", width: Math.round(148 * MM), height: Math.round(210 * MM), cssSize: "A5" },
+  // Exact, not rounded: print uses the exact paper size, and a fraction of a pixel of
+  // text width is enough to wrap a line differently from the page view.
+  a4: { label: "A4", width: 210 * MM, height: 297 * MM, cssSize: "A4" },
+  a3: { label: "A3", width: 297 * MM, height: 420 * MM, cssSize: "A3" },
+  a5: { label: "A5", width: 148 * MM, height: 210 * MM, cssSize: "A5" },
   letter: { label: "Letter", width: 816, height: 1056, cssSize: "letter" },
   legal: { label: "Legal", width: 816, height: 1344, cssSize: "legal" },
 };

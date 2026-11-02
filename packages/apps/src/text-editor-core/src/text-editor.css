@@ -450,7 +450,8 @@
     width: var(--rm-page-width);
     padding-block: 0;
     padding-inline: var(--rm-margin-left) var(--rm-margin-right);
-    border: 1px solid var(--text-editor-page-border);
+    /* Outside the page, not a border: the text column stays paper minus margins, as in print. */
+    box-shadow: 0 0 0 1px var(--text-editor-page-border);
     background-color: var(--paper-sheet-bg);
   }
 
@@ -530,6 +531,15 @@
   /* Page ends hold no content yet (no headers or footers): a click there reaches the text. */
   .text-editor-prose.rm-with-pagination :is([data-rm-pagination], .rm-first-page-header) {
     pointer-events: none;
+  }
+
+  /*
+   * The library makes each page's top and bottom margin an inline box. On its own text
+   * line that adds the line's descender gap (~7px) to the margin, which print does not
+   * have, so every screen page held a little less than its printed page.
+   */
+  .text-editor-prose.rm-with-pagination :is(.rm-page-header, .rm-page-footer) {
+    vertical-align: top;
   }
 
   .text-editor-sheet--paginated {
@@ -1068,6 +1078,14 @@
     max-height: none !important;
     min-height: 0 !important;
     flex: none !important;
+    /*
+     * `flex: none` sizes a flex item to its content: the column grew as wide as the
+     * longest paragraph on one line and the browser shrank the whole print to fit.
+     * Hold every column to the paper width so print matches the page view.
+     */
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     position: static !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1077,8 +1095,9 @@
   body.text-editor-print-active .text-editor-sheet__surface--print {
     position: static;
     display: block !important;
-    width: 100%;
-    max-width: none;
+    /* Beat the Docs sheet cap (210mm): landscape and wide paper print the full width. */
+    width: 100% !important;
+    max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none;
@@ -1112,6 +1131,15 @@
   body.text-editor-print-active .text-editor-sheet__surface--print .text-editor-prose {
     font-size: var(--text-editor-print-prose-font-size, var(--text-editor-prose-font-size));
     line-height: var(--text-editor-prose-line-height);
+  }
+
+  /*
+   * Print keeps 2 lines together at a page end by default; the page view splits after
+   * any line. Split the same way so each printed page ends where the page view does.
+   */
+  body.text-editor-print-active .text-editor-sheet__surface--print .text-editor-prose * {
+    orphans: 1;
+    widows: 1;
   }
 
   /*
@@ -1230,6 +1258,15 @@
 
   .text-editor-prose.rm-with-pagination table tr :is(td, th) {
     word-break: normal;
+  }
+
+  /* Other people's carets and selections are live presence, not document content. */
+  .ProseMirror :is(.collaboration-carets__caret, .collaboration-carets__label) {
+    display: none !important;
+  }
+
+  .ProseMirror .collaboration-carets__selection {
+    background: none !important;
   }
 
   .text-editor-prose [data-type="page-break"] {
