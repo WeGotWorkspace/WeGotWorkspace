@@ -171,12 +171,6 @@ export type CreateCollaborativeTextEditorExtensionsOptions = CreateTextEditorExt
   trackChangesUserKey: string;
 };
 
-/**
- * Same surface as {@link createTextEditorExtensions} with Yjs + remote carets
- * (undo disabled) plus suggestion mode ({@link DocsTrackChangesExtension}). Starts in
- * `edit` mode; the suggest controls flip it to `suggest`. Suggestions carry only
- * a change id; who made them lives on the suggestion thread.
- */
 const CSS_HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 /**
@@ -193,6 +187,12 @@ export function remoteSelectionAttrs(user: Record<string, unknown>) {
   };
 }
 
+/**
+ * Same surface as {@link createTextEditorExtensions} with Yjs + remote carets
+ * (undo disabled) plus suggestion mode ({@link DocsTrackChangesExtension}). Starts in
+ * `edit` mode; the suggest controls flip it to `suggest`. Suggestions carry only
+ * a change id; who made them lives on the suggestion thread.
+ */
 export function createCollaborativeTextEditorExtensions(
   options: CreateCollaborativeTextEditorExtensionsOptions,
 ): Extensions {

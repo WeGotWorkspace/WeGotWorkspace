@@ -30,7 +30,8 @@ export type PageColumnsOptions = {
 
 /**
  * Tables with their document positions: top-level ones and those in lists or quotes, whose
- * rows are boxes of their own too. A table inside a table cell lays out as a table.
+ * rows are boxes of their own too. Tables nested in a table cell are not listed: they get
+ * no column widths.
  */
 export function documentTables(doc: ProseMirrorNode): { pos: number; node: ProseMirrorNode }[] {
   const tables: { pos: number; node: ProseMirrorNode }[] = [];
@@ -92,7 +93,9 @@ function contentWidth(el: HTMLElement): number {
   return (
     el.getBoundingClientRect().width -
     parseFloat(style.paddingLeft || "0") -
-    parseFloat(style.paddingRight || "0")
+    parseFloat(style.paddingRight || "0") -
+    parseFloat(style.borderLeftWidth || "0") -
+    parseFloat(style.borderRightWidth || "0")
   );
 }
 
