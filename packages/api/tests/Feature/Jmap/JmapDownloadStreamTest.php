@@ -123,6 +123,89 @@ final class JmapDownloadStreamTest extends WgwDatabaseTestCase
         $this->assertSame('', (string) $response->streamedContent());
     }
 
+    public function test_a_final_id_is_a_strong_etag_and_cached_for_good(): void
+    {
+        $this->seedPrivateFile('bob', 'final.txt', self::body());
+        $blobId = $this->blobIdFor('final.txt');
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->get('/api/v1/jmap/download/bob/'.$blobId.'/final.txt')
+            ->assertOk();
+
+        $this->assertSame('"'.$blobId.'"', $response->headers->get('ETag'));
+        $this->assertStringContainsString('immutable', (string) $response->headers->get('Cache-Control'));
+        $this->assertSame('no', $response->headers->get('X-Accel-Buffering'));
+    }
+
+    /**
+     * @return iterable<string, array{0: callable(string): string, 1: int}>
+     */
+    public static function ifRanges(): iterable
+    {
+        yield 'the current ETag resumes' => [static fn (string $blobId): string => '"'.$blobId.'"', 206];
+        yield 'another ETag restarts' => [static fn (string $blobId): string => '"'.$blobId.'x"', 200];
+        yield 'a weak ETag restarts' => [static fn (string $blobId): string => 'W/"'.$blobId.'"', 200];
+        yield 'a date without Last-Modified restarts' => [static fn (string $blobId): string => 'Wed, 21 Oct 2015 07:28:00 GMT', 200];
+    }
+
+    /**
+     * @param  callable(string): string  $ifRange
+     */
+    #[DataProvider('ifRanges')]
+    public function test_if_range_resumes_only_while_the_etag_matches(callable $ifRange, int $status): void
+    {
+        $this->seedPrivateFile('bob', 'resume.txt', self::body());
+        $blobId = $this->blobIdFor('resume.txt');
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->withHeaders(['Range' => 'bytes=90-', 'If-Range' => $ifRange($blobId)])
+            ->get('/api/v1/jmap/download/bob/'.$blobId.'/resume.txt');
+
+        $response->assertStatus($status);
+        if ($status === 206) {
+            $this->assertSame('bytes 90-99/100', $response->headers->get('Content-Range'));
+            $this->assertSame(substr(self::body(), 90), $response->streamedContent());
+        } else {
+            $this->assertNull($response->headers->get('Content-Range'));
+            $this->assertSame('100', $response->headers->get('Content-Length'));
+            $this->assertSame(self::body(), $response->streamedContent());
+        }
+    }
+
+    public function test_if_none_match_on_the_current_etag_answers_304(): void
+    {
+        $this->seedPrivateFile('bob', 'cached.txt', self::body());
+        $blobId = $this->blobIdFor('cached.txt');
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->withHeader('If-None-Match', 'W/"other", "'.$blobId.'"')
+            ->get('/api/v1/jmap/download/bob/'.$blobId.'/cached.txt');
+
+        $response->assertStatus(304);
+        $this->assertSame('"'.$blobId.'"', $response->headers->get('ETag'));
+        $this->assertSame('', (string) $response->getContent());
+    }
+
+    public function test_a_hash_pending_id_has_no_etag_and_is_revalidated(): void
+    {
+        // Over the discovery cap: hash-pending, so the id is provisional.
+        config(['wgw.jmap.discovery_hash_max_bytes' => 0]);
+        $this->seedPrivateFile('bob', 'pending.txt', self::body());
+        $blobId = $this->blobIdFor('pending.txt');
+        $this->assertTrue((bool) JmapFileNode::query()->where('storage_key', 'users/bob/pending.txt')->value('hash_pending'));
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->withHeaders(['Range' => 'bytes=90-', 'If-Range' => '"'.$blobId.'"', 'If-None-Match' => '"'.$blobId.'"'])
+            ->get('/api/v1/jmap/download/bob/'.$blobId.'/pending.txt');
+
+        // No validator: neither a 304 nor a resume that could mix two versions.
+        $response->assertOk();
+        $this->assertNull($response->headers->get('ETag'));
+        $this->assertStringContainsString('no-cache', (string) $response->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('immutable', (string) $response->headers->get('Cache-Control'));
+        $this->assertSame(self::body(), $response->streamedContent());
+    }
+
     public static function body(): string
     {
         return str_repeat('abcdefghij', 10);

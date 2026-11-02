@@ -261,6 +261,8 @@ final class JmapBlobService
                     return null;
                 }
             },
+            // jb- ids are the content hash.
+            true,
         );
     }
 

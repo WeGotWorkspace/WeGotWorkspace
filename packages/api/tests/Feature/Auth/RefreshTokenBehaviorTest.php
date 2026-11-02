@@ -190,9 +190,10 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $this->refresh($other['refresh_token'])->assertOk();
     }
 
-    public function test_revoked_access_token_is_rejected_until_refresh(): void
+    public function test_revoking_with_only_the_access_token_ends_its_session(): void
     {
         $issued = $this->issueTokenPair();
+        $other = $this->issueTokenPair();
 
         $this->withBearer($issued['access_token'])
             ->postJson('/api/v1/auth/revoke')
@@ -209,7 +210,10 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
                 'code' => 'unauthorized',
             ]);
 
-        $this->refresh($issued['refresh_token'])
+        // Sign-out without the refresh cookie: the sid claim names the
+        // session, so its refresh token is dead too. Other sessions live on.
+        $this->refresh($issued['refresh_token'])->assertUnauthorized();
+        $this->refresh($other['refresh_token'])
             ->assertOk()
             ->assertJsonPath('username', 'alice');
     }
