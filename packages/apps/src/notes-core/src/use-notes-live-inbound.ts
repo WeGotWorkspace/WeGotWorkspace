@@ -54,12 +54,28 @@ function jmapNoteToVjournal(note: JmapNote): NotesVjournalNote {
   };
 }
 
-/** A note fetched without `body` keeps the body its room put in the cache. */
-async function withCachedBody(username: string, note: Note, fetched: JmapNote): Promise<Note> {
-  if (fetched.body !== undefined) return note;
-  const cached = await getNoteFromCache(username, note.id);
-  if (!cached) return note;
-  return { ...note, body: cached.body, excerpt: cached.excerpt, wordCount: cached.wordCount };
+/**
+ * A note fetched without `body` keeps the body its room put in the cache.
+ * Without a cache row there is nothing to keep, so it is fetched in full.
+ */
+async function withBody(
+  username: string,
+  fetched: JmapNote,
+  map: (note: JmapNote) => Note,
+  fetchFull: (id: string) => Promise<JmapNote | undefined>,
+): Promise<Note | null> {
+  if (fetched.body !== undefined) return map(fetched);
+  const cached = await getNoteFromCache(username, fetched.id);
+  if (cached) {
+    return {
+      ...map(fetched),
+      body: cached.body,
+      excerpt: cached.excerpt,
+      wordCount: cached.wordCount,
+    };
+  }
+  const full = await fetchFull(fetched.id);
+  return full ? map(full) : null;
 }
 
 type UseNotesLiveInboundArgs = {
@@ -101,9 +117,10 @@ export function useNotesLiveInbound({
       client: createNotesJmapClient(),
       bodyInRoom: noteBodyInRoom,
       onRemoteNote: (note) => {
-        void withCachedBody(username, mapNote(note), note)
-          .then((mapped) => ingestRemoteNote(username, mapped))
-          .then(patch);
+        void withBody(username, note, mapNote, async (id) => (await next.fetchNotes([id]))[0])
+          .then((mapped) => (mapped ? ingestRemoteNote(username, mapped) : null))
+          .then(patch)
+          .catch((error: unknown) => console.warn("[notes] live inbound sync failed", error));
       },
       onRemoteNoteDestroyed: (noteId) =>
         ingestRemoteNoteDestroyed(username, noteId).then(async (result) => {

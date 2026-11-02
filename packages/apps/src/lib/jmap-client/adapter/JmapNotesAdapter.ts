@@ -115,6 +115,11 @@ export class JmapNotesAdapter extends JmapInboundAdapter {
     }
   }
 
+  /** Full notes, body included, for ids a metadata-only fetch could not complete. */
+  async fetchNotes(ids: JmapId[]): Promise<JmapNote[]> {
+    return (await this.#notes.getNotes(this.accountId, ids)).list;
+  }
+
   /** Changed notes; a note whose body a live room holds comes without it. */
   async #getChangedNotes(ids: JmapId[]): Promise<JmapNote[]> {
     const inRoom = this.#options.bodyInRoom;

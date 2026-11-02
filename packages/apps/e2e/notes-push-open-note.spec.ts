@@ -2,7 +2,7 @@
 // has typed text; tab A changes the note's tag and then archives it. B must show
 // both changes faster than the 10 s poll, without losing its text or refetching
 // the body. Run alone: playwright test --config playwright.live.config.mjs e2e/notes-push-open-note.spec.ts
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   api,
   converge,

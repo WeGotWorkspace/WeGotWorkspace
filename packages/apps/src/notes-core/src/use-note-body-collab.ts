@@ -32,6 +32,8 @@ export function useNoteBodyCollab({
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
+  /** The note `noteCollabUrls` were built for; the previous note's linger until the next resolve. */
+  const [roomNoteId, setRoomNoteId] = useState<string | undefined>(undefined);
   const [accessLost, setAccessLost] = useState(false);
   const activeNoteId = active?.id;
   const activeCreatePending = active?.createPending === true;
@@ -56,7 +58,9 @@ export function useNoteBodyCollab({
       },
     })
       .then((urls) => {
-        if (!cancelled) setNoteCollabUrls(urls);
+        if (cancelled) return;
+        setNoteCollabUrls(urls);
+        setRoomNoteId(activeNoteId);
       })
       .catch(() => {
         if (!cancelled) setNoteCollabUrls(undefined);
@@ -67,7 +71,7 @@ export function useNoteBodyCollab({
     };
   }, [activeCreatePending, activeNoteId, archived, offlineUsername, username]);
 
-  const roomOpen = Boolean(noteCollabUrls && activeNoteId);
+  const roomOpen = Boolean(noteCollabUrls && activeNoteId && roomNoteId === activeNoteId);
   useEffect(() => {
     if (!roomOpen || !activeNoteId) return;
     return holdNoteBodyRoom(activeNoteId);

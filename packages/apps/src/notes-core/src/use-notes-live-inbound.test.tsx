@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   startPolling: vi.fn(),
   stopPolling: vi.fn(),
   syncIfStale: vi.fn(),
+  fetchNotes: vi.fn(),
   options: null as JmapNotesAdapterOptions | null,
   pushConnected: false,
   subscribedTypes: [] as string[],
@@ -45,6 +46,9 @@ vi.mock("@/lib/jmap-client", () => ({
     }
     syncIfStale(states: Record<string, string>, accountId?: string) {
       return mocks.syncIfStale(states, accountId);
+    }
+    fetchNotes(ids: string[]) {
+      return mocks.fetchNotes(ids);
     }
   },
 }));
@@ -89,6 +93,7 @@ describe("useNotesLiveInbound", () => {
     mocks.syncIfStale.mockReset().mockResolvedValue(true);
     mocks.ingestRemoteNote.mockReset().mockResolvedValue("upserted");
     mocks.getNoteFromCache.mockReset().mockResolvedValue(null);
+    mocks.fetchNotes.mockReset().mockResolvedValue([]);
     mocks.options = null;
     mocks.pushConnected = false;
     mocks.subscribedTypes = [];
@@ -164,6 +169,33 @@ describe("useNotesLiveInbound", () => {
     expect(ingested.tags).toEqual(["x"]);
     expect(ingested.body).toEqual(["typed in the room"]);
     expect(ingested.excerpt).toBe("typed in the room");
+  });
+
+  it("fetches a note in full when it comes without a body and has no cache row", async () => {
+    mocks.fetchNotes.mockResolvedValue([
+      { id: "n-new", notebookId: "nb", title: "Full", body: "server body" },
+    ]);
+    renderLiveInbound();
+    await waitFor(() => expect(mocks.options).not.toBeNull());
+
+    mocks.options?.onRemoteNote?.({ id: "n-new", notebookId: "nb", title: "Meta" });
+
+    await waitFor(() => expect(mocks.ingestRemoteNote).toHaveBeenCalled());
+    expect(mocks.fetchNotes).toHaveBeenCalledWith(["n-new"]);
+    const ingested = mocks.ingestRemoteNote.mock.calls[0]?.[1] as Note;
+    expect(ingested.title).toBe("Full");
+    expect(ingested.body).toEqual(["server body"]);
+  });
+
+  it("does not fetch again when a note comes with its body", async () => {
+    renderLiveInbound();
+    await waitFor(() => expect(mocks.options).not.toBeNull());
+
+    mocks.options?.onRemoteNote?.({ id: "n-2", notebookId: "nb", title: "T", body: "b" });
+
+    await waitFor(() => expect(mocks.ingestRemoteNote).toHaveBeenCalled());
+    expect(mocks.getNoteFromCache).not.toHaveBeenCalled();
+    expect(mocks.fetchNotes).not.toHaveBeenCalled();
   });
 
   it("asks the adapter to skip the body of a note whose room is open", async () => {
