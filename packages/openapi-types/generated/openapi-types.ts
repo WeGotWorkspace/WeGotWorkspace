@@ -3927,7 +3927,7 @@ export interface paths {
         };
         /**
          * Replace a task
-         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
+         * @description A `taskListIds` that names another writable list moves the task there; the task keeps its id and the answer carries the new `taskListId`. 409 when the task shares its iCalendar object with other tasks, or the target list already holds an object with its id. Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
          */
         put: {
             parameters: {
@@ -3956,6 +3956,7 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
