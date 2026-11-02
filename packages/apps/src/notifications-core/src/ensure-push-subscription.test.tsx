@@ -151,6 +151,49 @@ describe("ensurePushPermissionAndSubscribe", () => {
     expect(rememberPushScope).not.toHaveBeenCalled();
   });
 
+  it("drops the subscription it made when logout starts during subscribe()", async () => {
+    stubNotification("granted");
+    const made = {
+      endpoint: "https://push.example/new",
+      unsubscribe: vi.fn(async () => true),
+      toJSON: () => ({ endpoint: "https://push.example/new", keys: { p256dh: "a", auth: "b" } }),
+    };
+    let resolveSubscribe: (value: typeof made) => void = () => undefined;
+    subscribe.mockReturnValue(new Promise((resolve) => (resolveSubscribe = resolve)));
+
+    const run = ensurePushPermissionAndSubscribe();
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalled());
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+    resolveSubscribe(made);
+
+    await expect(run).resolves.toBe(false);
+    expect(made.unsubscribe).toHaveBeenCalled();
+    expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("removes the row and remembers no scope when logout starts during the POST", async () => {
+    stubNotification("granted");
+    const made = {
+      endpoint: "https://push.example/new",
+      unsubscribe: vi.fn(async () => true),
+      toJSON: () => ({ endpoint: "https://push.example/new", keys: { p256dh: "a", auth: "b" } }),
+    };
+    subscribe.mockResolvedValue(made);
+    let resolvePost: () => void = () => undefined;
+    vi.mocked(subscribePush).mockReturnValue(
+      new Promise<void>((resolve) => (resolvePost = resolve)),
+    );
+
+    const run = ensurePushPermissionAndSubscribe();
+    await vi.waitFor(() => expect(subscribePush).toHaveBeenCalled());
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+    resolvePost();
+
+    await expect(run).resolves.toBe(false);
+    expect(unsubscribePush).toHaveBeenCalledWith("https://push.example/new");
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
   it("does not prompt again when the browser already denied", async () => {
     const requestPermission = stubNotification("denied");
 

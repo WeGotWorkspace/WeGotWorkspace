@@ -164,7 +164,12 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
       userVisibleOnly: true,
       applicationServerKey: key as BufferSource,
     }));
-  if (!isCurrent()) return false;
+  if (!isCurrent()) {
+    // Logout may already have passed getSubscription(): drop the subscription
+    // this run made. One that was already there is left to the logout release.
+    if (isNew) await subscription.unsubscribe().catch(() => undefined);
+    return false;
+  }
   const scope = currentPushScope();
   // A new endpoint (first subscribe, a swap after a VAPID key change, or a
   // replaced subscription of another account) also carries the scopes the old
@@ -174,6 +179,11 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
   for (const each of scopes) {
     if (!isCurrent()) return false;
     await subscribePush(subscription.toJSON(), each);
+    if (!isCurrent()) {
+      // The POST landed after logout's DELETE: remove the row it just wrote.
+      await unsubscribePush(subscription.endpoint).catch(() => undefined);
+      return false;
+    }
   }
   recordPushSubscriber(account);
   // For `pushsubscriptionchange`: the worker cannot tell which app it serves.
