@@ -276,6 +276,65 @@ describe("drive uploader error classes, server-full pause, and re-targeting", ()
     expect(await items()).toEqual([]);
   });
 
+  describe("re-targeting after the bytes were sent", () => {
+    /** The folder goes away while the file is sent; the create then fails. */
+    async function loseFolderBeforeCreate(file: File) {
+      const set = server.fileNodes.setFileNodes;
+      server.fileNodes.setFileNodes = async (args) => {
+        server.folders.delete("fn-docs");
+        return set(args);
+      };
+      const [id] = (await queue([file])).itemIds;
+      await runUploader();
+      server.fileNodes.setFileNodes = set;
+      server.folders.set("fn-other", { id: "fn-other", parentId: "fn-home", name: "other" });
+      return id!;
+    }
+
+    async function retargetToOther(id: string) {
+      expect(
+        await retargetDriveUploadItem(user, id, {
+          folderPath: "/users/ada/other",
+          targetFolder: { kind: "server", id: "fn-other" },
+        }),
+      ).toBe(true);
+    }
+
+    it("keeps the bytes on the server and does not send the file again", async () => {
+      const file = patternedFile("big.bin", 1_000);
+      const id = await loseFolderBeforeCreate(file);
+      const [failed] = await items();
+      expect(failed).toMatchObject({ status: "failed", error: { code: "target_missing" } });
+      expect(failed?.chunk?.blobId).toBeDefined();
+      const sent = server.uploads.length;
+
+      await retargetToOther(id);
+      await runUploader();
+
+      expect(server.uploads).toHaveLength(sent);
+      const node = server.nodes.find((row) => row.name === "big.bin")!;
+      expect(node.parentId).toBe("fn-other");
+      expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
+      expect(await items()).toEqual([]);
+    });
+
+    it("sends the file again when the server let its bytes expire meanwhile", async () => {
+      const file = patternedFile("big.bin", 1_000);
+      const id = await loseFolderBeforeCreate(file);
+      server.expire([(await items())[0]!.chunk!.blobId!]);
+      const sent = server.uploads.length;
+
+      await retargetToOther(id);
+      await runUploader();
+
+      expect(server.uploads.length).toBeGreaterThan(sent);
+      const node = server.nodes.find((row) => row.name === "big.bin")!;
+      expect(node.parentId).toBe("fn-other");
+      expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
+      expect(await items()).toEqual([]);
+    });
+  });
+
   it("keeps failed files with their stored file across a reload and a folder refresh", async () => {
     server.folders.delete("fn-docs");
     const [id] = (await queue([patternedFile("a.bin", 100)])).itemIds;

@@ -102,18 +102,43 @@ export async function transferDriveUpload(
   if (input.conflict === "skip" && (await existingByName(session, input, input.name, signal))) {
     return { kind: "skipped" };
   }
-  const blobId = await sendDriveUploadBytes({
+  const blobId = await sendBytes(session, input, input.chunk, signal);
+  try {
+    return await placeUpload(session, input, blobId, signal);
+  } catch (error) {
+    if (!input.chunk?.blobId || !isUnknownBlob(error)) throw error;
+    // The file an earlier attempt sent expired before it was placed (a long
+    // pause, as before a re-target): send it again from the start.
+    return placeUpload(session, input, await sendBytes(session, input, undefined, signal), signal);
+  }
+}
+
+function sendBytes(
+  session: DriveJmapSession,
+  input: DriveUploadTransferInput,
+  state: DriveUploadChunkState | undefined,
+  signal?: AbortSignal,
+): Promise<string> {
+  return sendDriveUploadBytes({
     session,
     username: input.username,
     name: input.name,
     mimeType: input.mimeType,
     blob: input.blob,
-    ...(input.chunk ? { state: input.chunk } : {}),
+    ...(state ? { state } : {}),
     save: async (update) => input.onProgress?.(update),
     ...(input.onBytesSent ? { onBytesSent: input.onBytesSent } : {}),
     ...(signal ? { signal } : {}),
   });
-  return placeUpload(session, input, blobId, signal);
+}
+
+/** FileNode/set refuses a `blobId` the server no longer has (`invalidProperties`). */
+function isUnknownBlob(error: unknown): boolean {
+  if (!(error instanceof JmapSetItemError) || error.setError.type !== "invalidProperties") {
+    return false;
+  }
+  const properties = error.setError.properties;
+  return Array.isArray(properties) && properties.includes("blobId");
 }
 
 async function placeUpload(
