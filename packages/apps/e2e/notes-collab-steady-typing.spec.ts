@@ -1,7 +1,9 @@
 // Saving while someone keeps typing (live app and API, #1533). Tab A types a
 // marker with a gap under the 2 s debounce between every key. The server and
 // tab B's list must hold a prefix of it before the typing ends, and the rest
-// must be saved with no further keystroke. Run alone: playwright test --config
+// must be saved with no further keystroke. A second test holds a body save and
+// types while it is on its way; that text must follow without another
+// keystroke. Run alone: playwright test --config
 // playwright.live.config.mjs e2e/notes-collab-steady-typing.spec.ts
 import { expect, test } from "./helpers/live-test";
 import {
