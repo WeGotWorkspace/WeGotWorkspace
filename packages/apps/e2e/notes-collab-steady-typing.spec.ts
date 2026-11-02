@@ -46,7 +46,7 @@ test("a save lands while typing continues, and the tail follows without a keystr
     String.fromCharCode(97 + Math.floor(Math.random() * 26)),
   ).join("");
   const title = `Steady ${id}`;
-  const marker = `${id}steadytypingmarkerthatkeepsgoing`.slice(0, 40);
+  const marker = `${id}steadytypingmarkerthatkeepsgoingandgoingandgoingonandon`.slice(0, 60);
   const prefix = marker.slice(0, 8);
   const uid = crypto.randomUUID();
   const seeded = await api(OWNER, "POST", "/notes/items", {
@@ -123,6 +123,98 @@ test("a save lands while typing continues, and the tail follows without a keystr
       test.info().annotations.push({ type: "page error", description: event });
     await contextA.close().catch(() => undefined);
     await contextB.close().catch(() => undefined);
+    await api(OWNER, "DELETE", `/notes/items/${uid}`).catch(() => undefined);
+  }
+});
+
+test("text typed while a save is on its way is saved without another keystroke", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const id = Array.from({ length: 6 }, () =>
+    String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+  ).join("");
+  const title = `Inflight ${id}`;
+  const base = `base${id}`;
+  const first = `first${id}`;
+  const tail = `tail${id}`;
+  const uid = crypto.randomUUID();
+  const seeded = await api(OWNER, "POST", "/notes/items", {
+    uid,
+    notebookId: TEAM_NOTEBOOK,
+    title,
+    body: "x",
+  });
+  expect(seeded.status, JSON.stringify(seeded.json)).toBe(201);
+
+  const events: string[] = [];
+  const context = await openUser(browser, OWNER);
+  const route = `**/api/v1/notes/items/${uid}`;
+  let release: () => void = () => undefined;
+  let routed: Tab | undefined;
+  try {
+    const a = await openNotesTab(context, OWNER, "A", events);
+    expect(await converge([a], uid, 20_000), "the tab loads the note").toEqual({});
+    await showAllItems(a);
+    await a.locator(".list-item__button", { hasText: title }).first().click({ timeout: 15_000 });
+    await a.locator(".note-detail-view__title").waitFor({ timeout: 15_000 });
+    await sleep(1_500);
+    const editor = a.locator(".ProseMirror").first();
+    await editor.waitFor({ timeout: 15_000 });
+    await editor.click();
+    await editor.press("End");
+
+    // A first save is done, so the next one is the only one in flight.
+    await editor.pressSequentially(base, { delay: 20 });
+    await expect
+      .poll(async () => (await serverNote(OWNER, uid))?.body ?? "", {
+        message: "the first save reaches the server",
+        timeout: 15_000,
+        intervals: [500],
+      })
+      .toContain(base);
+
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let heldSaves = 0;
+    let bodySaves = 0;
+    routed = a;
+    await a.route(route, async (r) => {
+      const request = r.request();
+      if (request.method() !== "PUT") return r.continue();
+      bodySaves += 1;
+      if (bodySaves === 1) {
+        heldSaves += 1;
+        await held;
+      }
+      await r.continue();
+    });
+
+    await editor.pressSequentially(first, { delay: 20 });
+    await expect
+      .poll(() => heldSaves, { message: "a save is in flight", timeout: 15_000, intervals: [250] })
+      .toBeGreaterThan(0);
+
+    // Typed while that save is held; no key follows it.
+    await editor.pressSequentially(tail, { delay: 20 });
+    await expect(editor).toContainText(tail);
+    release();
+
+    await expect
+      .poll(async () => (await serverNote(OWNER, uid))?.body ?? "", {
+        message: "the text typed during the save reaches the server",
+        timeout: 8_000,
+        intervals: [500],
+      })
+      .toContain(tail);
+    expect(bodySaves, "a follow-up save was sent after the held one").toBeGreaterThan(1);
+  } finally {
+    release();
+    await routed?.unroute(route).catch(() => undefined);
+    for (const event of events)
+      test.info().annotations.push({ type: "page error", description: event });
+    await context.close().catch(() => undefined);
     await api(OWNER, "DELETE", `/notes/items/${uid}`).catch(() => undefined);
   }
 });
