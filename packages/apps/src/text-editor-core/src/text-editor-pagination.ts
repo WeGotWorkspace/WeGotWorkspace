@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { PaginationPlus } from "tiptap-pagination-plus";
 import { createPageBreakFillPlugin } from "@/text-editor-core/src/text-editor-page-break-fill";
+import { createPageColumnsPlugin } from "@/text-editor-core/src/text-editor-page-columns";
 import { createPageRowsPlugin } from "@/text-editor-core/src/text-editor-page-rows";
 import { textEditorPageBox, type TextEditorPageSetup } from "@/lib/page-format";
 
@@ -136,6 +137,9 @@ export const TextEditorPagination = PaginationPlus.extend({
       createPageBreakFillPlugin({
         isEnabled: () => paginationStorage(editor)?.enabled !== false,
         fallback: () => pageEndFallback(paginationStorage(editor) ?? {}),
+      }),
+      createPageColumnsPlugin({
+        isEnabled: () => paginationStorage(editor)?.enabled !== false,
       }),
       createPageRowsPlugin({
         isEnabled: () => paginationStorage(editor)?.enabled !== false,

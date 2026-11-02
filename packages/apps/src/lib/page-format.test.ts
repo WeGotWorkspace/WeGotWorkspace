@@ -16,20 +16,26 @@ describe("page format table", () => {
     ["a5", 559, 794],
     ["letter", 816, 1056],
     ["legal", 816, 1344],
-  ] as const)("%s portrait is %i × %i CSS px with a 1 inch margin", (format, width, height) => {
-    expect(textEditorPageBox({ format, orientation: "portrait" })).toEqual({
-      width,
-      height,
-      margin: 96,
-    });
+  ] as const)(
+    "%s portrait is about %i × %i CSS px with a 1 inch margin",
+    (format, width, height) => {
+      const box = textEditorPageBox({ format, orientation: "portrait" });
+      expect(Math.round(box.width)).toBe(width);
+      expect(Math.round(box.height)).toBe(height);
+      expect(box.margin).toBe(96);
+    },
+  );
+
+  it("keeps the exact paper size, as print does", () => {
+    expect(textEditorPageBox({ format: "a5", orientation: "portrait" }).width).toBeCloseTo(
+      559.37,
+      2,
+    );
   });
 
   it("swaps width and height in landscape", () => {
-    expect(textEditorPageBox({ format: "a4", orientation: "landscape" })).toEqual({
-      width: 1123,
-      height: 794,
-      margin: 96,
-    });
+    const box = textEditorPageBox({ format: "a4", orientation: "landscape" });
+    expect([Math.round(box.width), Math.round(box.height), box.margin]).toEqual([1123, 794, 96]);
   });
 
   it("writes the print @page rule", () => {
@@ -38,6 +44,12 @@ describe("page format table", () => {
     );
     expect(textEditorPageCssRule({ format: "a5", orientation: "portrait" })).toBe(
       "@page { size: A5 portrait; margin: 1in !important; }",
+    );
+  });
+
+  it("leaves the paper to the print dialog when none is chosen", () => {
+    expect(textEditorPageCssRule({ format: "none", orientation: "landscape" })).toBe(
+      "@page { margin: 1in !important; }",
     );
   });
 
