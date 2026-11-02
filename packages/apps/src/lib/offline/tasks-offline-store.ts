@@ -102,6 +102,12 @@ export async function upsertTaskInCache(
   await tasksItemsTable(db).put(taskRow(task, pendingSync));
 }
 
+export async function getTaskFromCache(username: string, taskId: string): Promise<Task | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await tasksItemsTable(db).get(taskId);
+  return row ? (JSON.parse(row.data) as Task) : null;
+}
+
 export async function removeTaskFromCache(username: string, taskId: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await tasksItemsTable(db).delete(taskId);
