@@ -229,6 +229,27 @@ final class JmapDownloadTicketTest extends WgwDatabaseTestCase
         $this->get($pathTwo)->assertOk();
     }
 
+    public function test_signing_out_without_the_refresh_cookie_still_ends_that_session(): void
+    {
+        $this->seedPrivateFile('bob', 'nocookie.txt', self::BODY);
+        $first = $this->login('bob');
+        $second = $this->login('bob');
+        $blobId = $this->blobIdFor('nocookie.txt', $first['access']);
+        $pathOne = $this->ticketPath($this->issueTicket($first['access'], $blobId, 'nocookie.txt'));
+        $pathTwo = $this->ticketPath($this->issueTicket($second['access'], $blobId, 'nocookie.txt'));
+
+        // Only the access token: the session id travels in its sid claim.
+        $this->flushHeaders();
+        $this->withBearer($first['access'])->postJson('/api/v1/auth/revoke')->assertOk();
+
+        $this->flushHeaders();
+        $this->get($pathOne)->assertNotFound();
+        $this->get($pathTwo)->assertOk();
+        // The session's refresh token is dead too; the other session lives on.
+        $this->postRefresh($first['refresh'])->assertUnauthorized();
+        $this->postRefresh($second['refresh'])->assertOk();
+    }
+
     public function test_revoking_all_sessions_ends_every_ticket(): void
     {
         $this->seedPrivateFile('bob', 'all.txt', self::BODY);

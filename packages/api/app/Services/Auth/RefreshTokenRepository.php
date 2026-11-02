@@ -138,6 +138,23 @@ final class RefreshTokenRepository
     }
 
     /**
+     * End one sign-in session of $username (sign-out with a session-bound
+     * access token): a family id of another user is left alone.
+     */
+    public function revokeFamilyOf(string $username, string $familyId): void
+    {
+        if ($familyId === '') {
+            return;
+        }
+
+        $this->cleanupExpired();
+        ApiRefreshToken::query()
+            ->where('family_id', $familyId)
+            ->where('username', $username)
+            ->update(['revoked' => 1]);
+    }
+
+    /**
      * @param  Closure(string, string): string  $issueSuccessor
      * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
      */

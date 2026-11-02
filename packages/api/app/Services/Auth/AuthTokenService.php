@@ -102,6 +102,12 @@ final class AuthTokenService
         if ($principal !== null && $bearerToken !== null) {
             $this->revokeAccessToken($bearerToken, $principal);
         }
+        // The access token names its session: end it even when the refresh
+        // cookie is not sent, so the session's download tickets end too.
+        $sid = $principal['sid'] ?? null;
+        if ($principal !== null && is_string($sid) && $sid !== '') {
+            $this->refreshTokens->revokeFamilyOf($principal['username'], $sid);
+        }
         if ($refreshToken !== null && $refreshToken !== '') {
             $this->refreshTokens->revoke($refreshToken);
         }
