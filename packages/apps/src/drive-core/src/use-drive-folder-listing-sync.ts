@@ -10,12 +10,17 @@ import {
 import {
   mapDriveListingEntries,
   mergeDriveFolderListing,
+  refreshDriveFolderListing,
 } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";
+import {
+  driveOutboxHasPending,
+  subscribeDriveRemoteChanges,
+} from "@/lib/offline/drive/drive-file-node-push";
 
 /** Waits before each automatic retry of a failed listing. Try again works at any time. */
 export const FOLDER_LISTING_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_000] as const;
@@ -32,6 +37,68 @@ export function isRetryableListingError(error: unknown): boolean {
       : undefined;
   if (typeof status !== "number") return false;
   return status === 408 || status === 429 || status >= 500;
+}
+
+type FolderRemoteRefreshArgs = {
+  operations: DriveAPIOperations;
+  folderViewPath: string;
+  currentUsername: string;
+  groupRootNamesRef: MutableRefObject<Set<string>>;
+  syncedFolderPathRef: MutableRefObject<string | null>;
+  setFiles: Dispatch<SetStateAction<DriveFile[]>>;
+};
+
+/**
+ * Fetch the open folder again, without the pending state, each time another
+ * user's change reaches the Drive cache (#1663). Changes during a fetch
+ * collapse into one more fetch after it. Returns the unsubscribe function.
+ */
+function subscribeFolderRemoteRefresh({
+  operations,
+  folderViewPath,
+  currentUsername,
+  groupRootNamesRef,
+  syncedFolderPathRef,
+  setFiles,
+}: FolderRemoteRefreshArgs): () => void {
+  const controller = new AbortController();
+  const shown = () => !controller.signal.aborted && syncedFolderPathRef.current === folderViewPath;
+  const refresh = async () => {
+    // A folder that is still loading gets the current rows from that load.
+    if (!shown()) return;
+    const apiPath = apiPathFromUiPath(folderViewPath, currentUsername, groupRootNamesRef.current);
+    const [nextData, keepStaged] = await Promise.all([
+      operations.changeDir(apiPath, { signal: controller.signal }),
+      driveOutboxHasPending(currentUsername),
+    ]);
+    if (!shown() || uiPathFromApiPath(nextData.cwd, currentUsername) !== folderViewPath) return;
+    setFiles((previous) =>
+      refreshDriveFolderListing(previous, nextData, currentUsername, keepStaged),
+    );
+  };
+  let running = false;
+  let again = false;
+  const onChange = () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    void (async () => {
+      do {
+        again = false;
+        await refresh().catch((error: unknown) => {
+          if (!controller.signal.aborted) console.warn("[drive] folder refresh failed", error);
+        });
+      } while (again && !controller.signal.aborted);
+      running = false;
+    })();
+  };
+  const unsubscribe = subscribeDriveRemoteChanges(currentUsername, onChange);
+  return () => {
+    unsubscribe();
+    controller.abort();
+  };
 }
 
 export type UseDriveFolderListingSyncArgs = {
@@ -65,6 +132,7 @@ export type DriveFolderListingSync = {
  * A failed live load is kept as {@link DriveFolderListingError} so the pane
  * can tell "could not load" apart from "empty". A retryable failure (429, 5xx,
  * network) loads again on its own, after {@link FOLDER_LISTING_RETRY_DELAYS_MS}.
+ * Another user's change to the open folder loads it again in place (#1663).
  */
 export function useDriveFolderListingSync({
   operations,
@@ -173,6 +241,28 @@ export function useDriveFolderListingSync({
     reloadToken,
     setFiles,
     setHydratedFolderPath,
+    syncedFolderPathRef,
+  ]);
+
+  useEffect(() => {
+    if (!operations || folderViewPath === null || listLoading || !currentUsername.trim()) {
+      return;
+    }
+    return subscribeFolderRemoteRefresh({
+      operations,
+      folderViewPath,
+      currentUsername,
+      groupRootNamesRef,
+      syncedFolderPathRef,
+      setFiles,
+    });
+  }, [
+    currentUsername,
+    folderViewPath,
+    groupRootNamesRef,
+    listLoading,
+    operations,
+    setFiles,
     syncedFolderPathRef,
   ]);
 
