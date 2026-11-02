@@ -18,7 +18,9 @@
 //
 // 2. Cases of their own: sharing (access revoked or made read-only while the
 //    sharee has queued edits, a read-only sharee), a list deleted while
-//    another tab or the teammate edits one of its tasks offline, and inbound
+//    another tab or the teammate edits one of its tasks offline, a task the
+//    teammate adds offline to a list that is made read-only, deleted or no
+//    longer shared before it lands, and inbound
 //    (#1565): changes made elsewhere (through the REST API, as a phone or a
 //    CalDAV client would) against the changes token, the full-list fallback,
 //    queued writes that a re-list must keep, the conflict check, list deletes.
@@ -1083,6 +1085,83 @@ test.describe("list delete with a queued edit", () => {
         await expectLanded(all, id, (s, mate) => !listOf(s, f.listAId) && !hasList(mate, f.listA));
         expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
         expect(await serverTask(f.taskId), "the late edit does not bring the task back").toBeNull();
+      } finally {
+        await closeTabs(session);
+        await cleanUpCase(id);
+      }
+    });
+  }
+});
+
+/** The teammate opens list A and adds a task to it offline: one queued create. */
+async function queueCreateOffline(b: Tab, f: Fixture, title: string) {
+  await b.bringToFront();
+  await b.getByRole("button", { name: f.listA, exact: true }).click();
+  await setTabOffline(b, true);
+  await sleep(1_000);
+  await b.getByRole("textbox", { name: "Task name" }).fill(title);
+  await b.getByRole("button", { name: "Add task" }).click();
+  await row(b, title).waitFor({ timeout: 15_000 });
+  expect((await tabCache(b, f.id)).outbox, `${b.tag} queued the create`).toEqual(["create"]);
+}
+
+test.describe("a refused queued create", () => {
+  const cases = {
+    "made read-only": {
+      run: (_a: Tab, f: Fixture) => shareList(f.listAId, TEAMMATE, "read"),
+      notice: (title: string) =>
+        `You can only view the list for “${title}” now. The task you added offline was not saved.`,
+      keepsList: true,
+    },
+    deleted: {
+      run: (a: Tab, f: Fixture) => ACTIONS.listDelete.run(a, f),
+      notice: (title: string) =>
+        `The list for “${title}” was deleted, or you no longer have access to it. The task you added offline was not saved.`,
+      keepsList: false,
+    },
+    revoked: {
+      run: (a: Tab, f: Fixture) => ACTIONS.revoke.run(a, f),
+      notice: (title: string) =>
+        `The list for “${title}” was deleted, or you no longer have access to it. The task you added offline was not saved.`,
+      keepsList: false,
+    },
+  };
+  for (const [name, c] of Object.entries(cases)) {
+    test(`list ${name} while the teammate adds a task to it offline`, async ({ browser }) => {
+      const id = caseId();
+      let session: Session | null = null;
+      try {
+        const f = await seed(id, { teammate: true });
+        session = await openTabs(browser, "diff");
+        const all = session.tabs;
+        const [a, b] = all as [Tab, Tab];
+        await expectLoaded(session, id);
+        const title = `N ${id}`;
+        await queueCreateOffline(b, f, title);
+
+        await a.bringToFront();
+        await showAllTasks(a);
+        await c.run(a, f);
+        await b.bringToFront();
+        await setTabOffline(b, false);
+
+        // The create leaves the queue and the screen at once, with one notice and no conflict.
+        await expect(b.getByText(c.notice(title))).toBeVisible({ timeout: 30_000 });
+        await expect(row(b, title)).toHaveCount(0);
+        expect((await tabCache(b, f.id)).outbox, "the refused create left the queue").toEqual([]);
+        await expectNoConflict(b);
+        if (!c.keepsList) {
+          // The open list goes too, not left behind under its id.
+          await expect(sidebarList(b, f.listA)).toHaveCount(0);
+          await expect(b).not.toHaveTitle(new RegExp(f.listAId));
+        }
+        expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
+        expect(titled(await serverState(id), title), "the refused create did not land").toBe(
+          undefined,
+        );
+        await hardRefresh([b]);
+        await expectNoConflict(b);
+        await expect(row(b, title)).toHaveCount(0);
       } finally {
         await closeTabs(session);
         await cleanUpCase(id);

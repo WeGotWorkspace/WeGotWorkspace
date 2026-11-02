@@ -23,8 +23,10 @@ import {
  * - `gone`: the server no longer shows the task to this person.
  * - `readOnly`: 403, the task is still there and shows the server copy again.
  * - `notSaved`: 404 on a task the server still has (a move into a list that is gone).
+ * - `createGone`: 404 on a task added offline: its list is deleted or no longer shared.
+ * - `createReadOnly`: 403 on a task added offline: its list is view-only now.
  */
-export type TaskWriteRefusal = "gone" | "readOnly" | "notSaved";
+export type TaskWriteRefusal = "gone" | "readOnly" | "notSaved" | "createGone" | "createReadOnly";
 export type TaskWriteRefused = {
   username: string;
   taskId: string;
@@ -43,7 +45,7 @@ export const subscribeTaskWriteRefused = topic.subscribe;
 
 /** Shape of `createTempTaskId`; a server id like `local-1a2b3c4d` (a task titled "Local") differs. */
 const TEMP_TASK_ID = /^local-[0-9a-f]{32}$/;
-const TASK_OPS = new Set(["update", "move", "delete"]);
+const TASK_OPS = new Set(["create", "update", "move", "delete"]);
 
 function isRefusedStatus(error: unknown): boolean {
   const status = httpStatusFromFlushError(error);
@@ -51,18 +53,20 @@ function isRefusedStatus(error: unknown): boolean {
 }
 
 /**
- * A 403 or 404 on a queued write to a task the server has. Other rows keep the
- * usual handling, also writes to a temp id: that task is not on the server (yet).
+ * A 403 or 404 on a queued create, or on a queued write to a task the server
+ * has. Other rows keep the usual handling, also an edit to a temp id: that task
+ * is not on the server (yet), and its create decides what happens to it.
  */
 export function isRefusedTaskWrite(row: OfflineOutboxRow, error: unknown): boolean {
   if (!TASK_OPS.has(row.op) || !isRefusedStatus(error)) return false;
-  return !TEMP_TASK_ID.test(tasksOutboxTaskId(row) ?? "");
+  return row.op === "create" || !TEMP_TASK_ID.test(tasksOutboxTaskId(row) ?? "");
 }
 
 /**
  * Drop every queued write for the task and put the server's copy in the cache,
  * or take the task out when the server no longer shows it. Throws while the
  * server copy cannot be read (offline, 5xx), so the row stays for the next flush.
+ * A refused create has no server copy: the task added offline leaves the cache.
  */
 export async function settleRefusedTaskWrite(
   username: string,
@@ -72,9 +76,10 @@ export async function settleRefusedTaskWrite(
   const taskId = tasksOutboxTaskId(row);
   if (!taskId) return null;
 
+  const created = row.op === "create";
   let serverTask: Awaited<ReturnType<typeof getTask>> | null = null;
   try {
-    serverTask = await getTask(taskId);
+    if (!created) serverTask = await getTask(taskId);
   } catch (readError) {
     if (!isRefusedStatus(readError)) throw readError;
   }
@@ -84,19 +89,23 @@ export async function settleRefusedTaskWrite(
   const local = cached?.data.tasks.find((task) => task.id === taskId);
   const title = (serverTask?.title || local?.title)?.trim() ?? "";
   for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
-    if (queued.op !== "create" && tasksOutboxTaskId(queued) === taskId)
-      await removeOutboxMutation(username, queued.id);
+    if (tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
   }
   if (serverTask) await upsertTaskInCache(username, serverTask, false);
   else await removeTaskFromCache(username, taskId);
 
   // A queued delete of a task that is gone already has the outcome the person asked for.
   if (row.op === "delete" && !serverTask) return taskId;
-  const reason: TaskWriteRefusal = !serverTask
-    ? "gone"
-    : httpStatusFromFlushError(error) === 403
-      ? "readOnly"
-      : "notSaved";
+  const forbidden = httpStatusFromFlushError(error) === 403;
+  const reason: TaskWriteRefusal = created
+    ? forbidden
+      ? "createReadOnly"
+      : "createGone"
+    : !serverTask
+      ? "gone"
+      : forbidden
+        ? "readOnly"
+        : "notSaved";
   announceTaskWriteRefused({ username, taskId, title, reason });
   return taskId;
 }

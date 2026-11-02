@@ -191,6 +191,45 @@ describe("flushTasksOutbox", () => {
     expect(refusals).toEqual([]);
   });
 
+  it.each([
+    [403, "createReadOnly"],
+    [404, "createGone"],
+  ] as const)(
+    "drops a task added offline, and its edit, when the create gets a %i",
+    async (status, reason) => {
+      const refusals = watchRefusals();
+      const tempId = `local-${"cd34".repeat(8)}`;
+      await upsertTaskInCache(username, { ...task, id: tempId, title: "New" }, true);
+      await enqueueOutboxMutation(username, {
+        id: "queued-create",
+        domain: TASKS_DOMAIN,
+        op: "create",
+        payload: JSON.stringify({
+          tempTaskId: tempId,
+          body: { title: "New", taskListId: task.taskListId },
+        }),
+      });
+      await enqueueOutboxMutation(username, {
+        id: "queued-edit",
+        domain: TASKS_DOMAIN,
+        op: "update",
+        payload: JSON.stringify({ taskId: tempId, patch: { title: "Newer" } }),
+      });
+      createTask.mockRejectedValue(
+        new TasksRequestError(`POST /tasks/items failed (${status})`, status),
+      );
+
+      await flushTasksOutbox(username);
+
+      expect(await listOutboxMutations(username)).toEqual([]);
+      const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+      expect(await tasksItemsTable(db).get(tempId)).toBeUndefined();
+      expect(getTask).not.toHaveBeenCalled();
+      expect(patchTask).not.toHaveBeenCalled();
+      expect(refusals).toEqual([{ username, taskId: tempId, title: "New", reason }]);
+    },
+  );
+
   it("drops a write to a server task whose id starts with local- (#1825)", async () => {
     const refusals = watchRefusals();
     const serverId = "local-1a2b3c4d";

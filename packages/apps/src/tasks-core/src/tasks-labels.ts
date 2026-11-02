@@ -276,15 +276,14 @@ export const defaultTasksLabels: TasksUILabels = {
   conflictFieldLocal: "Your edits",
   conflictFieldServer: "Server version",
   conflictApplyMerge: "Apply merged changes",
-  taskWriteRefused: (title, reason) => {
-    if (reason === "gone") {
-      return `“${title}” was deleted, or you no longer have access to its list. Your offline changes to it were not kept.`;
-    }
-    if (reason === "readOnly") {
-      return `You can only view the list with “${title}” now. Your offline changes to it were not saved.`;
-    }
-    return `Your offline changes to “${title}” could not be saved. It shows the server version again.`;
-  },
+  taskWriteRefused: (title, reason) =>
+    ({
+      gone: `“${title}” was deleted, or you no longer have access to its list. Your offline changes to it were not kept.`,
+      readOnly: `You can only view the list with “${title}” now. Your offline changes to it were not saved.`,
+      notSaved: `Your offline changes to “${title}” could not be saved. It shows the server version again.`,
+      createGone: `The list for “${title}” was deleted, or you no longer have access to it. The task you added offline was not saved.`,
+      createReadOnly: `You can only view the list for “${title}” now. The task you added offline was not saved.`,
+    })[reason],
 };
 
 export function mergeTasksLabels(overrides?: Partial<TasksUILabels>): TasksUILabels {
