@@ -16,11 +16,16 @@ import { DriveUploadPermanentError } from "@/lib/api/wgw/drive-upload-errors";
 import { JmapSetItemError } from "@/lib/jmap-client";
 import { classifyDriveUploadFailure } from "@/lib/offline/drive/upload/drive-upload-failure";
 import type {
+  DriveUploadChunkState,
   DriveUploadConflictChoice,
   DriveUploadNotice,
+  DriveUploadPlacing,
   DriveUploadReplaceTarget,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
-import { transferDriveUpload } from "@/lib/offline/drive/upload/drive-upload-transfer";
+import {
+  nodeHoldsUpload,
+  transferDriveUpload,
+} from "@/lib/offline/drive/upload/drive-upload-transfer";
 
 let server: FakeDriveServer;
 let notices: Array<DriveUploadNotice | undefined>;
@@ -207,5 +212,117 @@ describe("conflict policy at upload time", () => {
     };
     const result = await upload("big.bin");
     expect(result).toMatchObject({ kind: "uploaded", finalName: "big.bin" });
+  });
+
+  describe("after the answer to the last call was lost", () => {
+    let stored: { chunk?: DriveUploadChunkState; placing?: DriveUploadPlacing };
+
+    /** One attempt, resuming from what earlier attempts stored, as the uploader does. */
+    function attempt(
+      name: string,
+      conflict?: DriveUploadConflictChoice,
+      replaceTarget?: DriveUploadReplaceTarget,
+    ) {
+      return transferDriveUpload(server.session(), {
+        username: "ada",
+        folderId: "fn-docs",
+        name,
+        mimeType: "text/plain",
+        blob: patternedFile(name, 50),
+        ...(conflict ? { conflict } : {}),
+        ...(replaceTarget ? { replaceTarget } : {}),
+        ...stored,
+        onProgress: async (update) => {
+          stored.chunk = update.state;
+        },
+        onPlacing: async (placing) => {
+          stored.placing = placing;
+        },
+        onCreated: async (_nodeId, notice) => {
+          notices.push(notice);
+        },
+      });
+    }
+
+    /** The next FileNode/set is applied, but its answer never arrives. */
+    function loseNextSetAnswer() {
+      const set = server.fileNodes.setFileNodes;
+      server.fileNodes.setFileNodes = async (args) => {
+        server.fileNodes.setFileNodes = set;
+        await set(args);
+        throw new TypeError("Failed to fetch");
+      };
+    }
+
+    beforeEach(() => {
+      stored = {};
+    });
+
+    it("finishes with the file its own create made, instead of a second copy", async () => {
+      loseNextSetAnswer();
+      await expect(attempt("report.pdf")).rejects.toThrow("Failed to fetch");
+
+      const result = await attempt("report.pdf");
+
+      expect(result).toMatchObject({ kind: "uploaded", finalName: "report.pdf" });
+      expect(names()).toEqual(["report.pdf"]);
+      expect(notices).toEqual([undefined]);
+      expect(server.uploads).toHaveLength(1);
+    });
+
+    it("finds its own kept-both copy and records its notice once", async () => {
+      existing("report.pdf");
+      loseNextSetAnswer();
+      await expect(attempt("report.pdf")).rejects.toThrow("Failed to fetch");
+
+      const result = await attempt("report.pdf");
+
+      expect(result).toMatchObject({ kind: "uploaded", finalName: "report (1).pdf" });
+      expect(names()).toEqual(["report.pdf", "report (1).pdf"]);
+      expect(notices).toEqual([
+        { type: "kept_both", itemName: "report.pdf", keptAsName: "report (1).pdf" },
+      ]);
+    });
+
+    it("finishes a replace it already made, without falling back to keep both", async () => {
+      const row = existing("report.pdf", "jb-seen");
+      const target = { nodeId: row.id, blobId: "jb-seen" };
+      loseNextSetAnswer();
+      await expect(attempt("report.pdf", "replace", target)).rejects.toThrow("Failed to fetch");
+
+      const result = await attempt("report.pdf", "replace", target);
+
+      expect(result).toMatchObject({ kind: "uploaded", finalName: "report.pdf" });
+      expect(names()).toEqual(["report.pdf"]);
+      expect(notices).toEqual([undefined]);
+      expect(server.fileNodeSets.filter((set) => set.update)).toHaveLength(1);
+    });
+
+    it("still keeps both when another file took the name it was creating", async () => {
+      const set = server.fileNodes.setFileNodes;
+      server.fileNodes.setFileNodes = async () => {
+        server.fileNodes.setFileNodes = set;
+        throw new TypeError("Failed to fetch");
+      };
+      await expect(attempt("report.pdf")).rejects.toThrow("Failed to fetch");
+      existing("report.pdf", "jb-someone-else");
+
+      const result = await attempt("report.pdf");
+
+      expect(result).toMatchObject({ kind: "uploaded", finalName: "report (1).pdf" });
+      expect(notices[0]?.type).toBe("kept_both");
+    });
+  });
+
+  it("matches a file to an upload by size and the content hash both blob ids carry", () => {
+    const hash = "abcdef12".padEnd(40, "0");
+    const file = { id: "7", nodeType: "file", blobId: "fnb-7-abcdef12", size: 5 } as const;
+    const node = { ...file, parentId: "fn-docs", name: "a", type: null };
+
+    expect(nodeHoldsUpload(node, `jb-${hash}`, 5)).toBe(true);
+    expect(nodeHoldsUpload(node, `jb-${hash}`, 6)).toBe(false);
+    expect(nodeHoldsUpload(node, `jb-${"abcdef13".padEnd(40, "0")}`, 5)).toBe(false);
+    expect(nodeHoldsUpload({ ...node, contentHashPending: true }, `jb-${hash}`, 5)).toBe(false);
+    expect(nodeHoldsUpload({ ...node, blobId: "fnb-7-00000000" }, "jb-short", 5)).toBe(false);
   });
 });

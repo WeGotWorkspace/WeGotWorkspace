@@ -145,12 +145,19 @@ final class JmapBlobController
             ? $this->sanitizeHeaderValue($type)
             : $blob->mediaType;
 
-        return $this->ranges->respond($request, $stream, [
+        $headers = [
             'Content-Type' => $contentType,
             'Content-Disposition' => 'attachment; filename="'.$this->sanitizeHeaderValue($name).'"',
-            // Blob content is immutable per blobId (content-addressed).
-            'Cache-Control' => 'private, immutable, max-age=31536000',
-        ]);
+            // A final id is content-addressed and cached for good; a
+            // hash-pending FileNode's provisional id must be revalidated.
+            'Cache-Control' => $blob->immutable ? 'private, immutable, max-age=31536000' : 'private, no-cache',
+        ];
+        $etag = $blob->etag($blobId);
+        if ($etag !== null) {
+            $headers['ETag'] = $etag;
+        }
+
+        return $this->ranges->respond($request, $stream, $headers);
     }
 
     private function username(Request $request): string

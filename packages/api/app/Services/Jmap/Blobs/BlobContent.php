@@ -14,14 +14,20 @@ final class BlobContent
 {
     /**
      * @param  \Closure(): mixed  $opener  returns a readable stream resource, or null
+     * @param  bool  $immutable  true when the blobId can never name other bytes
+     *                           (a true content hash or a write-once id), so
+     *                           it is a strong ETag and may be cached for good;
+     *                           false for a hash-pending FileNode's provisional id
      */
     public function __construct(
         public readonly string $mediaType,
         private readonly \Closure $opener,
+        public readonly bool $immutable = false,
     ) {}
 
     /**
-     * For small stores that keep their bytes inline (contacts media).
+     * For small stores that keep their bytes inline and never rewrite them
+     * under the same id (contacts media).
      */
     public static function fromString(string $contents, string $mediaType): self
     {
@@ -34,7 +40,16 @@ final class BlobContent
             rewind($stream);
 
             return $stream;
-        });
+        }, true);
+    }
+
+    /**
+     * Strong ETag for downloads of $blobId, or null when its bytes can still
+     * change under it (a resumed download must not mix two versions).
+     */
+    public function etag(string $blobId): ?string
+    {
+        return $this->immutable && preg_match('/^[A-Za-z0-9_-]+$/', $blobId) === 1 ? '"'.$blobId.'"' : null;
     }
 
     /**

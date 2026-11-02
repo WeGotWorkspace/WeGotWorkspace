@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\Assembly;
 
 use App\Database\GuardedUpdate;
+use App\Models\JmapBlob;
 use App\Models\JmapBlobAssembly;
 use App\Models\JmapBlobAssemblyPart;
 use App\Services\Jmap\Blobs\FreeSpaceSource;
@@ -68,7 +69,7 @@ final class BlobAssemblyService
             return ['type' => 'tooLarge', 'description' => 'size exceeds maxSizeAssembly.', 'maxSize' => $max];
         }
         $free = $this->freeSpace->freeBytes($this->storage->data());
-        if ($free !== null && $size > $free) {
+        if ($free !== null && ! $this->fitsFreeSpace($username, $size, $free)) {
             return ['type' => 'overQuota', 'description' => 'Not enough free space for this assembly.'];
         }
 
@@ -256,8 +257,18 @@ final class BlobAssemblyService
             ->get();
         foreach ($rows as $row) {
             // An append still holds the lease: leave the row for the next run.
-            if ($this->takeLease($row) !== null) {
-                $this->discard($row);
+            $token = $this->takeLease($row);
+            if ($token === null) {
+                continue;
+            }
+            // Re-checked under the lease: an append or a part claim may have
+            // renewed the assembly since it was listed.
+            $fresh = JmapBlobAssembly::query()->find($row->id);
+            if ($fresh !== null && $fresh->expires_at->isPast()) {
+                $this->discard($fresh);
+            } elseif ($fresh !== null) {
+                JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)
+                    ->update(['locked_until' => null, 'lease_token' => null]);
             }
         }
 
@@ -288,6 +299,24 @@ final class BlobAssemblyService
     }
 
     // ---------------------------------------------------------------
+
+    /**
+     * Parts already stored for this account sit on the same disk and are
+     * deleted as they are appended (a replacement for an expired assembly
+     * is created while its parts are still there), so only the parts still
+     * to upload are new, plus one part of overlap while a part is appended.
+     * Other blobs of the account can make that estimate too generous; a
+     * write that then does not fit still ends as 507.
+     */
+    private function fitsFreeSpace(string $username, int $size, int $free): bool
+    {
+        $stored = min($size, (int) JmapBlob::query()->where('username', $username)->sum('size_bytes'));
+        if ($stored === 0) {
+            return $size <= $free;
+        }
+
+        return ($size - $stored) + min($size, JmapBlobLimits::maxSizeUpload()) <= $free;
+    }
 
     private function discard(JmapBlobAssembly $row): void
     {
@@ -499,8 +528,9 @@ final class BlobAssemblyService
 
     /**
      * Parts are deleted as they are appended (peak disk ~1× the file),
-     * unless the same blobId comes back later in this call or a reference
-     * checker (another assembly's claim, an attach in progress) vetoes it.
+     * unless the same blobId comes back later in this call, another upload
+     * of the same bytes still holds the id, or a reference checker (another
+     * assembly's claim, an attach in progress) vetoes it.
      *
      * @param  list<string>  $consumed
      * @param  list<array{index: int, blobId: string}>  $parts
@@ -519,10 +549,10 @@ final class BlobAssemblyService
             }
         }
         foreach (array_unique($consumed) as $blobId) {
-            if (isset($neededLater[$blobId]) || $this->references->isReferenced($row->username, $blobId)) {
+            if (isset($neededLater[$blobId])) {
                 continue;
             }
-            $this->blobs->delete($row->username, $blobId);
+            $this->blobs->consumeUpload($row->username, $blobId, fn (): bool => $this->references->isReferenced($row->username, $blobId));
         }
     }
 

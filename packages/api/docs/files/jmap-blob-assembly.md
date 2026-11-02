@@ -10,7 +10,7 @@ Drive uploads must work on small shared hosts: a low `post_max_size`, a `max_exe
 |-------|-------|------------|
 | `maxSizeUpload` | core capability | the smaller of `WGW_JMAP_MAX_SIZE_UPLOAD` and `post_max_size` (0 or unparseable ignored). `upload_max_filesize` is not used: it applies to multipart file uploads, and `/jmap/upload` takes a raw body. Limits PHP cannot see (nginx `client_max_body_size`, Apache `LimitRequestBody`, a proxy) are handled by the client adapting its part size (#1519). |
 | `stepBudgetBytes` | blob-assembly capability | `max_execution_time` (0 → `WGW_JMAP_STEP_UNLIMITED_SECONDS`, 60) × `WGW_JMAP_STEP_TIME_SHARE` (0.5) × `WGW_JMAP_STEP_THROUGHPUT_BYTES` (8 MiB/s); at least 1 MiB. 120 MiB at 30 s. Bounds every `Blob/upload`, assembly append and finish, hash rebuild, staged copy, and discovered-file hashing. |
-| `maxSizeBlobSet` | blob capability | `WGW_JMAP_MAX_SIZE_BLOB_SET` in octets; unset, empty or `"null"` (the default) for no limit |
+| `maxSizeBlobSet` | blob capability | `WGW_JMAP_MAX_SIZE_BLOB_SET` in octets; unset, empty, `"null"` or `0` for no limit (the default is unset) |
 | `maxDataSources` | blob capability | `min(1024, max(64, max(1, floor(stepBudgetBytes / maxSizeUpload))))` |
 
 `maxDataSources` deviation: RFC 9404 requires at least 64. Where the step budget cannot cover 64 parts, the server still advertises 64 and refuses up front what one call cannot do (below). The 1024 ceiling bounds per-call bookkeeping and does not depend on `maxSizeBlobSet`.
@@ -59,7 +59,7 @@ Account value: `{maxSizeAssembly, stepBudgetBytes, assemblyTtlSeconds}`.
 
 | Method | Arguments → response |
 |--------|----------------------|
-| `BlobAssembly/set` | `create: {cid: {size, type?}}` → `created.cid: {id, size, type, expires}`; `destroy: [id]` abandons one. No `update`. `size > maxSizeAssembly` → `tooLarge`; not enough free space → `overQuota`. |
+| `BlobAssembly/set` | `create: {cid: {size, type?}}` → `created.cid: {id, size, type, expires}`; `destroy: [id]` abandons one. No `update`. `size > maxSizeAssembly` → `tooLarge`; not enough free space → `overQuota` (see Running out of space). |
 | `BlobAssembly/append` | `{id, parts: [{index, blobId}]}` → `{id, accepted: [index], rebuiltOnly, hashRebuildPending, received, nextIndex, expires}` |
 | `BlobAssembly/finish` | `{id}` → `{id, blobId, size, type, hashRebuildPending}` |
 | `BlobAssembly/get` | standard `/get` → `id, size, type, received, nextIndex, acceptedParts, hashRebuildPending, status, blobId, expires` |
@@ -74,7 +74,7 @@ Account value: `{maxSizeAssembly, stepBudgetBytes, assemblyTtlSeconds}`.
 
 **Finishing** is terminal and safe to repeat. It checks the total length, finalizes the hash, stores it (`final_sha256`) before committing — a finalized `HashContext` cannot be updated or finalized again (`TypeError`), so a finish retried after a time-out reuses the stored hash — and turns the assembly into one ordinary `jb-` blob whose id is the true sha256. A file uploaded in parts gets the same `fnb-` id as the same file uploaded in one piece. `blobId: null` with `hashRebuildPending: true` means the call spent its budget rebuilding the hash; repeat it.
 
-**TTL.** An assembly has its own TTL (`WGW_JMAP_ASSEMBLY_TTL_HOURS`, 24, renewed by every append). An abandoned assembly expires and releases its parts; it never pins them forever.
+**TTL.** An assembly has its own TTL (`WGW_JMAP_ASSEMBLY_TTL_HOURS`, 24, renewed by every append and by every part uploaded with its `Wgw-Assembly-Id`). An abandoned assembly expires and releases its parts; it never pins them forever.
 
 ## One meaning for `content_sha256`
 
@@ -93,11 +93,14 @@ While a hash is pending, `blobId()` still returns a valid `fnb-{nodeId}-{8 hex}`
 `FileNode/set` attaches a `jb-` blob by streaming, never through a PHP string (`FileNodeBlobAttacher`). Attaching is a **move** (a rename from `wgw_data` to `wgw_files`) only when all of these hold:
 
 - this is the last reference to that `blobId` in the request (content-addressed blobs can be referenced twice, e.g. two names with the same content);
+- no other upload holds that `blobId`: ids are content-addressed, so a second upload of the same bytes (another device, a finished assembly) gets the same row, and `jmap_blobs.upload_count` counts them. A copy never counts down, because a client may repeat a `FileNode/set` whose response it lost; the blob then expires by its TTL;
 - no reference checker vetoes it (a part claim, an attach copy in progress);
 - both disks are local and on one device;
 - the blob row was deleted inside a `lockForUpdate` transaction, so a concurrent request cannot validate the blob and then find its file gone (it gets `invalidProperties` "Unknown blobId" instead).
 
 Every other attach is a **streamed copy** through a staging file under `wgw_files:.wgw-staging/` (a failed copy never truncates the target), with `jmap_blobs.in_use_until` set so a concurrent attach copies too. A copy larger than `stepBudgetBytes` is split across calls: that create or update fails with SetError `attachInProgress` (`copied`, `size`), and the client repeats the same `FileNode/set` until it succeeds. Note markdown under `.notes` keeps the string path (small).
+
+When `onExists: "replace"` or `"newest"` puts a file at the key of an existing file, the old file is not unlinked first: the final rename replaces it, and the old node is dropped only after the rename succeeded, so a failed placement leaves the old file and node as they were. A grantee's replace still moves the old file into the owner's trash first.
 
 Behaviour change: a blob attached by move is consumed. RFC 8620 lets an unreferenced upload live for an hour; here the next `FileNode/set` that names it gets "Unknown blobId", so a client uploads once per file.
 
@@ -129,13 +132,13 @@ Why not the standard tools: `ifInState` is account-wide, and `onExists: "newest"
 
 ## Running out of space
 
-A write that fails for lack of space — including a host refusing it because the account's hosting quota is full (`EDQUOT`), which `disk_free_space()` does not show — is `507` with the insufficient-storage problem for `/jmap/upload` and for any `/jmap` request whose assembly step or join hit it, and SetError `overQuota` in `FileNode/set`. `Blob/upload`, `BlobAssembly/set` create, and copies pre-check free space for the bytes they will add.
+A write that fails for lack of space — including a host refusing it because the account's hosting quota is full (`EDQUOT`), which `disk_free_space()` does not show — is `507` with the insufficient-storage problem for `/jmap/upload` and for any `/jmap` request whose assembly step or join hit it, and SetError `overQuota` in `FileNode/set`. `Blob/upload`, `BlobAssembly/set` create, and copies pre-check free space for the bytes they will add. For an assembly that is the declared size while the account stores no blobs; otherwise the parts still to upload (`size` minus the account's stored blob bytes, at least 0) plus one part of overlap (`min(size, maxSizeUpload)`), because stored parts are on the same disk and are deleted as they are appended. A replacement for an expired assembly is created while its parts are still stored.
 
 ## Cleanup without cron
 
 `wgw:jmap:blobs-gc` is not in the schedule. Besides it, a share of `/jmap/upload` and `Blob/upload` requests (`WGW_JMAP_MAINTENANCE_SHARE`, 0.05) runs one bounded round: expired assemblies (releasing their claims), expired blobs, staged copies nobody resumed, orphaned temp files, expired download tickets, and a slice of pending content hashes.
 
-After an append, each consumed part is deleted at once unless the same `blobId` comes back later in that call or a reference checker vetoes it. The checkers (`JmapBlobGarbageCollector::CHECKERS`, also used by the GC) are:
+After an append, each consumed part is deleted at once unless the same `blobId` comes back later in that call, another upload of the same bytes still holds it (`upload_count` is counted down by one instead; an append consumes each part once), or a reference checker vetoes it. The GC re-checks a blob's expiry under its row lock right before deleting it, and the assembly expiry re-checks under the assembly's lease, so a re-upload, an append, or a part claim that renewed one meanwhile keeps it. The checkers (`JmapBlobGarbageCollector::CHECKERS`, also used by the GC) are:
 
 - `BlobAssemblyClaimChecker`: another open assembly claimed the part (uploaded with `Wgw-Assembly-Id`);
 - `FileNodeAttachChecker`: a FileNode attach is still copying the blob (`in_use_until`, or a staged copy).
@@ -144,4 +147,4 @@ The assembled result is never deleted by this step.
 
 ## Tables
 
-`jmap_blob_assemblies`, `jmap_blob_assembly_parts`, `jmap_blob_claims`, `jmap_download_tickets`, `jmap_content_hash_jobs`, `jmap_attach_staging`, plus `jmap_file_nodes.hash_pending` and `jmap_blobs.in_use_until`. See [sql-schema.md](../sql-schema.md).
+`jmap_blob_assemblies`, `jmap_blob_assembly_parts`, `jmap_blob_claims`, `jmap_download_tickets`, `jmap_content_hash_jobs`, `jmap_attach_staging`, plus `jmap_file_nodes.hash_pending`, `jmap_blobs.in_use_until` and `jmap_blobs.upload_count`. See [sql-schema.md](../sql-schema.md).

@@ -159,19 +159,20 @@ export async function checkDriveUploadBatchSpace(
 
 /**
  * Whether a fresh `Quota/get` says the root of `item`'s target folder has room
- * for the rest of it. Used to resume the `paused_server_full` queue; never
- * from a stored answer, and never when the root has no quota.
+ * for the rest of it (`room`) or not (`full`). Used to resume the
+ * `paused_server_full` queue; never from a stored answer. `unknown` when the
+ * root has no quota or no fresh answer came.
  */
-export async function serverHasSpaceForDriveUpload(
+export async function serverSpaceForDriveUpload(
   username: string,
   item: Pick<OfflineDriveUploadItemRow, "size" | "bytesDone">,
   folderPath: string | undefined,
-): Promise<boolean> {
+): Promise<"room" | "full" | "unknown"> {
   const rootPath = driveUploadRootPath(folderPath);
-  if (!rootPath) return false;
+  if (!rootPath) return "unknown";
   const reading = await readDriveQuotas(username, { requireFresh: true });
-  if (!reading) return false;
+  if (!reading) return "unknown";
   const quota = await quotaForRoot(username, rootPath, reading);
-  if (!quota) return false;
-  return quota.hardLimit - quota.used >= remainingBytes(item);
+  if (!quota) return "unknown";
+  return quota.hardLimit - quota.used >= remainingBytes(item) ? "room" : "full";
 }

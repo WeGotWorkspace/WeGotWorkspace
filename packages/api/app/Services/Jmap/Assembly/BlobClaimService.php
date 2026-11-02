@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Assembly;
 
+use App\Database\GuardedUpdate;
 use App\Models\JmapBlobAssembly;
 use App\Models\JmapBlobClaim;
+use App\Services\Jmap\Blobs\JmapBlobLimits;
+use Illuminate\Support\Carbon;
 
 /**
  * Part claims (#1500): a part uploaded with `Wgw-Assembly-Id` is claimed by
@@ -16,14 +19,19 @@ final class BlobClaimService
 {
     public function claim(string $username, string $assemblyId, string $blobId): void
     {
-        $open = JmapBlobAssembly::query()
-            ->where('assembly_id', $assemblyId)
-            ->where('username', $username)
-            ->where('status', BlobAssemblyService::STATUS_OPEN)
-            ->exists();
+        // Uploading the parts can outlast the TTL before the first append
+        // renews it: every claimed part renews it too, as an append does.
+        $open = GuardedUpdate::matched(
+            JmapBlobAssembly::query()
+                ->where('assembly_id', $assemblyId)
+                ->where('username', $username)
+                ->where('status', BlobAssemblyService::STATUS_OPEN)
+                ->where('expires_at', '>', Carbon::now()),
+            ['expires_at' => Carbon::now()->addSeconds(JmapBlobLimits::assemblyTtlSeconds())],
+        );
         if (! $open) {
-            // An unknown or foreign id is ignored: the claim is a hint for
-            // cleanup, never a reason to refuse an upload.
+            // An unknown, expired or foreign id is ignored: the claim is a
+            // hint for cleanup, never a reason to refuse an upload.
             return;
         }
         JmapBlobClaim::query()->firstOrCreate(

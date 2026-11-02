@@ -25,6 +25,7 @@ import {
   type DriveUploadItemError,
   type DriveUploadKeepOffline,
   type DriveUploadNotice,
+  type DriveUploadPlacing,
   type DriveUploadReplaceTarget,
   type DriveUploadSpaceCheck,
   type DriveUploadTargetFolder,
@@ -272,11 +273,16 @@ export async function retryDriveUploadItem(username: string, itemId: string): Pr
 /**
  * Lift the `paused_server_full` pause: the items that hit a full server go
  * back to the queue, resuming from their stored parts. Returns how many.
+ * `probe`: an automatic try while the free space is unknown, counted on
+ * each item (`serverFullProbes`) so the next one waits longer.
  */
-export async function resumeDriveUploadQueue(username: string): Promise<number> {
+export async function resumeDriveUploadQueue(
+  username: string,
+  options: { probe?: boolean } = {},
+): Promise<number> {
   const failed = await tables(username).items.where("status").equals("failed").toArray();
   const full = failed.filter((item) => item.error?.code === "server_full").map((item) => item.id);
-  return requeueFailedItems(username, full);
+  return requeueFailedItems(username, full, options);
 }
 
 /** *Retry all failed* in the Uploads view. Returns how many items went back to the queue. */
@@ -285,7 +291,11 @@ export async function retryAllFailedDriveUploads(username: string): Promise<numb
   return requeueFailedItems(username, failedIds);
 }
 
-async function requeueFailedItems(username: string, itemIds: readonly string[]): Promise<number> {
+async function requeueFailedItems(
+  username: string,
+  itemIds: readonly string[],
+  options: { probe?: boolean } = {},
+): Promise<number> {
   const { db, items, entries } = tables(username);
   const retried = await db.transaction("rw", items, entries, async () => {
     let count = 0;
@@ -293,12 +303,13 @@ async function requeueFailedItems(username: string, itemIds: readonly string[]):
       const item = await items.get(itemId);
       if (!item || !canRetryDriveUpload(item)) continue;
       // Parts already on the server stay: a retry resumes from the next one.
-      const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
+      const { error: _error, retryAt: _retryAt, phase: _phase, serverFullProbes, ...rest } = item;
       await items.put({
         ...rest,
         status: "queued",
         bytesDone: chunkBytes(item.chunk),
         transientFailures: 0,
+        ...(options.probe ? { serverFullProbes: (serverFullProbes ?? 0) + 1 } : {}),
       });
       await setUploadPlaceholderStatus(username, itemId, "queued");
       count += 1;
@@ -420,6 +431,22 @@ export async function listStartableDriveUploads(
 }
 
 /**
+ * When the next waiting item may start (its `retryAt` after a hiccup), so
+ * every tab can wake itself then, not only the tab that saw the hiccup.
+ * Null when no item waits for a time.
+ */
+export async function nextDriveUploadRetryAt(username: string): Promise<number | null> {
+  const { batches, items } = await readDriveUploadQueueRows(username);
+  const released = new Set(batches.filter((b) => b.status === "released").map((b) => b.id));
+  const now = Date.now();
+  const due = items
+    .filter((item) => item.status !== "failed" && released.has(item.batchId))
+    .map((item) => item.retryAt ?? 0)
+    .filter((retryAt) => retryAt > now);
+  return due.length > 0 ? Math.min(...due) : null;
+}
+
+/**
  * Mark one item `uploading`. Parts already on the server count as done.
  * False when it was removed or changed meanwhile.
  */
@@ -493,6 +520,18 @@ export async function recordDriveUploadCreated(
     if (batch) await batches.put({ ...batch, notices: [...batch.notices, notice] });
   });
   if (notice) notifyDriveUploadQueueChanged(username);
+}
+
+/**
+ * Remember the create about to be sent, before it is sent: a retry after a
+ * lost answer recognises its own file by it (see `transferDriveUpload`).
+ */
+export async function recordDriveUploadPlacing(
+  username: string,
+  itemId: string,
+  placing: DriveUploadPlacing,
+): Promise<void> {
+  await tables(username).items.update(itemId, { placing });
 }
 
 /** `skip` met a taken name: the item and its placeholder go, nothing was created. */

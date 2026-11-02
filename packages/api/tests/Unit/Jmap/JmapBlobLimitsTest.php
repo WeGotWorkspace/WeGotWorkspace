@@ -85,6 +85,13 @@ final class JmapBlobLimitsTest extends TestCase
         config(['wgw.jmap.max_size_blob_set' => 'null']);
         $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
 
+        // 0 is no limit too, as the client reads it: a limit of 0 octets
+        // would refuse every non-empty upload.
+        config(['wgw.jmap.max_size_blob_set' => '0']);
+        $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
+        config(['wgw.jmap.max_size_blob_set' => 0]);
+        $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
+
         config(['wgw.jmap.max_size_blob_set' => '4000000000']);
         $this->assertSame(4_000_000_000, JmapBlobLimits::maxSizeBlobSet());
     }

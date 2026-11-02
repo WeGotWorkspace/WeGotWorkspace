@@ -65,14 +65,21 @@ final class JmapDownloadTicketController
             ? $ticket->media_type
             : $redeemed['blob']->mediaType;
 
-        return $this->ranges->respond($request, $stream, [
+        $headers = [
             'Content-Type' => $this->sanitize($type),
             'Content-Disposition' => 'attachment; filename="'.$this->sanitize((string) $ticket->file_name).'"',
             'Cache-Control' => 'private, no-store',
             // An unauthenticated URL on our origin: never let it render.
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "sandbox; default-src 'none'",
-        ], $this->tickets->streamingActivity($ticket));
+        ];
+        // The validator lets a browser resume a dropped download (If-Range).
+        $etag = $redeemed['blob']->etag((string) $ticket->blob_id);
+        if ($etag !== null) {
+            $headers['ETag'] = $etag;
+        }
+
+        return $this->ranges->respond($request, $stream, $headers, $this->tickets->streamingActivity($ticket));
     }
 
     private function sanitize(string $value): string

@@ -244,7 +244,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke current access token and the HttpOnly refresh cookie */
+        /**
+         * Sign out: revoke the access token and its session
+         * @description Revokes the presented access token and ends its sign-in session (the `sid` claim), so that session's refresh tokens and download tickets stop working even when the HttpOnly refresh cookie is not sent. A refresh cookie that is sent ends its session too. Other sessions of the user stay signed in.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2511,7 +2514,7 @@ export interface paths {
         };
         /**
          * Download file content
-         * @description Streams with a single `Range` request honoured (206 / 416) and `Content-Length` from the file at stream time (#1500).
+         * @description Streams with a single `Range` request honoured (206 / 416), `If-Range` and `If-None-Match` against the file's validators, and `Content-Length` from the file at stream time (#1500).
          */
         get: {
             parameters: {
@@ -2524,6 +2527,10 @@ export interface paths {
                 header?: {
                     /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
                     Range?: string;
+                    /** @description The `ETag` or `Last-Modified` of the earlier response. When it does not match the file now, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
                 };
                 path?: never;
                 cookie?: never;
@@ -2535,6 +2542,12 @@ export interface paths {
                     headers: {
                         "Accept-Ranges"?: "bytes";
                         "Content-Length"?: number;
+                        /** @description Strong tag from the file's inode, size, and mtime at stream time. With `Last-Modified`, absent while the file's mtime is in the current second (a second write in that second could keep both). */
+                        ETag?: string;
+                        /** @description The file's mtime; absent whenever `ETag` is. */
+                        "Last-Modified"?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
                         [name: string]: unknown;
                     };
                     content: {
@@ -2546,11 +2559,23 @@ export interface paths {
                     headers: {
                         "Content-Range"?: string;
                         "Content-Length"?: number;
+                        /** @description Strong tag from the file's inode, size, and mtime at stream time. With `Last-Modified`, absent while the file's mtime is in the current second (a second write in that second could keep both). */
+                        ETag?: string;
+                        /** @description The file's mtime; absent whenever `ETag` is. */
+                        "Last-Modified"?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/octet-stream": string;
                     };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these. */
                 404: {
@@ -4823,7 +4848,7 @@ export interface paths {
         };
         /**
          * JMAP blob download
-         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.
+         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` with `If-Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.
          */
         get: {
             parameters: {
@@ -4834,6 +4859,10 @@ export interface paths {
                 header?: {
                     /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
                     Range?: string;
+                    /** @description The `ETag` of the earlier response. When it is not the current one, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. A date or a weak tag never matches here: only a final blobId has a validator. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
                 };
                 path: {
                     accountId: string;
@@ -4849,6 +4878,12 @@ export interface paths {
                     headers: {
                         "Accept-Ranges"?: "bytes";
                         "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        /** @description `private, immutable, max-age=31536000` for a final id; `private, no-cache` for a hash-pending FileNode's provisional id. */
+                        "Cache-Control"?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
                         [name: string]: unknown;
                     };
                     content: {
@@ -4860,11 +4895,21 @@ export interface paths {
                     headers: {
                         "Content-Range"?: string;
                         "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/octet-stream": string;
                     };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 403: components["responses"]["JmapForbidden"];
                 /** @description Unknown blob, or accountId does not match the authenticated principal (problem+json). */
@@ -7817,7 +7862,7 @@ export interface paths {
         };
         /**
          * Download a blob through a ticket
-         * @description WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.
+         * @description WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range and `If-Range` support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.
          */
         get: {
             parameters: {
@@ -7825,6 +7870,10 @@ export interface paths {
                 header?: {
                     /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
                     Range?: string;
+                    /** @description The `ETag` of the earlier response. When it is not the current one, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. A date or a weak tag never matches here: only a final blobId has a validator. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
                 };
                 path: {
                     secret: string;
@@ -7840,6 +7889,10 @@ export interface paths {
                     headers: {
                         "Accept-Ranges"?: "bytes";
                         "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
                         [name: string]: unknown;
                     };
                     content: {
@@ -7851,11 +7904,21 @@ export interface paths {
                     headers: {
                         "Content-Range"?: string;
                         "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/octet-stream": string;
                     };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Unknown, expired, or revoked ticket, or the blob is no longer readable (problem+json). */
                 404: {

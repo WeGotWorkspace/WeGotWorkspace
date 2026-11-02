@@ -19,8 +19,8 @@ import type {
 
 /**
  * What the uploader does with a failed attempt:
- * - `fail`: the item stops with that reason (`keepProgress`: *Retry* resumes
- *   from the stored parts, for a full server);
+ * - `fail`: the item stops with that reason (`keepProgress`: *Retry* or a new
+ *   folder resumes from the stored parts, for a full server or a folder gone);
  * - `transient`: back in the queue after a wait that grows per attempt, counted;
  * - `network`: back in the queue after a wait, not counted.
  */
@@ -93,7 +93,8 @@ export function classifyDriveUploadFailure(error: unknown): DriveUploadFailure {
   }
   if (isForbidden(error)) return fail("forbidden", "You can no longer add files to this folder.");
   if (error instanceof DriveUploadTargetMissingError || isMissingParent(error)) {
-    return fail("target_missing", "The folder this file was going to no longer exists.");
+    // Only the folder changes on a re-target: the bytes on the server stay useful.
+    return fail("target_missing", "The folder this file was going to no longer exists.", true);
   }
   if (error instanceof DriveUploadPermanentError) return fail("permanent", error.message);
   if (error instanceof DOMException && error.name === "AbortError") return { kind: "network" };

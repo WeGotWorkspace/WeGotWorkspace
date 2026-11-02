@@ -229,6 +229,50 @@ final class JmapDownloadTicketTest extends WgwDatabaseTestCase
         $this->get($pathTwo)->assertOk();
     }
 
+    public function test_signing_out_without_the_refresh_cookie_still_ends_that_session(): void
+    {
+        $this->seedPrivateFile('bob', 'nocookie.txt', self::BODY);
+        $first = $this->login('bob');
+        $second = $this->login('bob');
+        $blobId = $this->blobIdFor('nocookie.txt', $first['access']);
+        $pathOne = $this->ticketPath($this->issueTicket($first['access'], $blobId, 'nocookie.txt'));
+        $pathTwo = $this->ticketPath($this->issueTicket($second['access'], $blobId, 'nocookie.txt'));
+
+        // Only the access token: the session id travels in its sid claim.
+        $this->flushHeaders();
+        $this->withBearer($first['access'])->postJson('/api/v1/auth/revoke')->assertOk();
+
+        $this->flushHeaders();
+        $this->get($pathOne)->assertNotFound();
+        $this->get($pathTwo)->assertOk();
+        // The session's refresh token is dead too; the other session lives on.
+        $this->postRefresh($first['refresh'])->assertUnauthorized();
+        $this->postRefresh($second['refresh'])->assertOk();
+    }
+
+    public function test_a_dropped_ticket_download_resumes_only_against_the_same_bytes(): void
+    {
+        $this->seedPrivateFile('bob', 'resume.txt', self::BODY);
+        $token = $this->userBearerToken();
+        $blobId = $this->blobIdFor('resume.txt', $token);
+        $path = $this->ticketPath($this->issueTicket($token, $blobId, 'resume.txt'));
+        $this->flushHeaders();
+
+        $first = $this->get($path)->assertOk();
+        $etag = (string) $first->headers->get('ETag');
+        $this->assertSame('"'.$blobId.'"', $etag);
+        $this->assertSame('no', $first->headers->get('X-Accel-Buffering'));
+
+        $resume = $this->withHeaders(['Range' => 'bytes=9-', 'If-Range' => $etag])->get($path);
+        $resume->assertStatus(206);
+        $this->assertSame(substr(self::BODY, 9), $resume->streamedContent());
+
+        $this->flushHeaders();
+        $restart = $this->withHeaders(['Range' => 'bytes=9-', 'If-Range' => '"jb-0000"'])->get($path);
+        $restart->assertOk();
+        $this->assertSame(self::BODY, $restart->streamedContent());
+    }
+
     public function test_revoking_all_sessions_ends_every_ticket(): void
     {
         $this->seedPrivateFile('bob', 'all.txt', self::BODY);

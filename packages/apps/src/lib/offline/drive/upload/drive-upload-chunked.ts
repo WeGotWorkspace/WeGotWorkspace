@@ -298,8 +298,11 @@ class ChunkedUpload {
           step,
           this.input.signal,
         );
-        this.state.appendedParts = appendedAfter(this.state.appendedParts, result);
+        const before = this.state.appendedParts;
+        this.state.appendedParts = appendedAfter(before, result);
         resynced = false;
+        // Parts expire one step at a time after a long pause: the limit is per step.
+        if (this.state.appendedParts > before) missingRounds = 0;
       } catch (error) {
         if (error instanceof DriveAssemblyStepTooLargeError) {
           await this.shrinkStep(step.length);

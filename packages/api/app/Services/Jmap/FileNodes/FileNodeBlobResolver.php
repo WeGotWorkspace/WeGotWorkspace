@@ -69,6 +69,9 @@ final class FileNodeBlobResolver
                     return null;
                 }
             },
+            // A provisional (hash-pending) id is only size and mtime: other
+            // bytes can appear under it.
+            ! (bool) $node->hash_pending,
         );
     }
 }

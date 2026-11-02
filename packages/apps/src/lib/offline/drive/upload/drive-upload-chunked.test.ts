@@ -478,6 +478,27 @@ describe("chunked upload", () => {
     expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
+  it("resumes after every stored part expired, re-sending them step by step without giving up", async () => {
+    server.maxSizeUpload = 200;
+    server.stepBudgetBytes = 200;
+    const file = patternedFile("big.bin", 1_000);
+    const original = server.call.bind(server);
+    let expired = false;
+    vi.spyOn(server, "call").mockImplementation(async (name, args, options) => {
+      // A pause longer than the part TTL: every part is gone before the first step.
+      if (name === "BlobAssembly/append" && !expired) {
+        expired = true;
+        server.expire(lastState().parts.map((part) => part.blobId));
+      }
+      return original(name, args, options);
+    });
+    const blobId = await send(file);
+
+    // Five steps, each finding its one part missing: more than three rounds in all.
+    expect(server.uploads).toHaveLength(10);
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
+  });
+
   it("opens a new assembly when the stored one expired, and re-sends the parts it lost", async () => {
     server.maxSizeUpload = 200;
     server.stepBudgetBytes = 400;

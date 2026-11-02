@@ -432,7 +432,7 @@ final class DriveService
         return $virtual;
     }
 
-    /** Streamed with Range support; Content-Length from the file at stream time (#1500). */
+    /** Streamed with Range and If-Range support; Content-Length from the file at stream time (#1500). */
     private function streamDownload(string $virtual, Request $request): Response
     {
         $key = $this->paths->virtualToStorageKey($virtual);
@@ -442,10 +442,17 @@ final class DriveService
             throw new \RuntimeException('File not found.');
         }
 
+        // Validators from the opened file, not the index: they describe the
+        // bytes being sent even after an out-of-band write the index has not
+        // seen, and a hash-pending file has no true hash yet. Without an
+        // explicit Cache-Control, Last-Modified makes Symfony send
+        // `private, must-revalidate`, which lets browsers reuse the body by
+        // heuristic freshness.
         return $this->ranges->respond($request, $stream, [
             'Content-Type' => $this->disk()->mimeType($key) ?: 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="'.$name.'"',
-        ]);
+            'Cache-Control' => 'private, no-cache',
+        ] + RangeResponder::fileValidators($stream));
     }
 
     /**

@@ -27,10 +27,11 @@ use Illuminate\Support\Str;
  *
  * Attaching is a move (rename across the wgw_data and wgw_files disks) only
  * when this is the last reference to the blob — no later create or update
- * in the same FileNode/set uses it, no reference checker vetoes it, both
- * disks are local on one device — and the blob row was deleted inside a
- * lockForUpdate transaction, so a concurrent request cannot validate the
- * blob and then find its file gone. Everything else is a streamed copy
+ * in the same FileNode/set uses it, no other upload of the same bytes holds
+ * the id (`upload_count`), no reference checker vetoes it, both disks are
+ * local on one device — and the blob row was deleted inside a lockForUpdate
+ * transaction, so a concurrent request cannot validate the blob and then
+ * find its file gone. Everything else is a streamed copy
  * through a staging file on wgw_files (a failed copy never truncates the
  * target): within one step budget in this call, or split across calls
  * (SetError `attachInProgress`; the client repeats the same FileNode/set).
@@ -55,7 +56,10 @@ final class FileNodeBlobAttacher
      * its bytes are fully available, right before the target changes. Every
      * outcome that can still refuse the attach (attachInProgress, overQuota)
      * comes first, so a caller can destroy or rename there without losing
-     * anything when the attach is refused.
+     * anything when the attach is refused. The final rename can still fail
+     * after it, so it should not unlink a file at the target key: the rename
+     * replaces that file, and the caller drops the replaced node once
+     * attach() has returned.
      *
      * @param  (callable(): mixed)|null  $beforePlace
      * @return array{sha256: string, size: int}
@@ -127,9 +131,16 @@ final class FileNodeBlobAttacher
             return false;
         }
 
-        // Claim the blob exclusively: delete its row under a lock, so no
-        // other request validates it after this point.
-        $claimed = DB::connection('wgw')->transaction(function () use ($username, $row): ?array {
+        // Claim the blob exclusively: under its row lock, take the bytes onto
+        // wgw_files and delete the row, so no other request validates it
+        // after this point, and a re-upload of the same bytes (which writes
+        // the row first, then looks at the bytes) waits and then stores its
+        // own. The rename can still fail (EXDEV between bind mounts,
+        // permissions); nothing is destroyed by then, so the copy fallback
+        // can still refuse safely.
+        $blobKey = $this->blobs->blobKey($username, $row->blob_id);
+        $stagingKey = $this->stagingKey($username);
+        $claimed = DB::connection('wgw')->transaction(function () use ($username, $row, $data, $files, $blobKey, $stagingKey): ?array {
             $locked = JmapBlob::query()
                 ->where('username', $username)
                 ->where('blob_id', $row->blob_id)
@@ -138,8 +149,22 @@ final class FileNodeBlobAttacher
             if ($locked === null || ($locked->in_use_until !== null && $locked->in_use_until->isFuture())) {
                 return null;
             }
+            // Ids are content-addressed: another upload of the same bytes
+            // (another device, a finished assembly) holds the same id and
+            // still expects to attach it.
+            if ($locked->upload_count > 1) {
+                return null;
+            }
+            if (! $this->local->moveAcross($data, $blobKey, $files, $stagingKey)) {
+                return null;
+            }
             $attributes = $locked->getAttributes();
-            $locked->delete();
+            try {
+                $locked->delete();
+            } catch (\Throwable $e) {
+                $this->local->moveAcross($files, $stagingKey, $data, $blobKey);
+                throw $e;
+            }
 
             return $attributes;
         });
@@ -147,16 +172,6 @@ final class FileNodeBlobAttacher
             return false;
         }
 
-        // Get the bytes onto wgw_files first: the rename can still fail
-        // (EXDEV between bind mounts, permissions) and nothing may have been
-        // destroyed by then, so the copy fallback can still refuse safely.
-        $blobKey = $this->blobs->blobKey($username, $row->blob_id);
-        $stagingKey = $this->stagingKey($username);
-        if (! $this->local->moveAcross($data, $blobKey, $files, $stagingKey)) {
-            $this->restoreClaimed($claimed);
-
-            return false;
-        }
         try {
             if ($placing !== null) {
                 $placing();
@@ -183,7 +198,13 @@ final class FileNodeBlobAttacher
     private function restoreClaimed(array $claimed): void
     {
         unset($claimed['id']);
-        JmapBlob::query()->insert($claimed);
+        if (JmapBlob::query()->insertOrIgnore($claimed) === 0) {
+            // Uploaded again meanwhile: both uploads hold the id now.
+            JmapBlob::query()
+                ->where('username', $claimed['username'])
+                ->where('blob_id', $claimed['blob_id'])
+                ->increment('upload_count', max(1, (int) ($claimed['upload_count'] ?? 1)));
+        }
     }
 
     /**

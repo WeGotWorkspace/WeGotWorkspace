@@ -63,6 +63,9 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         // Symfony appends "; charset=utf-8" to text/* types — harmless.
         $this->assertStringStartsWith('text/plain', (string) $download->headers->get('Content-Type'));
         $this->assertStringContainsString('filename="note.txt"', (string) $download->headers->get('Content-Disposition'));
+        // Content-addressed: a strong validator for resumes, cached for good.
+        $this->assertSame('"'.$blobId.'"', $download->headers->get('ETag'));
+        $this->assertStringContainsString('immutable', (string) $download->headers->get('Cache-Control'));
     }
 
     public function test_a_json_typed_upload_is_stored_as_a_blob_with_its_own_type(): void
