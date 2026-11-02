@@ -28,13 +28,15 @@ export type DropdownMenuSubmenuProps = {
   /** Short current value shown before the chevron, e.g. the chosen paper size. */
   hint?: React.ReactNode;
   disabled?: boolean;
-  items: DropdownMenuEntry[];
+  /** One level deep: a submenu holds items and separators, not another submenu. */
+  items: DropdownMenuSubmenuEntry[];
   /** Class on the wrapper of the open submenu's rows. */
   contentClassName?: string;
 };
 
-export type DropdownMenuEntry =
-  DropdownMenuItemProps | DropdownMenuSeparatorProps | DropdownMenuSubmenuProps;
+export type DropdownMenuSubmenuEntry = DropdownMenuItemProps | DropdownMenuSeparatorProps;
+
+export type DropdownMenuEntry = DropdownMenuSubmenuEntry | DropdownMenuSubmenuProps;
 
 export type DropdownMenuProps = {
   trigger: React.ReactNode;
@@ -140,7 +142,6 @@ function DropdownMenuEntries({
           }
           className="dropdown-menu__submenu-row"
           autoFocus={focusSubmenuId === id}
-          aria-haspopup="menu"
           onActivate={() => onOpenSubmenu?.(id)}
         />
       );
@@ -193,7 +194,6 @@ function DropdownMenuStayOpenRow({
   className,
   autoFocus,
   onActivate,
-  ...aria
 }: {
   label: React.ReactNode;
   icon?: React.ReactNode;
@@ -202,7 +202,6 @@ function DropdownMenuStayOpenRow({
   className?: string;
   autoFocus?: boolean;
   onActivate: () => void;
-  "aria-haspopup"?: "menu";
 }) {
   const ref = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -227,7 +226,6 @@ function DropdownMenuStayOpenRow({
         disabled={disabled}
         onClick={() => {}}
         className={cn("dropdown-menu__menu-item", className)}
-        {...aria}
       />
     </DropdownMenuItem>
   );

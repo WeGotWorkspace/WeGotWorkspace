@@ -1,7 +1,7 @@
 import { getSchema } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { createTextEditorExtensions } from "./text-editor-extensions";
-import { CELL_WIDTH_VAR, cellWidthDecorations, topLevelTables } from "./text-editor-page-columns";
+import { CELL_WIDTH_VAR, cellWidthDecorations, documentTables } from "./text-editor-page-columns";
 
 const schema = getSchema(createTextEditorExtensions({ format: "markdown" }));
 const cell = (text: string, colspan = 1) =>
@@ -19,15 +19,28 @@ function styles(decorations: ReturnType<typeof cellWidthDecorations>) {
   );
 }
 
-describe("topLevelTables", () => {
+describe("documentTables", () => {
   it("finds tables with their positions", () => {
     const doc = schema.nodes.doc.create(null, [
       paragraph("Intro"),
       schema.nodes.table.create(null, [row(cell("a"), cell("b"))]),
     ]);
-    const tables = topLevelTables(doc);
+    const tables = documentTables(doc);
     expect(tables).toHaveLength(1);
     expect(doc.nodeAt(tables[0].pos)?.type.name).toBe("table");
+  });
+
+  it("finds tables in lists and quotes", () => {
+    const table = () => schema.nodes.table.create(null, [row(cell("a"), cell("b"))]);
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.bulletList.create(null, [
+        schema.nodes.listItem.create(null, [paragraph("Item"), table()]),
+      ]),
+      schema.nodes.blockquote.create(null, [table()]),
+    ]);
+    const tables = documentTables(doc);
+    expect(tables).toHaveLength(2);
+    expect(tables.map(({ pos }) => doc.nodeAt(pos)?.type.name)).toEqual(["table", "table"]);
   });
 });
 
@@ -39,7 +52,7 @@ describe("cellWidthDecorations", () => {
       row(cell("wide", 2), cell("d")),
     ]),
   ]);
-  const pos = topLevelTables(doc)[0].pos;
+  const pos = documentTables(doc)[0].pos;
 
   it("gives every cell the width of its column", () => {
     const decorations = cellWidthDecorations(doc, [{ pos, widths: [100, 200.125, 50] }]);

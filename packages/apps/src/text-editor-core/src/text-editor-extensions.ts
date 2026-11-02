@@ -171,6 +171,22 @@ export type CreateCollaborativeTextEditorExtensionsOptions = CreateTextEditorExt
   trackChangesUserKey: string;
 };
 
+const CSS_HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/**
+ * Another person's selection. The tint comes from `.collaboration-carets__selection` in
+ * `text-editor.css` (hidden in print); only their color is inline, and only a hex color,
+ * since it comes from a collaborator's awareness state.
+ */
+export function remoteSelectionAttrs(user: Record<string, unknown>) {
+  const color = typeof user.color === "string" && CSS_HEX_COLOR.test(user.color) ? user.color : "";
+  return {
+    nodeName: "span",
+    class: "collaboration-carets__selection",
+    ...(color ? { style: `--collaboration-carets-color: ${color}` } : {}),
+  };
+}
+
 /**
  * Same surface as {@link createTextEditorExtensions} with Yjs + remote carets
  * (undo disabled) plus suggestion mode ({@link DocsTrackChangesExtension}). Starts in
@@ -195,6 +211,7 @@ export function createCollaborativeTextEditorExtensions(
     CollaborationCaret.configure({
       provider: { awareness },
       user,
+      selectionRender: remoteSelectionAttrs,
     }),
   ];
 }

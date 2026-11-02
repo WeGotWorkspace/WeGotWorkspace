@@ -7,7 +7,7 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
  * With pages on, every table row is its own box (`text-editor.css`), so each row would
  * size its columns on its own: equal widths, unlike print, where the table sizes its
  * columns from all its content. This plugin lays out a hidden copy of each table as a
- * plain table at the page's text width, reads the column widths, and hands every cell
+ * plain table at the width it has on the page, reads the column widths, and hands every cell
  * its width through `--text-editor-cell-width`. Decorations only: the document never
  * changes, and without pages the variable is unused.
  */
@@ -28,11 +28,17 @@ export type PageColumnsOptions = {
   isEnabled: () => boolean;
 };
 
-/** Top-level tables with their document positions. */
-export function topLevelTables(doc: ProseMirrorNode): { pos: number; node: ProseMirrorNode }[] {
+/**
+ * Tables with their document positions: top-level ones and those in lists or quotes, whose
+ * rows are boxes of their own too. Tables nested in a table cell are not listed: they get
+ * no column widths.
+ */
+export function documentTables(doc: ProseMirrorNode): { pos: number; node: ProseMirrorNode }[] {
   const tables: { pos: number; node: ProseMirrorNode }[] = [];
-  doc.forEach((child, offset) => {
-    if (child.type.name === "table") tables.push({ pos: offset, node: child });
+  doc.descendants((node, pos) => {
+    if (node.type.name !== "table") return true;
+    tables.push({ pos, node });
+    return false;
   });
   return tables;
 }
@@ -81,14 +87,23 @@ function sameColumns(a: readonly TableColumns[], b: readonly TableColumns[]): bo
   );
 }
 
-/** Width of the text column inside the page margins, unrounded. */
-function textWidth(view: EditorView): number {
-  const style = getComputedStyle(view.dom);
+/** Content width of `el`, unrounded: for the editor root, the text column inside the margins. */
+function contentWidth(el: HTMLElement): number {
+  const style = getComputedStyle(el);
   return (
-    view.dom.getBoundingClientRect().width -
+    el.getBoundingClientRect().width -
     parseFloat(style.paddingLeft || "0") -
-    parseFloat(style.paddingRight || "0")
+    parseFloat(style.paddingRight || "0") -
+    parseFloat(style.borderLeftWidth || "0") -
+    parseFloat(style.borderRightWidth || "0")
   );
+}
+
+/** Width the table may take: its block's container (the text column, a list item, a quote). */
+function availableWidth(view: EditorView, table: HTMLTableElement): number {
+  const block = table.closest(".tableWrapper") ?? table;
+  const container = block.parentElement;
+  return container && container !== view.dom ? contentWidth(container) : contentWidth(view.dom);
 }
 
 function tableElement(view: EditorView, pos: number): HTMLTableElement | null {
@@ -154,11 +169,13 @@ const measured = new WeakMap<
 
 function currentColumns(view: EditorView, options: PageColumnsOptions): TableColumns[] {
   if (!options.isEnabled() || !view.dom.classList.contains(PAGINATION_CLASS)) return [];
-  const tables = topLevelTables(view.state.doc);
+  const tables = documentTables(view.state.doc);
   if (tables.length === 0) return [];
-  const width = textWidth(view);
-  if (!(width > 0)) return [];
   return tables.flatMap(({ pos, node }) => {
+    const table = tableElement(view, pos);
+    if (!table) return [];
+    const width = availableWidth(view, table);
+    if (!(width > 0)) return [];
     const cached = measured.get(node);
     if (
       cached &&
@@ -167,8 +184,6 @@ function currentColumns(view: EditorView, options: PageColumnsOptions): TableCol
     ) {
       return [{ pos, widths: cached.widths }];
     }
-    const table = tableElement(view, pos);
-    if (!table) return [];
     const widths = measureColumns(view, table, node, width);
     if (widths.length !== TableMap.get(node).width || !widths.every((w) => w > 0)) return [];
     const imagesPending = Array.from(table.querySelectorAll("img")).some((img) => !img.complete);

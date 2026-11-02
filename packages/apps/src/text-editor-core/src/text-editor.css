@@ -78,8 +78,13 @@
   z-index: 20;
 }
 
+/* Tinted like the note title's remote selection; the text itself stays at full contrast. */
 .ProseMirror .collaboration-carets__selection {
-  opacity: 0.25;
+  background-color: color-mix(
+    in srgb,
+    var(--collaboration-carets-color, currentColor) 25%,
+    transparent
+  );
 }
 
 .text-editor-format-bar {
