@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  readMeetLowData,
-  subscribeMeetLowData,
-  writeMeetLowData,
-} from "@/meet-core/src/meet-low-data";
+import { readMeetLowData, subscribeMeetLowData, writeMeetLowData } from "@/lib/meet-low-data";
 import type { MeetEncodingPrefs } from "@/meet-core/src/meet-send-encoding";
 
 type EncodingClient = {

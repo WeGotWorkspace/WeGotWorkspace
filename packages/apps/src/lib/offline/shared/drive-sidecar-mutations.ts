@@ -1,4 +1,5 @@
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { parentAndName } from "@/lib/files/api-path";
 import { migrateDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";
 import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
@@ -22,12 +23,14 @@ export async function applyDriveSidecarPathMigration(
   to: string,
 ): Promise<void> {
   const oldPath = normalizePath(from);
-  const newPath = normalizePath(nextPathAfterRename(from, destination, to));
+  const renamedPath = nextPathAfterRename(from, destination, to);
+  const newPath = normalizePath(renamedPath);
 
   await migrateDocsAvailabilityPath(username, oldPath, newPath);
   await migrateDriveAvailabilityPath(username, oldPath, newPath);
   await migrateDriveEntryPath(username, oldPath, newPath);
   await migrateDriveContentBlobPath(username, oldPath, newPath);
+  moveDocsPageSetupOverride(from, renamedPath);
 }
 
 export { parentAndName };
