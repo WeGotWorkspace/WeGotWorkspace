@@ -98,14 +98,34 @@ function DriveUploadsRow({
           ) : null}
           <span className="drive-uploads__size">{file.size}</span>
         </span>
-        <span className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}>
-          {state.statusText}
-        </span>
+        {/* A failed row, and an uploading row once it has a percentage, say it beside the ring. */}
+        {(state.kind === "uploading" && state.percent !== null) ||
+        state.kind === "failed" ? null : (
+          <span className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}>
+            {state.statusText}
+          </span>
+        )}
+        {state.kind === "failed" && state.addAgain ? (
+          <span className="drive-uploads__note">{driveLabels.uploadAddAgain}</span>
+        ) : null}
         {state.notOnDevice ? (
           <span className="drive-uploads__note">{driveLabels.uploadNotOnDeviceDetail}</span>
         ) : null}
       </div>
-      <DriveUploadRingView fileName={file.title} state={state} />
+      <div className="drive-uploads__progress">
+        {/* The ring tells screen readers the same. */}
+        {state.kind === "uploading" && state.percent !== null ? (
+          <span className="drive-uploads__percent" aria-hidden="true">
+            {driveLabels.uploadPercent(state.percent)}
+          </span>
+        ) : null}
+        {state.kind === "failed" ? (
+          <span className="drive-uploads__reason" aria-hidden="true">
+            {state.reasonText ?? driveLabels.uploadState.failed}
+          </span>
+        ) : null}
+        <DriveUploadRingView fileName={file.title} state={state} />
+      </div>
       <div className="drive-uploads__actions">
         {state.canRetry && model.retry ? (
           <Button
