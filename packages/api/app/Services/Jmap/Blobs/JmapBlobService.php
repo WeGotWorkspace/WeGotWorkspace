@@ -11,7 +11,9 @@ use App\Storage\Streams\HashingStreamFilter;
 use App\Storage\Streams\StreamDigest;
 use App\Storage\WgwStorage;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -123,7 +125,12 @@ final class JmapBlobService
     /**
      * Turns a fully written temporary file on the data disk into the
      * content-addressed blob (or drops it when that blob already exists)
-     * and upserts the row with a fresh expiry.
+     * and upserts the row with a fresh expiry, counting the upload.
+     *
+     * The row is written before the bytes are checked: the GC and an attach
+     * by move remove bytes only while they hold the row's lock and it still
+     * says they may, so a concurrent re-upload either renews the row first
+     * or finds the bytes gone and puts its own in place.
      *
      * @return array{blobId: string, type: string, size: int, sha256: string}
      */
@@ -132,24 +139,41 @@ final class JmapBlobService
         $disk = $this->storage->data();
         $blobId = self::blobIdFor($sha256);
         $key = $this->blobKey($username, $blobId);
+        $mediaType = trim($mediaType) === '' ? 'application/octet-stream' : trim($mediaType);
+        $this->recordUpload($username, $blobId, [
+            'media_type' => $mediaType,
+            'size_bytes' => $size,
+            'sha256' => $sha256,
+            'expires_at' => Carbon::now()->addHours(JmapBlobLimits::blobTtlHours()),
+        ]);
+
         if ($disk->exists($key)) {
             $this->deleteQuietly($disk, $tmpKey);
         } elseif (! $disk->move($tmpKey, $key)) {
             throw new \RuntimeException('Could not store the blob.');
         }
 
-        $mediaType = trim($mediaType) === '' ? 'application/octet-stream' : trim($mediaType);
-        JmapBlob::query()->updateOrCreate(
-            ['username' => $username, 'blob_id' => $blobId],
-            [
-                'media_type' => $mediaType,
-                'size_bytes' => $size,
-                'sha256' => $sha256,
-                'expires_at' => Carbon::now()->addHours(JmapBlobLimits::blobTtlHours()),
-            ],
-        );
-
         return ['blobId' => $blobId, 'type' => $mediaType, 'size' => $size, 'sha256' => $sha256];
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function recordUpload(string $username, string $blobId, array $values): void
+    {
+        $existing = fn (): int => JmapBlob::query()
+            ->where('username', $username)
+            ->where('blob_id', $blobId)
+            ->update($values + ['upload_count' => DB::connection('wgw')->raw('upload_count + 1')]);
+        if ($existing() > 0) {
+            return;
+        }
+        try {
+            JmapBlob::query()->create(['username' => $username, 'blob_id' => $blobId, 'upload_count' => 1] + $values);
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent upload of the same bytes created it first.
+            $existing();
+        }
     }
 
     /**
@@ -247,6 +271,41 @@ final class JmapBlobService
             ->where('username', $username)
             ->where('blob_id', $blobId)
             ->delete();
+    }
+
+    /**
+     * Uses up one upload of a blob whose bytes an assembly append consumed.
+     * The bytes are deleted only when no other upload of the same bytes
+     * holds the id and `$keep` (the reference checkers) does not veto it,
+     * under the row's lock, so a concurrent re-upload either counts first
+     * or waits and then stores its own bytes.
+     *
+     * An append consumes each part once (a retried append is a no-op), so
+     * counting down here is safe. An attach never counts down: a client may
+     * repeat a FileNode/set whose response it lost.
+     *
+     * @param  callable(): bool  $keep
+     */
+    public function consumeUpload(string $username, string $blobId, callable $keep): void
+    {
+        DB::connection('wgw')->transaction(function () use ($username, $blobId, $keep): void {
+            $locked = JmapBlob::query()
+                ->where('username', $username)
+                ->where('blob_id', $blobId)
+                ->lockForUpdate()
+                ->first();
+            if ($locked === null) {
+                return;
+            }
+            if ($locked->upload_count > 1) {
+                JmapBlob::query()->whereKey($locked->id)->decrement('upload_count');
+
+                return;
+            }
+            if (! $keep()) {
+                $this->delete($username, $blobId);
+            }
+        });
     }
 
     public function blobKey(string $username, string $blobId): string

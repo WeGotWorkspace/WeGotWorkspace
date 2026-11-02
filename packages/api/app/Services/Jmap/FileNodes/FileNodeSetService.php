@@ -195,16 +195,7 @@ final class FileNodeSetService
     private function destroyNode(JmapFileNode $node, array $principal, bool $onDestroyRemoveChildren): void
     {
         $key = (string) $node->storage_key;
-        if ($node->parent_node_id === null) {
-            throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'Root nodes cannot be destroyed.']);
-        }
-        $rights = $this->mapper->rightsFor($key, $principal);
-        if (! $rights['mayDelete']) {
-            throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to destroy this node.']);
-        }
-        if ($node->is_dir && ! $onDestroyRemoveChildren && $this->index->hasLiveChildren((string) $node->node_id)) {
-            throw new FileNodeSetError(['type' => 'nodeHasChildren', 'description' => 'The directory has children; pass onDestroyRemoveChildren to remove them.']);
-        }
+        $this->guardDestroy($node, $principal, $onDestroyRemoveChildren);
 
         if ($this->relocator->trashIfGrantee($node, $principal)) {
             return;
@@ -217,6 +208,22 @@ final class FileNodeSetService
             $disk->delete($key);
         }
         $this->relocator->afterHardDelete($key);
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     */
+    private function guardDestroy(JmapFileNode $node, array $principal, bool $onDestroyRemoveChildren): void
+    {
+        if ($node->parent_node_id === null) {
+            throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'Root nodes cannot be destroyed.']);
+        }
+        if (! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayDelete']) {
+            throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to destroy this node.']);
+        }
+        if ($node->is_dir && ! $onDestroyRemoveChildren && $this->index->hasLiveChildren((string) $node->node_id)) {
+            throw new FileNodeSetError(['type' => 'nodeHasChildren', 'description' => 'The directory has children; pass onDestroyRemoveChildren to remove them.']);
+        }
     }
 
     /**
@@ -485,14 +492,22 @@ final class FileNodeSetService
                 // after every outcome that can still refuse the attach. #1517:
                 // an outside write to a Docs document, detected on the next
                 // yjs read; recorded only once the blob checks passed.
-                $place = function () use ($beforePlace, $key): void {
+                // A file replaced at the same key is dropped only once the
+                // new bytes are in place (the rename replaces it), so a
+                // placement that fails leaves it as it was.
+                $placed = null;
+                $place = function () use ($beforePlace, $key, &$placed): void {
                     if ($beforePlace !== null) {
-                        $beforePlace();
+                        $placed = $beforePlace(true);
                     }
                     $this->index->recordBeforeContentWrite($key);
                 };
+                $sha256 = $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize, $place)['sha256'];
+                if ($placed instanceof \Closure) {
+                    $placed();
+                }
 
-                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize, $place)['sha256'];
+                return $sha256;
             }
 
             $blobContents = null;
@@ -595,7 +610,7 @@ final class FileNodeSetService
 
         switch ($onExists) {
             case 'replace':
-                $pending = fn () => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
+                $pending = fn (bool $deferUnlink = false): ?\Closure => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren, $deferUnlink);
 
                 return $name;
             case 'rename':
@@ -615,7 +630,7 @@ final class FileNodeSetService
                 } catch (\Throwable) {
                 }
                 if ($incomingTs !== false && $incomingTs > $existingTs) {
-                    $pending = fn () => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
+                    $pending = fn (bool $deferUnlink = false): ?\Closure => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren, $deferUnlink);
 
                     return $name;
                 }
@@ -639,15 +654,30 @@ final class FileNodeSetService
      *
      * @param  array{username: string, role: string}  $principal
      */
-    private function replaceSibling(JmapFileNode $existing, string $newKey, bool $incomingIsFile, array $principal, bool $onDestroyRemoveChildren): void
+    private function replaceSibling(JmapFileNode $existing, string $newKey, bool $incomingIsFile, array $principal, bool $onDestroyRemoveChildren, bool $deferUnlink = false): ?\Closure
     {
+        $sameFile = $incomingIsFile && ! $existing->is_dir && (string) $existing->storage_key === $newKey;
+        // With $deferUnlink the caller's rename replaces the file at this
+        // key: nothing is unlinked now, and the returned step drops the old
+        // node once the new bytes are in place. A grantee's replace still
+        // moves the old file into the owner's trash first.
+        if ($sameFile && $deferUnlink && $this->authorizer->memberGrantOwner('/'.$newKey, $principal) === null) {
+            $this->guardDestroy($existing, $principal, $onDestroyRemoveChildren);
+
+            return function () use ($existing, $newKey): void {
+                $this->index->replaceKeepingDocsState($newKey, fn () => $this->relocator->afterHardDelete($newKey));
+                $this->destroyed[] = (string) $existing->node_id;
+            };
+        }
         $destroy = fn () => $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
-        if ($incomingIsFile && ! $existing->is_dir && (string) $existing->storage_key === $newKey) {
+        if ($sameFile) {
             $this->index->replaceKeepingDocsState($newKey, $destroy);
         } else {
             $destroy();
         }
         $this->destroyed[] = (string) $existing->node_id;
+
+        return null;
     }
 
     private function findSibling(JmapFileNode $parent, string $name, bool $caseInsensitive, ?string $ignoreNodeId): ?JmapFileNode

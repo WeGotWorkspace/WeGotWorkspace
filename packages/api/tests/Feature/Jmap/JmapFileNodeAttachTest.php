@@ -20,7 +20,9 @@ use Illuminate\Testing\TestResponse;
 use League\Flysystem\Config;
 use League\Flysystem\Filesystem as Flysystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
+use League\Flysystem\UnableToMoveFile;
 use League\Flysystem\UnableToWriteFile;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -214,6 +216,43 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
         $this->assertFalse($this->files()->exists('users/bob/second.txt'));
     }
 
+    public function test_a_blob_another_upload_also_holds_is_copied_so_both_can_attach(): void
+    {
+        // Two devices upload the same bytes: one content-addressed id.
+        $blobId = $this->upload('same bytes, two devices');
+        $this->assertSame($blobId, $this->upload('same bytes, two devices'));
+        $home = $this->homeId();
+
+        $this->set(['create' => ['a' => ['parentId' => $home, 'name' => 'first.txt', 'blobId' => $blobId]]])
+            ->assertJsonPath('methodResponses.0.1.created.a.size', 23);
+        $this->assertTrue($this->blobExists($blobId), 'copied, not moved');
+
+        $this->set(['create' => ['b' => ['parentId' => $home, 'name' => 'second.txt', 'blobId' => $blobId]]])
+            ->assertJsonPath('methodResponses.0.1.created.b.size', 23);
+        $this->assertSame('same bytes, two devices', $this->files()->get('users/bob/second.txt'));
+    }
+
+    public function test_a_finished_assembly_keeps_its_blob_when_a_part_with_the_same_bytes_is_consumed(): void
+    {
+        $assemblies = app(BlobAssemblyService::class);
+        $bytes = 'one part, two uploads';
+        // Another device's assembly consumes a part with exactly these bytes.
+        $other = (string) $assemblies->create('bob', strlen($bytes), null)['id'];
+        $blobId = $this->upload($bytes);
+        $mine = (string) $assemblies->create('bob', strlen($bytes), null)['id'];
+        $this->assertSame($blobId, $this->upload($bytes));
+        $assemblies->append('bob', $other, [['index' => 0, 'blobId' => $blobId]]);
+        $assemblies->append('bob', $mine, [['index' => 0, 'blobId' => $blobId]]);
+        $this->assertSame($blobId, $assemblies->finish('bob', $mine)['blobId']);
+        $this->assertSame($blobId, $assemblies->finish('bob', $other)['blobId']);
+
+        $home = $this->homeId();
+        $this->set(['create' => ['a' => ['parentId' => $home, 'name' => 'a.txt', 'blobId' => $blobId]]]);
+        $this->set(['create' => ['b' => ['parentId' => $home, 'name' => 'b.txt', 'blobId' => $blobId]]])
+            ->assertJsonPath('methodResponses.0.1.created.b.size', strlen($bytes));
+        $this->assertSame($bytes, $this->files()->get('users/bob/b.txt'));
+    }
+
     public function test_different_volumes_mean_a_streamed_copy(): void
     {
         $this->forceCopies();
@@ -375,6 +414,65 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
         }
         $this->assertNotNull($done);
         $this->assertSame(hash('sha256', $bytes), hash('sha256', (string) $this->files()->get('users/bob/a.txt')));
+    }
+
+    /**
+     * @return array<string, array{0: bool}>
+     */
+    public static function placements(): array
+    {
+        return ['move' => [false], 'copy' => [true]];
+    }
+
+    #[DataProvider('placements')]
+    public function test_a_failed_placement_keeps_the_file_it_would_replace(bool $copy): void
+    {
+        if ($copy) {
+            $this->forceCopies();
+        }
+        $this->seedPrivateFile('bob', 'a.txt', 'old bytes');
+        $home = $this->homeId();
+        $old = $this->nodeNamed('a.txt');
+        $blobId = $this->upload('new bytes');
+        $root = (string) config('filesystems.disks.wgw_files.root');
+        $adapter = new class($root) extends LocalFilesystemAdapter
+        {
+            public function move(string $source, string $destination, Config $config): void
+            {
+                throw UnableToMoveFile::fromLocationTo($source, $destination);
+            }
+        };
+        $original = Storage::disk('wgw_files');
+        Storage::set('wgw_files', new FilesystemAdapter(new Flysystem($adapter), $adapter, ['throw' => false]));
+        $create = ['onExists' => 'replace', 'create' => ['f' => ['parentId' => $home, 'name' => 'a.txt', 'blobId' => $blobId]]];
+
+        $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
+            'methodCalls' => [['FileNode/set', ['accountId' => 'bob'] + $create, 's']],
+        ]);
+
+        Storage::set('wgw_files', $original);
+        $this->assertSame('old bytes', $this->files()->get('users/bob/a.txt'));
+        $this->assertSame($old['id'], $this->nodeNamed('a.txt')['id'], 'the replaced node is still there');
+        $this->assertTrue($this->blobExists($blobId), 'the blob is handed back');
+
+        $done = $this->set($create)->json('methodResponses.0.1');
+        $this->assertSame([$old['id']], $done['destroyed']);
+        $this->assertSame('new bytes', $this->files()->get('users/bob/a.txt'));
+        $this->assertNotSame($old['id'], $this->nodeNamed('a.txt')['id']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function nodeNamed(string $name): array
+    {
+        $list = $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
+            'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => null], 'g']],
+        ])->json('methodResponses.0.1.list');
+
+        return (array) collect($list)->firstWhere('name', $name);
     }
 
     public function test_not_enough_free_space_is_over_quota(): void

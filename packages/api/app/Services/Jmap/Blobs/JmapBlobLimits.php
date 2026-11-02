@@ -42,7 +42,9 @@ final class JmapBlobLimits
 
     /**
      * RFC 9404 maxSizeBlobSet (UnsignedInt|null; null = no limit, the
-     * default: free disk space is checked on its own).
+     * default: free disk space is checked on its own). Unset, empty,
+     * "null" and 0 all mean no limit, as the client reads them; a limit of
+     * 0 octets would refuse every non-empty upload.
      */
     public static function maxSizeBlobSet(): ?int
     {
@@ -50,8 +52,9 @@ final class JmapBlobLimits
         if ($raw === null || $raw === '' || (is_string($raw) && strtolower(trim($raw)) === 'null')) {
             return null;
         }
+        $limit = (int) $raw;
 
-        return max(0, (int) $raw);
+        return $limit > 0 ? $limit : null;
     }
 
     /**

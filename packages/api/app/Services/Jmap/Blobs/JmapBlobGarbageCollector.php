@@ -8,6 +8,7 @@ use App\Models\JmapBlob;
 use App\Services\Jmap\Assembly\BlobAssemblyClaimChecker;
 use App\Services\Jmap\FileNodes\FileNodeAttachChecker;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Deletes expired, unreferenced envelope blobs. Reference checks are
@@ -59,10 +60,36 @@ final class JmapBlobGarbageCollector
 
                 continue;
             }
-            $this->blobs->delete($username, $blobId);
-            $deleted++;
+            if ($this->deleteIfStillExpired($username, $blobId, $now)) {
+                $deleted++;
+            } else {
+                $retained++;
+            }
         }
 
         return ['deleted' => $deleted, 'retained' => $retained];
+    }
+
+    /**
+     * Re-checks the expiry under the row's lock right before deleting: a
+     * re-upload of the same bytes may have renewed the blob since it was
+     * listed, and it then waits for this lock (JmapBlobService::commitFile
+     * writes the row before it looks at the bytes).
+     */
+    private function deleteIfStillExpired(string $username, string $blobId, Carbon $now): bool
+    {
+        return DB::connection('wgw')->transaction(function () use ($username, $blobId, $now): bool {
+            $locked = JmapBlob::query()
+                ->where('username', $username)
+                ->where('blob_id', $blobId)
+                ->lockForUpdate()
+                ->first();
+            if ($locked === null || $locked->expires_at === null || ! $locked->expires_at->lt($now)) {
+                return false;
+            }
+            $this->blobs->delete($username, $blobId);
+
+            return true;
+        });
     }
 }

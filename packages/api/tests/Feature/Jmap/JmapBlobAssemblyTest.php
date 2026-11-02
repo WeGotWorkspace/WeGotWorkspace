@@ -8,6 +8,7 @@ use App\Models\JmapBlob;
 use App\Models\JmapBlobAssembly;
 use App\Models\JmapBlobClaim;
 use App\Services\Jmap\Assembly\BlobAssemblyService;
+use App\Services\Jmap\Blobs\FreeSpaceSource;
 use App\Services\Jmap\Blobs\JmapBlobMaintenance;
 use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\JmapCapabilities;
@@ -390,6 +391,50 @@ final class JmapBlobAssemblyTest extends WgwDatabaseTestCase
 
         $result = $this->method('BlobAssembly/set', ['create' => ['a' => ['size' => 1001]]]);
         $this->assertSame('tooLarge', $result['notCreated']['a']['type']);
+    }
+
+    public function test_create_checks_free_space_only_for_the_parts_still_to_upload(): void
+    {
+        config(['wgw.jmap.max_size_upload' => 100]);
+        $free = new class implements FreeSpaceSource
+        {
+            public ?int $bytes = 500;
+
+            public function freeBytes(Filesystem $disk): ?int
+            {
+                return $this->bytes;
+            }
+        };
+        $this->app->instance(FreeSpaceSource::class, $free);
+        $create = fn (): array => $this->method('BlobAssembly/set', ['create' => ['a' => ['size' => 1000]]]);
+
+        $this->assertSame('overQuota', $create()['notCreated']['a']['type'], 'nothing stored yet: the whole file is new');
+
+        // The parts of an assembly that expired are still stored: a
+        // replacement only needs room for one part of overlap.
+        foreach ($this->chunks(random_bytes(1000), 100) as $chunk) {
+            $this->uploadPart($chunk);
+        }
+        $this->assertIsString($create()['created']['a']['id'] ?? null);
+
+        $free->bytes = 99;
+        $this->assertSame('overQuota', $create()['notCreated']['a']['type'], 'no room for one part of overlap');
+    }
+
+    public function test_a_claimed_part_upload_renews_the_assembly_ttl(): void
+    {
+        $id = $this->createAssembly(300);
+        $before = JmapBlobAssembly::query()->where('assembly_id', $id)->firstOrFail()->expires_at;
+
+        Carbon::setTestNow(Carbon::now()->addHours(20));
+        $this->uploadPart(str_repeat('a', 100), $id);
+
+        $after = JmapBlobAssembly::query()->where('assembly_id', $id)->firstOrFail()->expires_at;
+        $this->assertTrue($after->gt($before->copy()->addHours(19)), 'renewed from the claim, as an append does');
+
+        // Past the original TTL the assembly is still there.
+        Carbon::setTestNow(Carbon::now()->addHours(10));
+        $this->assertSame([0], $this->append($id, [$this->uploadPart(str_repeat('a', 100), $id)])['accepted']);
     }
 
     public function test_parts_are_deleted_as_appended_unless_still_needed(): void

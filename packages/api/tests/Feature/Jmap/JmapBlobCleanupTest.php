@@ -9,6 +9,9 @@ use App\Models\JmapBlob;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\Assembly\BlobClaimService;
+use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
+use App\Services\Jmap\Blobs\JmapBlobReferenceCheckerInterface;
+use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -114,6 +117,30 @@ final class JmapBlobCleanupTest extends WgwDatabaseTestCase
         $this->assertTrue($this->exists($copying));
         $this->assertTrue($this->exists($staged));
         $this->assertFalse($this->exists($free));
+    }
+
+    public function test_the_gc_rechecks_the_expiry_right_before_deleting(): void
+    {
+        $renewed = $this->upload('uploaded again while the GC runs');
+        $this->expire($renewed);
+        // A re-upload of the same bytes lands between listing and deleting.
+        $this->app->instance(JmapBlobReferenceGuard::class, new JmapBlobReferenceGuard([
+            new class implements JmapBlobReferenceCheckerInterface
+            {
+                public function isReferenced(string $username, string $blobId): bool
+                {
+                    JmapBlob::query()->where('blob_id', $blobId)->update(['expires_at' => Carbon::now()->addDay()]);
+
+                    return false;
+                }
+            },
+        ]));
+
+        $result = app(JmapBlobGarbageCollector::class)->collect();
+
+        $this->assertSame(['deleted' => 0, 'retained' => 1], $result);
+        $this->assertTrue($this->exists($renewed));
+        $this->assertTrue(Storage::disk('wgw_data')->exists('jmap/blobs/bob/'.$renewed));
     }
 
     public function test_a_round_is_bounded(): void
