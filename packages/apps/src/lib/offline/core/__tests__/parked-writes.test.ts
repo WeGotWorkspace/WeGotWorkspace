@@ -2,7 +2,9 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
+  claimParkedWrites,
   listParkedWrites,
+  restoreAbandonedClaims,
   parkWrites,
   subscribeParkedWrites,
   takeParkedWrites,
@@ -63,5 +65,19 @@ describe("parked writes", () => {
     stop();
 
     expect(heard).toEqual(["tasks", "tasks"]);
+  });
+
+  it("puts a claimed write back when its tab never settled it", async () => {
+    await parkWrites(username, "tasks", [write("a"), write("b")]);
+    const claimed = await claimParkedWrites(username, "tasks", ["tasks:a", "tasks:b"]);
+    expect(await listParkedWrites(username, "tasks")).toEqual([]);
+    await claimed.settle(["tasks:a"]);
+    claimed.release();
+
+    await restoreAbandonedClaims(username, "tasks");
+
+    expect((await listParkedWrites(username, "tasks")).map((row) => row.id)).toEqual(["tasks:b"]);
+    await restoreAbandonedClaims(username, "tasks");
+    expect(await listParkedWrites(username, "tasks")).toHaveLength(1);
   });
 });

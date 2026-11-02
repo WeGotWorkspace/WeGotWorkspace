@@ -98,18 +98,14 @@ export async function settleRefusedTaskWrite(
   // Name the task as it shows from now on: the server copy, else the local one.
   const local = cached?.data.tasks.find((task) => task.id === taskId);
   const title = (serverTask?.title || local?.title)?.trim() ?? "";
-  for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
-    if (tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
-  }
-  if (serverTask) await upsertTaskInCache(username, serverTask, false);
-  else await removeTaskFromCache(username, taskId);
-
-  // A queued delete of a task that is gone already has the outcome the person asked for.
-  if (row.op === "delete" && !serverTask) return taskId;
   const forbidden = httpStatusFromFlushError(error) === 403;
   const reason = refusalReason(created, Boolean(serverTask), forbidden);
+  // A queued delete of a task that is gone already has the outcome the person asked for.
+  const noop = row.op === "delete" && !serverTask;
   // Something of the person's own to keep: a task added offline, or offline changes.
   const parked = Boolean(local) && row.op !== "delete" && reason !== "notSaved";
+  // Park before anything is removed: if this throws, the row and the cached
+  // task stay for the next flush.
   if (local && parked) {
     const list = cached?.data.taskLists.find((entry) => entry.id === local.taskListId);
     await parkTask(username, local, {
@@ -118,6 +114,13 @@ export async function settleRefusedTaskWrite(
       containerName: list?.name ?? "",
     });
   }
+  for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
+    if (tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
+  }
+  if (serverTask) await upsertTaskInCache(username, serverTask, false);
+  else await removeTaskFromCache(username, taskId);
+
+  if (noop) return taskId;
   announceTaskWriteRefused({ username, taskId, title, reason, parked });
   return taskId;
 }

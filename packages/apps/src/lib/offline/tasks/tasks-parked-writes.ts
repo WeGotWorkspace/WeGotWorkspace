@@ -54,6 +54,8 @@ export async function rescueParkedTasks(
   writes: ParkedTask[],
   target: TaskRescueTarget,
   operations: TaskRescueOperations,
+  /** A write is created or parked again: it no longer needs to be kept apart. */
+  onCreated?: (write: ParkedTask) => Promise<void>,
 ): Promise<{ listId: string }> {
   let listId = "listId" in target ? target.listId : "";
   try {
@@ -63,14 +65,21 @@ export async function rescueParkedTasks(
     }
   } catch (error) {
     await parkWrites(username, TASKS_DOMAIN, writes);
+    for (const write of writes) await onCreated?.(write);
     throw error;
   }
   const failed: ParkedTask[] = [];
   for (const write of writes) {
-    await operations.createTask(rescueBody(write.item, listId)).catch(() => failed.push(write));
+    const created = await operations
+      .createTask(rescueBody(write.item, listId))
+      .then(() => true)
+      .catch(() => false);
+    if (created) await onCreated?.(write);
+    else failed.push(write);
   }
   if (failed.length > 0) {
     await parkWrites(username, TASKS_DOMAIN, failed);
+    for (const write of failed) await onCreated?.(write);
     throw new TaskRescueError(failed.length);
   }
   return { listId };

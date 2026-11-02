@@ -26,7 +26,7 @@ export function useTasksRescue({
   taskLists,
   reloadFromCache,
 }: UseTasksRescueArgs) {
-  const { writes, open, openDialog, closeDialog, take } = useParkedWrites<Task>(
+  const { writes, open, openDialog, closeDialog, take, claim } = useParkedWrites<Task>(
     username,
     TASKS_DOMAIN,
   );
@@ -56,16 +56,24 @@ export function useTasksRescue({
     (ids: string[], target: TaskRescueTarget) =>
       settle(async () => {
         if (!username || !operations) return;
-        const taken = await take(ids);
-        if (taken.length === 0) return;
-        const { listId } = await rescueParkedTasks(username, taken, target, operations);
-        const name =
-          "newListName" in target
-            ? target.newListName
-            : (writableLists.find((list) => list.id === listId)?.name ?? "");
-        show(L.rescueMoved(taken.length, name));
+        const claimed = await claim(ids);
+        try {
+          const taken = claimed.writes;
+          if (taken.length === 0) return;
+          // Failed creates are parked again inside; created ones leave the claim one by one.
+          const { listId } = await rescueParkedTasks(username, taken, target, operations, (write) =>
+            claimed.settle([write.id]),
+          );
+          const name =
+            "newListName" in target
+              ? target.newListName
+              : (writableLists.find((list) => list.id === listId)?.name ?? "");
+          show(L.rescueMoved(taken.length, name));
+        } finally {
+          claimed.release();
+        }
       }),
-    [operations, settle, show, take, username, writableLists],
+    [claim, operations, settle, show, username, writableLists],
   );
 
   const discard = useCallback(

@@ -1,3 +1,4 @@
+import { holdCrossTabLockIfFree, withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 
@@ -121,4 +122,125 @@ export function takeParkedWrites<T>(
     rows: rows.filter((row) => !wanted.has(row.id)),
     result: rows.filter((row) => wanted.has(row.id)),
   }));
+}
+
+/**
+ * Writes a tab took out of the park to rescue them (#1825). They stay on disk
+ * under the claim until each one is created, so a reload or a closed tab in the
+ * middle of the rescue cannot lose them: the next load puts them back.
+ */
+type Claim<T> = { claim: string; writes: ParkedWrite<T>[] };
+
+const claimsKey = (domain: string) => `parked-writes-claims:${domain}`;
+const claimLockName = (username: string, domain: string, claim: string) =>
+  `wgw-parked-claim:${domain}:${username}:${claim}`;
+
+function parseClaims<T>(value: string | undefined): Claim<T>[] {
+  if (!value) return [];
+  try {
+    const claims = JSON.parse(value) as unknown;
+    return Array.isArray(claims) ? (claims as Claim<T>[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Change the park and the claims of a domain in one transaction. */
+async function updateWithClaims<T, R>(
+  username: string,
+  domain: string,
+  change: (state: { rows: ParkedWrite<T>[]; claims: Claim<T>[] }) => {
+    rows: ParkedWrite<T>[];
+    claims: Claim<T>[];
+    result: R;
+  },
+): Promise<R> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const result = await db.transaction("rw", db.meta, async () => {
+    const next = change({
+      rows: parse<T>((await db.meta.get(metaKey(domain)))?.value),
+      claims: parseClaims<T>((await db.meta.get(claimsKey(domain)))?.value),
+    });
+    const put = async (key: string, list: unknown[]) =>
+      list.length > 0
+        ? void (await db.meta.put({ key, value: JSON.stringify(list) }))
+        : db.meta.delete(key);
+    await put(metaKey(domain), next.rows);
+    await put(claimsKey(domain), next.claims);
+    return next.result;
+  });
+  topic.publish({ username, domain });
+  return result;
+}
+
+export type ParkedClaim<T> = {
+  writes: ParkedWrite<T>[];
+  /** These writes are created (or parked again): they no longer need the claim. */
+  settle: (ids: string[]) => Promise<void>;
+  /** Let the claim go; whatever was not settled is put back by the next load. */
+  release: () => void;
+};
+
+/**
+ * Like `takeParkedWrites`, but the writes are kept under a claim until `settle`
+ * clears them. A Web Lock marks the claim as alive while this tab works on it.
+ */
+export async function claimParkedWrites<T>(
+  username: string,
+  domain: string,
+  ids: string[],
+): Promise<ParkedClaim<T>> {
+  const claim = crypto.randomUUID();
+  const release =
+    (await holdCrossTabLockIfFree(claimLockName(username, domain, claim))) ?? (() => {});
+  const wanted = new Set(ids);
+  const writes = await updateWithClaims<T, ParkedWrite<T>[]>(username, domain, (state) => {
+    const taken = state.rows.filter((row) => wanted.has(row.id));
+    return {
+      rows: state.rows.filter((row) => !wanted.has(row.id)),
+      claims: taken.length > 0 ? [...state.claims, { claim, writes: taken }] : state.claims,
+      result: taken,
+    };
+  }).catch((error: unknown) => {
+    release();
+    throw error;
+  });
+  const settle = (settled: string[]) => {
+    const done = new Set(settled);
+    return updateWithClaims<T, void>(username, domain, (state) => ({
+      rows: state.rows,
+      claims: state.claims
+        .map((entry) =>
+          entry.claim === claim
+            ? { ...entry, writes: entry.writes.filter((write) => !done.has(write.id)) }
+            : entry,
+        )
+        .filter((entry) => entry.writes.length > 0),
+      result: undefined,
+    }));
+  };
+  return { writes, settle, release };
+}
+
+/**
+ * Put writes back that a tab claimed and never settled (it was closed or
+ * reloaded mid-rescue). Claims whose tab still holds its lock are left alone.
+ */
+export async function restoreAbandonedClaims(username: string, domain: string): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const claims = parseClaims<unknown>((await db.meta.get(claimsKey(domain)))?.value);
+  for (const { claim } of claims) {
+    await withCrossTabLockIfFree(claimLockName(username, domain, claim), () =>
+      updateWithClaims<unknown, void>(username, domain, (state) => {
+        const abandoned = state.claims.find((entry) => entry.claim === claim);
+        if (!abandoned) return { ...state, result: undefined };
+        const ids = new Set(abandoned.writes.map((write) => write.id));
+        return {
+          rows: [...state.rows.filter((row) => !ids.has(row.id)), ...abandoned.writes],
+          claims: state.claims.filter((entry) => entry.claim !== claim),
+          result: undefined,
+        };
+      }),
+    );
+  }
 }

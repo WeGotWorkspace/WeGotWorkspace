@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { holdCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import {
+  claimParkedWrites,
   listParkedWrites,
+  restoreAbandonedClaims,
   subscribeParkedWrites,
   takeParkedWrites,
+  type ParkedClaim,
   type ParkedWrite,
 } from "@/lib/offline/core/parked-writes";
 
@@ -17,6 +20,8 @@ export type ParkedWritesDialog<T> = {
   closeDialog: () => void;
   /** Take writes out to rescue or discard them (see `takeParkedWrites`). */
   take: (ids: string[]) => Promise<ParkedWrite<T>[]>;
+  /** Take writes out to rescue them, kept on disk until settled (see `claimParkedWrites`). */
+  claim: (ids: string[]) => Promise<ParkedClaim<T>>;
 };
 
 /**
@@ -59,7 +64,9 @@ export function useParkedWrites<T>(username: string | null, domain: string): Par
       for (const write of next) offered.current.add(write.id);
       if (fresh) await openDialog();
     };
-    void load();
+    void restoreAbandonedClaims(username, domain)
+      .catch(() => undefined)
+      .then(load);
     const stop = subscribeParkedWrites(username, domain, () => void load());
     return () => {
       cancelled = true;
@@ -75,5 +82,13 @@ export function useParkedWrites<T>(username: string | null, domain: string): Par
     [domain, username],
   );
 
-  return { writes, open, openDialog, closeDialog: letGo, take };
+  const claim = useCallback(
+    (ids: string[]) =>
+      username
+        ? claimParkedWrites<T>(username, domain, ids)
+        : Promise.resolve({ writes: [], settle: async () => {}, release: () => {} }),
+    [domain, username],
+  );
+
+  return { writes, open, openDialog, closeDialog: letGo, take, claim };
 }
