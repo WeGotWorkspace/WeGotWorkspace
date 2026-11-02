@@ -32,7 +32,7 @@ export function useNoteBodyCollab({
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
-  /** The note `noteCollabUrls` were built for; the previous note's linger until the next resolve. */
+  /** The note `noteCollabUrls` were built for; the previous note's URLs linger until the next resolve. */
   const [roomNoteId, setRoomNoteId] = useState<string | undefined>(undefined);
   const [accessLost, setAccessLost] = useState(false);
   const activeNoteId = active?.id;
