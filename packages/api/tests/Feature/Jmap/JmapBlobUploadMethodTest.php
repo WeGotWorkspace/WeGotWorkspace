@@ -75,7 +75,7 @@ final class JmapBlobUploadMethodTest extends WgwDatabaseTestCase
 
         $this->assertSame([], $session['capabilities'][JmapCapabilities::BLOB]);
         $account = $session['accounts']['bob']['accountCapabilities'][JmapCapabilities::BLOB];
-        $this->assertSame(4_000_000_000, $account['maxSizeBlobSet']);
+        $this->assertNull($account['maxSizeBlobSet']);
         $this->assertGreaterThanOrEqual(64, $account['maxDataSources']);
         $this->assertSame([], $account['supportedTypeNames']);
         $this->assertSame([], $account['supportedDigestAlgorithms']);

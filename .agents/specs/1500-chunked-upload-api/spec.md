@@ -7,7 +7,7 @@ Technical translation of Task #1500 (API slice of Epic #1499). The issue is the 
 
 ## Goal
 
-Drive uploads work on small shared hosts (low `post_max_size`, ~30 s `max_execution_time`, no cron) for files up to `maxSizeBlobSet` (default 4 GB): parts are streamed and checked, assembled in bounded steps by a WGW JMAP extension on top of RFC 9404, attached to a FileNode by a move where safe, downloaded back by stream with `Range`, and versioned by a content hash that always means the true sha256 of the bytes.
+Drive uploads work on small shared hosts (low `post_max_size`, ~30 s `max_execution_time`, no cron) for files up to `maxSizeBlobSet` (no limit by default, so free disk space is the bound): parts are streamed and checked, assembled in bounded steps by a WGW JMAP extension on top of RFC 9404, attached to a FileNode by a move where safe, downloaded back by stream with `Range`, and versioned by a content hash that always means the true sha256 of the bytes.
 
 ## Non-goals
 

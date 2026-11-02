@@ -2,7 +2,7 @@
 
 > **Issue:** #1500 (API slice of Epic #1499) · **Spec:** `.agents/specs/1500-chunked-upload-api/spec.md` · **Related:** [jmap-quota.md](jmap-quota.md), [jmap-filenode-design.md](jmap-filenode-design.md)
 
-Drive uploads must work on small shared hosts: a low `post_max_size`, a `max_execution_time` of about 30 s, and no cron. Large files (default limit 4 GB) are uploaded in parts, assembled in bounded steps, attached to a FileNode by a move where safe, and downloaded back by stream with HTTP `Range`. This page documents the server contracts and every deviation from the RFCs.
+Drive uploads must work on small shared hosts: a low `post_max_size`, a `max_execution_time` of about 30 s, and no cron. Large files (no size limit by default; free disk space is checked) are uploaded in parts, assembled in bounded steps, attached to a FileNode by a move where safe, and downloaded back by stream with HTTP `Range`. This page documents the server contracts and every deviation from the RFCs.
 
 ## Limits
 
@@ -10,7 +10,7 @@ Drive uploads must work on small shared hosts: a low `post_max_size`, a `max_exe
 |-------|-------|------------|
 | `maxSizeUpload` | core capability | the smaller of `WGW_JMAP_MAX_SIZE_UPLOAD` and `post_max_size` (0 or unparseable ignored). `upload_max_filesize` is not used: it applies to multipart file uploads, and `/jmap/upload` takes a raw body. Limits PHP cannot see (nginx `client_max_body_size`, Apache `LimitRequestBody`, a proxy) are handled by the client adapting its part size (#1519). |
 | `stepBudgetBytes` | blob-assembly capability | `max_execution_time` (0 → `WGW_JMAP_STEP_UNLIMITED_SECONDS`, 60) × `WGW_JMAP_STEP_TIME_SHARE` (0.5) × `WGW_JMAP_STEP_THROUGHPUT_BYTES` (8 MiB/s); at least 1 MiB. 120 MiB at 30 s. Bounds every `Blob/upload`, assembly append and finish, hash rebuild, staged copy, and discovered-file hashing. |
-| `maxSizeBlobSet` | blob capability | `WGW_JMAP_MAX_SIZE_BLOB_SET`, default 4 GB; `null` (empty or `"null"`) for no limit |
+| `maxSizeBlobSet` | blob capability | `WGW_JMAP_MAX_SIZE_BLOB_SET` in octets; unset, empty or `"null"` (the default) for no limit |
 | `maxDataSources` | blob capability | `min(1024, max(64, max(1, floor(stepBudgetBytes / maxSizeUpload))))` |
 
 `maxDataSources` deviation: RFC 9404 requires at least 64. Where the step budget cannot cover 64 parts, the server still advertises 64 and refuses up front what one call cannot do (below). The 1024 ceiling bounds per-call bookkeeping and does not depend on `maxSizeBlobSet`.
