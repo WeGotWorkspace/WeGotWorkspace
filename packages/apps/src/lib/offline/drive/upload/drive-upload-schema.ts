@@ -133,6 +133,11 @@ export type OfflineDriveUploadItemRow = {
    * reads that node back and finishes; it never uploads or creates again.
    */
   createdNodeId?: string;
+  /**
+   * Automatic resumes after the server was full while its free space was
+   * unknown (no quota); the wait before the next one grows with each.
+   */
+  serverFullProbes?: number;
   /** The last create sent for this item, whose answer may have been lost. */
   placing?: DriveUploadPlacing;
   /**

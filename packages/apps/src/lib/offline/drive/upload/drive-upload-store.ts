@@ -273,11 +273,16 @@ export async function retryDriveUploadItem(username: string, itemId: string): Pr
 /**
  * Lift the `paused_server_full` pause: the items that hit a full server go
  * back to the queue, resuming from their stored parts. Returns how many.
+ * `probe`: an automatic try while the free space is unknown, counted on
+ * each item (`serverFullProbes`) so the next one waits longer.
  */
-export async function resumeDriveUploadQueue(username: string): Promise<number> {
+export async function resumeDriveUploadQueue(
+  username: string,
+  options: { probe?: boolean } = {},
+): Promise<number> {
   const failed = await tables(username).items.where("status").equals("failed").toArray();
   const full = failed.filter((item) => item.error?.code === "server_full").map((item) => item.id);
-  return requeueFailedItems(username, full);
+  return requeueFailedItems(username, full, options);
 }
 
 /** *Retry all failed* in the Uploads view. Returns how many items went back to the queue. */
@@ -286,7 +291,11 @@ export async function retryAllFailedDriveUploads(username: string): Promise<numb
   return requeueFailedItems(username, failedIds);
 }
 
-async function requeueFailedItems(username: string, itemIds: readonly string[]): Promise<number> {
+async function requeueFailedItems(
+  username: string,
+  itemIds: readonly string[],
+  options: { probe?: boolean } = {},
+): Promise<number> {
   const { db, items, entries } = tables(username);
   const retried = await db.transaction("rw", items, entries, async () => {
     let count = 0;
@@ -294,12 +303,13 @@ async function requeueFailedItems(username: string, itemIds: readonly string[]):
       const item = await items.get(itemId);
       if (!item || !canRetryDriveUpload(item)) continue;
       // Parts already on the server stay: a retry resumes from the next one.
-      const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
+      const { error: _error, retryAt: _retryAt, phase: _phase, serverFullProbes, ...rest } = item;
       await items.put({
         ...rest,
         status: "queued",
         bytesDone: chunkBytes(item.chunk),
         transientFailures: 0,
+        ...(options.probe ? { serverFullProbes: (serverFullProbes ?? 0) + 1 } : {}),
       });
       await setUploadPlaceholderStatus(username, itemId, "queued");
       count += 1;

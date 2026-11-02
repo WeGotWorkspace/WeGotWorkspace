@@ -35,7 +35,11 @@ import { readDirectoryEntriesFromCache } from "@/lib/offline/drive/drive-directo
 import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { resetPersistentStorageRequestForTests } from "@/lib/offline/drive/upload/drive-upload-device-storage";
 import { resetDriveUploadEventsForTests } from "@/lib/offline/drive/upload/drive-upload-events";
-import { DriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
+import {
+  DRIVE_UPLOAD_FULL_PROBE_MS,
+  DriveUploader,
+  driveUploadSpaceCheckDelay,
+} from "@/lib/offline/drive/upload/drive-upload-runner";
 import {
   driveUploadBlobsTable,
   driveUploadItemsTable,
@@ -200,6 +204,34 @@ describe("drive uploader error classes, server-full pause, and re-targeting", ()
       expect(server.uploads.map((upload) => upload.length)).toEqual([200, 200, 200, 100]);
       expect(await items()).toEqual([]);
     });
+
+    it("tries the file again by itself, ever less often, when the server reports no quota", async () => {
+      await fillUpDuringFirstFile();
+      const [held] = await items();
+      const sent = server.uploads.length;
+
+      // Still full: one try, after which the next one waits five minutes.
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      const once = (await items())[0]!;
+      expect(once).toMatchObject({ status: "failed", serverFullProbes: 1 });
+      expect(once.error?.code).toBe("server_full");
+      expect(server.uploads).toHaveLength(sent + 1);
+      expect(once.retryAt! - Date.now()).toBeGreaterThan(DRIVE_UPLOAD_FULL_PROBE_MS - 5_000);
+
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      const twice = (await items())[0]!;
+      expect(twice.serverFullProbes).toBe(2);
+      expect(twice.retryAt! - Date.now()).toBeGreaterThan(2 * DRIVE_UPLOAD_FULL_PROBE_MS - 5_000);
+
+      // Space came back: the next try finishes the queue.
+      server.full = false;
+      await makeSpaceCheckDue(held!.id);
+      await runUploader();
+      expect(await items()).toEqual([]);
+      expect(server.callsNamed("Quota/get")).toHaveLength(0);
+    });
   });
 
   it("fails as forbidden when write access to the folder is gone, without a sign-in", async () => {
@@ -274,6 +306,12 @@ describe("drive uploader error classes, server-full pause, and re-targeting", ()
     expect(node.parentId).toBe("fn-other");
     expect(server.bytesOf(node.blobId)).toEqual(await fileBytes(file));
     expect(await items()).toEqual([]);
+  });
+
+  it("waits a minute, then 5, 10, … up to an hour between checks of a full server", () => {
+    expect(
+      [0, 1, 2, 3, 4, 5, 6].map((probes) => driveUploadSpaceCheckDelay(probes) / 60_000),
+    ).toEqual([1, 5, 10, 20, 40, 60, 60]);
   });
 
   describe("re-targeting after the bytes were sent", () => {
