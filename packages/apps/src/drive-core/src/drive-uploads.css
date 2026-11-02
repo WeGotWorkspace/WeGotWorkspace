@@ -146,8 +146,14 @@
   color: var(--drive-upload-muted-fg);
 }
 
-.drive-uploads .drive-upload-ring {
+.drive-uploads__progress {
   grid-area: ring;
+  @apply flex items-center gap-1;
+}
+
+.drive-uploads__percent {
+  @apply text-xs tabular-nums;
+  color: var(--drive-upload-muted-fg);
 }
 
 .drive-uploads__actions {

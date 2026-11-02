@@ -98,14 +98,25 @@ function DriveUploadsRow({
           ) : null}
           <span className="drive-uploads__size">{file.size}</span>
         </span>
-        <span className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}>
-          {state.statusText}
-        </span>
+        {/* While uploading, the percentage beside the ring says it all. */}
+        {state.kind === "uploading" ? null : (
+          <span className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}>
+            {state.statusText}
+          </span>
+        )}
         {state.notOnDevice ? (
           <span className="drive-uploads__note">{driveLabels.uploadNotOnDeviceDetail}</span>
         ) : null}
       </div>
-      <DriveUploadRingView fileName={file.title} state={state} />
+      <div className="drive-uploads__progress">
+        {state.kind === "uploading" && state.percent !== null ? (
+          // The ring tells screen readers the same.
+          <span className="drive-uploads__percent" aria-hidden="true">
+            {driveLabels.uploadPercent(state.percent)}
+          </span>
+        ) : null}
+        <DriveUploadRingView fileName={file.title} state={state} />
+      </div>
       <div className="drive-uploads__actions">
         {state.canRetry && model.retry ? (
           <Button

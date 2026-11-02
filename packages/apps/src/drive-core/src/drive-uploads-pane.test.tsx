@@ -58,6 +58,11 @@ describe("DriveUploadsPane", () => {
     expect(within(busy).queryByRole("button", { name: /Remove/ })).toBeNull();
     const ring = within(busy).getByRole("progressbar", { name: "Upload of Launch video.mp4" });
     expect(ring.getAttribute("aria-valuenow")).toBe("45");
+    // Uploading: the percentage beside the ring, no status line under the name.
+    expect(within(busy).getByText("45%")).toBeTruthy();
+    expect(within(busy).queryByText(/^Uploading/)).toBeNull();
+    // Other states keep their status line.
+    expect(within(failed).getByText(/^Upload failed/)).toBeTruthy();
 
     const device = screen.getByText("Contract draft.docx").closest("li")!;
     expect(within(device).getByText(/won't survive/i)).toBeTruthy();
