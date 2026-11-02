@@ -287,6 +287,26 @@ describe("useDriveFolderListingSync on another user's change (#1663)", () => {
     expect(changeDir).toHaveBeenCalledTimes(4);
   });
 
+  it("backs off a failing refresh through the delay list, then stops", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    await loaded(changeDir);
+    changeDir.mockRejectedValue(statusError(503));
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+    let calls = 2;
+    expect(changeDir).toHaveBeenCalledTimes(calls);
+    for (const delay of FOLDER_LISTING_RETRY_DELAYS_MS) {
+      await advance(delay - 1);
+      expect(changeDir).toHaveBeenCalledTimes(calls);
+      await advance(1);
+      calls += 1;
+      expect(changeDir).toHaveBeenCalledTimes(calls);
+    }
+    await advance(120_000);
+    expect(changeDir).toHaveBeenCalledTimes(calls);
+  });
+
   it("ignores another account's changes", async () => {
     const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
     await loaded(changeDir);

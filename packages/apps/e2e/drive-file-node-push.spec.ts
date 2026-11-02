@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page, type Request } from "./helpers/live-test";
-import { docsHomeRow } from "./helpers/docs-live";
+import { docsHomeRow, E2E_GROUP_ROOT } from "./helpers/docs-live";
+import { openUsers, shareWithViewer } from "./helpers/rtc-chaos";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
 /**
@@ -156,4 +157,77 @@ test("a WebDAV write reaches an open Drive folder and the Docs home on push", as
         expect(docsHomeRow(tabB, "c-renamed.md")).toBeVisible(within),
       ]),
   );
+});
+
+/** WebDAV against any root path, as the given account. */
+async function davAs(
+  user: string,
+  method: string,
+  path: string,
+  body?: string,
+  extra: Record<string, string> = {},
+): Promise<void> {
+  const auth = `Basic ${Buffer.from(`${user}:${E2E_PASSWORD}`).toString("base64")}`;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const res = await fetch(`${API}/files/${path}`, {
+      method,
+      headers: { Authorization: auth, ...extra },
+      body,
+    });
+    if (res.status !== 429) {
+      if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+  }
+  throw new Error(`${method} ${path} stayed rate limited`);
+}
+
+test("a WebDAV write reaches an open group folder on push", async ({ page }) => {
+  test.setTimeout(120_000);
+  const name = `Push ${RUN} group`;
+  const groupDav = `${E2E_GROUP_ROOT.replace(/^\//, "")}/${encodeURIComponent(name)}`;
+  await davAs(E2E_USERNAME, "MKCOL", `${groupDav}/`);
+  await davAs(E2E_USERNAME, "PUT", `${groupDav}/seed.txt`, "seed\n", {
+    "Content-Type": "text/plain",
+  });
+
+  await Promise.all([
+    pushConnected(page.context()),
+    page.goto(`/drive?view=folder&path=${encodeURIComponent(`${E2E_GROUP_ROOT}/${name}`)}`),
+  ]);
+  await expect(listed(page, "seed.txt")).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(3_000);
+
+  await davAs(E2E_USERNAME, "PUT", `${groupDav}/pushed.txt`, "pushed\n", {
+    "Content-Type": "text/plain",
+  });
+  await expect(listed(page, "pushed.txt")).toBeVisible({ timeout: PUSH_BOUND_MS });
+});
+
+test("a WebDAV write reaches a folder shared with one person on push", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const name = `Share ${RUN}`;
+  const adminDav = `users/${E2E_USERNAME}/${encodeURIComponent(name)}`;
+  await davAs(E2E_USERNAME, "MKCOL", `${adminDav}/`);
+
+  const [admin, member] = await openUsers(browser, [E2E_USERNAME, "member"]);
+  try {
+    await admin.page.goto("/drive");
+    await shareWithViewer(admin.page, `/users/${E2E_USERNAME}/${name}`, "member");
+
+    await Promise.all([pushConnected(member.context), member.page.goto("/drive?view=shared")]);
+    await member.page.getByText(name, { exact: true }).first().dblclick();
+    await expect(member.page).toHaveURL(/view=folder/, { timeout: 30_000 });
+    // The listing has loaded and the first syncs have settled.
+    await member.page.waitForTimeout(5_000);
+
+    await davAs(E2E_USERNAME, "PUT", `${adminDav}/x.md`, "x\n", { "Content-Type": "text/plain" });
+    await expect(listed(member.page, "x.md")).toBeVisible({ timeout: PUSH_BOUND_MS });
+
+    await davAs(E2E_USERNAME, "DELETE", `${adminDav}/x.md`);
+    await expect(listed(member.page, "x.md")).toHaveCount(0, { timeout: PUSH_BOUND_MS });
+  } finally {
+    await Promise.all([admin.context.close(), member.context.close()]);
+  }
 });

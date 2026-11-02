@@ -79,6 +79,8 @@ function subscribeFolderRemoteRefresh({
   let running = false;
   let again = false;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  // Kept for the whole subscription: a timer retry must read the next delay.
+  let failures = 0;
   const run = () => {
     clearTimeout(retryTimer);
     if (running) {
@@ -87,19 +89,20 @@ function subscribeFolderRemoteRefresh({
     }
     running = true;
     void (async () => {
-      let failures = 0;
       do {
         again = false;
         try {
           await refresh();
           failures = 0;
+          clearTimeout(retryTimer);
         } catch (error: unknown) {
           if (controller.signal.aborted) break;
           console.warn("[drive] folder refresh failed", error);
           // The push is confirmed: the hub will not send this state again.
           const delay = FOLDER_LISTING_RETRY_DELAYS_MS[failures];
           failures += 1;
-          if (delay !== undefined && isRetryableListingError(error)) {
+          // A queued push refreshes right away, so no timer is needed.
+          if (!again && delay !== undefined && isRetryableListingError(error)) {
             retryTimer = setTimeout(run, delay);
           }
         }
@@ -107,7 +110,11 @@ function subscribeFolderRemoteRefresh({
       running = false;
     })();
   };
-  const onChange = run;
+  // A new push starts a fresh retry schedule; the timer calls `run` directly.
+  const onChange = () => {
+    failures = 0;
+    run();
+  };
   const unsubscribe = subscribeDriveRemoteChanges(currentUsername, onChange);
   return () => {
     unsubscribe();
