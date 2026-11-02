@@ -1,5 +1,7 @@
 import { appendLogoutStepFailure } from "@/lib/api/wgw/session-debug";
+import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import { forgetPushScopes } from "@/notifications-core/src/push-scope";
+import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
@@ -20,6 +22,12 @@ const OUTBOX_STORE = "outbox";
  */
 const COLLAB_CUSTOM_STORE = "custom";
 const INDEXED_DB_STEP_TIMEOUT_MS = 2_000;
+/**
+ * A subscribe run sees the logged-out marker and stops at its next await, so
+ * the lock is usually free at once. A run stuck in a hung subscribe() keeps it
+ * up to its own 15 s limit; logout does not wait that long.
+ */
+const PUSH_LOCK_WAIT_MS = 5_000;
 
 type AuthorizedFetch = (path: string, init?: RequestInit) => Promise<Response>;
 type AccountKeyFromUsername = (username: string) => string;
@@ -51,6 +59,19 @@ async function forgetPushScopesBounded(): Promise<void> {
  * which would block the rest of logout, so this uses `getRegistration()`.
  */
 export async function releasePushOnLogout(authorizedFetch: AuthorizedFetch): Promise<void> {
+  // Wait for a subscribe run that already started, so its POST cannot land
+  // after the DELETE below. Logout sets the marker first, so later runs stop.
+  try {
+    await withCrossTabLock(PUSH_SUBSCRIBE_LOCK, () => releasePush(authorizedFetch), {
+      maxWaitMs: PUSH_LOCK_WAIT_MS,
+    });
+  } catch (error) {
+    if (!isCrossTabLockTimeout(error)) throw error;
+    await releasePush(authorizedFetch);
+  }
+}
+
+async function releasePush(authorizedFetch: AuthorizedFetch): Promise<void> {
   // The next sign-in on this device must not post the previous account's
   // app scopes, or `/` recorded while this app was on /logout (#1606).
   // A stalled IndexedDB open never rejects, so bound it: logout must go on.

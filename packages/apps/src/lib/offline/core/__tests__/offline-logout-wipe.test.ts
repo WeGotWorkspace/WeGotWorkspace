@@ -18,6 +18,7 @@ import {
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { readPushScopes, rememberPushScope } from "@/notifications-core/src/push-scope";
+import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
@@ -98,6 +99,32 @@ function installPushSubscription(endpoint: string): {
   return { unsubscribe };
 }
 
+/** Exclusive Web Locks, queued per name, with the `signal` abort that `withCrossTabLock` uses. */
+function installQueuedLocks(): void {
+  const tails = new Map<string, Promise<unknown>>();
+  const request = (name: string, options: LockOptions, task: () => Promise<unknown>) => {
+    const before = tails.get(name) ?? Promise.resolve();
+    const run = new Promise((resolve, reject) => {
+      let started = false;
+      options.signal?.addEventListener("abort", () => {
+        if (!started) reject(new DOMException("Lock request aborted", "AbortError"));
+      });
+      void before.then(() => {
+        if (options.signal?.aborted) return;
+        started = true;
+        Promise.resolve().then(task).then(resolve, reject);
+      });
+    });
+    run.catch(() => undefined);
+    tails.set(
+      name,
+      before.then(() => run).catch(() => undefined),
+    );
+    return run;
+  };
+  Object.defineProperty(navigator, "locks", { configurable: true, value: { request } });
+}
+
 type FetchCall = { url: string; method: string; override: string | null; body: string };
 
 function fetchCalls(fetchMock: ReturnType<typeof vi.fn>): FetchCall[] {
@@ -140,6 +167,7 @@ afterEach(async () => {
   resetWgwSessionStateForTests();
   window.localStorage.clear();
   Reflect.deleteProperty(navigator, "serviceWorker");
+  Reflect.deleteProperty(navigator, "locks");
   resetOfflineDatabaseCache();
   const names = await indexedDbNames();
   await Promise.all(names.map((name) => Dexie.delete(name)));
@@ -496,6 +524,51 @@ describe("user-initiated logout", () => {
       Object.defineProperty(indexedDB, "open", { configurable: true, value: open });
       delete (navigator as { serviceWorker?: unknown }).serviceWorker;
     }
+  });
+
+  it("waits for a running subscribe, so its post cannot land after the delete", async () => {
+    installQueuedLocks();
+    const { unsubscribe } = installPushSubscription("https://push.example/e1");
+    let finishSubscribe = () => {};
+    const subscribeRun = navigator.locks.request(
+      PUSH_SUBSCRIBE_LOCK,
+      {},
+      () => new Promise<void>((resolve) => (finishSubscribe = resolve)),
+    );
+    const authorizedFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+
+    const pending = releasePushOnLogout(authorizedFetch);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(authorizedFetch).not.toHaveBeenCalled();
+
+    finishSubscribe();
+    await subscribeRun;
+    await pending;
+    expect(authorizedFetch).toHaveBeenCalledWith(
+      "/notifications/push/subscriptions",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it("still releases push when a hung subscribe keeps the lock", async () => {
+    installQueuedLocks();
+    installPushSubscription("https://push.example/e1");
+    void navigator.locks.request(PUSH_SUBSCRIBE_LOCK, {}, () => new Promise<void>(() => {}));
+    const authorizedFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const pending = releasePushOnLogout(authorizedFetch);
+      await vi.advanceTimersByTimeAsync(5_000);
+      vi.useRealTimers();
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(authorizedFetch).toHaveBeenCalledWith(
+      "/notifications/push/subscriptions",
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 
   it("marks the session logged out before revoke finishes", async () => {

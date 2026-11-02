@@ -1,3 +1,4 @@
+import { readLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import {
@@ -11,10 +12,10 @@ import {
   readPushScopes,
   rememberPushScope,
 } from "./push-scope";
+import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
-const PUSH_SUBSCRIBE_LOCK = "wgw-push-subscribe";
 /**
  * A hung subscribe() (Safari outside a user gesture) must not block later
  * retries forever: it bounds both the wait for the lock and a run holding it.
@@ -105,7 +106,9 @@ function subscribePushManagerOnce(): Promise<boolean> {
  * Run the subscribe work, but give up after the limit so a hung subscribe()
  * releases the Web Lock and the in-tab queue. The abandoned run cannot be
  * cancelled; it checks `isCurrent` after each await and stops touching the
- * subscription once it timed out or a newer run started.
+ * subscription once it timed out, a newer run started, or logout began. The
+ * /logout page mounts the notifications provider too, so a run can start while
+ * logout releases push; it must not post the row or the scope back.
  */
 async function subscribeWithinLimit(): Promise<boolean> {
   runCounter += 1;
@@ -119,7 +122,8 @@ async function subscribeWithinLimit(): Promise<boolean> {
     }, PUSH_SUBSCRIBE_MAX_WAIT_MS);
   });
   try {
-    return await Promise.race([subscribePushManager(() => activeRun === id), limit]);
+    const isCurrent = () => activeRun === id && !readLoggedOutMarker();
+    return await Promise.race([subscribePushManager(isCurrent), limit]);
   } finally {
     clearTimeout(timer);
   }
@@ -127,6 +131,7 @@ async function subscribeWithinLimit(): Promise<boolean> {
 
 async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!isCurrent()) return false;
   const key = urlBase64ToUint8Array(await fetchVapidPublicKey());
   if (!isCurrent()) return false;
   const registration = await navigator.serviceWorker.ready;

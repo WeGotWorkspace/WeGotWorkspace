@@ -30,6 +30,7 @@ const subscribe = vi.fn();
 const getSubscription = vi.fn();
 const CURRENT_KEY = [1, 2, 3]; // "AQID", the stubbed VAPID public key
 const SUBSCRIBER_KEY = "wgw.push.subscriber";
+const LOGGED_OUT_KEY = "wgw.api.logged_out";
 
 function signInAs(username: string): void {
   const payload = btoa(JSON.stringify({ sub: username }));
@@ -66,6 +67,7 @@ describe("ensurePushPermissionAndSubscribe", () => {
   beforeEach(() => {
     resetEnsurePushSubscriptionForTests();
     window.localStorage.removeItem(SUBSCRIBER_KEY);
+    window.localStorage.removeItem(LOGGED_OUT_KEY);
     vi.mocked(wgwCurrentAccessToken).mockReturnValue(null);
     vi.mocked(fetchVapidPublicKey).mockReset();
     vi.mocked(subscribePush).mockReset();
@@ -121,6 +123,32 @@ describe("ensurePushPermissionAndSubscribe", () => {
       { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
       "/",
     );
+  });
+
+  it("does not subscribe once logout has started", async () => {
+    stubNotification("granted");
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("stops before posting when logout starts during the run", async () => {
+    // The /logout page mounts the provider too: its run must not post the
+    // row or remember the scope again after logout released them.
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    getSubscription.mockImplementation(async () => {
+      window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+      return storedSubscription(CURRENT_KEY);
+    });
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(subscribePush).not.toHaveBeenCalled();
+    expect(rememberPushScope).not.toHaveBeenCalled();
   });
 
   it("does not prompt again when the browser already denied", async () => {
