@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
@@ -8,6 +9,7 @@ import {
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import "@/lib/offline/drive/drive-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   flushDocsOutbox,
@@ -119,6 +121,31 @@ describe("flushDocsOutbox", () => {
     await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/B.md")).resolves.toBe(
       false,
     );
+  });
+
+  it("puts a folder's page setup back when its queued trash is dropped", async () => {
+    const setup = { format: "a4", orientation: "landscape" } as const;
+    writeDocsPageSetupOverride("/users/alice/.Trash/Notes/plan.md", setup);
+    writeDocsPageSetupOverride("/users/alice/Notes2/x.md", setup);
+    await enqueueOutboxMutation(username, {
+      id: "trash-folder",
+      domain: DOCS_DOMAIN,
+      op: "trash",
+      payload: JSON.stringify({
+        op: "trash",
+        from: "/users/alice/Notes",
+        destination: "/users/alice/.Trash",
+        to: "Notes",
+      }),
+    });
+
+    await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/Notes")).resolves.toBe(
+      true,
+    );
+
+    const keys = Object.keys(readDocsPageSetupOverrides()).sort();
+    expect(keys).toEqual(["/users/alice/Notes/plan.md", "/users/alice/Notes2/x.md"]);
+    window.localStorage.clear();
   });
 
   it("does not report a trash when the removed op is not trash", async () => {
