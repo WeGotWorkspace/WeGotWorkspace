@@ -15,6 +15,7 @@ import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { cancelSaveTimer } from "./docs-collab-save-timer";
+import { closeCollabRoomStore } from "./docs-collab-leave-room";
 import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
@@ -158,7 +159,7 @@ export function useDocsCollabJoin({
     if (awareness) {
       awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
     }
-    cancelSaveTimer(refs.saveTimerRef);
+    const saveDue = cancelSaveTimer(refs.saveTimerRef) && !urls.roomNotPersistent;
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
@@ -169,7 +170,7 @@ export function useDocsCollabJoin({
     if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
     const persistence = refs.persistenceRef.current;
     refs.persistenceRef.current = null;
-    void persistence?.destroy();
+    if (persistence) void closeCollabRoomStore(persistence, saveDue ? { room, urls } : null);
     refs.ydocRef.current = null;
     loadedStateRef.current = null;
     refs.awarenessRef.current = null;
@@ -202,7 +203,7 @@ export function useDocsCollabJoin({
     setLastSavedAt(null);
     setPendingSync(false);
     setFailedSync(false);
-  }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
+  }, [refs, room, urls, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
 
   useEffect(() => {
     // pagehide also runs when the page enters the back/forward cache. Keep the
