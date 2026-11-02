@@ -17,12 +17,6 @@ vi.mock("@/hooks/use-run-with-app-toast", () => ({
   useRunWithAppToast: () => async (work: () => Promise<unknown>) => work(),
 }));
 
-/**
- * App panes whose choices apply at once, so their dialog has no Save. Every other app
- * pane must hand its Save to the dialog footer (`useSettingsPrefsForm` does).
- */
-const INSTANT_APP_PANELS = new Set(["meet"]);
-
 beforeEach(() => {
   resetSettingsRegistryForTests();
   registerBuiltinSettings();
@@ -47,17 +41,15 @@ describe("app settings dialog", () => {
     );
   });
 
-  it.each(appPanels.filter((id) => !INSTANT_APP_PANELS.has(id)))(
-    "%s pane gives the dialog footer a Save",
-    (panelId) => {
-      let paneSave: SettingsDialogPaneSave | null = null;
-      render(
-        <SettingsDialogPaneActionsProvider onSaveChange={(next) => (paneSave = next)}>
-          <SettingsPanelHost panelId={panelId} ctx={{}} />
-        </SettingsDialogPaneActionsProvider>,
-      );
-      expect(paneSave).not.toBeNull();
-      expect(paneSave!.disabled).toBe(true);
-    },
-  );
+  // Every app pane hands its Save to the dialog footer (`useSettingsPrefsForm` does).
+  it.each(appPanels)("%s pane gives the dialog footer a Save", (panelId) => {
+    let paneSave: SettingsDialogPaneSave | null = null;
+    render(
+      <SettingsDialogPaneActionsProvider onSaveChange={(next) => (paneSave = next)}>
+        <SettingsPanelHost panelId={panelId} ctx={{}} />
+      </SettingsDialogPaneActionsProvider>,
+    );
+    expect(paneSave).not.toBeNull();
+    expect(paneSave!.disabled).toBe(true);
+  });
 });
