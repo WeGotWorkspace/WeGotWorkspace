@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_USERNAME, expectOfflineIndicator } from "./helpers/notes-live";
 
@@ -76,7 +77,7 @@ async function downloadFromTile(page: Page, name: string): Promise<{ name: strin
     page.getByRole("menuitem", { name: "Download" }).click(),
   ]);
   const path = await download.path();
-  const text = (await import("node:fs")).readFileSync(path, "utf8");
+  const text = readFileSync(path, "utf8");
   return { name: download.suggestedFilename(), text };
 }
 
