@@ -45,6 +45,12 @@
   color: var(--drive-upload-error-fg);
 }
 
+@media (max-width: 767px) {
+  .drive-upload-status__words {
+    display: none;
+  }
+}
+
 /* Sidebar count; an error badge while any upload failed. */
 .drive-uploads-badge__visual {
   @apply inline-flex items-center gap-0.5;
@@ -154,6 +160,19 @@
 .drive-uploads__percent {
   @apply text-xs tabular-nums;
   color: var(--drive-upload-muted-fg);
+}
+
+/* A long reason wraps instead of squeezing the file name. */
+.drive-uploads__reason {
+  @apply text-right text-xs;
+  max-width: 9rem;
+  color: var(--drive-upload-error-fg);
+}
+
+@media (min-width: 640px) {
+  .drive-uploads__reason {
+    max-width: 16rem;
+  }
 }
 
 .drive-uploads__actions {
