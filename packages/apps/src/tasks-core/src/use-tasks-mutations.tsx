@@ -7,11 +7,11 @@ import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
+  dueEditSendsShowWithoutTime,
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
   taskAlertsEqual,
-  dueEditSendsShowWithoutTime,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
