@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page, type Request } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page, type Request } from "./helpers/live-test";
 
 /**
  * #1668: a new notification reaches the bell on push, in two tabs of one
