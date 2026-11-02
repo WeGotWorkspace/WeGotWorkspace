@@ -499,6 +499,11 @@
     overflow-wrap: anywhere;
   }
 
+  /* Column widths of the table as print lays it out (`text-editor-page-columns.ts`). */
+  .text-editor-prose.rm-with-pagination table tr > :is(td, th) {
+    width: var(--text-editor-cell-width, auto);
+  }
+
   /* A row taller than a page (`text-editor-page-rows.ts`): cells stack and flow. */
   .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked {
     display: block !important;
@@ -1258,6 +1263,11 @@
 
   .text-editor-prose.rm-with-pagination table tr :is(td, th) {
     word-break: normal;
+  }
+
+  /* The page view moves a row to the next page whole; print does the same. */
+  .text-editor-prose table tr {
+    break-inside: avoid;
   }
 
   /* Other people's carets and selections are live presence, not document content. */

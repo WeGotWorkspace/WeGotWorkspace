@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageCountIsStale, pageEndForBreak } from "./text-editor-page-break-fill";
+import { breakFillEnd, pageCountIsStale, pageEndForBreak } from "./text-editor-page-break-fill";
 import { tableRowPositions } from "./text-editor-page-rows";
 import { getSchema } from "@tiptap/core";
 import { createTextEditorExtensions } from "./text-editor-extensions";
@@ -32,6 +32,21 @@ describe("pageEndForBreak", () => {
 
   it("without any page end, fills nothing", () => {
     expect(pageEndForBreak(300, false, [], FALLBACK)).toEqual({ top: 299.5, bottom: 299.5 });
+  });
+});
+
+describe("breakFillEnd", () => {
+  it("runs through the page end when content follows, keeping its top margin as print does", () => {
+    expect(breakFillEnd(ENDS[0], true)).toBe(1250);
+  });
+
+  it("stops at the page end for a break at the very end, adding no page", () => {
+    expect(breakFillEnd(ENDS[0], false)).toBe(1000);
+  });
+
+  it("two breaks in a row still leave one empty page", () => {
+    const first = breakFillEnd(pageEndForBreak(400, false, ENDS, FALLBACK), true);
+    expect(pageEndForBreak(first, true, ENDS, FALLBACK)).toEqual(ENDS[1]);
   });
 });
 

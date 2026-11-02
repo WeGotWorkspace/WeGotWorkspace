@@ -53,6 +53,24 @@ export function pageEndForBreak(
   return { top, bottom: top + fallback.pageEndHeight };
 }
 
+/**
+ * Where a break's fill stops. With content after it, the break runs through the page-end
+ * band, so the next block starts at the top of the next page's text with its top margin:
+ * print keeps margins after a forced break. A break at the very end stops at the page end,
+ * so it adds no page.
+ */
+export function breakFillEnd(end: PageEnd, contentFollows: boolean): number {
+  return contentFollows ? end.bottom : end.top;
+}
+
+/** A block after `el` other than the library's own page elements. */
+function contentFollows(el: HTMLElement): boolean {
+  for (let next = el.nextElementSibling; next; next = next.nextElementSibling) {
+    if (!next.matches("[data-rm-pagination]")) return true;
+  }
+  return false;
+}
+
 /** Page end whose band (footer, gap, header) contains `y`, if any. */
 function pageEndAround(y: number, ends: readonly PageEnd[]): PageEnd | undefined {
   return ends.find((end) => y >= end.top - 0.5 && y < end.bottom);
@@ -112,7 +130,8 @@ export function layoutPageBreaks(dom: HTMLElement, options: PageBreakFillOptions
 
     const afterBreak = previous?.matches('[data-type="page-break"]') ?? false;
     const end = pageEndForBreak(contentBottom, afterBreak, ends, fallback);
-    changed = setVar(el, "--page-break-fill", Math.max(0, end.top - contentBottom)) || changed;
+    const fillEnd = breakFillEnd(end, contentFollows(el));
+    changed = setVar(el, "--page-break-fill", Math.max(0, fillEnd - contentBottom)) || changed;
     // A break that starts inside a page-end band shows its line at the top of the next page.
     const band = pageEndAround(contentBottom, ends);
     changed =
