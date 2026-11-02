@@ -107,6 +107,7 @@ final class FilesController
             return $this->drive->downloadResponseByNodeId(
                 $this->principal($request),
                 $nodeId,
+                $request,
             );
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             throw new ApiHttpException(404, $e->getMessage(), 'not_found');
@@ -130,6 +131,7 @@ final class FilesController
             return $this->drive->downloadResponse(
                 $this->principal($request),
                 $this->requireDrivePath($request),
+                $request,
             );
         });
     }

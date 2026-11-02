@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property bool $is_dir
  * @property int|null $size_bytes
  * @property string|null $content_sha256
+ * @property bool $hash_pending
  * @property int $created_seq
  * @property int $change_seq
  * @property Carbon|null $deleted_at
@@ -39,6 +40,7 @@ final class JmapFileNode extends Model
         'is_dir',
         'size_bytes',
         'content_sha256',
+        'hash_pending',
         'created_seq',
         'change_seq',
         'deleted_at',
@@ -48,6 +50,7 @@ final class JmapFileNode extends Model
     {
         return [
             'is_dir' => 'boolean',
+            'hash_pending' => 'boolean',
             'deleted_at' => 'datetime',
         ];
     }

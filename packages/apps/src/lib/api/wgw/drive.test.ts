@@ -37,6 +37,8 @@ import {
   resetDriveJmapSessionForTests,
 } from "@/lib/api/wgw/drive";
 import {
+  DRIVE_READ_BLOB_MAX_BYTES,
+  DriveFileTooLargeToOpenError,
   DriveTransportError,
   FileNodeNotFoundError,
   FileNodeRootUnavailableError,
@@ -54,6 +56,7 @@ let hideHomeNode = false;
 let filesContextStatus = 200;
 let uploadStatus = 201;
 let downloadStatus = 200;
+let readmeSize = 12;
 
 function jmapSessionBody() {
   return {
@@ -122,7 +125,7 @@ function fileNode() {
     nodeType: "file",
     blobId: "fnb-fn-readme-aaaaaaaa",
     name: "readme.md",
-    size: 12,
+    size: readmeSize,
     type: "text/markdown",
   };
 }
@@ -224,6 +227,16 @@ function mockSignedInFetch() {
     if (path === "/jmap/upload/bob") {
       return jsonResponse({ blobId: "jb-uploaded", type: "text/plain", size: 1 }, uploadStatus);
     }
+    if (path === "/jmap/download-tickets/bob" && init?.method === "POST") {
+      return jsonResponse(
+        {
+          url: "https://drive.example.test/api/v1/jmap/download-ticket/secret/readme.md",
+          idleExpires: "2099-01-01T00:30:00Z",
+          absoluteExpires: "2099-01-02T00:00:00Z",
+        },
+        201,
+      );
+    }
     if (path.startsWith("/jmap/download/")) {
       return new Response(downloadStatus === 200 ? "hello" : "nope", { status: downloadStatus });
     }
@@ -273,6 +286,7 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     filesContextStatus = 200;
     uploadStatus = 201;
     downloadStatus = 200;
+    readmeSize = 12;
     resetDriveJmapSessionForTests();
     wgwIsGuestSession.mockReturnValue(false);
     wgwGuestSharePath.mockReturnValue(null);
@@ -327,6 +341,62 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
     expect(paths.some((path) => path.startsWith("/jmap/download/"))).toBe(true);
     expect(paths.some((path) => path.includes("/files/content"))).toBe(false);
+  });
+
+  it("downloads through a ticket the browser fetches natively, never building a Blob", async () => {
+    const clicked: Array<{ href: string; download: string }> = [];
+    vi.stubGlobal("document", {
+      createElement: () => {
+        const anchor = {
+          href: "",
+          download: "",
+          rel: "",
+          style: {} as Record<string, string>,
+          click: () => clicked.push({ href: anchor.href, download: anchor.download }),
+          remove: () => undefined,
+        };
+        return anchor;
+      },
+      body: { append: () => undefined },
+    });
+    readmeSize = 4 * 1024 * 1024 * 1024;
+    try {
+      const ops = createWgwDriveOperations("/users/bob");
+      await ops.downloadFile("/users/bob/readme.md");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const ticketCall = wgwFetch.mock.calls.find(
+      (call) => String(call[0]) === "/jmap/download-tickets/bob",
+    );
+    expect(JSON.parse(String((ticketCall?.[1] as RequestInit).body))).toEqual({
+      blobId: "fnb-fn-readme-aaaaaaaa",
+      name: "readme.md",
+      type: "text/markdown",
+    });
+    const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith("/jmap/download/"))).toBe(false);
+    expect(clicked).toEqual([
+      {
+        href: "https://drive.example.test/api/v1/jmap/download-ticket/secret/readme.md",
+        download: "readme.md",
+      },
+    ]);
+  });
+
+  it("refuses to read a file above the in-memory limit, and says it is too large to open", async () => {
+    readmeSize = DRIVE_READ_BLOB_MAX_BYTES + 1;
+    const ops = createWgwDriveOperations("/users/bob");
+
+    await expect(ops.readFileBlob("/users/bob/readme.md")).rejects.toBeInstanceOf(
+      DriveFileTooLargeToOpenError,
+    );
+    await expect(ops.readFileBlob("/users/bob/readme.md")).rejects.toThrow(
+      /too large to open in the browser/,
+    );
+    const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith("/jmap/download/"))).toBe(false);
   });
 
   function guestFileEntry(dir: string, name: string) {

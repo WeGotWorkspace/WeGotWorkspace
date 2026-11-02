@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap;
 
-use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Jmap\Blobs\JmapBlobLimits;
 
 /**
  * JMAP capability URNs, advertised limits, and the session state constant
@@ -19,6 +19,24 @@ final class JmapCapabilities
     public const CONTACTS = 'urn:ietf:params:jmap:contacts';
 
     public const FILENODE = 'urn:ietf:params:jmap:filenode';
+
+    /** RFC 9404 blob management (Blob/upload, Blob/get; no lookups, no digests). */
+    public const BLOB = 'urn:ietf:params:jmap:blob';
+
+    /** RFC 9425 quotas (one Drive quota per writable root). */
+    public const QUOTA = 'urn:ietf:params:jmap:quota';
+
+    /**
+     * WGW extension (#1500): assemble one blob from parts in bounded steps,
+     * because RFC 9404 Blob/upload creates an immutable blob in one call.
+     */
+    public const BLOB_ASSEMBLY = 'https://wegotworkspace.org/jmap/blob-assembly';
+
+    /**
+     * WGW extension to draft-ietf-jmap-filenode-14 (#1500): the
+     * `expectedBlobId` update property and the `versionMismatch` SetError.
+     */
+    public const FILENODE_VERSION_CHECK = 'https://wegotworkspace.org/jmap/filenode-version-check';
 
     /**
      * Vendor Notes envelope over CalDAV VJOURNAL. There is no IETF Notes
@@ -55,9 +73,10 @@ final class JmapCapabilities
     public static function coreCapability(): array
     {
         return [
-            // Enforced by POST /jmap/upload (JmapBlobService); PHP-level
-            // limits (post_max_size) still apply upstream.
-            'maxSizeUpload' => JmapBlobService::maxSizeUpload(),
+            // Enforced by POST /jmap/upload: the smaller of the config value
+            // and post_max_size (JmapBlobLimits). Limits outside PHP are
+            // handled by the client adapting its part size.
+            'maxSizeUpload' => JmapBlobLimits::maxSizeUpload(),
             'maxConcurrentUpload' => 4,
             'maxSizeRequest' => 2_000_000,
             'maxConcurrentRequests' => 4,
@@ -155,6 +174,41 @@ final class JmapCapabilities
         return [
             'maxChannelsPerMessage' => 1,
             'mayCreateChannel' => true,
+        ];
+    }
+
+    /**
+     * RFC 9404 §3.1 account-level capability object. The session-level value
+     * is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function blobAccountCapability(): array
+    {
+        return [
+            'maxSizeBlobSet' => JmapBlobLimits::maxSizeBlobSet(),
+            // Within the step budget, raised to the RFC floor of 64
+            // (documented deviation: Blob/upload refuses the excess up front).
+            'maxDataSources' => JmapBlobLimits::maxDataSources(),
+            'supportedTypeNames' => [],
+            'supportedDigestAlgorithms' => [],
+        ];
+    }
+
+    /**
+     * Blob assembly extension account-level capability. The session-level
+     * value is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function blobAssemblyAccountCapability(): array
+    {
+        return [
+            'maxSizeAssembly' => JmapBlobLimits::maxSizeBlobSet(),
+            // Octets one append or finish call may process; the client plans
+            // its steps (and its part size) from this.
+            'stepBudgetBytes' => JmapBlobLimits::stepBudgetBytes(),
+            'assemblyTtlSeconds' => JmapBlobLimits::assemblyTtlSeconds(),
         ];
     }
 }

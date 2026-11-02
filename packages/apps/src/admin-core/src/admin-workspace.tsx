@@ -22,6 +22,7 @@ import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
 import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
+import { AdminNotSecureNotice } from "@/admin-core/src/admin-not-secure-notice";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
 import {
   appUrlFromBrowserLocation,
@@ -174,6 +175,7 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         main={
           <>
             <AdminWebRootProbe />
+            <AdminNotSecureNotice secureContext={props.secureContext} />
             <AdminSecurityWarnings
               warnings={controller.securityWarnings}
               baseUri={data.webdav.baseUri}
