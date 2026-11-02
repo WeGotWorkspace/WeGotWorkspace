@@ -150,20 +150,21 @@ export class DriveUploader {
     await this.migrateOutboxOnce();
     if (!readBrowserOnline()) return;
     if (await this.waitForServerSpace()) return;
-    if ((await listStartableDriveUploads(this.username)).length > 0) {
+    const now = Date.now();
+    if ((await listStartableDriveUploads(this.username, now)).length > 0) {
       await this.lock(driveUploaderLockName(this.username), ({ signal }) => this.drain(signal), {
         signal: this.stopController.signal,
       });
     }
-    await this.scheduleRetryWake();
+    await this.scheduleRetryWake(now);
   }
 
   /**
    * Every tab, not just the one that saw the hiccup, wakes when the next
    * waiting item is due: that tab may close before then.
    */
-  private async scheduleRetryWake(): Promise<void> {
-    const due = await nextDriveUploadRetryAt(this.username);
+  private async scheduleRetryWake(now: number): Promise<void> {
+    const due = await nextDriveUploadRetryAt(this.username, now);
     if (due === null || this.stopController.signal.aborted) return;
     if (this.retryTimer) clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(

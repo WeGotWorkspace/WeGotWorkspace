@@ -416,11 +416,11 @@ export async function readDriveUploadBlob(username: string, itemId: string): Pro
  */
 export async function listStartableDriveUploads(
   username: string,
+  now: number = Date.now(),
 ): Promise<OfflineDriveUploadItemRow[]> {
   const { batches, items } = await readDriveUploadQueueRows(username);
   if (isDriveUploadQueuePausedServerFull(items)) return [];
   const released = new Set(batches.filter((b) => b.status === "released").map((b) => b.id));
-  const now = Date.now();
   return items.filter(
     (item) =>
       item.status !== "failed" &&
@@ -435,10 +435,12 @@ export async function listStartableDriveUploads(
  * every tab can wake itself then, not only the tab that saw the hiccup.
  * Null when no item waits for a time.
  */
-export async function nextDriveUploadRetryAt(username: string): Promise<number | null> {
+export async function nextDriveUploadRetryAt(
+  username: string,
+  now: number = Date.now(),
+): Promise<number | null> {
   const { batches, items } = await readDriveUploadQueueRows(username);
   const released = new Set(batches.filter((b) => b.status === "released").map((b) => b.id));
-  const now = Date.now();
   const due = items
     .filter((item) => item.status !== "failed" && released.has(item.batchId))
     .map((item) => item.retryAt ?? 0)

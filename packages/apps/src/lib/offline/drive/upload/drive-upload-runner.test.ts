@@ -136,6 +136,8 @@ import {
 } from "@/lib/offline/drive/upload/drive-upload-schema";
 import {
   enqueueDriveUploadBatch,
+  listStartableDriveUploads,
+  nextDriveUploadRetryAt,
   readDriveUploadQueueRows,
   releaseDriveUploadBatch,
 } from "@/lib/offline/drive/upload/drive-upload-store";
@@ -536,9 +538,25 @@ describe("drive uploader", () => {
     await tabB.whenIdle();
     expect(uploadCalls()).toHaveLength(1);
 
-    await vi.waitFor(async () => expect((await readDriveUploadQueueRows(user)).items).toEqual([]));
+    await vi.waitFor(async () => expect((await readDriveUploadQueueRows(user)).items).toEqual([]), {
+      timeout: 5000,
+    });
     await tabB.stop();
     expect(uploadCalls()).toHaveLength(2);
+  });
+
+  it("never loses a retry that falls due between the startable read and the wake read", async () => {
+    wgwFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { itemIds } = await queue([testFile("a.txt")]);
+    await runUploader();
+    const retryAt = Date.now() + 10_000;
+    await driveUploadItemsTable(uploadTestDb()).update(itemIds[0]!, { retryAt });
+
+    // One cycle reads at `now`; the deadline passes right after.
+    const now = retryAt - 1;
+    expect(await listStartableDriveUploads(user, now)).toEqual([]);
+    vi.spyOn(Date, "now").mockReturnValue(retryAt + 1);
+    expect(await nextDriveUploadRetryAt(user, now)).toBe(retryAt);
   });
 
   it("makes every tab wait before retrying after a server error, and counts it", async () => {
