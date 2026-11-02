@@ -10,6 +10,7 @@ For monorepo development (bind mounts, Vite HMR), use [dev-layout.md](dev-layout
 
 - Docker Engine 24+ and Docker Compose v2
 - ~2 GB disk for the image; more for uploads and database volume
+- **https in production.** `http://localhost:8080` is fine to try it out, but on any other address serve the site over `https://` (see [TLS (HTTPS)](#tls-https)). On plain `http://` the browser turns off live editing of documents together, push notifications, offline use, and large uploads — [getting-started.md § Requirement: https](getting-started.md#requirement-https).
 - **Apple Silicon (M1/M2/M3) / ARM:** current releases ship native `linux/arm64` plus `linux/amd64`. Older tags may be amd64-only — `install` / `setup.sh` then sets `DOCKER_DEFAULT_PLATFORM=linux/amd64` and logs a Rosetta hint. Enable x86_64/amd64 emulation in Docker Desktop when needed. See [install-docker-ops.md § Apple Silicon & ARM](install-docker-ops.md#apple-silicon--arm).
 
 ## Quick start (recommended)
@@ -351,3 +352,13 @@ A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two
 ## TLS (HTTPS)
 
 Automatic TLS termination is not included in the default stack. Terminate HTTPS on a reverse proxy (Caddy, Traefik, nginx) in front of `WGW_HTTP_PORT`, or use your platform’s load balancer. A dedicated Compose TLS profile may be added later.
+
+https is a requirement outside `localhost`, not an option: see [getting-started.md § Requirement: https](getting-started.md#requirement-https) for what does not work without it. Caddy requests a free Let's Encrypt certificate on its own; a minimal `Caddyfile`:
+
+```text
+office.example.org {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+With Traefik, use its Let's Encrypt (ACME) resolver; with nginx, use certbot. Then open the installer on the `https://` address so `APP_URL` is saved with `https://`.

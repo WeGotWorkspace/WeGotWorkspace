@@ -1,3 +1,4 @@
+import { downloadFileNodeWithTicket } from "@/lib/api/wgw/drive-download-ticket";
 import {
   wgwFetch,
   wgwFetchPrincipal,
@@ -431,15 +432,10 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
       );
     },
     async downloadFile(path, opts) {
+      // A ticket, downloaded natively: the file streams to disk, never into a Blob.
       const session = await driveJmapSession();
       const user = await driveUser();
-      const blob = await downloadFileNodeBlob(
-        session,
-        normalizePath(path),
-        user.username,
-        opts?.signal,
-      );
-      triggerBrowserDownload(blob, path.split("/").pop() || "download");
+      await downloadFileNodeWithTicket(session, normalizePath(path), user.username, opts?.signal);
     },
     async readFileBlob(path, opts) {
       const session = await driveJmapSession();
