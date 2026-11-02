@@ -504,6 +504,10 @@
     width: var(--text-editor-cell-width, auto);
   }
 
+  .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked > :is(td, th) {
+    width: auto;
+  }
+
   /* A row taller than a page (`text-editor-page-rows.ts`): cells stack and flow. */
   .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked {
     display: block !important;

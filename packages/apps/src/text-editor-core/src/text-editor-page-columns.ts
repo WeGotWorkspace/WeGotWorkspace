@@ -97,8 +97,17 @@ function tableElement(view: EditorView, pos: number): HTMLTableElement | null {
   return dom instanceof HTMLTableElement ? dom : dom.querySelector("table");
 }
 
-/** Column widths of `table` laid out as a plain table `width` px wide (as print does). */
-function measureColumns(view: EditorView, table: HTMLTableElement, width: number): number[] {
+/**
+ * Column widths of `table` laid out as a plain table `width` px wide (as print does).
+ * Each width is the box of a cell spanning only that column: a `<col>` has no layout box
+ * in Firefox or Safari. A column with no such cell falls back to its `<col>`.
+ */
+function measureColumns(
+  view: EditorView,
+  table: HTMLTableElement,
+  node: ProseMirrorNode,
+  width: number,
+): number[] {
   const host = view.dom.parentElement;
   if (!host) return [];
   const probe = document.createElement("div");
@@ -110,15 +119,38 @@ function measureColumns(view: EditorView, table: HTMLTableElement, width: number
   probe.appendChild(table.cloneNode(true));
   host.appendChild(probe);
   try {
+    const map = TableMap.get(node);
     const cols = probe.querySelectorAll(":scope > table > colgroup > col");
-    return Array.from(cols, (col) => col.getBoundingClientRect().width);
+    const rows = probe.querySelectorAll(":scope > table > tbody > tr");
+    const widths: number[] = Array.from({ length: map.width }, () => 0);
+    for (let row = 0; row < map.height; row += 1) {
+      const cells = rows[row]?.children;
+      if (!cells) continue;
+      let index = 0;
+      for (let col = 0; col < map.width; col += 1) {
+        const rect = map.findCell(map.map[row * map.width + col]);
+        if (rect.top !== row || rect.left !== col) continue;
+        const cell = cells[index];
+        index += 1;
+        if (rect.right - rect.left === 1 && cell && widths[col] === 0) {
+          widths[col] = cell.getBoundingClientRect().width;
+        }
+      }
+    }
+    return widths.map((value, col) => value || (cols[col]?.getBoundingClientRect().width ?? 0));
   } finally {
     probe.remove();
   }
 }
 
+/** Bumped when late layout (images, fonts) may have changed column widths. */
+let layoutGeneration = 0;
+
 /** Last measurement per table node: unchanged tables at the same width are not measured again. */
-const measured = new WeakMap<ProseMirrorNode, { width: number; widths: number[] }>();
+const measured = new WeakMap<
+  ProseMirrorNode,
+  { width: number; widths: number[]; generation: number }
+>();
 
 function currentColumns(view: EditorView, options: PageColumnsOptions): TableColumns[] {
   if (!options.isEnabled() || !view.dom.classList.contains(PAGINATION_CLASS)) return [];
@@ -128,14 +160,19 @@ function currentColumns(view: EditorView, options: PageColumnsOptions): TableCol
   if (!(width > 0)) return [];
   return tables.flatMap(({ pos, node }) => {
     const cached = measured.get(node);
-    if (cached && Math.abs(cached.width - width) < WIDTH_EPSILON_PX) {
+    if (
+      cached &&
+      cached.generation === layoutGeneration &&
+      Math.abs(cached.width - width) < WIDTH_EPSILON_PX
+    ) {
       return [{ pos, widths: cached.widths }];
     }
     const table = tableElement(view, pos);
     if (!table) return [];
-    const widths = measureColumns(view, table, width);
+    const widths = measureColumns(view, table, node, width);
     if (widths.length !== TableMap.get(node).width || !widths.every((w) => w > 0)) return [];
-    measured.set(node, { width, widths });
+    const imagesPending = Array.from(table.querySelectorAll("img")).some((img) => !img.complete);
+    if (!imagesPending) measured.set(node, { width, widths, generation: layoutGeneration });
     return [{ pos, widths }];
   });
 }
@@ -184,11 +221,18 @@ export function createPageColumnsPlugin(options: PageColumnsOptions): Plugin<Pag
         if (frame != null || typeof requestAnimationFrame !== "function") return;
         frame = requestAnimationFrame(sync);
       };
+      const relayout = () => {
+        layoutGeneration += 1;
+        schedule();
+      };
+      view.dom.addEventListener("load", relayout, true);
+      void document.fonts?.ready.then(relayout);
       schedule();
       return {
         // Measuring waits for the next frame, so a burst of typing measures once.
         update: schedule,
         destroy() {
+          view.dom.removeEventListener("load", relayout, true);
           if (frame != null) cancelAnimationFrame(frame);
         },
       };
