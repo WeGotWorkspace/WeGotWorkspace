@@ -25,6 +25,7 @@ import {
   type DriveUploadItemError,
   type DriveUploadKeepOffline,
   type DriveUploadNotice,
+  type DriveUploadPlacing,
   type DriveUploadReplaceTarget,
   type DriveUploadSpaceCheck,
   type DriveUploadTargetFolder,
@@ -509,6 +510,18 @@ export async function recordDriveUploadCreated(
     if (batch) await batches.put({ ...batch, notices: [...batch.notices, notice] });
   });
   if (notice) notifyDriveUploadQueueChanged(username);
+}
+
+/**
+ * Remember the create about to be sent, before it is sent: a retry after a
+ * lost answer recognises its own file by it (see `transferDriveUpload`).
+ */
+export async function recordDriveUploadPlacing(
+  username: string,
+  itemId: string,
+  placing: DriveUploadPlacing,
+): Promise<void> {
+  await tables(username).items.update(itemId, { placing });
 }
 
 /** `skip` met a taken name: the item and its placeholder go, nothing was created. */

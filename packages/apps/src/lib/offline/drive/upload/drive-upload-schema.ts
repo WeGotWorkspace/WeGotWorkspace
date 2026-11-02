@@ -73,6 +73,13 @@ export type DriveUploadConflictChoice = "replace" | "keep_both" | "skip";
  */
 export type DriveUploadReplaceTarget = { nodeId: string; blobId: string };
 
+/**
+ * The create about to be sent: folder, name, and the batch notice that goes
+ * with it. Stored before the call, so a retry after a lost answer finds its
+ * own file under that name instead of keeping both.
+ */
+export type DriveUploadPlacing = { folderId: string; name: string; notice?: DriveUploadNotice };
+
 /** One pick or drop. */
 export type OfflineDriveUploadBatchRow = {
   id: string;
@@ -126,6 +133,8 @@ export type OfflineDriveUploadItemRow = {
    * reads that node back and finishes; it never uploads or creates again.
    */
   createdNodeId?: string;
+  /** The last create sent for this item, whose answer may have been lost. */
+  placing?: DriveUploadPlacing;
   /**
    * Set by the chunked uploader (#1519) once every part is sent and the
    * server is putting the file together. Unset during a whole-file upload.

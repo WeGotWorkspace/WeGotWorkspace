@@ -28,6 +28,7 @@ import {
   readDriveUploadBlob,
   readDriveUploadQueueRows,
   recordDriveUploadCreated,
+  recordDriveUploadPlacing,
   requeueDriveUpload,
   resumeDriveUploadQueue,
   saveDriveUploadProgress,
@@ -274,6 +275,8 @@ export class DriveUploader {
           ...(item.replaceTarget ? { replaceTarget: item.replaceTarget } : {}),
           ...(item.chunk ? { chunk: item.chunk } : {}),
           ...(item.createdNodeId ? { createdNodeId: item.createdNodeId } : {}),
+          ...(item.placing ? { placing: item.placing } : {}),
+          onPlacing: (placing) => recordDriveUploadPlacing(this.username, item.id, placing),
           onCreated: (nodeId, notice) =>
             recordDriveUploadCreated(this.username, item.id, nodeId, notice),
           onBytesSent: (bytesSent) => reportDriveUploadBytesSent(item.id, bytesSent),

@@ -9,6 +9,7 @@ import type {
   DriveUploadChunkState,
   DriveUploadConflictChoice,
   DriveUploadNotice,
+  DriveUploadPlacing,
   DriveUploadReplaceTarget,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
 import { assertDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target-check";
@@ -34,6 +35,10 @@ export type DriveUploadTransferInput = {
   chunk?: DriveUploadChunkState;
   /** The node an earlier attempt already created or replaced: read it back, do nothing else. */
   createdNodeId?: string;
+  /** The last create an earlier attempt sent, whose answer may have been lost. */
+  placing?: DriveUploadPlacing;
+  /** Called before each create is sent, to store it as `placing`. */
+  onPlacing?: (placing: DriveUploadPlacing) => Promise<void>;
   /**
    * Called once the node exists (before the read-back), with the notice the
    * batch gets for it, so both are stored together.
@@ -89,6 +94,8 @@ export async function transferDriveUpload(
     const node = await readNode(session, input.createdNodeId, input.name, signal);
     return { kind: "uploaded", node, finalName: node.name || input.name };
   }
+  const lostCreate = await finishLostCreate(session, input, signal);
+  if (lostCreate) return lostCreate;
   // A folder that is gone, in the trash, or no longer writable gets no bytes.
   await assertDriveUploadTarget(session, input.folderId, signal);
   // A `skip` whose name is taken sends no bytes at all.
@@ -154,6 +161,10 @@ async function replaceExisting(
   if (existing.id !== target.nodeId) {
     return createKeepingBoth(session, input, blobId, "replace_fell_back", signal);
   }
+  // An earlier attempt replaced it, but its answer was lost: done, not a changed file.
+  if (nodeHoldsUpload(existing, blobId, input.blob.size)) {
+    return finishWith(session, input, existing.id, undefined, signal);
+  }
   try {
     await repeatWhileAttaching(() =>
       session.fileNodes.setFileNodes(
@@ -170,9 +181,61 @@ async function replaceExisting(
     }
     throw error;
   }
-  await input.onCreated?.(target.nodeId);
-  const node = await readNode(session, target.nodeId, input.name, signal);
+  return finishWith(session, input, target.nodeId, undefined, signal);
+}
+
+/** Records the node (and its notice) for the item, then reads it back. */
+async function finishWith(
+  session: DriveJmapSession,
+  input: DriveUploadTransferInput,
+  nodeId: string,
+  notice: DriveUploadNotice | undefined,
+  signal?: AbortSignal,
+): Promise<DriveUploadTransferResult> {
+  await input.onCreated?.(nodeId, notice);
+  const node = await readNode(session, nodeId, input.name, signal);
   return { kind: "uploaded", node, finalName: node.name || input.name };
+}
+
+/**
+ * A create whose answer was lost (a drop on the last call): the file it made
+ * sits under the name that create was sent with, holding these bytes. The
+ * retry finishes with that file instead of keeping both next to it.
+ */
+async function finishLostCreate(
+  session: DriveJmapSession,
+  input: DriveUploadTransferInput,
+  signal?: AbortSignal,
+): Promise<DriveUploadTransferResult | null> {
+  const { placing } = input;
+  const blobId = input.chunk?.blobId;
+  if (!placing || !blobId || placing.folderId !== input.folderId) return null;
+  const node = await existingByName(session, input, placing.name, signal);
+  if (!node || node.name.toLowerCase() !== placing.name.toLowerCase()) return null;
+  if (!nodeHoldsUpload(node, blobId, input.blob.size)) return null;
+  return finishWith(session, input, node.id, placing.notice, signal);
+}
+
+/** The sha256 prefix in a blob id: `jb-{40 hex}` (an upload) or `fnb-{nodeId}-{8 hex}` (a file). */
+function contentHashPrefix(blobId: string): string | null {
+  const match = /^jb-([0-9a-f]{40})$|^fnb-.+-([0-9a-f]{8})$/.exec(blobId);
+  return match?.[1] ?? match?.[2] ?? null;
+}
+
+/**
+ * Whether `node` holds the bytes uploaded as `blobId`: same size and the same
+ * content hash. A file's blob id carries the start of its sha256, an
+ * upload's a longer start; a file still being hashed never matches.
+ */
+export function nodeHoldsUpload(node: JmapFileNode, blobId: string, size: number): boolean {
+  if (node.nodeType !== "file" || node.size !== size || node.contentHashPending === true)
+    return false;
+  if (node.blobId === blobId) return true;
+  const fileHash = node.blobId ? contentHashPrefix(node.blobId) : null;
+  const uploadHash = contentHashPrefix(blobId);
+  if (!fileHash || !uploadHash) return false;
+  const length = Math.min(fileHash.length, uploadHash.length);
+  return fileHash.slice(0, length) === uploadHash.slice(0, length);
 }
 
 async function readNode(
@@ -206,6 +269,15 @@ async function createKeepingBoth(
     name = keepBothName(input.name, taken);
   }
   for (let attempt = 0; attempt < KEEP_BOTH_CREATE_ATTEMPTS; attempt += 1) {
+    const batchNotice: DriveUploadNotice | undefined =
+      notice && name !== input.name
+        ? { type: notice, itemName: input.name, keptAsName: name }
+        : undefined;
+    await input.onPlacing?.({
+      folderId: input.folderId,
+      name,
+      ...(batchNotice ? { notice: batchNotice } : {}),
+    });
     try {
       const created = await repeatWhileAttaching(() =>
         session.fileNodes.setFileNodes(
@@ -218,10 +290,6 @@ async function createKeepingBoth(
       );
       const id = created.created?.upload?.id;
       if (!id) throw new Error(`The server did not return the new file "${name}".`);
-      const batchNotice =
-        notice && name !== input.name
-          ? { type: notice, itemName: input.name, keptAsName: name }
-          : undefined;
       await input.onCreated?.(id, batchNotice);
       const node = await readNode(session, id, name, signal);
       return { kind: "uploaded", node, finalName: node.name || name };
