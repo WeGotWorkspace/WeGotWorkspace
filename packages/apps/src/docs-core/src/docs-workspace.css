@@ -236,6 +236,20 @@
   @apply flex min-h-0 flex-1 flex-col overflow-hidden;
 }
 
+/* Guest view (#1713): sits where the format bar would, so the sheet does not jump. */
+.docs-workspace__read-only-notice {
+  @apply m-0 flex shrink-0 items-center gap-2 text-sm;
+  box-sizing: border-box;
+  padding-block: var(--docs-format-chrome-padding-y);
+  padding-inline: var(--docs-format-chrome-padding-x);
+  border-bottom: 1px solid var(--docs-border);
+  color: var(--docs-muted);
+}
+
+.docs-workspace__read-only-notice-icon {
+  @apply size-4 shrink-0;
+}
+
 .docs-workspace .docs-comments-floating-layer {
   --workspace-accent: var(--scheme-ink);
 }

@@ -5,4 +5,8 @@ export type InstallerWorkspaceProps = {
   /** When set (e.g. Storybook), installer actions use this instead of the live installer API. */
   operations?: InstallerAPIOperations;
   className?: string;
+  /** Ready screen, when this tab did not create the admin: the app sends the user to sign in. */
+  onOpenWorkspace?: () => void;
+  /** Ready screen, after the new admin was signed in here: the app opens the workspace. */
+  onAdminSignedIn?: () => void;
 };

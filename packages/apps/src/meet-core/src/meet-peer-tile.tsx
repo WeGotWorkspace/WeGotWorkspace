@@ -17,6 +17,8 @@ type MeetPeerTileProps = {
   speaking?: boolean;
   caption?: string;
   userId?: string;
+  /** The local participant's own tile. Only this tile's camera is drawn mirrored. */
+  self?: boolean;
   /** Inbound RTP heuristics; null = omit override. */
   remoteMedia?: { camera: boolean; mic: boolean } | null;
   /** Peer's announced mic/camera (control chat); when set, overrides track/stats for UI. */
@@ -60,6 +62,7 @@ export function MeetPeerTile({
   speaking,
   caption,
   userId,
+  self = false,
   remoteMedia,
   disclosedMedia,
   micOn,
@@ -105,7 +108,7 @@ export function MeetPeerTile({
       ? disclosedMedia.mic
       : micFromTracks;
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
-  const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);
+  const mirrored = shouldMirrorMeetStream(stream, { local: self, screen: disclosedMedia?.screen });
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
   const playbackMuted = muted ?? isSelfMute;
   const canForceMute = !isSelfMute && typeof onMuteParticipant === "function";

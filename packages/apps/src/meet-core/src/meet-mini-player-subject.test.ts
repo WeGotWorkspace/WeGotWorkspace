@@ -114,7 +114,7 @@ describe("pickMeetMiniPlayerSubject", () => {
 });
 
 describe("resolveMeetMiniPlayerPreview", () => {
-  it("previews the remote peer who is talking", () => {
+  it("previews the remote peer who is talking, not mirrored", () => {
     const felixStream = streamOf([track("audio"), track("video")]);
     const preview = resolveMeetMiniPlayerPreview({
       self,
@@ -129,7 +129,7 @@ describe("resolveMeetMiniPlayerPreview", () => {
       name: "Felix Bauer",
       stream: felixStream,
       showVideo: true,
-      mirrored: true,
+      mirrored: false,
     });
   });
 

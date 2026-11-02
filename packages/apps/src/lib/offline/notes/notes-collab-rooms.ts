@@ -1,6 +1,7 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import { setCollabRoomPendingServerSave } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import {
   collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
@@ -22,11 +23,16 @@ function noteCollabLegacyIndexedDbKeys(room: string): string[] {
   return [room];
 }
 
-function legacyNamesToOpen(
+/**
+ * The v2 name first, then legacy names. When the browser can list its databases,
+ * skip the ones that do not exist: opening one creates it, and the pending poll
+ * runs for every cached note.
+ */
+function indexedDbNamesToOpen(
   room: string,
   existingDatabaseNames: ReadonlySet<string> | null,
 ): string[] {
-  const names = noteCollabLegacyIndexedDbKeys(room);
+  const names = [docsCollabIndexedDbKey(room), ...noteCollabLegacyIndexedDbKeys(room)];
   if (existingDatabaseNames == null) return names;
   return names.filter((name) => existingDatabaseNames.has(name));
 }
@@ -60,7 +66,7 @@ async function firstFromRoomNames<T>(
     existingDatabaseNames === undefined
       ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
-  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  const names = indexedDbNamesToOpen(room, known);
   for (const name of names) {
     const value = await withIndexedDb(name, pick);
     if (value != null) return value;
@@ -80,7 +86,7 @@ export async function hasNoteCollabOfflinePersistence(uid: string): Promise<bool
   const room = noteCollabRoomKey(uid);
   if (!room) return false;
   const known = await listExistingIndexedDatabaseNames();
-  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  const names = indexedDbNamesToOpen(room, known);
   for (const name of names) {
     const found = await withIndexedDb(name, async (ydoc) => !isYDocEmpty(ydoc));
     if (found) return true;
@@ -98,8 +104,7 @@ export async function hasNoteCollabPendingServerSave(
     existingDatabaseNames === undefined
       ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
-  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
-  for (const name of names) {
+  for (const name of indexedDbNamesToOpen(room, known)) {
     if (await collabIndexedDbHasPendingServerSave(name)) return true;
   }
   return false;
@@ -122,9 +127,11 @@ export async function migrateNoteCollabRoom(oldUid: string, newUid: string): Pro
  */
 export async function discardNoteCollabBuffer(uid: string): Promise<void> {
   const room = noteCollabRoomKey(uid);
-  if (!room || typeof indexedDB === "undefined") return;
+  if (!room) return;
+  setCollabRoomPendingServerSave(room, false);
+  if (typeof indexedDB === "undefined") return;
   const known = await listExistingIndexedDatabaseNames();
-  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  const names = indexedDbNamesToOpen(room, known);
   for (const name of names) {
     if (known && !known.has(name)) continue;
     try {

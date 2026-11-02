@@ -14,6 +14,7 @@ import {
   type TextEditorContentFormat,
 } from "@/text-editor-core/src/text-editor-content";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
+import { isLiveEditor } from "@/text-editor-core/src/text-editor-live";
 import {
   DocsTrackChangesExtension,
   createTrackChangesSessionAuthor,
@@ -25,7 +26,8 @@ export type TextEditorCollabUser = {
 };
 
 export function editorHasTrackChanges(editor: Editor | null): editor is Editor {
-  return Boolean(editor?.extensionManager.extensions.some((ext) => ext.name === "trackChanges"));
+  if (!isLiveEditor(editor)) return false;
+  return editor.extensionManager.extensions.some((ext) => ext.name === "trackChanges");
 }
 
 export function getTrackChangesMode(editor: Editor | null): TrackChangesMode {

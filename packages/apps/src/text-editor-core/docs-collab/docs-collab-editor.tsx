@@ -14,6 +14,7 @@ import {
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
 import { getCommentMarkIdFromTarget } from "@/text-editor-core/src/text-editor-comment-commands";
+import { isLiveEditor } from "@/text-editor-core/src/text-editor-live";
 import { getTrackChangeIdFromTarget } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
@@ -178,7 +179,9 @@ export function DocsCollabEditor({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     if (editor.isEditable !== editable) {
-      editor.setEditable(editable);
+      // No update event: the content did not change. The save path reads one
+      // as an edit, and a loaded document would count as unsaved work (#1787).
+      editor.setEditable(editable, false);
     }
   }, [editor, editable]);
 
@@ -194,10 +197,13 @@ export function DocsCollabEditor({
   });
 
   useEffect(() => {
-    editor?.commands.updateUser(user);
+    if (!isLiveEditor(editor)) return;
+    editor.commands.updateUser(user);
   }, [editor, user]);
 
   useEffect(() => {
+    // A rebuilt editor's old instance is already destroyed here (#1738).
+    if (editor && !isLiveEditor(editor)) return;
     onEditorReady?.(editor);
     return () => onEditorReady?.(null);
   }, [editor, onEditorReady]);

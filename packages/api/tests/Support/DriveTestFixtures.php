@@ -73,10 +73,12 @@ trait DriveTestFixtures
         return $this->issueBearerTokenFor('carol');
     }
 
+    /** A path out of reach answers like a missing one: 404 `not_found`. */
     protected function assertAccessDenied(TestResponse $response): void
     {
-        $response->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+        $response->assertNotFound()
+            ->assertJsonPath('code', 'not_found')
+            ->assertJsonPath('error', 'Path not found.');
     }
 
     protected function assertSearchDocumentExists(string $sourceKey): void

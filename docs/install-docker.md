@@ -211,6 +211,8 @@ WGW_INSTALL_ADMIN_EMAIL=admin@example.com
 WGW_INSTALL_ADMIN_PASSWORD=your-long-password
 ```
 
+Only the one-shot migrator receives `WGW_INSTALL_ADMIN_PASSWORD`. The `web` and `scheduler` containers keep running, so Compose does not pass them the password; they get the other `WGW_INSTALL_*` values for the first-run screens. Keep the password in this Compose `.env`, not in `api.env`, which every container reads. Remove it from `.env` after the first install: a later start finds the `.installed` lock and skips `wgw:install`.
+
 ## What persists
 
 Named volumes (survive `docker compose down` and image updates):

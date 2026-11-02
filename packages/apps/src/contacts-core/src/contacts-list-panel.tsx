@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -47,6 +48,8 @@ type ContactsListPanelProps = {
   listLoading: boolean;
   listRefreshing?: boolean;
   visibleCards: ContactCard[];
+  /** All Contacts' total while the first download runs; the header shows it instead of the rows loaded. */
+  downloadTotal?: number;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -76,6 +79,7 @@ export function ContactsListPanel({
   listLoading,
   listRefreshing = false,
   visibleCards,
+  downloadTotal,
   searchQuery,
   setSearchQuery,
   searchInputRef,
@@ -93,7 +97,11 @@ export function ContactsListPanel({
 }: ContactsListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
-  const { range: windowRange, rootFontSizePx } = useContactsListWindow(listRef, rows, activeId);
+  const {
+    attachList,
+    range: windowRange,
+    rootFontSizePx,
+  } = useContactsListWindow(listRef, rows, activeId);
   const windowSlice = contactListWindowSlice(rows, windowRange, rootFontSizePx);
   // Measure against the full visible set. A moving window changes which rows
   // are mounted, and feeding only those ids looks like a reorder.
@@ -103,7 +111,9 @@ export function ContactsListPanel({
   );
 
   const headerCount =
-    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleCards.length;
+    selectionMode || selectedIds.length > 1
+      ? selectedIds.length
+      : (downloadTotal ?? visibleCards.length);
   const headerCountLabel =
     selectionMode || selectedIds.length > 1
       ? L.listSelected(headerCount)
@@ -143,7 +153,7 @@ export function ContactsListPanel({
         <LoadingSpinner size="lg" label={L.listLoading} />
       </div>
     ) : (
-      <div ref={listRef} className="contacts-list-panel__list">
+      <div ref={attachList} className="contacts-list-panel__list">
         <ContactsListRows
           L={L}
           rows={windowSlice.rows}
@@ -181,9 +191,19 @@ function useContactsListWindow(
     viewportHeight: 0,
     rootFontSizePx: readContactsListRootFontSizePx(),
   });
+  // The list mounts (or remounts) after the loading spinner, often with the row
+  // count it had while loading. Track the node so the scroll listener follows it.
+  const [listNode, setListNode] = useState<HTMLDivElement | null>(null);
+  const attachList = useCallback(
+    (node: HTMLDivElement | null) => {
+      listRef.current = node;
+      setListNode(node);
+    },
+    [listRef],
+  );
 
   useLayoutEffect(() => {
-    const scroller = listRef.current?.parentElement;
+    const scroller = listNode?.parentElement;
     if (!scroller) return;
     const update = () => {
       setMetrics({
@@ -200,7 +220,7 @@ function useContactsListWindow(
       scroller.removeEventListener("scroll", update);
       observer?.disconnect();
     };
-  }, [listRef, rows.length]);
+  }, [listNode, rows.length]);
 
   const range = contactsListWindowRange(
     rows,
@@ -249,7 +269,7 @@ function useContactsListWindow(
     node.scrollIntoView({ block: "nearest" });
   }, [activeId, listRef, range.end, range.start, rows]);
 
-  return { range, rootFontSizePx: metrics.rootFontSizePx };
+  return { attachList, range, rootFontSizePx: metrics.rootFontSizePx };
 }
 
 function activeRowElement(list: HTMLElement | null, id: string): HTMLElement | null {

@@ -7,6 +7,8 @@ import {
 } from "@playwright/test";
 import { setRtcTestOverrides } from "./rtc-test-overrides";
 
+export { admitFirstKnocker, meetLobby } from "./meet-lobby";
+
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
@@ -151,11 +153,6 @@ export async function knockAsGuest(page: Page, room: string, name: string): Prom
   );
   await page.getByRole("button", { name: "Knock to join" }).click();
   await join;
-}
-
-export async function admitFirstKnocker(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /waiting to join/ }).click();
-  await page.getByRole("button", { name: /^Admit / }).click();
 }
 
 export async function waitForInCall(page: Page): Promise<void> {

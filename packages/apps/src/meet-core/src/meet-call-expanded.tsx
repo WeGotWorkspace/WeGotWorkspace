@@ -138,6 +138,7 @@ export function MeetCallExpanded({
         name={peer.name}
         stream={peer.stream ?? null}
         userId={peer.id}
+        self={isSelf}
         muted={playbackMuted}
         omitPlayback={filmstripCopy}
         spotlight={!showFilmstrip && peers.length === 1}

@@ -4,6 +4,7 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 import { readOfflineDocsUsername, readOfflineDriveUsername } from "@/lib/offline/offline-session";
+import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { isYDocEmpty } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
@@ -212,6 +213,7 @@ async function clearPendingSaveInRoom(roomKey: string): Promise<void> {
       await persistence.del(PENDING_SERVER_SAVE_KEY);
     });
   }
+  setCollabRoomPendingServerSave(roomKey, false);
 }
 
 /** Whether a collab room has a deferred server save recorded in y-indexeddb. */
@@ -357,15 +359,15 @@ export async function collabIndexedDbHasPendingServerSave(databaseName: string):
  * Copies one y-indexeddb database onto another and clears the source.
  * An empty source with no pending save is left untouched.
  */
-async function moveIndexedDbPersistence(fromName: string, toName: string): Promise<void> {
-  if (fromName === toName) return;
+async function moveIndexedDbPersistence(fromName: string, toName: string): Promise<boolean> {
+  if (fromName === toName) return false;
   const oldDoc = new Y.Doc();
   const oldPersistence = new IndexeddbPersistence(fromName, oldDoc);
   try {
     await oldPersistence.whenSynced;
     const pendingServerSave = Boolean(await oldPersistence.get(PENDING_SERVER_SAVE_KEY));
     const hasBody = !isYDocEmpty(oldDoc);
-    if (!hasBody && !pendingServerSave) return;
+    if (!hasBody && !pendingServerSave) return false;
 
     const update = hasBody ? Y.encodeStateAsUpdate(oldDoc) : null;
     const newDoc = new Y.Doc();
@@ -381,6 +383,7 @@ async function moveIndexedDbPersistence(fromName: string, toName: string): Promi
       newDoc.destroy();
     }
     await oldPersistence.clearData();
+    return true;
   } finally {
     await oldPersistence.destroy();
     oldDoc.destroy();
@@ -399,10 +402,14 @@ export async function migrateCollabPersistence(oldPath: string, newPath: string)
 
   const oldNames = indexedDbNamesForRoom(docsCollabRoomKey(oldPath));
   const newNames = indexedDbNamesForRoom(docsCollabRoomKey(newPath));
+  let moved = false;
   for (let index = 0; index < oldNames.length; index += 1) {
     const fromName = oldNames[index];
     const toName = newNames[index];
     if (!fromName || !toName) continue;
-    await moveIndexedDbPersistence(fromName, toName);
+    if (await moveIndexedDbPersistence(fromName, toName)) moved = true;
   }
+  // A moved database always carries the pending flag (see above).
+  setCollabRoomPendingServerSave(docsCollabRoomKey(oldPath), false);
+  if (moved) setCollabRoomPendingServerSave(docsCollabRoomKey(newPath), true);
 }

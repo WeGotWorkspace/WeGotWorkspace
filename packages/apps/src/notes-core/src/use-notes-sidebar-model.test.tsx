@@ -7,6 +7,7 @@ import {
   nextNotesTagView,
   notebookViewKey,
   sharedNotebookFilterKeys,
+  tagForNotesView,
   tagViewKey,
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
@@ -35,7 +36,6 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
-        onRenameTag: vi.fn(),
       }),
     );
 
@@ -62,13 +62,11 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
-        onRenameTag: vi.fn(),
       }),
     );
     expect(empty.result.current.showTagsSection).toBe(false);
     expect(empty.result.current.tagSidebarTags).toEqual([]);
 
-    const onRenameTag = vi.fn();
     const withTags = renderHook(() =>
       useNotesSidebarModel({
         labels: defaultNotesLabels,
@@ -79,13 +77,11 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
-        onRenameTag,
       }),
     );
     expect(withTags.result.current.showTagsSection).toBe(true);
     expect(withTags.result.current.tagSidebarTags.map((entry) => entry.tag)).toEqual(["focus"]);
-    withTags.result.current.tagSidebarTags[0]?.onRename();
-    expect(onRenameTag).toHaveBeenCalledWith("focus");
+    expect(withTags.result.current.selectedTag).toBeNull();
   });
 
   it("partitions owned vs shared from collection-sidebar only", () => {
@@ -130,7 +126,6 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
-        onRenameTag: vi.fn(),
       }),
     );
 
@@ -180,7 +175,6 @@ describe("useNotesSidebarModel", () => {
     expect(nextNotesTagView("nb:notes-general", "focus")).toBe("tag:focus");
 
     const selectView = vi.fn();
-    const onRenameTag = vi.fn();
     const { result, rerender } = renderHook(
       ({ view }: { view: string }) =>
         useNotesSidebarModel({
@@ -192,7 +186,6 @@ describe("useNotesSidebarModel", () => {
           sidebarDropZoneProps: () => dropZone(),
           moveToNotebook: vi.fn(),
           assignTagToNotes: vi.fn(),
-          onRenameTag,
         }),
       { initialProps: { view: "all" } },
     );
@@ -216,9 +209,16 @@ describe("useNotesSidebarModel", () => {
     work.onSelect();
     expect(selectView).toHaveBeenCalledWith("tag:work");
 
-    selectedFocus.onRename();
-    work.onRename();
-    expect(onRenameTag).toHaveBeenNthCalledWith(1, "focus");
-    expect(onRenameTag).toHaveBeenNthCalledWith(2, "work");
+    expect(result.current.selectedTag).toBe("focus");
+  });
+
+  it("resolves the tag a view filters on, only for known tags", () => {
+    const tags = ["focus", "work"];
+    expect(tagForNotesView("tag:focus", tags)).toBe("focus");
+    expect(tagForNotesView("tag:Work", tags)).toBe("work");
+    expect(tagForNotesView("tag:gone", tags)).toBeNull();
+    expect(tagForNotesView("all", tags)).toBeNull();
+    expect(tagForNotesView("archive", tags)).toBeNull();
+    expect(tagForNotesView("nb:focus", tags)).toBeNull();
   });
 });

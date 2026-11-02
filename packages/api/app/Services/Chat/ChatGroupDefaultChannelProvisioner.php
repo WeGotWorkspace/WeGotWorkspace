@@ -106,10 +106,10 @@ final class ChatGroupDefaultChannelProvisioner
                 $this->syncDisplayName($instance, $name);
             }
             // else: the deterministic uri exists under a foreign principal —
-            // someone claimed it via the client-supplied-id create path before
-            // the group default was ever provisioned. Channel ids are globally
-            // unique (allocateChannelUri), so we cannot create; leave the
-            // squatter untouched rather than hijack or delete a user's channel.
+            // a channel created with this client id before the `chat-grp-`
+            // prefix was reserved (ChatChannelIdAllocator). Channel ids are
+            // globally unique, so we cannot create; leave that channel
+            // untouched rather than hijack or delete a user's channel.
         }
     }
 

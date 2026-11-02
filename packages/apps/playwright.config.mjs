@@ -6,6 +6,7 @@ import {
   liveTierSpecPattern,
   notesSyncMatrixSpecPattern,
   relayTierSpecPattern,
+  tasksSyncMatrixSpecPattern,
 } from "./e2e/live-tier.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -55,6 +56,7 @@ export default defineConfig({
     chaosTierSpecPattern,
     relayTierSpecPattern,
     notesSyncMatrixSpecPattern,
+    tasksSyncMatrixSpecPattern,
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

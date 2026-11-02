@@ -1,6 +1,7 @@
 import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type {
   WgwAdminStateResponse,
   WgwAdminSettingsSaveRequest,
@@ -182,13 +183,15 @@ export function mapWgwAdminStateToUI(
 
 async function fetchAdminState(opts?: { signal?: AbortSignal }): Promise<WgwAdminStateResponse> {
   const res = await wgwFetch("/admin/state", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /admin/state failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /admin/state failed (${res.status})`, res.status);
   return (await wgwReadJson(res)) as WgwAdminStateResponse;
 }
 
 export async function fetchAdminUpdateLog(opts?: { signal?: AbortSignal }): Promise<string[]> {
   const res = await wgwFetch("/admin/updates/log", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /admin/updates/log failed (${res.status})`);
+  if (!res.ok) {
+    throw new WgwRequestError(`GET /admin/updates/log failed (${res.status})`, res.status);
+  }
   const payload = (await wgwReadJson(res)) as WgwUpdateLogResponse;
   return payload.lines;
 }
@@ -220,6 +223,11 @@ async function fetchAdminUpdateStateWithWarmup(opts?: {
   return latest;
 }
 
+/** 503: the server is still starting (fresh install, update). Worth another try. */
+function isServiceUnavailable(error: unknown): boolean {
+  return (error as { status?: unknown } | null | undefined)?.status === 503;
+}
+
 export async function fetchAdminLiveBootstrap(): Promise<AdminAppBootstrap> {
   const maxAttempts = 5;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -247,11 +255,7 @@ export async function fetchAdminLiveBootstrap(): Promise<AdminAppBootstrap> {
         data: mapWgwAdminStateToUI(state, logLines, searchReindex),
       };
     } catch (error) {
-      const canRetry =
-        error instanceof Error &&
-        (error.message.includes("(503)") || error.message.includes("HTTP 503")) &&
-        attempt < maxAttempts;
-      if (!canRetry) {
+      if (!isServiceUnavailable(error) || attempt >= maxAttempts) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 800 * attempt));

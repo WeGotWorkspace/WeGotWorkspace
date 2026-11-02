@@ -98,6 +98,45 @@ describe("docs offline pin core", () => {
     expect(rows.find((row) => row.id === apiPath)?.nodeId).toBe("fn-pinned");
   });
 
+  it("keeps the local copy when it was synced after the file last changed", async () => {
+    await writeDocsAvailability(username, {
+      id: apiPath,
+      location: "My Drive",
+      lastSyncedAt: 5_000,
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive", { modifiedAtMs: 4_000 });
+    expect(hydrateDocsCollabForOffline).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keepLocalCopy: true }),
+    );
+  });
+
+  it("fetches again when the file changed after the last sync", async () => {
+    await writeDocsAvailability(username, {
+      id: apiPath,
+      location: "My Drive",
+      lastSyncedAt: 5_000,
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive", { modifiedAtMs: 6_000 });
+    expect(hydrateDocsCollabForOffline).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keepLocalCopy: false }),
+    );
+  });
+
+  it("always fetches on a manual pin", async () => {
+    await writeDocsAvailability(username, {
+      id: apiPath,
+      location: "My Drive",
+      lastSyncedAt: Date.now(),
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive");
+    expect(hydrateDocsCollabForOffline).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keepLocalCopy: false }),
+    );
+  });
+
   it("remove clears persistence and availability row", async () => {
     await writeDocsAvailability(username, { id: apiPath, location: "My Drive" });
     await removeDocsOfflineCopy(username, apiPath);

@@ -64,11 +64,14 @@ function relativeLuminance(hex: string): number {
  */
 export class CollabHttpError extends Error {
   readonly status: number;
+  /** From `Retry-After` on a 429, so background sync can wait that long. */
+  readonly retryAfterMs: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfterMs: number | null = null) {
     super(message);
     this.name = "CollabHttpError";
     this.status = status;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -89,7 +92,7 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   return /precondition failed/i.test(message);
 }
 
-/** 404 — the document is gone. Stop retrying and keep the local copy. */
+/** 404 — the document was deleted or is out of reach. Stop retrying and keep the local copy. */
 export function isCollabDocumentGoneError(error: unknown): boolean {
   return collabErrorStatus(error) === 404;
 }

@@ -20,7 +20,6 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
@@ -51,6 +50,7 @@ final class ChatChannelRepository
         private readonly ChatUnreadCounter $unreadCounter,
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
         private readonly WgwCalendarBackendFactory $backends,
+        private readonly ChatChannelIdAllocator $channelIds = new ChatChannelIdAllocator,
     ) {}
 
     /**
@@ -125,15 +125,17 @@ final class ChatChannelRepository
         }
 
         // Meetings are identified by the ad-hoc room code, never a name slug.
-        // Channels keep the slug of the initial name.
+        // Channels keep the slug of the initial name (ChatChannelIdAllocator).
         $roomCode = $kind === ChatChannelMeta::KIND_MEETING
             ? ($this->guestRoomCodeFromPayload($payload, $kind) ?? $this->mintMeetRoomCode())
             : $this->guestRoomCodeFromPayload($payload, $kind);
-        $requestedId = $kind === ChatChannelMeta::KIND_MEETING
-            ? ChatCollectionUris::PREFIX_CHANNEL.$roomCode
-            : (isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null);
-
-        $uri = $this->allocateChannelUri($requestedId, $name);
+        $uri = $kind === ChatChannelMeta::KIND_MEETING
+            ? $this->meetingChannelUri((string) $roomCode)
+            : $this->channelIds->allocate(
+                isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
+                $name,
+                fn (string $id): bool => $this->findAccessibleChannel($username, $id) !== null,
+            );
 
         $properties = [
             '{DAV:}displayname' => $name,
@@ -578,39 +580,14 @@ final class ChatChannelRepository
         $instance->save();
     }
 
-    private function allocateChannelUri(?string $requestedId, string $name = ''): string
+    private function meetingChannelUri(string $roomCode): string
     {
-        // Only chat- ids: dm- uris are exclusively minted by openDm's hash.
-        $prefix = ChatCollectionUris::PREFIX_CHANNEL;
-
-        if ($requestedId !== null && $requestedId !== '') {
-            if (! str_starts_with($requestedId, $prefix)) {
-                throw new ApiHttpException(400, 'Channel id must start with "'.$prefix.'" for this kind.', 'invalidProperties', ['id']);
-            }
-            // Channel ids are globally unique so every member addresses the same
-            // id (sharee instances are normalized onto it).
-            if (CalendarInstance::query()->where('uri', $requestedId)->exists()) {
-                throw new ApiHttpException(409, 'Channel id already exists.', 'alreadyExists');
-            }
-
-            return $requestedId;
+        $uri = ChatCollectionUris::PREFIX_CHANNEL.$roomCode;
+        if (CalendarInstance::query()->where('uri', $uri)->exists()) {
+            throw new ApiHttpException(409, 'Channel id already exists.', 'alreadyExists');
         }
 
-        // Channel id = slug of the *initial* name (readable channel urls).
-        // Meetings pass `chat-{room code}` and never use this slug.
-        // Renames only change the displayname, the id never moves. Collisions
-        // dedupe with -2, -3, …; names that slug to nothing fall back to a ULID.
-        $slug = Str::slug(Str::substr($name, 0, 48));
-        if ($slug === '') {
-            return $prefix.strtolower((string) Str::ulid());
-        }
-
-        $candidate = $prefix.$slug;
-        for ($suffix = 2; CalendarInstance::query()->where('uri', $candidate)->exists(); $suffix++) {
-            $candidate = $prefix.$slug.'-'.$suffix;
-        }
-
-        return $candidate;
+        return $uri;
     }
 
     /**

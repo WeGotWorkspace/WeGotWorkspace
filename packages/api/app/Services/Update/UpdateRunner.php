@@ -18,6 +18,9 @@ final class UpdateRunner
     /** Orphan progress in state.json without a lock is cleared after this many seconds. */
     private const STALE_PROGRESS_SECONDS = 120;
 
+    /** How long apply() waits for a request that is running pending migrations. */
+    private const SCHEMA_LOCK_WAIT_SECONDS = 120;
+
     private bool $applyFinished = false;
 
     public function __construct(
@@ -32,6 +35,7 @@ final class UpdateRunner
         private UpdateRunnerFilesystem $files,
         private UpdateRunnerBackupArchive $backups,
         private UpdateChannelSettingService $channels,
+        private SchemaMigrationLock $schemaLock,
     ) {
         $this->packages->bindRunner($this);
     }
@@ -366,7 +370,11 @@ final class UpdateRunner
 
             self::writeStatus('running_migrations', $beforeVersion, $targetVersion);
             $this->configMigrator->migrateIfNeeded();
-            $this->schemaMigrator->migrate();
+            $migrate = fn () => $this->schemaMigrator->migrate();
+            if (! $this->schemaLock->runExclusive($migrate, self::SCHEMA_LOCK_WAIT_SECONDS)) {
+                $this->store->appendLog('Skipped database migrations: another process held the schema lock for '
+                    .self::SCHEMA_LOCK_WAIT_SECONDS.' s. The first request after this update runs them.');
+            }
             self::recordHistory($beforeVersion, $targetVersion, 'success', 'Update applied successfully.');
             $result['ok'] = true;
             $result['message'] = 'Update applied successfully.';

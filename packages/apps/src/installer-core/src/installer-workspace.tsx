@@ -5,11 +5,9 @@ import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
 import { useInstallerController } from "@/installer-core/src/use-installer-controller";
-import type { InstallerWorkspaceProps as InstallerWorkspaceBaseProps } from "@/installer-core/src/installer-workspace-props";
+import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
 
-export type InstallerWorkspaceProps = InstallerWorkspaceBaseProps & {
-  onOpenWorkspace?: () => void;
-};
+export type { InstallerWorkspaceProps };
 
 const SCREEN_TITLES = {
   welcome: "Installer",
@@ -19,8 +17,18 @@ const SCREEN_TITLES = {
   interrupt: "Needs attention",
 } as const;
 
-export function InstallerWorkspace({ data, operations, onOpenWorkspace }: InstallerWorkspaceProps) {
-  const controller = useInstallerController({ data, operations });
+export function InstallerWorkspace({
+  data,
+  operations,
+  onOpenWorkspace,
+  onAdminSignedIn,
+}: InstallerWorkspaceProps) {
+  const controller = useInstallerController({
+    data,
+    operations,
+    onOpenWorkspace,
+    onAdminSignedIn,
+  });
   useDocumentTitle(SCREEN_TITLES[controller.screen]);
 
   if (controller.screen === "interrupt") {
@@ -74,7 +82,7 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
       <InstallerReadyPage
         includeDatabaseStep={controller.includeDatabaseStep}
         opening={controller.openingWorkspace}
-        onOpenWorkspace={() => void controller.openWorkspace(onOpenWorkspace)}
+        onOpenWorkspace={() => void controller.openWorkspace()}
       />
     );
   }

@@ -1,8 +1,12 @@
 import { expect, type Page } from "@playwright/test";
 import { encodeFramedPayload } from "../../src/lib/wire/framed-payload";
+import { putDriveFile } from "./drive-seed";
 import { E2E_PASSWORD, E2E_USERNAME } from "./notes-live";
 
 export { E2E_PASSWORD, E2E_USERNAME };
+
+/** Group folder the dev install seeds; the e2e user is a member. */
+export const E2E_GROUP_ROOT = "/groups/administrators";
 
 export function myDriveDocSearchPath(fileName: string): string {
   return `users/${E2E_USERNAME}/${fileName}`;
@@ -99,27 +103,11 @@ export async function clearDocsOfflineStore(page: Page): Promise<void> {
   });
 }
 
-function parentPath(apiPath: string): string {
-  const normalized = apiPath.replace(/^\/+/, "");
-  const slash = normalized.lastIndexOf("/");
-  return slash >= 0 ? `/${normalized.slice(0, slash)}` : "/";
-}
-
-function fileName(apiPath: string): string {
-  const normalized = apiPath.replace(/^\/+/, "");
-  const slash = normalized.lastIndexOf("/");
-  return slash >= 0 ? normalized.slice(slash + 1) : normalized;
-}
-
-function mimeForFile(file: string): { uploadMime: string; fileMime: string } {
+function contentTypeForFile(file: string): string {
   const lower = file.toLowerCase();
-  if (lower.endsWith(".txt") || lower.endsWith(".log")) {
-    return { uploadMime: "text/plain;charset=utf-8", fileMime: "text/plain" };
-  }
-  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) {
-    return { uploadMime: "application/yaml;charset=utf-8", fileMime: "application/yaml" };
-  }
-  return { uploadMime: "text/markdown;charset=utf-8", fileMime: "text/markdown" };
+  if (lower.endsWith(".txt") || lower.endsWith(".log")) return "text/plain; charset=utf-8";
+  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) return "application/yaml; charset=utf-8";
+  return "text/markdown; charset=utf-8";
 }
 
 export async function saveCollabDocument(
@@ -159,46 +147,15 @@ export async function saveCollabDocument(
   );
 }
 
-export async function seedDocAtPath(page: Page, apiPath: string, content: string): Promise<void> {
-  const destination = parentPath(apiPath);
-  const name = fileName(apiPath);
-  const { uploadMime, fileMime } = mimeForFile(name);
-  await page.evaluate(
-    async ({ cwd, fileName, body, uploadMimeType, fileMimeType }) => {
-      const accessToken = localStorage.getItem("wgw.api.access_token");
-      const blob = new Blob([body], { type: uploadMimeType });
-      const file = new File([blob], fileName, {
-        type: fileMimeType,
-        lastModified: Date.now(),
-      });
-      const form = new FormData();
-      form.append("file", file, fileName);
-      form.append("resumableFilename", fileName);
-      form.append("resumableIdentifier", `${fileName}-${Date.now()}`);
-      form.append("resumableChunkNumber", "1");
-      form.append("resumableTotalChunks", "1");
-      const response = await fetch(`/api/v1/files/content?path=${encodeURIComponent(cwd)}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      });
-      if (!response.ok) throw new Error(`Seed doc failed (${response.status})`);
-    },
-    {
-      cwd: destination,
-      fileName: name,
-      body: content,
-      uploadMimeType: uploadMime,
-      fileMimeType: fileMime,
-    },
-  );
+export async function seedDocAtPath(apiPath: string, content: string): Promise<void> {
+  await putDriveFile(apiPath, content, contentTypeForFile(apiPath));
 }
 
 export async function prepareDocsForOfflineSync(page: Page, fileName: string): Promise<string> {
   const searchPath = myDriveDocSearchPath(fileName);
   await loginToDocs(page);
   await clearDocsOfflineStore(page);
-  await seedDocAtPath(page, `/${searchPath}`, "# E2E seed\n");
+  await seedDocAtPath(`/${searchPath}`, "# E2E seed\n");
   await page.goto(docsUrlForFile(`/${searchPath}`));
   await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('[data-connectivity="online"]')).toBeVisible();

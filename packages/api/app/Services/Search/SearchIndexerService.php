@@ -24,6 +24,7 @@ final class SearchIndexerService
         private WgwStorage $storage,
         private SearchTokenService $tokens,
         private SearchDocumentStore $store,
+        private DavSourceKeys $keys,
     ) {}
 
     public function indexDavPath(string $path): void
@@ -198,6 +199,8 @@ final class SearchIndexerService
             ->where('i.uri', $rawCalendarUri)
             ->where('o.uri', $rawObjectUri)
             ->select([
+                'i.id as instance_id',
+                'o.id as object_id',
                 'i.principaluri',
                 'i.uri as calendar_uri',
                 'i.displayname as calendar_name',
@@ -233,6 +236,8 @@ final class SearchIndexerService
         $document = [
             'source_subtype' => is_string($row->componenttype) ? strtolower($row->componenttype) : 'calendar',
             'owner_username' => $principal,
+            'collection_id' => $row->getAttribute('instance_id'),
+            'object_id' => $row->getAttribute('object_id'),
             'title' => $parsed['title'] ?? $objectUri,
             'category' => 'calendar',
             'content_type' => 'text/calendar',
@@ -281,6 +286,8 @@ final class SearchIndexerService
             ->where('a.uri', $rawBookUri)
             ->where('c.uri', $rawCardUri)
             ->select([
+                'a.id as book_id',
+                'c.id as card_id',
                 'a.principaluri',
                 'a.uri as book_uri',
                 'a.displayname as book_name',
@@ -320,6 +327,8 @@ final class SearchIndexerService
         $bookName = $row->getAttribute('book_name');
         $document = [
             'owner_username' => $principal,
+            'collection_id' => $row->getAttribute('book_id'),
+            'object_id' => $row->getAttribute('card_id'),
             'title' => $title,
             'extension' => 'vcf',
             'category' => 'contact',
@@ -382,7 +391,7 @@ final class SearchIndexerService
             ->all();
         $totalCal = count($calendarRows);
         foreach ($calendarRows as $idx => $row) {
-            $principal = $this->principalFromUri((string) $row->principaluri);
+            $principal = $this->keys->principal((string) $row->principaluri);
             if ($principal === null) {
                 continue;
             }
@@ -405,7 +414,7 @@ final class SearchIndexerService
             ->all();
         $totalCard = count($cardRows);
         foreach ($cardRows as $idx => $row) {
-            $principal = $this->principalFromUri((string) $row->principaluri);
+            $principal = $this->keys->principal((string) $row->principaluri);
             if ($principal === null) {
                 continue;
             }
@@ -767,16 +776,5 @@ final class SearchIndexerService
             'city' => $city,
             'country' => $country,
         ];
-    }
-
-    private function principalFromUri(string $principalUri): ?string
-    {
-        if (! str_starts_with($principalUri, 'principals/')) {
-            return null;
-        }
-
-        $username = trim(substr($principalUri, strlen('principals/')));
-
-        return $username !== '' ? $username : null;
     }
 }

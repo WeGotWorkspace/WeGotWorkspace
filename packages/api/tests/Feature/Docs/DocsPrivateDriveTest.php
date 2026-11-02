@@ -96,7 +96,7 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('# Old title', $download->streamedContent());
 
         $oldPath = $this->getDocContent($token, '/users/bob/docs/old.md');
-        $oldPath->assertStatus(400)->assertJsonPath('error', 'File not found.');
+        $oldPath->assertNotFound()->assertJsonPath('error', 'File not found.');
     }
 
     public function test_admin_can_load_and_save_own_private_docs(): void

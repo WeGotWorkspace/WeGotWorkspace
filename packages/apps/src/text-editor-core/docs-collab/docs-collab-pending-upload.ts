@@ -6,6 +6,7 @@ import { collabDatabaseHasPendingSave } from "@/lib/offline/core/offline-wipe";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { rememberSidecarEtag } from "./docs-collab-etag";
+import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import { fetchYjsSnapshot } from "./docs-collab-server-io";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
@@ -84,6 +85,7 @@ async function uploadPendingCollabRoom({
       });
       if (saved.status === "skipped") return;
       await persistence.del(PENDING_SERVER_SAVE_KEY);
+      setCollabRoomPendingServerSave(room, false);
       setDocsCollabSyncState(room, { pendingServerSave: false, failedSync: false });
     } finally {
       await persistence.destroy();

@@ -16,6 +16,7 @@ import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { docsCollabIndexedDbKey } from "./docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { LEADER_CLAIM_GRACE_MS } from "./docs-collab-tab-sync";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import {
   useDocsCollab,
@@ -287,7 +288,8 @@ describe("useDocsCollab offline lifecycle", () => {
     );
 
     await waitForCollabSession(result);
-    expect(mockJoin).toHaveBeenCalledTimes(1);
+    // The tab claims the mesh after the leader-claim grace.
+    await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
@@ -390,8 +392,10 @@ describe("useDocsCollab offline lifecycle", () => {
 
     await waitForCollabSession(result);
     expect(result.current.joined).toBe(true);
-    expect(mockJoin).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe(docsLabels.statusConnecting);
+    await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
+    // The status is set just before the join call; the render that shows it
+    // can land after this check on a busy machine, so wait for it too.
+    await waitFor(() => expect(result.current.status).toBe(docsLabels.statusConnecting));
 
     await act(async () => {
       resolveJoin?.({ peers: [] });
@@ -762,10 +766,12 @@ describe("useDocsCollab offline lifecycle", () => {
     );
 
     await waitForCollabSession(result);
-    expect(mockJoin).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
 
     rerender({ nextWire: makeWire() });
     await waitForCollabSession(result);
+    // A rejoin would claim the mesh again only after the grace.
+    await new Promise((resolve) => setTimeout(resolve, LEADER_CLAIM_GRACE_MS + 100));
     expect(mockJoin).toHaveBeenCalledTimes(1);
   });
 

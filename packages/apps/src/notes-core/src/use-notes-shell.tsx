@@ -14,6 +14,7 @@ import {
   noteShowsTags,
 } from "./notes-note-utils";
 import type { NotesAPIOperations, NotesNotebookCollection, NotesUIData } from "./notes-types";
+import { noteFlagMap, syncNoteFlagMap } from "./notes-flag-map";
 import { useNotesHiddenIds } from "./use-notes-hidden-ids";
 import { collectionsFromNotesData } from "./use-notes-sidebar-model";
 
@@ -63,26 +64,16 @@ export function useNotesShell({
   const autoSaveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutoSaveToastAtRef = useRef(0);
 
-  const initialStarred = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    for (const note of data.notes) {
-      if (note.starred) map[note.id] = true;
-    }
-    return map;
-  }, [data.notes]);
+  const initialStarred = useMemo(() => noteFlagMap(data.notes, "starred"), [data.notes]);
   const {
     starred,
     setStarred,
     toggleStar: applyStarToggle,
     batchToggleStarForIds,
   } = useStarredMap(initialStarred);
-  const [archived, setArchived] = useState<Record<string, boolean>>(() => {
-    const map: Record<string, boolean> = {};
-    for (const note of data.notes) {
-      if (note.archived) map[note.id] = true;
-    }
-    return map;
-  });
+  const [archived, setArchived] = useState<Record<string, boolean>>(() =>
+    noteFlagMap(data.notes, "archived"),
+  );
 
   // Mutable so delete/rename/move can drop emptied personal leftovers immediately.
   // Re-synced from bootstrap `data` (Dexie + live); mutations own incremental updates
@@ -172,20 +163,14 @@ export function useNotesShell({
     [notes],
   );
 
+  // Keep the same map object unless a flag changed: a body edit must not
+  // re-render every list row (#1714).
   useEffect(() => {
-    const next: Record<string, boolean> = {};
-    for (const note of notes) {
-      if (note.starred) next[note.id] = true;
-    }
-    setStarred(next);
+    setStarred(syncNoteFlagMap(notes, "starred"));
   }, [notes, setStarred]);
 
   useEffect(() => {
-    const next: Record<string, boolean> = {};
-    for (const note of notes) {
-      if (note.archived) next[note.id] = true;
-    }
-    setArchived(next);
+    setArchived(syncNoteFlagMap(notes, "archived"));
   }, [notes, setArchived]);
 
   const viewLabel = useMemo(() => {

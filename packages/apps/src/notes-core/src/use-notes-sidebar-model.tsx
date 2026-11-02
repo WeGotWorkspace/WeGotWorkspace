@@ -5,12 +5,12 @@ import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection, NotesSharedNotebook } from "@/notes-core/src/notes-types";
+import { normalizeTag } from "@/notes-core/src/note-tag";
 
 export type NotesSidebarTagEntry = {
   tag: string;
   selected: boolean;
   onSelect: () => void;
-  onRename: () => void;
 } & ListDropZoneProps;
 
 export type NotesNotebookSidebarEntry = NotesNotebookCollection;
@@ -29,7 +29,6 @@ type UseNotesSidebarModelArgs = {
   sidebarDropZoneProps: (target: string, onDrop: (ids: string[]) => void) => ListDropZoneProps;
   moveToNotebook: (ids: string[], notebook: string) => void;
   assignTagToNotes: (ids: string[], tag: string) => void;
-  onRenameTag: (tag: string) => void;
 };
 
 export function notebookViewKey(notebookId: string): string {
@@ -44,6 +43,13 @@ export function tagViewKey(tag: string): string {
 export function nextNotesTagView(view: string, tag: string): string {
   const next = tagViewKey(tag);
   return view === next ? "all" : next;
+}
+
+/** The known tag a `tag:` view filters on, or null (other views, or a tag no note has). */
+export function tagForNotesView(view: string, tags: readonly string[]): string | null {
+  if (!view.startsWith("tag:")) return null;
+  const wanted = normalizeTag(view.slice(4));
+  return tags.find((tag) => normalizeTag(tag) === wanted) ?? null;
 }
 
 /** Same as Tasks `isViewOnlyTaskList`: missing `mayWriteAll` is writable. */
@@ -108,7 +114,6 @@ export function useNotesSidebarModel({
   sidebarDropZoneProps,
   moveToNotebook,
   assignTagToNotes,
-  onRenameTag,
 }: UseNotesSidebarModelArgs) {
   const collections = useMemo(
     () => collectionsFromNotesData(notebooks, sharedNotebooks, notebookCollections),
@@ -152,10 +157,9 @@ export function useNotesSidebarModel({
           tag,
           selected: view === tagViewKey(tag),
           onSelect: () => selectView(nextNotesTagView(view, tag)),
-          onRename: () => onRenameTag(tag),
           ...sidebarDropZoneProps(tagViewKey(tag), (ids) => assignTagToNotes(ids, tag)),
         })),
-    [assignTagToNotes, onRenameTag, selectView, sidebarDropZoneProps, tags, view],
+    [assignTagToNotes, selectView, sidebarDropZoneProps, tags, view],
   );
 
   return {
@@ -164,6 +168,7 @@ export function useNotesSidebarModel({
     sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
     showTagsSection: tagSidebarTags.length > 0,
+    selectedTag: tagForNotesView(view, tags),
     notebookViewKey,
     moveToNotebook,
   };

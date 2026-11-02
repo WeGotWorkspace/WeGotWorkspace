@@ -204,7 +204,7 @@ export function useDriveShell({
     operations,
   ]);
 
-  useDriveFolderListingSync({
+  const { folderListingError, retryFolderListing } = useDriveFolderListingSync({
     operations,
     folderViewPath,
     listLoading,
@@ -432,6 +432,8 @@ export function useDriveShell({
     viewLabel,
     viewResetKey,
     folderListingPending,
+    folderListingError,
+    retryFolderListing,
     inTrashView,
     isUnderTrash,
     listLoading,

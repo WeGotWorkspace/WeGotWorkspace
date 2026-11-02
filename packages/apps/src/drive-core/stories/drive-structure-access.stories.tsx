@@ -32,6 +32,13 @@ const guestData: DriveUIData = {
 
 const FILE_TITLE = "Autumn Issue — Final Proofs.pdf";
 
+/**
+ * On a busy CI runner the file list can be off screen for more than Testing
+ * Library's 1 s default: before the first render, and again between steps.
+ * Wait longer for the tile.
+ */
+const LISTING_TIMEOUT = { timeout: 15_000 };
+
 /** Fires a dragstart on an item; returns false when the item cancelled the drag. */
 function dragItem(canvasElement: HTMLElement, title: string): boolean {
   const item = within(canvasElement).getAllByLabelText(title)[0]?.closest("[draggable]");
@@ -47,7 +54,9 @@ function dragItem(canvasElement: HTMLElement, title: string): boolean {
 
 async function openItemMenu(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  const tile = (await canvas.findAllByLabelText(FILE_TITLE))[0]!.closest("[draggable]");
+  const tile = (await canvas.findAllByLabelText(FILE_TITLE, {}, LISTING_TIMEOUT))[0]!.closest(
+    "[draggable]",
+  );
   if (!(tile instanceof HTMLElement)) throw new Error(`No tile for ${FILE_TITLE}`);
   await userEvent.click(within(tile).getByRole("button", { name: "More actions" }));
   return within(document.body).findByRole("menu");
@@ -56,9 +65,13 @@ async function openItemMenu(canvasElement: HTMLElement) {
 /** Selects the file and returns the floating selection bar. */
 async function selectFile(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  const tile = (await canvas.findAllByLabelText(FILE_TITLE))[0]!;
+  const tile = (await canvas.findAllByLabelText(FILE_TITLE, {}, LISTING_TIMEOUT))[0]!;
   await userEvent.pointer({ keys: "[MouseRight]", target: tile });
-  return canvasElement.querySelector(".drive-selection-bar") as HTMLElement | null;
+  return waitFor(() => {
+    const bar = canvasElement.querySelector<HTMLElement>(".drive-selection-bar");
+    expect(bar).not.toBeNull();
+    return bar!;
+  });
 }
 
 export const SignedInManagesStructure: Story = {
@@ -72,6 +85,7 @@ export const SignedInManagesStructure: Story = {
     const canvas = within(canvasElement);
     const body = within(document.body);
 
+    await canvas.findAllByLabelText(FILE_TITLE, {}, LISTING_TIMEOUT);
     expect(await canvas.findByRole("button", { name: L.newFolder })).toBeInTheDocument();
 
     const menu = await openItemMenu(canvasElement);
@@ -82,9 +96,7 @@ export const SignedInManagesStructure: Story = {
 
     expect(dragItem(canvasElement, FILE_TITLE)).toBe(true);
 
-    const bar = await selectFile(canvasElement);
-    await waitFor(() => expect(bar).not.toBeNull());
-    const barScope = within(bar!);
+    const barScope = within(await selectFile(canvasElement));
     expect(barScope.getByRole("button", { name: L.selectionMove })).toBeInTheDocument();
     expect(barScope.getByRole("button", { name: L.selectionMoveToTrash })).toBeInTheDocument();
 
@@ -106,7 +118,7 @@ export const GuestHasNoStructureActions: Story = {
     const canvas = within(canvasElement);
     const body = within(document.body);
 
-    await canvas.findAllByLabelText(FILE_TITLE);
+    await canvas.findAllByLabelText(FILE_TITLE, {}, LISTING_TIMEOUT);
     expect(canvas.queryByRole("button", { name: L.newFolder })).toBeNull();
     expect(canvas.queryByRole("button", { name: L.newButtonMenu })).toBeNull();
 
@@ -120,9 +132,7 @@ export const GuestHasNoStructureActions: Story = {
     // The item cancels the drag, so nothing can be dropped on a folder.
     expect(dragItem(canvasElement, FILE_TITLE)).toBe(false);
 
-    const bar = await selectFile(canvasElement);
-    await waitFor(() => expect(bar).not.toBeNull());
-    const barScope = within(bar!);
+    const barScope = within(await selectFile(canvasElement));
     expect(barScope.queryByRole("button", { name: L.selectionMove })).toBeNull();
     expect(barScope.queryByRole("button", { name: L.selectionMoveToTrash })).toBeNull();
 

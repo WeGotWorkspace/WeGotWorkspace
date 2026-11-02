@@ -17,6 +17,7 @@ import {
 } from "./docs-collab-mesh-hydration";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
+import { settleRefusedRoomPoll } from "./docs-collab-gone";
 import { DocsRtcSession } from "./docs-rtc-session";
 import type {
   DocsCollabMeshMessage,
@@ -42,6 +43,7 @@ type UseDocsCollabMeshOptions = {
   urls: DocsCollabUrls;
   markDocReady: () => void;
   trySeedFromFile: () => void;
+  setDocStatus: (status: string) => void;
 };
 
 export function useDocsCollabMesh({
@@ -50,6 +52,7 @@ export function useDocsCollabMesh({
   urls,
   markDocReady,
   trySeedFromFile,
+  setDocStatus,
 }: UseDocsCollabMeshOptions) {
   const [peers, setPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [connectingPeers, setConnectingPeers] = useState<DocsCollabMeshPeer[]>([]);
@@ -180,11 +183,9 @@ export function useDocsCollabMesh({
 
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
-      // Contract C2 revocation: the server refused the poll, so this account
-      // has lost read access. Leave rather than keep a stale live session.
       if (msg.type === "forbidden") {
         void leaveMeshAsFollower();
-        urls.onPersistForbidden?.();
+        settleRefusedRoomPoll(refs, urls, setDocStatus);
         return;
       }
 
@@ -209,9 +210,9 @@ export function useDocsCollabMesh({
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
+          // A writer holds an update we missed; see `pullBack` for the loop guard.
+          if (outcome.pullBack && msg.from) sendSyncStep1(msg.from);
         }
-        // dc-open already pulls once per peer. Answering an empty step 1 with
-        // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && msg.u instanceof Uint8Array) {
@@ -234,6 +235,7 @@ export function useDocsCollabMesh({
       refreshMeshUi,
       sendAwarenessBroadcast,
       sendSyncStep1,
+      setDocStatus,
       trySeedFromFile,
       urls,
     ],
@@ -245,10 +247,17 @@ export function useDocsCollabMesh({
       authToken: string,
       isCurrent: () => boolean,
     ): Promise<DocsCollabMeshPeer[] | null> => {
+      // Leadership can move to another tab during an await below. A follower
+      // that joins anyway holds a session nothing relays from, and its join
+      // drops the leader's peer from the room.
+      const stillWanted = () => {
+        const tabSync = refs.tabSyncRef.current;
+        return isCurrent() && (!tabSync || tabSync.isMeshLeader());
+      };
       if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
         await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
       }
-      if (!isCurrent()) return null;
+      if (!stillWanted()) return null;
       const raced = refs.meshRef.current;
       if (raced) return raced.getRoomPeers();
 
@@ -279,7 +288,7 @@ export function useDocsCollabMesh({
 
       // Re-check after the await. Between these checks and `new` there must be
       // no await, so check-and-create stays atomic.
-      if (!isCurrent()) return null;
+      if (!stillWanted()) return null;
       const racedAfterFetch = refs.meshRef.current;
       if (racedAfterFetch) return racedAfterFetch.getRoomPeers();
       const parked = resumeDocsCollabMeshSession(room);

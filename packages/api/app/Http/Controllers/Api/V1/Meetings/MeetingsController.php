@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Meetings;
 
+use App\Exceptions\ApiHttpException;
 use App\Http\Requests\Api\V1\MeetPatchRoomRequest;
 use App\Http\Requests\Api\V1\MeetReserveRoomRequest;
 use App\Http\Resources\Api\V1\MeetRoomResource;
@@ -42,16 +43,22 @@ final class MeetingsController
             ]);
         }
         $existing = $this->reservations->find($roomId);
+        $actor = $this->reservations->actorPrincipal($username);
+        // Re-posting a code you hold stays idempotent. A code someone else
+        // holds is theirs: refused, and their reservation is left as it is.
+        // Same gate as PATCH: a group room needs membership of that group, so
+        // a write share on its calendar is not enough to change its clock.
+        if ($existing instanceof MeetReservation && ! $this->reservations->canManage($username, $existing)) {
+            throw new MeetResponseException(403, [
+                'error' => 'forbidden',
+                'message' => 'This room code is already reserved by someone else.',
+            ]);
+        }
         $expiresAt = array_key_exists('expiresAt', $request->json()->all())
-            ? $this->parseExpiresAt($validated['expiresAt'] ?? null)
+            ? $this->futureExpiresAt($validated['expiresAt'] ?? null)
             : $existing?->expires_at;
 
-        $this->reservations->reserve(
-            $roomId,
-            $ownerPrincipal,
-            $this->reservations->actorPrincipal($username),
-            $expiresAt,
-        );
+        $this->reservations->reserve($roomId, $ownerPrincipal, $actor, $expiresAt);
 
         return $this->reservationResponse($roomId, $username, includeRoomId: true)
             ->setStatusCode(201);
@@ -106,6 +113,7 @@ final class MeetingsController
             ]);
         }
 
+        // A past clock is accepted on purpose: PATCH is holder-only and ending a reservation is what it is for.
         $this->reservations->patchExpiresAt(
             $roomId,
             $this->parseExpiresAt($request->validated()['expiresAt'] ?? null),
@@ -128,6 +136,20 @@ final class MeetingsController
         }
 
         return $username;
+    }
+
+    /**
+     * Runs after the permission checks, so a caller without rights on the room
+     * gets 403 whatever clock they send. Same envelope as request validation.
+     */
+    private function futureExpiresAt(mixed $value): ?Carbon
+    {
+        $expiresAt = $this->parseExpiresAt($value);
+        if ($expiresAt !== null && ! $expiresAt->isFuture()) {
+            throw new ApiHttpException(422, 'The expires at field must be a date in the future.', 'bad_request');
+        }
+
+        return $expiresAt;
     }
 
     private function parseExpiresAt(mixed $value): ?Carbon

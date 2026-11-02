@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
+import { parseRetryAfterMs } from "@/lib/offline/core/background-sync-pacer";
 import { encodeFramedPayload } from "@/lib/wire/framed-payload";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { noteTitleForSave } from "./docs-collab-document-title";
@@ -28,7 +29,13 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
   const res = await fetch(documentUrl, {
     headers: withBearerAuth({ Accept: "text/markdown, application/json" }, authToken),
   });
-  if (!res.ok) throw new CollabHttpError(`Could not load document (${res.status})`, res.status);
+  if (!res.ok) {
+    throw new CollabHttpError(
+      `Could not load document (${res.status})`,
+      res.status,
+      parseRetryAfterMs(res.headers.get("Retry-After")),
+    );
+  }
   const contentType = res.headers.get("content-type") ?? "";
   let etag = res.headers.get("ETag");
   if (contentType.includes("application/json")) {
@@ -61,7 +68,15 @@ export type YjsSnapshot = {
   update: Uint8Array | null;
   etag: string | null;
   externalWrite?: boolean;
+  /**
+   * Set only for a `&fallback=markdown` request when there is no sidecar: the
+   * server sent the markdown in the same response.
+   */
+  markdown?: string;
 };
+
+/** Response header that marks a `&fallback=markdown` body as markdown, not sidecar bytes. */
+export const COLLAB_FALLBACK_HEADER = "X-Wgw-Collab-Fallback";
 
 export type YjsSnapshotLoad = {
   applied: boolean;
@@ -79,7 +94,15 @@ export async function fetchYjsSnapshot(yjsUrl: string, authToken?: string): Prom
   });
   if (res.status === 204) return { update: null, etag: null, externalWrite: false };
   if (!res.ok) {
-    throw new CollabHttpError(`Could not load snapshot (${res.status})`, res.status);
+    throw new CollabHttpError(
+      `Could not load snapshot (${res.status})`,
+      res.status,
+      parseRetryAfterMs(res.headers.get("Retry-After")),
+    );
+  }
+
+  if (res.headers.get(COLLAB_FALLBACK_HEADER) === "markdown") {
+    return { update: null, etag: null, externalWrite: false, markdown: await res.text() };
   }
 
   const update = new Uint8Array(await res.arrayBuffer());

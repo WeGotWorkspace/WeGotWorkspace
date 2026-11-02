@@ -3,6 +3,24 @@ import { expect, type Page } from "@playwright/test";
 export const E2E_USERNAME = process.env.WGW_E2E_USERNAME ?? "admin";
 export const E2E_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 
+/** The e2e user's own notebook (the dev install creates it). */
+export const E2E_NOTEBOOK_ID = "notes-general";
+
+/**
+ * A notebook other than the default one: the admin's group notebook, which
+ * every dev install has. On a seeded account the first listed note is often
+ * outside the default notebook too.
+ */
+export const E2E_OTHER_NOTEBOOK_ID = "group-administrators";
+
+type ServerNoteRow = {
+  id: string;
+  etag?: string;
+  title?: string | null;
+  body?: string | null;
+  status?: string | null;
+};
+
 export async function loginToNotes(page: Page): Promise<void> {
   await page.goto("/notes");
   await expect(page.getByRole("button", { name: "New note" })).toBeVisible({ timeout: 30_000 });
@@ -67,7 +85,8 @@ export async function appendToActiveNoteBody(page: Page, text: string): Promise<
 }
 
 export async function expectPendingDotVisible(page: Page): Promise<void> {
-  await expect(page.getByRole("img", { name: "Pending sync" })).toBeVisible({ timeout: 10_000 });
+  // The list re-checks pending bodies every 4s.
+  await expect(page.getByRole("img", { name: "Pending sync" })).toBeVisible({ timeout: 20_000 });
 }
 
 export async function expectPendingDotHidden(page: Page): Promise<void> {
@@ -123,26 +142,76 @@ export async function markActiveNoteWithToken(page: Page, token: string): Promis
 }
 
 /** Create an isolated note for destructive e2e flows (avoids wiping shared seed notes). */
-export async function seedNoteWithToken(page: Page, token: string): Promise<void> {
-  await page.evaluate(async (bodyToken) => {
-    const accessToken = localStorage.getItem("wgw.api.access_token");
-    const response = await fetch("/api/v1/notes/items", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        notebook: "Drafts",
-        title: `E2E ${bodyToken}`,
-        body: bodyToken,
-        tags: [],
-      }),
-    });
-    if (!response.ok) throw new Error(`Seed note failed (${response.status})`);
-  }, token);
+export async function seedNoteWithToken(
+  page: Page,
+  token: string,
+  notebookId: string = E2E_NOTEBOOK_ID,
+): Promise<void> {
+  await page.evaluate(
+    async ({ bodyToken, notebookId }) => {
+      const accessToken = localStorage.getItem("wgw.api.access_token");
+      const response = await fetch("/api/v1/notes/items", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: crypto.randomUUID(),
+          notebookId,
+          title: `E2E ${bodyToken}`,
+          body: bodyToken,
+          categories: [],
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Seed note failed (${response.status}): ${await response.text()}`);
+      }
+    },
+    { bodyToken: token, notebookId },
+  );
   await page.getByRole("button", { name: "Refresh notes" }).click();
   await waitForNotesListReady(page);
+}
+
+/** Open a note made with {@link seedNoteWithToken} from the list. */
+export async function openSeededNote(page: Page, token: string): Promise<void> {
+  const item = page.locator(".list-item__button").filter({ hasText: `E2E ${token}` });
+  await expect(item).toBeVisible({ timeout: 15_000 });
+  await item.click();
+  await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 15_000 });
+}
+
+/**
+ * Notes in every notebook the e2e user can read, as the server has them
+ * (archived ones included). A spec may edit a note outside the default
+ * notebook: on a seeded account the first listed note often is.
+ */
+async function serverNotes(page: Page): Promise<ServerNoteRow[]> {
+  return page.evaluate(async () => {
+    const accessToken = localStorage.getItem("wgw.api.access_token");
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    const read = async <T>(path: string): Promise<T> => {
+      const response = await fetch(`/api/v1${path}`, { headers });
+      if (!response.ok) {
+        throw new Error(`GET ${path} failed (${response.status}): ${await response.text()}`);
+      }
+      return (await response.json()) as T;
+    };
+    const notebooks = (await read<{ list?: { id: string }[] }>("/notes/notebooks")).list ?? [];
+    const rows: ServerNoteRow[] = [];
+    for (const { id } of notebooks) {
+      const listed = await read<{ list?: ServerNoteRow[] }>(
+        `/notes/items?notebookId=${encodeURIComponent(id)}`,
+      );
+      rows.push(...(listed.list ?? []));
+    }
+    return rows;
+  });
+}
+
+function noteHasToken(note: ServerNoteRow, token: string): boolean {
+  return [note.title, note.body].filter(Boolean).join(" ").includes(token);
 }
 
 export async function archiveActiveNote(page: Page): Promise<void> {
@@ -168,31 +237,27 @@ export async function archiveActiveNote(page: Page): Promise<void> {
 }
 
 export async function archiveNoteTokenOnServer(page: Page, token: string): Promise<void> {
-  await page.evaluate(async (expected) => {
-    const accessToken = localStorage.getItem("wgw.api.access_token");
-    const listResponse = await fetch("/api/v1/notes/items", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!listResponse.ok) throw new Error("Failed to list notes for archive helper");
-    const json = (await listResponse.json()) as {
-      items?: { id?: string; body?: string; title?: string; excerpt?: string }[];
-    };
-    const item = json.items?.find((row) => {
-      const haystack = [row.body, row.title, row.excerpt].filter(Boolean).join(" ");
-      return haystack.includes(expected);
-    });
-    if (!item?.id) throw new Error(`Note with token ${expected} not found on server`);
-
-    const patchResponse = await fetch(`/api/v1/notes/items/${encodeURIComponent(item.id)}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ archived: true }),
-    });
-    if (!patchResponse.ok) throw new Error(`Archive PATCH failed (${patchResponse.status})`);
-  }, token);
+  const note = (await serverNotes(page)).find((row) => noteHasToken(row, token));
+  if (!note?.etag) throw new Error(`Note with token ${token} not found on server`);
+  await page.evaluate(
+    async ({ id, etag }) => {
+      const accessToken = localStorage.getItem("wgw.api.access_token");
+      // Archiving is status CANCELLED; field updates need the note's ETag.
+      const response = await fetch(`/api/v1/notes/items/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "If-Match": etag,
+        },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+      if (!response.ok) {
+        throw new Error(`Archive PATCH failed (${response.status}): ${await response.text()}`);
+      }
+    },
+    { id: note.id, etag: note.etag },
+  );
   await page.getByRole("button", { name: "Refresh notes" }).click();
   await waitForNotesListReady(page);
 }
@@ -219,20 +284,5 @@ export async function deleteFilteredArchivedNotes(page: Page, searchToken: strin
 }
 
 export async function noteTokenOnServer(page: Page, token: string): Promise<boolean> {
-  return page.evaluate(async (expected) => {
-    const accessToken = localStorage.getItem("wgw.api.access_token");
-    const response = await fetch("/api/v1/notes/items", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!response.ok) return false;
-    const json = (await response.json()) as {
-      items?: { body?: string; title?: string; excerpt?: string }[];
-    };
-    return (
-      json.items?.some((item) => {
-        const haystack = [item.body, item.title, item.excerpt].filter(Boolean).join(" ");
-        return haystack.includes(expected);
-      }) ?? false
-    );
-  }, token);
+  return (await serverNotes(page)).some((note) => noteHasToken(note, token));
 }

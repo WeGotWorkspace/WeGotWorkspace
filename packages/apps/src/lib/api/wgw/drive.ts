@@ -375,6 +375,16 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
 function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperations {
   let cwd = normalizePath(initialCwd);
   const shared = createSharedDriveOperations();
+  // The signed-in user does not change while these operations live: one
+  // `GET /files/context` for every blob read, not one per preview.
+  let userRequest: Promise<WgwDriveUserData> | null = null;
+  const driveUser = (): Promise<WgwDriveUserData> => {
+    userRequest ??= fetchDriveUser().catch((error: unknown) => {
+      userRequest = null;
+      throw error;
+    });
+    return userRequest;
+  };
 
   return {
     ...shared,
@@ -422,7 +432,7 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
     },
     async downloadFile(path, opts) {
       const session = await driveJmapSession();
-      const user = await fetchDriveUser(opts);
+      const user = await driveUser();
       const blob = await downloadFileNodeBlob(
         session,
         normalizePath(path),
@@ -433,7 +443,7 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
     },
     async readFileBlob(path, opts) {
       const session = await driveJmapSession();
-      const user = await fetchDriveUser(opts);
+      const user = await driveUser();
       return downloadFileNodeBlob(session, normalizePath(path), user.username, opts?.signal);
     },
     async checkUploadReady() {

@@ -45,7 +45,7 @@ const countedRoots = trees.map((tree) => tree.root);
 
 const excludedName = /\.(test|spec|stories|mock|fixture)\.(ts|tsx)$|\.d\.ts$/;
 
-function isExcluded(relPath) {
+export function isExcluded(relPath) {
   const normalized = relPath.split(path.sep).join("/");
   if (excludedName.test(path.basename(normalized))) return true;
   return (
