@@ -1265,6 +1265,50 @@ test.describe("a refused offline write is rescued", () => {
     }
   });
 
+  test("a refresh in the middle of a move brings the task back, once", async ({ browser }) => {
+    const id = caseId();
+    let session: Session | null = null;
+    try {
+      const f = await seed(id, { teammate: true });
+      session = await openTabs(browser, "diff");
+      const [a, b] = session.tabs as [Tab, Tab];
+      await expectLoaded(session, id);
+      const title = await refuseOffline(a, b, f, "create", "deleted");
+      const dialog = rescueDialog(b);
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+      await dialog.getByRole("radio", { name: "An existing list" }).click();
+      await dialog.getByRole("combobox", { name: "List" }).click();
+      await b.getByRole("option", { name: f.listB, exact: true }).click();
+
+      // The create never gets an answer: the tab dies with the write in flight.
+      const itemsUrl = (url: URL) => url.pathname.endsWith("/api/v1/tasks/items");
+      const handler = async (route: Route) => {
+        if (route.request().method() === "POST") return;
+        await route.fallback();
+      };
+      await b.route(itemsUrl, handler);
+      const sent = b.waitForRequest(
+        (request) => request.method() === "POST" && itemsUrl(new URL(request.url())),
+      );
+      await dialog.getByRole("button", { name: /^Move/ }).click();
+      await sent;
+      await hardRefresh([b]);
+      await b.unroute(itemsUrl, handler, { behavior: "ignoreErrors" });
+
+      expect(
+        (await serverState(f.id, TEAMMATE)).tasks.filter((task) => task.title === title),
+        "the server has no copy yet",
+      ).toEqual([]);
+      await chooseRescue(b, f, title, "existing list");
+      await expectRescued(f, title, "existing list");
+      expect((await tabCache(b, f.id)).outbox, "nothing left queued").toEqual([]);
+    } finally {
+      await closeTabs(session);
+      await cleanUpTeammateLists(id);
+      await cleanUpCase(id);
+    }
+  });
+
   test("two tabs · one asks, the other follows, no duplicates", async ({ browser }) => {
     const id = caseId();
     let session: Session | null = null;
