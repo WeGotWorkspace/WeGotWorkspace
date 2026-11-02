@@ -7,6 +7,18 @@ import { JmapInboundAdapter } from "./JmapInboundAdapter.js";
 const NOTEBOOK_TYPE = "Notebook";
 const NOTE_TYPE = "Note";
 
+/** Every Note property the app reads, except `body`. */
+export const NOTE_METADATA_PROPERTIES = [
+  "notebookId",
+  "title",
+  "categories",
+  "status",
+  "etag",
+  "starred",
+  "updatedAt",
+  "contentUpdatedAt",
+] as const;
+
 export type JmapNotesAdapterOptions = {
   client: JmapClient;
   accountId?: JmapId;
@@ -16,6 +28,12 @@ export type JmapNotesAdapterOptions = {
   onRemoteNotebook?: (notebook: JmapNotebook) => void;
   onRemoteNotebookDestroyed?: (notebookId: JmapId) => void;
   onRefetchAll?: (snapshot: { notebooks: JmapNotebook[]; notes: JmapNote[] }) => void;
+  /**
+   * True while a live collab room in this tab holds the note's body. A sync
+   * then fetches that note without `body` (docs/architecture/jmap-push.md,
+   * "Collab rooms lead"), and `onRemoteNote` gets it without one.
+   */
+  bodyInRoom?: (noteId: JmapId) => boolean;
 };
 
 /**
@@ -82,8 +100,7 @@ export class JmapNotesAdapter extends JmapInboundAdapter {
       const changedIds = [...changes.created, ...updated];
       const destroyed = changes.destroyed.filter((id) => !created.has(id) && !updated.includes(id));
       if (changedIds.length) {
-        const fetched = await this.#notes.getNotes(this.accountId, changedIds);
-        for (const note of fetched.list) {
+        for (const note of await this.#getChangedNotes(changedIds)) {
           this.#options.onRemoteNote?.(note);
         }
       }
@@ -96,6 +113,26 @@ export class JmapNotesAdapter extends JmapInboundAdapter {
         client.setState(this.accountId, NOTE_TYPE, noteState);
       }
     }
+  }
+
+  /** Changed notes; a note whose body a live room holds comes without it. */
+  async #getChangedNotes(ids: JmapId[]): Promise<JmapNote[]> {
+    const inRoom = this.#options.bodyInRoom;
+    const withoutBody = inRoom ? ids.filter((id) => inRoom(id)) : [];
+    const withBody = ids.filter((id) => !withoutBody.includes(id));
+    const notes: JmapNote[] = [];
+    if (withoutBody.length) {
+      const fetched = await this.#notes.getNotes(
+        this.accountId,
+        withoutBody,
+        NOTE_METADATA_PROPERTIES,
+      );
+      notes.push(...fetched.list);
+    }
+    if (withBody.length) {
+      notes.push(...(await this.#notes.getNotes(this.accountId, withBody)).list);
+    }
+    return notes;
   }
 
   protected async refetchAll(): Promise<void> {

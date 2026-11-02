@@ -4,6 +4,7 @@ import type { Note } from "@/lib/models/note";
 import { settleNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
 import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
+import { holdNoteBodyRoom } from "@/notes-core/src/note-body-rooms";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
 
 type UseNoteBodyCollabArgs = {
@@ -65,6 +66,12 @@ export function useNoteBodyCollab({
       cancelled = true;
     };
   }, [activeCreatePending, activeNoteId, archived, offlineUsername, username]);
+
+  const roomOpen = Boolean(noteCollabUrls && activeNoteId);
+  useEffect(() => {
+    if (!roomOpen || !activeNoteId) return;
+    return holdNoteBodyRoom(activeNoteId);
+  }, [activeNoteId, roomOpen]);
 
   const notesCollabWire = useMemo(() => createWgwNotesCollabWire(), []);
   const noteBodyCollab = useMemo<NoteCollabConfig | undefined>(() => {
