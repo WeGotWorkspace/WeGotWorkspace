@@ -149,7 +149,7 @@ final class JmapBlobAssemblyTest extends WgwDatabaseTestCase
         $this->assertSame([], $session['capabilities'][JmapCapabilities::BLOB_ASSEMBLY]);
         $account = $session['accounts']['bob']['accountCapabilities'][JmapCapabilities::BLOB_ASSEMBLY];
         $this->assertSame(self::MIB, $account['stepBudgetBytes']);
-        $this->assertSame(4_000_000_000, $account['maxSizeAssembly']);
+        $this->assertNull($account['maxSizeAssembly']);
         $this->assertSame(24 * 3600, $account['assemblyTtlSeconds']);
 
         $response = $this->jmap([['BlobAssembly/set', ['accountId' => 'bob', 'create' => ['a' => ['size' => 1]]], 'c']], [JmapCapabilities::CORE]);

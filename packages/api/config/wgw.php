@@ -24,8 +24,9 @@ return [
     'jmap' => [
         'max_size_upload' => (int) env('WGW_JMAP_MAX_SIZE_UPLOAD', 25_000_000),
         'blob_ttl_hours' => (int) env('WGW_JMAP_BLOB_TTL_HOURS', 24),
-        // RFC 9404 maxSizeBlobSet in octets; empty or "null" means no limit.
-        'max_size_blob_set' => env('WGW_JMAP_MAX_SIZE_BLOB_SET', 4_000_000_000),
+        // RFC 9404 maxSizeBlobSet in octets. Unset, empty or "null" means no
+        // limit per file: free disk space is the only bound.
+        'max_size_blob_set' => env('WGW_JMAP_MAX_SIZE_BLOB_SET'),
         // Step budget = max_execution_time (0 → step_unlimited_seconds) × share × throughput.
         'step_time_share' => (float) env('WGW_JMAP_STEP_TIME_SHARE', 0.5),
         'step_throughput_bytes' => (int) env('WGW_JMAP_STEP_THROUGHPUT_BYTES', 8 * 1024 * 1024),

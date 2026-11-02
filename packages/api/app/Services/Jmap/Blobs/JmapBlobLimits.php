@@ -41,11 +41,12 @@ final class JmapBlobLimits
     }
 
     /**
-     * RFC 9404 maxSizeBlobSet (UnsignedInt|null; null = no limit).
+     * RFC 9404 maxSizeBlobSet (UnsignedInt|null; null = no limit, the
+     * default: free disk space is checked on its own).
      */
     public static function maxSizeBlobSet(): ?int
     {
-        $raw = config('wgw.jmap.max_size_blob_set', 4_000_000_000);
+        $raw = config('wgw.jmap.max_size_blob_set');
         if ($raw === null || $raw === '' || (is_string($raw) && strtolower(trim($raw)) === 'null')) {
             return null;
         }

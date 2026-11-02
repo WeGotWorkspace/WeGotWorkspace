@@ -74,12 +74,18 @@ final class JmapBlobLimitsTest extends TestCase
         $this->assertSame(JmapBlobLimits::MAX_DATA_SOURCES, JmapBlobLimits::maxDataSources());
     }
 
-    public function test_max_size_blob_set_defaults_to_4_gb_and_can_be_unlimited(): void
+    public function test_max_size_blob_set_has_no_limit_by_default_and_can_be_set(): void
     {
-        config(['wgw.jmap.max_size_blob_set' => 4_000_000_000]);
-        $this->assertSame(4_000_000_000, JmapBlobLimits::maxSizeBlobSet());
+        config(['wgw.jmap.max_size_blob_set' => null]);
+        $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
+
+        config(['wgw.jmap.max_size_blob_set' => '']);
+        $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
 
         config(['wgw.jmap.max_size_blob_set' => 'null']);
         $this->assertNull(JmapBlobLimits::maxSizeBlobSet());
+
+        config(['wgw.jmap.max_size_blob_set' => '4000000000']);
+        $this->assertSame(4_000_000_000, JmapBlobLimits::maxSizeBlobSet());
     }
 }
