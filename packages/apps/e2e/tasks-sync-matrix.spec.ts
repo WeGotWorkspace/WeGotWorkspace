@@ -1293,7 +1293,7 @@ test.describe("a refused offline write is rescued", () => {
       await dialog.getByRole("button", { name: /^Move/ }).click();
       await sent;
       await hardRefresh([b]);
-      await b.unroute(itemsUrl, handler, { behavior: "ignoreErrors" });
+      await b.unroute(itemsUrl, handler);
 
       expect(
         (await serverState(f.id, TEAMMATE)).tasks.filter((task) => task.title === title),
