@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useDocumentTitle } from "@/lib/document-title";
+import { isPageSecureContext } from "@/lib/secure-context";
 import { InstallerAccountPage } from "@/installer-core/src/installer-account-page";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
+import { InstallerNotSecurePage } from "@/installer-core/src/installer-not-secure-page";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
 import { useInstallerController } from "@/installer-core/src/use-installer-controller";
 import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
@@ -15,6 +18,7 @@ const SCREEN_TITLES = {
   account: "Your account",
   ready: "You got workspace",
   interrupt: "Needs attention",
+  notSecure: "Not secure",
 } as const;
 
 export function InstallerWorkspace({
@@ -22,6 +26,7 @@ export function InstallerWorkspace({
   operations,
   onOpenWorkspace,
   onAdminSignedIn,
+  secureContext = isPageSecureContext(),
 }: InstallerWorkspaceProps) {
   const controller = useInstallerController({
     data,
@@ -29,7 +34,19 @@ export function InstallerWorkspace({
     onOpenWorkspace,
     onAdminSignedIn,
   });
-  useDocumentTitle(SCREEN_TITLES[controller.screen]);
+  // Over http, Get started first shows the warning; going on from there is the admin's confirm.
+  const [notSecureShown, setNotSecureShown] = useState(false);
+  const showNotSecure = notSecureShown && controller.screen === "welcome";
+  useDocumentTitle(SCREEN_TITLES[showNotSecure ? "notSecure" : controller.screen]);
+
+  if (showNotSecure) {
+    return (
+      <InstallerNotSecurePage
+        includeDatabaseStep={controller.includeDatabaseStep}
+        onContinue={() => void controller.startSetup()}
+      />
+    );
+  }
 
   if (controller.screen === "interrupt") {
     return (
@@ -90,7 +107,10 @@ export function InstallerWorkspace({
   return (
     <InstallerWelcomePage
       includeDatabaseStep={controller.includeDatabaseStep}
-      onGetStarted={() => void controller.startSetup()}
+      onGetStarted={() => {
+        if (secureContext) void controller.startSetup();
+        else setNotSecureShown(true);
+      }}
     />
   );
 }
