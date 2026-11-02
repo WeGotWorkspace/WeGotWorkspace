@@ -18,6 +18,7 @@ import {
   subscribeTaskWriteRefused,
   type TaskWriteRefused,
 } from "@/lib/offline/tasks/tasks-refused-write";
+import { listParkedWrites } from "@/lib/offline/core/parked-writes";
 
 const username = "alice";
 const bootstrap = createTasksAppBootstrap({
@@ -90,7 +91,18 @@ describe("flushTasksOutbox", () => {
     return seen;
   }
 
-  it("drops a write refused as read-only and shows the server copy again (#1825)", async () => {
+  /** What waits in the rescue dialog: [task id, kind, reason, list, title]. */
+  async function parked() {
+    return (await listParkedWrites<typeof task>(username, TASKS_DOMAIN)).map((write) => [
+      write.entityId,
+      write.kind,
+      write.reason,
+      write.containerId,
+      write.item.title,
+    ]);
+  }
+
+  it("parks a write refused as read-only and shows the server copy again (#1825)", async () => {
     const refusals = watchRefusals();
     await queueRename("queued-rename", "Mine");
     patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (403)", 403));
@@ -102,11 +114,12 @@ describe("flushTasksOutbox", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
     expect((await cachedTask())?.title).toBe(task.title);
     expect(refusals).toEqual([
-      { username, taskId: task.id, title: task.title, reason: "readOnly" },
+      { username, taskId: task.id, title: task.title, reason: "readOnly", parked: true },
     ]);
+    expect(await parked()).toEqual([[task.id, "edit", "readOnly", task.taskListId, "Mine"]]);
   });
 
-  it("drops a write to a task that is gone, and its later writes (#1825)", async () => {
+  it("parks a write to a task that is gone, and drops its later writes (#1825)", async () => {
     const refusals = watchRefusals();
     await queueRename("queued-rename", "Mine");
     await enqueueOutboxMutation(username, {
@@ -123,7 +136,10 @@ describe("flushTasksOutbox", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
     expect(await cachedTask()).toBeUndefined();
     expect(deleteTask).not.toHaveBeenCalled();
-    expect(refusals).toEqual([{ username, taskId: task.id, title: "Mine", reason: "gone" }]);
+    expect(refusals).toEqual([
+      { username, taskId: task.id, title: "Mine", reason: "gone", parked: true },
+    ]);
+    expect(await parked()).toEqual([[task.id, "edit", "gone", task.taskListId, "Mine"]]);
   });
 
   it("drops a queued delete of a task that is gone without a notice", async () => {
@@ -142,6 +158,7 @@ describe("flushTasksOutbox", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
     expect(await cachedTask()).toBeUndefined();
     expect(refusals).toEqual([]);
+    expect(await parked()).toEqual([]);
   });
 
   it("keeps a refused write queued while the server copy cannot be read", async () => {
@@ -192,10 +209,10 @@ describe("flushTasksOutbox", () => {
   });
 
   it.each([
-    [403, "createReadOnly"],
-    [404, "createGone"],
+    [403, "readOnly"],
+    [404, "gone"],
   ] as const)(
-    "drops a task added offline, and its edit, when the create gets a %i",
+    "parks a task added offline, with its edit, when the create gets a %i",
     async (status, reason) => {
       const refusals = watchRefusals();
       const tempId = `local-${"cd34".repeat(8)}`;
@@ -226,7 +243,8 @@ describe("flushTasksOutbox", () => {
       expect(await tasksItemsTable(db).get(tempId)).toBeUndefined();
       expect(getTask).not.toHaveBeenCalled();
       expect(patchTask).not.toHaveBeenCalled();
-      expect(refusals).toEqual([{ username, taskId: tempId, title: "New", reason }]);
+      expect(refusals).toEqual([{ username, taskId: tempId, title: "New", reason, parked: true }]);
+      expect(await parked()).toEqual([[tempId, "create", reason, task.taskListId, "New"]]);
     },
   );
 
@@ -248,7 +266,9 @@ describe("flushTasksOutbox", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     expect(await tasksItemsTable(db).get(serverId)).toBeUndefined();
-    expect(refusals).toEqual([{ username, taskId: serverId, title: "Local", reason: "gone" }]);
+    expect(refusals).toEqual([
+      { username, taskId: serverId, title: "Local", reason: "gone", parked: true },
+    ]);
   });
 
   it("sends a patch merged in while the first one was on its way (#1711)", async () => {

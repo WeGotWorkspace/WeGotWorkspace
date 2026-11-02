@@ -6,6 +6,7 @@ import {
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { parkTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import {
   readTasksBootstrapFromCache,
@@ -17,21 +18,23 @@ import {
 /**
  * The server refused a queued task write for good (#1825): the task or its
  * list is gone for this person, or they can only view the list now. The write
- * leaves the queue, the task goes back to what the server has, and every tab
- * says so, the way Notes does for a note deleted elsewhere.
+ * leaves the queue and the task goes back to what the server has. A task added
+ * offline, or offline changes to a task, are parked (`parkTask`) so the person
+ * can keep them in another list; what cannot be kept that way gets a notice in
+ * every tab, the way Notes does for a note deleted elsewhere.
  *
- * - `gone`: the server no longer shows the task to this person.
- * - `readOnly`: 403, the task is still there and shows the server copy again.
+ * - `gone`: the server no longer shows the task (or its list) to this person.
+ * - `readOnly`: 403, the list is view-only now; the task shows the server copy again.
  * - `notSaved`: 404 on a task the server still has (a move into a list that is gone).
- * - `createGone`: 404 on a task added offline: its list is deleted or no longer shared.
- * - `createReadOnly`: 403 on a task added offline: its list is view-only now.
  */
-export type TaskWriteRefusal = "gone" | "readOnly" | "notSaved" | "createGone" | "createReadOnly";
+export type TaskWriteRefusal = "gone" | "readOnly" | "notSaved";
 export type TaskWriteRefused = {
   username: string;
   taskId: string;
   title: string;
   reason: TaskWriteRefusal;
+  /** Parked for a rescue: the rescue dialog tells the person, not a notice. */
+  parked: boolean;
 };
 
 const topic = crossTabTopic(
@@ -60,6 +63,13 @@ function isRefusedStatus(error: unknown): boolean {
 export function isRefusedTaskWrite(row: OfflineOutboxRow, error: unknown): boolean {
   if (!TASK_OPS.has(row.op) || !isRefusedStatus(error)) return false;
   return row.op === "create" || !TEMP_TASK_ID.test(tasksOutboxTaskId(row) ?? "");
+}
+
+/** A create has no server copy to read, so its status alone says why. */
+function refusalReason(created: boolean, onServer: boolean, forbidden: boolean): TaskWriteRefusal {
+  if (created) return forbidden ? "readOnly" : "gone";
+  if (!onServer) return "gone";
+  return forbidden ? "readOnly" : "notSaved";
 }
 
 /**
@@ -97,15 +107,17 @@ export async function settleRefusedTaskWrite(
   // A queued delete of a task that is gone already has the outcome the person asked for.
   if (row.op === "delete" && !serverTask) return taskId;
   const forbidden = httpStatusFromFlushError(error) === 403;
-  const reason: TaskWriteRefusal = created
-    ? forbidden
-      ? "createReadOnly"
-      : "createGone"
-    : !serverTask
-      ? "gone"
-      : forbidden
-        ? "readOnly"
-        : "notSaved";
-  announceTaskWriteRefused({ username, taskId, title, reason });
+  const reason = refusalReason(created, Boolean(serverTask), forbidden);
+  // Something of the person's own to keep: a task added offline, or offline changes.
+  const parked = Boolean(local) && row.op !== "delete" && reason !== "notSaved";
+  if (local && parked) {
+    const list = cached?.data.taskLists.find((entry) => entry.id === local.taskListId);
+    await parkTask(username, local, {
+      kind: created ? "create" : "edit",
+      reason: reason === "readOnly" ? "readOnly" : "gone",
+      containerName: list?.name ?? "",
+    });
+  }
+  announceTaskWriteRefused({ username, taskId, title, reason, parked });
   return taskId;
 }

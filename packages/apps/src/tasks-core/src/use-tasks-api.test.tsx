@@ -168,16 +168,26 @@ describe("useTasksAPI", () => {
         taskId: "task-1",
         title: "Pay rent",
         reason: "gone",
+        parked: false,
       });
       announceTaskWriteRefused({
         username: "someone-else@example.com",
         taskId: "task-2",
         title: "Not mine",
         reason: "gone",
+        parked: false,
+      });
+      // Parked for the rescue dialog: no notice.
+      announceTaskWriteRefused({
+        username: "demo@example.com",
+        taskId: "task-3",
+        title: "Rescue me",
+        reason: "gone",
+        parked: true,
       });
     });
 
-    expect(onWriteRefused).toHaveBeenCalledExactlyOnceWith("task-1");
+    expect(onWriteRefused.mock.calls).toEqual([["task-1"], ["task-3"]]);
     expect(mockShowError).toHaveBeenCalledExactlyOnceWith(
       defaultTasksLabels.taskWriteRefused("Pay rent", "gone"),
     );

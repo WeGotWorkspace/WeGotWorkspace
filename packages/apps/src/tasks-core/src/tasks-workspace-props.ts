@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type {
   TasksAPIOperations,
@@ -20,6 +21,8 @@ export type TasksWorkspaceProps = {
   /** `?task=` deep-link — opens the edit dialog once the list is ready. */
   initialTaskId?: string;
   onViewChange?: (view: string) => void;
+  /** Extra buttons in the view header, before Refresh (the rescue entry point). */
+  headerActions?: ReactNode;
 };
 
 export function taskProjectGroupsFromBootstrap(data: TasksUIData): TaskProjectGroupOption[] {

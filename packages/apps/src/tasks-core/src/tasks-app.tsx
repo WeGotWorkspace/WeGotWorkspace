@@ -17,9 +17,11 @@ import { tasksOutboxTaskId } from "@/lib/offline/tasks-offline-store";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
+import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-rescue-dialog";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { useTasksAPI } from "@/tasks-core/src/use-tasks-api";
+import { useTasksRescue } from "@/tasks-core/src/use-tasks-rescue";
 import { useTasksRouteSync } from "@/tasks-core/src/use-tasks-route-sync";
 
 export type TasksAppProps = {
@@ -69,9 +71,16 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
     session,
     operations,
     offlineUsername,
+    reloadFromCache,
   } = useTasksAPI(apiSource, {
     onSyncConflict: handleSyncConflict,
     onWriteRefused: handleWriteRefused,
+  });
+  const rescue = useTasksRescue({
+    username: offlineUsername,
+    operations,
+    taskLists: data.taskLists,
+    reloadFromCache,
   });
 
   tasksRef.current = data.tasks;
@@ -233,6 +242,13 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
               initialView={initialView}
               initialTaskId={initialTaskId}
               onViewChange={handleViewChange}
+              headerActions={
+                <TasksRescueEntry
+                  count={rescue.writes.length}
+                  labels={defaultTasksLabels}
+                  onOpen={rescue.openFromEntry}
+                />
+              }
               onLogout={() => {
                 window.location.assign("/logout");
               }}
@@ -255,6 +271,16 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
         onOpenChange={(open) => {
           if (!open && !resolvingConflict && !conflictMergeLoading) dismissActiveConflict();
         }}
+      />
+      <TasksRescueDialog
+        open={rescue.open && rescue.writes.length > 0}
+        writes={rescue.writes}
+        lists={rescue.writableLists}
+        busy={rescue.busy}
+        labels={defaultTasksLabels}
+        onMove={rescue.move}
+        onDiscard={rescue.discard}
+        onLater={rescue.later}
       />
     </>
   );

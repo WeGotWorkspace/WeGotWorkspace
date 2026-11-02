@@ -94,13 +94,15 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
   const onWriteRefused = options?.onWriteRefused;
   useEffect(() => {
     if (!offlineUsername) return;
-    return subscribeTaskWriteRefused(({ username, taskId, title, reason }) => {
+    return subscribeTaskWriteRefused(({ username, taskId, title, reason, parked }) => {
       if (username !== offlineUsername) return;
       onWriteRefused?.(taskId);
       void patchFromCache();
-      showError(
-        defaultTasksLabels.taskWriteRefused(title || defaultTasksLabels.untitledTask, reason),
-      );
+      // A parked write is in the rescue dialog instead.
+      if (!parked)
+        showError(
+          defaultTasksLabels.taskWriteRefused(title || defaultTasksLabels.untitledTask, reason),
+        );
     });
   }, [offlineUsername, onWriteRefused, patchFromCache, showError]);
 
@@ -184,5 +186,6 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     data: data?.data ?? placeholderData,
     operations,
     offlineUsername,
+    reloadFromCache: patchFromCache,
   };
 }

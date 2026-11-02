@@ -18,9 +18,9 @@
 //
 // 2. Cases of their own: sharing (access revoked or made read-only while the
 //    sharee has queued edits, a read-only sharee), a list deleted while
-//    another tab or the teammate edits one of its tasks offline, a task the
-//    teammate adds offline to a list that is made read-only, deleted or no
-//    longer shared before it lands, and inbound
+//    another tab or the teammate edits one of its tasks offline, the rescue
+//    of a task the teammate adds or edits offline in a list that is made
+//    read-only, deleted or no longer shared before it lands (#1825), and inbound
 //    (#1565): changes made elsewhere (through the REST API, as a phone or a
 //    CalDAV client would) against the changes token, the full-list fallback,
 //    queued writes that a re-list must keep, the conflict check, list deletes.
@@ -37,6 +37,7 @@ import {
   type Route,
 } from "@playwright/test";
 import {
+  api,
   calendarSpot,
   cleanUpCase,
   conflictDialog,
@@ -1105,69 +1106,192 @@ async function queueCreateOffline(b: Tab, f: Fixture, title: string) {
   expect((await tabCache(b, f.id)).outbox, `${b.tag} queued the create`).toEqual(["create"]);
 }
 
-test.describe("a refused queued create", () => {
-  const cases = {
-    "made read-only": {
-      run: (_a: Tab, f: Fixture) => shareList(f.listAId, TEAMMATE, "read"),
-      notice: (title: string) =>
-        `You can only view the list for “${title}” now. The task you added offline was not saved.`,
-      keepsList: true,
-    },
-    deleted: {
-      run: (a: Tab, f: Fixture) => ACTIONS.listDelete.run(a, f),
-      notice: (title: string) =>
-        `The list for “${title}” was deleted, or you no longer have access to it. The task you added offline was not saved.`,
-      keepsList: false,
-    },
-    revoked: {
-      run: (a: Tab, f: Fixture) => ACTIONS.revoke.run(a, f),
-      notice: (title: string) =>
-        `The list for “${title}” was deleted, or you no longer have access to it. The task you added offline was not saved.`,
-      keepsList: false,
-    },
-  };
-  for (const [name, c] of Object.entries(cases)) {
-    test(`list ${name} while the teammate adds a task to it offline`, async ({ browser }) => {
-      const id = caseId();
-      let session: Session | null = null;
-      try {
-        const f = await seed(id, { teammate: true });
-        session = await openTabs(browser, "diff");
-        const all = session.tabs;
-        const [a, b] = all as [Tab, Tab];
-        await expectLoaded(session, id);
-        const title = `N ${id}`;
-        await queueCreateOffline(b, f, title);
+// --- refused offline writes: the rescue dialog (#1825) ----------------------------------------
 
-        await a.bringToFront();
-        await showAllTasks(a);
-        await c.run(a, f);
-        await b.bringToFront();
-        await setTabOffline(b, false);
+const REFUSALS = {
+  "made read-only": {
+    run: (_a: Tab, f: Fixture) => shareList(f.listAId, TEAMMATE, "read"),
+    listStays: true,
+  },
+  deleted: { run: (a: Tab, f: Fixture) => ACTIONS.listDelete.run(a, f), listStays: false },
+  revoked: { run: (a: Tab, f: Fixture) => ACTIONS.revoke.run(a, f), listStays: false },
+};
+type Refusal = keyof typeof REFUSALS;
+type Rescue = "existing list" | "new list" | "discard";
 
-        // The create leaves the queue and the screen at once, with one notice and no conflict.
-        await expect(b.getByText(c.notice(title))).toBeVisible({ timeout: 30_000 });
-        await expect(row(b, title)).toHaveCount(0);
-        expect((await tabCache(b, f.id)).outbox, "the refused create left the queue").toEqual([]);
-        await expectNoConflict(b);
-        if (!c.keepsList) {
-          // The open list goes too, not left behind under its id.
-          await expect(sidebarList(b, f.listA)).toHaveCount(0);
-          await expect(b).not.toHaveTitle(new RegExp(f.listAId));
-        }
-        expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
-        expect(titled(await serverState(id), title), "the refused create did not land").toBe(
-          undefined,
-        );
-        await hardRefresh([b]);
-        await expectNoConflict(b);
-        await expect(row(b, title)).toHaveCount(0);
-      } finally {
-        await closeTabs(session);
-        await cleanUpCase(id);
-      }
+function rescueDialog(tab: Tab) {
+  return tab.getByRole("dialog", { name: /tasks? needs? a list/ });
+}
+
+function rescueEntry(tab: Tab) {
+  return tab.getByRole("button", { name: /tasks? needs? a list/ });
+}
+
+/** The teammate's own lists the case made (a rescue into a new list), deleted as them. */
+async function cleanUpTeammateLists(caseId: string) {
+  for (const list of (await serverState(caseId, TEAMMATE).catch(() => null))?.lists ?? []) {
+    if (!list.name.startsWith("Rescued from")) continue;
+    await api(TEAMMATE, "DELETE", `/tasks/tasklists/${encodeURIComponent(list.id)}`, {
+      onDestroyRemoveContents: true,
     });
   }
+}
+
+/** Queue the teammate's write offline, refuse it, reconnect: the rescue dialog asks. */
+async function refuseOffline(
+  a: Tab,
+  b: Tab,
+  f: Fixture,
+  kind: "create" | "edit",
+  refusal: Refusal,
+): Promise<string> {
+  const title = kind === "create" ? `N ${f.id}` : `${f.task} mate`;
+  if (kind === "create") await queueCreateOffline(b, f, title);
+  else await queueEditOffline(b, f, title);
+  await a.bringToFront();
+  await showAllTasks(a);
+  await REFUSALS[refusal].run(a, f);
+  await b.bringToFront();
+  await setTabOffline(b, false);
+  return title;
+}
+
+async function chooseRescue(b: Tab, f: Fixture, title: string, rescue: Rescue) {
+  const dialog = rescueDialog(b);
+  await expect(dialog, "the rescue dialog asks").toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByText(title, { exact: true })).toBeVisible();
+  await expect(conflictDialog(b), "no sync conflict").toHaveCount(0);
+  if (rescue === "discard") {
+    await dialog.getByRole("button", { name: /^Discard/ }).click();
+  } else {
+    if (rescue === "existing list") {
+      await dialog.getByRole("radio", { name: "An existing list" }).click();
+      await dialog.getByRole("combobox", { name: "List" }).click();
+      // Only lists the teammate can write to: never the refused one.
+      await expect(b.getByRole("option", { name: f.listA, exact: true })).toHaveCount(0);
+      await b.getByRole("option", { name: f.listB, exact: true }).click();
+    }
+    await dialog.getByRole("button", { name: /^Move/ }).click();
+  }
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+  await expect(rescueEntry(b)).toHaveCount(0);
+}
+
+async function expectRescued(f: Fixture, title: string, rescue: Rescue) {
+  const mate = await serverState(f.id, TEAMMATE);
+  const copies = mate.tasks.filter((task) => task.title === title);
+  if (rescue === "discard") {
+    expect(copies, "a discarded task is nowhere").toEqual([]);
+    return;
+  }
+  expect(copies, "exactly one rescued copy").toHaveLength(1);
+  const list = mate.lists.find((entry) => entry.id === copies[0]!.listId);
+  expect(list?.name).toBe(rescue === "new list" ? `Rescued from ${f.listA}` : f.listB);
+}
+
+test.describe("a refused offline write is rescued", () => {
+  for (const kind of ["create", "edit"] as const) {
+    for (const refusal of Object.keys(REFUSALS) as Refusal[]) {
+      for (const rescue of ["existing list", "new list", "discard"] as const) {
+        test(`${kind} · list ${refusal} · ${rescue}`, async ({ browser }) => {
+          const id = caseId();
+          let session: Session | null = null;
+          try {
+            const f = await seed(id, { teammate: true });
+            session = await openTabs(browser, "diff");
+            const all = session.tabs;
+            const [a, b] = all as [Tab, Tab];
+            await expectLoaded(session, id);
+            const title = await refuseOffline(a, b, f, kind, refusal);
+            await chooseRescue(b, f, title, rescue);
+
+            expect((await tabCache(b, f.id)).outbox, "nothing left queued").toEqual([]);
+            await expectRescued(f, title, rescue);
+            if (kind === "edit" && REFUSALS[refusal].listStays) {
+              expect((await serverTask(f.taskId))?.title, "the original is untouched").toBe(f.task);
+            }
+            if (!REFUSALS[refusal].listStays) {
+              await expect(sidebarList(b, f.listA)).toHaveCount(0);
+              await expect(b).not.toHaveTitle(new RegExp(f.listAId));
+            }
+            expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
+            await hardRefresh([b]);
+            await expectNoConflict(b);
+            await expect(rescueDialog(b), "the choice holds after a refresh").toHaveCount(0);
+            await expect(rescueEntry(b)).toHaveCount(0);
+          } finally {
+            await closeTabs(session);
+            await cleanUpTeammateLists(id);
+            await cleanUpCase(id);
+          }
+        });
+      }
+    }
+  }
+
+  test("closed without a choice, it waits and comes back after a refresh", async ({ browser }) => {
+    const id = caseId();
+    let session: Session | null = null;
+    try {
+      const f = await seed(id, { teammate: true });
+      session = await openTabs(browser, "diff");
+      const [a, b] = session.tabs as [Tab, Tab];
+      await expectLoaded(session, id);
+      const title = await refuseOffline(a, b, f, "create", "deleted");
+      await expect(rescueDialog(b)).toBeVisible({ timeout: 30_000 });
+      await rescueDialog(b).getByRole("button", { name: "Decide later" }).click();
+      await expect(rescueEntry(b)).toBeVisible();
+      await hardRefresh([b]);
+      await expect(rescueDialog(b), "it comes back").toBeVisible({ timeout: 15_000 });
+      await rescueDialog(b).getByRole("button", { name: "Decide later" }).click();
+      await rescueEntry(b).click();
+      await chooseRescue(b, f, title, "new list");
+      await expectRescued(f, title, "new list");
+    } finally {
+      await closeTabs(session);
+      await cleanUpTeammateLists(id);
+      await cleanUpCase(id);
+    }
+  });
+
+  test("two tabs · one asks, the other follows, no duplicates", async ({ browser }) => {
+    const id = caseId();
+    let session: Session | null = null;
+    try {
+      const f = await seed(id, { teammate: true });
+      session = await openTabs(browser, "diff");
+      const [a, b] = session.tabs as [Tab, Tab];
+      const b2 = await openTasksTab(session.contexts[1]!, "B2", session.events, TEAMMATE);
+      session.tabs.push(b2);
+      await expectLoaded(session, id);
+      await setTabOffline(b2, true);
+      const title = await refuseOffline(a, b, f, "create", "revoked");
+      await setTabOffline(b2, false);
+
+      // One tab shows the dialog; the other only the way back to it.
+      await expect
+        .poll(async () => (await rescueDialog(b).count()) + (await rescueDialog(b2).count()), {
+          message: "exactly one tab asks",
+          timeout: 30_000,
+        })
+        .toBe(1);
+      const [asking, other] = (await rescueDialog(b).count()) ? [b, b2] : [b2, b];
+      await other.bringToFront();
+      await expect(rescueEntry(other)).toBeVisible({ timeout: 15_000 });
+      await rescueEntry(other).click();
+      await expect(other.getByText(/open in another Tasks tab/)).toBeVisible();
+      await expect(rescueDialog(other)).toHaveCount(0);
+
+      await asking.bringToFront();
+      await chooseRescue(asking, f, title, "existing list");
+      await expect(rescueEntry(other), "the other tab follows").toHaveCount(0, { timeout: 15_000 });
+      await expect(row(other, title)).toHaveCount(1, { timeout: 15_000 });
+      await expectRescued(f, title, "existing list");
+    } finally {
+      await closeTabs(session);
+      await cleanUpCase(id);
+    }
+  });
 });
 
 test.describe("inbound", () => {

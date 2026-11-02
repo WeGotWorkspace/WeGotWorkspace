@@ -1,0 +1,36 @@
+@import "../../styles.css" reference;
+
+.tasks-rescue-dialog__items {
+  @apply m-0 flex max-h-[min(40vh,18rem)] list-none flex-col gap-3 overflow-y-auto p-0 pr-1;
+}
+
+.tasks-rescue-dialog__item {
+  @apply flex items-start gap-2;
+}
+
+.tasks-rescue-dialog__item-label {
+  @apply flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal;
+}
+
+.tasks-rescue-dialog__item-title {
+  @apply truncate text-sm font-medium;
+  color: var(--workspace-foreground);
+}
+
+.tasks-rescue-dialog__item-meta,
+.tasks-rescue-dialog__hint {
+  @apply text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.tasks-rescue-dialog__destinations {
+  @apply gap-2;
+}
+
+.tasks-rescue-dialog__destination {
+  @apply flex min-w-0 flex-1 flex-col gap-2;
+}
+
+.tasks-rescue-dialog__spacer {
+  @apply hidden flex-1 sm:block;
+}
