@@ -1,3 +1,5 @@
+import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
+
 /**
  * Octets sent of the file this tab is uploading, while a request is still
  * going. The queue stores progress only per finished part, so a file sent in
@@ -36,4 +38,22 @@ export function driveUploadBytesSent(itemId: string): number | undefined {
 export function subscribeDriveUploadBytesSent(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/**
+ * The snapshot with this tab's live counts: stored progress counts finished
+ * parts, the request still going adds what it sent. The same object when
+ * nothing is ahead of what is stored.
+ */
+export function withDriveUploadBytesSent(
+  snapshot: DriveUploadQueueSnapshot,
+): DriveUploadQueueSnapshot {
+  let changed = false;
+  const items = snapshot.items.map((item) => {
+    const sent = item.status === "uploading" ? bytesById.get(item.id) : undefined;
+    if (sent === undefined || sent <= item.bytesDone) return item;
+    changed = true;
+    return { ...item, bytesDone: Math.min(sent, item.bytesTotal) };
+  });
+  return changed ? { ...snapshot, items } : snapshot;
 }

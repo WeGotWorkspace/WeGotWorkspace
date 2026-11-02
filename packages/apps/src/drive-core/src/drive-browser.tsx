@@ -638,7 +638,7 @@ function DriveFileItemActions({
   );
   // A placeholder is not on the server yet: its own actions, the rest disabled.
   const merged = file.upload
-    ? driveUploadPlaceholderMenu(labels, extraActions)
+    ? driveUploadPlaceholderMenu(labels, extraActions, () => onDownload(file))
     : extraActions?.length
       ? [...actions, ...extraActions]
       : actions;

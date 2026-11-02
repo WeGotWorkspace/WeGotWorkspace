@@ -5,6 +5,7 @@ import {
   describeDriveUploadBatchConflicts,
   driveUploadSessionVersionCheck,
 } from "@/lib/offline/drive/upload/drive-upload-conflicts";
+import { downloadQueuedDriveUpload } from "@/lib/offline/drive/upload/drive-upload-local-file";
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import { sharedDriveUploadQueueWatch } from "@/lib/offline/drive/upload/drive-upload-queue-watch";
 import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
@@ -75,6 +76,7 @@ export function driveUploadQueueOperations(username: string) {
     removeQueuedUpload: (itemId: string) => removeDriveUploadItem(username, itemId),
     retryQueuedUpload: (itemId: string) => retryDriveUploadItem(username, itemId),
     retryAllFailedUploads: () => retryAllFailedDriveUploads(username),
+    downloadQueuedUpload: (itemId: string) => downloadQueuedDriveUpload(username, itemId),
     retargetQueuedUpload: async (itemId: string, cwd: string) => {
       const folderPath = normalizeApiVirtualPath(cwd);
       const targetFolder = await resolveDriveUploadTarget(username, folderPath);

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { driveUploadPlaceholderMenu } from "@/drive-core/src/drive-upload-placeholder-menu";
 
@@ -20,5 +20,16 @@ describe("driveUploadPlaceholderMenu", () => {
       expect(action.onClick).toBeUndefined();
       expect(action.description).toBe(driveLabels.uploadActionUnavailable);
     }
+  });
+
+  it("keeps Download working when the placeholder can save its local copy", () => {
+    const onDownload = vi.fn();
+    const menu = driveUploadPlaceholderMenu(driveLabels, [], onDownload);
+    const download = menu.find((action) => action.id === "download");
+    expect(download?.disabled).toBeFalsy();
+    download?.onClick?.();
+    expect(onDownload).toHaveBeenCalledOnce();
+    const others = menu.filter((action) => action.id !== "download");
+    expect(others.every((action) => action.disabled)).toBe(true);
   });
 });

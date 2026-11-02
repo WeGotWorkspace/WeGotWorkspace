@@ -6,7 +6,7 @@ import {
   type DriveUploadRowState,
 } from "@/drive-core/src/drive-upload-row-state";
 import {
-  driveUploadBytesSent,
+  withDriveUploadBytesSent,
   subscribeDriveUploadBytesSent,
 } from "@/lib/offline/drive/upload/drive-upload-live-bytes";
 import type {
@@ -31,23 +31,11 @@ export function useDriveUploadQueue(
   }, [watch]);
   useEffect(() => subscribeDriveUploadBytesSent(() => setLiveTick((tick) => tick + 1)), []);
   return useMemo(
-    () => (watch && snapshot ? withBytesSentInThisTab(snapshot) : null),
+    () => (watch && snapshot ? withDriveUploadBytesSent(snapshot) : null),
     // liveTick: re-read the bytes this tab is sending.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [watch, snapshot, liveTick],
   );
-}
-
-/** Stored progress counts finished parts; the request still going adds what it sent. */
-function withBytesSentInThisTab(snapshot: DriveUploadQueueSnapshot): DriveUploadQueueSnapshot {
-  let changed = false;
-  const items = snapshot.items.map((item) => {
-    const sent = item.status === "uploading" ? driveUploadBytesSent(item.id) : undefined;
-    if (sent === undefined || sent <= item.bytesDone) return item;
-    changed = true;
-    return { ...item, bytesDone: Math.min(sent, item.bytesTotal) };
-  });
-  return changed ? { ...snapshot, items } : snapshot;
 }
 
 export type DriveUploadQueueModel = {
