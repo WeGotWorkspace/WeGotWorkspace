@@ -94,7 +94,6 @@ function subscribeFolderRemoteRefresh({
         try {
           await refresh();
           failures = 0;
-          clearTimeout(retryTimer);
         } catch (error: unknown) {
           if (controller.signal.aborted) break;
           console.warn("[drive] folder refresh failed", error);
