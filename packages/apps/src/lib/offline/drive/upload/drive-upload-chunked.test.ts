@@ -135,6 +135,30 @@ describe("chunked upload", () => {
     expect(sent).toEqual([300, 600, 900, 1_200, 1_350, 1_500]);
   });
 
+  it("sets the reported bytes back to what is saved when a part is refused", async () => {
+    const floor = DRIVE_UPLOAD_PART_SIZE_FLOOR;
+    server.maxSizeUpload = 4 * floor;
+    server.stepBudgetBytes = 100 * floor;
+    server.hostLimit = floor + 1;
+    const sent: number[] = [];
+    const file = patternedFile("big.bin", 4 * floor);
+    await sendDriveUploadBytes({
+      session: server.session(),
+      username: "ada",
+      name: file.name,
+      mimeType: file.type,
+      blob: file,
+      signal: controller.signal,
+      save: async () => {},
+      onBytesSent: (bytes) => sent.push(bytes),
+    });
+
+    // The refused whole file reported its bytes; the retry starts again at 0.
+    const full = sent.indexOf(4 * floor);
+    expect(full).toBeGreaterThanOrEqual(0);
+    expect(sent[full + 1]).toBe(0);
+  });
+
   it("caps the starting part size by the assembly step budget, so a part fits in one step", async () => {
     server.maxSizeUpload = 10_000;
     server.stepBudgetBytes = 700;

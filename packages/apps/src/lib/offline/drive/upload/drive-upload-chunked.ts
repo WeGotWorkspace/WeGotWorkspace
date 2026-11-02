@@ -144,6 +144,8 @@ class ChunkedUpload {
         if (!(error instanceof DriveUploadPartRejectedError)) throw error;
         // Without subtle a refused whole file cannot be split into checksummed parts.
         if (whole && !this.subtle) throw new DriveUploadTooLargeError(this.input.name, length);
+        // The refused request's bytes no longer count: back to what is saved.
+        this.input.onBytesSent?.(offset);
         await this.shrinkAfterRefusal(length);
         continue;
       }

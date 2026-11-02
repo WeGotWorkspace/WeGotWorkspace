@@ -1,4 +1,7 @@
-import { uploadFromMemory } from "@/lib/offline/drive/upload/drive-upload-memory";
+import {
+  uploadFromMemory,
+  uploadMemoryTabId,
+} from "@/lib/offline/drive/upload/drive-upload-memory";
 import {
   readDriveUploadBlob,
   readDriveUploadItem,
@@ -6,8 +9,13 @@ import {
 
 /** A file in the upload queue whose bytes this tab cannot read. */
 export class DriveUploadLocalFileMissingError extends Error {
-  constructor(name: string) {
-    super(`"${name}" is still uploading from another window. Download it there, or wait.`);
+  /** `heldElsewhere`: another window of this device still keeps the bytes. */
+  constructor(name: string, heldElsewhere: boolean) {
+    super(
+      heldElsewhere
+        ? `"${name}" is still uploading from another window. Download it there, or wait.`
+        : `This device no longer has "${name}". Add the file again.`,
+    );
     this.name = "DriveUploadLocalFileMissingError";
   }
 }
@@ -26,7 +34,11 @@ export async function readQueuedDriveUploadFile(
   const blob = item.localCopy
     ? await readDriveUploadBlob(username, itemId)
     : (uploadFromMemory(itemId) ?? null);
-  if (!blob) throw new DriveUploadLocalFileMissingError(item.name);
+  if (!blob) {
+    const heldElsewhere =
+      !item.localCopy && item.memoryOwner !== uploadMemoryTabId() && item.status !== "failed";
+    throw new DriveUploadLocalFileMissingError(item.name, heldElsewhere);
+  }
   return { name: item.name, blob };
 }
 

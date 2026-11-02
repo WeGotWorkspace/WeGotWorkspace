@@ -7,6 +7,7 @@ import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-
  * Kept in memory and announced at most a few times a second; the tab that
  * uploads shows it, other tabs keep the stored per-part progress.
  */
+
 const NOTIFY_INTERVAL_MS = 250;
 
 const bytesById = new Map<string, number>();
@@ -22,7 +23,8 @@ function notifySoon(): void {
 }
 
 export function reportDriveUploadBytesSent(itemId: string, bytesSent: number): void {
-  if ((bytesById.get(itemId) ?? -1) >= bytesSent) return;
+  // The latest count wins: after a refused part the next attempt starts lower.
+  if (bytesById.get(itemId) === bytesSent) return;
   bytesById.set(itemId, bytesSent);
   notifySoon();
 }

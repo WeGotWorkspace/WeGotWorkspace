@@ -1,5 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { resetPersistentStorageRequestForTests } from "@/lib/offline/drive/upload/drive-upload-device-storage";
 import {
   downloadQueuedDriveUpload,
@@ -32,6 +33,11 @@ async function enqueue(file: File): Promise<string> {
     files: [file],
   });
   return itemIds[0]!;
+}
+
+async function updateItem(itemId: string, changes: Record<string, unknown>): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(user));
+  await db.table("drive_upload_items").update(itemId, changes);
 }
 
 function deviceAlmostFull(): () => void {
@@ -80,10 +86,25 @@ describe("files still in the upload queue", () => {
     restoreStorage = deviceAlmostFull();
     const itemId = await enqueue(testFile("big.bin", "x".repeat(10)));
     forgetUploadInMemory(itemId);
+    await updateItem(itemId, { memoryOwner: "another-tab" });
 
-    await expect(readQueuedDriveUploadFile(user, itemId)).rejects.toBeInstanceOf(
-      DriveUploadLocalFileMissingError,
+    await expect(readQueuedDriveUploadFile(user, itemId)).rejects.toThrow(
+      /still uploading from another window/,
     );
+  });
+
+  it("says the file is gone, not held elsewhere, for a failed item without bytes", async () => {
+    restoreStorage();
+    restoreStorage = deviceAlmostFull();
+    const itemId = await enqueue(testFile("big.bin", "x".repeat(10)));
+    forgetUploadInMemory(itemId);
+    await updateItem(itemId, { memoryOwner: "another-tab", status: "failed", errorCode: "quota" });
+
+    const error = await readQueuedDriveUploadFile(user, itemId).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(DriveUploadLocalFileMissingError);
+    expect((error as Error).message).toMatch(/no longer has "big.bin"/);
+    expect((error as Error).message).not.toMatch(/another window/);
   });
 
   it("saves the local copy, and reports false once the item is gone", async () => {

@@ -19,14 +19,14 @@ describe("live bytes sent", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the highest count and tells listeners at most once per interval", () => {
+  it("keeps the latest count, also when it is lower, and tells listeners at most once per interval", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeDriveUploadBytesSent(listener);
 
     reportDriveUploadBytesSent("item-1", 100);
     reportDriveUploadBytesSent("item-1", 300);
     reportDriveUploadBytesSent("item-1", 200);
-    expect(driveUploadBytesSent("item-1")).toBe(300);
+    expect(driveUploadBytesSent("item-1")).toBe(200);
     expect(listener).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(250);
