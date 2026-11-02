@@ -470,7 +470,9 @@ describe("ensurePushPermissionAndSubscribe", () => {
       subscribe
         .mockReturnValueOnce(new Promise((resolve) => (settleFirst = resolve)))
         .mockReturnValueOnce(new Promise((resolve) => (settleSecond = resolve)));
+      const firstUnsubscribe = vi.fn(async () => true);
       const subscriptionOf = (endpoint: string) => ({
+        unsubscribe: endpoint.endsWith("/first") ? firstUnsubscribe : vi.fn(async () => true),
         toJSON: () => ({ endpoint, keys: { p256dh: "a", auth: "b" } }),
       });
 
@@ -485,6 +487,7 @@ describe("ensurePushPermissionAndSubscribe", () => {
       settleFirst(subscriptionOf("https://push.example/first"));
       await vi.advanceTimersByTimeAsync(0);
       expect(subscribePush).not.toHaveBeenCalled();
+      expect(firstUnsubscribe).not.toHaveBeenCalled();
 
       settleSecond(subscriptionOf("https://push.example/second"));
       await expect(second).resolves.toBe(true);
@@ -493,6 +496,29 @@ describe("ensurePushPermissionAndSubscribe", () => {
         { endpoint: "https://push.example/second", keys: { p256dh: "a", auth: "b" } },
         "/",
       );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the row when a POST finishes after the run timed out without logout", async () => {
+    vi.useFakeTimers();
+    try {
+      stubNotification("granted");
+      let resolvePost: () => void = () => undefined;
+      vi.mocked(subscribePush).mockReturnValueOnce(
+        new Promise<void>((resolve) => (resolvePost = resolve)),
+      );
+
+      const first = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(first).resolves.toBe(false);
+
+      resolvePost();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(unsubscribePush).not.toHaveBeenCalled();
+      expect(rememberPushScope).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

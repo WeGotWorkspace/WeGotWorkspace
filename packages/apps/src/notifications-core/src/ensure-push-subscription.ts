@@ -167,7 +167,8 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
   if (!isCurrent()) {
     // Logout may already have passed getSubscription(): drop the subscription
     // this run made. One that was already there is left to the logout release.
-    if (isNew) await subscription.unsubscribe().catch(() => undefined);
+    // A run that only timed out or was superseded leaves it: a newer run may use it.
+    if (isNew && readLoggedOutMarker()) await subscription.unsubscribe().catch(() => undefined);
     return false;
   }
   const scope = currentPushScope();
@@ -181,7 +182,9 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
     await subscribePush(subscription.toJSON(), each);
     if (!isCurrent()) {
       // The POST landed after logout's DELETE: remove the row it just wrote.
-      await unsubscribePush(subscription.endpoint).catch(() => undefined);
+      // A timed-out or superseded run leaves it: a newer run may have posted it.
+      if (readLoggedOutMarker())
+        await unsubscribePush(subscription.endpoint).catch(() => undefined);
       return false;
     }
   }
