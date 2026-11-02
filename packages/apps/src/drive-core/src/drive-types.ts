@@ -189,6 +189,11 @@ export type DriveAPIOperations = {
   removeQueuedUpload?: (itemId: string) => Promise<boolean>;
   /** *Retry* on one failed file. False when it is gone or has to be added again. */
   retryQueuedUpload?: (itemId: string) => Promise<boolean>;
+  /**
+   * *Download* on a file that is still queued or uploading: saves this
+   * device's copy. False when it finished or was removed in the meantime.
+   */
+  downloadQueuedUpload?: (itemId: string) => Promise<boolean>;
   /** *Retry all failed* in the Uploads view. Resolves to how many went back to the queue. */
   retryAllFailedUploads?: () => Promise<number>;
   /**

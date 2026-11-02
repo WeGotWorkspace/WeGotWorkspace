@@ -48,6 +48,8 @@ export type SendDriveUploadInput = {
   state?: DriveUploadChunkState;
   /** Stores progress; called after every part and every assembly step. */
   save: (update: DriveUploadProgressUpdate) => Promise<void>;
+  /** Octets of the file sent so far, while a request is still going (not stored). */
+  onBytesSent?: (bytesSent: number) => void;
   signal?: AbortSignal;
 };
 
@@ -137,11 +139,13 @@ class ChunkedUpload {
       const part = this.input.blob.slice(offset, offset + length);
       let blobId: string;
       try {
-        blobId = await this.uploadPart(part, whole);
+        blobId = await this.uploadPart(part, whole, offset);
       } catch (error) {
         if (!(error instanceof DriveUploadPartRejectedError)) throw error;
         // Without subtle a refused whole file cannot be split into checksummed parts.
         if (whole && !this.subtle) throw new DriveUploadTooLargeError(this.input.name, length);
+        // The refused request's bytes no longer count: back to what is saved.
+        this.input.onBytesSent?.(offset);
         await this.shrinkAfterRefusal(length);
         continue;
       }
@@ -152,8 +156,10 @@ class ChunkedUpload {
     }
   }
 
-  private async uploadPart(part: Blob, whole: boolean): Promise<string> {
+  /** `offset`: where the part sits in the file, to report bytes sent (not for a resend). */
+  private async uploadPart(part: Blob, whole: boolean, offset?: number): Promise<string> {
     const sha256 = this.subtle ? await sha256Hex(this.subtle, part) : undefined;
+    const onBytesSent = offset === undefined ? undefined : this.input.onBytesSent;
     const { blobId } = await uploadJmapPart(
       this.input.session,
       part,
@@ -163,6 +169,7 @@ class ChunkedUpload {
         ...(this.state.assemblyId ? { assemblyId: this.state.assemblyId } : {}),
       },
       this.input.signal,
+      onBytesSent ? (sent) => onBytesSent(offset! + Math.min(sent, part.size)) : undefined,
     );
     return blobId;
   }

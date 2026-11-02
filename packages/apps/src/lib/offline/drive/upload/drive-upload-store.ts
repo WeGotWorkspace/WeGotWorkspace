@@ -385,6 +385,13 @@ export async function hasPendingDriveUploads(username: string): Promise<boolean>
   return (await tables(username).items.count()) > 0;
 }
 
+export async function readDriveUploadItem(
+  username: string,
+  itemId: string,
+): Promise<OfflineDriveUploadItemRow | null> {
+  return (await tables(username).items.get(itemId)) ?? null;
+}
+
 export async function readDriveUploadBlob(username: string, itemId: string): Promise<Blob | null> {
   const row = await tables(username).blobs.get(itemId);
   return row?.blob ?? null;

@@ -71,13 +71,12 @@ describe("DriveUploadsPane", () => {
     expect(onOpenFolder).toHaveBeenCalledWith("My Drive/Projects");
   });
 
-  it("says all uploads are done and links to the last batch's folder", () => {
-    const { rerender, onOpenFolder } = renderPane(driveUploadStorySnapshot({ cases: ["waiting"] }));
+  it("says all uploads are done, without a single folder to go to", () => {
+    const { rerender } = renderPane(driveUploadStorySnapshot({ cases: ["waiting"] }));
     rerender(driveUploadStorySnapshot({ cases: [], state: "idle" }));
 
     expect(screen.getByText("All uploads are done")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Go to Personal / Projects" }));
-    expect(onOpenFolder).toHaveBeenCalledWith("My Drive/Projects");
+    expect(screen.queryByRole("button", { name: /^Go to / })).toBeNull();
   });
 
   it("hides Retry all failed when no failed file can be retried", () => {

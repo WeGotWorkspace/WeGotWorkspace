@@ -154,7 +154,3 @@
   grid-area: actions;
   @apply flex items-center justify-end gap-1.5;
 }
-
-.drive-uploads__done-link {
-  @apply mt-3;
-}

@@ -9,11 +9,21 @@ import {
   patternedFile,
 } from "@/lib/offline/drive/upload/drive-upload-fake-server.fixture";
 
+import type { WgwRequestInit } from "@/lib/api/wgw/send-with-upload-progress";
+
 const fake = vi.hoisted(() => ({ server: null as unknown as FakeDriveServer }));
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/wgw/http")>()),
-  wgwFetch: (path: string, init?: RequestInit) => fake.server.fetch(path, init),
+  // Like the browser: half the body is "sent", then all of it, before the answer.
+  wgwFetch: (path: string, init?: WgwRequestInit) => {
+    const onSent = init?.onUploadProgress;
+    if (onSent && init?.body instanceof Blob) {
+      onSent(Math.floor(init.body.size / 2));
+      onSent(init.body.size);
+    }
+    return fake.server.fetch(path, init);
+  },
 }));
 
 import {
@@ -105,6 +115,48 @@ describe("chunked upload", () => {
     expect(saves.filter((save) => !save.phase).map((save) => save.bytesDone)).toEqual([
       0, 600, 1_200, 1_800, 2_400, 2_500,
     ]);
+  });
+
+  it("reports bytes sent across the whole file while each part is still going", async () => {
+    const file = patternedFile("big.bin", 1_500);
+    const sent: number[] = [];
+    await sendDriveUploadBytes({
+      session: server.session(),
+      username: "ada",
+      name: file.name,
+      mimeType: file.type,
+      blob: file,
+      signal: controller.signal,
+      save: async () => {},
+      onBytesSent: (bytes) => sent.push(bytes),
+    });
+
+    // Parts of 600, 600, 300: each reports half, then all, from its own offset.
+    expect(sent).toEqual([300, 600, 900, 1_200, 1_350, 1_500]);
+  });
+
+  it("sets the reported bytes back to what is saved when a part is refused", async () => {
+    const floor = DRIVE_UPLOAD_PART_SIZE_FLOOR;
+    server.maxSizeUpload = 4 * floor;
+    server.stepBudgetBytes = 100 * floor;
+    server.hostLimit = floor + 1;
+    const sent: number[] = [];
+    const file = patternedFile("big.bin", 4 * floor);
+    await sendDriveUploadBytes({
+      session: server.session(),
+      username: "ada",
+      name: file.name,
+      mimeType: file.type,
+      blob: file,
+      signal: controller.signal,
+      save: async () => {},
+      onBytesSent: (bytes) => sent.push(bytes),
+    });
+
+    // The refused whole file reported its bytes; the retry starts again at 0.
+    const full = sent.indexOf(4 * floor);
+    expect(full).toBeGreaterThanOrEqual(0);
+    expect(sent[full + 1]).toBe(0);
   });
 
   it("caps the starting part size by the assembly step budget, so a part fits in one step", async () => {

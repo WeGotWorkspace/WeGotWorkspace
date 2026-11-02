@@ -117,6 +117,19 @@ export function DriveMainPane({
   const { online } = useConnectivity();
 
   const handleDownload = (file: DriveFile) => {
+    // Still uploading: this device's copy, without waiting for the server.
+    if (file.upload && operations?.downloadQueuedUpload) {
+      void operations
+        .downloadQueuedUpload(file.upload.id)
+        .then((saved) => {
+          if (saved) show("Download started", { icon: <Download className="size-4" /> });
+          else showError(`"${file.title}" just finished uploading. Download it again.`);
+        })
+        .catch((error: unknown) => {
+          showError(error instanceof Error ? error.message : String(error));
+        });
+      return;
+    }
     if (operations && file.apiPath && file.kind !== "folder") {
       void operations.downloadFile(file.apiPath).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);

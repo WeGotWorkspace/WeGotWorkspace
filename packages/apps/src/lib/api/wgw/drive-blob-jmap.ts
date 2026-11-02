@@ -42,16 +42,18 @@ export type JmapPartHeaders = {
  * One part (or a whole small file) to `/jmap/upload` through `wgwFetch`, with
  * its length and sha256 declared so the server can refuse a body the host cut
  * short. Size refusals become {@link DriveUploadPartRejectedError}; a full
- * disk becomes {@link DriveServerFullError}.
+ * disk becomes {@link DriveServerFullError}. `onSent` reports the octets of
+ * this part sent so far.
  */
 export async function uploadJmapPart(
   session: DriveJmapSession,
   part: Blob,
   headers: JmapPartHeaders,
   signal?: AbortSignal,
+  onSent?: (sentBytes: number) => void,
 ): Promise<UploadedJmapPart> {
   const url = expandJmapUrl(session.uploadUrl, { accountId: session.accountId });
-  const res = await wgwFetch(toApiRelativePath(url), {
+  const init: RequestInit = {
     method: "POST",
     headers: {
       "Content-Type": headers.mediaType || "application/octet-stream",
@@ -61,7 +63,8 @@ export async function uploadJmapPart(
     },
     body: part,
     signal,
-  });
+  };
+  const res = await wgwFetch(toApiRelativePath(url), { ...init, onUploadProgress: onSent });
   if (res.ok) {
     const payload = (await res.json()) as { blobId?: string; size?: number };
     if (!payload.blobId) throw new Error("JMAP upload returned no blobId");

@@ -322,9 +322,7 @@ export const UploadsAllDone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("All uploads are done")).toBeInTheDocument();
-    await expect(
-      canvas.getByRole("button", { name: "Go to Personal / Projects" }),
-    ).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Go to / })).toBeNull();
   },
 };
 

@@ -98,7 +98,6 @@ export const driveLabels = {
   uploadsSummary: (count: number, failed: number) =>
     failed > 0 ? `${fileCount(count)} · ${failed} failed` : fileCount(count),
   uploadsAllDone: "All uploads are done",
-  uploadsGoToFolder: (folder: string) => `Go to ${folder}`,
   uploadsTargetFolder: (folder: string) => `Uploading to ${folder}`,
   uploadsNoMatch: "No uploads match your search",
   newMarkdown: "New document",

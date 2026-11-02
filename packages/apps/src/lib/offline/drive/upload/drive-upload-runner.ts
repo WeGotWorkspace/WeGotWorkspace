@@ -1,3 +1,7 @@
+import {
+  clearDriveUploadBytesSent,
+  reportDriveUploadBytesSent,
+} from "@/lib/offline/drive/upload/drive-upload-live-bytes";
 import { driveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import { withCrossTabLock, type WithCrossTabLock } from "@/lib/cross-tab/cross-tab-lock";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
@@ -256,6 +260,7 @@ export class DriveUploader {
           ...(item.createdNodeId ? { createdNodeId: item.createdNodeId } : {}),
           onCreated: (nodeId, notice) =>
             recordDriveUploadCreated(this.username, item.id, nodeId, notice),
+          onBytesSent: (bytesSent) => reportDriveUploadBytesSent(item.id, bytesSent),
           onProgress: (update) =>
             saveDriveUploadProgress(this.username, item.id, {
               chunk: update.state,
@@ -283,6 +288,8 @@ export class DriveUploader {
       return "next";
     } catch (error) {
       return this.handleFailure(item, error, signal);
+    } finally {
+      clearDriveUploadBytesSent(item.id);
     }
   }
 

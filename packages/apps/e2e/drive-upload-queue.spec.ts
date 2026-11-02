@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_USERNAME, expectOfflineIndicator } from "./helpers/notes-live";
 
@@ -59,6 +60,25 @@ async function goOnlineAgain(page: Page): Promise<void> {
     window.dispatchEvent(new Event("online"));
   });
   await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
+}
+
+function pickedBytes(name: string): string {
+  return `drive upload queue ${name}`;
+}
+
+/** *More actions* → *Download* on a file's tile; returns the saved file's name and text. */
+async function downloadFromTile(page: Page, name: string): Promise<{ name: string; text: string }> {
+  const tile = page
+    .getByText(name, { exact: true })
+    .locator("xpath=ancestor::*[.//button[@aria-label='More actions']][1]");
+  await tile.getByRole("button", { name: "More actions" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("menuitem", { name: "Download" }).click(),
+  ]);
+  const path = await download.path();
+  const text = readFileSync(path, "utf8");
+  return { name: download.suggestedFilename(), text };
 }
 
 function status(page: Page, text: string) {
@@ -222,7 +242,7 @@ test.describe("Drive upload queue (live app)", () => {
     await expectOnServerOnce(page, name);
   });
 
-  test("a second tab lists the queued file in the Uploads view and links to the folder when done", async ({
+  test("a second tab lists the queued file in the Uploads view and has no folder button when done", async ({
     page,
   }) => {
     const name = uniqueName("uploads-view");
@@ -253,7 +273,8 @@ test.describe("Drive upload queue (live app)", () => {
     await goOnlineAgain(page);
     await markOffline(other, false);
     await expect(other.getByText("All uploads are done")).toBeVisible({ timeout: 60_000 });
-    await other.getByRole("button", { name: "Go to Personal" }).click();
+    await expect(other.getByRole("button", { name: /^Go to / })).toHaveCount(0);
+    await other.locator(".menu-item", { hasText: "Personal" }).click();
     await expect(other.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(other.locator(".menu-item", { hasText: "Uploads" })).toHaveCount(0);
 
@@ -283,5 +304,31 @@ test.describe("Drive upload queue (live app)", () => {
     await page.waitForTimeout(5_000);
     expect(await serverNames(page)).not.toContain(name);
     await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+  });
+
+  test("downloads a file that is still uploading from this device's copy", async ({ page }) => {
+    const name = uniqueName("download");
+    await openMyDrive(page);
+    await goOfflineKeepingShell(page);
+    await pickFile(page, name);
+    await expect(status(page, WAITING)).toHaveCount(1);
+
+    expect(await downloadFromTile(page, name)).toEqual({ name, text: pickedBytes(name) });
+
+    // After a reload the bytes come from the stored copy.
+    await page.reload();
+    await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(await downloadFromTile(page, name)).toEqual({ name, text: pickedBytes(name) });
+
+    // A second tab of the same account shares the stored copy.
+    const other = await page.context().newPage();
+    await other.goto("/drive");
+    await markOffline(other, true);
+    await expect(other.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(await downloadFromTile(other, name)).toEqual({ name, text: pickedBytes(name) });
+
+    await goOnlineAgain(page);
+    await markOffline(other, false);
+    await expectOnServerOnce(page, name);
   });
 });
