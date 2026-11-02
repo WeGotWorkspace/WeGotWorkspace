@@ -39,6 +39,7 @@ final class DriveContentRangeTest extends WgwDatabaseTestCase
 
         $this->assertSame('100', $response->headers->get('Content-Length'));
         $this->assertSame('bytes', $response->headers->get('Accept-Ranges'));
+        $this->assertEqualsCanonicalizing(['no-cache', 'private'], array_map('trim', explode(',', (string) $response->headers->get('Cache-Control'))));
         $this->assertStringContainsString('inline; filename="clip.txt"', (string) $response->headers->get('Content-Disposition'));
         $this->assertSame(self::body(), $response->streamedContent());
     }
@@ -80,6 +81,7 @@ final class DriveContentRangeTest extends WgwDatabaseTestCase
         $this->assertMatchesRegularExpression('/^"[0-9a-f]{32}"$/', (string) $response->headers->get('ETag'));
         $this->assertSame('Wed, 01 Jan 2025 00:00:00 GMT', $response->headers->get('Last-Modified'));
         $this->assertSame('no', $response->headers->get('X-Accel-Buffering'));
+        $this->assertEqualsCanonicalizing(['no-cache', 'private'], array_map('trim', explode(',', (string) $response->headers->get('Cache-Control'))));
     }
 
     public function test_a_file_whose_mtime_is_not_yet_in_the_past_has_no_validator(): void
@@ -146,7 +148,8 @@ final class DriveContentRangeTest extends WgwDatabaseTestCase
             ->withHeader('If-None-Match', $etag)
             ->get('/api/v1/files/content?path=/users/bob/cached.txt')
             ->assertStatus(304)
-            ->assertHeader('ETag', $etag);
+            ->assertHeader('ETag', $etag)
+            ->assertHeader('Cache-Control', 'no-cache, private');
     }
 
     public static function body(): string

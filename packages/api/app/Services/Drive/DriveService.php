@@ -444,10 +444,14 @@ final class DriveService
 
         // Validators from the opened file, not the index: they describe the
         // bytes being sent even after an out-of-band write the index has not
-        // seen, and a hash-pending file has no true hash yet.
+        // seen, and a hash-pending file has no true hash yet. Without an
+        // explicit Cache-Control, Last-Modified makes Symfony send
+        // `private, must-revalidate`, which lets browsers reuse the body by
+        // heuristic freshness.
         return $this->ranges->respond($request, $stream, [
             'Content-Type' => $this->disk()->mimeType($key) ?: 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="'.$name.'"',
+            'Cache-Control' => 'private, no-cache',
         ] + RangeResponder::fileValidators($stream));
     }
 

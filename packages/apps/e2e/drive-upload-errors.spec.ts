@@ -289,4 +289,72 @@ test.describe("Drive upload errors (live app)", () => {
       )
       .toEqual([1, 1]);
   });
+
+  test("a waiting upload finishes in a tab that never saw the failed attempt", async ({ page }) => {
+    const file = `${uniqueName("wake")}.txt`;
+    await openMyDrive(page);
+
+    let hits = 0;
+    await page.context().route("**/jmap/upload**", (route) => {
+      hits += 1;
+      return route.abort("failed");
+    });
+    await pickFile(page, file);
+    await expect.poll(() => hits, { timeout: 60_000 }).toBeGreaterThan(0);
+    await openUploads(page);
+    await expect(uploadRow(page, file)).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".drive-uploads__row--failed")).toHaveCount(0);
+
+    // Tab B starts after the item already has a future retry time.
+    const other = await page.context().newPage();
+    await openMyDrive(other);
+    await page.close();
+    await other.context().unroute("**/jmap/upload**");
+
+    await expect
+      .poll(async () => (await namesIn(other, "")).filter((n) => n === file).length, {
+        timeout: 90_000,
+      })
+      .toBe(1);
+    await expect(other.getByRole("button", { name: /^Uploads/ })).toHaveCount(0, {
+      timeout: 60_000,
+    });
+  });
+
+  test("a create whose answer is lost does not make a (1) copy", async ({ page }) => {
+    const stem = uniqueName("lost");
+    const file = `${stem}.txt`;
+    await openMyDrive(page);
+
+    let intercepted = 0;
+    await page.route(/\/api\/v1\/jmap(\?.*)?$/, async (route) => {
+      const request = route.request();
+      const body = request.postData() ?? "";
+      if (
+        intercepted === 0 &&
+        request.method() === "POST" &&
+        body.includes('"FileNode/set"') &&
+        body.includes('"create"')
+      ) {
+        intercepted += 1;
+        await route.fetch();
+        return route.abort("failed");
+      }
+      return route.fallback();
+    });
+    await pickFile(page, file);
+    await expect.poll(() => intercepted, { timeout: 60_000 }).toBe(1);
+
+    // Before the retry: the stored placing state has to survive the reload.
+    await page.reload();
+    await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
+    await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
+
+    await expect(page.getByRole("button", { name: /^Uploads/ })).toHaveCount(0, {
+      timeout: 90_000,
+    });
+    const names = await namesIn(page, "");
+    expect(names.filter((n) => n === file)).toHaveLength(1);
+    expect(names.filter((n) => n.startsWith(`${stem} (`))).toHaveLength(0);
+  });
 });
