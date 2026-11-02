@@ -44,9 +44,9 @@ export type DriveUploadLiveState = {
 const ADD_AGAIN_REASONS = new Set(["no_local_copy", "quota"]);
 
 /**
- * Percent of a file sent so far, or null while it is unknown. A whole-file
- * upload (and a file small enough for one request after #1519) reports bytes
- * only when it is done, so its ring stays indeterminate on purpose.
+ * Percent of a file sent so far, or null while nothing is known yet. The tab
+ * that uploads reports bytes while each request is going; another tab sees
+ * finished parts only.
  */
 export function driveUploadPercent(item?: Pick<DriveUploadItemView, "bytesDone" | "bytesTotal">) {
   if (!item || item.bytesDone <= 0 || item.bytesTotal <= 0) return null;

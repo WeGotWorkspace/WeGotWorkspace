@@ -8,6 +8,7 @@ import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/brows
 import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 import { tunnelMutatingHttpMethod } from "@/lib/api/wgw/http-method-tunnel";
 import { fetchKeepaliveOnPageExit } from "@/lib/api/wgw/page-exit-keepalive";
+import { sendWithUploadProgress } from "@/lib/api/wgw/send-with-upload-progress";
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
@@ -739,7 +740,12 @@ export async function wgwAwaitSessionRefreshForReconnect(): Promise<void> {
   }
 }
 
-export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Response> {
+/** `onUploadProgress`: octets of the body sent so far (an upload that reports progress). */
+export async function wgwFetch(
+  path: string,
+  init: RequestInit = {},
+  onUploadProgress?: (sentBytes: number) => void,
+): Promise<Response> {
   await wgwEnsureFreshAccessToken();
   if (!accessToken) {
     throw new WgwSignInRequiredError();
@@ -751,7 +757,9 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
   const doOnce = (token: string) => {
     const headers = new Headers(requestInit.headers);
     headers.set("Authorization", `Bearer ${token}`);
-    return fetchKeepaliveOnPageExit(url, { ...requestInit, headers });
+    return onUploadProgress
+      ? sendWithUploadProgress(url, { ...requestInit, headers }, onUploadProgress)
+      : fetchKeepaliveOnPageExit(url, { ...requestInit, headers });
   };
 
   const token = accessToken!;

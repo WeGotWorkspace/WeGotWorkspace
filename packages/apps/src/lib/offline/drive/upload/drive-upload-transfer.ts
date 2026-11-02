@@ -41,6 +41,8 @@ export type DriveUploadTransferInput = {
   onCreated?: (nodeId: string, notice?: DriveUploadNotice) => Promise<void>;
   /** Stores chunk progress after every part and assembly step. */
   onProgress?: (update: DriveUploadProgressUpdate) => Promise<void>;
+  /** Octets sent so far while a request is still going (for the ring; not stored). */
+  onBytesSent?: (bytesSent: number) => void;
 };
 
 export type DriveUploadTransferResult =
@@ -101,6 +103,7 @@ export async function transferDriveUpload(
     blob: input.blob,
     ...(input.chunk ? { state: input.chunk } : {}),
     save: async (update) => input.onProgress?.(update),
+    ...(input.onBytesSent ? { onBytesSent: input.onBytesSent } : {}),
     ...(signal ? { signal } : {}),
   });
   return placeUpload(session, input, blobId, signal);

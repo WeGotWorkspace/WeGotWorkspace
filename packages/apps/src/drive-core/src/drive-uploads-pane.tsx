@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { CircleCheck, FolderOpen, RotateCcw, X } from "lucide-react";
+import { CircleCheck, RotateCcw, X } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { kindIcon } from "@/drive-core/src/drive-icons";
@@ -21,17 +20,14 @@ type DriveUploadsPaneProps = {
   onOpenFolder: (uiPath: string) => void;
 };
 
-type LastFolder = { path: string; label: string };
-
 /**
  * The Uploads view: every queued, uploading, and failed file across folders,
  * with its target folder, progress, status, and *Retry* / *Remove*. When the
- * queue empties while the view is open, it says so and links to the folder
- * of the last batch.
+ * queue empties while the view is open, it says so. Each row links to its own
+ * folder; there is no single "last folder", since batches go to many folders.
  */
 export function DriveUploadsPane({ files, searchActive, onOpenFolder }: DriveUploadsPaneProps) {
   const model = useDriveUploadQueueContext();
-  const lastFolder = useLastUploadFolder(files);
 
   // No model yet means the first queue read is still pending, not an empty queue.
   if (!model) return null;
@@ -40,17 +36,6 @@ export function DriveUploadsPane({ files, searchActive, onOpenFolder }: DriveUpl
     return (
       <CollectionState icon={<CircleCheck className="size-12" />}>
         <p>{driveLabels.uploadsAllDone}</p>
-        {lastFolder ? (
-          <Button
-            className="drive-uploads__done-link"
-            variant="secondary"
-            size="sm"
-            onClick={() => onOpenFolder(lastFolder.path)}
-          >
-            <FolderOpen className="size-4" aria-hidden="true" />
-            {driveLabels.uploadsGoToFolder(lastFolder.label)}
-          </Button>
-        ) : null}
       </CollectionState>
     );
   }
@@ -147,16 +132,4 @@ function DriveUploadsRow({
       </div>
     </li>
   );
-}
-
-/** Folder of the newest file seen while the queue had files; kept once it empties. */
-function useLastUploadFolder(files: readonly DriveFile[]): LastFolder | null {
-  const [last, setLast] = useState<LastFolder | null>(null);
-  const newest = files[files.length - 1];
-  const path = newest?.parent;
-  const label = newest?.location;
-  useEffect(() => {
-    if (path && label) setLast({ path, label });
-  }, [label, path]);
-  return last;
 }
