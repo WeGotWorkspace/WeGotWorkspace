@@ -147,6 +147,15 @@ function scanDirectory(string $dir, array $forbidden, array &$errors): void
                 ) {
                     continue;
                 }
+                // Local-disk primitives Flysystem lacks (append, truncate,
+                // same-device rename across disks) — #1500. One class, so
+                // domain code still goes through Flysystem.
+                if (
+                    preg_match('#/Storage/Local/#i', str_replace('\\', '/', $path))
+                    && str_contains($rule['message'], 'raw PHP file')
+                ) {
+                    continue;
+                }
                 if (
                     preg_match('#/Dav/Storage/#i', str_replace('\\', '/', $path))
                     && str_contains($rule['message'], 'raw PHP file')

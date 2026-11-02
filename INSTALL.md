@@ -2,6 +2,8 @@
 
 This is the quickest way to install on a normal Apache/PHP host.
 
+**Requirement: https.** Serve the site over `https://`. On a plain `http://` address the browser turns off live editing of documents together, push notifications, offline use, and large uploads. Most hosts offer a free certificate (for example from Let's Encrypt) with one switch in the control panel. The installer warns you when it is opened over `http://`. Details: [docs/getting-started.md § Requirement: https](docs/getting-started.md#requirement-https).
+
 ## 1) Upload files
 
 Upload the deploy package contents to your website folder so these files are in place:
@@ -68,6 +70,8 @@ Run the installer right after uploading.
 Visit:
 
 - `https://your-domain/install/`
+
+Opened over `http://`, the installer first shows a **Not secure** page that lists what will not work and asks you to confirm before setup goes on. Turn on a certificate and open the `https://` address instead, or choose **Continue without https** for a first look.
 
 Then follow first-run setup:
 - Welcome

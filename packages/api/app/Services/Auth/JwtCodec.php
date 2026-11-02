@@ -17,7 +17,7 @@ use Psr\Clock\ClockInterface;
 final class JwtCodec
 {
     /**
-     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int, uid?: int}  $claims
+     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int, uid?: int, sid?: string}  $claims
      * @param array{
      *   privateKey: string,
      *   publicKey: string,
@@ -50,6 +50,11 @@ final class JwtCodec
         if (array_key_exists('uid', $claims)) {
             $builder = $builder->withClaim('uid', (int) $claims['uid']);
         }
+        if (isset($claims['sid']) && $claims['sid'] !== '') {
+            // Refresh-token family of the sign-in that minted this token, so
+            // session-bound grants (download tickets) end with the session.
+            $builder = $builder->withClaim('sid', (string) $claims['sid']);
+        }
         $token = $builder->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();
@@ -63,7 +68,7 @@ final class JwtCodec
      *   audience: string,
      *   kid: string
      * } $cfg
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int, sid?: string}|null
      */
     public static function validate(string $token, array $cfg): ?array
     {
@@ -131,6 +136,12 @@ final class JwtCodec
             $uid = $parsed->claims()->get('uid');
             if (is_int($uid)) {
                 $claims['uid'] = $uid;
+            }
+        }
+        if ($parsed->claims()->has('sid')) {
+            $sid = $parsed->claims()->get('sid');
+            if (is_string($sid) && $sid !== '') {
+                $claims['sid'] = $sid;
             }
         }
 

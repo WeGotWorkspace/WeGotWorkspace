@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
-import { Star, StarOff, Upload, FolderPlus, Pencil, ScrollText } from "lucide-react";
+import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
   apiPathFromUiPath,
   normalizeApiVirtualPath,
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
-import { formatBytesCompact } from "@/drive-core/src/drive-file-utils";
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
-import type { DriveUploadProgress } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
+import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
@@ -97,17 +96,11 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
   const [dropUploadActive, setDropUploadActive] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    label: string;
-    percent: number;
-    detail: string;
-    done: boolean;
-  } | null>(null);
-  const uploadProgressResetTimerRef = useRef<number | null>(null);
   // Guests get the upload queue later (Epic #1499); until then they see no
   // upload, no drop target and no new Markdown file (Docs saves guest files
   // through upload).
   const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
+  const { handleUpload, uploadProgress } = useDriveUploadAction(shell, uploadEnabled);
   const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -272,115 +265,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       });
   };
 
-  const handleUpload = (fileList: FileList | null) => {
-    if (!uploadEnabled || !fileList || fileList.length === 0) return;
-    const selected = Array.from(fileList);
-    const targetParent = view.type === "folder" ? view.path : "My Drive";
-    const showProgress = (progress: DriveUploadProgress) => {
-      const totalBytes = Math.max(1, progress.totalBytes);
-      const percent = Math.min(100, Math.round((progress.uploadedBytes / totalBytes) * 100));
-      const fileLabel =
-        progress.currentFileName.trim() !== ""
-          ? `Uploading ${progress.currentFileName}`
-          : "Uploading files";
-      const detail = `${formatBytesCompact(progress.uploadedBytes)} / ${formatBytesCompact(progress.totalBytes)} · ${progress.filesCompleted}/${progress.filesTotal} files`;
-      setUploadProgress({ label: fileLabel, percent, detail, done: false });
-    };
-    if (uploadProgressResetTimerRef.current !== null) {
-      window.clearTimeout(uploadProgressResetTimerRef.current);
-      uploadProgressResetTimerRef.current = null;
-    }
-    setUploadProgress({
-      label:
-        selected.length === 1
-          ? `Uploading ${selected[0]!.name}`
-          : `Uploading ${selected.length} files`,
-      percent: 0,
-      detail: `0 / ${formatBytesCompact(selected.reduce((sum, file) => sum + file.size, 0))}`,
-      done: false,
-    });
-    if (operations) {
-      void operations
-        .checkUploadReady()
-        .then(() =>
-          operations.uploadFiles(
-            {
-              cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
-              files: selected,
-            },
-            { onProgress: showProgress },
-          ),
-        )
-        .then((nextData) => {
-          setFiles(
-            nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-          );
-          commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
-          setUploadProgress({
-            label: `Uploaded ${selected.length} file${selected.length === 1 ? "" : "s"}`,
-            percent: 100,
-            detail: "Upload complete",
-            done: true,
-          });
-          uploadProgressResetTimerRef.current = window.setTimeout(() => {
-            setUploadProgress(null);
-            uploadProgressResetTimerRef.current = null;
-          }, 1400);
-          show(`Uploaded ${selected.length} file${selected.length === 1 ? "" : "s"}`, {
-            icon: <Upload className="size-4" />,
-          });
-        })
-        .catch((error: unknown) => {
-          setUploadProgress(null);
-          const message = error instanceof Error ? error.message : String(error);
-          showError(message);
-        });
-      return;
-    }
-    const created: DriveFile[] = selected.map((file, i) => {
-      const kind: FileKind = file.type.startsWith("image/")
-        ? "image"
-        : file.type.startsWith("video/")
-          ? "video"
-          : file.type.startsWith("audio/")
-            ? "audio"
-            : /zip|tar|gzip/.test(file.type)
-              ? "archive"
-              : /pdf|text|document/.test(file.type)
-                ? "doc"
-                : "file";
-      const size = formatBytesCompact(file.size);
-      return {
-        id: `f-${Date.now()}-${i}`,
-        notebook: `${kind[0].toUpperCase()}${kind.slice(1)} · ${size}`,
-        category: kind,
-        date: "Now",
-        title: file.name,
-        excerpt: `Uploaded just now · ${size}`,
-        body: [],
-        tags: [],
-        wordCount: 0,
-        parent: targetParent,
-        kind,
-        size,
-      };
-    });
-    setFiles((p) => [...created, ...p]);
-    setUploadProgress({
-      label: `Uploaded ${created.length} file${created.length === 1 ? "" : "s"}`,
-      percent: 100,
-      detail: "Upload complete",
-      done: true,
-    });
-    uploadProgressResetTimerRef.current = window.setTimeout(() => {
-      setUploadProgress(null);
-      uploadProgressResetTimerRef.current = null;
-    }, 1200);
-    show(`Uploaded ${created.length} file${created.length === 1 ? "" : "s"}`, {
-      icon: <Upload className="size-4" />,
-    });
-  };
-
   const createFolder = () => {
     if (!structureEnabled) return;
     setNewFolderName("");
@@ -511,14 +395,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   );
 
   const markdownDialogDefaults = resolveCreateMarkdownDialogDefaults(view, files);
-
-  useEffect(() => {
-    return () => {
-      if (uploadProgressResetTimerRef.current !== null) {
-        window.clearTimeout(uploadProgressResetTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const isMac =

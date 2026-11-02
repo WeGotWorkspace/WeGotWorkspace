@@ -28,4 +28,8 @@ describe("resolveDriveViewIcon", () => {
     expect(driveViewIcons.sharedWithMe).toBe(Share);
     expect(driveViewIcons.trash).toBe(Trash2);
   });
+
+  it("gives the Uploads view its own icon", () => {
+    expect(resolveDriveViewIcon({ type: "uploads" })).toBe(driveViewIcons.uploads);
+  });
 });

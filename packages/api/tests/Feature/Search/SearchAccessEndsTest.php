@@ -10,7 +10,7 @@ use App\Models\SearchDocument;
 use App\Models\User;
 use App\Services\Auth\JwtTokenService;
 use App\Services\Contacts\AddressBookProvisioner;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Search\SearchDocumentCollectionBackfill;
 use App\Services\Search\SearchIndexerService;
@@ -364,7 +364,7 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
     /** The full reindex an admin search job runs. */
     private function reindex(): void
     {
-        app(FileNodeIndexService::class)->reindexAll();
+        app(FileNodeReindexer::class)->reindexAll();
         app(SearchIndexerService::class)->reindexAllFromFileNodes();
     }
 

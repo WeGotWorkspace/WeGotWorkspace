@@ -42,23 +42,27 @@ export async function readDriveBootstrapFromCache(
   }
 }
 
-export async function upsertDriveEntry(
-  username: string,
-  entry: WgwDriveDirectoryEntry,
-): Promise<void> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const table = driveEntriesTable(db);
+/** The `drive_entries` row for a listing entry. */
+export function driveEntryRowFromEntry(entry: WgwDriveDirectoryEntry): OfflineDriveEntryRow {
   const id = normalizeDriveEntryPath(entry.path);
   const parentPath = normalizeDriveEntryPath(parentAndName(`/${id}`).destination);
   const nodeId = entry.nodeId?.trim();
-  await table.put({
+  return {
     id,
     parentPath: parentPath || "",
     type: entry.type === "dir" ? "dir" : "file",
     modifiedAt: entry.time ?? 0,
     data: JSON.stringify(entry),
     ...(nodeId ? { nodeId } : {}),
-  });
+  };
+}
+
+export async function upsertDriveEntry(
+  username: string,
+  entry: WgwDriveDirectoryEntry,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await driveEntriesTable(db).put(driveEntryRowFromEntry(entry));
 }
 
 /** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */
@@ -133,14 +137,7 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({
-    id: newId,
-    parentPath: newParent,
-    type: row.type,
-    modifiedAt: row.modifiedAt,
-    data: JSON.stringify(entry),
-    ...(row.nodeId ? { nodeId: row.nodeId } : {}),
-  });
+  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
   await table.delete(oldId);
 
   const descendants = await table
@@ -152,13 +149,12 @@ export async function migrateDriveEntryPath(
     const migratedEntry = parseEntryRow(descendant);
     migratedEntry.path = migratedId.startsWith("/") ? migratedId : `/${migratedId}`;
     const migratedParent = normalizeDriveEntryPath(parentAndName(`/${migratedId}`).destination);
+    // Spread the row so `nodeId` and an upload placeholder's `uploadId` move along.
     await table.put({
+      ...descendant,
       id: migratedId,
       parentPath: migratedParent,
-      type: descendant.type,
-      modifiedAt: descendant.modifiedAt,
       data: JSON.stringify(migratedEntry),
-      ...(descendant.nodeId ? { nodeId: descendant.nodeId } : {}),
     });
     await table.delete(descendant.id);
   }
@@ -175,6 +171,7 @@ export async function searchDriveEntriesFromCache(
   const rows = await driveEntriesTable(db).toArray();
   const matches: WgwDriveDirectoryEntry[] = [];
   for (const row of rows) {
+    if (row.uploadId) continue;
     const entry = parseEntryRow(row);
     if (entry.name.toLowerCase().includes(needle)) {
       matches.push(entry);
@@ -211,5 +208,6 @@ export function buildOfflineDriveUIData(
 export async function listAllCachedDriveEntryPaths(username: string): Promise<string[]> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const rows = await driveEntriesTable(db).toArray();
-  return rows.filter((row) => row.type === "file").map((row) => row.id);
+  // Upload placeholders have no server content to sync yet.
+  return rows.filter((row) => row.type === "file" && !row.uploadId).map((row) => row.id);
 }

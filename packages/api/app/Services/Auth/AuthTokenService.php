@@ -95,12 +95,18 @@ final class AuthTokenService
     }
 
     /**
-     * @param  array{username: string, role: 'guest'|'user'|'admin'}  $principal
+     * @param  array{username: string, role: 'guest'|'user'|'admin', sid?: string}  $principal
      */
     public function revoke(?array $principal, ?string $bearerToken, ?string $refreshToken): void
     {
         if ($principal !== null && $bearerToken !== null) {
             $this->revokeAccessToken($bearerToken, $principal);
+        }
+        // The access token names its session: end it even when the refresh
+        // cookie is not sent, so the session's download tickets end too.
+        $sid = $principal['sid'] ?? null;
+        if ($principal !== null && is_string($sid) && $sid !== '') {
+            $this->refreshTokens->revokeFamilyOf($principal['username'], $sid);
         }
         if ($refreshToken !== null && $refreshToken !== '') {
             $this->refreshTokens->revoke($refreshToken);
@@ -210,12 +216,17 @@ final class AuthTokenService
             $user = User::query()->where('username', $username)->first(['id']);
             $uid = $user === null ? 0 : (int) $user->id;
         }
-        $access = $this->jwtTokens->issue([
+        $claims = [
             'sub' => $username,
             'role' => $role,
             'exp' => time() + $ttl,
             'uid' => $uid,
-        ]);
+        ];
+        $sid = $this->refreshTokens->familyIdFor($refreshToken);
+        if ($sid !== null) {
+            $claims['sid'] = $sid;
+        }
+        $access = $this->jwtTokens->issue($claims);
 
         return [
             'access_token' => $access,

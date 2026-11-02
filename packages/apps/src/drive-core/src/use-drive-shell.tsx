@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
+import { buildDriveViewBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
 import {
   applyDriveGroupDisplayNames,
   buildDriveFolderPickerRootLabels,
@@ -19,6 +19,7 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
+import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import {
   driveStarredPathMap,
@@ -71,8 +72,7 @@ export function useDriveShell({
   const currentUsername = data.user.username || session.user.username || "";
   const [files, setFiles] = useState<DriveFile[]>(() => {
     if (!operations) return DRIVE_MOCK_FILES;
-    if (data.directory.files.length === 0) return [];
-    return data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername));
+    return mapDriveListingEntries(data, currentUsername);
   });
   const [internalView, setInternalView] = useState<ViewKey>({ type: "folder", path: "My Drive" });
   const isViewControlled = onViewChange !== undefined;
@@ -188,7 +188,7 @@ export function useDriveShell({
     if (isViewControlled && folderViewPath !== cwdPath) {
       return;
     }
-    setFiles(data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)));
+    setFiles(mapDriveListingEntries(data, currentUsername));
     syncedFolderPathRef.current = folderViewPath ?? cwdPath;
     setHydratedFolderPath(cwdPath);
     if (!isViewControlled) {
@@ -216,6 +216,7 @@ export function useDriveShell({
     setHydratedFolderPath,
     commitView,
     showError,
+    listing: data,
   });
 
   const selectView = useCallback(
@@ -331,25 +332,10 @@ export function useDriveShell({
     return hydratedFolderPath !== view.path;
   }, [currentUsername, hydratedFolderPath, listLoading, operations, view]);
 
-  const breadcrumbs = useMemo(() => {
-    if (view.type === "access") {
-      return [{ label: driveLabels.accessTitle, path: null as string | null }];
-    }
-    if (view.type !== "folder") {
-      return [
-        {
-          label:
-            view.type === "recent"
-              ? driveLabels.sidebarRecent
-              : view.type === "starred"
-                ? driveLabels.sidebarStarred
-                : driveLabels.sidebarSharedWithMe,
-          path: null as string | null,
-        },
-      ];
-    }
-    return buildDriveFolderBreadcrumbs(view.path, driveLabels, folderPickerRootLabels);
-  }, [folderPickerRootLabels, view]);
+  const breadcrumbs = useMemo(
+    () => buildDriveViewBreadcrumbs(view, driveLabels, folderPickerRootLabels),
+    [folderPickerRootLabels, view],
+  );
 
   const viewLabel = breadcrumbs[breadcrumbs.length - 1].label;
   const viewResetKey =
