@@ -176,15 +176,28 @@ export function writeDocsPageSetupOverride(
   });
 }
 
-/** A renamed or moved document keeps its own page setup. */
+/**
+ * A renamed or moved document keeps its own page setup, and so does every document under a
+ * renamed or moved folder. A second call for a path that is already gone changes nothing.
+ */
 export function moveDocsPageSetupOverride(from: string, to: string): boolean {
   const current = readDocsPageSetupOverrides();
   const fromKey = docsPageSetupDocKey(from);
   const toKey = docsPageSetupDocKey(to);
-  const entry = current[fromKey];
-  if (!entry || fromKey === toKey) return false;
-  const { [fromKey]: _moved, ...rest } = current;
-  return writeOverrides({ ...rest, [toKey]: entry });
+  if (fromKey === toKey) return false;
+  const prefix = fromKey === "/" ? "/" : `${fromKey}/`;
+  const next: DocsPageSetupOverrides = {};
+  let moved = false;
+  for (const [key, entry] of Object.entries(current)) {
+    if (key === fromKey || key.startsWith(prefix)) {
+      const rest = key.slice(fromKey.length);
+      next[toKey === "/" ? rest || "/" : `${toKey}${rest}`] = entry;
+      moved = true;
+    } else if (!(key in next)) {
+      next[key] = entry;
+    }
+  }
+  return moved && writeOverrides(next);
 }
 
 function browserLocales(): readonly string[] {

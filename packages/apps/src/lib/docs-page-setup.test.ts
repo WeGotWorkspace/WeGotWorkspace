@@ -20,7 +20,7 @@ import {
 afterEach(() => {
   // A saved write drops any unsaved in-memory value.
   writeDocsPageSetupPrefs({});
-  moveDocsPageSetupOverride("/x", "/y");
+  writeDocsPageSetupOverride("/x", { format: "a4", orientation: "portrait" }, 0);
   window.localStorage.clear();
 });
 
@@ -210,6 +210,25 @@ describe("per-document page setup", () => {
       "/new.md": { format: "a3", orientation: "portrait", at: 3 },
     });
     expect(moveDocsPageSetupOverride("/missing.md", "/other.md")).toBe(false);
+  });
+
+  it("documents under a renamed folder keep their page setup", () => {
+    writeDocsPageSetupOverride(
+      "/users/a/Notes/plan.md",
+      { format: "a3", orientation: "portrait" },
+      3,
+    );
+    writeDocsPageSetupOverride(
+      "/users/a/Notes2/x.md",
+      { format: "a4", orientation: "portrait" },
+      4,
+    );
+    expect(moveDocsPageSetupOverride("/users/a/Notes", "/users/a/Archive")).toBe(true);
+    expect(readDocsPageSetupOverrides()).toEqual({
+      "/users/a/Archive/plan.md": { format: "a3", orientation: "portrait", at: 3 },
+      "/users/a/Notes2/x.md": { format: "a4", orientation: "portrait", at: 4 },
+    });
+    expect(moveDocsPageSetupOverride("/users/a/Notes", "/users/a/Archive")).toBe(false);
   });
 
   it("keeps the most recently changed documents only", () => {
