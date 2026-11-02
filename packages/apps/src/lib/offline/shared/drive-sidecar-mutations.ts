@@ -23,13 +23,14 @@ export async function applyDriveSidecarPathMigration(
   to: string,
 ): Promise<void> {
   const oldPath = normalizePath(from);
-  const newPath = normalizePath(nextPathAfterRename(from, destination, to));
+  const renamedPath = nextPathAfterRename(from, destination, to);
+  const newPath = normalizePath(renamedPath);
 
   await migrateDocsAvailabilityPath(username, oldPath, newPath);
   await migrateDriveAvailabilityPath(username, oldPath, newPath);
   await migrateDriveEntryPath(username, oldPath, newPath);
   await migrateDriveContentBlobPath(username, oldPath, newPath);
-  moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
+  moveDocsPageSetupOverride(from, renamedPath);
 }
 
 export { parentAndName };

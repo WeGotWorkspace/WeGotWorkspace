@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import {
@@ -37,6 +37,10 @@ describe("flushDocsOutbox", () => {
     setStar.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it("reports state mismatches for 409/412 drive failures", async () => {
@@ -145,7 +149,6 @@ describe("flushDocsOutbox", () => {
 
     const keys = Object.keys(readDocsPageSetupOverrides()).sort();
     expect(keys).toEqual(["/users/alice/Notes/plan.md", "/users/alice/Notes2/x.md"]);
-    window.localStorage.clear();
   });
 
   it("does not report a trash when the removed op is not trash", async () => {
