@@ -420,6 +420,22 @@ export async function listStartableDriveUploads(
 }
 
 /**
+ * When the next waiting item may start (its `retryAt` after a hiccup), so
+ * every tab can wake itself then, not only the tab that saw the hiccup.
+ * Null when no item waits for a time.
+ */
+export async function nextDriveUploadRetryAt(username: string): Promise<number | null> {
+  const { batches, items } = await readDriveUploadQueueRows(username);
+  const released = new Set(batches.filter((b) => b.status === "released").map((b) => b.id));
+  const now = Date.now();
+  const due = items
+    .filter((item) => item.status !== "failed" && released.has(item.batchId))
+    .map((item) => item.retryAt ?? 0)
+    .filter((retryAt) => retryAt > now);
+  return due.length > 0 ? Math.min(...due) : null;
+}
+
+/**
  * Mark one item `uploading`. Parts already on the server count as done.
  * False when it was removed or changed meanwhile.
  */

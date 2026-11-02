@@ -23,6 +23,7 @@ import {
   failDriveUpload,
   listStartableDriveUploads,
   markDriveUploadStarted,
+  nextDriveUploadRetryAt,
   readDriveUploadBatch,
   readDriveUploadBlob,
   readDriveUploadQueueRows,
@@ -47,8 +48,8 @@ export function driveUploadRetryDelay(failures: number): number {
   return Math.min(DRIVE_UPLOAD_MAX_RETRY_DELAY_MS, doubled);
 }
 
-/** `retryIn`: the item waits in the queue; wake again after that many ms. */
-type UploadOutcome = "next" | "stop" | { retryIn: number };
+/** `wait`: the item waits in the queue until its `retryAt`. */
+type UploadOutcome = "next" | "stop" | "wait";
 
 export type DriveUploaderOptions = {
   lock?: WithCrossTabLock;
@@ -134,10 +135,29 @@ export class DriveUploader {
     await this.migrateOutboxOnce();
     if (!readBrowserOnline()) return;
     if (await this.waitForServerSpace()) return;
-    if ((await listStartableDriveUploads(this.username)).length === 0) return;
-    await this.lock(driveUploaderLockName(this.username), ({ signal }) => this.drain(signal), {
-      signal: this.stopController.signal,
-    });
+    if ((await listStartableDriveUploads(this.username)).length > 0) {
+      await this.lock(driveUploaderLockName(this.username), ({ signal }) => this.drain(signal), {
+        signal: this.stopController.signal,
+      });
+    }
+    await this.scheduleRetryWake();
+  }
+
+  /**
+   * Every tab, not just the one that saw the hiccup, wakes when the next
+   * waiting item is due: that tab may close before then.
+   */
+  private async scheduleRetryWake(): Promise<void> {
+    const due = await nextDriveUploadRetryAt(this.username);
+    if (due === null || this.stopController.signal.aborted) return;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(
+      () => {
+        this.retryTimer = null;
+        this.wake();
+      },
+      Math.max(0, due - Date.now()),
+    );
   }
 
   /**
@@ -202,11 +222,7 @@ export class DriveUploader {
       const next = await this.pickNext(skipped);
       if (!next) return;
       const outcome = await this.uploadOne(next, signal);
-      if (outcome === "stop") return;
-      if (typeof outcome === "object") {
-        this.scheduleRetry(outcome.retryIn);
-        return;
-      }
+      if (outcome === "stop" || outcome === "wait") return;
     }
   }
 
@@ -318,12 +334,11 @@ export class DriveUploader {
     // The item waits in every tab, not just this one, before it is tried again.
     if (failure.kind === "network") {
       // The browser says online but the request never arrived: try again later.
-      const retryIn = DRIVE_UPLOAD_RETRY_DELAY_MS;
       await requeueDriveUpload(this.username, item.id, {
         countFailure: false,
-        retryAt: Date.now() + retryIn,
+        retryAt: Date.now() + DRIVE_UPLOAD_RETRY_DELAY_MS,
       });
-      return { retryIn };
+      return "wait";
     }
     if (failure.kind === "transient") {
       // Backoff: the wait doubles with every hiccup in a row.
@@ -333,18 +348,10 @@ export class DriveUploader {
         message: failure.message,
         retryAt: Date.now() + retryIn,
       });
-      return { retryIn };
+      return "wait";
     }
     await failDriveUpload(this.username, item.id, failure.error);
     return "next";
-  }
-
-  private scheduleRetry(delay: number): void {
-    if (this.retryTimer) clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(() => {
-      this.retryTimer = null;
-      this.wake();
-    }, delay);
   }
 }
 

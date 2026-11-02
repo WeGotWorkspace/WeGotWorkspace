@@ -519,6 +519,28 @@ describe("drive uploader", () => {
     expect(rows.items[0]?.retryAt).toBeGreaterThan(Date.now());
   });
 
+  it("retries a waiting item from another tab after the tab that saw the hiccup closed", async () => {
+    const origin = simulateOrigin();
+    wgwFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { itemIds } = await queue([testFile("a.txt")]);
+    const tabA = new DriveUploader(user, { lock: createCrossTabLock(origin.tab("a")) });
+    tabA.wake();
+    await tabA.whenIdle();
+    expect((await readDriveUploadQueueRows(user)).items[0]?.retryAt).toBeGreaterThan(Date.now());
+
+    // The wait is almost over when tab A closes, taking its own timer along.
+    await driveUploadItemsTable(uploadTestDb()).update(itemIds[0]!, { retryAt: Date.now() + 50 });
+    await tabA.stop();
+    const tabB = new DriveUploader(user, { lock: createCrossTabLock(origin.tab("b")) });
+    tabB.wake();
+    await tabB.whenIdle();
+    expect(uploadCalls()).toHaveLength(1);
+
+    await vi.waitFor(async () => expect((await readDriveUploadQueueRows(user)).items).toEqual([]));
+    await tabB.stop();
+    expect(uploadCalls()).toHaveLength(2);
+  });
+
   it("makes every tab wait before retrying after a server error, and counts it", async () => {
     wgwFetch.mockResolvedValueOnce(new Response("busy", { status: 503 }));
     await queue([testFile("a.bin")]);
