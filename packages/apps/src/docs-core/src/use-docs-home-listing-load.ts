@@ -17,6 +17,9 @@ import {
   writeDocsListingToCache,
 } from "@/lib/offline/docs-listing-offline-store";
 
+/** Waits before each automatic reload after a failed live listing. */
+const DOCS_LISTING_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_000] as const;
+
 export type DocsHomeFetcher = (
   params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
 ) => Promise<WgwUnifiedSearchData>;
@@ -93,6 +96,7 @@ export function useDocsHomeListingLoad({
   const [error, setError] = useState<string | null>(null);
   const [isOfflineListing, setIsOfflineListing] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const failedReloadsRef = useRef(0);
   const resultsRef = useRef(results);
   resultsRef.current = results;
   /** Cache key of the filters the visible `results` belong to. */
@@ -171,6 +175,7 @@ export function useDocsHomeListingLoad({
 
     const controller = new AbortController();
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const hadRows = shownKeyRef.current === filtersKey && resultsRef.current.length > 0;
     if (!hadRows) {
@@ -212,7 +217,14 @@ export function useDocsHomeListingLoad({
       const liveLoaded = await fetchLiveListing(controller.signal);
       if (cancelled) return;
 
+      if (liveLoaded) failedReloadsRef.current = 0;
       if (!liveLoaded) {
+        // A push already told us the list changed; load again rather than keep stale rows.
+        const delay = DOCS_LISTING_RETRY_DELAYS_MS[failedReloadsRef.current];
+        failedReloadsRef.current += 1;
+        if (delay !== undefined && getConnectivitySnapshot()) {
+          retryTimer = setTimeout(() => setReloadToken((token) => token + 1), delay);
+        }
         if (hasRows) {
           setIsOfflineListing(true);
         } else {
@@ -228,6 +240,7 @@ export function useDocsHomeListingLoad({
     return () => {
       cancelled = true;
       controller.abort();
+      clearTimeout(retryTimer);
     };
   }, [applyCachedListing, enabled, fetchLiveListing, filtersKey, reloadToken]);
 

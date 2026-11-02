@@ -78,26 +78,41 @@ function subscribeFolderRemoteRefresh({
   };
   let running = false;
   let again = false;
-  const onChange = () => {
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  const run = () => {
+    clearTimeout(retryTimer);
     if (running) {
       again = true;
       return;
     }
     running = true;
     void (async () => {
+      let failures = 0;
       do {
         again = false;
-        await refresh().catch((error: unknown) => {
-          if (!controller.signal.aborted) console.warn("[drive] folder refresh failed", error);
-        });
+        try {
+          await refresh();
+          failures = 0;
+        } catch (error: unknown) {
+          if (controller.signal.aborted) break;
+          console.warn("[drive] folder refresh failed", error);
+          // The push is confirmed: the hub will not send this state again.
+          const delay = FOLDER_LISTING_RETRY_DELAYS_MS[failures];
+          failures += 1;
+          if (delay !== undefined && isRetryableListingError(error)) {
+            retryTimer = setTimeout(run, delay);
+          }
+        }
       } while (again && !controller.signal.aborted);
       running = false;
     })();
   };
+  const onChange = run;
   const unsubscribe = subscribeDriveRemoteChanges(currentUsername, onChange);
   return () => {
     unsubscribe();
     controller.abort();
+    clearTimeout(retryTimer);
   };
 }
 
