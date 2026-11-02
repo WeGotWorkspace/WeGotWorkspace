@@ -27,6 +27,16 @@ enum CollectionKind: string
         return in_array($this, [self::ChatChannel, self::DocsThreadPool], true);
     }
 
+    /**
+     * Sharees get their own copy of the name and colour when a collection is
+     * shared. For these kinds an owner's later rename or recolour reaches every
+     * copy the sharee did not change (#1822).
+     */
+    public function shareesFollowOwnerAppearance(): bool
+    {
+        return $this === self::TaskList;
+    }
+
     /** Guard against a kind being stored on a collection that cannot hold its data. */
     public function allowsComponents(string $components): bool
     {
