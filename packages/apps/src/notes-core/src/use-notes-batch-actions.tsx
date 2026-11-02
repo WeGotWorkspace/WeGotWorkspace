@@ -1,20 +1,13 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { Star, StarOff } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
+import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
 import { noteShowsStarControls } from "./notes-note-utils";
 import { persistNoteOrDropGone } from "./notes-persist-access";
 import type { NotesAPIOperations } from "./notes-types";
-
-type QueueMutation = (args: {
-  key: string;
-  toastMessage: string;
-  execute: (signal: AbortSignal) => Promise<void>;
-  undo: () => void;
-  onError?: () => void;
-  undoToastMessage?: string;
-}) => void;
+import { completedRows, sendArchiveState, sendNoteFields } from "./notes-undo-writes";
 
 type NotesDeleteConfirmCopy = {
   dialogEmptyArchiveTitle: string;
@@ -101,8 +94,9 @@ export function useNotesBatchActions({
                 ),
               ).then(() => {})
             : Promise.resolve(),
+        // A delete cannot be taken back on the server: it waits, and Undo cancels it.
+        irreversible: true,
         undo: rollback,
-        onError: rollback,
         undoToastMessage: "Deletion undone.",
       });
     },
@@ -167,14 +161,10 @@ export function useNotesBatchActions({
       key: `notes:batch-star:${starIds.slice().sort().join(",")}`,
       toastMessage,
       icon: toastIcon,
-      execute: async () => {
-        if (!operations) return;
-        await Promise.all(
-          updatedRows.map((row) =>
-            persistNoteOrDropGone(operations.upsertNote(row), () => dropGoneNote(row.id)),
-          ),
-        );
-      },
+      execute: (_signal, markCompleted) =>
+        sendNoteFields(operations, updatedRows, ["starred"], dropGoneNote, markCompleted),
+      revert: (completed) =>
+        sendNoteFields(operations, completedRows(beforeRows, completed), ["starred"], dropGoneNote),
       rollback: () => {
         batchToggleStarForIds(starIds);
         setNotes((prev) =>
@@ -203,6 +193,7 @@ export function useNotesBatchActions({
     );
     const allArchived = selectedIds.every((id) => archived[id]);
     const nextArchived = !allArchived;
+    const changedIds = selectedIds.filter((id) => beforeArchived.get(id) !== nextArchived);
     const editedAt = new Date().toISOString();
     setArchived((state) => {
       const next = { ...state };
@@ -221,17 +212,16 @@ export function useNotesBatchActions({
       queueMutation,
       key: `notes:batch-archive:${selectedIds.slice().sort().join(",")}`,
       toastMessage,
-      execute: async (signal) => {
-        if (!operations) return;
-        await Promise.all(
-          selectedIds.map((id) =>
-            persistNoteOrDropGone(
-              allArchived
-                ? operations.restoreNote(id, { signal })
-                : operations.archiveNote(id, { signal }),
-              () => dropGoneNote(id),
-            ),
-          ),
+      // Only notes whose state changes, so Undo sends back exactly those.
+      execute: async (_signal, markCompleted) => {
+        await sendArchiveState(operations, changedIds, nextArchived, dropGoneNote, markCompleted);
+      },
+      revert: async (completed) => {
+        await sendArchiveState(
+          operations,
+          completedRows(changedIds, completed),
+          !nextArchived,
+          dropGoneNote,
         );
       },
       rollback: () => {

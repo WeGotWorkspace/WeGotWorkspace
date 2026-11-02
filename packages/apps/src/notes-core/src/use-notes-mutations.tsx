@@ -23,7 +23,7 @@ import {
   normalizeTag,
   noteAllowsTagAssignment,
   noteTagToggle,
-  tagDeltaOpts,
+  noteTagDelta,
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
@@ -37,7 +37,13 @@ import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteBodyPreviewInCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
-import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
+import {
+  completedRows,
+  inverseTagDelta,
+  sendArchiveState,
+  sendNoteFields,
+  sendTagDelta,
+} from "./notes-undo-writes";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
 import { notebookSelectionEquals } from "./notes-notebook-select";
 import type { NotesListState } from "./use-notes-list";
@@ -203,21 +209,19 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         show(nowStarred ? "Starred" : "Unstarred", { icon: toastIcon });
         return;
       }
-      const updated = { ...current, starred: nowStarred };
       queueMutation({
         key: `notes:star:${id}`,
         toastMessage: nowStarred ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async () => {
-          await persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id));
-        },
+        execute: () => sendNoteFields(operations, [starredNote], ["starred"], dropGoneNote),
+        revert: () =>
+          sendNoteFields(
+            operations,
+            [{ ...current, starred: beforeStarred }],
+            ["starred"],
+            dropGoneNote,
+          ),
         undo: () => {
-          applyStarToggle(id);
-          setNotes((prev) =>
-            prev.map((note) => (note.id === id ? { ...note, starred: beforeStarred } : note)),
-          );
-        },
-        onError: () => {
           applyStarToggle(id);
           setNotes((prev) =>
             prev.map((note) => (note.id === id ? { ...note, starred: beforeStarred } : note)),
@@ -276,7 +280,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
       const toastMessage = nextArchived ? "Archived" : "Unarchived";
 
+      // After Undo, a late answer to the archive must not put it back on screen.
+      let undone = false;
       const rollback = () => {
+        undone = true;
         setArchived((state) => ({ ...state, [id]: beforeArchived }));
         setNotes((prev) =>
           prev.map((note) => (note.id === id ? { ...row, archived: beforeArchived } : note)),
@@ -290,15 +297,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       queueMutation({
         key: `notes:archive:${id}`,
         toastMessage,
-        execute: async (signal) => {
+        execute: async () => {
           if (!operations) return;
-          const serverRow = await persistNoteOrDropGone(
-            nextArchived
-              ? operations.archiveNote(id, { signal })
-              : operations.restoreNote(id, { signal }),
-            () => dropGoneNote(id),
-          );
-          if (!serverRow) return;
+          const [serverRow] = await sendArchiveState(operations, [id], nextArchived, dropGoneNote);
+          if (!serverRow || undone) return;
           const archivedFlag = !!serverRow.archived;
           setArchived((state) => ({ ...state, [id]: archivedFlag }));
           setNotes((prev) =>
@@ -313,8 +315,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             ),
           );
         },
+        revert: async () => {
+          await sendArchiveState(operations, [id], beforeArchived, dropGoneNote);
+        },
         undo: rollback,
-        onError: rollback,
         undoToastMessage: "Archive change undone.",
       });
     },
@@ -379,19 +383,20 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         .filter((note) => ids.includes(note.id))
         .map((note) => noteAfterNotebookMove(note, dest));
       updatedRows.forEach((row) => persistOptimisticNote(row, true));
+      const beforeRows = notes.filter((note) => ids.includes(note.id));
       queueMutation({
         key: `notes:move:${dest.id}:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${dest.name}”`,
-        execute: () =>
-          Promise.all(
-            updatedRows.map((row) =>
-              persistNoteOrDropGone(operations.upsertNote(row, { fields: ["notebook"] }), () =>
-                dropGoneNote(row.id),
-              ),
-            ),
-          ).then(() => {}),
+        execute: (_signal, markCompleted) =>
+          sendNoteFields(operations, updatedRows, ["notebook"], dropGoneNote, markCompleted),
+        revert: (completed) =>
+          sendNoteFields(
+            operations,
+            completedRows(beforeRows, completed),
+            ["notebook"],
+            dropGoneNote,
+          ),
         undo: rollback,
-        onError: rollback,
         undoToastMessage: "Move undone.",
       });
     },
@@ -464,28 +469,21 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag], date: editedAt },
       );
       updatedRows.forEach((row) => persistOptimisticNote(row, true));
+      // Only notes that did not have the tag lose it again on Undo.
+      const tagged = before.filter((note) => !note.tags.includes(tag));
       queueMutation({
         key: `notes:tag:${tag}:${assignableIds.slice().sort().join(",")}`,
         toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
-        execute: () =>
-          Promise.all(
-            updatedRows.map((row) =>
-              persistNoteKeepingSyncRace(
-                operations.upsertNote(row, { tagsAdd: [tag] }),
-                () => dropGoneNote(row.id),
-                row.id,
-              ),
-            ),
-          ).then(() => {}),
+        execute: (_signal, markCompleted) =>
+          sendTagDelta(operations, updatedRows, { tagsAdd: [tag] }, dropGoneNote, markCompleted),
+        revert: (completed) =>
+          sendTagDelta(
+            operations,
+            completedRows(tagged, completed),
+            { tagsRemove: [tag] },
+            dropGoneNote,
+          ),
         undo: () => {
-          setNotes((prev) =>
-            prev.map((note) => {
-              const snapshot = before.find((row) => row.id === note.id);
-              return snapshot ? snapshot : note;
-            }),
-          );
-        },
-        onError: () => {
           setNotes((prev) =>
             prev.map((note) => {
               const snapshot = before.find((row) => row.id === note.id);
@@ -529,21 +527,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const rollback = () => {
         setNotes((prev) => prev.map((note) => (note.id === noteId ? before : note)));
       };
+      const delta = noteTagDelta(toggled);
       queueMutation({
         key: `notes:tag-toggle:${noteId}:${toggled.label}`,
         toastMessage,
         icon: <Tag className="size-4" />,
-        execute: async (signal) => {
-          if (operations) {
-            await persistNoteKeepingSyncRace(
-              operations.upsertNote(updated, tagDeltaOpts(signal, toggled)),
-              () => dropGoneNote(noteId),
-              noteId,
-            );
-          }
-        },
+        execute: () => sendTagDelta(operations, [updated], delta, dropGoneNote),
+        revert: () => sendTagDelta(operations, [before], inverseTagDelta(delta), dropGoneNote),
         undo: rollback,
-        onError: rollback,
         undoToastMessage: toggled.added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },

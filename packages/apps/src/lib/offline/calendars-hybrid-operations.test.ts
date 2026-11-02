@@ -299,6 +299,35 @@ describe("flushCalendarsOutboxAndReport", () => {
     );
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
+
+  it("Undo of an offline create drops its queued rows instead of queueing a delete (#1854)", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridCalendarOperations(username);
+    const created = await operations.createEvent({
+      id: "local-undo-1",
+      calendarId: "default",
+      title: "Created",
+      start: "2033-01-11T09:00:00",
+      duration: "PT1H",
+    });
+    await operations.patchEvent(created.id, { title: "Renamed" });
+
+    await operations.deleteEvent(created.id);
+
+    await expect(listOutboxMutations(username)).resolves.toEqual([]);
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.events.some((event) => event.id === "local-undo-1")).toBe(false);
+  });
+
+  it("still queues a delete offline for an event the server already has", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridCalendarOperations(username);
+
+    await operations.deleteEvent("ev-1");
+
+    const rows = await listOutboxMutations(username);
+    expect(rows.map((row) => row.op)).toEqual(["delete"]);
+  });
 });
 
 describe("hybrid importEvents", () => {

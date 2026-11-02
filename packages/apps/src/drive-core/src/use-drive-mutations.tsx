@@ -14,6 +14,7 @@ import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-crea
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import type { DriveUploadProgress } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
+import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
@@ -167,11 +168,11 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         await operations.setStar({ path: apiPath, starred: nextValue }, { signal });
         if (view.type === "starred") reloadStarredFromServer();
       },
-      undo: () => {
-        setStarred((s) => ({ ...s, [id]: beforeStarred }));
+      revert: async () => {
+        await restoreDriveStars(operations, [{ path: apiPath, before: beforeStarred }]);
         if (view.type === "starred") reloadStarredFromServer();
       },
-      onError: () => {
+      undo: () => {
         setStarred((s) => ({ ...s, [id]: beforeStarred }));
         if (view.type === "starred") reloadStarredFromServer();
       },

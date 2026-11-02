@@ -289,6 +289,27 @@ export async function enqueueCoalescedCalendarEventUpdate(
   });
 }
 
+/**
+ * Drops an event that only exists on this device: its queued create and every queued edit
+ * of it, plus the cached copy. Returns false (and changes nothing) when no create is
+ * queued, so the event is on the server and needs a real delete. Undo of an offline
+ * create then leaves no row behind, instead of a delete the server cannot match (#1854).
+ */
+export async function discardUnsentCalendarEvent(
+  username: string,
+  eventId: string,
+): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction("rw", [db.outbox, calendarsEventsTable(db)], async () => {
+    const rows = await db.outbox.where("domain").equals(CALENDARS_DOMAIN).toArray();
+    const own = rows.filter((row) => calendarsOutboxEventId(row) === eventId);
+    if (!own.some((row) => row.op === "create")) return false;
+    await db.outbox.bulkDelete(own.map((row) => row.id));
+    await calendarsEventsTable(db).delete(eventId);
+    return true;
+  });
+}
+
 export function createTempCalendarEventId(): string {
   return `local-${crypto.randomUUID().replace(/-/g, "")}`;
 }

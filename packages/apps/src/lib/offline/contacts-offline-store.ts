@@ -243,6 +243,23 @@ export async function removeContactCardFromCache(username: string, cardId: strin
 }
 
 /**
+ * Undo of a create that is still queued: drop the create and every row queued for the
+ * same temporary card, plus the cached card, in one transaction. Returns false when no
+ * create is queued for `cardId` (the card is on the server: delete it there).
+ */
+export async function dropQueuedContactCreate(username: string, cardId: string): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction("rw", [db.outbox, contactsCardsTable(db)], async () => {
+    const rows = await db.outbox.where("domain").equals(CONTACTS_DOMAIN).toArray();
+    const queued = rows.filter((row) => contactsOutboxCardId(row) === cardId);
+    if (!queued.some((row) => row.op === "create")) return false;
+    await db.outbox.bulkDelete(queued.map((row) => row.id));
+    await contactsCardsTable(db).delete(cardId);
+    return true;
+  });
+}
+
+/**
  * Outbox rows the retry callout lists: transient failures and permanent
  * 403/404 rejections. Conflicts go to the resolution modal, not this list.
  */

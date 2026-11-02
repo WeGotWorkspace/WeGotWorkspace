@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import type { ReversibleWriteArgs } from "@/hooks/use-queued-mutation";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -129,12 +129,14 @@ describe("useDriveBatchActions offline undo", () => {
     });
 
     act(() => result.current.moveToTrash(["notes"]));
-    const queued = queueMutation.mock.calls[0]?.[0] as DeferredApiWriteArgs;
+    const queued = queueMutation.mock.calls[0]?.[0] as ReversibleWriteArgs;
+    const completed = new Set<string>();
     await act(async () => {
-      await queued.execute(new AbortController().signal);
+      await queued.execute(new AbortController().signal, (key) => completed.add(key));
     });
     await act(async () => {
       queued.undo();
+      await queued.revert(completed);
       await vi.waitFor(async () => {
         const outbox = await listOutboxMutationsForDomain(USER, DRIVE_DOMAIN);
         expect(outbox.map((row) => row.op)).toEqual(["trash", "rename"]);

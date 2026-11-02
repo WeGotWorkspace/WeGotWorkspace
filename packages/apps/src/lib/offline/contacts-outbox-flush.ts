@@ -9,7 +9,11 @@ import { JmapSetItemError } from "@/lib/jmap-client";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  getOutboxMutation,
+  sendChangedRowAgain,
+  settleSentOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
 import { CONTACTS_DOMAIN, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 import {
   listOutboxMutations,
@@ -68,6 +72,11 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         const serverId = response.created[creationId];
         if (!serverId) {
           throw new Error(notCreated?.description ?? "Create failed");
+        }
+        if (!(await getOutboxMutation(username, row.id))) {
+          // Undone while it was sent (`dropQueuedContactCreate`): take it back.
+          await contactCardSet({ destroy: [serverId] });
+          continue;
         }
         const tempId = String(payload.tempCardId ?? "");
         if (tempId) await removeContactCardFromCache(username, tempId);

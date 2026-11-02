@@ -90,6 +90,23 @@ describe("createHybridTasksOperations", () => {
     expect(outbox[0]?.ifInState).toBe("etag-1");
   });
 
+  it("turns a queued move into the undo instead of queueing a second move", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridTasksOperations(username);
+    const from = task.taskListId;
+    const to = from === "work" ? "default" : "work";
+
+    await operations.moveTaskToList(task.id, to);
+    await operations.moveTaskToList(task.id, from);
+
+    const outbox = await listOutboxMutations(username);
+    expect(outbox.map((row) => row.op)).toEqual(["move"]);
+    expect(JSON.parse(outbox[0]!.payload)).toEqual({ taskId: task.id, taskListId: from });
+    expect(outbox[0]!.ifInState).toBe("etag-1");
+    const cached = await readTasksBootstrapFromCache(username);
+    expect(cached?.data.tasks.find((entry) => entry.id === task.id)?.taskListId).toBe(from);
+  });
+
   it("queues patch when live API fails with a network error", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     vi.mocked(patchTask).mockRejectedValue(new TypeError("network request failed"));

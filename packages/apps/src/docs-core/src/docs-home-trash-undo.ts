@@ -1,6 +1,7 @@
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { parentAndName } from "@/lib/files/api-path";
 import {
+  captureOfflineDocsTrashSnapshot,
   undoOfflineDocsTrash,
   type DocsTrashUndoSnapshot,
 } from "@/lib/offline/docs/docs-hybrid-operations";
@@ -9,6 +10,9 @@ import { renamedDocsSearchResult } from "@/lib/offline/docs-listing-offline-stor
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
+  ensureTrashFolder,
+  listTrashEntryNames,
+  resolveFreeName,
   restoreCompletedDriveMoves,
   restoredDriveNamesMessage,
   unrestoredDriveFilesMessage,
@@ -24,6 +28,51 @@ export type DocsHomeTrashOfflineSnapshot = {
   id: string;
   snapshot: DocsTrashUndoSnapshot;
 };
+
+/**
+ * Moves docs into Trash one at a time and marks each rename the server applied. Offline
+ * cache snapshots are taken first and handed out before any rename, so Undo has them
+ * even when a later rename fails. `stop` is only checked between files.
+ */
+export async function moveDocsRowsToTrash(
+  operations: DriveAPIOperations,
+  rows: readonly DriveFile[],
+  target: {
+    username: string;
+    groupRoots: Set<string>;
+    offlineUsername: string | null;
+    stop: AbortSignal;
+  },
+  sink: {
+    trashedNameById: Map<string, string>;
+    markCompleted: (id: string) => void;
+    onSnapshots: (snapshots: DocsHomeTrashOfflineSnapshot[]) => void;
+  },
+): Promise<void> {
+  const { username, groupRoots, offlineUsername, stop } = target;
+  if (offlineUsername) {
+    sink.onSnapshots(
+      await Promise.all(
+        rows.map(async (file) => ({
+          id: file.id,
+          snapshot: await captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!),
+        })),
+      ),
+    );
+  }
+  await ensureTrashFolder(operations, username, groupRoots, stop);
+  const destination = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRoots);
+  const trashNames = await listTrashEntryNames(operations, destination, stop);
+  for (const file of rows) {
+    stop.throwIfAborted();
+    const to = resolveFreeName(file.title, trashNames);
+    trashNames.add(to);
+    sink.trashedNameById.set(file.id, to);
+    // No signal: a cancelled rename may still land, and Undo must then move it back.
+    await operations.renameItem({ destination, from: normalizeApiVirtualPath(file.apiPath!), to });
+    sink.markCompleted(file.id);
+  }
+}
 
 /** Point a captured trash snapshot at the path the server actually restored. */
 function snapshotOnRestoredPath(
