@@ -972,6 +972,14 @@ async function queueEditOffline(b: Tab, f: Fixture, title: string) {
   expect((await tabCache(b, f.id)).outbox, `${b.tag} queued the edit`).toEqual(["update"]);
 }
 
+/** The teammate's refused edit waits in the rescue dialog (#1825); these cases discard it. */
+async function discardRefusedEdit(b: Tab) {
+  const dialog = rescueDialog(b);
+  await expect(dialog, "the refused edit asks where it goes").toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole("button", { name: /^Discard/ }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+}
+
 test.describe("sharing", () => {
   test("revoked while the teammate has a queued edit", async ({ browser }) => {
     const id = caseId();
@@ -987,6 +995,7 @@ test.describe("sharing", () => {
       await a.bringToFront();
       await ACTIONS.revoke.run(a, f);
       await setTabOffline(b, false);
+      await discardRefusedEdit(b);
 
       // The teammate loses the list and its task; the edit does not land.
       await expectLanded(all, id, (_, mate) => !hasList(mate, f.listA));
@@ -1011,6 +1020,7 @@ test.describe("sharing", () => {
 
       await shareList(f.listAId, TEAMMATE, "read");
       await setTabOffline(b, false);
+      await discardRefusedEdit(b);
 
       expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
       expect((await serverTask(f.taskId))?.title, "the read-only edit did not land").toBe(f.task);
@@ -1082,6 +1092,7 @@ test.describe("list delete with a queued edit", () => {
         await showAllTasks(a);
         await ACTIONS.listDelete.run(a, f);
         await setTabOffline(b, false);
+        if (tabs === "diff") await discardRefusedEdit(b);
 
         await expectLanded(all, id, (s, mate) => !listOf(s, f.listAId) && !hasList(mate, f.listA));
         expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
