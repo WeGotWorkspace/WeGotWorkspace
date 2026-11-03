@@ -184,7 +184,7 @@ See [#296](https://github.com/WeGotWorkspace/wegotworkspace/issues/296), [#297](
 **Implementation ([#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331)):**
 
 - Dexie domain block **40–49** in `offline-version-allocation.ts`
-- Files: `tasks-schema.ts`, `tasks-offline-store.ts`, `tasks-outbox-flush.ts`, `tasks-hybrid-operations.ts`
+- Files in `lib/offline/tasks/`: `tasks-schema.ts`, `tasks-offline-store.ts`, `tasks-outbox-flush.ts`, `tasks-hybrid-operations.ts`, and `tasks-domain-contract.ts` for the shared store contract
 - Incremental sync: `GET /tasks/tasklists/changes`, `GET /tasks/items/changes?taskListId=` when [#158](https://github.com/WeGotWorkspace/wegotworkspace/issues/158) ships; full bootstrap until then
 - Conflicts: ETag / `If-Match` ([#161](https://github.com/WeGotWorkspace/wegotworkspace/issues/161))
 
@@ -323,7 +323,7 @@ Tasks follow the **[Contacts offline reference](../../packages/apps/docs/offline
 **Offline (personal + cached shared lists):**
 
 - Claim Dexie block **`tasks: 40–49`** in `offline-version-allocation.ts` (next free after drive 30–39).
-- Plugin layout mirrors Contacts: `tasks-schema.ts`, `tasks-offline-store.ts`, `tasks-outbox-flush.ts`, `tasks-hybrid-operations.ts`; `use-tasks-api.ts` wires hybrid bootstrap + pending/failed sync indicators.
+- Plugin layout mirrors Contacts, in `lib/offline/tasks/`: `tasks-schema.ts`, `tasks-offline-store.ts`, `tasks-outbox-flush.ts`, `tasks-hybrid-operations.ts`; `use-tasks-api.ts` wires hybrid bootstrap + pending/failed sync indicators.
 - Cache task lists + items for sidebar/list column; outbox coalesces PATCH/POST/DELETE while offline.
 - **Conflict model:** ETag / `If-Match` ([#161](https://github.com/WeGotWorkspace/wegotworkspace/issues/161)) + optional conflict dialog — **not** Yjs CRDT for task fields.
 - **Incremental sync (online):** `GET /tasks/tasklists/changes`, `GET /tasks/items/changes?taskListId=` ([#158](https://github.com/WeGotWorkspace/wegotworkspace/issues/158)); bootstrap can start with full list fetch before `/changes` ships.

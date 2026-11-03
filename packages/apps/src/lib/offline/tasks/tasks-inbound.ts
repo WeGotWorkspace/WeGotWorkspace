@@ -18,8 +18,8 @@ import {
   tasksOutboxTaskListId,
   upsertTaskInCache,
   upsertTaskListInCache,
-} from "@/lib/offline/tasks-offline-store";
-import { reportTasksSyncConflicts } from "@/lib/offline/tasks-sync-conflicts";
+} from "@/lib/offline/tasks/tasks-offline-store";
+import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
 
 const LIST_OPS = new Set(["listCreate", "listUpdate", "listDelete"]);
 
