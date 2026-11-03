@@ -63,7 +63,10 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `Note/get` | `NoteRepository::show()` / `list()` | ids null enumerates all notebooks; REST shapes unchanged |
 | `Note/changes` | per-notebook `NoteRepository::changes()` | **Account-wide** fan-out (same algorithm as `CalendarEvent/changes`) |
 | `Note/set` | `NoteRepository::create/patch/delete` | Top-level `ifInState`; `etag` required on field updates (Decision 6); optional `starred`; destroy may omit If-Match |
+| `Note/query` | `JournalObjectIds` per notebook | Ids only (no bodies) across the notebooks `Note/get` enumerates, so a client can list more than `maxObjectsInGet` and fetch with explicit ids (#1792); supported condition `inNotebook` (an unreachable notebook matches nothing), anything else → `unsupportedFilter`; non-empty `sort` → `unsupportedSort` (ordered by notebook, then storage order); `queryState` = the `Note/get` state |
 | `Note/queryChanges` | — | Always `cannotCalculateChanges` |
+| `ChatMessage/query` | `JournalObjectIds` per channel | Same contract as `Note/query` over the channels `ChatMessage/get` enumerates, tombstones included; supported condition `inChannel` |
+| `ChatMessage/queryChanges` | — | Always `cannotCalculateChanges` |
 
 Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `unsupportedFilter`, `unsupportedSort`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary (calendars) or are normalized from the legacy snake_case shapes at the adapter layer (contacts); unknown internal codes normalize to `serverFail` instead of inventing types.
 
