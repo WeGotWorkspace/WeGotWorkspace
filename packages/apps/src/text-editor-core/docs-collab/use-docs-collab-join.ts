@@ -12,10 +12,9 @@ import {
   resolveDocsCollabDatabase,
 } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
-import { closeCollabRoomStore } from "./docs-collab-leave-room";
+import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
-import { cancelSaveTimer } from "./docs-collab-save-timer";
 import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
@@ -118,12 +117,6 @@ export function useDocsCollabJoin({
    */
   const loadedStateRef = useRef<{ ydoc: Y.Doc; stateVector: Map<number, number> } | null>(null);
   const serverJoinStartedRef = useRef(false);
-  /**
-   * The room and urls the open persistence belongs to. Teardown can run in a
-   * render that already carries another room (Docs keeps the editor mounted
-   * across a room change); the background save must go to the joined one.
-   */
-  const joinedTargetRef = useRef<{ room: string; urls: typeof urls } | null>(null);
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.
     setSnapshotPreview(null);
@@ -165,9 +158,6 @@ export function useDocsCollabJoin({
     if (awareness) {
       awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
     }
-    const joinedTarget = joinedTargetRef.current ?? { room, urls };
-    joinedTargetRef.current = null;
-    const saveDue = cancelSaveTimer(refs.saveTimerRef) && !joinedTarget.urls.roomNotPersistent;
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
@@ -176,9 +166,8 @@ export function useDocsCollabJoin({
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
     if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
-    const persistence = refs.persistenceRef.current;
+    leaveCollabRoom(refs.persistenceRef.current, refs.saveTimerRef, { room, urls });
     refs.persistenceRef.current = null;
-    if (persistence) void closeCollabRoomStore(persistence, saveDue ? joinedTarget : null);
     refs.ydocRef.current = null;
     loadedStateRef.current = null;
     refs.awarenessRef.current = null;
@@ -546,7 +535,7 @@ export function useDocsCollabJoin({
     }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
-    joinedTargetRef.current = { room, urls };
+    rememberCollabRoomJoin(persistence, { room, urls });
 
     const authTokenPromise = allowServerRequests
       ? refs.wireRef.current
