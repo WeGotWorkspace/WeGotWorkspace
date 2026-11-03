@@ -9,6 +9,7 @@ use App\Services\Drive\DocAttachmentPaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
@@ -40,6 +41,21 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         $server->on('beforeBind', [$this, 'beforeBind'], 5);
         $server->on('beforeUnbind', [$this, 'beforeUnbind'], 5);
         $server->on('beforeMethod:*', [$this, 'beforeMethod'], 15);
+        $server->on('beforeMove', [$this, 'beforeMoveOrCopy'], 5);
+        $server->on('beforeCopy', [$this, 'beforeMoveOrCopy'], 5);
+    }
+
+    /**
+     * Sabre deletes an existing destination before it looks up the source, so a
+     * MOVE or COPY of a missing source (a retried move) would delete the file at
+     * the destination and then answer 404 (#1884). This runs after the ACL checks
+     * and before that delete.
+     */
+    public function beforeMoveOrCopy(string $source): void
+    {
+        if (! $this->server->tree->nodeExists($source)) {
+            throw new NotFound('The source of this move or copy does not exist.');
+        }
     }
 
     /**
