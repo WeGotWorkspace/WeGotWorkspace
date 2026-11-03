@@ -52,8 +52,14 @@ export function driveUploadFolderRowState(
     folder.subtreeBytes > 0
       ? Math.min(100, Math.round((folder.bytesDone / folder.subtreeBytes) * 100))
       : null;
-  const started = folder.status === "creating" || folder.bytesDone > 0 || folder.filesDone > 0;
-  const kind: DriveUploadRowKind = started ? "uploading" : waitingKind(live);
+  const waiting = waitingKind(live);
+  // A created folder on a running queue is busy with the folders and files below it.
+  const started =
+    folder.status === "creating" ||
+    folder.bytesDone > 0 ||
+    folder.filesDone > 0 ||
+    (folder.status === "created" && waiting === "waiting");
+  const kind: DriveUploadRowKind = started ? "uploading" : waiting;
   const words = driveLabels.uploadState[kind];
   const text = [
     words,

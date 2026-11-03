@@ -36,6 +36,13 @@ describe("driveUploadFolderRowState (#1620)", () => {
     ).toBe("waitingForAnswer");
   });
 
+  it("shows uploading once it exists, while the queue runs", () => {
+    expect(driveUploadFolderRowState(folder()).statusText).toBe("Uploading · 0%");
+    expect(driveUploadFolderRowState(folder(), { queueState: "paused_offline" }).kind).toBe(
+      "waitingOffline",
+    );
+  });
+
   it("shows the progress of everything below it, with the files that failed", () => {
     const state = driveUploadFolderRowState(
       folder({ bytesDone: 420, filesDone: 3, failedFiles: 2 }),

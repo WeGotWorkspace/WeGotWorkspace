@@ -61,8 +61,20 @@ export async function upsertDriveEntry(
   username: string,
   entry: WgwDriveDirectoryEntry,
 ): Promise<void> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await driveEntriesTable(db).put(driveEntryRowFromEntry(entry));
+  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const row = driveEntryRowFromEntry(entry);
+  const existing = row.type === "dir" ? await table.get(row.id) : undefined;
+  // A folder still taking an upload keeps its marker until the upload is done (#1620).
+  if (existing?.uploadId && existing.type === "dir") {
+    const { upload } = parseEntryRow(existing);
+    await table.put({
+      ...row,
+      uploadId: existing.uploadId,
+      data: JSON.stringify({ ...entry, upload }),
+    });
+    return;
+  }
+  await table.put(row);
 }
 
 /** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */
