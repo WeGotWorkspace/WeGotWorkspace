@@ -87,9 +87,10 @@ test.describe("Docs pages and page break (live app)", () => {
       await breakThenToken(tabB);
 
       await waitForDocSaved(tabA, apiPath, `<!-- pagebreak -->\n\n${token}\n\nSecond paragraph.`);
-      expect(await tabA.evaluate(() => localStorage.getItem("wgw.ui.docs.pageSetup"))).toContain(
-        '"format":"a5"',
-      );
+      // The toolbar sets page setup for this document only.
+      expect(
+        await tabA.evaluate(() => localStorage.getItem("wgw.ui.docs.pageSetup.byDoc")),
+      ).toContain('"format":"a5"');
 
       await tabB.reload();
       await expect(tabB.locator(".ProseMirror")).toContainText(token, { timeout: 30_000 });
