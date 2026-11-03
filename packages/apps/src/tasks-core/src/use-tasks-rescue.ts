@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useParkedWrites } from "@/lib/offline/core/use-parked-writes";
-import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks-bootstrap-sync";
+import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { rescueParkedTasks, type TaskRescueTarget } from "@/lib/offline/tasks/tasks-parked-writes";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";

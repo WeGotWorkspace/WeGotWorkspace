@@ -15,7 +15,7 @@ import {
   defaultTaskConflictFieldChoices,
   type TaskConflictFieldChoices,
   type TaskConflictFieldRow,
-} from "@/lib/offline/tasks-conflict-merge";
+} from "@/lib/offline/tasks/tasks-conflict-merge";
 import "./tasks-conflict-dialog.css";
 
 export type TasksConflictDialogProps = {
