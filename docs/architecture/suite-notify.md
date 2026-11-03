@@ -50,7 +50,8 @@ Recipients come from `$event->data['recipients']`. The actor is never notified. 
 ## Storage (`wgw`)
 
 - `notifications` — inbox row per principal: title, body, in-app `navigate`, `tag`, `read_at`.
-- `notification_deliveries` — short-lived `local` / `vapid` attempts (`due_at`, `acked_at`, `sent_at`). Local rows are due ~20s after create so a visible tab can ack before VAPID (grace must stay longer than the 15s inbox poll).
+- `notification_deliveries` — short-lived delivery state. One `local` row per inbox row (`due_at`, `acked_at`, `sent_at`): due ~20s after create so a visible tab can ack before VAPID (grace must stay longer than the 15s inbox poll). One `vapid` row per inbox row and subscription that got the push (`endpoint_hash`, #1670), so no subscription gets the same push twice. The local row is marked `sent_at` once no receiving subscription is still open; until then the sweep retries only the open ones.
+- **Urgent news (#1670):** `meet.started` skips the grace. `NotifyListener` makes its local row due after a 5 s hold and defers one `UrgentPushService` send per event to after the response: at most 20 subscriptions (round-robin over recipients, newest first), all at once over curl multi, within 1.5 s. What is left stays due for the sweep. Design: [notifications.md](notifications.md) ("Urgent active news").
 - `push_subscriptions` — principal + endpoint; prune when the push service rejects the subscription for good (400 invalid, 403 VAPID key mismatch, 404/410 expired).
 
 ## LAMP scheduler

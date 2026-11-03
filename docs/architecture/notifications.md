@@ -87,10 +87,23 @@ An after-response send still holds a PHP-FPM worker until it finishes, and each 
 
 - all subscriptions are sent in parallel (curl multi), with a hard total timeout of 1.5 s;
 - at most 20 subscriptions per event go out after the response; any beyond that, and any that did not finish within the timeout, stay due for the next cron sweep;
-- delivery status is kept per subscription, not per notification (today `notification_deliveries` has one row per notification and channel), so the sweep only sends to devices that are still open and never repeats one that already got it;
-- the cutoff of 20 is a starting value; the load test measures it before it is fixed.
+- delivery status is kept per subscription, not per notification: a `vapid` row in `notification_deliveries` with the subscription's endpoint hash, so the sweep only sends to devices that are still open and never repeats one that already got it;
+- the cutoff of 20 is measured: about 0.2 s of worker time per meeting start, while 40 subscriptions double it and stretch the tail ([realtime-capacity.md](../realtime-capacity.md#urgent-web-push-after-response-send)).
 
-That push reaches every device of the recipient, also one where the app is open. The service worker then checks `clients.matchAll()`: when a visible WGW client exists in that browser, it posts the item to that client, whose hub shows the toast, and shows no OS notification where the browser allows that. The `Notification` state confirms the item afterwards; the hub de-duplicates by inbox id, so the toast appears once. This works even while push to that tab is down or rate-limited. Safari requires a visible notification for every push, so there you may see a toast and an OS notification for the same meeting. We accept that duplicate; a spike confirms per browser before the task is built. The local-ack keeps its job for other news: stopping a push to another device that an open client already showed.
+Built in #1670 (spec: [.agents/specs/1670-urgent-meet-push/](../../.agents/specs/1670-urgent-meet-push/)): `UrgentPushService`, deferred from `NotifyListener`; the urgent local row is due after a 5 s hold so the sweep never races the send.
+
+That push reaches every device of the recipient, also one where the app is open. The service worker then checks `clients.matchAll()`: when a visible WGW window exists in that browser, it posts the item to every visible window (`wgw-notification-pushed`), whose inbox shows it at once, and shows no OS notification where the browser allows that (table below). The push payload carries the inbox id, so the window merges the item by id; the `Notification` state or the next poll confirms it afterwards, and the item never chimes twice. This works even while push to that tab is down or rate-limited. Where the browser does not allow it, you see the item in the window and an OS notification for the same meeting; we accept that duplicate. The local-ack keeps its job for other news: stopping a push to another device that an open client already showed. The in-app toast (#1669) hooks in where the posted item enters the inbox.
+
+#### May the service worker skip the OS notification? (spike, #1670)
+
+| Browser | Skips with a visible window | Why (source) |
+|---------|-----------------------------|--------------|
+| Chromium (Chrome, Edge), desktop and Android | **Yes** | `PushMessagingNotificationManager::DidCountVisibleNotifications`: "Sites with a currently visible tab don't need to show notifications." It checks the active tab of every window (desktop, installed app windows included) or tab model (Android) for a visible page of the origin. Without one, a silent push spends site-engagement budget and Chrome eventually shows "This site has been updated in the background". |
+| Firefox desktop | **Yes** | `PushService._updateQuota` / `PushRecord.getLastVisit`: while a tab of the origin is open, every push resets the quota (16), so a silent push costs nothing. |
+| Firefox for Android | **No** | GeckoView reads the last visit from history instead of the open tabs, so each silent push uses up quota until the next visit; at zero Firefox drops the subscription. |
+| Safari and every iOS browser (WebKit) | **No** | No silent push. Since iOS 18.4 / macOS 15.5 the declarative payload (`web_push: 8030`) is shown as the fallback when the worker shows nothing; before that, a few pushes without a notification revoke the subscription. |
+
+The service worker reads the engine from its user agent (`push-delivery.ts`): `Chrome/`, `Chromium/` or `Edg/` → Chromium; `Firefox/` without `Android` → Firefox desktop; anything else shows the notification. A visible window means `WindowClient.visibilityState === "visible"`, which is the same page visibility Chromium checks. Chromium does not handle the declarative payload; if it ever does, re-check this table. Still to confirm on real devices: an installed Android app window (WebAPK) counts as a visible tab (push matrix #1608).
 
 ## Active news on the client
 
@@ -183,7 +196,7 @@ Later: per-event preferences, Docs threads, holding connections open on a separa
 ## Open questions
 
 1. **Event-source retry and fallback poll values:** measure with k6 first.
-2. **Service worker per browser:** which browsers let it skip the OS notification when a visible client exists (spike before the urgent-push task).
+2. **Service worker per browser:** answered by the spike in #1670, see "May the service worker skip the OS notification?" above.
 
 ## Review history
 

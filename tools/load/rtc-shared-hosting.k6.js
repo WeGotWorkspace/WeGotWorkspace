@@ -16,6 +16,22 @@
  *   k6 run -e BASE_URL=https://example.test -e PUSH_USER=load -e PUSH_PASSWORD=... \
  *     tools/load/rtc-shared-hosting.k6.js
  *
+ * Urgent Web Push (#1670) joins when URGENT_USER / URGENT_PASSWORD (who starts
+ * the meetings) and URGENT_RECIPIENT / URGENT_RECIPIENT_PASSWORD name two test
+ * accounts. Each iteration gives the recipient URGENT_SUBSCRIPTIONS push
+ * subscriptions, starts a new meeting, and right after its response sends a
+ * cheap probe request. On a server with ONE PHP worker the probe waits until
+ * the after-response send is done, so `urgent_worker_busy_ms` is how long a
+ * worker stays busy for one meeting start. The subscriptions point at a real
+ * push service (FCM) with made-up tokens: every send is a real TLS round trip
+ * that the push service refuses, and the server prunes them again. Set
+ * URGENT_ONLY=1 to run this scenario alone.
+ *
+ *   k6 run -e BASE_URL=http://127.0.0.1:9271 -e URGENT_ONLY=1 \
+ *     -e URGENT_USER=admin -e URGENT_PASSWORD=... \
+ *     -e URGENT_RECIPIENT=member -e URGENT_RECIPIENT_PASSWORD=... \
+ *     -e URGENT_SUBSCRIPTIONS=20 tools/load/rtc-shared-hosting.k6.js
+ *
  * Sizing table: docs/realtime-capacity.md
  */
 import http from "k6/http";
@@ -33,6 +49,24 @@ const pushBrowsers = Number(__ENV.PUSH_BROWSERS || 16);
 const pushBatchSize = Number(__ENV.PUSH_BATCH_SIZE || 10);
 const pushDuration = __ENV.PUSH_DURATION || "2m";
 const pushFolder = "push-load";
+const urgentUser = __ENV.URGENT_USER || "";
+const urgentPassword = __ENV.URGENT_PASSWORD || "";
+const urgentRecipient = __ENV.URGENT_RECIPIENT || "";
+const urgentRecipientPassword = __ENV.URGENT_RECIPIENT_PASSWORD || "";
+const urgentEnabled =
+  urgentUser !== "" &&
+  urgentPassword !== "" &&
+  urgentRecipient !== "" &&
+  urgentRecipientPassword !== "";
+const urgentOnly = __ENV.URGENT_ONLY === "1";
+const urgentSubscriptions = Number(__ENV.URGENT_SUBSCRIPTIONS || 20);
+const urgentIterations = Number(__ENV.URGENT_ITERATIONS || 10);
+// One valid P-256 key and auth secret, so the server can encrypt every payload.
+const urgentKeys = {
+  p256dh:
+    "BKlxOjMJeVRMYr7PjmDBWhLy-kme91PLZeu-ZtTvrVFzaff4iIm2LobEAbn945_xM_JuaLTt1WwvBxUzdDuLGYU",
+  auth: "n-zOpWQrURlsxRc6pTu2Wg",
+};
 
 const pushRequest = new Trend("push_request_ms", true);
 const pushStateBySource = {};
@@ -49,6 +83,9 @@ for (const source of [
 }
 const driveWriteSingle = new Trend("drive_write_single_ms", true);
 const driveWriteBatch = new Trend("drive_write_batch_ms", true);
+const urgentWrite = new Trend("urgent_write_ms", true);
+const urgentProbe = new Trend("urgent_probe_ms", true);
+const urgentWorkerBusy = new Trend("urgent_worker_busy_ms", true);
 
 const pushScenarios = pushEnabled
   ? {
@@ -73,6 +110,17 @@ const pushScenarios = pushEnabled
         duration: pushDuration,
         preAllocatedVUs: 1,
         exec: "driveBatch",
+      },
+    }
+  : {};
+
+const urgentScenarios = urgentEnabled
+  ? {
+      urgent: {
+        executor: "per-vu-iterations",
+        vus: 1,
+        iterations: urgentIterations,
+        exec: "urgent",
       },
     }
   : {};
@@ -114,7 +162,11 @@ const rtcScenarios = {
 };
 
 export const options = {
-  scenarios: pushOnly ? pushScenarios : { ...rtcScenarios, ...pushScenarios },
+  scenarios: urgentOnly
+    ? urgentScenarios
+    : pushOnly
+      ? pushScenarios
+      : { ...rtcScenarios, ...pushScenarios, ...urgentScenarios },
   thresholds: {
     http_req_failed: ["rate<0.05"],
   },
@@ -145,9 +197,16 @@ function session(room, name, pollSeconds, polls = 4) {
   const join = http.post(
     `${base}/api/v1/rooms/${encodeURIComponent(room)}/participants`,
     JSON.stringify({ room, name }),
-    { headers: { "Content-Type": "application/json", Accept: "application/json" } },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    },
   );
-  check(join, { "join accepted": (res) => res.status === 200 || res.status === 201 });
+  check(join, {
+    "join accepted": (res) => res.status === 200 || res.status === 201,
+  });
   let peerId = name;
   try {
     peerId = join.json("peerId") || peerId;
@@ -159,18 +218,17 @@ function session(room, name, pollSeconds, polls = 4) {
       `${base}/api/v1/rooms/${encodeURIComponent(room)}/events?peerId=${encodeURIComponent(peerId)}`,
       { headers: { Accept: "application/json" } },
     );
-    check(poll, { "poll ok": (res) => res.status === 200 || res.status === 204 });
+    check(poll, {
+      "poll ok": (res) => res.status === 200 || res.status === 204,
+    });
     sleep(pollSeconds);
   }
 }
 
-export function setup() {
-  if (!pushEnabled) {
-    return {};
-  }
-  const login = http.post(
+function login(username, password) {
+  const res = http.post(
     `${base}/api/v1/auth/token`,
-    JSON.stringify({ username: pushUser, password: pushPassword }),
+    JSON.stringify({ username, password }),
     {
       headers: {
         "Content-Type": "application/json",
@@ -178,8 +236,42 @@ export function setup() {
       },
     },
   );
-  check(login, { "push login ok": (res) => res.status === 200 });
-  const token = login.json("access_token");
+  check(res, { [`login ${username} ok`]: (r) => r.status === 200 });
+  return res.json("access_token");
+}
+
+function bearer(token) {
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  };
+}
+
+/** Time of a request on an idle worker, to subtract from the probe. */
+function probeBaseline() {
+  const samples = [];
+  for (let i = 0; i < 5; i += 1) {
+    samples.push(http.get(`${base}/api/v1/health`).timings.duration);
+  }
+  samples.sort((a, b) => a - b);
+  return samples[2];
+}
+
+export function setup() {
+  const urgent = urgentEnabled
+    ? {
+        actorToken: login(urgentUser, urgentPassword),
+        recipientToken: login(urgentRecipient, urgentRecipientPassword),
+        probeBaselineMs: probeBaseline(),
+      }
+    : null;
+  if (!pushEnabled) {
+    return { urgent };
+  }
+  const token = login(pushUser, pushPassword);
   const basic = `Basic ${encoding.b64encode(`${pushUser}:${pushPassword}`)}`;
   http.request("MKCOL", `${base}/files/users/${pushUser}/${pushFolder}`, null, {
     headers: { Authorization: basic },
@@ -191,7 +283,60 @@ export function setup() {
     (node) => node.name === pushFolder,
   );
 
-  return { token, basic, folderId: folder ? folder.id : null };
+  return { token, basic, folderId: folder ? folder.id : null, urgent };
+}
+
+/**
+ * One meeting start for a recipient with URGENT_SUBSCRIPTIONS subscriptions.
+ * Only the join that starts the meeting and the probe right after it count.
+ */
+export function urgent(data) {
+  const { actorToken, recipientToken, probeBaselineMs } = data.urgent;
+  for (let i = 0; i < urgentSubscriptions; i += 1) {
+    const sub = http.post(
+      `${base}/api/v1/notifications/push/subscriptions`,
+      JSON.stringify({
+        endpoint: `https://fcm.googleapis.com/fcm/send/wgw-load-test-${i}`,
+        keys: urgentKeys,
+      }),
+      bearer(recipientToken),
+    );
+    check(sub, { "urgent subscribe ok": (res) => res.status === 201 });
+  }
+  const channel = http.post(
+    `${base}/api/v1/chat/channels`,
+    JSON.stringify({
+      name: `urgent-load-${__ITER}-${Date.now()}`,
+      kind: "meeting",
+    }),
+    bearer(actorToken),
+  );
+  check(channel, { "urgent channel ok": (res) => res.status === 201 });
+  const room = channel.json("id");
+  http.patch(
+    `${base}/api/v1/chat/channels/${room}`,
+    JSON.stringify({ shareWith: { [urgentRecipient]: { mayWriteAll: true } } }),
+    bearer(actorToken),
+  );
+  http.post(
+    `${base}/api/v1/meetings/rooms`,
+    JSON.stringify({ room, ownerPrincipal: `u:${urgentUser}` }),
+    bearer(actorToken),
+  );
+
+  const started = Date.now();
+  const join = http.post(
+    `${base}/api/v1/rooms/${encodeURIComponent(room)}/participants`,
+    JSON.stringify({ peerId: `urgent-${__ITER}`, name: "Load" }),
+    bearer(actorToken),
+  );
+  check(join, { "urgent meeting start ok": (res) => res.status === 200 });
+  const probe = http.get(`${base}/api/v1/health`);
+  const busy = Date.now() - started - probeBaselineMs;
+  urgentWrite.add(join.timings.duration);
+  urgentProbe.add(probe.timings.duration);
+  urgentWorkerBusy.add(Math.max(0, busy));
+  sleep(1);
 }
 
 // Per-VU state: each VU is one browser with its own id and Last-Event-ID.
