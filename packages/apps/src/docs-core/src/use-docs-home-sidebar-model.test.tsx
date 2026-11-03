@@ -30,6 +30,8 @@ describe("useDocsHomeSidebarModel", () => {
       "Starred",
       "Trash",
     ]);
+    // Docs has no upload queue: the shared order's Uploads entry stays hidden.
+    expect(result.current.primaryItems.map((item) => item.label)).not.toContain("Uploads");
     expect(result.current.primaryItems[0]?.selected).toBe(true);
     expect(result.current.primaryItems[1]?.selected).toBe(false);
 

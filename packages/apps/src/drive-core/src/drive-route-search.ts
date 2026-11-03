@@ -23,6 +23,7 @@ export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   if (viewType === "recent") return { type: "recent" };
   if (viewType === "starred") return { type: "starred" };
   if (viewType === "shared") return { type: "shared" };
+  if (viewType === "uploads") return { type: "uploads" };
   // Access manager is Storybook-only until product-ready; ignore deep links.
   if (viewType === "access") {
     return { type: "folder", path: "My Drive" };

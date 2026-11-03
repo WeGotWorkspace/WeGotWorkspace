@@ -14,6 +14,7 @@ import {
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { cancelSaveTimer } from "./docs-collab-save-timer";
 import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
@@ -157,7 +158,7 @@ export function useDocsCollabJoin({
     if (awareness) {
       awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
     }
-    if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
+    cancelSaveTimer(refs.saveTimerRef);
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;

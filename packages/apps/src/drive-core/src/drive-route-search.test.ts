@@ -57,3 +57,10 @@ describe("drive-route-search shared view", () => {
     expect(driveHrefFromView({ type: "shared" })).toBe("/drive?view=shared");
   });
 });
+
+describe("drive-route-search uploads view", () => {
+  it("round-trips the Uploads view via ?view=uploads, so a reload keeps it open", () => {
+    expect(driveViewFromSearch({ view: "uploads" })).toEqual({ type: "uploads" });
+    expect(driveHrefFromView({ type: "uploads" })).toBe("/drive?view=uploads");
+  });
+});

@@ -204,7 +204,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 
 | App | Types | Calls |
 |-----|-------|-------|
-| Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` |
+| Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` (built, `use-notes-live-inbound.ts`); the open note comes without `body` (`note-body-rooms.ts`) |
 | Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
 | Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.sync()` |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |

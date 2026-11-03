@@ -123,3 +123,51 @@ describe("createHybridDriveOperations readCachedDirectory", () => {
     await expect(ops.readCachedDirectory?.("/users/alice/Empty")).resolves.toBeNull();
   });
 });
+
+describe("createHybridDriveOperations upload queue", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await driveEntriesTable(db).clear();
+    await db.table("drive_upload_items").clear();
+    await db.table("drive_upload_batches").clear();
+    await db.table("drive_upload_blobs").clear();
+    await db.meta.clear();
+  });
+
+  it("queues files offline into a cached folder by its FileNode id and lists the placeholders", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    await upsertDriveEntry(username, {
+      ...entry("/users/alice/Projects", "Projects"),
+      type: "dir",
+      nodeId: "fn-projects",
+    });
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    const { batchId } = await ops.enqueueUploads!({
+      cwd: "/users/alice/Projects",
+      files: [new File(["x"], "scan.pdf", { type: "application/pdf" })],
+    });
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const items = await db.table("drive_upload_items").toArray();
+    expect(items).toMatchObject([{ batchId, targetFolder: { kind: "server", id: "fn-projects" } }]);
+    const listing = await ops.listDirectory("/users/alice/Projects");
+    expect(listing.directory.files.map((file) => [file.name, file.upload?.status])).toEqual([
+      ["scan.pdf", "queued"],
+    ]);
+
+    await ops.cancelUploadBatch!(batchId);
+    expect(await db.table("drive_upload_items").count()).toBe(0);
+  });
+
+  it("refuses to queue into a folder whose id this device has never seen while offline", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await expect(
+      ops.enqueueUploads!({ cwd: "/users/alice/Unknown", files: [new File(["x"], "a.pdf")] }),
+    ).rejects.toThrow(/not available offline/);
+  });
+});

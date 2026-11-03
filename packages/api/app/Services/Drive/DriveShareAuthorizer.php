@@ -34,6 +34,16 @@ final class DriveShareAuthorizer
     }
 
     /**
+     * Whether the caller may view the path; a path they cannot reach reads as false.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function mayView(string $virtualPath, array $principal): bool
+    {
+        return $this->rightsOrNone($virtualPath, $principal)['mayView'];
+    }
+
+    /**
      * @param  array{username: string, role: string}  $principal
      */
     public function assertMayEditContent(string $virtualPath, array $principal): void
