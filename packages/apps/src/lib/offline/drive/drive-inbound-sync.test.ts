@@ -545,6 +545,24 @@ describe("syncDriveInboundFromFileNodes", () => {
     warn.mockRestore();
   });
 
+  it("reports a change under someone else's share it could not place (#1663)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    installCatalog(new Map([["fn-shared", node("fn-shared", "fn-admin-folder", "plan.md")]]));
+    fileNodeChanges.mockResolvedValue(changes({ created: ["fn-shared"], newState: "8" }));
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.changed).toBe(false);
+    expect(result.listedChanges).toBe(true);
+    warn.mockRestore();
+  });
+
+  it("reports no listed changes when FileNode/changes is empty", async () => {
+    fileNodeChanges.mockResolvedValue(changes({ newState: "9" }));
+    const result = await syncDriveInboundFromFileNodes(username);
+    expect(result).toMatchObject({ changed: false, listedChanges: false });
+  });
+
   it("does not advance the token past a move blocked by unsaved work", async () => {
     await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/old.md", "fn-moving"));

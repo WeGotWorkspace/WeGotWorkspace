@@ -42,6 +42,12 @@ const INITIAL_FILE_NODE_STATE = "0";
 
 export type DriveInboundSyncResult = {
   changed: boolean;
+  /**
+   * `FileNode/changes` listed at least one node, placed in the cache or not.
+   * A node under a share rooted in someone else's tree has no cache path, but
+   * an open listing of that folder still shows the change (#1663).
+   */
+  listedChanges: boolean;
   usedFullResync: boolean;
   /** Paths left in place because they still have unsaved collab work. */
   keptUnsavedPaths: string[];
@@ -72,7 +78,12 @@ export function syncDriveInboundFromFileNodes(
   options?: { signal?: AbortSignal },
 ): Promise<DriveInboundSyncResult> {
   if (!username) {
-    return Promise.resolve({ changed: false, usedFullResync: false, keptUnsavedPaths: [] });
+    return Promise.resolve({
+      changed: false,
+      listedChanges: false,
+      usedFullResync: false,
+      keptUnsavedPaths: [],
+    });
   }
   const existing = inFlight.get(username);
   if (existing) return existing;
@@ -83,24 +94,32 @@ export function syncDriveInboundFromFileNodes(
   return run;
 }
 
+/** Resolves once the sync already running for `username`, if any, has settled. */
+export async function settleDriveInbound(username: string): Promise<void> {
+  await inFlight.get(username)?.catch(() => undefined);
+}
+
 async function runDriveInbound(
   username: string,
   options?: { signal?: AbortSignal },
 ): Promise<DriveInboundSyncResult> {
   if (!getConnectivitySnapshot()) {
-    return { changed: false, usedFullResync: false, keptUnsavedPaths: [] };
+    return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
   }
   const since = (await readDriveSyncToken(username)) ?? INITIAL_FILE_NODE_STATE;
   const session = await driveJmapSession();
   try {
     const drained = await drainFileNodeChanges(session, since, options?.signal);
     if (options?.signal?.aborted) {
-      return { changed: false, usedFullResync: false, keptUnsavedPaths: [] };
+      return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
     }
     const kept = await applyFileNodeChanges(username, session, drained, options?.signal);
+    const listedChanges =
+      drained.created.length + drained.updated.length + drained.destroyed.length > 0;
     if (options?.signal?.aborted) {
       return {
         changed: kept.changed,
+        listedChanges,
         usedFullResync: false,
         keptUnsavedPaths: kept.keptUnsavedPaths,
       };
@@ -111,6 +130,7 @@ async function runDriveInbound(
     }
     return {
       changed: kept.changed,
+      listedChanges,
       usedFullResync: false,
       keptUnsavedPaths: kept.keptUnsavedPaths,
     };
@@ -167,12 +187,13 @@ async function fullResync(
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
   const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
-    return { changed: true, usedFullResync: true, keptUnsavedPaths: [] };
+    return { changed: true, listedChanges: true, usedFullResync: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   await writeDriveSyncToken(username, state.state);
   return {
     changed: true,
+    listedChanges: true,
     usedFullResync: true,
     keptUnsavedPaths: await listKeptUnsavedDocumentPaths(username),
   };
