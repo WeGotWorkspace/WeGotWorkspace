@@ -42,15 +42,22 @@ export function createLocalAckedStore(
   storage: IdStorage | null,
   maxIds: number = LOCAL_ACKED_MAX_IDS,
 ): LocalAckedStore {
+  /** What this tab last wrote; still read when a later write to storage failed. */
   let memory: string[] = [];
 
-  function load(): string[] {
-    if (!storage) return memory;
+  function readStored(): string[] {
+    if (!storage) return [];
     try {
-      return parseIds(storage.getItem(LOCAL_ACKED_STORAGE_KEY)) ?? memory;
+      return parseIds(storage.getItem(LOCAL_ACKED_STORAGE_KEY)) ?? [];
     } catch {
-      return memory;
+      return [];
     }
+  }
+
+  function load(): string[] {
+    const stored = readStored();
+    const inStorage = new Set(stored);
+    return [...stored, ...memory.filter((id) => !inStorage.has(id))];
   }
 
   return {

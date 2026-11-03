@@ -68,6 +68,19 @@ describe("createLocalAckedStore", () => {
     expect(store.read().has("n1")).toBe(true);
   });
 
+  it("still remembers ids when storage reads but refuses writes (quota)", () => {
+    const storage = memoryStorage({ [LOCAL_ACKED_STORAGE_KEY]: JSON.stringify(["old"]) });
+    const store = createLocalAckedStore({
+      getItem: storage.getItem,
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    });
+    store.add(["n1"]);
+
+    expect([...store.read()]).toEqual(["old", "n1"]);
+  });
+
   it("works without storage at all", () => {
     const store = createLocalAckedStore(null);
     store.add(["n1"]);
