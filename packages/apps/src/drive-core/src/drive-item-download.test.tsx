@@ -129,17 +129,17 @@ describe("row menu", () => {
   it("offers Download on a folder when folders can be downloaded", () => {
     const onDownload = renderRowMenu(FOLDER, true);
 
-    fireEvent.click(screen.getByRole("menuitem", { name: driveLabels.detailDownload }));
+    fireEvent.click(screen.getByRole("menuitem", { name: driveLabels.detailDownloadFolder }));
     expect(onDownload).toHaveBeenCalledWith(FOLDER);
   });
 
   it("offers no download on a folder without folder downloads or in trash", () => {
     renderRowMenu(FOLDER, false);
-    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownload })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownloadFolder })).toBeNull();
     cleanup();
 
     renderRowMenu(FOLDER, true, true);
-    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownload })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownloadFolder })).toBeNull();
   });
 
   it("keeps Download on a file", () => {
@@ -175,7 +175,7 @@ describe("row menu", () => {
     expect(entries).toEqual([
       driveLabels.detailOpen,
       "---",
-      driveLabels.detailDownload,
+      driveLabels.detailDownloadFolder,
       driveLabels.detailMove,
       driveLabels.detailRename,
       driveLabels.detailShare,
@@ -218,18 +218,18 @@ describe("selection bar", () => {
     const ops = operations(true);
     const bar = selectionLabels(FOLDER, ops);
 
-    expect(bar.labels).toContain(driveLabels.selectionDownload);
-    bar.click(driveLabels.selectionDownload);
+    expect(bar.labels).toContain(driveLabels.detailDownloadFolder);
+    bar.click(driveLabels.detailDownloadFolder);
     expect(ops.downloadFolder).toHaveBeenCalledWith("/users/alice/Projects");
     expect(ops.downloadFile).not.toHaveBeenCalled();
   });
 
   it("offers no folder download without downloadFolder or in trash", () => {
     expect(selectionLabels(FOLDER, operations(false)).labels).not.toContain(
-      driveLabels.selectionDownload,
+      driveLabels.detailDownloadFolder,
     );
     expect(selectionLabels(FOLDER, operations(true), true).labels).not.toContain(
-      driveLabels.selectionDownload,
+      driveLabels.detailDownloadFolder,
     );
   });
 

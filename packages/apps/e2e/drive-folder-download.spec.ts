@@ -73,7 +73,7 @@ test.describe("Drive folder download (live app)", () => {
     expect(entries).toEqual([
       "Open",
       "---",
-      "Download",
+      "Download as zip",
       "Move",
       "Rename",
       "Share",
@@ -84,7 +84,7 @@ test.describe("Drive folder download (live app)", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      menu.getByRole("menuitem", { name: "Download" }).click(),
+      menu.getByRole("menuitem", { name: "Download as zip" }).click(),
     ]);
     expect(download.suggestedFilename()).toBe(`${FOLDER}.zip`);
     const zip = readFileSync(await download.path());
