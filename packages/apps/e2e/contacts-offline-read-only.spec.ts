@@ -232,6 +232,9 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       await tab.getByRole("button", { name: "Save", exact: true }).click();
       await tab.getByPlaceholder("Search contacts...").fill(CREATED);
       await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible();
+      // Save runs after the 2.5 s undo window (`queueDelayMs`). Let it queue the
+      // create while still offline, or it is sent online and only rolled back.
+      await tab.waitForTimeout(3_500);
 
       // The owner makes the share view-only; the teammate reconnects.
       await shareBook(false);
