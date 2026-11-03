@@ -16,8 +16,7 @@
 // manifests, each its own package version. Deleting only the index leaves
 // orphans; deleting an untagged child of a live index breaks that image.
 // So an untagged version is deleted only when a deleted edge index
-// references it, no kept tagged version references it, and it is older
-// than the cutoff too. Children go first, then their index: if a run stops
+// references it and no kept tagged version references it. Children go first, then their index: if a run stops
 // halfway, the index is still tagged and the next run retries it. Untagged
 // versions that no deleted index references are left alone.
 //
@@ -96,12 +95,7 @@ export function planEdgePrune(versions, childrenOf, cutoff) {
       const children = [];
       for (const digest of childrenOf.get(index.name) ?? []) {
         const child = untaggedByDigest.get(digest);
-        if (
-          !child ||
-          claimed.has(digest) ||
-          keptDigests.has(digest) ||
-          Date.parse(child.created_at) >= cutoff.getTime()
-        ) {
+        if (!child || claimed.has(digest) || keptDigests.has(digest)) {
           continue;
         }
         claimed.add(digest);

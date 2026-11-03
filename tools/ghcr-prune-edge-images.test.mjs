@@ -108,14 +108,14 @@ describe("planEdgePrune", () => {
     ]);
   });
 
-  it("keeps an untagged child newer than the cutoff", () => {
+  it("deletes an untagged child with its index regardless of the child's age", () => {
     const versions = [
       version("idx-old", ["0.1.1-edge.3"]),
       version("fresh", [], NEW),
     ];
     const childrenOf = new Map([["idx-old", ["fresh"]]]);
     assert.deepEqual(ids(planEdgePrune(versions, childrenOf, cutoff)), [
-      ["idx-old", []],
+      ["idx-old", ["fresh"]],
     ]);
   });
 
