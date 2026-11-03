@@ -61,6 +61,7 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Middleware\CspReportBodyLimit;
+use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use App\Services\Jmap\Download\DownloadTicketService;
@@ -329,7 +330,6 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     // feature-gate middleware: domain availability is expressed through the
     // advertised capabilities and the `using` guard (JmapCapabilitySet), so
     // disabling one domain never takes the whole envelope down.
-    Route::get('jmap/session', JmapSessionController::class);
     Route::post('jmap', [JmapApiController::class, 'handle']);
     Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
     Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
@@ -343,6 +343,21 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
 Route::middleware(['wgw.auth', 'throttle:'.JmapPushRateLimiters::PUSH, 'wgw.role:user'])->group(function (): void {
     Route::get('jmap/events/{types}/{closeafter}/{ping}', JmapEventSourceController::class);
 });
+
+// JMAP Session for members and guests: a member gets the full Session as
+// before; a guest gets its guest upload account, or 403 when its share link
+// does not allow uploads (#1715).
+Route::get('jmap/session', JmapSessionController::class)
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+
+// Guest uploads (#1715): guests only, their own method list, a request
+// budget per share (GuestUploadRateLimiters), and a gate on every request
+// that re-checks the share before any body is read (GuestUploadGate).
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'throttle:'.GuestUploadRateLimiters::UPLOAD, 'wgw.guest'])
+    ->group(function (): void {
+        Route::post('jmap/guest', [JmapApiController::class, 'handleGuest']);
+        Route::post('jmap/guest/upload/{accountId}', [JmapBlobController::class, 'uploadGuest']);
+    });
 
 Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
