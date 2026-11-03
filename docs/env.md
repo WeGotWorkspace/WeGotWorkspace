@@ -64,7 +64,7 @@ That database is separate from `wgw-content/db.sqlite`.
 
 ### Scheduler (reminders and Web Push)
 
-Shared hosting and production Docker must run `php artisan schedule:run` every minute. Registered commands: `wgw:notify:due-alarms`, `wgw:notify:vapid-sweep`. There is no `queue:work` daemon.
+Shared hosting and production Docker must run `php artisan schedule:run` every minute. Registered commands: `wgw:notify:due-alarms`, `wgw:notify:vapid-sweep`. There is no `queue:work` daemon. A meeting start (`meet.started`) does not wait for the scheduler: its Web Push goes out right after the request, on the same PHP worker (at most 20 subscriptions, 1.5 s; `WGW_PUSH_URGENT_MAX_SUBSCRIPTIONS` and `WGW_PUSH_URGENT_TIMEOUT_MS` exist for load tests only). The scheduler sends whatever that left.
 
 ```cron
 * * * * * php packages/api/artisan schedule:run >> /dev/null 2>&1

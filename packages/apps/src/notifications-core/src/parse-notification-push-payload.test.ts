@@ -20,6 +20,37 @@ describe("parseNotificationPushPayload", () => {
       app_badge: 1,
       declarative: false,
       scope: "/",
+      item: null,
+    });
+  });
+
+  it("carries the inbox row for a visible window when the payload has an id (#1670)", () => {
+    const parsed = parseNotificationPushPayload({
+      web_push: 8030,
+      notification: {
+        title: "Alice started a meeting",
+        body: "standup",
+        navigate: "https://wegot.example/meet/meetings/standup",
+        tag: "meet.started:standup",
+      },
+      title: "Alice started a meeting",
+      navigate: "/meet/meetings/standup",
+      id: "01JNOTIFICATION",
+      domain: "meet",
+      action: "started",
+      created_at: "2026-11-03T12:00:00Z",
+    });
+    expect(parsed?.item).toEqual({
+      id: "01JNOTIFICATION",
+      domain: "meet",
+      action: "started",
+      data: null,
+      title: "Alice started a meeting",
+      body: "standup",
+      navigate: "/meet/meetings/standup",
+      tag: "meet.started:standup",
+      readAt: null,
+      createdAt: "2026-11-03T12:00:00Z",
     });
   });
 
