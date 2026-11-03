@@ -1,19 +1,16 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { CloudOff, ListPlus } from "lucide-react";
 import { createSharedTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
-import {
-  NoticeBar,
-  type Notice,
-  type NoticeBarLabels,
-  type NoticeBarVariant,
-} from "@/notice-bar/src/notice-bar";
-import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { rescueNotice } from "@/rescue-ui/rescue-notice";
+import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
 import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
+import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { tasksStoryOperations } from "@/tasks-core/stories/tasks-story-shared";
+import { tasksSyncNotice } from "@/tasks-core/src/use-tasks-sync-notice";
 
 const bootstrap = createSharedTasksAppBootstrap();
 const lists = bootstrap.data.taskLists;
@@ -44,78 +41,14 @@ const TWO_LISTS = [
   parked("Call the plumber", "Repairs"),
 ];
 
-/** The bar's own words. Like the dialog's, each app passes them in. */
-const barLabels: NoticeBarLabels = {
-  region: "Needs your attention",
-  showDetails: "Show lists",
-  hideDetails: "Hide lists",
-  folded: (count) => `${count} things need you`,
-  fold: "Fold",
-};
+type FrameProps = { writes: ParkedTask[]; syncStuck?: boolean };
 
-/** Proposed Tasks copy for the rescue notice (new `TasksUILabels` entries once picked). */
-const tasksCount = (count: number) => (count === 1 ? "1 task" : `${count} tasks`);
-function rescueTitle(tasks: number, groups: { name: string }[]) {
-  if (groups.length === 1) {
-    return tasks === 1
-      ? `A task from “${groups[0]!.name}” needs a new list`
-      : `${tasks} tasks from “${groups[0]!.name}” need a new list`;
-  }
-  return `${tasksCount(tasks)} from ${groups.length} lists need a new list`;
-}
-
-type FrameProps = {
-  variant: NoticeBarVariant;
-  writes: ParkedTask[];
-  withSyncNotice?: boolean;
-  defaultOpen?: boolean;
-};
-
-/** Tasks with the bar in place of the header button. Review opens the real dialog. */
-function Frame({ variant, writes: initial, withSyncNotice, defaultOpen }: FrameProps) {
+/** Tasks with the bar under the header, as the app renders it. Review opens the real dialog. */
+function Frame({ writes: initial, syncStuck: initialStuck = false }: FrameProps) {
   const [writes, setWrites] = useState(initial);
-  const [open, setOpen] = useState<string[] | null>(null);
-  const [syncStuck, setSyncStuck] = useState(Boolean(withSyncNotice));
-  const groups = useMemo(() => {
-    const byName = new Map<string, ParkedTask[]>();
-    for (const write of writes) {
-      byName.set(write.containerName, [...(byName.get(write.containerName) ?? []), write]);
-    }
-    return [...byName].map(([name, items]) => ({ name, items }));
-  }, [writes]);
+  const [open, setOpen] = useState(false);
+  const [syncStuck, setSyncStuck] = useState(initialStuck);
   const drop = (ids: string[]) => setWrites((all) => all.filter((w) => !ids.includes(w.id)));
-
-  const notices: Notice[] = [];
-  if (syncStuck) {
-    notices.push({
-      id: "sync",
-      tone: "error",
-      icon: <CloudOff aria-hidden />,
-      title: "Some changes couldn’t sync. They’re saved on this device.",
-      short: "Changes not synced",
-      actionLabel: "Retry",
-      onAction: () => setSyncStuck(false),
-    });
-  }
-  if (groups.length > 0) {
-    notices.push({
-      id: "rescue",
-      tone: "warning",
-      icon: <ListPlus aria-hidden />,
-      title: rescueTitle(writes.length, groups),
-      short: `${tasksCount(writes.length)} need a list`,
-      actionLabel: "Review",
-      onAction: () => setOpen(writes.map((w) => w.id)),
-      items: groups.map((group) => ({
-        id: group.name,
-        label: `“${group.name}”`,
-        meta: tasksCount(group.items.length),
-        onAction: () => setOpen(group.items.map((w) => w.id)),
-      })),
-    });
-  }
-  const shown = open ? writes.filter((w) => open.includes(w.id)) : [];
-
   return (
     <>
       <TasksWorkspace
@@ -123,30 +56,31 @@ function Frame({ variant, writes: initial, withSyncNotice, defaultOpen }: FrameP
         operations={tasksStoryOperations}
         notice={
           <NoticeBar
-            notices={notices}
-            labels={barLabels}
-            variant={variant}
-            itemActionLabel="Review"
-            defaultOpen={defaultOpen}
+            label={L.noticeBarLabel}
+            notices={[
+              syncStuck ? tasksSyncNotice(L, () => setSyncStuck(false)) : null,
+              rescueNotice("tasks", tasksRescueView(L), writes, () => setOpen(true)),
+            ]}
           />
         }
       />
       <TasksRescueDialog
-        open={shown.length > 0}
-        writes={shown}
+        open={open && writes.length > 0}
+        writes={writes}
         lists={lists}
-        labels={defaultTasksLabels}
+        labels={L}
         onMove={drop}
         onDiscard={drop}
-        onLater={() => setOpen(null)}
+        onLater={() => setOpen(false)}
       />
     </>
   );
 }
 
 const meta: Meta<typeof Frame> = {
-  title: "Features/Rescue/Notice bar options",
+  title: "UI/Notice bar",
   component: Frame,
+  tags: ["vitest-ci"],
   parameters: {
     layout: "fullscreen",
     // The app switcher reads the path; the preview default is /notes.
@@ -154,7 +88,7 @@ const meta: Meta<typeof Frame> = {
     docs: {
       description: {
         component:
-          "Replaces the “Tasks from 2 lists need a new list” header button. Three options to compare: A (one line under the header), B (the same, with a row per list), C (docked at the bottom, folds to a pill). None can be dismissed while tasks wait. Review opens the rescue dialog.",
+          "One line per notice between the header and the content (#1894): changes that could not sync on top, tasks that need a new list below. A notice cannot be dismissed; it goes away when what it reports is resolved.",
       },
     },
   },
@@ -166,89 +100,45 @@ type Story = StoryObj<typeof Frame>;
 
 const phone = { viewport: { value: "phone375", isRotated: false } };
 
-/** A · one line under the header: what waits, and Review. */
-export const AStripOneList: Story = {
-  name: "A · Strip · one list",
-  args: { variant: "strip", writes: ONE_LIST },
+export const OneList: Story = {
+  args: { writes: ONE_LIST },
 };
 
-export const AStripTwoLists: Story = {
-  name: "A · Strip · two lists",
-  args: { variant: "strip" },
+export const TwoLists: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const bar = await canvas.findByRole("region", { name: "Needs your attention" });
+    const bar = await canvas.findByRole("region", { name: L.noticeBarLabel });
     await expect(bar).toHaveTextContent("3 tasks from 2 lists need a new list");
-    await userEvent.click(within(bar).getByRole("button", { name: "Review" }));
+    await userEvent.click(within(bar).getByRole("button", { name: L.rescueReview }));
     const body = within(canvasElement.ownerDocument.body);
     await expect(await body.findByText("List 1 of 2")).toBeVisible();
+    await userEvent.click(body.getByRole("button", { name: "Discard 2 tasks" }));
+    await userEvent.click(await body.findByRole("button", { name: "Discard task" }));
+    await expect(canvas.queryByRole("region", { name: L.noticeBarLabel })).toBeNull();
   },
 };
 
-export const AStripPhone: Story = {
-  name: "A · Strip · phone",
-  args: { variant: "strip" },
+export const TwoListsPhone: Story = {
   globals: phone,
 };
 
-/** B · the strip, plus a row per list so you can open one list directly. */
-export const BExpandableClosed: Story = {
-  name: "B · Expandable · closed",
-  args: { variant: "expandable" },
+export const SyncAndRescue: Story = {
+  args: { syncStuck: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const toggle = await canvas.findByRole("button", { name: "Show lists" });
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(toggle);
-    await expect(canvas.getByRole("button", { name: "Hide lists" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-    await expect(canvas.getByText("“Repairs”")).toBeVisible();
+    const bar = await canvas.findByRole("region", { name: L.noticeBarLabel });
+    const buttons = within(bar).getAllByRole("button");
+    await expect(buttons.map((b) => b.textContent)).toEqual([L.retrySync, L.rescueReview]);
+    await userEvent.click(buttons[0]!);
+    await expect(bar).not.toHaveTextContent(L.syncFailedNotice);
   },
 };
 
-export const BExpandableOpen: Story = {
-  name: "B · Expandable · open",
-  args: { variant: "expandable", defaultOpen: true },
-};
-
-export const BExpandablePhone: Story = {
-  name: "B · Expandable · phone, open",
-  args: { variant: "expandable", defaultOpen: true },
+export const SyncAndRescuePhone: Story = {
+  args: { syncStuck: true },
   globals: phone,
 };
 
-/** C · docked at the bottom of the pane, in thumb reach; folds to a pill but never goes away. */
-export const CDock: Story = {
-  name: "C · Dock",
-  args: { variant: "dock" },
-};
-
-export const CDockPhone: Story = {
-  name: "C · Dock · phone",
-  args: { variant: "dock" },
-  globals: phone,
-};
-
-export const CDockFoldedPhone: Story = {
-  name: "C · Dock · phone, folded",
-  args: { variant: "dock", defaultOpen: false },
-  globals: phone,
-};
-
-/**
- * Question for Wouter: should the “not synced” notice (today a sticky toast in
- * Notes, Contacts, Docs and Drive) move into the same bar? Tasks has no such
- * notice today; the copy here is Notes’.
- */
-export const WithSyncNotice: Story = {
-  name: "Question · Strip with the sync notice too",
-  args: { variant: "strip", withSyncNotice: true },
-};
-
-export const WithSyncNoticePhone: Story = {
-  name: "Question · Strip with the sync notice too · phone",
-  args: { variant: "strip", withSyncNotice: true },
-  globals: phone,
+export const SyncOnly: Story = {
+  args: { writes: [], syncStuck: true },
 };

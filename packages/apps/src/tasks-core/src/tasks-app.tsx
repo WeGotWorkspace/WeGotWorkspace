@@ -17,11 +17,13 @@ import { tasksOutboxTaskId } from "@/lib/offline/tasks/tasks-offline-store";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
-import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-rescue-dialog";
+import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { useTasksAPI } from "@/tasks-core/src/use-tasks-api";
 import { useTasksRescue } from "@/tasks-core/src/use-tasks-rescue";
+import { useTasksSyncNotice } from "@/tasks-core/src/use-tasks-sync-notice";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useTasksRouteSync } from "@/tasks-core/src/use-tasks-route-sync";
 
 export type TasksAppProps = {
@@ -80,6 +82,11 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
     username: offlineUsername,
     operations,
     taskLists: data.taskLists,
+    reloadFromCache,
+  });
+  const syncNotice = useTasksSyncNotice({
+    username: offlineUsername,
+    labels: defaultTasksLabels,
     reloadFromCache,
   });
 
@@ -242,11 +249,10 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
               initialView={initialView}
               initialTaskId={initialTaskId}
               onViewChange={handleViewChange}
-              headerActions={
-                <TasksRescueEntry
-                  lists={rescue.waitingContainers}
-                  labels={defaultTasksLabels}
-                  onOpen={rescue.openFromEntry}
+              notice={
+                <NoticeBar
+                  label={defaultTasksLabels.noticeBarLabel}
+                  notices={[syncNotice, rescue.notice]}
                 />
               }
               onLogout={() => {

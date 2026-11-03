@@ -1135,8 +1135,13 @@ function rescueDialog(tab: Tab) {
   return tab.getByRole("dialog", { name: /^(A task|\d+ tasks) from / });
 }
 
+/** Review in the notice bar under the header (#1894), the way back to the dialog. */
 function rescueEntry(tab: Tab) {
-  return tab.getByRole("button", { name: /^Tasks (from \d+ lists )?need a new list$/ });
+  return tab
+    .getByRole("region", { name: "Needs your attention" })
+    .locator(".notice-bar__notice")
+    .filter({ hasText: /needs? a new list/ })
+    .getByRole("button", { name: "Review" });
 }
 
 /** A rescue into a new list keeps the old name, or "(copy)" when the old list stays. */

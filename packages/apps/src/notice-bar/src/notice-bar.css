@@ -1,9 +1,10 @@
 @import "../../styles.css" reference;
 
 /*
- * Shared notice bar. Severity colours come from Callout (`--callout-*`); this
- * file only reshapes the Callout card into a bar. The host layout places it
- * between the main header and the scroll area, so it never scrolls away.
+ * Shared notice bar (#1894). Severity colours come from Callout (`--callout-*`);
+ * this file only reshapes the Callout card into a full-width bar. The host
+ * layout places it between the main header and the scroll area, so it never
+ * scrolls away.
  */
 .notice-bar {
   @apply min-w-0;
@@ -11,106 +12,27 @@
 
 .notice-bar .notice-bar__callout {
   @apply rounded-none border-0 px-4 py-2.5 md:px-6;
+  /* The wash sits on the notice row, mixed over the surface so it is opaque. */
+  background-color: transparent;
 }
 
 .notice-bar__notice {
   @apply min-w-0;
-  border-bottom: 1px solid var(--callout-border, transparent);
+  border-bottom: 1px solid var(--notice-bar-border);
+  background-color: var(--notice-bar-bg);
 }
 
-/* The wash lives on the notice so the per-place rows share it. */
 .notice-bar__notice:has(.callout--warning) {
-  --callout-border: color-mix(in oklab, var(--color-warning) 35%, transparent);
-  background-color: color-mix(in oklab, var(--color-warning) 14%, var(--workspace-surface));
+  --notice-bar-border: color-mix(in oklab, var(--color-warning) 35%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--color-warning) 14%, var(--workspace-surface));
 }
 
 .notice-bar__notice:has(.callout--error) {
-  --callout-border: color-mix(in oklab, var(--color-error) 35%, transparent);
-  background-color: color-mix(in oklab, var(--color-error) 14%, var(--workspace-surface));
+  --notice-bar-border: color-mix(in oklab, var(--color-error) 35%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--color-error) 14%, var(--workspace-surface));
 }
 
 .notice-bar__notice:has(.callout--info) {
-  --callout-border: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
-  background-color: color-mix(in oklab, var(--workspace-foreground) 5%, var(--workspace-surface));
-}
-
-.notice-bar .callout {
-  background-color: transparent;
-}
-
-.notice-bar__actions {
-  @apply flex items-center gap-1;
-}
-
-.notice-bar__items {
-  @apply m-0 flex list-none flex-col px-4 pb-2 md:px-6;
-  /* Line the rows up with the title: the bar's padding plus the icon and its gap. */
-  padding-inline-start: 3.125rem;
-}
-
-@media (min-width: 48rem) {
-  .notice-bar__items {
-    padding-inline-start: 3.625rem;
-  }
-}
-
-.notice-bar__item {
-  @apply flex min-w-0 items-center gap-3 py-1 text-sm;
-  border-top: 1px solid color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
-}
-
-.notice-bar__item-label {
-  @apply min-w-0 flex-1 truncate font-medium;
-}
-
-.notice-bar__item-meta {
-  @apply shrink-0 tabular-nums;
-  color: var(--muted-foreground);
-}
-
-.notice-bar__item-action {
-  @apply shrink-0;
-}
-
-/* Dock: a card above the bottom edge of the pane, folding down to a pill. */
-/* Keep the end of the list reachable above the docked card. */
-.workspace-app-layout__main:has(.notice-bar--dock) .workspace-app-layout__main-content {
-  padding-bottom: 12rem;
-}
-
-.notice-bar--dock {
-  @apply pointer-events-none absolute z-20 flex justify-end;
-  inset-inline: 1rem;
-  bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
-}
-
-@media (min-width: 48rem) {
-  .notice-bar--dock {
-    inset-inline: 1.5rem;
-  }
-}
-
-.notice-bar__dock {
-  @apply pointer-events-auto relative w-full max-w-xl overflow-hidden rounded-lg shadow-lg;
-  border: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  background-color: var(--workspace-surface);
-}
-
-.notice-bar__dock .notice-bar__notice:last-of-type {
-  border-bottom: 0;
-}
-
-.notice-bar__dock .notice-bar__callout {
-  /* Room for the fold button in the corner. */
-  @apply pr-12 md:pr-12;
-}
-
-.notice-bar__fold {
-  @apply absolute top-2 right-2;
-}
-
-.notice-bar__pill.button {
-  @apply pointer-events-auto shadow-lg;
-  background-color: color-mix(in oklab, var(--color-warning) 14%, var(--workspace-surface));
-  border-color: color-mix(in oklab, var(--color-warning) 35%, transparent);
+  --notice-bar-border: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--workspace-foreground) 5%, var(--workspace-surface));
 }

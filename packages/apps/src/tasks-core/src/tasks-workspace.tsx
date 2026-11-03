@@ -119,7 +119,6 @@ export function TasksWorkspace({
   initialView,
   initialTaskId,
   onViewChange,
-  headerActions,
   notice,
 }: TasksWorkspaceProps) {
   const composerRef = useRef<TasksMainViewHandle>(null);
@@ -321,7 +320,6 @@ export function TasksWorkspace({
                     </TooltipContent>
                   </Tooltip>
                 ) : null}
-                {headerActions}
                 {onRefreshList ? (
                   <IconButton
                     label={L.refreshList}
