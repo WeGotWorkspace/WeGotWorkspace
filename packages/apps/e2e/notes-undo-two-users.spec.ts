@@ -116,6 +116,15 @@ type Case = {
   bShowsChange: () => Promise<boolean>;
 };
 
+/** Toast texts on screen, without toasts that are playing their exit. */
+async function toastsOnScreen(tab: Tab): Promise<string[]> {
+  return tab
+    .locator("[data-sonner-toast]:not([data-removed='true'])")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.textContent?.replace(/\s+/g, " ").trim() ?? ""),
+    );
+}
+
 /** Runs one case and returns its timings. */
 async function actThenUndo(name: string, c: Case): Promise<void> {
   const { a, uid, events } = c.setup;
@@ -134,6 +143,10 @@ async function actThenUndo(name: string, c: Case): Promise<void> {
   await sleep(Math.max(0, UNDO_AFTER_MS - (Date.now() - actedAt)));
   await a.getByRole("button", { name: "Undo" }).last().click({ timeout: 2_000 });
   const undoneAt = Date.now();
+  // The "… undone." toast replaces the one with Undo; the old one only plays its exit.
+  await expect
+    .poll(() => toastsOnScreen(a), { message: `${name}: Undo swaps the toast`, timeout: 1_000 })
+    .toEqual([expect.stringMatching(/undone\./)]);
   await expect
     .poll(async () => !c.landed(await serverNote(OWNER, uid)), {
       message: `${name}: the server has the revert`,

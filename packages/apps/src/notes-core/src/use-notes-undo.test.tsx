@@ -195,6 +195,38 @@ describe("Notes undo as a compensating write", () => {
     );
   });
 
+  it("shows one toast for a move, so nothing is left after Undo", async () => {
+    const shellShow = vi.fn();
+    const { result } = renderNotes(operationsMock(), { show: shellShow });
+
+    act(() => result.current.moveToNotebook(["n-1"], "work"));
+    await settle();
+
+    expect(shellShow).not.toHaveBeenCalled();
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show).toHaveBeenCalledWith(
+      "Moved 1 item to “Work”",
+      expect.objectContaining({ canUndo: true }),
+    );
+
+    undoLastToast();
+    expect(toast.dismiss).toHaveBeenCalledWith("toast-1");
+    expect(toast.show).toHaveBeenLastCalledWith("Move undone.", { severity: "info" });
+  });
+
+  it("shows one toast for a batch tag", async () => {
+    const shellShow = vi.fn();
+    const { result } = renderNotes(operationsMock(), { show: shellShow });
+
+    act(() => result.current.assignTagToNotes(["n-1"], "urgent"));
+    await settle();
+
+    expect(shellShow).not.toHaveBeenCalled();
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    undoLastToast();
+    expect(toast.show).toHaveBeenLastCalledWith("Tag assignment undone.", { severity: "info" });
+  });
+
   it("adds a tag right away and removes only that tag on Undo", async () => {
     const operations = operationsMock();
     const { result } = renderNotes(operations);

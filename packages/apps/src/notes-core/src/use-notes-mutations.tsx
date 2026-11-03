@@ -53,6 +53,15 @@ export type UseNotesMutationsArgs = {
   list: NotesListState;
 };
 
+const itemCount = (count: number) => `${count} item${count === 1 ? "" : "s"}`;
+const movedToast = (count: number, notebook: string) =>
+  `Moved ${itemCount(count)} to “${notebook}”`;
+const taggedToast = (count: number, tag: string) => `Tagged ${itemCount(count)} with ${tag}`;
+// Live, a move or a tag shows only its undoable toast, so nothing is left after Undo. Mock
+// mode has no Undo and shows a plain toast.
+const MOVED_TOAST_ICON = <BookOpen className="size-4" />;
+const TAGGED_TOAST_ICON = <Tag className="size-4" />;
+
 export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const {
     L,
@@ -374,10 +383,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         }
       }
       setNotebooks((prev) => (prev.includes(dest.name) ? prev : [...prev, dest.name]));
-      show(`Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${dest.name}”`, {
-        icon: <BookOpen className="size-4" />,
-      });
-      if (!operations) return;
+      if (!operations) {
+        show(movedToast(ids.length, dest.name), { icon: MOVED_TOAST_ICON });
+        return;
+      }
       const updatedRows = notes
         .filter((note) => ids.includes(note.id))
         .map((note) => noteAfterNotebookMove(note, dest));
@@ -385,7 +394,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const beforeRows = notes.filter((note) => ids.includes(note.id));
       queueMutation({
         key: `notes:move:${dest.id}:${ids.slice().sort().join(",")}`,
-        toastMessage: `Moved ${ids.length} item${ids.length === 1 ? "" : "s"} to “${dest.name}”`,
+        toastMessage: movedToast(ids.length, dest.name),
+        icon: MOVED_TOAST_ICON,
         execute: (_signal, markCompleted) =>
           sendNoteFields(operations, updatedRows, ["notebook"], dropGoneNote, markCompleted),
         revert: (completed) =>
@@ -457,13 +467,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             : note,
         ),
       );
-      show(
-        `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
-        {
-          icon: <Tag className="size-4" />,
-        },
-      );
-      if (!operations) return;
+      if (!operations) {
+        show(taggedToast(assignableIds.length, tag), { icon: TAGGED_TOAST_ICON });
+        return;
+      }
       const updatedRows = before.map((note) =>
         note.tags.includes(tag) ? note : { ...note, tags: [...note.tags, tag], date: editedAt },
       );
@@ -472,7 +479,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const tagged = before.filter((note) => !note.tags.includes(tag));
       queueMutation({
         key: `notes:tag:${tag}:${assignableIds.slice().sort().join(",")}`,
-        toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
+        toastMessage: taggedToast(assignableIds.length, tag),
+        icon: TAGGED_TOAST_ICON,
         execute: (_signal, markCompleted) =>
           sendTagDelta(operations, updatedRows, { tagsAdd: [tag] }, dropGoneNote, markCompleted),
         revert: (completed) =>
