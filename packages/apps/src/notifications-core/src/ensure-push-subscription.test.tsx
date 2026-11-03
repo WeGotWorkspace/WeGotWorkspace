@@ -6,12 +6,20 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   unsubscribePush: vi.fn(),
 }));
 
+vi.mock("./push-scope", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./push-scope")>()),
+  currentPushScope: vi.fn(() => "/"),
+  readPushScopes: vi.fn(async () => []),
+  rememberPushScope: vi.fn(async () => undefined),
+}));
+
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwCurrentAccessToken: vi.fn(() => null),
 }));
 
 import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
+import { currentPushScope, readPushScopes, rememberPushScope } from "./push-scope";
 import {
   ensurePushPermissionAndSubscribe,
   resetEnsurePushSubscriptionForTests,
@@ -22,6 +30,7 @@ const subscribe = vi.fn();
 const getSubscription = vi.fn();
 const CURRENT_KEY = [1, 2, 3]; // "AQID", the stubbed VAPID public key
 const SUBSCRIBER_KEY = "wgw.push.subscriber";
+const LOGGED_OUT_KEY = "wgw.api.logged_out";
 
 function signInAs(username: string): void {
   const payload = btoa(JSON.stringify({ sub: username }));
@@ -58,6 +67,7 @@ describe("ensurePushPermissionAndSubscribe", () => {
   beforeEach(() => {
     resetEnsurePushSubscriptionForTests();
     window.localStorage.removeItem(SUBSCRIBER_KEY);
+    window.localStorage.removeItem(LOGGED_OUT_KEY);
     vi.mocked(wgwCurrentAccessToken).mockReturnValue(null);
     vi.mocked(fetchVapidPublicKey).mockReset();
     vi.mocked(subscribePush).mockReset();
@@ -67,6 +77,9 @@ describe("ensurePushPermissionAndSubscribe", () => {
     vi.mocked(fetchVapidPublicKey).mockResolvedValue("AQID");
     vi.mocked(subscribePush).mockResolvedValue(undefined);
     vi.mocked(unsubscribePush).mockResolvedValue(undefined);
+    vi.mocked(currentPushScope).mockReset().mockReturnValue("/");
+    vi.mocked(rememberPushScope).mockReset().mockResolvedValue(undefined);
+    vi.mocked(readPushScopes).mockReset().mockResolvedValue([]);
     subscribe.mockResolvedValue({
       toJSON: () => ({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
     });
@@ -106,10 +119,79 @@ describe("ensurePushPermissionAndSubscribe", () => {
 
     expect(requestPermission).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/1",
-      keys: { p256dh: "a", auth: "b" },
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
+  });
+
+  it("does not subscribe once logout has started", async () => {
+    stubNotification("granted");
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("stops before posting when logout starts during the run", async () => {
+    // The /logout page mounts the provider too: its run must not post the
+    // row or remember the scope again after logout released them.
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    getSubscription.mockImplementation(async () => {
+      window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+      return storedSubscription(CURRENT_KEY);
     });
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(subscribePush).not.toHaveBeenCalled();
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("drops the subscription it made when logout starts during subscribe()", async () => {
+    stubNotification("granted");
+    const made = {
+      endpoint: "https://push.example/new",
+      unsubscribe: vi.fn(async () => true),
+      toJSON: () => ({ endpoint: "https://push.example/new", keys: { p256dh: "a", auth: "b" } }),
+    };
+    let resolveSubscribe: (value: typeof made) => void = () => undefined;
+    subscribe.mockReturnValue(new Promise((resolve) => (resolveSubscribe = resolve)));
+
+    const run = ensurePushPermissionAndSubscribe();
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalled());
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+    resolveSubscribe(made);
+
+    await expect(run).resolves.toBe(false);
+    expect(made.unsubscribe).toHaveBeenCalled();
+    expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("removes the row and remembers no scope when logout starts during the POST", async () => {
+    stubNotification("granted");
+    const made = {
+      endpoint: "https://push.example/new",
+      unsubscribe: vi.fn(async () => true),
+      toJSON: () => ({ endpoint: "https://push.example/new", keys: { p256dh: "a", auth: "b" } }),
+    };
+    subscribe.mockResolvedValue(made);
+    let resolvePost: () => void = () => undefined;
+    vi.mocked(subscribePush).mockReturnValue(
+      new Promise<void>((resolve) => (resolvePost = resolve)),
+    );
+
+    const run = ensurePushPermissionAndSubscribe();
+    await vi.waitFor(() => expect(subscribePush).toHaveBeenCalled());
+    window.localStorage.setItem(LOGGED_OUT_KEY, "1");
+    resolvePost();
+
+    await expect(run).resolves.toBe(false);
+    expect(unsubscribePush).toHaveBeenCalledWith("https://push.example/new");
+    expect(rememberPushScope).not.toHaveBeenCalled();
   });
 
   it("does not prompt again when the browser already denied", async () => {
@@ -143,10 +225,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
 
     expect(subscribe).not.toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://web.push.apple.com/safari",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://web.push.apple.com/safari", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
   });
 
   it("returns false when PushManager subscribe fails and nothing is stored", async () => {
@@ -156,6 +238,90 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
 
     expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("posts the installed app's scope and remembers it for the service worker", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/docs",
+    );
+    expect(rememberPushScope).toHaveBeenCalledWith("/docs");
+  });
+
+  it("does not remember a scope the server did not store", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(subscribePush).mockRejectedValue(new Error("POST push subscription failed (500)"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("still reports push as enabled when remembering the scope fails", async () => {
+    stubNotification("granted");
+    vi.mocked(rememberPushScope).mockRejectedValue(new Error("IndexedDB unavailable"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+  });
+
+  it("leaves the scope out and remembers nothing when the app is not known", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue(null);
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledTimes(1);
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      null,
+    );
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("posts only the current scope when it reuses the stored subscription", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(readPushScopes).mockResolvedValue(["/calendar", "/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription(CURRENT_KEY));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledTimes(1);
+    expect(subscribePush).toHaveBeenCalledWith(expect.anything(), "/docs");
+  });
+
+  it("keeps the remembered scopes when it replaces a subscription made with another VAPID key", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(readPushScopes).mockResolvedValue(["/calendar", "/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription([9, 9, 9]));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    const posted = vi
+      .mocked(subscribePush)
+      .mock.calls.map(([json, scope]) => [json.endpoint, scope]);
+    expect(posted).toEqual([
+      ["https://push.example/1", "/calendar"],
+      ["https://push.example/1", "/docs"],
+    ]);
+  });
+
+  it("keeps the remembered scopes on a new subscription when the app is not known", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue(null);
+    vi.mocked(readPushScopes).mockResolvedValue(["/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription([9, 9, 9]));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(vi.mocked(subscribePush).mock.calls.map(([, scope]) => scope)).toEqual(["/docs"]);
   });
 
   it("replaces a subscription made with another VAPID key", async () => {
@@ -172,10 +338,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
       new Uint8Array(CURRENT_KEY),
     );
     expect(subscribePush).toHaveBeenCalledTimes(1);
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/1",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
     expect(vi.mocked(unsubscribePush).mock.invocationCallOrder[0]).toBeLessThan(
       stale.unsubscribe.mock.invocationCallOrder[0],
     );
@@ -205,10 +371,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
     expect(unsubscribePush).not.toHaveBeenCalled();
     expect(current.unsubscribe).not.toHaveBeenCalled();
     expect(subscribe).not.toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/old",
-      keys: { p256dh: "x", auth: "y" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/old", keys: { p256dh: "x", auth: "y" } },
+      "/",
+    );
   });
 
   it("keeps a subscription whose VAPID key the browser does not expose", async () => {
@@ -304,7 +470,9 @@ describe("ensurePushPermissionAndSubscribe", () => {
       subscribe
         .mockReturnValueOnce(new Promise((resolve) => (settleFirst = resolve)))
         .mockReturnValueOnce(new Promise((resolve) => (settleSecond = resolve)));
+      const firstUnsubscribe = vi.fn(async () => true);
       const subscriptionOf = (endpoint: string) => ({
+        unsubscribe: endpoint.endsWith("/first") ? firstUnsubscribe : vi.fn(async () => true),
         toJSON: () => ({ endpoint, keys: { p256dh: "a", auth: "b" } }),
       });
 
@@ -319,14 +487,38 @@ describe("ensurePushPermissionAndSubscribe", () => {
       settleFirst(subscriptionOf("https://push.example/first"));
       await vi.advanceTimersByTimeAsync(0);
       expect(subscribePush).not.toHaveBeenCalled();
+      expect(firstUnsubscribe).not.toHaveBeenCalled();
 
       settleSecond(subscriptionOf("https://push.example/second"));
       await expect(second).resolves.toBe(true);
       expect(subscribePush).toHaveBeenCalledTimes(1);
-      expect(subscribePush).toHaveBeenCalledWith({
-        endpoint: "https://push.example/second",
-        keys: { p256dh: "a", auth: "b" },
-      });
+      expect(subscribePush).toHaveBeenCalledWith(
+        { endpoint: "https://push.example/second", keys: { p256dh: "a", auth: "b" } },
+        "/",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the row when a POST finishes after the run timed out without logout", async () => {
+    vi.useFakeTimers();
+    try {
+      stubNotification("granted");
+      let resolvePost: () => void = () => undefined;
+      vi.mocked(subscribePush).mockReturnValueOnce(
+        new Promise<void>((resolve) => (resolvePost = resolve)),
+      );
+
+      const first = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(first).resolves.toBe(false);
+
+      resolvePost();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(unsubscribePush).not.toHaveBeenCalled();
+      expect(rememberPushScope).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -385,10 +577,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
       expect(previous.unsubscribe).toHaveBeenCalledTimes(1);
       expect(unsubscribePush).not.toHaveBeenCalled();
       expect(subscribe).toHaveBeenCalledTimes(1);
-      expect(subscribePush).toHaveBeenCalledWith({
-        endpoint: "https://push.example/1",
-        keys: { p256dh: "a", auth: "b" },
-      });
+      expect(subscribePush).toHaveBeenCalledWith(
+        { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+        "/",
+      );
       expect(window.localStorage.getItem(SUBSCRIBER_KEY)).toBe("bob");
     });
 
@@ -403,10 +595,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
 
       expect(previous.unsubscribe).not.toHaveBeenCalled();
       expect(subscribe).not.toHaveBeenCalled();
-      expect(subscribePush).toHaveBeenCalledWith({
-        endpoint: "https://push.example/old",
-        keys: { p256dh: "x", auth: "y" },
-      });
+      expect(subscribePush).toHaveBeenCalledWith(
+        { endpoint: "https://push.example/old", keys: { p256dh: "x", auth: "y" } },
+        "/",
+      );
     });
 
     it("treats a username that differs only in case as the same account", async () => {
