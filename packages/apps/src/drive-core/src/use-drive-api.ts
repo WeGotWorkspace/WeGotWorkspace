@@ -188,17 +188,46 @@ export function useDriveAPI(source?: DriveApiSource) {
  */
 function useGuestUploadAccount(ready: boolean): string | null {
   const [account, setAccount] = useState<string | null>(null);
+  // Bumped to ask again after a transient failure (reconnect, or backoff while online).
+  const [attempt, setAttempt] = useState(0);
+  const retryRef = useRef<() => void>(() => undefined);
+  retryRef.current = () => setAttempt((value) => value + 1);
+
   useEffect(() => {
     if (!ready || !wgwIsGuestSession()) return;
     let active = true;
-    void resolveGuestUploadAccount().then((resolved) => {
-      if (!active) return;
-      setAccount(resolved);
-      if (resolved) startDriveUploader(resolved);
-    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    resolveGuestUploadAccount().then(
+      (resolved) => {
+        if (!active) return;
+        setAccount(resolved);
+        if (resolved) startDriveUploader(resolved);
+      },
+      () => {
+        if (!active) return;
+        const delay = Math.min(
+          GUEST_ACCOUNT_RETRY_BASE_MS * 2 ** attempt,
+          GUEST_ACCOUNT_RETRY_MAX_MS,
+        );
+        if (attempt < GUEST_ACCOUNT_MAX_BACKOFF_RETRIES) {
+          timer = setTimeout(() => retryRef.current(), delay);
+        }
+      },
+    );
     return () => {
       active = false;
+      if (timer) clearTimeout(timer);
     };
-  }, [ready]);
+  }, [ready, attempt]);
+
+  useOnReconnect(
+    useCallback(() => {
+      if (ready && wgwIsGuestSession()) setAttempt((value) => value + 1);
+    }, [ready]),
+  );
   return account;
 }
+
+const GUEST_ACCOUNT_RETRY_BASE_MS = 2_000;
+const GUEST_ACCOUNT_RETRY_MAX_MS = 30_000;
+const GUEST_ACCOUNT_MAX_BACKOFF_RETRIES = 6;

@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveUIData } from "@/drive-core/src/drive-types";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
+import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 
 const session = vi.hoisted(() => ({ result: null as null | { accountId: string } | Error }));
 vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
@@ -29,8 +30,17 @@ describe("resolveGuestUploadAccount (#1715)", () => {
   });
 
   it("returns null when the link does not allow uploads (the Session answers 403)", async () => {
-    session.result = new Error("Failed to fetch JMAP session (403)");
+    session.result = new JmapRequestError("Failed to fetch JMAP session (403)", { status: 403 });
     await expect(resolveGuestUploadAccount()).resolves.toBeNull();
+  });
+
+  it("rethrows a transient failure so the caller can retry", async () => {
+    session.result = new JmapRequestError("Failed to fetch JMAP session (503)", { status: 503 });
+    await expect(resolveGuestUploadAccount()).rejects.toThrow("503");
+    session.result = new TypeError("Failed to fetch");
+    await expect(resolveGuestUploadAccount()).rejects.toThrow("Failed to fetch");
+    session.result = { accountId: GUEST };
+    await expect(resolveGuestUploadAccount()).resolves.toBe(GUEST);
   });
 
   it("never treats a member account as a guest upload account", async () => {
