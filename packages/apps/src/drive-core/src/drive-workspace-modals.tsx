@@ -249,6 +249,7 @@ export function DriveWorkspaceModals({
         <ShareDialog
           path={shareDialog.shareDialog.path}
           title={shareDialog.shareDialog.title}
+          isFolder={shareDialog.shareDialog.isFolder}
           open={shareDialog.shareDialog.open}
           onOpenChange={shareDialog.handleShareDialogOpenChange}
           shareOperations={shareOperations}

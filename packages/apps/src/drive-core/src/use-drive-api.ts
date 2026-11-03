@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { wgwIsGuestSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
@@ -17,6 +17,10 @@ import {
   flushDriveOutboxForAccount,
 } from "@/lib/offline/drive/drive-hybrid-operations";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
+import {
+  guestUploadQueueOperations,
+  resolveGuestUploadAccount,
+} from "@/lib/offline/drive/upload/drive-upload-guest";
 import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
 import {
   readDriveBootstrapFromCache,
@@ -131,6 +135,8 @@ export function useDriveAPI(source?: DriveApiSource) {
     startDriveUploader(offlineUsername);
   }, [liveEnabled, offlineUsername, phase]);
 
+  const guestUploadAccount = useGuestUploadAccount(liveEnabled && phase === "ready");
+
   useEffect(() => {
     if (wgwIsGuestSession() || !offlineUsername || phase !== "ready" || !data) return;
     return subscribeOfflineDeviceContentSettings(() => {
@@ -147,10 +153,12 @@ export function useDriveAPI(source?: DriveApiSource) {
 
   const operations = useMemo(() => {
     if (!liveEnabled || !offlineUsername || wgwIsGuestSession()) {
-      return resolvedSource.createOperations(data ?? undefined);
+      const plain = resolvedSource.createOperations(data ?? undefined);
+      if (!plain || !guestUploadAccount || !data) return plain;
+      return { ...plain, ...guestUploadQueueOperations(guestUploadAccount, data.data.user) };
     }
     return createHybridDriveOperations(offlineUsername, data ?? undefined);
-  }, [data, liveEnabled, offlineUsername, resolvedSource]);
+  }, [data, guestUploadAccount, liveEnabled, offlineUsername, resolvedSource]);
 
   const shareOperations = useMemo(
     () => resolvedSource.createShareOperations(data ?? undefined),
@@ -171,4 +179,26 @@ export function useDriveAPI(source?: DriveApiSource) {
     shareOperations,
     offlineUsername,
   };
+}
+
+/**
+ * A share-link guest's upload account (#1715), once the live API says the
+ * link allows uploads; null otherwise and for members. Starts the guest's
+ * uploader, which resumes what this session queued before a reload.
+ */
+function useGuestUploadAccount(ready: boolean): string | null {
+  const [account, setAccount] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ready || !wgwIsGuestSession()) return;
+    let active = true;
+    void resolveGuestUploadAccount().then((resolved) => {
+      if (!active) return;
+      setAccount(resolved);
+      if (resolved) startDriveUploader(resolved);
+    });
+    return () => {
+      active = false;
+    };
+  }, [ready]);
+  return account;
 }

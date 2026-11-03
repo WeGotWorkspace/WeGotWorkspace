@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 
 function shownPaths(paths: readonly string[]): string {
@@ -18,7 +19,9 @@ export function useDriveFileNodeInbound(
 ): void {
   const { show } = useAppToast();
   useEffect(() => {
-    if (!username) return;
+    // A share-link guest has no offline Drive; its shell username is the
+    // share owner's, whose offline data this device must not touch.
+    if (!username || wgwIsGuestSession()) return;
     let cancelled = false;
     void syncDriveInboundFromFileNodes(username)
       .then((result) => {

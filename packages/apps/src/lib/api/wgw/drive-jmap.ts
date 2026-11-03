@@ -1,4 +1,10 @@
-import { wgwApiBaseUrl, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwApiBaseUrl,
+  wgwFetch,
+  wgwGuestSharePath,
+  wgwIsGuestSession,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import {
   CORE_CAPABILITY,
@@ -92,9 +98,20 @@ export type DriveJmapSession = {
   uploadUrl: string;
   downloadUrl: string;
   sharedRootPaths: Set<string>;
+  /**
+   * A share-link guest's shared folder (#1715). The guest account's only
+   * top-level node is that folder, so it stands in for home and shared roots.
+   */
+  guestRootPath?: string;
 };
 
 let cachedSession: DriveJmapSession | null = null;
+/** Which sign-in the cached Session belongs to: a member, or a guest share path. */
+let cachedSessionOwner: string | null = null;
+
+function sessionOwner(): string {
+  return wgwIsGuestSession() ? `guest:${wgwGuestSharePath() ?? ""}` : "member";
+}
 
 export function toApiRelativePath(input: string): string {
   const base = wgwApiBaseUrl();
@@ -130,10 +147,12 @@ export function createDriveJmapClient(): JmapClient {
 
 export function resetDriveJmapSessionForTests(): void {
   cachedSession = null;
+  cachedSessionOwner = null;
 }
 
 export async function driveJmapSession(): Promise<DriveJmapSession> {
-  if (cachedSession) return cachedSession;
+  const owner = sessionOwner();
+  if (cachedSession && cachedSessionOwner === owner) return cachedSession;
   const client = createDriveJmapClient();
   const session = await client.connect();
   if (!(FILENODE_CAPABILITY in session.capabilities)) {
@@ -155,7 +174,9 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
     uploadUrl: session.uploadUrl,
     downloadUrl: session.downloadUrl,
     sharedRootPaths: new Set(),
+    ...guestRoot(),
   };
+  cachedSessionOwner = owner;
   return cachedSession;
 }
 
@@ -186,11 +207,35 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
   };
 }
 
+function guestRoot(): { guestRootPath?: string } {
+  const sharePath = wgwIsGuestSession() ? wgwGuestSharePath() : null;
+  return sharePath ? { guestRootPath: normalizePath(sharePath) } : {};
+}
+
+/** The guest's shared folder is its account's only top-level node. */
+async function loadGuestRoot(
+  session: DriveJmapSession,
+  root: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (session.cache.nodeIdForPath(root)) return;
+  const got = await session.fileNodes.queryAndGetFileNodes(
+    session.accountId,
+    { isTopLevel: true },
+    { signal },
+  );
+  const node = got.list[0];
+  if (!node) return;
+  session.cache.remember(root, node);
+  session.sharedRootPaths.add(root);
+}
+
 async function ensureTopLevel(
   session: DriveJmapSession,
   username: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (session.guestRootPath) return loadGuestRoot(session, session.guestRootPath, signal);
   if (session.cache.nodeIdForPath(session.cache.homePath(username))) return;
   const got = await session.fileNodes.queryAndGetFileNodes(
     session.accountId,
@@ -201,6 +246,8 @@ async function ensureTopLevel(
 }
 
 async function loadSharedRoots(session: DriveJmapSession, signal?: AbortSignal): Promise<void> {
+  // A guest has no shared-with-me list (members only); its root is the share.
+  if (session.guestRootPath) return loadGuestRoot(session, session.guestRootPath, signal);
   const rows = await fetchDriveSharedWithMe({ signal });
   session.sharedRootPaths.clear();
   const pathById = new Map<string, string>();

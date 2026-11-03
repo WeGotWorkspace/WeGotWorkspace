@@ -10,6 +10,9 @@ vi.mock("@/lib/offline/drive/drive-inbound-sync", () => ({
   syncDriveInboundFromFileNodes,
 }));
 
+const guestSession = vi.hoisted(() => ({ value: false }));
+vi.mock("@/lib/api/wgw/http", () => ({ wgwIsGuestSession: () => guestSession.value }));
+
 vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({ show, showError: vi.fn(), showSuccess: vi.fn(), dismiss: vi.fn() }),
 }));
@@ -18,6 +21,7 @@ import { useDriveFileNodeInbound } from "./use-drive-file-node-inbound";
 
 describe("useDriveFileNodeInbound", () => {
   beforeEach(() => {
+    guestSession.value = false;
     syncDriveInboundFromFileNodes.mockReset();
     show.mockReset();
     syncDriveInboundFromFileNodes.mockResolvedValue({
@@ -45,5 +49,12 @@ describe("useDriveFileNodeInbound", () => {
     expect(warn).toHaveBeenCalledWith("[drive-inbound] FileNode sync failed", failure);
     expect(show).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("never syncs for a share-link guest, whose shell username is the owner's", async () => {
+    guestSession.value = true;
+    renderHook(() => useDriveFileNodeInbound("owner", 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(syncDriveInboundFromFileNodes).not.toHaveBeenCalled();
   });
 });

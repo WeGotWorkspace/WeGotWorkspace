@@ -110,10 +110,12 @@ export function DriveWorkspace({
 
   const handleOpenShareForFile = useCallback(
     (apiPath: string, title: string) => {
-      shareDialog.openShareDialog(apiPath, title);
+      // A path outside the listing is the open folder or one of its parents.
+      const entry = controller.files.find((file) => file.apiPath === apiPath);
+      shareDialog.openShareDialog(apiPath, title, entry ? entry.kind === "folder" : true);
       onOpenShare?.(apiPath);
     },
-    [onOpenShare, shareDialog],
+    [controller.files, onOpenShare, shareDialog],
   );
 
   const {
@@ -456,18 +458,21 @@ function DriveSidebar({
         <WorkspaceAppSettingsFooter
           appId="drive"
           session={session}
-          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
+          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession(), uploadEnabled)}
           onLogout={onLogout}
         />
       }
       primaryButton={
-        // New folder is the menu's main action; guests cannot create anything yet (#1712).
-        structureEnabled ? (
+        // New folder is the menu's main action. Guests cannot create folders or
+        // files (#1712); a guest on a link that allows uploads gets Upload (#1715).
+        structureEnabled || uploadEnabled ? (
           <DriveNewMenu
             labels={labels}
-            onCreateFolder={createFolder}
+            onCreateFolder={structureEnabled ? createFolder : undefined}
             onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
-            onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
+            onCreateMarkdown={
+              structureEnabled && uploadEnabled && onOpenDocsFile ? createMarkdown : undefined
+            }
           />
         ) : null
       }

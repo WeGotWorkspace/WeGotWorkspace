@@ -4,6 +4,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
   apiPathFromUiPath,
   normalizeApiVirtualPath,
@@ -27,8 +28,17 @@ function isDriveGuest(role: string, guestSession: boolean): boolean {
   return guestSession || role === "guest";
 }
 
-export function isDriveUploadEnabled(role: string, guestSession: boolean): boolean {
-  return !isDriveGuest(role, guestSession);
+/**
+ * Members upload; a share-link guest uploads only when its Drive has the
+ * upload queue, which it gets once the server opens the guest's upload
+ * Session (an edit link to a folder, #1715).
+ */
+export function isDriveUploadEnabled(
+  role: string,
+  guestSession: boolean,
+  operations?: Pick<DriveAPIOperations, "enqueueUploads">,
+): boolean {
+  return !isDriveGuest(role, guestSession) || typeof operations?.enqueueUploads === "function";
 }
 
 /** New folder, new file, rename, move and delete (guests have no write path yet, #1712). */
@@ -96,10 +106,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
   const [dropUploadActive, setDropUploadActive] = useState(false);
-  // Guests get the upload queue later (Epic #1499); until then they see no
-  // upload, no drop target and no new Markdown file (Docs saves guest files
-  // through upload).
-  const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
+  // A guest uploads only through the queue, on a link that allows it (#1715).
+  const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession(), operations);
   const { handleUpload, uploadProgress } = useDriveUploadAction(shell, uploadEnabled);
   const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);

@@ -4,6 +4,11 @@ export const shareLabels = {
   dialogDescription: "Share a public link or invite teammates.",
   publicSectionTitle: "Anyone with the link",
   publicEnabledHint: "No sign-in required — anyone with the URL can view this doc.",
+  publicEnabledAddFilesHint:
+    "No sign-in required — anyone with the URL can view this folder and add files to it.",
+  publicLevelLabel: "People with the link",
+  publicLevelView: "Can view",
+  publicLevelAddFiles: "Can add files",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
   teamSectionTitle: "Team access",
   teamSectionHint: "Grant access to a whole group, or pick individual teammates.",
