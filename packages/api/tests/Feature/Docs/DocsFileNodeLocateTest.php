@@ -104,7 +104,7 @@ final class DocsFileNodeLocateTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->carolBearerToken())
             ->getJson('/api/v1/files/node?id='.$id)
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_stranger_cannot_resolve(): void
@@ -113,12 +113,12 @@ final class DocsFileNodeLocateTest extends WgwDatabaseTestCase
 
         $byId = $this->withBearer($this->carolBearerToken())
             ->getJson('/api/v1/files/node?id='.$id)
-            ->assertForbidden();
+            ->assertNotFound();
         $this->assertStringNotContainsString('secret.md', (string) $byId->getContent());
 
         $this->withBearer($this->carolBearerToken())
             ->getJson('/api/v1/files/node?path='.rawurlencode('/users/bob/secret.md'))
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_trashed_doc_is_not_found(): void

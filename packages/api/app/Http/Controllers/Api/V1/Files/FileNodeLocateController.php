@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Drive\DriveFileNodeLocator;
-use App\Services\Drive\DriveForbiddenException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,8 +32,6 @@ final class FileNodeLocateController
             $location = $id !== null
                 ? $this->locator->locateById($principal, $id)
                 : $this->locator->locateByPath($principal, (string) $path);
-        } catch (DriveForbiddenException $e) {
-            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
         } catch (\RuntimeException $e) {

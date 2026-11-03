@@ -20278,10 +20278,10 @@
                         "description": "Missing or malformed id or path"
                     },
                     "403": {
-                        "description": "The caller may not read the file"
+                        "description": "A share-link guest"
                     },
                     "404": {
-                        "description": "No such file, a directory, or a file in trash"
+                        "description": "No such file, a file the caller may not read, a directory, or a file in trash. The answer is the same for all of them."
                     }
                 },
                 "x-wgw-access": "user"

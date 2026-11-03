@@ -34,8 +34,7 @@ final class DriveFileNodeLocator
      * @return array{id: string, path: string}
      *
      * @throws \InvalidArgumentException malformed id
-     * @throws DriveForbiddenException the caller may not read the file
-     * @throws \RuntimeException no such live file
+     * @throws \RuntimeException no such live file, or one the caller may not read
      */
     public function locateById(array $principal, string $nodeId): array
     {
@@ -53,8 +52,7 @@ final class DriveFileNodeLocator
      * @return array{id: string, path: string}
      *
      * @throws \InvalidArgumentException malformed path
-     * @throws DriveForbiddenException the caller may not read the path
-     * @throws \RuntimeException no such live file
+     * @throws \RuntimeException no such live file, or one the caller may not read
      */
     public function locateByPath(array $principal, string $path): array
     {
@@ -62,8 +60,9 @@ final class DriveFileNodeLocator
         $virtual = $this->cleanPath($path);
         try {
             $this->authorizer->assertMayRead($virtual, $principal);
-        } catch (\InvalidArgumentException $e) {
-            throw new DriveForbiddenException($e->getMessage(), 0, $e);
+        } catch (\InvalidArgumentException) {
+            // A path the caller may not read answers like a missing one (#1775).
+            throw new \RuntimeException('File not found.');
         }
         $this->assertNotInTrash($virtual);
 

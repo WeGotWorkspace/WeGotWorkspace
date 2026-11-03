@@ -8013,14 +8013,14 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description The caller may not read the file */
+                /** @description A share-link guest */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description No such file, a directory, or a file in trash */
+                /** @description No such file, a file the caller may not read, a directory, or a file in trash. The answer is the same for all of them. */
                 404: {
                     headers: {
                         [name: string]: unknown;
