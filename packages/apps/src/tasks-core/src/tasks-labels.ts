@@ -136,18 +136,18 @@ export type TasksUILabels = {
   /** A queued write the server refused for good (#1825). */
   taskWriteRefused: (title: string, reason: TaskWriteRefusal) => string;
   /** The dialog that asks where refused offline tasks go (#1825). */
-  rescueTitle: (count: number) => string;
-  rescueDescription: string;
-  rescueFrom: (listName: string, reason: "gone" | "readOnly") => string;
-  rescueAsNewTask: string;
+  rescueStep: (step: number, total: number) => string;
+  rescueListTitle: (count: number, listName: string) => string;
+  rescueReason: (listName: string, reason: "gone" | "readOnly") => string;
+  rescueEditsAsNew: string;
   rescueDestinationLabel: string;
   rescueNewList: string;
   rescueNewListLabel: string;
-  rescueNewListName: (listName: string) => string;
+  rescueNewListName: (listName: string, reason: "gone" | "readOnly") => string;
   rescueMove: (count: number) => string;
   rescueDiscard: (count: number) => string;
   rescueLater: string;
-  rescueEntry: (count: number) => string;
+  rescueEntry: (lists: number) => string;
   rescueMoved: (count: number, listName: string) => string;
   rescueDiscarded: (count: number) => string;
   rescueFailed: string;
@@ -299,24 +299,28 @@ export const defaultTasksLabels: TasksUILabels = {
       readOnly: `You can only view the list with “${title}” now. Your offline changes to it were not saved.`,
       notSaved: `Your offline changes to “${title}” could not be saved. It shows the server version again.`,
     })[reason],
-  rescueTitle: (count) => (count === 1 ? "A task needs a list" : `${count} tasks need a list`),
-  rescueDescription:
-    "These could not be saved where they were: the task or its list was deleted, is no longer shared with you, or is view-only now. Choose where to keep them.",
-  rescueFrom: (listName, reason) => {
+  rescueStep: (step, total) => `List ${step} of ${total}`,
+  rescueListTitle: (count, listName) => {
     const list = listName ? `“${listName}”` : "a list";
-    return reason === "readOnly"
-      ? `From ${list}: view-only now`
-      : `From ${list}: deleted, or no longer shared with you`;
+    return count === 1 ? `A task from ${list}` : `${count} tasks from ${list}`;
   },
-  rescueAsNewTask: "Your offline changes, kept as a new task",
+  rescueReason: (listName, reason) => {
+    const list = listName ? `“${listName}”` : "This list";
+    return reason === "readOnly"
+      ? `You can only view ${list} now, so your offline changes could not be saved there. Choose where to keep them.`
+      : `${list} was deleted or is no longer shared with you, so your offline changes could not be saved there. Choose where to keep them.`;
+  },
+  rescueEditsAsNew: "Edited tasks are kept as new tasks.",
   rescueDestinationLabel: "Move to",
   rescueNewList: "New list",
   rescueNewListLabel: "Name of the new list",
-  rescueNewListName: (listName) => (listName ? `Rescued from ${listName}` : "Rescued tasks"),
+  rescueNewListName: (listName, reason) =>
+    !listName ? "Rescued tasks" : reason === "readOnly" ? `${listName} (copy)` : listName,
   rescueMove: (count) => (count === 1 ? "Move task" : `Move ${count} tasks`),
   rescueDiscard: (count) => (count === 1 ? "Discard task" : `Discard ${count} tasks`),
   rescueLater: "Decide later",
-  rescueEntry: (count) => (count === 1 ? "1 task needs a list" : `${count} tasks need a list`),
+  rescueEntry: (lists) =>
+    lists === 1 ? "Tasks need a new list" : `Tasks from ${lists} lists need a new list`,
   rescueMoved: (count, listName) =>
     count === 1 ? `Moved 1 task to “${listName}”` : `Moved ${count} tasks to “${listName}”`,
   rescueDiscarded: (count) => (count === 1 ? "Discarded 1 task" : `Discarded ${count} tasks`),

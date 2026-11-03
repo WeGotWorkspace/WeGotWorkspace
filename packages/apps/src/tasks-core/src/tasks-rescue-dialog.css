@@ -1,28 +1,12 @@
 @import "../../styles.css" reference;
 
-.tasks-rescue-dialog__items {
-  @apply m-0 flex max-h-[min(40vh,18rem)] list-none flex-col gap-3 overflow-y-auto p-0 pr-1;
+/* Same type as a sidebar section title (`field-label-row__label`), dimmed. */
+.tasks-rescue-dialog__step {
+  @apply m-0;
+  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
 }
 
-.tasks-rescue-dialog__item {
-  @apply flex items-start gap-2;
-}
-
-.tasks-rescue-dialog__item-label {
-  @apply flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal;
-}
-
-.tasks-rescue-dialog__item-title {
-  @apply truncate text-sm font-medium;
-  color: var(--workspace-foreground);
-}
-
-.tasks-rescue-dialog__item-meta {
-  @apply text-xs;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-/* Space between the tasks and where they go; the rows keep their own spacing. */
+/* Space between the explanation and where the tasks go; the rows keep their own spacing. */
 .tasks-rescue-dialog__destination {
   @apply mt-6 flex min-w-0 flex-col;
 }
@@ -31,15 +15,27 @@
   @apply w-full;
 }
 
-/* On a phone the buttons wrap instead of pushing Discard out of the dialog. */
+/*
+ * Wide: Discard on the left, Later and Move on the right.
+ * Phone: full-width stack, Move on top and Discard last, apart from the rest.
+ */
 .tasks-rescue-dialog__actions {
-  @apply flex-wrap;
-}
-
-.tasks-rescue-dialog__discard {
-  @apply mr-auto;
+  @apply mt-8 flex-col-reverse gap-3 sm:flex-row sm:gap-2;
 }
 
 .tasks-rescue-dialog__choices {
-  @apply ml-auto flex gap-2;
+  @apply flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row;
+}
+
+.tasks-rescue-dialog__actions .button {
+  @apply w-full sm:w-auto;
+}
+
+/* The only action that loses work: danger colour with its wash at rest. */
+.tasks-rescue-dialog__discard {
+  @apply sm:mr-auto;
+}
+
+.button.tasks-rescue-dialog__discard.button--severity-danger {
+  background-color: var(--button-severity-hover-background);
 }

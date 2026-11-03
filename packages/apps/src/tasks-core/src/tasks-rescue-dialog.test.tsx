@@ -6,26 +6,32 @@ import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
 import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-rescue-dialog";
 
 const bootstrap = createTasksAppBootstrap();
+const template = bootstrap.data.tasks[0]!;
+let order = 0;
 
-function parked(index: number, kind: ParkedTask["kind"]): ParkedTask {
-  const item = bootstrap.data.tasks[index]!;
+function parked(
+  title: string,
+  containerName: string,
+  reason: ParkedTask["reason"] = "gone",
+  kind: ParkedTask["kind"] = "create",
+): ParkedTask {
+  order += 1;
+  const entityId = `task-${order}`;
   return {
-    id: `tasks:${item.id}`,
+    id: `tasks:${entityId}`,
     domain: "tasks",
-    entityId: item.id,
+    entityId,
     kind,
-    reason: "gone",
-    containerId: "gone-list",
-    containerName: "Groceries",
-    title: item.title ?? "",
-    item,
-    parkedAt: 1,
+    reason,
+    containerId: `list-${containerName}`,
+    containerName,
+    title,
+    item: { ...template, id: entityId, title },
+    parkedAt: order,
   };
 }
 
-const writes = [parked(0, "create"), parked(1, "edit")];
-
-function renderDialog() {
+function renderDialog(writes: ParkedTask[]) {
   const onMove = vi.fn();
   const onDiscard = vi.fn();
   const onLater = vi.fn();
@@ -43,63 +49,98 @@ function renderDialog() {
   return { onMove, onDiscard, onLater };
 }
 
+function pickList(name: string) {
+  const trigger = screen.getByRole("button", {
+    name: new RegExp(`^${L.rescueDestinationLabel}:`),
+  });
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("menuitem", { name }));
+}
+
 describe("TasksRescueDialog", () => {
   afterEach(cleanup);
 
-  it("lists every task and moves them all to a new list named after the old one", () => {
-    const { onMove } = renderDialog();
+  it("asks once for all tasks of a deleted list and moves them to a list of the same name", () => {
+    const writes = [parked("Call the dentist", "Groceries"), parked("Buy milk", "Groceries")];
+    const { onMove } = renderDialog(writes);
 
-    expect(screen.getByRole("heading", { name: L.rescueTitle(2) })).toBeTruthy();
-    expect(screen.getByText(writes[0]!.title)).toBeTruthy();
-    expect(screen.getByText(new RegExp(L.rescueAsNewTask))).toBeTruthy();
+    expect(screen.getByRole("heading", { name: L.rescueListTitle(2, "Groceries") })).toBeTruthy();
+    expect(screen.getByText(L.rescueReason("Groceries", "gone"))).toBeTruthy();
+    expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.getByRole("textbox", { name: L.rescueNewListLabel })).toHaveProperty(
       "value",
-      L.rescueNewListName("Groceries"),
+      "Groceries",
     );
 
     fireEvent.click(screen.getByRole("button", { name: L.rescueMove(2) }));
 
     expect(onMove).toHaveBeenCalledWith(
       writes.map((write) => write.id),
-      { newListName: L.rescueNewListName("Groceries") },
+      { newListName: "Groceries" },
     );
   });
 
-  it("moves only the ticked tasks to an existing list", () => {
-    const { onMove } = renderDialog();
+  it("suggests a copy name for a view-only list and says edits become new tasks", () => {
+    renderDialog([parked("Renew passport", "Team errands", "readOnly", "edit")]);
 
-    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(writes[1]!.title) }));
+    expect(screen.getByText(new RegExp(L.rescueEditsAsNew))).toBeTruthy();
+    expect(screen.queryByText("Renew passport")).toBeNull();
+    expect(screen.getByRole("textbox", { name: L.rescueNewListLabel })).toHaveProperty(
+      "value",
+      "Team errands (copy)",
+    );
+  });
+
+  it("moves to an existing list, which hides the new-list name", () => {
+    const writes = [parked("Call the dentist", "Groceries")];
     const list = bootstrap.data.taskLists[0]!;
-    const trigger = screen.getByRole("button", {
-      name: `${L.rescueDestinationLabel}: ${L.rescueNewList}`,
-    });
-    fireEvent.pointerDown(trigger);
-    fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole("menuitem", { name: list.name }));
+    const { onMove } = renderDialog(writes);
 
-    // Picking a list hides the name field for a new one.
+    pickList(list.name);
+
     expect(screen.queryByRole("textbox", { name: L.rescueNewListLabel })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: L.rescueMove(1) }));
-
     expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { listId: list.id });
   });
 
-  it("discards the ticked tasks, and Later keeps them", () => {
-    const { onDiscard, onLater } = renderDialog();
+  it("counts a long list in the title without naming its tasks", () => {
+    const titles = Array.from({ length: 25 }, (_, index) => `Errand ${index + 1}`);
+    renderDialog(titles.map((title) => parked(title, "Household")));
 
-    fireEvent.click(screen.getByRole("button", { name: L.rescueDiscard(2) }));
+    expect(screen.getByRole("heading", { name: L.rescueListTitle(25, "Household") })).toBeTruthy();
+    expect(screen.queryByText("Errand 1")).toBeNull();
+    expect(screen.getByRole("button", { name: L.rescueMove(25) })).toBeTruthy();
+  });
+
+  it("takes several lists one at a time; Later skips to the next, then closes", () => {
+    const groceries = [parked("Call the dentist", "Groceries")];
+    const errands = [parked("Renew passport", "Team errands", "readOnly")];
+    const { onDiscard, onLater } = renderDialog([...groceries, ...errands]);
+
+    expect(screen.getByText(L.rescueStep(1, 2))).toBeTruthy();
+    expect(screen.getByRole("heading", { name: L.rescueListTitle(1, "Groceries") })).toBeTruthy();
+
     fireEvent.click(screen.getByRole("button", { name: L.rescueLater }));
+    expect(onLater).not.toHaveBeenCalled();
+    expect(screen.getByText(L.rescueStep(2, 2))).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: L.rescueListTitle(1, "Team errands") }),
+    ).toBeTruthy();
 
-    expect(onDiscard).toHaveBeenCalledWith(writes.map((write) => write.id));
+    fireEvent.click(screen.getByRole("button", { name: L.rescueDiscard(1) }));
+    expect(onDiscard).toHaveBeenCalledWith([errands[0]!.id]);
+
+    fireEvent.click(screen.getByRole("button", { name: L.rescueLater }));
     expect(onLater).toHaveBeenCalledOnce();
   });
 
-  it("offers the way back only while tasks wait", () => {
+  it("offers the way back only while lists wait", () => {
     const onOpen = vi.fn();
-    const { rerender } = render(<TasksRescueEntry count={0} labels={L} onOpen={onOpen} />);
+    const { rerender } = render(<TasksRescueEntry lists={0} labels={L} onOpen={onOpen} />);
     expect(screen.queryByRole("button")).toBeNull();
 
-    rerender(<TasksRescueEntry count={2} labels={L} onOpen={onOpen} />);
+    rerender(<TasksRescueEntry lists={2} labels={L} onOpen={onOpen} />);
     fireEvent.click(screen.getByRole("button", { name: L.rescueEntry(2) }));
     expect(onOpen).toHaveBeenCalledOnce();
   });
