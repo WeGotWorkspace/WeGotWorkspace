@@ -50,8 +50,3 @@ export function docsHrefFromApiPath(apiPath: string): string {
   if (search.file) query.set("file", search.file);
   return `/docs${query.toString() ? `?${query.toString()}` : ""}`;
 }
-
-/** Docs editor URL for a FileNode id (`/docs?id=fn-…`). */
-export function docsHrefFromNodeId(nodeId: string): string {
-  return `/docs?${new URLSearchParams({ id: nodeId }).toString()}`;
-}

@@ -4,7 +4,6 @@
 import { describe, expect, it } from "vitest";
 import {
   docsHrefFromApiPath,
-  docsHrefFromNodeId,
   docsSearchFromApiPath,
   docsSearchFromNodeId,
   parseDocsRouteSearch,
@@ -36,9 +35,8 @@ describe("docs-route-search helpers", () => {
     expect(parseDocsRouteSearch({ id: 42 })).toEqual({});
   });
 
-  it("docsHrefFromNodeId builds a /docs?id= link", () => {
+  it("docsSearchFromNodeId names the id", () => {
     const id = `fn-${"b".repeat(32)}`;
-    expect(docsHrefFromNodeId(id)).toBe(`/docs?id=${id}`);
     expect(docsSearchFromNodeId(id)).toEqual({ id });
   });
 

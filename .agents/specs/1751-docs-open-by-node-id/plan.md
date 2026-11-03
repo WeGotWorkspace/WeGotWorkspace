@@ -65,7 +65,7 @@ Considered: putting `nodeId` on `DriveFile` and changing every `onOpenFile(apiPa
 - **id:** `api-file-node-locate`
 - **Skill:** api, security
 - **Inputs:** `DriveService::assertReadableNodeId` `path: packages/api/app/Services/Drive/DriveService.php:407`; `FileNodeIndexService::liveByKey` / `recordCreate` `path: packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php:139`; user route group `path: packages/api/routes/api.php:146`
-- **Done when:** `GET /api/v1/files/node` by `id` and by `path` returns `{id, path}` for a readable file; 400 without either; 404 for unknown id, directory, trash; 403 for a file the caller cannot read; guest bearer is refused by the role gate; OpenAPI entry with `x-wgw-access: user`; generated types updated; comment notifications link by id.
+- **Done when:** `GET /api/v1/files/node` by `id` and by `path` returns `{id, path}` for a readable file; 400 without either; 404 for unknown id, directory, trash, and a file the caller cannot read (as `files/content` since #1775); guest bearer is refused by the role gate (403); OpenAPI entry with `x-wgw-access: user`; generated types updated; comment notifications link by id.
 - **Verify with:** `cd packages/api && php artisan test --filter=DocsFileNodeLocateTest`; `pnpm test:api-done-gate`
 - **Parallel with:** none
 
@@ -74,7 +74,7 @@ Considered: putting `nodeId` on `DriveFile` and changing every `onOpenFile(apiPa
 - **id:** `apps-docs-route-id`
 - **Skill:** workspace, client-transport
 - **Inputs:** route search `path: packages/apps/src/docs-core/src/docs-route-search.ts:1`; DocsApp `path: packages/apps/src/docs-core/src/docs-app.tsx:57`; Dexie cache `path: packages/apps/src/lib/offline/drive/drive-directory-offline-store.ts:65`
-- **Done when:** route accepts `id`; `useDocsRouteDocument` resolves id → path (network, then cache) and path → id (network, then cache) and replaces `?file=` with `?id=`; not-found state for an unresolvable id; rename inside Docs navigates by id with `replace`; guests and mock mode skip resolution.
+- **Done when:** route accepts `id`; `useDocsRouteDocument` resolves id → path (network, then cache) and path → id (network, then cache) and replaces `?file=` with `?id=`; an id the server no longer finds opens the file that took its last known path, or that path itself (the editor's gone flow keeps the local copy); not-found state only for an id this device never located; rename inside Docs navigates by id with `replace`; guests and mock mode skip resolution.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/docs-core`; apps done gate
 - **Parallel with:** none
 
