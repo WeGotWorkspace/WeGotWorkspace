@@ -140,10 +140,8 @@ export type TasksUILabels = {
   rescueDescription: string;
   rescueFrom: (listName: string, reason: "gone" | "readOnly") => string;
   rescueAsNewTask: string;
-  rescueToExisting: string;
-  rescueToNew: string;
-  rescueNoWritableList: string;
-  rescueListLabel: string;
+  rescueDestinationLabel: string;
+  rescueNewList: string;
   rescueNewListLabel: string;
   rescueNewListName: (listName: string) => string;
   rescueMove: (count: number) => string;
@@ -311,10 +309,8 @@ export const defaultTasksLabels: TasksUILabels = {
       : `From ${list}: deleted, or no longer shared with you`;
   },
   rescueAsNewTask: "Your offline changes, kept as a new task",
-  rescueToExisting: "An existing list",
-  rescueToNew: "A new list",
-  rescueNoWritableList: "There is no list you can add tasks to.",
-  rescueListLabel: "List",
+  rescueDestinationLabel: "Move to",
+  rescueNewList: "New list",
   rescueNewListLabel: "Name of the new list",
   rescueNewListName: (listName) => (listName ? `Rescued from ${listName}` : "Rescued tasks"),
   rescueMove: (count) => (count === 1 ? "Move task" : `Move ${count} tasks`),

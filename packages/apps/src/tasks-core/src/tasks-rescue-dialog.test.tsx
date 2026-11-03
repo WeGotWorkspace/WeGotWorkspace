@@ -69,12 +69,19 @@ describe("TasksRescueDialog", () => {
     const { onMove } = renderDialog();
 
     fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(writes[1]!.title) }));
-    fireEvent.click(screen.getByRole("radio", { name: L.rescueToExisting }));
+    const list = bootstrap.data.taskLists[0]!;
+    const trigger = screen.getByRole("button", {
+      name: `${L.rescueDestinationLabel}: ${L.rescueNewList}`,
+    });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: list.name }));
+
+    // Picking a list hides the name field for a new one.
+    expect(screen.queryByRole("textbox", { name: L.rescueNewListLabel })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: L.rescueMove(1) }));
 
-    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], {
-      listId: bootstrap.data.taskLists[0]!.id,
-    });
+    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { listId: list.id });
   });
 
   it("discards the ticked tasks, and Later keeps them", () => {

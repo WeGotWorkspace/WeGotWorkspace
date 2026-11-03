@@ -10,12 +10,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CalendarPickerMenuItem } from "@/lib/calendar-event-calendar-picker";
 import type { ParkedTask, TaskRescueTarget } from "@/lib/offline/tasks/tasks-parked-writes";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
+import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
 import type { TaskList } from "@/tasks-core/src/tasks-types";
 import "./tasks-conflict-dialog.css";
 import "./tasks-rescue-dialog.css";
@@ -33,6 +41,9 @@ export type TasksRescueDialogProps = {
   onLater: () => void;
 };
 
+/** The menu value for "New list"; never a real list id. */
+const NEW_LIST = "__new-list__";
+
 function suggestedName(writes: ParkedTask[], L: TasksUILabels): string {
   const names = new Set(writes.map((write) => write.containerName));
   const [only] = names;
@@ -42,7 +53,8 @@ function suggestedName(writes: ParkedTask[], L: TasksUILabels): string {
 /**
  * Asks where tasks the server refused should go (#1825): an existing list the
  * person can write to, a new list, or nowhere (discard). One dialog for all of
- * them, each with a checkbox.
+ * them, each with a checkbox. The destination is one menu of lists plus "New
+ * list", like the calendar file import.
  */
 export function TasksRescueDialog({
   open,
@@ -56,9 +68,8 @@ export function TasksRescueDialog({
 }: TasksRescueDialogProps) {
   const id = useId();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // A new list keeps the rescued tasks together; an existing list is one click away.
-  const [destination, setDestination] = useState<"existing" | "new">("new");
-  const [listId, setListId] = useState("");
+  // A new list keeps the rescued tasks together; an existing list is one pick away.
+  const [destinationId, setDestinationId] = useState(NEW_LIST);
   const [newName, setNewName] = useState("");
   const writeIds = writes.map((write) => write.id).join("\n");
 
@@ -66,27 +77,32 @@ export function TasksRescueDialog({
   useEffect(() => {
     if (!open) return;
     setSelected(new Set(writeIds.split("\n").filter(Boolean)));
-    setDestination("new");
+    setDestinationId(NEW_LIST);
     setNewName(suggestedName(writes, L));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per set of tasks
   }, [open, writeIds]);
 
+  // A list that stops being writable while the dialog is open is no longer a choice.
   useEffect(() => {
-    if (!lists.some((list) => list.id === listId)) setListId(lists[0]?.id ?? "");
-  }, [listId, lists]);
+    if (destinationId !== NEW_LIST && !lists.some((list) => list.id === destinationId)) {
+      setDestinationId(NEW_LIST);
+    }
+  }, [destinationId, lists]);
 
   const ids = useMemo(
     () => writes.filter((write) => selected.has(write.id)).map((write) => write.id),
     [selected, writes],
   );
-  const target: TaskRescueTarget | null =
-    destination === "existing"
-      ? listId
-        ? { listId }
-        : null
-      : newName.trim()
-        ? { newListName: newName.trim() }
-        : null;
+  const creating = destinationId === NEW_LIST;
+  const selectedList = lists.find((list) => list.id === destinationId);
+  const destinationName = creating ? L.rescueNewList : (selectedList?.name ?? "");
+  const target: TaskRescueTarget | null = creating
+    ? newName.trim()
+      ? { newListName: newName.trim() }
+      : null
+    : selectedList
+      ? { listId: selectedList.id }
+      : null;
 
   const toggle = (writeId: string, on: boolean) =>
     setSelected((current) => {
@@ -124,78 +140,76 @@ export function TasksRescueDialog({
             </li>
           ))}
         </ul>
-        <RadioGroup
-          className="tasks-rescue-dialog__destinations"
-          value={destination}
-          onValueChange={(value) => setDestination(value as "existing" | "new")}
-          disabled={busy}
-        >
-          <div className="tasks-conflict-dialog__option">
-            <RadioGroupItem
-              value="existing"
-              id={`${id}-existing`}
-              disabled={busy || lists.length === 0}
-            />
-            <div className="tasks-rescue-dialog__destination">
-              <Label htmlFor={`${id}-existing`}>{L.rescueToExisting}</Label>
-              {lists.length === 0 ? (
-                <p className="tasks-rescue-dialog__hint">{L.rescueNoWritableList}</p>
-              ) : (
-                <Select
-                  value={listId}
-                  onValueChange={(value) => {
-                    setListId(value);
-                    setDestination("existing");
-                  }}
+        <div className="tasks-rescue-dialog__destination">
+          <FieldLabelRow label={L.rescueDestinationLabel} htmlFor={`${id}-destination`}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <ColorSwatchTrigger
+                  id={`${id}-destination`}
+                  icon={selectedList ? <TaskListIcon list={selectedList} /> : undefined}
+                  showSwatch={false}
+                  size="md"
+                  label={`${L.rescueDestinationLabel}: ${destinationName}`}
+                  className="tasks-rescue-dialog__destination-trigger"
                   disabled={busy}
                 >
-                  <SelectTrigger size="md" aria-label={L.rescueListLabel}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lists.map((list) => (
-                      <SelectItem key={list.id} value={list.id}>
-                        {list.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-          <div className="tasks-conflict-dialog__option">
-            <RadioGroupItem value="new" id={`${id}-new`} />
-            <div className="tasks-rescue-dialog__destination">
-              <Label htmlFor={`${id}-new`}>{L.rescueToNew}</Label>
+                  {destinationName}
+                </ColorSwatchTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="calendar-event-dialog__calendar-menu calendar-event-dialog__calendar-menu--match-trigger"
+              >
+                {lists.map((list) => (
+                  <CalendarPickerMenuItem
+                    key={list.id}
+                    name={list.name}
+                    icon={<TaskListIcon list={list} />}
+                    selected={destinationId === list.id}
+                    onSelect={() => setDestinationId(list.id)}
+                  />
+                ))}
+                {lists.length > 0 ? <DropdownMenuSeparator /> : null}
+                <CalendarPickerMenuItem
+                  name={L.rescueNewList}
+                  selected={creating}
+                  onSelect={() => setDestinationId(NEW_LIST)}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FieldLabelRow>
+          {creating ? (
+            <FieldLabelRow label={L.rescueNewListLabel} htmlFor={`${id}-new-name`}>
               <Input
-                aria-label={L.rescueNewListLabel}
+                id={`${id}-new-name`}
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
-                onFocus={() => setDestination("new")}
                 disabled={busy}
               />
-            </div>
-          </div>
-        </RadioGroup>
+            </FieldLabelRow>
+          ) : null}
+        </div>
         <DialogFooter className="tasks-conflict-dialog__actions tasks-rescue-dialog__actions">
           <Button
+            className="tasks-rescue-dialog__discard"
             variant="outline"
             onClick={() => onDiscard(ids)}
             disabled={busy || ids.length === 0}
           >
             {L.rescueDiscard(ids.length)}
           </Button>
-          <span className="tasks-rescue-dialog__spacer" />
-          <Button variant="outline" onClick={onLater} disabled={busy}>
-            {L.rescueLater}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => target && onMove(ids, target)}
-            disabled={busy || ids.length === 0 || !target}
-          >
-            {L.rescueMove(ids.length)}
-          </Button>
+          <div className="tasks-rescue-dialog__choices">
+            <Button variant="outline" onClick={onLater} disabled={busy}>
+              {L.rescueLater}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => target && onMove(ids, target)}
+              disabled={busy || ids.length === 0 || !target}
+            >
+              {L.rescueMove(ids.length)}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

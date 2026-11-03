@@ -17,20 +17,29 @@
   color: var(--workspace-foreground);
 }
 
-.tasks-rescue-dialog__item-meta,
-.tasks-rescue-dialog__hint {
+.tasks-rescue-dialog__item-meta {
   @apply text-xs;
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
-.tasks-rescue-dialog__destinations {
-  @apply gap-2;
-}
-
+/* Space between the tasks and where they go; the rows keep their own spacing. */
 .tasks-rescue-dialog__destination {
-  @apply flex min-w-0 flex-1 flex-col gap-2;
+  @apply mt-6 flex min-w-0 flex-col;
 }
 
-.tasks-rescue-dialog__spacer {
-  @apply hidden flex-1 sm:block;
+.tasks-rescue-dialog__destination-trigger {
+  @apply w-full;
+}
+
+/* On a phone the buttons wrap instead of pushing Discard out of the dialog. */
+.tasks-rescue-dialog__actions {
+  @apply flex-wrap;
+}
+
+.tasks-rescue-dialog__discard {
+  @apply mr-auto;
+}
+
+.tasks-rescue-dialog__choices {
+  @apply ml-auto flex gap-2;
 }
