@@ -6,6 +6,7 @@ import type {
 import { useDriveUploadQueue } from "@/drive-core/src/drive-upload-queue";
 import type { DriveAPIOperations, DriveUploadBatchAnswers } from "@/drive-core/src/drive-types";
 import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
+import { stopAskingUploadBatch } from "@/lib/offline/drive/upload/drive-upload-memory";
 
 type BatchDialogOperations = Pick<
   DriveAPIOperations,
@@ -30,6 +31,13 @@ export function useDriveUploadBatchDialog(
   const release = operations?.releaseUploadBatch;
   const cancel = operations?.cancelUploadBatch;
   const claim = operations?.claimUnansweredUploadBatches;
+  const hasClaim = Boolean(claim);
+  // The latest `claim`: it changes identity whenever the operations are rebuilt.
+  const claimRef = useRef(claim);
+  claimRef.current = claim;
+  const requestsRef = useRef(requests);
+  requestsRef.current = requests;
+  const mounted = useRef(false);
 
   const reportError = useCallback(
     (error: unknown) => showError(error instanceof Error ? error.message : String(error)),
@@ -52,24 +60,32 @@ export function useDriveUploadBatchDialog(
     setRequests((previous) => [...previous, request]);
   }, []);
 
+  // Gone with the hook: stop answering probes for the batches asked here, so
+  // another tab (or the next mount) takes them over.
   useEffect(() => {
-    if (!claim) return;
-    let cancelled = false;
-    void claim()
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      for (const request of requestsRef.current) stopAskingUploadBatch(request.batchId);
+    };
+  }, []);
+
+  // Once per Drive load, not per rebuilt `claim`: a claim marks its batches as
+  // asked, so its result must never be dropped. Later batches come through `ask`.
+  useEffect(() => {
+    const claimBatches = claimRef.current;
+    if (!claimBatches) return;
+    void claimBatches()
       .then((claimed) => {
-        if (cancelled) return;
         for (const request of claimed) {
-          if (hasDriveUploadBatchQuestions(request.questions)) ask(request);
+          if (!mounted.current) stopAskingUploadBatch(request.batchId);
+          else if (hasDriveUploadBatchQuestions(request.questions)) ask(request);
           else releaseBatch(request, { keepOffline: "remove" });
         }
       })
       .catch(reportError);
-    return () => {
-      cancelled = true;
-    };
-    // Once per Drive load; later batches come through `ask`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claim]);
+  }, [hasClaim]);
 
   // Answered or cancelled in another tab: close it here too.
   useEffect(() => {

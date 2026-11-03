@@ -65,7 +65,12 @@ async function describeBatchQuestions(
   return {
     space: spaceCheck && spaceCheck.status === "does_not_fit" ? spaceCheck : null,
     conflicts: conflicts && conflicts.conflicts.length > 0 ? conflicts : null,
-    keepOffline: await describeDriveUploadBatchKeepOffline(username, batchId),
+    keepOffline: await describeDriveUploadBatchKeepOffline(username, batchId).catch(
+      (error: unknown) => {
+        console.warn("[drive-upload] keep-offline check failed", error);
+        return null;
+      },
+    ),
   };
 }
 
