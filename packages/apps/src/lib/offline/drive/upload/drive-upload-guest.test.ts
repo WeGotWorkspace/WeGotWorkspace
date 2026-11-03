@@ -1,5 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 
 const session = vi.hoisted(() => ({ result: null as null | { accountId: string } | Error }));
 vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
@@ -39,7 +41,12 @@ describe("resolveGuestUploadAccount (#1715)", () => {
 
 describe("guestUploadQueueOperations (#1715)", () => {
   it("reads the folder's queue rows from the guest account, not the owner's", async () => {
-    const user = { username: "owner", name: "", role: "guest", roots: ["/users/owner/Drop"] };
+    const user = {
+      username: "owner",
+      name: "",
+      role: "guest",
+      roots: ["/users/owner/Drop"],
+    } as unknown as DriveUIData["user"];
     const operations = guestUploadQueueOperations(GUEST, user);
     expect(typeof operations.enqueueUploads).toBe("function");
     await expect(operations.readCachedDirectory?.("/users/owner/Drop")).resolves.toBeNull();
@@ -51,7 +58,7 @@ describe("guestUploadQueueOperations (#1715)", () => {
       size: 1,
       time: 0,
       permissions: 0,
-    };
+    } as WgwDriveDirectoryEntry;
     await upsertDriveEntry("owner", entry);
     await expect(operations.readCachedDirectory?.("/users/owner/Drop")).resolves.toBeNull();
 
