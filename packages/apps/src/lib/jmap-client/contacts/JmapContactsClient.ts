@@ -1,4 +1,5 @@
 import { JmapSetItemError } from "../core/errors.js";
+import { fetchAllByQuery } from "../core/fetch-all.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CONTACTS_CAPABILITY, CORE_CAPABILITY } from "../core/types.js";
 import type {
@@ -111,14 +112,32 @@ export class JmapContactsClient {
 
   // ---- ContactCard ----
 
+  /** No `ids` lists every card through {@link getAllContactCards}. */
   async getContactCards(
     accountId: JmapId,
     ids?: JmapId[] | null,
     properties?: string[] | null,
   ): Promise<GetResponse<JmapContactCard>> {
-    const resolvedIds =
-      ids === undefined || ids === null ? (await this.queryContactCards(accountId)).ids : ids;
-    return this.#getContactCardsByIds(accountId, resolvedIds, properties);
+    if (ids === undefined || ids === null) return this.getAllContactCards(accountId, properties);
+    return this.#getContactCardsByIds(accountId, ids, properties);
+  }
+
+  /**
+   * Every card, via `ContactCard/query` and explicit-id gets of
+   * {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST}. The recorded state is the
+   * one from before the listing (#1792).
+   */
+  getAllContactCards(
+    accountId: JmapId,
+    properties?: string[] | null,
+  ): Promise<GetResponse<JmapContactCard>> {
+    return fetchAllByQuery<JmapContactCard>(this.client, {
+      accountId,
+      type: CONTACT_CARD_TYPE,
+      using: CONTACTS_USING,
+      properties,
+      maxIdsPerGet: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+    });
   }
 
   /**
