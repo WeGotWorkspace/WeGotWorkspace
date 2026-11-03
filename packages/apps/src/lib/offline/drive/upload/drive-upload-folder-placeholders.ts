@@ -46,6 +46,8 @@ async function placeFolderRow(
   const table = entriesTable(username);
   const existing = await table.get(path);
   if (existing?.uploadId && existing.uploadId !== item.id) return;
+  // A file at the path stays as it is; no folder row goes there.
+  if (existing && existing.type !== "dir") return;
   if (existing?.nodeId) {
     await table.put(withUploadMarker(existing, item));
     return;

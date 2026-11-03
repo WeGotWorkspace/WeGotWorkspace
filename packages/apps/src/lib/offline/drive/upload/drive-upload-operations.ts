@@ -116,7 +116,9 @@ async function claimUnansweredBatches(username: string) {
     startAskingUploadBatch(batch.id);
     claimed.push({
       batchId: batch.id,
-      itemIds: items.filter((item) => item.batchId === batch.id).map((item) => item.id),
+      itemIds: items
+        .filter((item) => item.batchId === batch.id && item.kind !== "folder")
+        .map((item) => item.id),
       questions: await describeBatchQuestions(username, batch.id, batch.spaceCheck),
     });
   }

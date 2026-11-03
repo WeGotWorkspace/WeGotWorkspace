@@ -14,6 +14,7 @@ import {
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { resetPersistentStorageRequestForTests } from "@/lib/offline/drive/upload/drive-upload-device-storage";
 import { memoryLocalStorage } from "@/lib/offline/drive/upload/drive-upload-fake-server.fixture";
+import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
 import { driveUploadKeepOfflineQuestion } from "@/lib/offline/drive/upload/drive-upload-keep-offline";
 import { driveUploadQueueOperations } from "@/lib/offline/drive/upload/drive-upload-operations";
 import { stopAllDriveUploaders } from "@/lib/offline/drive/upload/drive-upload-runner";
@@ -155,15 +156,24 @@ describe("folder upload questions and answers", () => {
     const ops = driveUploadQueueOperations(user);
     const { batchId, folderIds, questions } = await enqueuePhotos();
 
-    expect(questions.folders?.folders[0]).toMatchObject({
-      keptAsName: "Photos (1)",
-      canMerge: false,
-    });
-    expect(questions.folders?.mergeConflicts).toBeNull();
+    // No clash can merge, so there is nothing to ask.
+    expect(questions.folders ?? null).toBeNull();
+    expect(hasDriveUploadBatchQuestions(questions)).toBe(false);
     // The folder is no file conflict.
     expect(questions.conflicts).toBeNull();
     await ops.releaseUploadBatch(batchId, { keepOffline: "remove", folderConflict: "merge" });
     expect((await folderItem(folderIds![0]!)).name).toBe("Photos (1)");
+  });
+
+  it("leaves a file in the way of a nested folder alone when merging", async () => {
+    await cached(`${docs}/Photos`, "dir", "fd-photos");
+    await cached(`${docs}/Photos/2024`, "file", "fn-2024");
+    const { batchId } = await enqueuePhotos();
+    const { applyDriveUploadFolderChoice } =
+      await import("@/lib/offline/drive/upload/drive-upload-folder-conflicts");
+
+    await applyDriveUploadFolderChoice(user, batchId, "merge");
+    expect(await listing(`${docs}/Photos`)).toEqual(["file:2024", "file:a.txt:upload"]);
   });
 
   it("removes a folder that is still waiting, with everything below it", async () => {

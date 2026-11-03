@@ -120,8 +120,9 @@ export async function describeDriveUploadFolderConflicts(
   sessionVersionCheck: boolean | null,
 ): Promise<DriveUploadFolderQuestion | null> {
   const { plans } = await planBatchFolders(username, batchId);
-  if (plans.length === 0) return null;
   const merged = plans.filter((plan) => plan.existing!.isFolder);
+  // Nothing to ask when no clash can merge: enqueue already kept both.
+  if (merged.length === 0) return null;
   const parentPathOf = (path: string) => {
     for (const plan of merged) {
       if (path === plan.path || path.startsWith(`${plan.path}/`)) {
