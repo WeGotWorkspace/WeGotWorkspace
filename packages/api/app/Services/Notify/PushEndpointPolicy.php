@@ -9,6 +9,12 @@ namespace App\Services\Notify;
  *
  * Suffix match, so web.push.apple.com is covered by push.apple.com.
  * The host must be the suffix itself or a dotted subdomain of it.
+ *
+ * EXACT_HOSTS match the whole host only, never a subdomain. Chromium
+ * hands out https://jmt17.google.com/fcm/send/… on every channel except
+ * Stable (Beta, Dev, Canary, unbranded builds); see
+ * components/push_messaging/push_messaging_constants.cc. A google.com
+ * suffix would open far more than a push service, so it stays exact.
  */
 final class PushEndpointPolicy
 {
@@ -19,6 +25,11 @@ final class PushEndpointPolicy
         'push.services.mozilla.com',
         'push.apple.com',
         'notify.windows.com',
+    ];
+
+    /** @var list<string> */
+    private const EXACT_HOSTS = [
+        'jmt17.google.com',
     ];
 
     public function isAllowed(string $url): bool
@@ -40,6 +51,10 @@ final class PushEndpointPolicy
         $host = strtolower((string) ($parts['host'] ?? ''));
         if ($host === '' || str_contains($host, '*')) {
             return false;
+        }
+
+        if (in_array($host, self::EXACT_HOSTS, true)) {
+            return true;
         }
 
         foreach (self::HOST_SUFFIXES as $suffix) {
