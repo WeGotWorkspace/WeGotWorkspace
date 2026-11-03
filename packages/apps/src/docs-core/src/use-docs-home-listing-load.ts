@@ -11,7 +11,11 @@ import {
   docsListingCacheKey,
   type DocsListingBrowseFilters,
 } from "@/lib/offline/docs/docs-listing-cache-key";
-import { mergeLiveDocsListing } from "@/lib/offline/docs/docs-inbound-sync";
+import {
+  docsListingRowsDiffer,
+  mergeLiveDocsListing,
+  notifyDocsCachesChanged,
+} from "@/lib/offline/docs/docs-inbound-sync";
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
@@ -162,7 +166,15 @@ export function useDocsHomeListingLoad({
         setHasMore(live.hasMore);
         setIsOfflineListing(false);
         setError(null);
+        const rowsChanged = offlineUsername
+          ? await guardOfflineCacheStep(
+              docsListingRowsDiffer(offlineUsername, filters, results),
+              false,
+              cacheTimeoutMs,
+            )
+          : false;
         await persistListingCache(results, live.hasMore);
+        if (offlineUsername && rowsChanged) notifyDocsCachesChanged(offlineUsername);
         if (offlineUsername) {
           void syncDocsBodiesFromListingResults(offlineUsername, live.results, { signal });
         }
