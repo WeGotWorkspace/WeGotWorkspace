@@ -6,7 +6,7 @@ namespace Tests\Feature\Search;
 
 use App\Models\JmapFileNode;
 use App\Services\Drive\DriveService;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Search\SearchReindexRunner;
@@ -327,7 +327,7 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
     {
         app(WgwStorage::class)->files()->put('users/bob/minted.md', "# Minted\n");
 
-        app(FileNodeIndexService::class)->reindexAll();
+        app(FileNodeReindexer::class)->reindexAll();
 
         $this->assertNotNull(
             JmapFileNode::query()

@@ -71,6 +71,7 @@ export function MeetGuestChannelFrame({ children, className }: MeetGuestChannelF
       <WorkspaceAppLayout
         className={cn("meet-workspace meet-workspace--split meet-guest-channel", className)}
         sidebar={null}
+        mainOwnsSafeArea
         main={
           <div
             className="meet-guest-channel__lobby"
@@ -135,6 +136,7 @@ export function MeetGuestChannel({
           className,
         )}
         sidebar={null}
+        mainOwnsSafeArea
         panel={
           <MeetWorkspaceRail
             open={showStage && chatOpen}

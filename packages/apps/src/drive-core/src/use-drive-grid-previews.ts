@@ -22,12 +22,13 @@ const MAX_CONCURRENT_FETCHES = 4;
 
 type PreviewEntry = FilePreviewPayload;
 
+/** Upload placeholders have no bytes on the server to preview yet. */
 function isMediaPreviewable(file: DriveFile): boolean {
-  return (file.kind === "image" || file.kind === "video") && Boolean(file.apiPath);
+  return (file.kind === "image" || file.kind === "video") && Boolean(file.apiPath) && !file.upload;
 }
 
 function isTextPreviewable(file: DriveFile): boolean {
-  if (file.kind === "folder") return false;
+  if (file.kind === "folder" || file.upload) return false;
   // Docs-editor files (.md / .txt): kind icon only — no excerpt or body preview.
   if (isDocsEditorPreviewFile(file.title, file.apiPath)) return false;
   if (!file.apiPath && !isUsableTextExcerpt(file.excerpt ?? "", file.apiPath)) return false;

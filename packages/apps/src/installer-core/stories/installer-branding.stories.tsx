@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { createBrandingStoryMeta } from "@/branding-playground";
+import { createBrandingStoryMeta, withDarkTheme } from "@/branding-playground";
 import {
   MOCK_DATA_DIR_PATH,
   createInstallerAppBootstrap,
@@ -9,6 +9,7 @@ import { InstallerAccountPage } from "@/installer-core/src/installer-account-pag
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
 import { installerCopy } from "@/installer-core/src/installer-copy";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
+import { InstallerNotSecurePage } from "@/installer-core/src/installer-not-secure-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
 import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
@@ -44,7 +45,7 @@ const brandingMeta = createBrandingStoryMeta({
           "Designer branding for the installer cream shell (same `.login-screen` paper as Login): " +
           "`--color-we-got-soft` / `--color-we-got-dark` via cssprops, and BrandLockup suite-mark SVG slot. " +
           "State matrix: Welcome, database (MySQL / SQLite), account (+ env-omitted database step), " +
-          "installing, ready, and server-needs-attention. " +
+          "installing, ready, server-needs-attention, and the not-secure (http) warning in light and dark. " +
           "Interactive flow walks the full mock InstallerWorkspace setup (Welcome → Ready).",
       },
     },
@@ -82,6 +83,8 @@ export const InteractiveFlow: Story = {
     await expect(canvas.getByRole("textbox", { name: installerCopy.dataDirLabel })).toHaveValue(
       MOCK_DATA_DIR_PATH,
     );
+    // Storybook runs on localhost, a secure context: no http warning on the way.
+    await expect(canvas.queryByRole("heading", { name: installerCopy.notSecureTitle })).toBeNull();
   },
 };
 
@@ -281,5 +284,64 @@ export const ServerNeedsAttention: Story = {
     await expect(canvas.queryByRole("button", { name: "Create workspace" })).toBeNull();
     await expect(canvas.queryByRole("list", { name: "Setup progress" })).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Re-run checks" }));
+  },
+};
+
+async function expectNotSecureWarning(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await expect(
+    canvas.getByRole("heading", { name: installerCopy.notSecureTitle }),
+  ).toBeInTheDocument();
+  await expect(canvas.getByText(installerCopy.notSecureLead)).toBeInTheDocument();
+  const losses = within(
+    canvas.getByRole("list", { name: installerCopy.notSecureListLabel }),
+  ).getAllByRole("listitem");
+  await expect(losses.map((item) => item.textContent)).toEqual([...installerCopy.notSecureLosses]);
+  await expect(canvas.getByText(installerCopy.notSecureFix)).toBeInTheDocument();
+  await expect(
+    canvas.getByRole("button", { name: installerCopy.notSecureContinue }),
+  ).toBeInTheDocument();
+}
+
+/** Opened over http (not localhost): what will not work, how to fix it, and a confirm to go on. */
+export const NotSecure: Story = {
+  name: "Not secure (http)",
+  tags: ["vitest-ci"],
+  render: () => <InstallerNotSecurePage />,
+  play: async ({ canvasElement }) => {
+    await expectNotSecureWarning(canvasElement);
+    await expect(document.documentElement.dataset.theme).not.toBe("dark");
+  },
+};
+
+export const NotSecureDark: Story = {
+  name: "Not secure (http, dark theme)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <InstallerNotSecurePage />,
+  play: async ({ canvasElement }) => {
+    await expectNotSecureWarning(canvasElement);
+    await expect(document.documentElement.dataset.theme).toBe("dark");
+  },
+};
+
+/** Over http, Get started shows the warning first; Continue without https goes on with setup. */
+export const InteractiveFlowNotSecure: Story = {
+  name: "Interactive flow (http)",
+  tags: ["vitest-ci"],
+  render: () => {
+    const { data, operations } = createInstallerAppBootstrap();
+    return <InstallerWorkspace data={data} operations={operations} secureContext={false} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: installerCopy.getStarted }));
+    await expectNotSecureWarning(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: installerCopy.notSecureContinue }));
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
+      ).toBeInTheDocument(),
+    );
   },
 };

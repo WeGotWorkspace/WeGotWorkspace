@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use Illuminate\Support\Facades\Cache;
 
 final class SearchReindexRunner
@@ -26,7 +26,7 @@ final class SearchReindexRunner
     public function __construct(
         private SearchReindexStateStore $store,
         private SearchIndexerService $indexer,
-        private FileNodeIndexService $fileNodes,
+        private FileNodeReindexer $fileNodeReindexer,
     ) {}
 
     /**
@@ -70,7 +70,7 @@ final class SearchReindexRunner
             $this->store->appendLog('Search reindex started.');
 
             $this->writePhase('indexing_file_nodes');
-            $this->fileNodes->reindexAll(progress: function (int $done, int $total): void {
+            $this->fileNodeReindexer->reindexAll(progress: function (int $done, int $total): void {
                 if ($this->store->isCancelRequested()) {
                     throw new \RuntimeException('Search reindex cancelled by user.');
                 }

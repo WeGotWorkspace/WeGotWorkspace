@@ -12,8 +12,10 @@ describe("filesBrowserSidebar", () => {
       "shared",
       "recent",
       "starred",
+      "uploads",
       "trash",
     ]);
+    expect(filesBrowserSidebarLabels.uploads).toBe("Uploads");
     expect(filesBrowserHomeLabel("docs")).toBe("My Docs");
     expect(filesBrowserHomeLabel("drive")).toBe("My Files");
     expect(filesBrowserSidebarLabels.drivesSection).toBe("My Drives");
