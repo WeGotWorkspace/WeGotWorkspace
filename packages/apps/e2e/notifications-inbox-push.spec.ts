@@ -101,7 +101,7 @@ async function notifyAdmin(
     ),
   );
   const latency = Date.now() - sentAt;
-  // The ack follows the row in the tab that claimed it; give it a moment.
+  // The ack follows the row in whichever tab flushes first; give it a moment.
   await expect.poll(() => counter.acks().length, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
   // A stray second fetch would come with the next stream request (3 s retry).
   await tabs[0]!.waitForTimeout(3_000);
@@ -118,7 +118,7 @@ function countInboxRequests(pages: Page[]) {
     if (request.method() === "GET" && /\/api\/v1\/notifications$/.test(url.pathname)) {
       if (url.searchParams.has("unread")) gets.push(url.href);
     }
-    if (request.method() === "POST" && /\/notifications\/[^/]+\/local-ack$/.test(url.pathname)) {
+    if (request.method() === "POST" && /\/notifications\/local-ack$/.test(url.pathname)) {
       acks.push(url.pathname);
     }
   };

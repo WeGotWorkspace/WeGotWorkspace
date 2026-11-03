@@ -49,7 +49,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(),
   ackNotification: vi.fn(),
-  ackLocalNotification: vi.fn(),
+  ackLocalNotifications: vi.fn(),
 }));
 vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({
   ensurePushPermissionAndSubscribe: vi.fn(async () => false),
@@ -60,7 +60,7 @@ vi.mock("@/notifications-core/src/inbox-fan-out", async (importOriginal) => ({
   defaultInboxFanOut: () => tabs.here!,
 }));
 
-import { ackLocalNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import { ackLocalNotifications, listNotifications } from "@/lib/api/wgw/notifications";
 import { INBOX_SHARE_WAIT_MS } from "@/notifications-core/src/use-notifications-inbox-push";
 import {
   NOTIFICATIONS_INBOX_POLL_MS,
@@ -68,6 +68,9 @@ import {
   NotificationsProvider,
   useNotificationsInbox,
 } from "@/notifications-core/src/notifications-provider";
+
+/** Every id sent to `POST /notifications/local-ack`, across batches. */
+const ackedIds = () => vi.mocked(ackLocalNotifications).mock.calls.flatMap(([ids]) => [...ids]);
 
 const row = {
   id: "n1",
@@ -129,9 +132,10 @@ describe("notification inbox on push", () => {
     tabs.here = new InboxFanOut({ topic: bus.topic() });
     tabs.other = new InboxFanOut({ topic: bus.topic() });
     vi.mocked(listNotifications).mockReset();
-    vi.mocked(ackLocalNotification).mockReset();
+    localStorage.clear();
+    vi.mocked(ackLocalNotifications).mockReset();
     vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
-    vi.mocked(ackLocalNotification).mockResolvedValue(undefined);
+    vi.mocked(ackLocalNotifications).mockResolvedValue(undefined);
     setVisibility("visible");
   });
 
@@ -165,8 +169,8 @@ describe("notification inbox on push", () => {
     expect(listCalls()).toBe(2);
     await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
     expect(probe.inbox?.items).toEqual([row]);
-    expect(ackLocalNotification).toHaveBeenCalledTimes(1);
-    expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+    expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
+    expect(ackedIds()).toContain("n1");
   });
 
   it("a failed fetch is not confirmed, and the other tabs hear that it failed", async () => {
@@ -229,11 +233,11 @@ describe("notification inbox on push", () => {
     expect(confirmed).toBe(true);
     expect(probe.inbox?.items).toEqual([row]);
     expect(probe.inbox?.unreadCount).toBe(1);
-    await waitFor(() => expect(ackLocalNotification).toHaveBeenCalledWith("n1"));
+    await waitFor(() => expect(ackedIds()).toContain("n1"));
 
     tabs.other!.share({ list: [row], unreadCount: 1 }, "8");
     await settle();
-    expect(ackLocalNotification).toHaveBeenCalledTimes(1);
+    expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("a tab that does not hold the stream does not confirm when the fetching tab failed", async () => {
@@ -383,7 +387,7 @@ describe("notification inbox on push", () => {
     tabs.other!.share({ list: [row], unreadCount: 1 }, "7");
     await settle();
     expect(probe.inbox?.items).toEqual([row]);
-    expect(ackLocalNotification).not.toHaveBeenCalled();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
   });
 
   it("polls every 15 s while push is down and slows down while it is connected", async () => {
