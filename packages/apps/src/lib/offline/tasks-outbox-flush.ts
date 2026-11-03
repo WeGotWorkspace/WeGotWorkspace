@@ -26,6 +26,10 @@ import {
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
+  isRefusedTaskWrite,
+  settleRefusedTaskWrite,
+} from "@/lib/offline/tasks/tasks-refused-write";
+import {
   getTaskFromCache,
   listOutboxMutations,
   markOutboxError,
@@ -176,6 +180,11 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
       await removeOutboxMutation(username, row.id);
     } catch (error) {
       if (entityId) held.add(entityId);
+      // Refused for good: the task's queued rows are dropped, so the re-read skips them.
+      // A failed read of the server copy keeps the row for the next flush.
+      if (isRefusedTaskWrite(row, error)) {
+        if (await settleRefusedTaskWrite(username, row, error).catch(() => null)) continue;
+      }
       if (isEtagMismatch(error)) {
         const taskId = String(JSON.parse(row.payload).taskId ?? "");
         if (taskId) etagMismatches.push(taskId);

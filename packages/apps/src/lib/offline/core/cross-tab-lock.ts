@@ -72,3 +72,27 @@ export function holdCrossTabLock(name: string): () => void {
   void locks.request(name, { mode: "exclusive" }, () => held);
   return release;
 }
+
+/**
+ * Take the lock only when no other tab holds it, and hold it until the returned
+ * release runs. Resolves to null when another tab has it. Without Web Locks
+ * every tab gets it.
+ */
+export function holdCrossTabLockIfFree(name: string): Promise<(() => void) | null> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof locks.request !== "function") return Promise.resolve(() => undefined);
+  return new Promise((resolve) => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((done) => {
+      release = done;
+    });
+    void locks.request(name, { mode: "exclusive", ifAvailable: true }, (lock) => {
+      if (!lock) {
+        resolve(null);
+        return undefined;
+      }
+      resolve(release);
+      return held;
+    });
+  });
+}
