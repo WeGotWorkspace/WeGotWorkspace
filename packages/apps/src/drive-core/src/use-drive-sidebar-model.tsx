@@ -11,7 +11,7 @@ type UseDriveSidebarModelArgs = {
   labels: DriveUILabels;
   view: ViewKey;
   /** Files in the upload queue, or null when this Drive has no queue. */
-  uploads?: { count: number; failed: number } | null;
+  uploads?: { count: number; failed: number; paused?: boolean } | null;
   /** Group drive roots with display labels (path key + SST label). */
   sidebarGroupRoots: ReadonlyArray<{ path: string; label: string }>;
   selectView: (view: ViewKey) => void;

@@ -10,7 +10,12 @@ import {
   resolveOfflineUsername,
 } from "@/lib/offline/core/offline-account";
 import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/core/offline-db";
-import { countDiscardedUnsyncedChanges, runLogoutStep } from "@/lib/offline/core/offline-wipe";
+import {
+  countDiscardedQueuedUploads,
+  countDiscardedUnsyncedChanges,
+  runLogoutStep,
+} from "@/lib/offline/core/offline-wipe";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
@@ -348,6 +353,29 @@ describe("user-initiated logout", () => {
     });
 
     await expect(countDiscardedUnsyncedChanges()).resolves.toBe(2);
+  });
+
+  it("counts files in the Drive upload queue that logout will drop (#1522)", async () => {
+    rememberOfflineUsername("drive", "alice");
+    const db = offlineDbForAccount("alice");
+    await db.open();
+    const row = {
+      batchId: "b1",
+      targetFolder: { kind: "server" as const, id: "fn-1" },
+      size: 10,
+      mimeType: "text/plain",
+      bytesDone: 0,
+      createdAt: 1,
+      localCopy: true,
+      transientFailures: 0,
+    };
+    await driveUploadItemsTable(db).bulkPut([
+      { ...row, id: "u1", name: "a.txt", status: "queued" },
+      { ...row, id: "u2", name: "b.txt", status: "failed" },
+    ] as never);
+
+    await expect(countDiscardedQueuedUploads()).resolves.toBe(2);
+    await expect(countDiscardedUnsyncedChanges()).resolves.toBe(0);
   });
 
   it("counts an unsaved document body when the outbox is empty", async () => {

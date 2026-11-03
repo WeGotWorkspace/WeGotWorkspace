@@ -74,7 +74,6 @@ describe("useDriveMutations upload action", () => {
     );
     expect(enqueueUploads).toHaveBeenCalledWith({ cwd: "/users/testuser", files: picked });
     expect(uploadFiles).not.toHaveBeenCalled();
-    expect(result.current.uploadProgress).toBeNull();
   });
 
   it("says the files were added, and says Uploaded only once they are on the server", async () => {

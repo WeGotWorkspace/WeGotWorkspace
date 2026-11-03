@@ -1,9 +1,16 @@
-import { CircleCheck, RotateCcw, X } from "lucide-react";
-import { Button } from "@/button/src/button";
+import { CircleCheck, CirclePause, FolderInput, RotateCcw, ShieldAlert, X } from "lucide-react";
+import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
+import { Button, buttonVariants } from "@/button/src/button";
+import { Callout } from "@/callout/src/callout";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { kindIcon } from "@/drive-core/src/drive-icons";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import {
+  canChooseDriveUploadFolder,
+  driveUploadIssueLabels as issueLabels,
+  driveUploadReasonDetail,
+} from "@/drive-core/src/drive-upload-issue-labels";
 import { DriveUploadRingView } from "@/drive-core/src/drive-upload-ring";
 import {
   driveUploadRowStateFor,
@@ -25,6 +32,7 @@ type DriveUploadsPaneProps = {
  * with its target folder, progress, status, and *Retry* / *Remove*. When the
  * queue empties while the view is open, it says so. Each row links to its own
  * folder; there is no single "last folder", since batches go to many folders.
+ * A queue paused on a full server says so on top, with *Retry* (#1522).
  */
 export function DriveUploadsPane({ files, searchActive, onOpenFolder }: DriveUploadsPaneProps) {
   const model = useDriveUploadQueueContext();
@@ -40,8 +48,26 @@ export function DriveUploadsPane({ files, searchActive, onOpenFolder }: DriveUpl
     );
   }
 
+  const paused = model.snapshot.state === "paused_server_full";
   return (
     <section className="drive-uploads" aria-labelledby="drive-uploads-summary">
+      {paused ? (
+        <Callout
+          className="drive-uploads__paused"
+          severity="warning"
+          icon={<CirclePause className="callout__icon" aria-hidden />}
+          title={issueLabels.serverFullTitle}
+          message={issueLabels.serverFullMessage}
+          action={
+            model.resume ? (
+              <Button variant="secondary" size="sm" onClick={model.resume}>
+                <RotateCcw className="size-4" aria-hidden="true" />
+                {issueLabels.serverFullRetry}
+              </Button>
+            ) : null
+          }
+        />
+      ) : null}
       <div className="drive-uploads__header">
         <p id="drive-uploads-summary" className="drive-uploads__summary">
           {driveLabels.uploadsSummary(model.snapshot.items.length, model.failedCount)}
@@ -111,6 +137,12 @@ function DriveUploadsRow({
         {state.notOnDevice ? (
           <span className="drive-uploads__note">{driveLabels.uploadNotOnDeviceDetail}</span>
         ) : null}
+        {state.kind === "failed" && driveUploadReasonDetail(state.reason) ? (
+          <span className="drive-uploads__note">{driveUploadReasonDetail(state.reason)}</span>
+        ) : null}
+        {state.kind === "failed" && state.reason === "insecure_context" ? (
+          <DriveUploadAdminLink />
+        ) : null}
       </div>
       <div className="drive-uploads__progress">
         {/* The ring tells screen readers the same. */}
@@ -138,6 +170,19 @@ function DriveUploadsRow({
             {driveLabels.uploadRetry}
           </Button>
         ) : null}
+        {state.kind === "failed" &&
+        canChooseDriveUploadFolder(state.reason) &&
+        model.chooseFolder ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-label={`${issueLabels.chooseFolder}: ${file.title}`}
+            onClick={() => model.chooseFolder?.(itemId)}
+          >
+            <FolderInput className="size-4" aria-hidden="true" />
+            {issueLabels.chooseFolder}
+          </Button>
+        ) : null}
         {state.canRemove && model.remove ? (
           <Button
             variant="ghost"
@@ -151,5 +196,20 @@ function DriveUploadsRow({
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** Only administrators see the way to the https notice in Admin (#1526). */
+function DriveUploadAdminLink() {
+  const showAdmin = useShowAdminApp();
+  if (!showAdmin) return null;
+  return (
+    <a
+      href="/admin"
+      className={cn(buttonVariants({ variant: "link", size: "sm" }), "drive-uploads__admin")}
+    >
+      <ShieldAlert className="size-4" aria-hidden="true" />
+      {issueLabels.openAdmin}
+    </a>
   );
 }

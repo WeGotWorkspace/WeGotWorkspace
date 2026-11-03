@@ -258,4 +258,75 @@ describe("WeGotWorkspaceLogout", () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
+
+  describe("with files in the upload queue (#1522)", () => {
+    it("warns, and Wait opens the Uploads view without signing out", async () => {
+      const completeLogout = vi.fn().mockResolvedValue("member_login");
+      render(
+        <WeGotWorkspaceLogout
+          countUnsyncedChanges={async () => 0}
+          countQueuedUploads={async () => 3}
+          isGuestSession={() => false}
+          completeLogout={completeLogout}
+        />,
+      );
+
+      expect(await screen.findByText("Uploads are not finished")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "3 files are still waiting to upload. Signing out removes them from this device, so they are not uploaded.",
+        ),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Wait" }));
+      expect(navigate).toHaveBeenCalledWith({ href: "/drive?view=uploads" });
+      expect(completeLogout).not.toHaveBeenCalled();
+    });
+
+    it("signs out on Sign out anyway", async () => {
+      const completeLogout = vi.fn().mockResolvedValue("member_login");
+      render(
+        <WeGotWorkspaceLogout
+          countUnsyncedChanges={async () => 0}
+          countQueuedUploads={async () => 1}
+          isGuestSession={() => false}
+          completeLogout={completeLogout}
+        />,
+      );
+
+      expect(await screen.findByText(/1 file is still waiting to upload/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Sign out anyway" }));
+      await waitFor(() => expect(completeLogout).toHaveBeenCalledOnce());
+      expect(navigate).toHaveBeenCalledWith({ to: "/login" });
+    });
+
+    it("still names unsynced changes next to the uploads", async () => {
+      render(
+        <WeGotWorkspaceLogout
+          countUnsyncedChanges={async () => 2}
+          countQueuedUploads={async () => 2}
+          isGuestSession={() => false}
+          completeLogout={vi.fn().mockResolvedValue("member_login")}
+        />,
+      );
+
+      expect(await screen.findByText("Uploads are not finished")).toBeTruthy();
+      expect(screen.getByText(/This device has 2 unsynced changes\./)).toBeTruthy();
+    });
+
+    it("signs out without asking when the count fails and nothing else waits", async () => {
+      const completeLogout = vi.fn().mockResolvedValue("member_login");
+      render(
+        <WeGotWorkspaceLogout
+          countUnsyncedChanges={async () => 0}
+          countQueuedUploads={async () => {
+            throw new Error("blocked");
+          }}
+          isGuestSession={() => false}
+          completeLogout={completeLogout}
+        />,
+      );
+
+      await waitFor(() => expect(completeLogout).toHaveBeenCalledOnce());
+    });
+  });
 });

@@ -12,6 +12,7 @@ const DRIVE_ENTRIES_STORE = "drive_entries";
 const NOTES_STORE = "notes_notes";
 const DOCS_STORE = "docs_availability";
 const OUTBOX_STORE = "outbox";
+const UPLOAD_ITEMS_STORE = "drive_upload_items";
 /**
  * y-indexeddb object store for custom values. The logout test writes
  * `PENDING_SERVER_SAVE_KEY` through `IndexeddbPersistence.set`, so a rename
@@ -93,6 +94,19 @@ export async function countDiscardedUnsyncedChanges(): Promise<number> {
     total += await countObjectStore(name, OUTBOX_STORE);
   }
   total += await countPendingCollabRooms(collabNamesToCount(targets));
+  return total;
+}
+
+/**
+ * Files in the Drive upload queue (#1522) on every account database on this
+ * device: the logout wipe drops them before they reach the server.
+ */
+export async function countDiscardedQueuedUploads(): Promise<number> {
+  const accountNames = await accountNamesFromListing(await listIndexedDatabaseNames());
+  let total = 0;
+  for (const name of accountNames) {
+    total += await countObjectStore(name, UPLOAD_ITEMS_STORE);
+  }
   return total;
 }
 

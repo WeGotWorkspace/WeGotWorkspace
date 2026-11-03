@@ -1,34 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Upload } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { driveFileFromEntry, formatBytesCompact } from "@/drive-core/src/drive-file-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
-import {
-  driveUploadDoneView,
-  driveUploadProgressView,
-  driveUploadStartView,
-  queuePickedDriveUploads,
-  type DriveUploadProgressView,
-} from "@/drive-core/src/drive-upload-listing";
+import { queuePickedDriveUploads } from "@/drive-core/src/drive-upload-listing";
 import { useDriveUploadBatchDialog } from "@/drive-core/src/use-drive-upload-batch-dialog";
 import { useDriveUploadBatchToasts } from "@/drive-core/src/use-drive-upload-batch-toasts";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
-
-const DONE_BAR_MS = 1400;
 
 /**
  * The upload action (picker and drop). Signed in with the offline layer,
  * files go to the local upload queue: the toast says they were added, and
  * says "Uploaded" only once the batch is on the server. Without a queue
- * (mock, guest), files upload directly behind the floating progress bar.
+ * (mock, guest), files upload directly: a toast when they start and one
+ * when they are done. The floating progress bar is gone (#1522).
  */
 export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: boolean) {
   const { show, showError } = useAppToast();
   const { view, commitView, currentUsername, groupRootNames, operations, setFiles } = shell;
-  const [uploadProgress, setUploadProgress] = useState<DriveUploadProgressView | null>(null);
-  const resetTimerRef = useRef<number | null>(null);
   const showUploadToast = useCallback(
     (message: string) => show(message, { icon: <Upload className="size-4" /> }),
     [show],
@@ -43,19 +34,7 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
   );
   const batchDialog = useDriveUploadBatchDialog(operations, showError, onBatchStored);
 
-  useEffect(
-    () => () => {
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-    },
-    [],
-  );
-
   const finishDirectUpload = (count: number) => {
-    setUploadProgress(driveUploadDoneView(count));
-    resetTimerRef.current = window.setTimeout(() => {
-      setUploadProgress(null);
-      resetTimerRef.current = null;
-    }, DONE_BAR_MS);
     showUploadToast(driveLabels.uploadDoneToast(count));
   };
 
@@ -76,20 +55,15 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
       if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
       return;
     }
-    if (resetTimerRef.current !== null) {
-      window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = null;
-    }
-    setUploadProgress(driveUploadStartView(selected));
     if (operations) {
+      showUploadToast(
+        selected.length === 1
+          ? driveLabels.uploadingFile(selected[0]!.name)
+          : driveLabels.uploadingFiles(selected.length),
+      );
       void operations
         .checkUploadReady()
-        .then(() =>
-          operations.uploadFiles(
-            { cwd, files: selected },
-            { onProgress: (progress) => setUploadProgress(driveUploadProgressView(progress)) },
-          ),
-        )
+        .then(() => operations.uploadFiles({ cwd, files: selected }))
         .then((nextData) => {
           setFiles(
             nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
@@ -98,7 +72,6 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
           finishDirectUpload(selected.length);
         })
         .catch((error: unknown) => {
-          setUploadProgress(null);
           showError(error instanceof Error ? error.message : String(error));
         });
       return;
@@ -107,7 +80,7 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
     finishDirectUpload(selected.length);
   };
 
-  return { handleUpload, uploadProgress, uploadBatchDialog: batchDialog.dialog };
+  return { handleUpload, uploadBatchDialog: batchDialog.dialog };
 }
 
 /** Storybook / mock Drive: files appear at once, nothing leaves the browser. */
