@@ -2,6 +2,18 @@
 
 WeGotWorkspace is a self-hosted office platform (files, mail, notes, contacts, tasks, meet, and more). Pick the install path that matches how you want to run it.
 
+## Requirement: https
+
+Serve WeGotWorkspace over `https://`. Browsers only turn on some features on a secure page (a *secure context*): an `https://` address, or `localhost` while you try it out on your own machine. On a plain `http://` address these do not work:
+
+- **Live editing of documents together.** Docs needs the browser's crypto API (`crypto.subtle`) for its collaboration keys.
+- **Push notifications** and **offline use / installing the app** (PWA). Both need a service worker.
+- **Uploading large files.** Large uploads are sent in parts, each with a checksum from `crypto.subtle`.
+
+The installer warns you when it is opened over `http://` and asks you to confirm before setup goes on, so a first look on a LAN address still works. After setup, Administration keeps a notice up until the site is served over `https://`.
+
+**How to get a certificate:** most hosts offer a free one, usually from [Let's Encrypt](https://letsencrypt.org/), with one switch in the control panel (cPanel: *SSL/TLS Status* or *AutoSSL*; Plesk: *SSL/TLS Certificates*). On a VPS or homelab, put a reverse proxy that requests certificates for you (Caddy, Traefik, or nginx with certbot) in front of WeGotWorkspace — see [install-docker.md § TLS (HTTPS)](install-docker.md#tls-https). Redirecting `http://` to `https://` is a host or proxy setting; WeGotWorkspace does not do it for you.
+
 ## Choose your path
 
 | I want to… | Start here |

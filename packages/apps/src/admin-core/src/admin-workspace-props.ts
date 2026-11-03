@@ -15,4 +15,6 @@ export type AdminWorkspaceProps = {
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */
   onLogout?: () => void;
   className?: string;
+  /** Whether the page is https or localhost; defaults to the browser's answer. Stories and tests set it. */
+  secureContext?: boolean;
 };
