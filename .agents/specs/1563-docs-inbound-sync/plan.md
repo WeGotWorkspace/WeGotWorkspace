@@ -76,8 +76,8 @@ None. Every point is decided in spec.md under Decisions.
 
 ## Test plan
 
-- [ ] Engine: multi-item row case; existing Notes and Tasks engine cases unchanged
-- [ ] Docs binding: every edge case in spec.md
-- [ ] Drive inbound: delete / rename / move reach every cached view; offline copies removed
-- [ ] Docs home hook: re-read on the notice
-- [ ] Live: `docs-inbound-sync.spec.ts` on a local install
+- [x] Engine: multi-item row case; existing Notes and Tasks engine cases unchanged
+- [x] Docs binding: every edge case in spec.md
+- [x] Drive inbound: delete / rename / move reach every cached view; offline copies removed
+- [x] Docs home hook: re-read on the notice
+- [x] Live: `docs-inbound-sync.spec.ts` on a local install
