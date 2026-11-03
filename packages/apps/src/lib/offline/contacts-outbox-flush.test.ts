@@ -7,9 +7,11 @@ import {
   enqueueCoalescedContactUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
+  removeOutboxMutation,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
+import { isPermanentlyFailedOutboxRow } from "@/lib/offline/core/outbox-store";
 import { flushContactsOutbox } from "@/lib/offline/contacts-outbox-flush";
 
 const username = "bob";
@@ -92,6 +94,9 @@ describe("flushContactsOutbox", () => {
     pullAddressBookChanges.mockResolvedValue(undefined);
     syncAllContactBooks.mockReset();
     syncAllContactBooks.mockResolvedValue(undefined);
+    for (const row of await listOutboxMutations(username)) {
+      await removeOutboxMutation(username, row.id);
+    }
     await writeContactsBootstrapToCache(username, bootstrap);
   });
 
@@ -186,6 +191,66 @@ describe("flushContactsOutbox", () => {
     expect(result.stateMismatches).toEqual(["jane-doe"]);
     expect(getCard).not.toHaveBeenCalled();
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("keeps a forbidden card update as a permanent failure instead of settling it", async () => {
+    await enqueueCoalescedContactUpdate(
+      username,
+      "jane-doe",
+      { name: { "@type": "Name", isOrdered: false, full: "Jane Offline" } },
+      "state-1",
+    );
+
+    contactCardSet.mockResolvedValue({
+      created: {},
+      updated: {},
+      destroyed: [],
+      notCreated: {},
+      notUpdated: {
+        "jane-doe": { type: "forbidden", description: "Address book is read-only" },
+      },
+      notDestroyed: {},
+    });
+    getCard.mockResolvedValue(bootstrap.data.cards[0]);
+
+    const result = await flushContactsOutbox(username);
+
+    expect(result.stateMismatches).toEqual([]);
+    expect(getCard).not.toHaveBeenCalled();
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.lastStatus).toBe(403);
+    expect(isPermanentlyFailedOutboxRow(rows[0]!)).toBe(true);
+    expect(JSON.parse(rows[0]!.payload).patch.name.full).toBe("Jane Offline");
+  });
+
+  it("keeps a forbidden card create as a permanent failure", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "create-1",
+      domain: CONTACTS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: "c1",
+        tempCardId: "temp-1",
+        body: { addressBookIds: { default: true }, name: { full: "New Person" } },
+      }),
+    });
+
+    contactCardSet.mockResolvedValue({
+      created: {},
+      updated: {},
+      destroyed: [],
+      notCreated: { c1: { type: "forbidden", description: "Address book is read-only" } },
+      notUpdated: {},
+      notDestroyed: {},
+    });
+
+    await flushContactsOutbox(username);
+
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.lastStatus).toBe(403);
+    expect(isPermanentlyFailedOutboxRow(rows[0]!)).toBe(true);
   });
 
   it("flushes bookUpdate via AddressBook/set", async () => {

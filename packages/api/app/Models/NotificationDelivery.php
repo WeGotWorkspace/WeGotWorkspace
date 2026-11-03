@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $acked_at
  * @property Carbon|null $sent_at
  * @property Carbon $created_at
+ * @property string|null $endpoint_hash sha256 of the push endpoint, on `vapid` rows only
  */
 final class NotificationDelivery extends Model
 {
@@ -27,6 +28,7 @@ final class NotificationDelivery extends Model
 
     public const CHANNEL_LOCAL = 'local';
 
+    /** One row per notification and subscription that received it (#1670). */
     public const CHANNEL_VAPID = 'vapid';
 
     /**
@@ -53,6 +55,7 @@ final class NotificationDelivery extends Model
         'acked_at',
         'sent_at',
         'created_at',
+        'endpoint_hash',
     ];
 
     /** @var array<string, string> */
