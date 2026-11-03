@@ -1,9 +1,9 @@
 @import "../../styles.css" reference;
 
-/* Same type as a sidebar section title (`field-label-row__label`), dimmed. */
+/* Same type as a sidebar section title (`field-label-row__label`), in the AA-safe muted tone. */
 .tasks-rescue-dialog__step {
   @apply m-0;
-  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
+  --field-label-color: var(--muted-foreground);
 }
 
 /* Space between the explanation and where the tasks go; the rows keep their own spacing. */
