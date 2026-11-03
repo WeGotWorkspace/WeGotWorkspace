@@ -21,6 +21,7 @@ vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importO
 
 import {
   applyDocsInboundChanges,
+  docsListingRowsDiffer,
   mergeLiveDocsListing,
   readDocsPendingWrites,
   subscribeDocsCachesChanged,
@@ -319,6 +320,41 @@ describe("readDocsPendingWrites", () => {
 
     expect(pending.get("users/alice/old.md")).toMatchObject({ deleting: true, queued: true });
     expect(pending.get("users/alice/Sub/new.md")?.fields).toEqual(new Set(["location"]));
+  });
+});
+
+describe("docsListingRowsDiffer", () => {
+  beforeEach(async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await docsListingRowsTable(db).clear();
+  });
+
+  it("is true when the live listing drops, renames or adds a cached row", async () => {
+    await cache(MINE, ["users/alice/a.md", "users/alice/b.md"]);
+    expect(await docsListingRowsDiffer(username, MINE, [doc("users/alice/a.md")])).toBe(true);
+    expect(
+      await docsListingRowsDiffer(username, MINE, [
+        doc("users/alice/a.md"),
+        doc("users/alice/renamed.md"),
+      ]),
+    ).toBe(true);
+    expect(
+      await docsListingRowsDiffer(username, MINE, [
+        doc("users/alice/a.md"),
+        doc("users/alice/b.md"),
+        doc("users/alice/c.md"),
+      ]),
+    ).toBe(true);
+  });
+
+  it("is false when the live listing lists the same rows", async () => {
+    await cache(MINE, ["users/alice/a.md", "users/alice/b.md"]);
+    expect(
+      await docsListingRowsDiffer(username, MINE, [
+        doc("users/alice/b.md"),
+        doc("users/alice/a.md"),
+      ]),
+    ).toBe(false);
   });
 });
 

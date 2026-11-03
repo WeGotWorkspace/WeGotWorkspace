@@ -196,11 +196,8 @@ test.describe("Docs inbound sync (#1563)", () => {
       await dav("DELETE", `${HOME}/${DELETED}`);
       await moveOnServer(`${HOME}/${RENAMED_FROM}`, `${HOME}/${RENAMED_TO}`);
 
-      // Tab A reloads: its start-up FileNode inbound pulls both changes. Its
-      // live listing is held too: a listing that lands first rewrites the
-      // view's cache, the inbound then finds nothing to change, and no tab is
-      // told. Held, the inbound is the only writer, as the test intends.
-      await page.route("**/api/v1/search/results**", (route) => route.abort("failed"));
+      // Tab A reloads. Its start-up FileNode inbound and its live listing both
+      // pull the changes; whichever writes the cache first tells tab B.
       await page.reload();
       await expect(docsHomeRow(page, RENAMED_TO)).toBeVisible({ timeout: 30_000 });
 

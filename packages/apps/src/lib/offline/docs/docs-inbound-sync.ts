@@ -160,6 +160,20 @@ async function followRemoteMoves(
 }
 
 /**
+ * Whether `next` lists other rows than the view's cache holds. A live listing
+ * that rewrites the cache this way tells the other tabs, as the inbound does.
+ */
+export async function docsListingRowsDiffer(
+  username: string,
+  filters: DocsListingBrowseFilters,
+  next: readonly WgwUnifiedSearchResult[],
+): Promise<boolean> {
+  const cached = (await readDocsListingFromCache(username, filters))?.results ?? [];
+  const keys = new Set(cached.map((row) => row.sourceKey));
+  return keys.size !== next.length || next.some((row) => !keys.has(row.sourceKey));
+}
+
+/**
  * Merge a view's full live listing with its cached rows instead of replacing
  * them. A cached row the server no longer lists goes, unless a queued write
  * owns it or it has unsaved collab text; a live row a queued trash or rename
