@@ -8,6 +8,7 @@ import {
   DRIVE_DOMAIN,
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
@@ -61,20 +62,32 @@ export async function upsertDriveEntry(
   username: string,
   entry: WgwDriveDirectoryEntry,
 ): Promise<void> {
-  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
   const row = driveEntryRowFromEntry(entry);
-  const existing = row.type === "dir" ? await table.get(row.id) : undefined;
-  // A folder still taking an upload keeps its marker until the upload is done (#1620).
-  if (existing?.uploadId && existing.type === "dir") {
-    const { upload } = parseEntryRow(existing);
-    await table.put({
-      ...row,
-      uploadId: existing.uploadId,
-      data: JSON.stringify({ ...entry, upload }),
-    });
+  if (row.type !== "dir") {
+    await table.put(row);
     return;
   }
-  await table.put(row);
+  // Same tables the batch end locks, so a refresh sees the live item or the committed clear.
+  await db.transaction("rw", table, driveUploadItemsTable(db), async () => {
+    const existing = await table.get(row.id);
+    // A folder still taking an upload keeps its marker until the upload is done (#1620).
+    if (
+      existing?.uploadId &&
+      existing.type === "dir" &&
+      (await driveUploadItemsTable(db).get(existing.uploadId))
+    ) {
+      const { upload } = parseEntryRow(existing);
+      await table.put({
+        ...row,
+        uploadId: existing.uploadId,
+        data: JSON.stringify({ ...entry, upload }),
+      });
+      return;
+    }
+    await table.put(row);
+  });
 }
 
 /** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */

@@ -5,6 +5,7 @@ import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 
 const username = "alice";
 const table = () => driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
@@ -22,15 +23,26 @@ function entry(path: string, type: "dir" | "file", nodeId: string): WgwDriveDire
   };
 }
 
+const itemsTable = () =>
+  driveUploadItemsTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+
 const upload = { id: "up-1", batchId: "b-1", status: "uploading" as const };
 
 describe("upsertDriveEntry", () => {
   beforeEach(async () => {
     await table().clear();
+    await itemsTable().clear();
   });
 
   it("keeps the upload marker of a folder that is still taking an upload (#1620)", async () => {
     const folder = entry("/users/alice/Trip", "dir", "fn-trip");
+    await itemsTable().put({
+      id: upload.id,
+      batchId: upload.batchId,
+      kind: "folder",
+      name: "Trip",
+      status: "uploading",
+    } as never);
     await table().put({
       id: "users/alice/Trip",
       parentPath: "users/alice",
@@ -47,6 +59,26 @@ describe("upsertDriveEntry", () => {
     expect(row?.uploadId).toBe(upload.id);
     expect(row?.modifiedAt).toBe(2);
     expect(JSON.parse(row!.data)).toMatchObject({ time: 2, upload });
+  });
+
+  it("drops a folder marker whose queue item is gone", async () => {
+    const folder = entry("/users/alice/Trip", "dir", "fn-trip");
+    await table().put({
+      id: "users/alice/Trip",
+      parentPath: "users/alice",
+      type: "dir",
+      modifiedAt: 1,
+      nodeId: "fn-trip",
+      uploadId: upload.id,
+      data: JSON.stringify({ ...folder, upload }),
+    });
+
+    await upsertDriveEntry(username, { ...folder, time: 2 });
+
+    const row = await table().get("users/alice/Trip");
+    expect(row?.uploadId).toBeUndefined();
+    expect(JSON.parse(row!.data).upload).toBeUndefined();
+    expect(row?.modifiedAt).toBe(2);
   });
 
   it("writes the server row over a file placeholder and over a plain folder", async () => {
