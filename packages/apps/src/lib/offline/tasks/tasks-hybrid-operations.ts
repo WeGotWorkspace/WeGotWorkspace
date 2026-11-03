@@ -41,10 +41,10 @@ import {
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
   writeTasksChangesState,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
-import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks-outbox-flush";
-import { reportTasksSyncConflicts } from "@/lib/offline/tasks-sync-conflicts";
+import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
+import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import {
   ConnectivitySyncRunner,

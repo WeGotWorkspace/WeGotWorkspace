@@ -1,3 +1,5 @@
+import { meetLowDataLabels } from "@/lib/meet-low-data";
+
 export const meetLabels = {
   productName: "Meet",
   callEndedTitle: "Call ended",
@@ -191,8 +193,8 @@ export const meetLabels = {
   enableVideo: "Enable video",
   disableVideo: "Disable video",
   cameraDisabledByAdmin: "Camera is off for this workspace",
-  lowDataMode: "Low data mode",
-  lowDataModeHint: "Send a smaller picture. Show video from at most two people.",
+  lowDataMode: meetLowDataLabels.mode,
+  lowDataModeHint: meetLowDataLabels.hint,
   meetingStarted: "Meeting started",
   inCallCount: (count: number) => `${count} in call`,
   restoreCall: "Show chat",

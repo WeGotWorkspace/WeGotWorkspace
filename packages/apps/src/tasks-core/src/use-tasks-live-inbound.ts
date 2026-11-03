@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
-import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks-bootstrap-sync";
-import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
-import { readTasksChangesState } from "@/lib/offline/tasks-offline-store";
+import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
+import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks/tasks-inbound-sync";
+import { readTasksChangesState } from "@/lib/offline/tasks/tasks-offline-store";
 
 /** While push is connected the poll only backs it up. */
 export const TASKS_INBOUND_PUSH_POLL_MS = 60_000;
