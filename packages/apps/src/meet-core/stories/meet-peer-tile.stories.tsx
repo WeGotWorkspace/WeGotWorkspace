@@ -73,6 +73,7 @@ export const SelfLive: Story = {
   args: {
     name: "You",
     stream: null,
+    self: true,
     compact: true,
     micOn: true,
     onToggleMic: STORY_NOOP,
@@ -84,6 +85,7 @@ export const SelfMuted: Story = {
   args: {
     name: "You",
     stream: null,
+    self: true,
     compact: true,
     micOn: false,
     onToggleMic: STORY_NOOP,

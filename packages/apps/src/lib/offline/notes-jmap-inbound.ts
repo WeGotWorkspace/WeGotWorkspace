@@ -14,6 +14,7 @@ import {
   readNotesBootstrapFromCache,
 } from "@/lib/offline/notes-offline-store";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
+import { listRemovedIds, serverMovedSince } from "@/lib/offline/core/inbound-sync";
 
 async function pendingSet(username: string): Promise<Set<string>> {
   return new Set(await listPendingNoteIds(username));
@@ -80,8 +81,7 @@ export async function ingestRemoteNote(
  */
 async function serverMovedSinceQueued(username: string, note: Note): Promise<boolean> {
   const bases = (await listPendingNoteBases(username)).get(note.id) ?? [];
-  if (bases.length === 0 || !note.etag) return true;
-  return bases.some((base) => base !== note.etag);
+  return serverMovedSince(bases, note.etag, "moved");
 }
 
 /** Drop a remotely destroyed note unless a local pending write still owns the id. */
@@ -154,12 +154,16 @@ export async function reconcileNotesSnapshot(
   for (const note of notes) {
     await ingestRemoteNote(username, note);
   }
-  for (const note of cached?.data.notes ?? []) {
-    if (remoteNoteIds.has(note.id) || pending.has(note.id)) continue;
-    await removeNoteFromCache(username, note.id);
+  for (const id of listRemovedIds(cached?.data.notes ?? [], remoteNoteIds, (note) =>
+    pending.has(note.id),
+  )) {
+    await removeNoteFromCache(username, id);
   }
-  for (const notebook of cached?.data.notebookCollections ?? []) {
-    if (remoteNotebookIds.has(notebook.id)) continue;
-    await removeNotebookFromCache(username, notebook.id);
+  for (const id of listRemovedIds(
+    cached?.data.notebookCollections ?? [],
+    remoteNotebookIds,
+    () => false,
+  )) {
+    await removeNotebookFromCache(username, id);
   }
 }

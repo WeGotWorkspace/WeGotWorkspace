@@ -33,7 +33,7 @@
       },
       "isSubscribed": {
         "type": "boolean",
-        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+        "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
       },
       "shareWith": {
         "oneOf": [

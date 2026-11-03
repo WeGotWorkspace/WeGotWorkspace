@@ -7,10 +7,12 @@ import { appendRefreshFailure, appendSessionCleared } from "@/lib/api/wgw/sessio
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 import { tunnelMutatingHttpMethod } from "@/lib/api/wgw/http-method-tunnel";
+import { sendWgwRequest, type WgwRequestInit } from "@/lib/api/wgw/send-with-upload-progress";
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
+import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 
-export { WgwSessionRenewalError };
+export { WgwSessionRenewalError, WgwSignInRequiredError };
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -615,7 +617,7 @@ export async function wgwEnsureSession(): Promise<void> {
   if (sessionKind === "member") {
     if (readBrowserOnline() && isRefreshTokenExpired()) {
       clearWgwSession("refresh_expired");
-      throw new Error("Missing auth session. Sign in to continue.");
+      throw new WgwSignInRequiredError();
     }
     const refreshed = await wgwTryRefresh();
     if (refreshed && accessToken) return;
@@ -626,14 +628,10 @@ export async function wgwEnsureSession(): Promise<void> {
 
   if (accessToken && !readBrowserOnline()) return;
 
-  if (readLoggedOutMarker()) {
-    throw new Error("Missing auth session. Sign in to continue.");
-  }
-
   const username = import.meta.env.VITE_WGW_DEV_USERNAME as string | undefined;
   const password = import.meta.env.VITE_WGW_DEV_PASSWORD as string | undefined;
-  if (!username?.trim() || password === undefined || password === "") {
-    throw new Error("Missing auth session. Sign in to continue.");
+  if (readLoggedOutMarker() || !username?.trim() || password === undefined || password === "") {
+    throw new WgwSignInRequiredError();
   }
   await wgwLoginWithCredentials(username.trim(), password);
 }
@@ -741,20 +739,19 @@ export async function wgwAwaitSessionRefreshForReconnect(): Promise<void> {
   }
 }
 
-export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function wgwFetch(path: string, init: WgwRequestInit = {}): Promise<Response> {
   await wgwEnsureFreshAccessToken();
   if (!accessToken) {
-    throw new Error("Missing auth session. Sign in to continue.");
+    throw new WgwSignInRequiredError();
   }
   const requestInit = tunnelMutatingHttpMethod(init);
-  const base = wgwApiBaseUrl();
   const p = path.startsWith("/") ? path : `/${path}`;
-  const url = `${base}${p}`;
+  const url = `${wgwApiBaseUrl()}${p}`;
 
   const doOnce = (token: string) => {
     const headers = new Headers(requestInit.headers);
     headers.set("Authorization", `Bearer ${token}`);
-    return fetch(url, { ...requestInit, headers });
+    return sendWgwRequest(url, { ...requestInit, headers });
   };
 
   const token = accessToken!;

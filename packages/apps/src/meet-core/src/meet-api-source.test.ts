@@ -8,6 +8,7 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
     wgwEnsureFreshAccessToken: vi.fn(),
     wgwFetchPrincipal: vi.fn(),
     wgwFetch: vi.fn(),
+    wgwIsGuestSession: vi.fn(() => false),
   };
 });
 
@@ -19,7 +20,12 @@ vi.mock("@/lib/api/wgw/rtc", async (importOriginal) => {
   };
 });
 
-import { wgwEnsureFreshAccessToken, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
+import {
+  wgwEnsureFreshAccessToken,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwIsGuestSession,
+} from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import {
   createWgwMeetApiSource,
@@ -31,6 +37,7 @@ const ensureToken = vi.mocked(wgwEnsureFreshAccessToken);
 const fetchPrincipal = vi.mocked(wgwFetchPrincipal);
 const fetchJson = vi.mocked(wgwFetch);
 const rtcSettings = vi.mocked(fetchRtcSettings);
+const isGuestSession = vi.mocked(wgwIsGuestSession);
 
 const ROOM = "h8y8-ewp6-al8n";
 const HOST_SESSION: WorkspaceSession = {
@@ -123,6 +130,14 @@ describe("meetGuestLinkAllowsHostUpgrade", () => {
     expect(fetchJson).not.toHaveBeenCalled();
   });
 
+  it("is false for a public Drive link session", async () => {
+    isGuestSession.mockReturnValueOnce(true);
+
+    await expect(meetGuestLinkAllowsHostUpgrade(ROOM)).resolves.toBe(false);
+    expect(fetchPrincipal).not.toHaveBeenCalled();
+    expect(fetchJson).not.toHaveBeenCalled();
+  });
+
   it("is false for a signed-in non-manager (guest GET body)", async () => {
     fetchPrincipal.mockResolvedValue(HOST_SESSION);
     fetchJson.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
@@ -173,6 +188,21 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
     expect(bootstrap.data.rtc.source).toBe("fallback");
     expect(rtcSettings).not.toHaveBeenCalled();
     expect(operations?.guestSignalingFetch).toEqual(expect.any(Function));
+  });
+
+  it("keeps a public Drive link session on guest bootstrap and signaling", async () => {
+    isGuestSession.mockReturnValue(true);
+    try {
+      const source = createWgwMeetGuestOrHostApiSource(ROOM);
+      const bootstrap = await source.loadBootstrap();
+      const operations = source.createOperations(bootstrap);
+
+      expect(fetchPrincipal).not.toHaveBeenCalled();
+      expect(bootstrap.session.user.username).toBeUndefined();
+      expect(operations?.guestSignalingFetch).toEqual(expect.any(Function));
+    } finally {
+      isGuestSession.mockReturnValue(false);
+    }
   });
 
   it("keeps a signed-in non-manager on authenticated bootstrap so the lobby can lock their name", async () => {

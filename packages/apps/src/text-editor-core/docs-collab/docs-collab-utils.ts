@@ -92,7 +92,7 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   return /precondition failed/i.test(message);
 }
 
-/** 404 — the document is gone. Stop retrying and keep the local copy. */
+/** 404 — the document was deleted or is out of reach. Stop retrying and keep the local copy. */
 export function isCollabDocumentGoneError(error: unknown): boolean {
   return collabErrorStatus(error) === 404;
 }

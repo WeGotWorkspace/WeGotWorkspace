@@ -179,7 +179,9 @@ export function DocsCollabEditor({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     if (editor.isEditable !== editable) {
-      editor.setEditable(editable);
+      // No update event: the content did not change. The save path reads one
+      // as an edit, and a loaded document would count as unsaved work (#1787).
+      editor.setEditable(editable, false);
     }
   }, [editor, editable]);
 

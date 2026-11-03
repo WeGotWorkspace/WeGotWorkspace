@@ -123,6 +123,7 @@ function useEchoSession(
     urls,
     markDocReady,
     trySeedFromFile,
+    setDocStatus: onDocStatus ?? (() => undefined),
   });
   const join = useDocsCollabJoin({
     refs,

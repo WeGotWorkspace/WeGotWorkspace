@@ -7,7 +7,10 @@ import type {
   ContactsAPIOperations,
   ContactsMutationOpts,
 } from "@/contacts-core/src/contacts-types";
-import { fetchContactsLiveBootstrap } from "@/lib/api/wgw/contacts-bootstrap";
+import {
+  fetchContactCardPages,
+  fetchContactsLiveBootstrap,
+} from "@/lib/api/wgw/contacts-bootstrap";
 import {
   createCardWithState,
   deleteCardWithState,
@@ -24,15 +27,25 @@ import {
   type ContactsBootstrapSyncAnchor,
 } from "@/lib/api/wgw/contacts";
 import { syncContactBooksAfterAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
+import { countPendingContacts } from "@/lib/jmap-client";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
+import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   createTempContactId,
   enqueueCoalescedContactUpdate,
+  discardContactsColdDownload,
   enqueueOutboxMutation,
+  finishContactsColdDownload,
+  hasContactsCopy,
+  hasQueuedContactEdits,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
+  readContactsColdDownload,
   removeContactCardFromCache,
+  saveContactsColdDownloadPage,
+  startContactsColdDownload,
+  type ContactsColdDownload,
   upsertAddressBookInCache,
   upsertContactCardInCache,
   writeAddressBooksSyncToken,
@@ -307,55 +320,217 @@ async function rememberContactsSyncState(
   }
 }
 
+type ContactsBootstrap = Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>;
+
+function bookIdsOf(books: AddressBook[]): string[] {
+  return books.map((book) => book.id).filter((id): id is string => Boolean(id));
+}
+
+/**
+ * After a download finished and its marker is gone: send edits queued on the
+ * partial copy. The flush pulls `/changes` from the tokens just stored. With
+ * nothing queued it is left to the next refresh, so a download costs no extra
+ * pull.
+ */
+async function sendQueuedEditsAfterDownload(username: string): Promise<void> {
+  if (!readBrowserOnline() || !(await hasQueuedContactEdits(username))) return;
+  await runnerFor(username).flush();
+}
+
+/**
+ * Full download. On a device with no copy, each card page is saved as it
+ * arrives, behind a marker this download owns; once the last page is in, only
+ * the query-time tokens are stored (no rewrite of the saved pages). With a
+ * stored copy (complete, or an unfinished one reached outside
+ * {@link loadContactsBootstrapHybrid}) nothing changes until the full snapshot
+ * is in; then it replaces the copy in one transaction.
+ */
 export async function fetchContactsHybridBootstrap(
-  onProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
-): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
-  const bootstrap = await fetchContactsLiveBootstrap({ onProgress });
+  onProgress?: (bootstrap: ContactsBootstrap) => void,
+): Promise<ContactsBootstrap> {
+  let saving: { username: string; id: string } | null = null;
+  const bootstrap = await fetchContactsLiveBootstrap({
+    onProgress,
+    onStart: async ({ session, addressBooks, cardIds, groupIds, syncAnchor }) => {
+      const name = session.user.username;
+      if (!name || (await hasContactsCopy(name))) return;
+      const id = crypto.randomUUID();
+      await startContactsColdDownload(name, session, addressBooks, {
+        id,
+        ...syncAnchor,
+        remainingCardIds: cardIds,
+        groupIds,
+      });
+      saving = { username: name, id };
+    },
+    onCardPage: async ({ cards, remainingCardIds }) => {
+      if (saving)
+        await saveContactsColdDownloadPage(saving.username, saving.id, cards, remainingCardIds);
+    },
+  });
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Contacts bootstrap missing username");
+  }
+  const savedPages = saving as { username: string; id: string } | null;
+  if (savedPages) {
+    const books = bookIdsOf(bootstrap.data.addressBooks);
+    if (await finishContactsColdDownload(username, savedPages.id, books)) {
+      await sendQueuedEditsAfterDownload(username);
+    }
+    return bootstrap;
   }
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
   await writeContactsBootstrapToCache(username, bootstrap);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
+  if (await discardContactsColdDownload(username)) {
+    await sendQueuedEditsAfterDownload(username);
+  }
   return bootstrap;
 }
 
-export async function loadContactsBootstrapHybrid(
-  reportProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
-): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
-  if (!readBrowserOnline()) {
-    const username = readOfflineContactsUsername();
-    if (username) {
-      const cached = await readContactsBootstrapFromCache(username);
-      if (cached) return cached;
+/** Ends a resume early: another download owns the marker now. */
+class ColdDownloadTakenOver extends Error {}
+
+const resumesInFlight = new Map<string, Promise<ContactsAppBootstrap>>();
+
+/**
+ * Finishes an interrupted first download: fetches only the missing cards,
+ * then stores the original query-time states as sync tokens. The next
+ * `/changes` replays everything since that query. Page saves and the finish
+ * only apply while the marker still names this download. One resume per user
+ * at a time: a second caller (a Refresh, a reconnect) joins the running one.
+ * Throws on a network or HTTP error; the saved pages and the marker stay.
+ */
+function resumeContactsColdDownload(
+  username: string,
+  saved: ContactsAppBootstrap,
+  progress: ContactsColdDownload,
+  reportProgress?: (bootstrap: ContactsAppBootstrap) => void,
+): Promise<ContactsAppBootstrap> {
+  const inFlight = resumesInFlight.get(username);
+  if (inFlight) return inFlight;
+  const run = (async () => {
+    const cards = new Map(saved.data.cards.map((card) => [card.id, card]));
+    const groupIds = progress.groupIds ?? null;
+    // The count goes with the cards, so All Contacts shows its total from the start.
+    const publish = (remainingCardIds: string[]) =>
+      reportProgress?.({
+        ...saved,
+        data: { ...saved.data, cards: [...cards.values()] },
+        pendingContactCount: countPendingContacts(remainingCardIds, groupIds),
+      });
+    publish(progress.remainingCardIds);
+    try {
+      if (progress.remainingCardIds.length > 0) {
+        await fetchContactCardPages(progress.remainingCardIds, async (page) => {
+          const kept = await saveContactsColdDownloadPage(
+            username,
+            progress.id,
+            page.cards,
+            page.remainingCardIds,
+          );
+          if (!kept) throw new ColdDownloadTakenOver();
+          for (const card of kept) cards.set(card.id, card);
+          publish(page.remainingCardIds);
+        });
+      }
+      const books = bookIdsOf(saved.data.addressBooks);
+      if (await finishContactsColdDownload(username, progress.id, books)) {
+        await sendQueuedEditsAfterDownload(username);
+      }
+    } catch (error) {
+      if (!(error instanceof ColdDownloadTakenOver)) throw error;
     }
+    return (await readContactsBootstrapFromCache(username)) ?? saved;
+  })().finally(() => resumesInFlight.delete(username));
+  resumesInFlight.set(username, run);
+  return run;
+}
+
+/** Resumes the first download when one is unfinished; otherwise returns `saved`. */
+async function finishContactsDownload(
+  username: string,
+  saved: ContactsAppBootstrap,
+  reportProgress?: (bootstrap: ContactsAppBootstrap) => void,
+): Promise<ContactsAppBootstrap> {
+  const progress = await readContactsColdDownload(username);
+  if (!progress || !readBrowserOnline()) return saved;
+  return resumeContactsColdDownload(username, saved, progress, reportProgress);
+}
+
+/**
+ * Explicit load (header Refresh, cold boot). With an unfinished first download
+ * stored, it joins or starts the resume: a new full download would have to
+ * clear the saved cards first.
+ */
+export async function loadContactsBootstrapHybrid(
+  reportProgress?: (bootstrap: ContactsBootstrap) => void,
+): Promise<ContactsBootstrap> {
+  const username = readOfflineContactsUsername();
+  const saved = username ? await readContactsBootstrapFromCache(username) : null;
+  if (!readBrowserOnline()) {
+    if (saved) return saved;
     throw new Error("No cached contacts available offline");
   }
-
+  if (username && saved && (await readContactsColdDownload(username))) {
+    return finishContactsDownload(username, saved, reportProgress);
+  }
   return fetchContactsHybridBootstrap(reportProgress);
 }
 
 /**
+ * Stored copy for the first paint. Null while online with an unfinished first
+ * download, so boot goes through {@link loadContactsBootstrapForBoot} and
+ * shows the rest arriving (edits stay locked until it is complete). Offline,
+ * the saved part is returned as is.
+ */
+export async function readContactsCacheForBoot(
+  username: string,
+): Promise<ContactsAppBootstrap | null> {
+  if (readBrowserOnline() && (await readContactsColdDownload(username))) return null;
+  return readContactsBootstrapFromCache(username);
+}
+
+/**
  * Boot path: a stored address book paints immediately. A cold device still
- * downloads the book, reporting each page through `reportProgress`.
+ * downloads the book, reporting each page through `reportProgress`. A first
+ * download that stopped halfway fetches only the missing cards. If that fails
+ * (network gone, a 502 from a proxy), the saved part opens and the next boot
+ * or refresh tries again.
  * Explicit refresh stays on {@link loadContactsBootstrapHybrid}.
  */
 export async function loadContactsBootstrapForBoot(
-  reportProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
-): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
+  reportProgress?: (bootstrap: ContactsBootstrap) => void,
+): Promise<ContactsBootstrap> {
   const username = readOfflineContactsUsername();
   if (username) {
     const cached = await readContactsBootstrapFromCache(username);
-    if (cached) return cached;
+    if (cached) {
+      try {
+        return await finishContactsDownload(username, cached, reportProgress);
+      } catch (error) {
+        // Offline or a proxy error is expected here; anything else should leave a trace.
+        if (!isFetchNetworkError(error)) {
+          console.warn("[contacts] resuming the first download failed", error);
+        }
+        return (await readContactsBootstrapFromCache(username)) ?? cached;
+      }
+    }
   }
   return loadContactsBootstrapHybrid(reportProgress);
 }
 
-/** Incremental refresh after a cached list is already on screen. */
+/**
+ * Incremental refresh after a cached list is already on screen. An unfinished
+ * first download (opened offline) completes first, so its query-time sync
+ * tokens exist before the first `/changes`.
+ */
 export async function refreshCachedContacts(username: string): Promise<void> {
+  const saved = await readContactsBootstrapFromCache(username);
+  if (saved) await finishContactsDownload(username, saved);
   await syncContactBooksAfterAddressBookChanges(username);
 }
 

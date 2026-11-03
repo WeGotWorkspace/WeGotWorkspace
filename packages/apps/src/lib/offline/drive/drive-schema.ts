@@ -4,6 +4,7 @@ import {
   type WgwOfflineDatabase,
 } from "@/lib/offline/core/offline-db";
 import { DRIVE_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-allocation";
+import { DRIVE_UPLOAD_STORES } from "@/lib/offline/drive/upload/drive-upload-schema";
 
 export const DRIVE_DOMAIN = "drive";
 
@@ -21,6 +22,11 @@ export type OfflineDriveEntryRow = {
   data: string;
   /** JMAP FileNode id. Absent on rows written before the first crawl. */
   nodeId?: string;
+  /**
+   * Upload queue item id. Set only on upload placeholders, whose `id` is
+   * `<folder>/\u0000upload:<item id>` so it never collides with a real name.
+   */
+  uploadId?: string;
 };
 
 /** Binary file body cached for offline open/download. */
@@ -68,6 +74,13 @@ registerOfflineDomainTables({
       version: DRIVE_OFFLINE_VERSION.entryNodeId,
       stores: {
         drive_entries: "id, parentPath, type, modifiedAt, nodeId",
+      },
+    },
+    {
+      version: DRIVE_OFFLINE_VERSION.uploadQueue,
+      stores: {
+        drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId",
+        ...DRIVE_UPLOAD_STORES,
       },
     },
   ],

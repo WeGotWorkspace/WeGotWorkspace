@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionCon
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
+use App\Http\Controllers\Api\V1\Jmap\JmapDownloadTicketController;
 use App\Http\Controllers\Api\V1\Jmap\JmapEventSourceController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
@@ -62,6 +63,7 @@ use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
+use App\Services\Jmap\Download\DownloadTicketService;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -84,6 +86,13 @@ Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
 Route::post('auth/password-resets', RequestPasswordResetController::class);
+
+// Download ticket URL (#1500): no Authorization header — the hashed 256-bit
+// secret, its session binding, and a per-request rights check guard it.
+Route::get('jmap/download-ticket/{secret}/{name}', [JmapDownloadTicketController::class, 'show'])
+    ->where('secret', DownloadTicketService::SECRET_PATTERN)
+    ->where('name', '[^/]+')
+    ->middleware('throttle:240,1');
 Route::post('auth/password-resets/{token}', ConsumePasswordResetController::class)
     ->where('token', '[A-Fa-f0-9]+');
 
@@ -95,14 +104,14 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+    ->middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user']);
 // Guests read room status before they join, so this stays unauthenticated.
 // It is not on the account bucket, and not on the room limiter: that limiter
 // resolves the actor with the same Basic check, which would consume a login attempt.
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware(['wgw.auth', 'throttle:wgw-api'])
+    ->middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 // Signaling is unauthenticated by design (guests join meetings with a session
@@ -324,6 +333,9 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::post('jmap', [JmapApiController::class, 'handle']);
     Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
     Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
+    // Download tickets (#1500): issue on the authenticated route; the ticket
+    // URL itself is public (below) because a native download sends no header.
+    Route::post('jmap/download-tickets/{accountId}', [JmapDownloadTicketController::class, 'store']);
 });
 
 // JMAP event source (RFC 8620 §7.3, #1660): short-burst, its own bucket per

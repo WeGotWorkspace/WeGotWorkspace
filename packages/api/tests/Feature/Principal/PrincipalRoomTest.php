@@ -6,6 +6,7 @@ namespace Tests\Feature\Principal;
 
 use App\Models\Principal;
 use App\Models\PrincipalPeer;
+use App\Services\Auth\JwtTokenService;
 use App\Services\Rtc\RtcTurnCredentialService;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\WgwDatabaseTestCase;
@@ -38,6 +39,25 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice'])
             ->assertUnauthorized()
             ->assertJson(['error' => 'auth_required']);
+    }
+
+    public function test_link_guest_session_is_denied_like_an_anonymous_caller(): void
+    {
+        $guestToken = app(JwtTokenService::class)->issue([
+            'sub' => 'share:presence-link-guest',
+            'role' => 'guest',
+            'exp' => time() + 3600,
+        ]);
+
+        $this->withBearer($guestToken)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Visitor'])
+            ->assertUnauthorized()
+            ->assertJson(['error' => 'auth_required']);
+        $this->withBearer($guestToken)
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+            ->assertUnauthorized()
+            ->assertJson(['error' => 'auth_required']);
+        $this->assertSame(0, PrincipalPeer::query()->count());
     }
 
     public function test_any_authenticated_user_may_join_the_workspace_room(): void

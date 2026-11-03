@@ -6,6 +6,7 @@ namespace Tests\Feature\Collab;
 
 use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -178,7 +179,7 @@ final class CollabSidecarLifecycleTest extends WgwDatabaseTestCase
         $this->seedDocument('users/bob/together.md');
         $disk->delete('users/bob/together.md');
 
-        app(FileNodeIndexService::class)->reindexAll();
+        app(FileNodeReindexer::class)->reindexAll();
 
         $this->assertSame('history', $disk->get('users/bob/.together.md.yjs'));
     }

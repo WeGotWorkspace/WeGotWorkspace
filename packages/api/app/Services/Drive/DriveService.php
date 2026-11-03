@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Drive;
 
 use App\Events\EventDispatch;
+use App\Http\Support\RangeResponder;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Collab\CollabSidecarPaths;
@@ -14,8 +15,9 @@ use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 final class DriveService
 {
@@ -32,6 +34,7 @@ final class DriveService
         private DriveTrashNames $trashNames,
         private FileNodeRelocator $relocator,
         private DrivePathBookkeeping $pathBookkeeping,
+        private RangeResponder $ranges,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -78,7 +81,10 @@ final class DriveService
         $dir = $this->paths->normalizeVirtualPath($dir);
         $listingContext = $this->authorizer->listingRightsContext($principal, $dir);
         if (! $listingContext->rightsFor($dir)['mayView']) {
-            throw new \InvalidArgumentException('Access denied for this path.');
+            throw new DriveAccessDeniedException;
+        }
+        if (! $this->paths->isProvisionedDirectory($dir) && ! $this->disk()->directoryExists($this->paths->virtualToStorageKey($dir))) {
+            throw new DriveNotFoundException('Directory not found.');
         }
         $this->session->setCwd($dir);
 
@@ -162,7 +168,7 @@ final class DriveService
             }
             $disk->put($key, '');
         }
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key, $type === 'dir' ? null : hash('sha256', '')));
         $this->eventDispatch->fireMutation($username, 'drive', 'created', 'files/'.$key);
 
         return 'Created';
@@ -238,25 +244,29 @@ final class DriveService
     }
 
     /**
-     * @param  list<string>  $groupSlugs
+     * The caller's stars on items they may still view. A star on an item they lost access to stays hidden.
+     *
+     * @param  array{username: string, role: string}  $principal
      * @return list<string>
      */
-    public function listStarredPaths(string $username, array $groupSlugs): array
+    public function listStarredPaths(array $principal): array
     {
         $this->assertFilesEnabled();
 
-        return $this->stars->listPaths($username, $groupSlugs);
+        return $this->stars->listPaths($principal['username'], fn (string $path): bool => $this->authorizer->mayView($path, $principal));
     }
 
-    public function updateStar(string $username, string $path, bool $starred): string
+    /**
+     * A star is per user, so anyone who may view the item may star or unstar it for themselves.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function updateStar(array $principal, string $path, bool $starred): string
     {
         $this->assertFilesEnabled();
-        $groupSlugs = $this->groups->allowedGroupSlugs($username);
         $path = $this->paths->normalizeVirtualPath($path);
-        if (! $this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
-            throw new \InvalidArgumentException('Access denied for this path.');
-        }
-        $this->stars->setStarred($username, $path, $starred);
+        $this->authorizer->assertMayRead($path, $principal);
+        $this->stars->setStarred($principal['username'], $path, $starred);
 
         return 'Updated';
     }
@@ -273,7 +283,7 @@ final class DriveService
         $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $disk->fileExists($key)) {
-            throw new \InvalidArgumentException('File not found.');
+            throw new DriveNotFoundException('File not found.');
         }
     }
 
@@ -383,22 +393,22 @@ final class DriveService
     }
 
     /** @param array{username: string, role: string} $principal */
-    public function downloadResponse(array $principal, string $path): StreamedResponse
+    public function downloadResponse(array $principal, string $path, Request $request): Response
     {
         $this->assertReadableFile($principal, $path);
         $virtual = $this->paths->normalizeVirtualPath($path);
 
-        return $this->streamDownload($virtual);
+        return $this->streamDownload($virtual, $request);
     }
 
     /**
      * @param  array{username: string, role: string}  $principal
      */
-    public function downloadResponseByNodeId(array $principal, string $nodeId): StreamedResponse
+    public function downloadResponseByNodeId(array $principal, string $nodeId, Request $request): Response
     {
         $virtual = $this->assertReadableNodeId($principal, $nodeId);
 
-        return $this->streamDownload($virtual);
+        return $this->streamDownload($virtual, $request);
     }
 
     /**
@@ -414,8 +424,9 @@ final class DriveService
         $virtual = $this->paths->normalizeVirtualPath('/'.ltrim((string) $node->storage_key, '/'));
         try {
             $this->authorizer->assertMayRead($virtual, $principal);
-        } catch (\InvalidArgumentException $e) {
-            throw new DriveForbiddenException($e->getMessage(), 0, $e);
+        } catch (\InvalidArgumentException) {
+            // Same answer as an unknown id: the status must not tell that the node exists.
+            throw new \RuntimeException('File not found.');
         }
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $this->disk()->fileExists($key)) {
@@ -425,29 +436,27 @@ final class DriveService
         return $virtual;
     }
 
-    private function streamDownload(string $virtual): StreamedResponse
+    /** Streamed with Range and If-Range support; Content-Length from the file at stream time (#1500). */
+    private function streamDownload(string $virtual, Request $request): Response
     {
-        $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
+        $name = str_replace('"', '', basename($virtual));
+        $stream = $this->disk()->readStream($key);
+        if (! is_resource($stream)) {
+            throw new \RuntimeException('File not found.');
+        }
 
-        $name = basename($virtual);
-        $mime = $disk->mimeType($key) ?: 'application/octet-stream';
-
-        return response()->streamDownload(
-            static function () use ($disk, $key): void {
-                $stream = $disk->readStream($key);
-                if (! is_resource($stream)) {
-                    return;
-                }
-                fpassthru($stream);
-                fclose($stream);
-            },
-            $name,
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $name).'"',
-            ]
-        );
+        // Validators from the opened file, not the index: they describe the
+        // bytes being sent even after an out-of-band write the index has not
+        // seen, and a hash-pending file has no true hash yet. Without an
+        // explicit Cache-Control, Last-Modified makes Symfony send
+        // `private, must-revalidate`, which lets browsers reuse the body by
+        // heuristic freshness.
+        return $this->ranges->respond($request, $stream, [
+            'Content-Type' => $this->disk()->mimeType($key) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
+            'Cache-Control' => 'private, no-cache',
+        ] + RangeResponder::fileValidators($stream));
     }
 
     /**
@@ -698,7 +707,7 @@ final class DriveService
         ?DriveShareListingRightsContext $listingContext,
     ): bool {
         if ($listingContext !== null) {
-            return $listingContext->rightsFor($virtualPath)['mayView'];
+            return $listingContext->listsEveryEntry() || $listingContext->rightsFor($virtualPath)['mayView'];
         }
 
         try {

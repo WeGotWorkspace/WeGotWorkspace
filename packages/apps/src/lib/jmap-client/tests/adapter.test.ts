@@ -131,4 +131,25 @@ describe("JmapEventsAdapter sync", () => {
     expect(adapter.getCalendars().has("cal-personal")).toBe(false);
     expect(adapter.getCalendars().has(sharedId)).toBe(true);
   });
+
+  it("syncIfStale only calls /changes when a pushed state differs", async () => {
+    const server = new MockJmapServer();
+    seedServer(server);
+    const titles: string[] = [];
+    const adapter = await makeAdapter(server, {
+      onRemoteEvent: (event) => {
+        if (event.title) titles.push(event.title);
+      },
+    });
+    titles.length = 0;
+
+    server.remoteUpdateEvent("ev-timed", { title: "Pushed" });
+    await expect(adapter.syncIfStale({ Calendar: "unchanged?" }, "other-account")).resolves.toBe(
+      true,
+    );
+    expect(titles).toEqual([]);
+
+    await expect(adapter.syncIfStale({ CalendarEvent: "pushed-state" })).resolves.toBe(true);
+    expect(titles).toContain("Pushed");
+  });
 });

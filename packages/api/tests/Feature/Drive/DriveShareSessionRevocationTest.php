@@ -53,8 +53,8 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         $this->withBearer($ownerToken)->deleteJson('/api/v1/files/shares/'.$shareId)->assertOk();
 
         $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
     }
 
     public function test_password_rotation_revokes_existing_sessions_immediately(): void
@@ -87,9 +87,9 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $this->withBearer($guestToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT)
-            ->assertStatus(400);
+            ->assertNotFound();
         $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
-            ->assertStatus(400);
+            ->assertNotFound();
 
         // Reload of /share/:token must require the new password (no silent re-entry).
         $this->postJson('/api/v1/files/share-sessions', [
@@ -134,6 +134,6 @@ final class DriveShareSessionRevocationTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode(self::SHARE_FILE))
-            ->assertStatus(400);
+            ->assertNotFound();
     }
 }

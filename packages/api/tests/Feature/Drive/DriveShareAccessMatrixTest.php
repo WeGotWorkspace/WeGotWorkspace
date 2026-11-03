@@ -53,7 +53,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $memberToken = $this->carolBearerToken();
 
         $children = $this->withBearer($memberToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT);
-        $mayRead ? $children->assertOk() : $children->assertStatus(400);
+        $mayRead ? $children->assertOk() : $children->assertNotFound();
 
         $this->withBearer($memberToken)
             ->post('/api/v1/files/content?path='.self::SHARE_ROOT, [
@@ -166,13 +166,17 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         ])->assertStatus(405);
     }
 
-    public function test_view_grant_denies_star_and_search_outside_share_scope(): void
+    public function test_view_grant_allows_star_inside_and_denies_star_and_search_outside_share_scope(): void
     {
         $this->createMemberShareForCarol('view');
         $memberToken = $this->carolBearerToken();
+        $this->createDriveFile($this->ownerToken, '/users/bob', 'outside.md');
 
         $this->withBearer($memberToken)->postJson('/api/v1/files/star?path='.self::SHARE_ROOT.'/plan.md')
-            ->assertStatus(400);
+            ->assertOk();
+        $this->assertAccessDenied(
+            $this->withBearer($memberToken)->postJson('/api/v1/files/star?path=/users/bob/outside.md')
+        );
 
         $search = $this->withBearer($memberToken)->getJson('/api/v1/files?search=plan');
         $search->assertOk();
@@ -240,7 +244,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         ])->assertOk()->json('access_token');
 
         $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
-            ->assertStatus(400);
+            ->assertStatus(404);
 
         $download = $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode($vcfPath));
         $download->assertOk();

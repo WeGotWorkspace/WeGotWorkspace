@@ -16,6 +16,7 @@ import {
   markOutboxError,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
+  readContactsColdDownload,
   removeOutboxMutation,
   removeContactCardFromCache,
   upsertAddressBookInCache,
@@ -38,7 +39,9 @@ export type OutboxFlushResult = {
 
 export async function flushContactsOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readContactsBootstrapFromCache(username);
-  if (!cached) {
+  // An unfinished first download has no sync tokens yet: the pull below would
+  // start from "0:" and download every card again. Wait until it is finished.
+  if (!cached || (await readContactsColdDownload(username))) {
     return { stateMismatches: [], bootstrap: null };
   }
 

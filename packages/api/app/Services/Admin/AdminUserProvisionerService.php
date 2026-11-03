@@ -10,6 +10,7 @@ use App\Models\MailUserCredential;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\UserSessionRevoker;
+use App\Services\Drive\DriveShareRevoker;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
@@ -25,6 +26,7 @@ final class AdminUserProvisionerService
         private InstallerSeeder $installerSeeder,
         private AppPaths $paths,
         private UserSessionRevoker $sessions,
+        private DriveShareRevoker $driveShares,
     ) {}
 
     /**
@@ -125,7 +127,6 @@ final class AdminUserProvisionerService
         $principal = Principal::query()->where('uri', $principalUri)->first();
 
         if ($principal !== null) {
-            $principalId = (int) $principal->id;
             $pdo = DB::connection('wgw')->getPdo();
 
             if (Schema::connection('wgw')->hasTable('calendars')) {
@@ -145,17 +146,28 @@ final class AdminUserProvisionerService
                     }
                 }
             }
-
-            GroupMember::query()
-                ->where('member_id', $principalId)
-                ->orWhere('principal_id', $principalId)
-                ->delete();
-
-            Principal::query()
-                ->where('uri', $principalUri)
-                ->orWhere('uri', 'like', $principalUri.'/%')
-                ->delete();
         }
+
+        // The user's shares are revoked and grants to the user removed with the account, so a
+        // later account with the same username starts without them.
+        DB::connection('wgw')->transaction(function () use ($principal, $principalUri, $username): void {
+            if ($principal !== null) {
+                $principalId = (int) $principal->id;
+                GroupMember::query()
+                    ->where('member_id', $principalId)
+                    ->orWhere('principal_id', $principalId)
+                    ->delete();
+
+                Principal::query()
+                    ->where('uri', $principalUri)
+                    ->orWhere('uri', 'like', $principalUri.'/%')
+                    ->delete();
+            }
+
+            $this->driveShares->revokeAllUnderPath('/users/'.$username);
+            $this->driveShares->revokeAllOwnedBy($username);
+            $this->driveShares->removeGrantsToUser($username);
+        });
 
         $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();

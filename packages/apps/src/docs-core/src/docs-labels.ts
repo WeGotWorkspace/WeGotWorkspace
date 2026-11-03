@@ -32,8 +32,9 @@ export const docsLabels = {
     `"${title}" changed on the server while you were offline. Keep your version or use the server copy?`,
   conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
-  documentGoneTitle: "This document no longer exists",
-  documentGoneDescription: "It was deleted on the server. Your local copy is still here.",
+  documentGoneTitle: "This document is no longer available",
+  documentGoneDescription:
+    "It was deleted, or you no longer have access to it. Your local copy is still here.",
   documentGoneKeep: "Keep local copy",
   documentGoneClose: "Dismiss",
   accessLostTitle: "Access lost",

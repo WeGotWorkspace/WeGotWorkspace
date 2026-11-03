@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "./helpers/live-test";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";

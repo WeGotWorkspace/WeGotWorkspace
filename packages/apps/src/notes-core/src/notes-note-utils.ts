@@ -7,7 +7,7 @@ import type { Note } from "@/lib/models/note";
 import { sortNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { normalizeTag } from "@/notes-core/src/note-tag";
 
@@ -109,7 +109,7 @@ type NoteShareAudienceFields = Pick<
 /**
  * Personal share recipient: Shared-with-me file grant, or a note under a
  * personally shared notebook (ACL dir grant from another user). Group notebooks
- * are not personal shares — members keep tags/stars.
+ * are not personal shares — members keep tags. Stars are per user and show for everyone.
  */
 export function isPersonalShareRecipient(note: NoteShareAudienceFields): boolean {
   if (note.sharedInbox) return true;
@@ -132,11 +132,6 @@ export function noteAllowsTagAssignment(
   mayEditContent: boolean,
 ): boolean {
   return noteShowsTags(note) && mayEditContent;
-}
-
-/** Star/unstar controls — same personal-share audience as hidden tags. */
-export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
-  return !isPersonalShareRecipient(note);
 }
 
 /**
@@ -492,7 +487,8 @@ export function filterVisibleNotes(
     if (view === "all") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && !isArchived;
     } else if (view === "starred") {
-      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !isArchived;
+      // A star is the caller's own, so Starred also lists notes shared with them.
+      inView = !!starred[note.id] && !isArchived;
     } else if (view === "archive") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && isArchived;
     } else if (view === "shared-with-me") {
@@ -718,4 +714,9 @@ export function noteListLocationLabel(
   }
   const notebook = notebookDisplayName(note, collections).trim();
   return notebook || null;
+}
+
+/** Saves a star change. The cached copy already holds the new star, so the field is named. */
+export async function saveNoteStar(operations: NotesAPIOperations, note: Note): Promise<void> {
+  await operations.upsertNote(note, { fields: ["starred"] });
 }

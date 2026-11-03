@@ -45,6 +45,33 @@ final class TasksTasksSyncTest extends WgwDatabaseTestCase
         $changes->assertJsonPath('created.0', 'sync-list');
     }
 
+    public function test_task_list_changes_report_both_lists_after_a_move(): void
+    {
+        $workId = (string) $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/tasklists', ['name' => 'Work'])
+            ->assertCreated()
+            ->json('id');
+        $taskId = $this->seedTaskViaPdo('bob', 'move-me.ics', $this->sampleTodoIcs('Move me'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $state = (string) $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/tasks/tasklists/changes')
+            ->assertOk()
+            ->json('newState');
+
+        $this->withBearer($this->userBearerToken())
+            ->putJson($url, ['taskListIds' => [$workId => true], 'title' => 'Move me'], $this->withIfMatch($this->fetchEtagFromGet($url)))
+            ->assertOk();
+
+        $updated = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/tasks/tasklists/changes?since='.$state)
+            ->assertOk()
+            ->json('updated');
+        sort($updated);
+        $expected = [InboxTaskListProvisioner::URI, $workId];
+        sort($expected);
+        $this->assertSame($expected, $updated);
+    }
+
     public function test_query_by_uid_returns_matching_task_id(): void
     {
         $create = $this->withBearer($this->userBearerToken())

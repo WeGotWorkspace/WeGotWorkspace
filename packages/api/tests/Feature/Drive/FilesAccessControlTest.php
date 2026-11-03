@@ -50,7 +50,7 @@ final class FilesAccessControlTest extends WgwDatabaseTestCase
 
         $bobDownload = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/files/content?path=/users/carol/private.md');
-        $bobDownload->assertStatus(400);
+        $bobDownload->assertNotFound();
     }
 
     public function test_group_read_acl_allows_member_and_denies_non_member(): void
@@ -79,7 +79,7 @@ final class FilesAccessControlTest extends WgwDatabaseTestCase
         $this->assertAccessDenied($listing);
 
         $download = $this->withBearer($adminToken)->get('/api/v1/files/content?path=/users/carol/admin-proof.md');
-        $download->assertStatus(400);
+        $download->assertNotFound();
     }
 
     public function test_admin_with_group_membership_can_access_team_drive(): void

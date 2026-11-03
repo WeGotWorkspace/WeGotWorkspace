@@ -25,6 +25,7 @@ final class CalendarEventMutationSupport
 {
     public function __construct(
         private readonly CalendarRepository $calendars,
+        private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarSchedulingService $scheduling,
         private readonly CalendarMeetLinkWriteHook $meetLinkHook,
@@ -619,10 +620,23 @@ final class CalendarEventMutationSupport
             return null;
         }
 
-        $instance = CalendarInstance::query()
-            ->where('calendarid', (int) $object->calendarid)
-            ->whereIn('principaluri', $principalUris)
-            ->first();
+        // The caller can reach one calendar through several instances (own,
+        // group, direct share). Resolve through the instance the calendar list
+        // shows. When the list has none for this calendar, take the one with
+        // the most rights. A dismissed share is skipped either way.
+        $calendarId = (int) $object->calendarid;
+        $instance = $this->calendars->accessibleVeventInstances($username)
+            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
+            ?? $this->collectionAccess->withoutDismissed(
+                $username,
+                $this->collectionAccess->preferHighestAccessPerCalendar(
+                    CalendarInstance::query()
+                        ->where('calendarid', $calendarId)
+                        ->whereIn('principaluri', $principalUris)
+                        ->orderBy('id')
+                        ->get(),
+                ),
+            )->first();
 
         if ($instance === null) {
             return null;

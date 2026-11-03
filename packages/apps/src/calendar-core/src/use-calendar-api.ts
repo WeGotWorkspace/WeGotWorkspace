@@ -16,6 +16,7 @@ import {
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import {
   createDefaultCalendarApiSource,
   type CalendarApiSource,
@@ -58,6 +59,12 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     () => resolveCalendarsOfflineUsername(data?.session.user.username),
     [data?.session.user.username],
   );
+
+  const loadEventsInRange = useMemo(() => {
+    const load = resolvedSource.loadEventsInRange;
+    if (!load || !offlineUsername) return undefined;
+    return (range: CalendarUtcRange) => load(offlineUsername, range);
+  }, [resolvedSource, offlineUsername]);
 
   useOfflineConflictQueue({
     setListener: setCalendarsSyncConflictListener,
@@ -126,6 +133,7 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     operations,
     offlineUsername,
     jmapClient,
+    loadEventsInRange,
     refreshBootstrap: applyBootstrapRefresh,
     reloadFromCache: async () => {
       if (!offlineUsername) return;

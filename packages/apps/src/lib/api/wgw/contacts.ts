@@ -336,10 +336,31 @@ export type ContactsLiveBootstrap = ContactsAppBootstrap & {
   syncAnchor?: ContactsBootstrapSyncAnchor;
 };
 
+/** Query result of a first download, before the first card page. */
+export type ContactsDownloadStart = {
+  session: ContactsAppBootstrap["session"];
+  addressBooks: AddressBook[];
+  /** Every card id the query returned, in page order. */
+  cardIds: string[];
+  /** Group card ids, so a resumed download can count contacts; null when unknown. */
+  groupIds: string[] | null;
+  syncAnchor: ContactsBootstrapSyncAnchor;
+};
+
+/** One card page: the cards in it and the query ids not requested yet. */
+export type ContactsCardPage = {
+  cards: ContactCard[];
+  remainingCardIds: string[];
+};
+
 /** Load address books and cards from the configured WeGotWorkspace API. */
 export async function fetchContactsLiveBootstrap(options?: {
   /** First card page (and each later page) so the list can open before the last request. */
   onProgress?: (bootstrap: ContactsAppBootstrap) => void;
+  /** Awaited after the query, before the first card page. */
+  onStart?: (start: ContactsDownloadStart) => void | Promise<void>;
+  /** Awaited after each card page, before the next request. */
+  onCardPage?: (page: ContactsCardPage) => void | Promise<void>;
 }): Promise<ContactsLiveBootstrap> {
   const session = await wgwFetchPrincipal();
 
@@ -357,13 +378,26 @@ export async function fetchContactsLiveBootstrap(options?: {
   const { books, cards, contactCardStateAtQuery } = await contacts.getAddressBooksAndCards(
     accountId,
     {
-      onPage: (snapshot) => {
+      onQuery: ({ books: queriedBooks, queryIds, contactCardStateAtQuery: cardState, groupIds }) =>
+        options?.onStart?.({
+          session,
+          addressBooks: queriedBooks.list.map(toAddressBook),
+          cardIds: queryIds,
+          groupIds,
+          syncAnchor: { addressBookState: queriedBooks.state, contactCardState: cardState },
+        }),
+      onPage: async (snapshot) => {
+        await options?.onCardPage?.({
+          cards: snapshot.page.list.map(toContactCard),
+          remainingCardIds: snapshot.remainingIds,
+        });
         options?.onProgress?.({
           session,
           data: {
             addressBooks: snapshot.books.list.map(toAddressBook),
             cards: snapshot.cards.list.map(toContactCard),
           },
+          pendingContactCount: snapshot.pendingContactCount,
         });
       },
     },
@@ -380,4 +414,18 @@ export async function fetchContactsLiveBootstrap(options?: {
       contactCardState: contactCardStateAtQuery,
     },
   };
+}
+
+/**
+ * Rest of an interrupted first download: ContactCard/get for `ids`, one page
+ * per request. `onCardPage` is awaited before the next request.
+ */
+export async function fetchContactCardPages(
+  ids: string[],
+  onCardPage: (page: ContactsCardPage) => void | Promise<void>,
+): Promise<void> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.getContactCardPages(accountId, ids, ({ page, remainingIds }) =>
+    onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds }),
+  );
 }

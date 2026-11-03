@@ -3,8 +3,9 @@
 // - A note body saves with PUT /notes/items/{uid} (collab room = VJOURNAL UID);
 //   y-indexeddb is a UID-keyed crash buffer. Fields (archive, tags) use PATCH + If-Match.
 // - List pending = metadata outbox OR unsaved/collab-pending body.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
+  E2E_OTHER_NOTEBOOK_ID,
   appendToActiveNoteBody,
   archiveNoteTokenOnServer,
   seedNoteWithToken,
@@ -16,6 +17,7 @@ import {
   noteTokenOnServer,
   openArchiveView,
   openFirstNote,
+  openSeededNote,
   prepareNotesForOfflineSync,
   restoreNetwork,
   waitForNoteSaved,
@@ -49,18 +51,25 @@ test.describe("Notes offline sync (live app)", () => {
   test("offline edit of a note you leave: background save clears its pending dot", async ({
     page,
   }) => {
-    const token = `e2e-left-${Date.now()}`;
+    const stamp = Date.now();
+    const token = `e2e-left-${stamp}`;
+    // Two notes of its own, so the spec does not depend on what the account
+    // holds. The one you leave is outside the default notebook, like the
+    // first listed note on a seeded account.
+    const leftNote = `e2e-left-note-${stamp}`;
+    const nextNote = `e2e-next-note-${stamp}`;
 
     await prepareNotesForOfflineSync(page);
-    await openFirstNote(page);
+    await seedNoteWithToken(page, leftNote, E2E_OTHER_NOTEBOOK_ID);
+    await seedNoteWithToken(page, nextNote);
+    await openSeededNote(page, leftNote);
 
     await page.context().setOffline(true);
     await expectOfflineIndicator(page);
     await appendToActiveNoteBody(page, token);
 
     // Leave the note: its editor unmounts and the body waits for a background save.
-    await page.locator(".list-item__button").nth(1).click();
-    await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 15_000 });
+    await openSeededNote(page, nextNote);
     await expectPendingDotVisible(page);
 
     await page.context().setOffline(false);

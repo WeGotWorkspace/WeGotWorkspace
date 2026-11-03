@@ -1,5 +1,10 @@
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import {
+  currentPushAccount,
+  isPushSubscribedByOtherAccount,
+  recordPushSubscriber,
+} from "@/notifications-core/src/push-subscriber";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
@@ -124,10 +129,20 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
   // then throws and used to be swallowed, so VAPID never got an endpoint row.
   // Reuse it unless it was made with another VAPID key: the push service then
   // rejects every send (403), so swap it for one on the current key.
+  // Each account on a shared browser gets its own endpoint. Sign-out drops the
+  // subscription, but a session that ends without it (refresh expiry) leaves
+  // the previous account's subscription and server row behind. Replace it: the
+  // old endpoint is then dead, and the server prunes that row once the push
+  // service rejects it. Without a record the subscription is kept as-is.
+  const account = currentPushAccount();
   let existing = await registration.pushManager.getSubscription();
   if (!isCurrent()) return false;
   if (existing && isSignedForOtherKey(existing, key)) {
     await dropStaleSubscription(existing, isCurrent);
+    if (!isCurrent()) return false;
+    existing = null;
+  } else if (existing && isPushSubscribedByOtherAccount(account)) {
+    await existing.unsubscribe();
     if (!isCurrent()) return false;
     existing = null;
   }
@@ -139,6 +154,7 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
     }));
   if (!isCurrent()) return false;
   await subscribePush(subscription.toJSON());
+  recordPushSubscriber(account);
   return true;
 }
 

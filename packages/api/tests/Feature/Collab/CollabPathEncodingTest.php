@@ -206,8 +206,8 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->issueBearerTokenFor('bob'))
             ->putCollaboration('/api/v1/files/collaboration?path='.urlencode(self::ACCENTS), 'nope')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
 
         $this->assertSame([], CollabPeer::query()->pluck('room')->all());
     }
@@ -223,8 +223,8 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->issueBearerTokenFor('alice'))
             ->get('/api/v1/files/collaboration?path='.urlencode('/users/alice/docs/../../bob/secret.md'))
-            ->assertBadRequest()
-            ->assertJsonPath('error', 'invalid_room');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     private static function longPath(): string

@@ -3,6 +3,7 @@ import type { JmapClient } from "../core/JmapClient.js";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_VERSION_CHECK_CAPABILITY,
   type ChangesResponse,
   type GetResponse,
   type JmapId,
@@ -19,6 +20,18 @@ const FILE_NODE_TYPE = "FileNode";
 const DEFAULT_MAX_OBJECTS_IN_GET = 500;
 
 export const FILENODE_USING = [CORE_CAPABILITY, FILENODE_CAPABILITY];
+
+/**
+ * `using` for FileNode calls. When the server advertises the version check
+ * (#1500), it is listed too: reads then carry `contentHashPending`, and an
+ * update may carry `expectedBlobId`. Never listed when it is not advertised.
+ */
+export function fileNodeUsing(client: JmapClient): string[] {
+  if (!client.isConnected) return FILENODE_USING;
+  return FILENODE_VERSION_CHECK_CAPABILITY in client.session.capabilities
+    ? [...FILENODE_USING, FILENODE_VERSION_CHECK_CAPABILITY]
+    : FILENODE_USING;
+}
 
 function assertSetSucceeded<T>(response: SetResponse<T>): void {
   const notCreated = Object.entries(response.notCreated ?? {});
@@ -73,15 +86,30 @@ export class JmapFileNodesClient {
     this.client = client;
   }
 
+  /**
+   * `FileNode/get`. An id list longer than the server's `maxObjectsInGet` is
+   * fetched in chunks, so callers can pass any number of ids.
+   */
   async getFileNodes(
     accountId: JmapId,
     ids?: JmapId[] | null,
     options: { signal?: AbortSignal } = {},
   ): Promise<GetResponse<JmapFileNode>> {
+    if (ids && ids.length > this.#maxObjectsInGet()) {
+      return this.#getFileNodesInChunks(accountId, ids, options.signal);
+    }
+    return this.#getFileNodesOnce(accountId, ids ?? null, options.signal);
+  }
+
+  async #getFileNodesOnce(
+    accountId: JmapId,
+    ids: JmapId[] | null,
+    signal?: AbortSignal,
+  ): Promise<GetResponse<JmapFileNode>> {
     const response = await this.client.call<GetResponse<JmapFileNode>>(
       "FileNode/get",
-      { accountId, ids: ids ?? null },
-      { using: FILENODE_USING, signal: options.signal },
+      { accountId, ids },
+      { using: fileNodeUsing(this.client), signal },
     );
     this.client.setState(accountId, FILE_NODE_TYPE, response.state);
     return response;
@@ -99,7 +127,7 @@ export class JmapFileNodesClient {
         sinceState,
         ...(options.maxChanges !== undefined ? { maxChanges: options.maxChanges } : {}),
       },
-      { using: FILENODE_USING, signal: options.signal },
+      { using: fileNodeUsing(this.client), signal: options.signal },
     );
     this.client.setState(accountId, FILE_NODE_TYPE, response.newState);
     return response;
@@ -113,7 +141,7 @@ export class JmapFileNodesClient {
     options: { signal?: AbortSignal } = {},
   ): Promise<SetResponse<JmapFileNode>> {
     const response = await this.client.call<SetResponse<JmapFileNode>>("FileNode/set", args, {
-      using: FILENODE_USING,
+      using: fileNodeUsing(this.client),
       signal: options.signal,
     });
     this.client.setState(args.accountId, FILE_NODE_TYPE, response.newState);
@@ -129,7 +157,7 @@ export class JmapFileNodesClient {
     return this.client.call<QueryResponse>(
       "FileNode/query",
       { accountId, filter: filter ?? null },
-      { using: FILENODE_USING, signal: options.signal },
+      { using: fileNodeUsing(this.client), signal: options.signal },
     );
   }
 
@@ -162,7 +190,7 @@ export class JmapFileNodesClient {
           getCallId,
         ],
       ],
-      FILENODE_USING,
+      fileNodeUsing(this.client),
       options.signal ? { signal: options.signal } : undefined,
     );
     const outcome = readQueryAndGet<JmapFileNode>(response.methodResponses, queryCallId, getCallId);
@@ -191,7 +219,7 @@ export class JmapFileNodesClient {
     const notFound: JmapId[] = [];
     let last: GetResponse<JmapFileNode> | null = null;
     for (let index = 0; index < ids.length; index += chunkSize) {
-      last = await this.getFileNodes(accountId, ids.slice(index, index + chunkSize), { signal });
+      last = await this.#getFileNodesOnce(accountId, ids.slice(index, index + chunkSize), signal);
       list.push(...last.list);
       notFound.push(...(last.notFound ?? []));
     }
