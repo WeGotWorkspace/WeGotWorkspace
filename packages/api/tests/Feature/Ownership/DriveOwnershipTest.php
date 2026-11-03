@@ -1787,9 +1787,14 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
     /**
      * @return array<string, mixed>|null
      */
-    private function assemblyRecord(string $id): ?array
+    private function assemblyRecord(string $id, bool $ignoreUpdatedAt = false): ?array
     {
-        return JmapBlobAssembly::query()->where('assembly_id', $id)->first()?->toArray();
+        $record = JmapBlobAssembly::query()->where('assembly_id', $id)->first()?->toArray();
+        if ($record !== null && $ignoreUpdatedAt) {
+            unset($record['updated_at']);
+        }
+
+        return $record;
     }
 
     private function runAssembly(OwnershipCase $case): void
@@ -1853,8 +1858,12 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             return;
         }
 
+        // In the `part` variant the assembly is the actor's own: append leases
+        // it briefly, which moves `updated_at`. Every other field, and
+        // another owner's assembly in full, must stay as it was.
+        $ownAssembly = $case->variant === 'part';
         $response = $this->assertUnchanged(
-            fn (): array => [$this->assemblyRecord($id), $this->blobIdsOf($self), $this->blobIdsOf($carol)],
+            fn (): array => [$this->assemblyRecord($id, ignoreUpdatedAt: $ownAssembly), $this->blobIdsOf($self), $this->blobIdsOf($carol)],
             fn (): TestResponse => $send($id, $args),
             $case->key(),
         );
