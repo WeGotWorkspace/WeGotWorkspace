@@ -36,6 +36,7 @@
   @apply sm:mr-auto;
 }
 
-.button.tasks-rescue-dialog__discard.button--severity-danger {
-  background-color: var(--button-severity-hover-background);
+/* 10% at rest keeps 14px text above 4.5:1; hover deepens to the canonical wash. */
+.button.tasks-rescue-dialog__discard.button--severity-danger:not(:hover, :focus-visible) {
+  background-color: color-mix(in oklab, var(--button-severity-color) 10%, transparent);
 }
