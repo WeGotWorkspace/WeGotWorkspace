@@ -16,7 +16,8 @@ export function plainDateTimeToLocal(value: Temporal.PlainDateTime): JSCalendarL
   return value.round({ smallestUnit: "second", roundingMode: "floor" }).toString();
 }
 
-function isInstantOrOffset(value: string): boolean {
+/** True for `…Z` / `…+02:00`: an instant, not a wall-clock LocalDateTime. */
+export function isInstantOrOffset(value: string): boolean {
   return INSTANT_Z.test(value) || OFFSET_AFTER_TIME.test(value);
 }
 

@@ -94,16 +94,16 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
 
         $this->withBearer($carolToken)
             ->get('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN))
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
 
         $this->withBearer($carolToken)
             ->putCollaboration(
                 '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
                 'blocked',
             )
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_admin_with_group_membership_can_collaborate_on_team_drive(): void

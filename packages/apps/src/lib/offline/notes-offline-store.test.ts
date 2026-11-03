@@ -4,6 +4,7 @@ import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { ingestRemoteNote, ingestRemoteNoteDestroyed } from "@/lib/offline/notes-jmap-inbound";
@@ -13,6 +14,9 @@ import {
   enqueueOutboxMutation,
   getNoteFromCache,
   listOutboxMutations,
+  listNoteIdsBlockingSyncToken,
+  listOutboxNoteIds,
+  listPendingNoteBases,
   listPendingNoteFields,
   listPendingNoteIds,
   readNotesBootstrapFromCache,
@@ -525,5 +529,78 @@ describe("notes offline store", () => {
 
     await expect(ingestRemoteNoteDestroyed(username, local.id)).resolves.toBe("removed");
     expect(await getNoteFromCache(username, local.id)).toBeNull();
+  });
+
+  describe("pending-write readers", () => {
+    const row = (
+      id: string,
+      op: string,
+      payload: Record<string, unknown>,
+      extra: { ifInState?: string; lastError?: string } = {},
+    ) =>
+      putOutboxMutation(username, {
+        id,
+        domain: NOTES_DOMAIN,
+        op,
+        payload: JSON.stringify(payload),
+        createdAt: Date.now(),
+        retries: extra.lastError ? 1 : 0,
+        ...extra,
+      });
+
+    beforeEach(async () => {
+      await row("r1", "upsert", { noteId: "n-a", fields: ["title", "bogus"] }, { ifInState: "e1" });
+      await row("r2", "upsert", { noteId: "n-a", fields: ["tags"] }, { ifInState: "e2" });
+      await row("r3", "archive", { noteId: "n-b" });
+      await row("r4", "delete", { noteId: "n-c" }, { ifInState: "e9", lastError: "stateMismatch" });
+      await row("r5", "upsert", { noteId: "n-d" });
+      await row("r6", "upsert", {});
+      await putOutboxMutation(username, {
+        id: "r7",
+        domain: NOTES_DOMAIN,
+        op: "upsert",
+        payload: "not json",
+        createdAt: Date.now(),
+        retries: 0,
+      });
+      await putOutboxMutation(username, {
+        id: "r8",
+        domain: "tasks",
+        op: "upsert",
+        payload: JSON.stringify({ noteId: "n-other-domain" }),
+        createdAt: Date.now(),
+        retries: 0,
+      });
+    });
+
+    it("lists queued fields per note, delete and archive included", async () => {
+      const fields = await listPendingNoteFields(username);
+      expect([...fields.keys()].sort()).toEqual(["n-a", "n-b", "n-c", "n-d"]);
+      expect([...(fields.get("n-a") ?? [])].sort()).toEqual(["tags", "title"]);
+      expect([...(fields.get("n-b") ?? [])]).toEqual(["archived"]);
+      expect([...(fields.get("n-c") ?? [])]).toEqual(["delete"]);
+      expect(fields.get("n-d")?.size).toBe(0);
+    });
+
+    it("lists the base versions of queued writes in order, only where one was recorded", async () => {
+      expect(await listPendingNoteBases(username)).toEqual(
+        new Map([
+          ["n-a", ["e1", "e2"]],
+          ["n-c", ["e9"]],
+        ]),
+      );
+    });
+
+    it("lists every note with an outbox row", async () => {
+      expect([...(await listOutboxNoteIds(username))].sort()).toEqual(["n-a", "n-b", "n-c", "n-d"]);
+    });
+
+    it("lets a stateMismatch row stop holding the sync token", async () => {
+      expect([...(await listNoteIdsBlockingSyncToken(username))].sort()).toEqual([
+        "n-a",
+        "n-b",
+        "n-d",
+      ]);
+    });
   });
 });

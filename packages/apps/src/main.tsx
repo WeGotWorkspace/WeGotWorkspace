@@ -1,3 +1,5 @@
+// First: modules below may call crypto.randomUUID, which plain http lacks (#1526).
+import "@/lib/random-uuid-polyfill";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";

@@ -4,6 +4,7 @@ import {
   CALENDARS_CAPABILITY,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_VERSION_CHECK_CAPABILITY,
   type JmapInvocation,
   type JmapRequest,
   type JmapSession,
@@ -16,12 +17,16 @@ const ACCOUNT_ID = "bob";
 
 type RecordedCall = { using: string[]; methodCalls: JmapInvocation[] };
 
-function session(core: Record<string, unknown> = {}): JmapSession {
+function session(
+  core: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
+): JmapSession {
   return {
     capabilities: {
       [CORE_CAPABILITY]: { maxSizeUpload: 25_000_000, ...core },
       [CALENDARS_CAPABILITY]: {},
       [FILENODE_CAPABILITY]: {},
+      ...extra,
     },
     accounts: {
       [ACCOUNT_ID]: {
@@ -47,6 +52,7 @@ function session(core: Record<string, unknown> = {}): JmapSession {
 function makeClient(
   handler: (body: JmapRequest) => unknown,
   core: Record<string, unknown> = {},
+  extraCapabilities: Record<string, unknown> = {},
 ): {
   client: JmapClient;
   recorded: RecordedCall[];
@@ -56,7 +62,7 @@ function makeClient(
     sessionUrl: SESSION_URL,
     fetch: async (input, init) => {
       if (input === SESSION_URL) {
-        return new Response(JSON.stringify(session(core)), { status: 200 });
+        return new Response(JSON.stringify(session(core, extraCapabilities)), { status: 200 });
       }
       const body = JSON.parse(String(init?.body)) as JmapRequest;
       recorded.push({ using: body.using, methodCalls: body.methodCalls });
@@ -216,6 +222,89 @@ describe("JmapFileNodesClient", () => {
     });
   });
 
+  describe("getFileNodes past maxObjectsInGet", () => {
+    /** Rejects a get of more than `max` ids with `requestTooLarge`; echoes the rest. */
+    function getServer(max: number) {
+      let getRequests = 0;
+      return (body: JmapRequest) => ({
+        methodResponses: body.methodCalls.map(([name, args, id]) => {
+          const requested = (args.ids as string[] | null) ?? [];
+          if (requested.length > max) {
+            return [
+              "error",
+              { type: "requestTooLarge", description: "ids exceeds maxObjectsInGet." },
+              id,
+            ];
+          }
+          getRequests += 1;
+          return [
+            name,
+            {
+              accountId: ACCOUNT_ID,
+              state: `s${getRequests}`,
+              list: requested
+                .filter((nodeId) => nodeId !== "fn-missing")
+                .map((nodeId) => ({ id: nodeId, name: `${nodeId}.txt` })),
+              notFound: requested.filter((nodeId) => nodeId === "fn-missing"),
+            },
+            id,
+          ];
+        }),
+        sessionState: "1",
+      });
+    }
+
+    it("fetches more than 500 ids in 500-id chunks when the session does not state the limit", async () => {
+      const ids = Array.from({ length: 1012 }, (_, index) => `fn-${index}`);
+      const { client, recorded } = makeClient(getServer(500));
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.getFileNodes(ACCOUNT_ID, ids);
+
+      expect(got.list.map((node) => node.id)).toEqual(ids);
+      expect(got.state).toBe("s3");
+      expect(client.getState(ACCOUNT_ID, "FileNode")).toBe("s3");
+      expect(recorded.map((row) => (row.methodCalls[0]?.[1].ids as string[]).length)).toEqual([
+        500, 500, 12,
+      ]);
+      for (const row of recorded) expect(row.using).toEqual(FILENODE_USING);
+    });
+
+    it("uses the session's maxObjectsInGet and merges notFound across chunks", async () => {
+      const ids = ["fn-1", "fn-missing", "fn-3"];
+      const { client, recorded } = makeClient(getServer(2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.getFileNodes(ACCOUNT_ID, ids);
+
+      expect(got.list.map((node) => node.id)).toEqual(["fn-1", "fn-3"]);
+      expect(got.notFound).toEqual(["fn-missing"]);
+      expect(recorded.map((row) => row.methodCalls[0]?.[1].ids)).toEqual([
+        ["fn-1", "fn-missing"],
+        ["fn-3"],
+      ]);
+    });
+
+    it("keeps a list at the limit, an empty list, and null to one request", async () => {
+      const { client, recorded } = makeClient(getServer(2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      await fileNodes.getFileNodes(ACCOUNT_ID, ["fn-1", "fn-2"]);
+      const empty = await fileNodes.getFileNodes(ACCOUNT_ID, []);
+      await fileNodes.getFileNodes(ACCOUNT_ID, null);
+
+      expect(empty.state).toBe("s2");
+      expect(recorded.map((row) => row.methodCalls[0]?.[1].ids)).toEqual([
+        ["fn-1", "fn-2"],
+        [],
+        null,
+      ]);
+    });
+  });
+
   it("uses FileNode/set create then destroy with filenode using", async () => {
     const { client, recorded } = makeClient((body) => {
       const [name, args, id] = body.methodCalls[0]!;
@@ -258,5 +347,36 @@ describe("JmapFileNodesClient", () => {
       create: { d0: { parentId: "fn-home", name: "Docs" } },
     });
     expect(recorded[1]?.methodCalls[0]?.[1]).toMatchObject({ destroy: ["fn-1"] });
+  });
+  it("lists the version check in `using` only when the server advertises it", async () => {
+    const answer = (body: JmapRequest) => ({
+      methodResponses: [
+        [
+          body.methodCalls[0]![0],
+          { accountId: ACCOUNT_ID, newState: "2", updated: { "fn-1": null } },
+          body.methodCalls[0]![2],
+        ],
+      ],
+      sessionState: "1",
+    });
+    const update = {
+      accountId: ACCOUNT_ID,
+      update: { "fn-1": { blobId: "jb-new", expectedBlobId: "jb-old" } },
+    };
+
+    const advertised = makeClient(answer, {}, { [FILENODE_VERSION_CHECK_CAPABILITY]: {} });
+    await advertised.client.connect();
+    await new JmapFileNodesClient(advertised.client).setFileNodes(update);
+    expect(advertised.recorded[0]?.using).toEqual([
+      ...FILENODE_USING,
+      FILENODE_VERSION_CHECK_CAPABILITY,
+    ]);
+
+    const plain = makeClient(answer);
+    await plain.client.connect();
+    await new JmapFileNodesClient(plain.client)
+      .getFileNodes(ACCOUNT_ID, ["fn-1"])
+      .catch(() => null);
+    expect(plain.recorded[0]?.using).toEqual(FILENODE_USING);
   });
 });

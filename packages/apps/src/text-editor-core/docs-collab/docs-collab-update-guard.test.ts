@@ -1,8 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { applyGuardedRemoteUpdate } from "./docs-collab-update-guard";
 import { DOCS_COMMENTS_MAP_KEY } from "./docs-comments-types";
 import { DOCS_SUGGESTION_THREADS_MAP_KEY } from "./docs-suggestions-types";
+
+// Call-through spies, so a test can see whether the guard read the whole live
+// document. Every clone the guard can make starts with one of these.
+vi.mock("yjs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("yjs")>();
+  return {
+    ...actual,
+    encodeStateAsUpdate: vi.fn(actual.encodeStateAsUpdate),
+    encodeStateAsUpdateV2: vi.fn(actual.encodeStateAsUpdateV2),
+  };
+});
 
 const MESH = "mesh";
 
@@ -277,36 +288,50 @@ describe("docs-collab-update-guard", () => {
 
   /**
    * The clone is the only expensive step, and it exists for the commenter
-   * check alone. On a megabyte of body an editor's keystroke has to stay in
-   * the same order of magnitude as a bare `Y.applyUpdate`, so a wide margin is
-   * enough to catch the clone creeping into the fast path.
+   * check alone. An editor's keystroke on a megabyte of body must not pay for
+   * it. Cloning starts with encoding the whole live document, so the test
+   * counts those encodes instead of timing the call: the commenter run shows
+   * the spies do see a clone.
    */
   it("does not clone the document for an editor update on a 1 MB doc", () => {
-    const { local, remote } = pair((doc) => {
-      doc.getText("bulk").insert(0, "x".repeat(1_100_000));
-    });
+    const { local, remote } = pair((doc) => typeBody(doc, "x".repeat(1_100_000)));
     expect(Y.encodeStateAsUpdate(local).byteLength).toBeGreaterThan(1_000_000);
+    const firstLine = (doc: Y.Doc): Y.XmlText =>
+      (doc.getXmlFragment("default").get(0) as Y.XmlElement).get(0) as Y.XmlText;
 
-    remote.getText("bulk").insert(0, "e");
-    const editorUpdate = diff(local, remote);
-    const editorStarted = performance.now();
-    expect(
-      applyGuardedRemoteUpdate({
+    // Apply one update to the live doc and count how often the guard encoded
+    // the whole of it along the way.
+    const applyCountingEncodes = (access: "comment" | "write", senderUser: string) => {
+      const update = diff(local, remote);
+      vi.mocked(Y.encodeStateAsUpdate).mockClear();
+      vi.mocked(Y.encodeStateAsUpdateV2).mockClear();
+      const verdict = applyGuardedRemoteUpdate({
         doc: local,
-        update: editorUpdate,
-        access: "write",
-        senderUser: "bob",
+        update,
+        access,
+        senderUser,
         origin: MESH,
-      }),
-    ).toEqual({ applied: true });
-    const editorMs = performance.now() - editorStarted;
+      });
+      const encodes = [
+        ...vi.mocked(Y.encodeStateAsUpdate).mock.calls,
+        ...vi.mocked(Y.encodeStateAsUpdateV2).mock.calls,
+      ].filter(([doc]) => doc === local).length;
+      return { verdict, encodes };
+    };
 
-    const cloneStarted = performance.now();
-    const clone = new Y.Doc();
-    Y.applyUpdate(clone, Y.encodeStateAsUpdate(local));
-    const cloneMs = performance.now() - cloneStarted;
+    // A typed character is an insert with no delete set, so the wipe check
+    // does not need its scratch copy either.
+    firstLine(remote).insert(0, "e");
+    expect(applyCountingEncodes("write", "bob")).toEqual({
+      verdict: { applied: true },
+      encodes: 0,
+    });
+    expect(firstLine(local).toString().startsWith("ex")).toBe(true);
 
-    expect(editorMs).toBeLessThan(Math.max(cloneMs, 1));
+    remote.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "carol", [message("m1", "carol")]));
+    const commenter = applyCountingEncodes("comment", "carol");
+    expect(commenter.verdict).toEqual({ applied: true });
+    expect(commenter.encodes).toBeGreaterThan(0);
   });
 
   it("applies a commenter's own thread while the live doc already has pending", () => {

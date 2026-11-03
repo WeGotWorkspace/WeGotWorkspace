@@ -14,6 +14,13 @@ export type PresenceChannelMessage = {
 /** Logical room token for the workspace-wide principal room (`p_workspace`). */
 export const PRESENCE_WORKSPACE_ROOM = "workspace";
 
+/**
+ * Backoff for a presence boot that could not reach the API while the browser reports
+ * online (#1832). The last delay repeats while the browser reports online, since the
+ * `online` event never fires then.
+ */
+export const PRESENCE_BOOT_RETRY_DELAYS_MS = [5_000, 15_000, 45_000] as const;
+
 /** Logical room token for a group principal room (`p_groups.{slug}`). */
 export function presenceGroupRoom(slug: string): string {
   return `groups.${slug}`;

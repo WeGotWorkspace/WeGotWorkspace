@@ -4,9 +4,12 @@ import { MeetChannelDeepLinkGate, MeetInviteGate } from "@/meet-core/src/meet-in
 import type { MeetInviteAccessIo } from "@/meet-core/src/meet-invite-access";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
+const session = vi.hoisted(() => ({ authenticated: false, guest: false }));
+
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwLiveApiEnabled: () => true,
-  wgwHasAuthenticatedSession: () => false,
+  wgwHasAuthenticatedSession: () => session.authenticated,
+  wgwIsGuestSession: () => session.guest,
   wgwEnsureSession: vi.fn(),
 }));
 
@@ -49,6 +52,27 @@ describe("guest conversation refusal", () => {
 
     expect(await screen.findByText(meetLabels.guestConversationRefusedTitle)).toBeTruthy();
     expect(screen.queryByText("workspace")).toBeNull();
+  });
+
+  it("treats a public Drive link session as a guest, not a member", async () => {
+    session.authenticated = true;
+    session.guest = true;
+    try {
+      render(
+        <MeetChannelDeepLinkGate
+          channelId="general"
+          guestClosed
+          workspace={<div>workspace</div>}
+          accessIo={anonymousIo}
+        />,
+      );
+
+      expect(await screen.findByText(meetLabels.guestConversationRefusedTitle)).toBeTruthy();
+      expect(screen.queryByText("workspace")).toBeNull();
+    } finally {
+      session.authenticated = false;
+      session.guest = false;
+    }
   });
 
   it("refuses a saved meeting url and keeps the ad-hoc room on the invite gate path", async () => {

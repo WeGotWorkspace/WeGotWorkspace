@@ -21,6 +21,7 @@ import {
   type OfflineCalendarEventRow,
 } from "@/lib/offline/calendars/calendars-schema";
 import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
+import { rangeQueryCoversEvent, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 export {
   enqueueOutboxMutation,
@@ -75,19 +76,42 @@ export async function readCalendarBootstrapFromCache(
   };
 }
 
+export type CalendarBootstrapCacheWriteOptions = {
+  /**
+   * The bootstrap window the snapshot's events cover (#1675). A cached event
+   * the snapshot omits is dropped only when the window certainly covers it, or
+   * its calendar is gone. Others came from a period loaded on demand and stay.
+   * Without it, every omitted event is dropped.
+   */
+  window?: CalendarUtcRange;
+};
+
+function keepCachedRowOnBootstrapWrite(
+  row: OfflineCalendarEventRow,
+  incomingIds: ReadonlySet<string>,
+  calendarIds: ReadonlySet<string>,
+  window: CalendarUtcRange | undefined,
+): boolean {
+  if (row.pendingSync) return true;
+  if (incomingIds.has(row.id)) return false;
+  if (row.locallyWritten === true) return true;
+  if (!window || !calendarIds.has(row.calendarId)) return false;
+  return !rangeQueryCoversEvent(parseEventRow(row), window);
+}
+
+function parseEventRow(row: OfflineCalendarEventRow): JmapCalendarEvent {
+  return JSON.parse(row.data) as JmapCalendarEvent;
+}
+
 export async function writeCalendarBootstrapToCache(
   username: string,
   bootstrap: CalendarAppBootstrap,
+  options: CalendarBootstrapCacheWriteOptions = {},
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const events = calendarsEventsTable(db);
   const calendars = calendarsCalendarsTable(db);
   const groups = calendarsGroupsTable(db);
-  const existingRows = await events.toArray();
-  const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
-  const keepRows = existingRows.filter(
-    (row) => row.pendingSync || (row.locallyWritten === true && !incomingIds.has(row.id)),
-  );
   await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
   rememberOfflineCalendarsUsername(username);
   await calendars.clear();
@@ -105,11 +129,59 @@ export async function writeCalendarBootstrapToCache(
       data: JSON.stringify(group),
     })),
   );
-  await events.clear();
-  await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
-  if (keepRows.length > 0) {
-    await events.bulkPut(keepRows);
-  }
+  // One transaction: a period loaded on demand must not land between the read
+  // and the clear and then be lost.
+  await db.transaction("rw", events, async () => {
+    const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
+    const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
+    const keepRows = (await events.toArray()).filter((row) =>
+      keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window),
+    );
+    await events.clear();
+    await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
+    if (keepRows.length > 0) {
+      await events.bulkPut(keepRows);
+    }
+  });
+}
+
+/**
+ * Merge one on-demand period into the cache (#1675): upsert what the server
+ * returned and drop cached events the query covers but no longer returned.
+ * The query returns a series when one of its occurrences falls in the
+ * period, so an omitted master with an occurrence there is gone on the
+ * server; one with no occurrence there stays. This is the only place a
+ * series deleted while the client was closed, which never occurs in the
+ * bootstrap window, is removed. Rows with a pending or just-written local
+ * change stay.
+ */
+export async function mergeCalendarRangeIntoCache(
+  username: string,
+  range: CalendarUtcRange,
+  incoming: readonly JmapCalendarEvent[],
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const events = calendarsEventsTable(db);
+  await db.transaction("rw", events, async () => {
+    const existing = await events.toArray();
+    const incomingIds = new Set(incoming.map((event) => event.id));
+    const pendingIds = new Set(existing.filter((row) => row.pendingSync).map((row) => row.id));
+    const goneIds = existing
+      .filter(
+        (row) =>
+          !row.pendingSync &&
+          row.locallyWritten !== true &&
+          !incomingIds.has(row.id) &&
+          rangeQueryCoversEvent(parseEventRow(row), range),
+      )
+      .map((row) => row.id);
+    if (goneIds.length > 0) {
+      await events.bulkDelete(goneIds);
+    }
+    await events.bulkPut(
+      incoming.filter((event) => !pendingIds.has(event.id)).map((event) => eventRow(event, false)),
+    );
+  });
 }
 
 export async function upsertCalendarEventInCache(

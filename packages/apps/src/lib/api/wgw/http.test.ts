@@ -32,7 +32,8 @@ const SESSION_KIND_KEY = "wgw.api.session_kind";
 const LEGACY_REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
-const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
+/** Fallback record of the shared cross-tab lock, name `wgw-auth-refresh`. */
+const REFRESH_LOCK_KEY = "wgw.lock.wgw-auth-refresh";
 const SESSION_DEBUG_KEY = "wgw.api.session_debug";
 
 function sessionDebugRing(): Array<Record<string, unknown>> {
@@ -280,7 +281,7 @@ describe("wgw auth refresh behavior", () => {
 
     window.localStorage.setItem(
       REFRESH_LOCK_KEY,
-      JSON.stringify({ owner: "other-tab", acquiredAt: Date.now() }),
+      JSON.stringify({ owner: "other-tab", heartbeatAt: Date.now() }),
     );
     const fetchMock = vi.fn(async () => new Response("unexpected", { status: 500 }));
     globalThis.fetch = fetchMock as typeof fetch;
@@ -298,7 +299,8 @@ describe("wgw auth refresh behavior", () => {
     const storageEvent = new StorageEvent("storage");
     Object.defineProperty(storageEvent, "key", { value: REFRESH_LOCK_KEY });
     window.dispatchEvent(storageEvent);
-    vi.runAllTimers();
+    // The waiting tab takes the lock itself, re-reads storage, and skips the refresh.
+    await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toBe(refreshedInOtherTabAccessToken);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -307,7 +309,7 @@ describe("wgw auth refresh behavior", () => {
   it("reclaims stale refresh lock after timeout window", async () => {
     window.localStorage.setItem(
       REFRESH_LOCK_KEY,
-      JSON.stringify({ owner: "stale-tab", acquiredAt: Date.now() - 31_000 }),
+      JSON.stringify({ owner: "stale-tab", heartbeatAt: Date.now() - 31_000 }),
     );
     let ran = false;
     await expect(
@@ -653,7 +655,8 @@ describe("wgw auth refresh behavior", () => {
 
     const refreshing = wgwEnsureFreshAccessToken();
     const gate = wgwAwaitSessionRefreshForReconnect();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The lock fallback settles its claim briefly before the refresh request starts.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     resolveRefresh(
       new Response(
@@ -876,6 +879,36 @@ describe("MCP OAuth web session", () => {
 });
 
 describe("guest share session", () => {
+  it("reports a share: subject as a guest session and a signed-in user as not", async () => {
+    wgwEstablishGuestShareSession({
+      access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+        sub: "share:abc123",
+        role: "guest",
+      }),
+      expires_in: 3600,
+    });
+    expect(wgwIsGuestSession()).toBe(true);
+
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+              sub: "alice",
+              role: "user",
+            }),
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    ) as typeof fetch;
+    await wgwLoginWithCredentials("alice", "secret");
+
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(wgwIsGuestSession()).toBe(false);
+  });
+
   it("stores a guest session kind with the access token", () => {
     const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
       sub: "share:abc123",

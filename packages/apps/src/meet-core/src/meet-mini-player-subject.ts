@@ -151,7 +151,7 @@ export function resolveMeetMiniPlayerPreview(input: {
       name: picked.name,
       stream: input.self.stream,
       showVideo,
-      mirrored: showVideo && shouldMirrorMeetStream(input.self.stream, false),
+      mirrored: showVideo && shouldMirrorMeetStream(input.self.stream, { local: true }),
     };
   }
 
@@ -163,7 +163,8 @@ export function resolveMeetMiniPlayerPreview(input: {
     name: peer.name,
     stream: peer.stream,
     showVideo,
-    mirrored: showVideo && shouldMirrorMeetStream(peer.stream, peer.disclosedMedia?.screen),
+    // A remote camera is shown the way the sender's camera sees them.
+    mirrored: false,
   };
 }
 

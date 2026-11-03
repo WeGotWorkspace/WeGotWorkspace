@@ -79,6 +79,7 @@ export function useDocsCollab({
     urls,
     markDocReady: markDocReadyStable,
     trySeedFromFile: trySeedFromFileStable,
+    setDocStatus,
   });
 
   const joinHook = useDocsCollabJoin({

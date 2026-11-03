@@ -69,12 +69,14 @@ final class NotesUidCollisionTest extends WgwDatabaseTestCase
             'body' => 'secret',
         ])->assertCreated()->json('id');
 
-        $this->as('bob')->postJson('/api/v1/notes/items', [
+        // Bob's note is created under a UID of its own, never alice's.
+        $bobsId = (string) $this->as('bob')->postJson('/api/v1/notes/items', [
             'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
             'uid' => $uid,
             'title' => 'Mine now',
             'body' => '',
-        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists')->assertJsonMissing(['title' => 'Private']);
+        ])->assertCreated()->assertJsonMissing(['title' => 'Private'])->json('id');
+        $this->assertNotSame($uid, $bobsId);
 
         $room = '/api/v1/rooms/'.RoomTestHelper::fileRoomId($uid).'/participants';
         $this->as('bob')->postJson($room, ['name' => 'Bob'])->assertForbidden();

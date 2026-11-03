@@ -28,15 +28,21 @@ describe("meet-stream-mirror", () => {
     expect(isDisplayCaptureVideoTrack(track)).toBe(true);
   });
 
-  it("mirrors camera streams but not screen share", () => {
+  it("mirrors only the local camera, never a remote camera or a screen share", () => {
     const asStream = (track: MediaStreamTrack) =>
       ({ getVideoTracks: () => [track] }) as MediaStream;
 
     const camera = asStream(fakeVideoTrack({ label: "FaceTime HD Camera" }));
     const screen = asStream(fakeVideoTrack({ displaySurface: "monitor" }));
 
-    expect(shouldMirrorMeetStream(camera)).toBe(true);
-    expect(shouldMirrorMeetStream(screen)).toBe(false);
-    expect(shouldMirrorMeetStream(camera, true)).toBe(false);
+    // Local self-view reads like a mirror.
+    expect(shouldMirrorMeetStream(camera, { local: true })).toBe(true);
+    // A remote camera (guest or signed-in member) is shown the right way round.
+    expect(shouldMirrorMeetStream(camera, { local: false })).toBe(false);
+    // Screen share is never mirrored, local or remote.
+    expect(shouldMirrorMeetStream(screen, { local: true })).toBe(false);
+    expect(shouldMirrorMeetStream(screen, { local: false })).toBe(false);
+    expect(shouldMirrorMeetStream(camera, { local: true, screen: true })).toBe(false);
+    expect(shouldMirrorMeetStream(null, { local: true })).toBe(false);
   });
 });

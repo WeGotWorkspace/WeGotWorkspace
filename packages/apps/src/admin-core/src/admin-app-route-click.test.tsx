@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { adminCopy } from "@/admin-core/src/admin-copy";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
 
 function mockDomApis() {
@@ -89,5 +90,33 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname.startsWith("/contacts")).toBe(true);
       expect(history.location.pathname.startsWith("/admin")).toBe(false);
     });
+  });
+});
+
+describe("AdminApp over http", { timeout: 15_000 }, () => {
+  beforeEach(() => {
+    cleanup();
+    mockDomApis();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the not-secure notice up on every section", async () => {
+    vi.stubGlobal("isSecureContext", false);
+    await renderAdminApp("/admin");
+    expect(screen.getByText(adminCopy.notSecureTitle)).toBeTruthy();
+
+    clickSidebarSection(/^Email delivery$/);
+    expect(await screen.findByText("From and transport")).toBeTruthy();
+    expect(screen.getByText(adminCopy.notSecureTitle)).toBeTruthy();
+  });
+
+  it("shows no notice on https or localhost", async () => {
+    vi.stubGlobal("isSecureContext", true);
+    await renderAdminApp("/admin");
+
+    expect(screen.queryByText(adminCopy.notSecureTitle)).toBeNull();
   });
 });

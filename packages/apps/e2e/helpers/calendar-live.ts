@@ -86,6 +86,114 @@ export async function calendarCacheReady(page: Page): Promise<boolean> {
   });
 }
 
+/** ISO date (YYYY-MM-DD) `years` from today; negative goes back. */
+export function isoDateYearsFromToday(years: number): string {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + years);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Empty the cached calendar events, so the next load has to come from the API. */
+export async function clearCachedCalendarEvents(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const username = localStorage.getItem("wgw.offline.calendars.username");
+    if (!username) throw new Error("No offline calendar user");
+    const dbName = `wgw-offline-${username.trim().toLowerCase()}`;
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(dbName);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("calendars_events", "readwrite");
+        tx.objectStore("calendars_events").clear();
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+}
+
+type JmapMethodResponses = { methodResponses: [string, Record<string, unknown>][] };
+
+/** One JMAP request as the e2e user, straight to the API (test setup and cleanup). */
+async function e2eJmap(methodCalls: unknown[]): Promise<JmapMethodResponses> {
+  const apiBase = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
+  const tokenResponse = await fetch(`${apiBase}/api/v1/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: E2E_USERNAME, password: E2E_PASSWORD }),
+  });
+  if (!tokenResponse.ok) throw new Error(`E2E API sign-in failed (${tokenResponse.status})`);
+  const { access_token: token } = (await tokenResponse.json()) as { access_token: string };
+  const response = await fetch(`${apiBase}/api/v1/jmap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:calendars"],
+      methodCalls,
+    }),
+  });
+  if (!response.ok) throw new Error(`E2E JMAP call failed (${response.status})`);
+  return (await response.json()) as JmapMethodResponses;
+}
+
+/**
+ * Create an event the way a CalDAV client stores one in UTC: the server then
+ * returns its start as an instant with a `Z` and no time zone.
+ */
+export async function createUtcCalendarEventViaApi(title: string, start: string): Promise<void> {
+  const calendars = await e2eJmap([["Calendar/get", { accountId: E2E_USERNAME, ids: null }, "c"]]);
+  const list = (calendars.methodResponses[0]?.[1]?.list ?? []) as {
+    id: string;
+    isDefault?: boolean;
+  }[];
+  const calendar = list.find((entry) => entry.isDefault) ?? list[0];
+  if (!calendar) throw new Error("E2E user has no calendar");
+  const created = await e2eJmap([
+    [
+      "CalendarEvent/set",
+      {
+        accountId: E2E_USERNAME,
+        create: {
+          e1: {
+            "@type": "Event",
+            calendarIds: { [calendar.id]: true },
+            title,
+            start,
+            duration: "PT1H",
+            timeZone: "UTC",
+          },
+        },
+      },
+      "s",
+    ],
+  ]);
+  const result = created.methodResponses[0]?.[1] as { created?: Record<string, unknown> };
+  if (!result?.created?.e1) throw new Error(`E2E event not created: ${JSON.stringify(result)}`);
+}
+
+/** Test cleanup through the API: delete every event with this exact title. */
+export async function deleteCalendarEventsByTitleViaApi(title: string): Promise<number> {
+  const query = await e2eJmap([
+    ["CalendarEvent/query", { accountId: E2E_USERNAME, filter: { title } }, "q"],
+  ]);
+  const ids = (query.methodResponses[0]?.[1]?.ids as string[] | undefined) ?? [];
+  if (ids.length === 0) return 0;
+  await e2eJmap([["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: ids }, "s"]]);
+  return ids.length;
+}
+
+/** Client-side route change, so it works while the browser is offline. */
+export async function navigateCalendarInApp(page: Page, path: string): Promise<void> {
+  await page.evaluate((next) => {
+    history.pushState({}, "", next);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, path);
+}
+
 export async function expectCalendarOffline(page: Page): Promise<void> {
   await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({
     timeout: 15_000,

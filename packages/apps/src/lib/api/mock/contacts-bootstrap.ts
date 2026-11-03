@@ -7,6 +7,12 @@ import { mockWorkspaceSession } from "./workspace-session-mock";
 export type ContactsAppBootstrap = {
   data: ContactsUIData;
   session: WorkspaceSession;
+  /**
+   * Non-group cards a cold download has not fetched yet. Set only on progress
+   * snapshots, and only when the server can tell groups apart; a finished
+   * snapshot leaves it out.
+   */
+  pendingContactCount?: number;
 };
 
 const fullRights: AddressBook["myRights"] = {

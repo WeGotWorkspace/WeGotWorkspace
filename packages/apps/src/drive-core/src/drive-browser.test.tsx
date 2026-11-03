@@ -245,3 +245,63 @@ describe("DriveListView", () => {
     expect(container.querySelector(".drive-list-view")).toBeTruthy();
   });
 });
+
+describe("upload placeholders", () => {
+  const FAILED: DriveFile = {
+    ...FILE,
+    id: "/users/alice/\u0000upload:u1",
+    title: "huge.bin",
+    kind: "file",
+    upload: { id: "u1", status: "failed", reason: "too_large" },
+  };
+  const QUEUED: DriveFile = {
+    ...FILE,
+    id: "/users/alice/\u0000upload:u2",
+    title: "waiting.txt",
+    upload: { id: "u2", status: "queued" },
+  };
+  const remove = { id: "upload-remove", label: "Remove", icon: null, onClick: noop };
+
+  it.each([
+    ["grid", DriveGridView],
+    ["list", DriveListView],
+  ] as const)(
+    "shows the ring in the offline slot, the status, and a menu in %s view",
+    (_, View) => {
+      render(
+        <div className="drive-workspace">
+          <View
+            {...baseBrowserProps({
+              items: [FAILED, QUEUED],
+              offlineEnabled: true,
+              canPinOffline: true,
+              onMakeOfflineAvailable: noop,
+              extraFileActions: () => [remove],
+            })}
+          />
+        </div>,
+      );
+
+      expect(screen.getByText("Upload failed · Too large to upload")).toBeTruthy();
+      expect(screen.getByText("Waiting to upload")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: driveLabels.offlineMakeAvailable })).toBeNull();
+      const ring = screen.getByRole("progressbar", { name: "Upload of waiting.txt" });
+      expect(ring.getAttribute("aria-valuetext")).toBe("Waiting to upload");
+      expect(ring.hasAttribute("aria-valuenow")).toBe(false);
+      expect(
+        screen.getByRole("img", { name: "huge.bin: Upload failed · Too large to upload" }),
+      ).toBeTruthy();
+      // Both get a menu: Remove, plus the server-only actions shown disabled.
+      expect(screen.getAllByRole("button", { name: "More actions" })).toHaveLength(2);
+    },
+  );
+
+  it("adds the ring column to a list without the offline column", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveListView {...baseBrowserProps({ items: [FILE, QUEUED], offlineEnabled: false })} />
+      </div>,
+    );
+    expect(screen.getByRole("progressbar", { name: "Upload of waiting.txt" })).toBeTruthy();
+  });
+});

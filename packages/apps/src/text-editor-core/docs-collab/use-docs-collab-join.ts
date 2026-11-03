@@ -28,6 +28,7 @@ import {
   loadBootstrapInParallel,
 } from "./docs-collab-bootstrap";
 import { forgetSidecarEtag, rememberSidecarEtag } from "./docs-collab-etag";
+import { settleDocumentGone } from "./docs-collab-gone";
 import {
   canSeedFromFile,
   markSeedDoneAfterSnapshot,
@@ -35,7 +36,6 @@ import {
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
 import {
-  DOC_STATUS_DOCUMENT_GONE,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
@@ -316,11 +316,7 @@ export function useDocsCollabJoin({
       // retries the sidecar once that backoff allows it. Markdown stays a
       // read-only preview and is not written into the Y.Doc.
       if (snapshot.kind === "failed" && isCollabDocumentGoneError(snapshot.error)) {
-        urls.onDocumentGone?.();
-        refs.saveTerminalKindRef.current = "gone";
-        refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
-        refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
-        setDocStatus(DOC_STATUS_DOCUMENT_GONE);
+        settleDocumentGone(refs, urls, setDocStatus);
         return;
       }
 
