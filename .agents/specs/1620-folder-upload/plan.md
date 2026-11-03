@@ -56,5 +56,6 @@ None — every choice is made in [spec.md](./spec.md). The conflict decision wai
 - **id:** `chunk-b-ui`
 - **Skill:** apps-ui
 - **Inputs:** upload action — `path: packages/apps/src/drive-core/src/use-drive-upload-action.tsx`
-- **Done when:** _Upload folder_ and folder drop queue a tree, the dialog asks Keep both / Merge, folder rows show progress and failed counts; stories in light and dark pass the a11y gate.
+- **Done when:** _Upload folder_ and folder drop queue a tree, the dialog asks Keep both / Merge, folder rows and grid folder tiles show progress and failed counts, and a folder placeholder's menu opens the folder (no _Download_); stories in light and dark pass the a11y gate.
+- **Note:** the grid folder tile moves out of `drive-browser.tsx` (`drive-folder-tile.tsx`, `drive-browser-item-parts.tsx`), so that file drops under the 800-line limit instead of growing.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/drive-core`
