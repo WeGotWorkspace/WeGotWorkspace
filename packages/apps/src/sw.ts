@@ -10,6 +10,10 @@ import {
 } from "./notifications-core/src/notification-click-navigate";
 import { parseNotificationPushPayload } from "./notifications-core/src/parse-notification-push-payload";
 import {
+  pushDeliveryPlan,
+  WGW_NOTIFICATION_PUSHED_MESSAGE,
+} from "./notifications-core/src/push-delivery";
+import {
   handlePushSubscriptionChange,
   serviceWorkerApiBaseUrl,
 } from "./notifications-core/src/push-subscription-change";
@@ -50,6 +54,17 @@ self.addEventListener("push", (event) => {
       }
       const parsed = parseNotificationPushPayload(raw);
       if (!parsed) return;
+      // A visible window gets the row at once; where the browser allows it, it
+      // then shows no OS notification (#1670, docs/architecture/notifications.md).
+      const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const windows = clientList.filter(
+        (client): client is WindowClient => "visibilityState" in client,
+      );
+      const plan = pushDeliveryPlan(windows, self.navigator.userAgent, parsed.item);
+      for (const client of plan.postTo) {
+        client.postMessage({ type: WGW_NOTIFICATION_PUSHED_MESSAGE, item: parsed.item });
+      }
+      if (!plan.showNotification) return;
       await self.registration.showNotification(parsed.title, {
         body: parsed.body,
         tag: parsed.tag,

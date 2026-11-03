@@ -41,6 +41,7 @@ import {
   assignNotificationNavigate,
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
 } from "@/notifications-core/src/notification-click-navigate";
+import { WGW_NOTIFICATION_PUSHED_MESSAGE } from "@/notifications-core/src/push-delivery";
 import {
   NotificationsHost,
   NotificationsProvider,
@@ -482,5 +483,83 @@ describe("NotificationsHost", () => {
       false,
       expect.any(Function),
     );
+  });
+  it("shows a row the service worker posted at once, keeps it through a stale list, and chimes once (#1670)", async () => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    const play = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function AudioMock(this: { currentTime: number; play: typeof play }) {
+        this.currentTime = 0;
+        this.play = play;
+      }),
+    );
+    const listeners: Array<(event: MessageEvent) => void> = [];
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        addEventListener: (_type: string, listener: (event: MessageEvent) => void) => {
+          listeners.push(listener);
+        },
+        removeEventListener: (_type: string, listener: (event: MessageEvent) => void) => {
+          const at = listeners.indexOf(listener);
+          if (at >= 0) listeners.splice(at, 1);
+        },
+      },
+    });
+    const meeting = {
+      ...unreadItem,
+      id: "meet-1",
+      domain: "meet",
+      action: "started",
+      title: "Alice started a meeting",
+      navigate: "/meet/meetings/standup",
+    };
+    const probe: { inbox: ReturnType<typeof useNotificationsInbox> } = { inbox: null };
+    function Probe() {
+      probe.inbox = useNotificationsInbox();
+      return null;
+    }
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(probe.inbox?.items).toEqual([]));
+    await waitFor(() => expect(listeners.length).toBeGreaterThan(0));
+
+    listeners.at(-1)?.({
+      data: { type: WGW_NOTIFICATION_PUSHED_MESSAGE, item: meeting },
+    } as MessageEvent);
+
+    await waitFor(() => {
+      expect(probe.inbox?.items.map((item) => item.id)).toEqual(["meet-1"]);
+      expect(probe.inbox?.unreadCount).toBe(1);
+    });
+    expect(play).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(ackedIds()).toContain("meet-1"));
+
+    // A list fetched before the push still lacks the row: the row stays.
+    vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThan(1));
+    expect(probe.inbox?.items.map((item) => item.id)).toEqual(["meet-1"]);
+
+    // The list that carries it confirms it without a second chime.
+    vi.mocked(listNotifications).mockResolvedValue({
+      list: [{ ...meeting, data: { actor: "Alice" } }],
+      unreadCount: 1,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(probe.inbox?.items[0]?.data).toEqual({ actor: "Alice" }));
+    expect(probe.inbox?.unreadCount).toBe(1);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    // Posted again (a late second push): ignored.
+    listeners.at(-1)?.({
+      data: { type: WGW_NOTIFICATION_PUSHED_MESSAGE, item: meeting },
+    } as MessageEvent);
+    expect(probe.inbox?.items).toHaveLength(1);
+    expect(play).toHaveBeenCalledTimes(1);
   });
 });
