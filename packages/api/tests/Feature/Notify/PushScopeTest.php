@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\RecordingWebPushSender;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -37,21 +38,7 @@ final class PushScopeTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->configureWgwJwtKeys();
         $this->seedWgwUser('alice', displayName: 'Alice');
-        $this->app->instance(WebPushSender::class, new class implements WebPushSender
-        {
-            /** @var list<array{endpoint: string, payload: string}> */
-            public array $sent = [];
-
-            /** @var array<string, int> push service answer per endpoint; 201 otherwise */
-            public array $statuses = [];
-
-            public function send(string $endpoint, string $p256dh, string $auth, string $payload, array $vapid): int
-            {
-                $this->sent[] = ['endpoint' => $endpoint, 'payload' => $payload];
-
-                return $this->statuses[$endpoint] ?? 201;
-            }
-        });
+        $this->app->instance(WebPushSender::class, new RecordingWebPushSender);
         $this->app->forgetInstance(VapidPushService::class);
     }
 
@@ -246,7 +233,7 @@ final class PushScopeTest extends WgwDatabaseTestCase
     {
         $this->subscribe(self::DOCS, '/docs')->assertCreated();
         $this->subscribe(self::CALENDAR, '/calendar')->assertCreated();
-        $this->sender()->statuses[self::DOCS] = 503;
+        $this->sender()->statusByEndpoint[self::DOCS] = 503;
         $id = $this->dueNotification('docs', 'shared', '/docs?file=report.md');
 
         app(VapidPushService::class)->sweepDue();
@@ -327,13 +314,12 @@ final class PushScopeTest extends WgwDatabaseTestCase
         return (string) $notification->id;
     }
 
-    /**
-     * @return object{sent: list<array{endpoint: string, payload: string}>, statuses: array<string, int>}
-     */
-    private function sender(): object
+    private function sender(): RecordingWebPushSender
     {
-        /** @var object{sent: list<array{endpoint: string, payload: string}>, statuses: array<string, int>} */
-        return app(WebPushSender::class);
+        $sender = app(WebPushSender::class);
+        $this->assertInstanceOf(RecordingWebPushSender::class, $sender);
+
+        return $sender;
     }
 
     /**
