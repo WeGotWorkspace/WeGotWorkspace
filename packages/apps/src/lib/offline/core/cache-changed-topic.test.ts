@@ -36,6 +36,23 @@ describe("cacheChangedTopic", () => {
     otherTab.close();
   });
 
+  it("tells this tab and the other tabs when asked for all tabs", async () => {
+    const topic = cacheChangedTopic("test-app-d");
+    const here = vi.fn();
+    const stop = topic.subscribe("alice", here);
+    const otherTab = new BroadcastChannel("wgw.test-app-d.bootstrap");
+    const heard: unknown[] = [];
+    otherTab.onmessage = (event) => heard.push(event.data);
+
+    topic.notifyAllTabs("alice");
+    await delivered();
+
+    expect(here).toHaveBeenCalledOnce();
+    expect(heard).toEqual([{ type: "test-app-d-bootstrap-updated", username: "alice" }]);
+    stop();
+    otherTab.close();
+  });
+
   it("does nothing without an account", () => {
     const topic = cacheChangedTopic("test-app-c");
     const onChange = vi.fn();
