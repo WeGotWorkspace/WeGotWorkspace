@@ -128,7 +128,7 @@ final class DriveShareService
         if (! $this->paths->isNotePath($path)) {
             $this->rules->assertCommentReviewApplicable($path, $defaultAccess);
         }
-        $this->rules->assertPublicAccessCap($kind, $defaultAccess);
+        $this->rules->assertPublicAccessCap($kind, $defaultAccess, $path);
 
         $publicToken = $kind === 'public' ? $this->rules->generatePublicToken() : null;
 
@@ -195,7 +195,7 @@ final class DriveShareService
                 if (! $this->paths->isNotePath((string) $share->path)) {
                     $this->rules->assertCommentReviewApplicable($share->path, $share->default_access);
                 }
-                $this->rules->assertPublicAccessCap((string) $share->kind, $share->default_access);
+                $this->rules->assertPublicAccessCap((string) $share->kind, $share->default_access, (string) $share->path);
             }
             if (array_key_exists('expiresAt', $input)) {
                 $share->expires_at = $this->rules->parseOptionalDate($input['expiresAt']);

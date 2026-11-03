@@ -120,12 +120,45 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         return (string) $response->json('data.publicToken');
     }
 
-    public function test_public_share_rejects_non_view_default_access(): void
+    /**
+     * Public links are view, or edit on a folder so guests can add files (#1715).
+     *
+     * @return iterable<string, array{0: string, 1: string, 2: int}>
+     */
+    public static function publicLinkLevelProvider(): iterable
+    {
+        yield 'view on a folder' => [self::SHARE_ROOT, 'view', 200];
+        yield 'edit on a folder' => [self::SHARE_ROOT, 'edit', 200];
+        yield 'full on a folder' => [self::SHARE_ROOT, 'full', 400];
+        yield 'comment on a folder' => [self::SHARE_ROOT, 'comment', 400];
+        yield 'view on a file' => [self::SHARE_ROOT.'/plan.md', 'view', 200];
+        yield 'edit on a file' => [self::SHARE_ROOT.'/plan.md', 'edit', 400];
+    }
+
+    #[DataProvider('publicLinkLevelProvider')]
+    public function test_public_link_levels(string $path, string $access, int $status): void
     {
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
-            'path' => self::SHARE_ROOT,
+            'path' => $path,
             'kind' => 'public',
-            'defaultAccess' => 'edit',
+            'defaultAccess' => $access,
+        ])->assertStatus($status);
+    }
+
+    public function test_a_public_link_is_raised_to_edit_only_on_a_folder(): void
+    {
+        $folder = $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => self::SHARE_ROOT, 'kind' => 'public', 'defaultAccess' => 'view',
+        ])->assertOk();
+        $this->withBearer($this->ownerToken)->patchJson('/api/v1/files/shares/'.$folder->json('data.id'), [
+            'defaultAccess' => 'edit', 'updatedAt' => $folder->json('data.updatedAt'),
+        ])->assertOk()->assertJsonPath('data.defaultAccess', 'edit');
+
+        $file = $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => self::SHARE_ROOT.'/plan.md', 'kind' => 'public', 'defaultAccess' => 'view',
+        ])->assertOk();
+        $this->withBearer($this->ownerToken)->patchJson('/api/v1/files/shares/'.$file->json('data.id'), [
+            'defaultAccess' => 'edit', 'updatedAt' => $file->json('data.updatedAt'),
         ])->assertStatus(400);
     }
 

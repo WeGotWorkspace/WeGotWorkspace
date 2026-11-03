@@ -28,7 +28,7 @@ Calendar-shaped Notes sync: CalDAV VJOURNAL on Sabre, vendor JMAP envelope into 
 
 ## Technical constraints
 
-- **Live inbound:** `POST /jmap` capability `urn:wgw:jmap:notes` — `Notebook/get|changes|set` and `Note/get|changes|set`. `Note/changes` is account-wide (same fan-out as `CalendarEventChangesMethod` + `JmapAccountStateCodec`).
+- **Live inbound:** `POST /jmap` capability `urn:wgw:jmap:notes` — `Notebook/get|changes|set` and `Note/get|changes|set|query`. `Note/changes` is account-wide (same fan-out as `CalendarEventChangesMethod` + `JmapAccountStateCodec`).
 - **REST `/notes/*`:** non-sync CRUD after the envelope landed. `GET /notes/items/changes` still requires `notebookId` and remains for reconnect / manual refresh / mock-tier fallback when the live JMAP session is missing.
 - Inbound GET **changed** ids only — do not re-list every notebook’s full bodies on the poll.
 - Skip pending outbox ids on ingest (Calendar `calendars-jmap-inbound` pattern).

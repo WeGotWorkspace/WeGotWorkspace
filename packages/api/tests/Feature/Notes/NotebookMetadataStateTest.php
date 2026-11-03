@@ -74,6 +74,66 @@ final class NotebookMetadataStateTest extends WgwDatabaseTestCase
         $this->assertSame('#00ff00', $owned->json('color'));
     }
 
+    public function test_owner_rename_and_recolour_reach_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedNotebook('Projects');
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/notes/notebooks/'.$ownerId, ['name' => 'Projects 2027', 'color' => '#ff0000'])
+            ->assertOk();
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$shareeId)->assertOk();
+        $this->assertSame('Projects 2027', $seen->json('name'));
+        $this->assertSame('#ff0000', $seen->json('color'));
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/notes/notebooks/'.$ownerId, ['color' => '#00ff00'])
+            ->assertOk();
+        $this->assertSame('#00ff00', $this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$shareeId)->json('color'));
+    }
+
+    public function test_owner_dav_rename_reaches_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedNotebook('Field notes');
+
+        $this->davProppatch('bob', '/calendars/bob/'.$ownerId, [
+            '{DAV:}displayname' => 'Field notes 2027',
+            self::APPLE_CALENDAR_COLOR => '#00ff00',
+        ]);
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$shareeId)->assertOk();
+        $this->assertSame('Field notes 2027', $seen->json('name'));
+        $this->assertSame('#00ff00', $seen->json('color'));
+    }
+
+    public function test_a_sharees_own_name_and_colour_survive_the_owners_change(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedNotebook('Projects');
+        $this->asUser('alice')
+            ->patchJson('/api/v1/notes/notebooks/'.$shareeId, ['name' => 'Bob projects', 'color' => '#0000ff'])
+            ->assertOk();
+
+        $this->asUser('bob')
+            ->patchJson('/api/v1/notes/notebooks/'.$ownerId, ['name' => 'Projects 2027', 'color' => '#ff0000'])
+            ->assertOk()
+            ->assertJsonPath('name', 'Projects 2027');
+
+        $seen = $this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$shareeId)->assertOk();
+        $this->assertSame('Bob projects', $seen->json('name'));
+        $this->assertSame('#0000ff', $seen->json('color'));
+    }
+
+    public function test_a_sharees_rename_stays_their_own(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedNotebook('Projects');
+
+        $this->asUser('alice')
+            ->patchJson('/api/v1/notes/notebooks/'.$shareeId, ['name' => 'Bob projects'])
+            ->assertOk();
+
+        $this->assertSame('Projects', $this->asUser('bob')->getJson('/api/v1/notes/notebooks/'.$ownerId)->json('name'));
+    }
+
     public function test_group_notebook_rename_reaches_every_member(): void
     {
         $id = (string) $this->asUser('bob')
