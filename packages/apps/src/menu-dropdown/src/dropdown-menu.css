@@ -69,3 +69,25 @@
   height: 1rem;
   flex-shrink: 0;
 }
+
+/* The trailing slot is a count pill elsewhere; here it holds plain text and a chevron. */
+.dropdown-menu__submenu-row .menu-item__badge {
+  @apply ml-auto h-auto min-w-0 px-0 text-sm font-normal;
+  background-color: transparent;
+}
+
+.dropdown-menu__submenu-end {
+  @apply ml-auto inline-flex shrink-0 items-center gap-1.5;
+}
+
+.dropdown-menu__submenu-hint {
+  @apply text-muted-foreground;
+}
+
+.dropdown-menu__submenu-chevron {
+  @apply size-4 text-muted-foreground;
+}
+
+.dropdown-menu__submenu-back {
+  @apply font-medium;
+}
