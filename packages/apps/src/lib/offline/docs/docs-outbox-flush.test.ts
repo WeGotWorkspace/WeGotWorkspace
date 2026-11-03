@@ -106,6 +106,33 @@ describe("flushDocsOutbox", () => {
     expect(await readCachedDriveNodeId(username, oldPath)).toBeUndefined();
   });
 
+  it("keeps a new document's page setup when a queued trash of the old one flushes", async () => {
+    const trashed = { format: "a5", orientation: "portrait" } as const;
+    const recreated = { format: "letter", orientation: "landscape" } as const;
+    // The offline trash moved the page setup when it was queued.
+    writeDocsPageSetupOverride("/users/alice/.Trash/plan.md", trashed, 1);
+    // A new document was made at the old path before reconnect.
+    writeDocsPageSetupOverride("/users/alice/plan.md", recreated, 2);
+    await enqueueOutboxMutation(username, {
+      id: "trash-plan",
+      domain: DOCS_DOMAIN,
+      op: "trash",
+      payload: JSON.stringify({
+        op: "trash",
+        from: "/users/alice/plan.md",
+        destination: "/users/alice/.Trash",
+        to: "plan.md",
+      }),
+    });
+    renameItem.mockResolvedValue(undefined);
+
+    await flushDocsOutbox(username);
+
+    const overrides = readDocsPageSetupOverrides();
+    expect(overrides["/users/alice/plan.md"]).toMatchObject(recreated);
+    expect(overrides["/users/alice/.Trash/plan.md"]).toMatchObject(trashed);
+  });
+
   it("reports when removing a path drops a queued trash", async () => {
     await enqueueOutboxMutation(username, {
       id: "trash-1",

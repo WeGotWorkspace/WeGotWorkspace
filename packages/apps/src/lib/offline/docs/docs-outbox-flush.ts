@@ -43,7 +43,8 @@ async function applyRenameSideEffects(
   destination: string,
   to: string,
 ): Promise<void> {
-  await applyDriveSidecarPathMigration(username, from, destination, to);
+  // Page setup moved when the rename or trash was queued.
+  await applyDriveSidecarPathMigration(username, from, destination, to, { movePageSetup: false });
 }
 
 export async function flushDocsOutbox(username: string): Promise<OutboxFlushResult> {
