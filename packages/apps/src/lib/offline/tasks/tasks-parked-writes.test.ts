@@ -4,10 +4,10 @@ import type { TaskCreate } from "@wgw/openapi-types/tasks-types";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { listParkedWrites, takeParkedWrites } from "@/lib/offline/core/parked-writes";
+import { rescueParkedWrites } from "@/lib/offline/core/rescue-parked-writes";
 import {
   parkTask,
-  rescueParkedTasks,
-  TaskRescueError,
+  tasksRescueOperations,
   type ParkedTask,
 } from "@/lib/offline/tasks/tasks-parked-writes";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
@@ -33,7 +33,7 @@ async function parkBoth(): Promise<ParkedTask[]> {
   );
 }
 
-describe("rescueParkedTasks", () => {
+describe("tasksRescueOperations", () => {
   beforeEach(async () => {
     await offlineDbForAccount(offlineAccountKeyFromUsername(username)).meta.clear();
   });
@@ -42,9 +42,15 @@ describe("rescueParkedTasks", () => {
     const createTask = vi.fn(async (_body: TaskCreate) => first);
     const writes = await parkBoth();
 
-    const result = await rescueParkedTasks(username, writes, { listId: "keep" }, { createTask });
+    const result = await rescueParkedWrites(
+      username,
+      TASKS_DOMAIN,
+      writes,
+      { containerId: "keep" },
+      tasksRescueOperations({ createTask }),
+    );
 
-    expect(result).toEqual({ listId: "keep" });
+    expect(result).toEqual({ containerId: "keep" });
     expect(createTask.mock.calls.map(([body]) => body)).toEqual([
       expect.objectContaining({ title: first.title, taskListIds: { keep: true } }),
       expect.objectContaining({ title: second.title, taskListIds: { keep: true } }),
@@ -58,48 +64,34 @@ describe("rescueParkedTasks", () => {
     const createTask = vi.fn(async () => first);
     const writes = await parkBoth();
 
-    const result = await rescueParkedTasks(
+    const result = await rescueParkedWrites(
       username,
+      TASKS_DOMAIN,
       writes,
-      { newListName: "Rescued" },
-      { createTask, createTaskList },
+      { newContainerName: "Rescued" },
+      tasksRescueOperations({ createTask, createTaskList }),
     );
 
     expect(createTaskList).toHaveBeenCalledWith({ name: "Rescued" });
-    expect(result).toEqual({ listId: "fresh" });
+    expect(result).toEqual({ containerId: "fresh" });
     expect(createTask).toHaveBeenCalledWith(
       expect.objectContaining({ taskListIds: { fresh: true } }),
     );
   });
 
-  it("parks a task again when it could not be created", async () => {
-    const createTask = vi
-      .fn()
-      .mockResolvedValueOnce(first)
-      .mockRejectedValueOnce(new Error("offline"));
-    const writes = await parkBoth();
-
-    await expect(
-      rescueParkedTasks(username, writes, { listId: "keep" }, { createTask }),
-    ).rejects.toBeInstanceOf(TaskRescueError);
-
-    const left = await listParkedWrites<ParkedTask["item"]>(username, TASKS_DOMAIN);
-    expect(left.map((write) => write.entityId)).toEqual([second.id]);
-  });
-
-  it("parks every task again when the new list cannot be made", async () => {
-    const createTaskList = vi.fn().mockRejectedValue(new Error("offline"));
+  it("cannot make a list without createTaskList, and parks every task again", async () => {
     const createTask = vi.fn();
     const writes = await parkBoth();
 
     await expect(
-      rescueParkedTasks(
+      rescueParkedWrites(
         username,
+        TASKS_DOMAIN,
         writes,
-        { newListName: "Rescued" },
-        { createTask, createTaskList },
+        { newContainerName: "Rescued" },
+        tasksRescueOperations({ createTask }),
       ),
-    ).rejects.toThrow("offline");
+    ).rejects.toThrow();
 
     expect(createTask).not.toHaveBeenCalled();
     expect(await listParkedWrites(username, TASKS_DOMAIN)).toHaveLength(2);

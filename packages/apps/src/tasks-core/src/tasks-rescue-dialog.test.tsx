@@ -77,7 +77,7 @@ describe("TasksRescueDialog", () => {
 
     expect(onMove).toHaveBeenCalledWith(
       writes.map((write) => write.id),
-      { newListName: "Groceries" },
+      { newContainerName: "Groceries" },
     );
   });
 
@@ -114,7 +114,7 @@ describe("TasksRescueDialog", () => {
 
     expect(screen.queryByRole("textbox", { name: L.rescueNewListLabel })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: L.rescueMove(1) }));
-    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { listId: list.id });
+    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { containerId: list.id });
   });
 
   it("counts a long list in the title without naming its tasks", () => {
