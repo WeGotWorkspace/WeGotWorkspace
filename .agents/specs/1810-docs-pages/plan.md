@@ -89,4 +89,4 @@ None — every choice is made. UI points for the product lead are listed in the 
 ## Test plan
 
 - [ ] Vitest: page format table and locale default; preference parse/resolve/write; page break Markdown round trip and comment parse; slash item Docs vs Notes; page-end choice for a break; pagination only with a page setup.
-- [ ] Browser (production preview): every format and orientation, Continuous toggle, refresh mid-edit, second tab, offline edit then sync, print page count, Markdown round trip, Notes unaffected, light and dark.
+- [ ] Browser (production preview): every format and orientation, paper None, refresh mid-edit, second tab, offline edit then sync, print page count, Markdown round trip, Notes shows no pages, light and dark.
