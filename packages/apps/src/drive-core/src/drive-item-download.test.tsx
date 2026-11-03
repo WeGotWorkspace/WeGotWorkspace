@@ -80,9 +80,20 @@ describe("startDriveItemDownload", () => {
     const ops = operations(true);
     ops.downloadFolder?.mockRejectedValueOnce(new Error("Folder not found"));
     const onError = vi.fn();
+    const onStarted = vi.fn();
 
-    startDriveItemDownload(ops, FOLDER, onError);
+    startDriveItemDownload(ops, FOLDER, onError, onStarted);
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith("Folder not found"));
+    expect(onStarted).not.toHaveBeenCalled();
+  });
+
+  it("says the download started only once the browser has it", async () => {
+    const ops = operations(true);
+    const onStarted = vi.fn();
+
+    startDriveItemDownload(ops, FOLDER, vi.fn(), onStarted);
+    expect(onStarted).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(onStarted).toHaveBeenCalledOnce());
   });
 });
 

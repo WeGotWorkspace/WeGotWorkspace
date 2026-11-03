@@ -131,8 +131,9 @@ export function DriveMainPane({
         });
       return;
     }
-    startDriveItemDownload(operations, file, showError);
-    show("Download started", { icon: <Download className="size-4" /> });
+    startDriveItemDownload(operations, file, showError, () =>
+      show("Download started", { icon: <Download className="size-4" /> }),
+    );
   };
 
   const searchActive = Boolean(searchQuery.trim());

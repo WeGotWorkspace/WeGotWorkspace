@@ -81,8 +81,9 @@ export function useDriveSelectionBar({
                   : labels.selectionDownload,
               icon: <Download className="size-4" />,
               onClick: () => {
-                startDriveItemDownload(operations, downloadable, showError);
-                show("Download started", { icon: <Download className="size-4" /> });
+                startDriveItemDownload(operations, downloadable, showError, () =>
+                  show("Download started", { icon: <Download className="size-4" /> }),
+                );
               },
             },
           ]

@@ -27,19 +27,24 @@ export function useCanDownloadDriveItem(file: DriveFile | null, inTrash: boolean
 
 /**
  * Starts the download of a file, or of a folder as a zip. The browser saves
- * it natively; a failure to start reaches `onError` as a message.
+ * it natively. `onStarted` runs once the browser has the download, so an
+ * offline refusal shows only its error; a failure reaches `onError`.
  */
 export function startDriveItemDownload(
   operations: DriveAPIOperations | undefined,
   file: DriveFile,
   onError: (message: string) => void,
+  onStarted?: () => void,
 ): void {
   if (!operations || !file.apiPath) return;
   const started =
     file.kind === "folder"
       ? operations.downloadFolder?.(file.apiPath)
       : operations.downloadFile(file.apiPath);
-  void started?.catch((error: unknown) => {
-    onError(error instanceof Error ? error.message : String(error));
-  });
+  void started?.then(
+    () => onStarted?.(),
+    (error: unknown) => {
+      onError(error instanceof Error ? error.message : String(error));
+    },
+  );
 }

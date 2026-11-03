@@ -18,7 +18,7 @@ Copied from #1621: uploading a folder, other archive formats, resuming a dropped
 - `packages/api`: migration, model, services under `app/Services/Drive/FolderZip/`, controller, routes, OpenAPI, feature and unit tests
 - `packages/apps`: ticket client in `lib/api/wgw/drive-download-ticket.ts`, `downloadFolder` on the Drive operations, the three menus, Vitest
 
-The server ships first as its own PR (complete without UI: nothing calls it yet). The client PR follows.
+The server and the client ship together in one PR.
 
 ## Settled decisions
 
