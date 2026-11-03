@@ -167,12 +167,16 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       ["ContactCard/query", { accountId, filter: { inAddressBook: "default" } }, "q"],
     ]);
     const ids = q.ids as string[];
-    if (ids.length === 0) return false;
-    const [[, got]] = await jmap([
-      ["ContactCard/get", { accountId, ids, properties: ["name"] }, "g"],
-    ]);
-    const list = got.list as Array<{ name?: { full?: string } }>;
-    return list.some((row) => row.name?.full === CREATED);
+    // The seeded book is larger than maxObjectsInGet (500): get in chunks.
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const [[, got]] = await jmap([
+        ["ContactCard/get", { accountId, ids: ids.slice(i, i + CHUNK), properties: ["name"] }, "g"],
+      ]);
+      const list = got.list as Array<{ name?: { full?: string } }>;
+      if (list.some((row) => row.name?.full === CREATED)) return true;
+    }
+    return false;
   }
 
   /** The teammate's copy of the owner's book, under "Shared with me". */
