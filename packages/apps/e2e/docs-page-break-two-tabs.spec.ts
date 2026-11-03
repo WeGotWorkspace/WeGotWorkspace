@@ -65,7 +65,7 @@ test.describe("Docs pages and page break (live app)", () => {
       await openDoc(tabB, apiPath);
       await expect(pagedEditor(tabB)).toBeVisible();
 
-      // Page setup is per device: a change in tab A shows in tab B, not in the file.
+      // Page setup is this document's own: a change in tab A shows in tab B, not in the file.
       await tabA.getByRole("button", { name: "Page setup" }).click();
       await tabA.getByRole("menuitem", { name: "A5" }).click();
       await expect.poll(() => pageWidth(tabA)).toBe(A5_WIDTH_PX);
@@ -96,6 +96,53 @@ test.describe("Docs pages and page break (live app)", () => {
       await expect(tabB.locator(".ProseMirror")).toContainText(token, { timeout: 30_000 });
       await breakThenToken(tabB);
       await expect.poll(() => pageWidth(tabB)).toBe(A5_WIDTH_PX);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("printing makes a new page at the break, on the chosen paper", async ({ browser }) => {
+    const stamp = Date.now();
+    const withBreak = `/${myDriveDocSearchPath(`e2e-print-break-${stamp}.md`)}`;
+    const withoutBreak = `/${myDriveDocSearchPath(`e2e-print-plain-${stamp}.md`)}`;
+    const context = await browser.newContext({
+      storageState: "e2e/.auth/admin.json",
+      viewport: { width: 1440, height: 900 },
+    });
+    // The print dialog would block a headless browser; the app's own print setup still runs.
+    await context.addInitScript(() => {
+      window.print = () => {};
+    });
+    const page = await context.newPage();
+
+    try {
+      await loginToDocs(page);
+      await seedDocAtPath(withBreak, "# Print\n\nPage one.\n\n<!-- pagebreak -->\n\nPage two.\n");
+      await seedDocAtPath(withoutBreak, "# Print\n\nPage one.\n\nPage two.\n");
+
+      const printedPdf = async (apiPath: string) => {
+        await page.goto(docsUrlForFile(apiPath));
+        await expect(page.locator(".ProseMirror")).toContainText("Page two.", { timeout: 30_000 });
+        await page.getByRole("button", { name: "Page setup" }).click();
+        await page.getByRole("menuitem", { name: "A5" }).click();
+        await expect.poll(() => pageWidth(page)).toBe(A5_WIDTH_PX);
+        await page.getByLabel("Print", { exact: true }).click();
+        await expect(page.locator("html.text-editor-print-active")).toBeAttached();
+        return (await page.pdf({ preferCSSPageSize: true, printBackground: true })).toString(
+          "latin1",
+        );
+      };
+      // `/Type /Pages` is the page tree, not a page.
+      const pageCount = (pdf: string) => (pdf.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+
+      const broken = await printedPdf(withBreak);
+      expect(pageCount(broken)).toBe(2);
+      // A5 portrait is 420 × 595 pt.
+      const box = /\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/.exec(broken);
+      expect(box && [Math.round(Number(box[1])), Math.round(Number(box[2]))]).toEqual([420, 595]);
+
+      // The same text without the break fits on one page: the break starts page two.
+      expect(pageCount(await printedPdf(withoutBreak))).toBe(1);
     } finally {
       await context.close();
     }
