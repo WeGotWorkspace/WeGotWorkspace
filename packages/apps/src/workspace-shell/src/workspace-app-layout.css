@@ -18,13 +18,18 @@
 }
 
 /*
- * Header stays on its own padding. This inset only adds the status bar / home
- * indicator, so the main fill runs under them and the header does not move up.
- * Screens without a header (Meet guest lobby) already pad themselves.
+ * Every column that starts at the top of the screen keeps clear of the status
+ * bar and the home indicator. The column fill still runs under them. This holds
+ * whether the screen uses the shared `mainHeader` or draws its own header
+ * (Docs list, Notes and Contacts list + detail). A main that pads itself (Meet
+ * guest lobby and call stage) opts out with `mainOwnsSafeArea`.
+ * Stories set `--workspace-safe-area-top/bottom` to stand in for a notch.
  */
-.workspace-app-layout__main:has(> .workspace-app-layout__main-header) {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+.workspace-app-layout__main:not([data-owns-safe-area]),
+.collection-list-pane,
+.workspace-detail-pane {
+  padding-top: var(--workspace-safe-area-top, env(safe-area-inset-top, 0px));
+  padding-bottom: var(--workspace-safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .workspace-app-layout__main-header {

@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace App\Services\Jmap;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\Methods\AddressBookChangesMethod;
 use App\Services\Jmap\Methods\AddressBookGetMethod;
 use App\Services\Jmap\Methods\AddressBookSetMethod;
+use App\Services\Jmap\Methods\BlobAssemblyAppendMethod;
+use App\Services\Jmap\Methods\BlobAssemblyFinishMethod;
+use App\Services\Jmap\Methods\BlobAssemblyGetMethod;
+use App\Services\Jmap\Methods\BlobAssemblySetMethod;
+use App\Services\Jmap\Methods\BlobGetMethod;
+use App\Services\Jmap\Methods\BlobUploadMethod;
 use App\Services\Jmap\Methods\CalendarChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventGetMethod;
@@ -40,6 +47,10 @@ use App\Services\Jmap\Methods\NoteChangesMethod;
 use App\Services\Jmap\Methods\NoteGetMethod;
 use App\Services\Jmap\Methods\NoteQueryChangesMethod;
 use App\Services\Jmap\Methods\NoteSetMethod;
+use App\Services\Jmap\Methods\QuotaChangesMethod;
+use App\Services\Jmap\Methods\QuotaGetMethod;
+use App\Services\Jmap\Methods\QuotaQueryChangesMethod;
+use App\Services\Jmap\Methods\QuotaQueryMethod;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -83,6 +94,14 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        // urn:ietf:params:jmap:blob (RFC 9404, #1500)
+        BlobUploadMethod::class,
+        BlobGetMethod::class,
+        // https://wegotworkspace.org/jmap/blob-assembly (WGW extension, #1500)
+        BlobAssemblySetMethod::class,
+        BlobAssemblyAppendMethod::class,
+        BlobAssemblyFinishMethod::class,
+        BlobAssemblyGetMethod::class,
         // urn:wgw:jmap:notes (vendor VJOURNAL envelope)
         NotebookGetMethod::class,
         NotebookChangesMethod::class,
@@ -97,6 +116,11 @@ final class JmapMethodDispatcher
         ChatChannelChangesMethod::class,
         ChatMessageGetMethod::class,
         ChatMessageChangesMethod::class,
+        // urn:ietf:params:jmap:quota (RFC 9425; one Drive quota per writable root)
+        QuotaGetMethod::class,
+        QuotaChangesMethod::class,
+        QuotaQueryMethod::class,
+        QuotaQueryChangesMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */
@@ -108,7 +132,7 @@ final class JmapMethodDispatcher
      *
      * @param  list<JmapMethodInterface>  $methods
      */
-    public function __construct(array $methods)
+    public function __construct(array $methods, private readonly JmapRequestContext $context = new JmapRequestContext)
     {
         foreach ($methods as $method) {
             $this->register($method);
@@ -145,6 +169,7 @@ final class JmapMethodDispatcher
     public function dispatch(string $username, array $using, array $methodCalls): array
     {
         $responses = [];
+        $this->context->setUsing($using);
 
         foreach ($methodCalls as [$name, $args, $callId]) {
             try {
@@ -182,6 +207,11 @@ final class JmapMethodDispatcher
                 $responses[] = ['error', $e->errorArgs(), $callId];
             } catch (ApiHttpException $e) {
                 $responses[] = ['error', $this->mapApiException($e), $callId];
+            } catch (StorageFullException $e) {
+                // A write the disk or hosting quota refused fails the whole
+                // request with 507 (JmapApiController), never a serverFail
+                // the client would retry forever.
+                throw $e;
             } catch (\Throwable $e) {
                 $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }

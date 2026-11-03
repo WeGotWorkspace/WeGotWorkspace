@@ -101,6 +101,7 @@ stage_current_tree() {
     "$ROOT/docker/install/wgw-install-wait-db.sh" \
     "$ROOT/docker/install/wgw-install-migrate.sh" \
     "$ROOT/docker/install/wgw-install-seed-config.sh" \
+    "$ROOT/docker/install/wgw-install-prepare-dirs.sh" \
     "$STAGE/install/"
   local composer_cache="${WGW_UPGRADE_COMPOSER_CACHE:-${HOME}/.composer/cache}"
   mkdir -p "$composer_cache"

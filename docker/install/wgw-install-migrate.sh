@@ -10,6 +10,20 @@ case "$DATA_DIR" in
 esac
 INSTALLED_LOCK="${DATA_DIR}/.installed"
 
+# The migrator runs artisan as root, so the log, cache, and SQLite files it
+# creates on the shared volumes are root-owned. The scheduler (www-data) starts
+# as soon as the migrator exits, possibly before the web entrypoint fixes
+# ownership, so hand the volumes to www-data on every exit path. The exit
+# status stays the migration's own; the web entrypoint retries the fix.
+prepare_dirs_on_exit() {
+  status=$?
+  if ! /usr/local/bin/wgw-install-prepare-dirs.sh; then
+    echo "[wgw-install-migrate] Warning: could not hand the data and storage volumes to www-data." >&2
+  fi
+  exit "$status"
+}
+trap prepare_dirs_on_exit EXIT
+
 # shellcheck source=/dev/null
 . /usr/local/bin/wgw-install-wait-db.sh
 
@@ -41,4 +55,5 @@ if [ ! -f "${API_ROOT}/artisan" ]; then
 fi
 
 echo "[wgw-install-migrate] Running wgw:schema-migrate..."
-exec php "${API_ROOT}/artisan" wgw:schema-migrate
+# No exec: the EXIT trap has to run after the migration.
+php "${API_ROOT}/artisan" wgw:schema-migrate

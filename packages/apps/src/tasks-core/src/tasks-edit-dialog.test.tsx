@@ -5,6 +5,9 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
+import { taskToFormValue } from "@/tasks-core/src/tasks-task-form";
+import type { Task } from "@/tasks-core/src/tasks-types";
+import { rebaseTaskForm } from "@/tasks-core/src/use-task-edit-form";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
 import "@/tasks-core/src/tasks-workspace.css";
@@ -16,7 +19,7 @@ function renderEditDialog(overrides: Partial<React.ComponentProps<typeof TasksEd
   const onSave = vi.fn();
   const onClose = vi.fn();
 
-  render(
+  const ui = (props: Partial<React.ComponentProps<typeof TasksEditDialog>>) => (
     <TooltipProvider>
       <TasksEditDialog
         dialog={{ taskId: task.id }}
@@ -25,12 +28,19 @@ function renderEditDialog(overrides: Partial<React.ComponentProps<typeof TasksEd
         labels={defaultTasksLabels}
         onClose={onClose}
         onSave={onSave}
-        {...overrides}
+        {...props}
       />
-    </TooltipProvider>,
+    </TooltipProvider>
   );
+  const view = render(ui(overrides));
+  const rerender = (props: Partial<React.ComponentProps<typeof TasksEditDialog>>) =>
+    view.rerender(ui({ ...overrides, ...props }));
 
-  return { task, onSave, onClose };
+  return { task, onSave, onClose, rerender };
+}
+
+function fieldValue(label: string): string {
+  return (screen.getByLabelText(label) as HTMLInputElement | HTMLTextAreaElement).value;
 }
 
 describe("TasksEditDialog", () => {
@@ -139,5 +149,104 @@ describe("TasksEditDialog", () => {
     renderEditDialog();
 
     expect(screen.queryByRole("button", { name: defaultTasksLabels.delete })).toBeNull();
+  });
+
+  describe("when a newer copy of the task arrives (#1858)", () => {
+    it("keeps what the person typed when the same task is re-rendered", () => {
+      const { task, rerender } = renderEditDialog();
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.descriptionLabel), {
+        target: { value: "Draft, not saved" },
+      });
+
+      // A sync rebuilds the task objects: same id, new identity.
+      rerender({ task: { ...task } });
+      expect(fieldValue(defaultTasksLabels.descriptionLabel)).toBe("Draft, not saved");
+
+      // Another field of this task changed elsewhere.
+      rerender({ task: { ...task, title: "Renamed elsewhere" } });
+      expect(fieldValue(defaultTasksLabels.descriptionLabel)).toBe("Draft, not saved");
+      expect(fieldValue(defaultTasksLabels.addTaskName)).toBe("Renamed elsewhere");
+    });
+
+    it("keeps an edited field when the same field changed elsewhere", () => {
+      const { task, rerender, onSave } = renderEditDialog();
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "My title" },
+      });
+
+      rerender({ task: { ...task, title: "Their title", description: "Their notes" } });
+
+      expect(fieldValue(defaultTasksLabels.addTaskName)).toBe("My title");
+      fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.saveTaskButton }));
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "My title", description: "Their notes" }),
+      );
+    });
+
+    it("reseeds the form when it switches to another task", () => {
+      const { task, rerender } = renderEditDialog();
+      const other = bootstrap.data.tasks.find((item) => item.id !== task.id) as Task;
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "Typed for the first task" },
+      });
+
+      rerender({ dialog: { taskId: other.id }, task: other });
+
+      expect(fieldValue(defaultTasksLabels.addTaskName)).toBe(other.title);
+      expect(fieldValue(defaultTasksLabels.descriptionLabel)).toBe(other.description ?? "");
+    });
+
+    it("reseeds the form when the same task is opened again", () => {
+      const { task, rerender } = renderEditDialog();
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "Cancelled draft" },
+      });
+
+      rerender({ dialog: null, task: null });
+      rerender({ dialog: { taskId: task.id }, task });
+
+      expect(fieldValue(defaultTasksLabels.addTaskName)).toBe(task.title);
+    });
+
+    it("mirrors the task once it becomes read-only", () => {
+      const { task, rerender } = renderEditDialog();
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "Cannot be saved" },
+      });
+
+      rerender({ task: { ...task }, readOnly: true });
+
+      expect(fieldValue(defaultTasksLabels.addTaskName)).toBe(task.title);
+    });
+  });
+});
+
+describe("rebaseTaskForm", () => {
+  const task = bootstrap.data.tasks[0] as Task;
+  const base = taskToFormValue(task, task.taskListId);
+
+  it("moves due, all-day and time zone as one group", () => {
+    const current = { ...base, due: "2030-01-02T09:00:00", showWithoutTime: false };
+    const next = {
+      ...base,
+      due: "2030-05-05",
+      showWithoutTime: true,
+      timeZone: "Europe/Amsterdam",
+    };
+
+    const merged = rebaseTaskForm(current, base, next);
+
+    expect(merged.due).toBe("2030-01-02T09:00:00");
+    expect(merged.showWithoutTime).toBe(false);
+    expect(merged.timeZone).toBe(base.timeZone);
+  });
+
+  it("takes a list move made elsewhere when the list was not edited", () => {
+    const next = { ...base, listId: "elsewhere" };
+
+    expect(rebaseTaskForm({ ...base, title: "Edited" }, base, next)).toEqual({
+      ...next,
+      title: "Edited",
+    });
   });
 });
