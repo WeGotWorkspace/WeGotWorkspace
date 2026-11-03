@@ -15,14 +15,14 @@ const mocks = vi.hoisted(() => ({
   listener: null as ((states: Record<string, string>) => unknown) | null,
 }));
 
-vi.mock("@/lib/offline/tasks-inbound-sync", () => ({
+vi.mock("@/lib/offline/tasks/tasks-inbound-sync", () => ({
   syncTasksInbound: mocks.syncTasksInbound,
   TASKS_INBOUND_POLL_MS: 10_000,
 }));
-vi.mock("@/lib/offline/tasks-offline-store", () => ({
+vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
   readTasksChangesState: mocks.readTasksChangesState,
 }));
-vi.mock("@/lib/offline/tasks-bootstrap-sync", () => ({
+vi.mock("@/lib/offline/tasks/tasks-bootstrap-sync", () => ({
   notifyTasksBootstrapUpdated: mocks.notify,
 }));
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({

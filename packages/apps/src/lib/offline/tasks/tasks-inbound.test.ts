@@ -8,7 +8,7 @@ import {
   ingestRemoteTaskListDestroyed,
   reconcileTaskListResync,
   reconcileTasksSnapshot,
-} from "@/lib/offline/tasks-inbound";
+} from "@/lib/offline/tasks/tasks-inbound";
 
 const outboxRows = vi.fn<() => Promise<OfflineOutboxRow[]>>();
 const listPending = vi.fn<() => Promise<string[]>>();
@@ -24,8 +24,8 @@ vi.mock("@/lib/offline/core/outbox-store", () => ({
   listOutboxMutationsForDomain: () => outboxRows(),
 }));
 
-vi.mock("@/lib/offline/tasks-offline-store", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/offline/tasks-offline-store")>();
+vi.mock("@/lib/offline/tasks/tasks-offline-store", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/tasks/tasks-offline-store")>();
   return {
     tasksOutboxTaskId: actual.tasksOutboxTaskId,
     tasksOutboxTaskListId: actual.tasksOutboxTaskListId,
@@ -39,7 +39,7 @@ vi.mock("@/lib/offline/tasks-offline-store", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/offline/tasks-sync-conflicts", () => ({
+vi.mock("@/lib/offline/tasks/tasks-sync-conflicts", () => ({
   reportTasksSyncConflicts: (...args: unknown[]) => reportConflicts(...args),
 }));
 

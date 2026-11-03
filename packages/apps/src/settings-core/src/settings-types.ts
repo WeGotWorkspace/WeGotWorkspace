@@ -9,6 +9,7 @@ export const BUILTIN_PANEL_IDS = [
   "tasks",
   "contacts",
   "notes",
+  "docs",
   "meet",
   "about",
 ] as const;

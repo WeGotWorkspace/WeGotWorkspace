@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks-hybrid-operations";
-import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
+import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks/tasks-hybrid-operations";
+import { readTasksBootstrapFromCache } from "@/lib/offline/tasks/tasks-offline-store";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import type { Task, TaskList, TasksUIData } from "@/tasks-core/src/tasks-types";

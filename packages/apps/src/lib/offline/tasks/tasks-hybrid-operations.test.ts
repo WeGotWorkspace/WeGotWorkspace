@@ -6,10 +6,10 @@ import {
   listOutboxMutations,
   readTasksBootstrapFromCache,
   writeTasksBootstrapToCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
-import { createHybridTasksOperations } from "@/lib/offline/tasks-hybrid-operations";
+import { createHybridTasksOperations } from "@/lib/offline/tasks/tasks-hybrid-operations";
 
 const username = "alice";
 const bootstrap = createTasksAppBootstrap({

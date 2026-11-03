@@ -41,7 +41,7 @@ import {
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { taskCreateFromTask, taskEtag } from "@/lib/offline/tasks/tasks-patch-merge";
 
 export type OutboxFlushResult = {

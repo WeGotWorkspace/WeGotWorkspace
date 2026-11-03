@@ -42,11 +42,11 @@ import {
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
   writeTasksChangesState,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks-outbox-flush";
-import { reportTasksSyncConflicts } from "@/lib/offline/tasks-sync-conflicts";
+import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
+import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import {
   ConnectivitySyncRunner,
