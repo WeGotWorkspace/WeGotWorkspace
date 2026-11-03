@@ -104,6 +104,7 @@ function DriveUploadsRow({
   if (!file.upload) return null;
   const itemId = file.upload.id;
   const state = driveUploadRowStateFor(file.upload, model);
+  const reasonDetail = state.kind === "failed" ? driveUploadReasonDetail(state.reason) : null;
   return (
     <li className={cn("drive-uploads__row", `drive-uploads__row--${state.kind}`)}>
       <span className="drive-uploads__kind" aria-hidden="true">
@@ -137,9 +138,7 @@ function DriveUploadsRow({
         {state.notOnDevice ? (
           <span className="drive-uploads__note">{driveLabels.uploadNotOnDeviceDetail}</span>
         ) : null}
-        {state.kind === "failed" && driveUploadReasonDetail(state.reason) ? (
-          <span className="drive-uploads__note">{driveUploadReasonDetail(state.reason)}</span>
-        ) : null}
+        {reasonDetail ? <span className="drive-uploads__note">{reasonDetail}</span> : null}
         {state.kind === "failed" && state.reason === "insecure_context" ? (
           <DriveUploadAdminLink />
         ) : null}

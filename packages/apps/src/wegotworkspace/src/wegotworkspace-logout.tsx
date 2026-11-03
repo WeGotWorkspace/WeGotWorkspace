@@ -54,7 +54,6 @@ async function probeReachableWithin(timeoutMs = REACHABILITY_TIMEOUT_MS): Promis
 }
 
 /** Where *Wait* goes: the Drive Uploads view, where the queue keeps running. */
-const UPLOADS_HREF = "/drive?view=uploads";
 
 function queuedUploadsWarning(count: number): string {
   const files = count === 1 ? "1 file is" : `${count} files are`;
@@ -189,7 +188,7 @@ export function WeGotWorkspaceLogout({
                 onClick={(event) => {
                   event.preventDefault();
                   leaving.current = true;
-                  void navigate({ href: UPLOADS_HREF });
+                  void navigate({ to: "/drive", search: { view: "uploads" } });
                 }}
               >
                 Wait

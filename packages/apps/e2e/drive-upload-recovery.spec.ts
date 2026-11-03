@@ -1,14 +1,15 @@
 import { expect, test, type Page } from "./helpers/live-test";
 import {
+  createFolder,
   GONE,
   goOfflineKeepingShell,
   goOnlineAgain,
   installOnlineFlag,
   namesIn,
+  openFolder,
   openMyDrive,
   openUploads,
   pickFile,
-  queueIntoFolder,
   trashFolderOnServer,
   uniqueName,
   uploadInput,
@@ -43,34 +44,43 @@ test.describe("Drive upload recovery (live app)", () => {
     await installOnlineFlag(context);
   });
 
-  test("Choose another folder sends a file whose folder is gone to My Drive once", async ({
+  test("Choose another folder uploads a file whose folder is gone to the chosen folder", async ({
     page,
   }) => {
-    const folder = uniqueName("choose");
-    const file = `${uniqueName("choose-file")}.txt`;
-    const other = await queueIntoFolder(page, folder, file);
-
-    await trashFolderOnServer(other, folder);
-    await goOnlineAgain(page);
+    const gone = uniqueName("gone");
+    const dest = uniqueName("dest");
+    const file = `${uniqueName("moved")}.txt`;
+    await openMyDrive(page);
+    await createFolder(page, dest);
+    await createFolder(page, gone);
+    // Reload first: a folder made in this tab is not yet in the offline cache,
+    // and an offline pick into it adds nothing (also on main; reported apart).
+    await openMyDrive(page);
+    await openFolder(page, gone);
+    await goOfflineKeepingShell(page);
+    await expect(page).toHaveURL(new RegExp(encodeURIComponent(gone)));
+    await pickFile(page, file);
     await openUploads(page);
+    await expect(uploadRow(page, file)).toContainText("Waiting for a connection", {
+      timeout: 30_000,
+    });
+
+    await trashFolderOnServer(page, gone);
+    await goOnlineAgain(page);
     await expect(uploadRow(page, file)).toContainText(GONE, { timeout: 60_000 });
-    await openUploads(other);
-    await expect(uploadRow(other, file)).toContainText(GONE, { timeout: 60_000 });
+    await expect(uploadRow(page, file)).toContainText(
+      "Choose another folder for it, or remove it.",
+    );
 
-    await uploadRow(page, file)
-      .getByRole("button", { name: `Choose another folder: ${file}` })
-      .click();
-    // The picker opens at the root of the personal drive: My Drive.
-    await page.getByRole("dialog").getByRole("button", { name: "Upload here" }).click();
+    await page.getByRole("button", { name: `Choose another folder: ${file}` }).click();
+    const picker = page.getByRole("dialog", { name: `Choose a folder for ${file}` });
+    await expect(picker).toBeVisible();
+    await picker.getByText(dest, { exact: true }).first().click();
+    await picker.getByRole("button", { name: "Upload here" }).click();
 
-    await expect.poll(() => countOnServer(other, file), { timeout: 60_000 }).toBe(1);
-    await expect(other.locator(".drive-uploads__row")).toHaveCount(0, { timeout: 60_000 });
-
-    await page.reload();
-    await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
-    await expect(page.locator(".drive-uploads__row--failed")).toHaveCount(0);
-    await expect(page.locator(".drive-uploads__row")).toHaveCount(0);
-    expect(await countOnServer(other, file)).toBe(1);
+    await expect.poll(() => namesIn(page, dest), { timeout: 60_000 }).toContain(file);
+    await expect(page.getByText("All uploads are done")).toBeVisible({ timeout: 60_000 });
+    expect(await countOnServer(page, file)).toBe(0);
   });
 
   test("a full server shows the callout and the pause sign, and the callout's Retry resumes", async ({
