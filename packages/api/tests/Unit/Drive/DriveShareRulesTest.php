@@ -78,14 +78,21 @@ final class DriveShareRulesTest extends TestCase
 
     public function test_assert_public_access_cap_allows_view(): void
     {
-        $this->rules->assertPublicAccessCap('public', DriveShareAccess::VIEW);
+        $this->rules->assertPublicAccessCap('public', DriveShareAccess::VIEW, '/users/alice/report.txt');
         $this->addToAssertionCount(1);
     }
 
-    public function test_assert_public_access_cap_rejects_edit(): void
+    public function test_assert_public_access_cap_rejects_edit_on_a_path_that_is_not_a_folder(): void
+    {
+        // Edit on a folder is allowed (#1715); see DriveShareAccessMatrixTest.
+        $this->expectException(ApiHttpException::class);
+        $this->rules->assertPublicAccessCap('public', DriveShareAccess::EDIT, '/users/alice/report.txt');
+    }
+
+    public function test_assert_public_access_cap_rejects_comment(): void
     {
         $this->expectException(ApiHttpException::class);
-        $this->rules->assertPublicAccessCap('public', DriveShareAccess::EDIT);
+        $this->rules->assertPublicAccessCap('public', DriveShareAccess::COMMENT, '/users/alice/inbox');
     }
 
     public function test_parse_group_principal_key(): void
