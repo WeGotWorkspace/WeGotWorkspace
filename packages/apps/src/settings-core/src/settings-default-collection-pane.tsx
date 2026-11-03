@@ -5,15 +5,14 @@ import {
 } from "@/lib/calendar-event-calendar-picker";
 import { useAppPickerCollections } from "@/lib/app-picker-collections";
 import { type DefaultCollectionApp } from "@/lib/default-collection-prefs";
-import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
-import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { useSettingsDefaultCollectionForm } from "@/settings-core/src/use-settings-default-collection-form";
+import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Form, FormField } from "@/ui/form";
-import { FormSaveActionRow } from "@/ui/form-save-action-row";
+import { FormField } from "@/ui/form";
 
 export function SettingsDefaultCollectionPane({ app }: { app: DefaultCollectionApp }) {
-  const { form, saveDisplay, meta } = useSettingsDefaultCollectionForm(app);
+  const controller = useSettingsDefaultCollectionForm(app);
+  const { form, meta } = controller;
   const { collections, loaded } = useAppPickerCollections(app);
   const fieldLabel = meta.fieldLabel;
   const collectionWatch = form.watch("collectionId");
@@ -26,35 +25,25 @@ export function SettingsDefaultCollectionPane({ app }: { app: DefaultCollectionA
   }, [collections, collectionWatch, form, loaded]);
 
   return (
-    <Form {...form}>
-      <SettingsPaneCard>
-        <div className={settingsWorkspacePaneClasses.stack}>
-          {collections.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="collectionId"
-              render={({ field }) => (
-                <FieldLabelRow label={fieldLabel}>
-                  <CalendarEventCalendarPicker
-                    calendars={collections}
-                    calendarId={defaultPickerCalendarId(collections, field.value || undefined)}
-                    label={fieldLabel}
-                    showName
-                    onCalendarIdChange={(collectionId) => field.onChange(collectionId)}
-                  />
-                </FieldLabelRow>
-              )}
-            />
-          ) : null}
-          <FormSaveActionRow
-            className={settingsWorkspacePaneClasses.saveActionRow}
-            label="Save"
-            disabled={!form.formState.isDirty}
-            onSave={saveDisplay}
-          />
-        </div>
-      </SettingsPaneCard>
-    </Form>
+    <SettingsPrefsFormPane controller={controller}>
+      {collections.length > 0 ? (
+        <FormField
+          control={form.control}
+          name="collectionId"
+          render={({ field }) => (
+            <FieldLabelRow label={fieldLabel}>
+              <CalendarEventCalendarPicker
+                calendars={collections}
+                calendarId={defaultPickerCalendarId(collections, field.value || undefined)}
+                label={fieldLabel}
+                showName
+                onCalendarIdChange={(collectionId) => field.onChange(collectionId)}
+              />
+            </FieldLabelRow>
+          )}
+        />
+      ) : null}
+    </SettingsPrefsFormPane>
   );
 }
 

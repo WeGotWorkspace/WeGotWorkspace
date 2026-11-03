@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks-bootstrap-sync";
+import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { tasksRescueOperations } from "@/lib/offline/tasks/tasks-parked-writes";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import type { RescueAdapter } from "@/rescue-ui/rescue-adapter";

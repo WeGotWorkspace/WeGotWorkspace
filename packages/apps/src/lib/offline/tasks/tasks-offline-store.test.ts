@@ -12,7 +12,7 @@ import {
   readTasksBootstrapFromCache,
   upsertTaskInCache,
   writeTasksBootstrapToCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 
 const username = "bob";
 const bootstrap = createTasksAppBootstrap({

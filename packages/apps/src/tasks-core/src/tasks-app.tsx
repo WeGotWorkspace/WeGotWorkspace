@@ -5,15 +5,15 @@ import {
   resolveTaskConflictFieldMerge,
   resolveTaskConflictKeepLocal,
   resolveTaskConflictUseServer,
-} from "@/lib/offline/tasks-conflict-resolution";
+} from "@/lib/offline/tasks/tasks-conflict-resolution";
 import {
   buildTaskConflictFieldRows,
   defaultTaskConflictFieldChoices,
   type TaskConflictFieldChoices,
   type TaskConflictFieldRow,
-} from "@/lib/offline/tasks-conflict-merge";
+} from "@/lib/offline/tasks/tasks-conflict-merge";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
-import { tasksOutboxTaskId } from "@/lib/offline/tasks-offline-store";
+import { tasksOutboxTaskId } from "@/lib/offline/tasks/tasks-offline-store";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
