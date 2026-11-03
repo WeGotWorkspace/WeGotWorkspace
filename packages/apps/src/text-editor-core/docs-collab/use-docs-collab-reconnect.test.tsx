@@ -71,7 +71,7 @@ describe("useDocsCollabReconnect save gate", () => {
 
   it("clears a 403 gate so a restored ACL can save", async () => {
     const refs = sessionRefs("forbidden");
-    const persistToServer = vi.fn(async () => undefined);
+    const persistToServer = vi.fn(async () => false);
     const { result } = renderHook(() =>
       useDocsCollabReconnect({
         refs,
@@ -132,7 +132,7 @@ describe("useDocsCollabReconnect save gate", () => {
 
   it("leaves a 404 gate in place", async () => {
     const refs = sessionRefs("gone");
-    const persistToServer = vi.fn(async () => undefined);
+    const persistToServer = vi.fn(async () => false);
     const { result } = renderHook(() =>
       useDocsCollabReconnect({
         refs,
@@ -166,7 +166,7 @@ describe("useDocsCollabReconnect save gate", () => {
     refs.nextSaveAttemptAtRef.current = 0;
     refs.pendingServerSaveRef.current = false;
     refs.localDirtySinceLastSaveRef.current = true;
-    const persistToServer = vi.fn(async () => undefined);
+    const persistToServer = vi.fn(async () => false);
     const { result } = renderHook(() =>
       useDocsCollabReconnect({
         refs,

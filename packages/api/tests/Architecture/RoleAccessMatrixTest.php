@@ -77,6 +77,10 @@ final class RoleAccessMatrixTest extends WgwDatabaseTestCase
             $this->assertRoleExpectation($method, $path, $access, $userToken);
             $this->assertRoleExpectation($method, $path, $access, $adminToken);
         }
+        if ($access === 'guest-only') {
+            $this->assertRoleExpectation($method, $path, $access, $userToken);
+            $this->assertRoleExpectation($method, $path, $access, $adminToken, 'admin');
+        }
     }
 
     private function assertRoleExpectation(
@@ -102,6 +106,13 @@ final class RoleAccessMatrixTest extends WgwDatabaseTestCase
 
         if ($token === null) {
             $this->assertSame(401, $status, "{$method} {$openApiPath} should require auth");
+
+            return;
+        }
+
+        // Guest upload routes (#1715) refuse members: they keep their own JMAP routes.
+        if ($requiredAccess === 'guest-only') {
+            $this->assertSame(403, $status, "{$method} {$openApiPath} as {$actorRole} should be guest-only");
 
             return;
         }

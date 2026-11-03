@@ -15,9 +15,11 @@ use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\ReplayMcpConsentDecision;
+use App\Http\Middleware\RequireGuestSession;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
+use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
@@ -65,6 +67,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'wgw.auth' => AuthenticateWgwApi::class,
             'wgw.role' => RequireWgwRole::class,
+            'wgw.guest' => RequireGuestSession::class,
             'wgw.contacts' => EnsureContactsEnabled::class,
             'wgw.calendars' => EnsureCalendarsEnabled::class,
             'wgw.tasks' => EnsureTasksEnabled::class,
@@ -200,6 +203,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->booted(function (): void {
         WgwApiRateLimiters::register();
         JmapPushRateLimiters::register();
+        GuestUploadRateLimiters::register();
     })
     ->create();
 
