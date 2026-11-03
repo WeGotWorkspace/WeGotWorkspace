@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
 use App\Http\Controllers\Api\V1\Jmap\JmapDownloadTicketController;
 use App\Http\Controllers\Api\V1\Jmap\JmapEventSourceController;
+use App\Http\Controllers\Api\V1\Jmap\JmapFolderDownloadTicketController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
 use App\Http\Controllers\Api\V1\Notes\NotebooksController;
@@ -90,6 +91,11 @@ Route::post('auth/password-resets', RequestPasswordResetController::class);
 // Download ticket URL (#1500): no Authorization header — the hashed 256-bit
 // secret, its session binding, and a per-request rights check guard it.
 Route::get('jmap/download-ticket/{secret}/{name}', [JmapDownloadTicketController::class, 'show'])
+    ->where('secret', DownloadTicketService::SECRET_PATTERN)
+    ->where('name', '[^/]+')
+    ->middleware('throttle:240,1');
+// Folder zip ticket URL (#1621): the same guards, bound to a folder node.
+Route::get('jmap/folder-download-ticket/{secret}/{name}', [JmapFolderDownloadTicketController::class, 'show'])
     ->where('secret', DownloadTicketService::SECRET_PATTERN)
     ->where('name', '[^/]+')
     ->middleware('throttle:240,1');
@@ -336,6 +342,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     // Download tickets (#1500): issue on the authenticated route; the ticket
     // URL itself is public (below) because a native download sends no header.
     Route::post('jmap/download-tickets/{accountId}', [JmapDownloadTicketController::class, 'store']);
+    // Folder zip tickets (#1621): the browser saves the streamed zip natively.
+    Route::post('jmap/folder-download-tickets/{accountId}', [JmapFolderDownloadTicketController::class, 'store']);
 });
 
 // JMAP event source (RFC 8620 §7.3, #1660): short-burst, its own bucket per
