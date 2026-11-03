@@ -6,9 +6,9 @@
 // server copy. The tab keeps the offline name, the failed-sync notice lists it,
 // and a reload keeps both. The server card is unchanged.
 //
-// Only the update is played here: the UI offers no new contact in a book
-// shared with you (`canCreateContactInAddressBook`), so a refused create is
-// covered by the flush unit tests.
+// Two cases: an edit of a shared card, and a new contact made in the shared
+// book itself (`canCreateContactInView` allows New contact on a `book:` view
+// while `myRights.mayWrite` is not false). Both stay as permanent failures.
 import { expect, test } from "./helpers/live-test";
 import { api, openUser, OWNER, setTabOffline, TEAMMATE, type Tab } from "./helpers/live-matrix";
 
@@ -18,6 +18,7 @@ const SURNAME = "Card";
 const ORIGINAL = `${GIVEN} ${SURNAME}`;
 const OFFLINE_GIVEN = `${GIVEN}Off`;
 const OFFLINE = `${OFFLINE_GIVEN} ${SURNAME}`;
+const CREATED = `${GIVEN}New`;
 
 /** The list is windowed over ~1000 seeded contacts: narrow it to this run's card. */
 async function search(tab: Tab): Promise<void> {
@@ -156,6 +157,103 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       });
       await expect(notice).toBeVisible({ timeout: 60_000 });
       expect(await serverName()).toBe(ORIGINAL);
+    } finally {
+      await context.close();
+    }
+  });
+
+  async function serverHasCreated(): Promise<boolean> {
+    const [[, q]] = await jmap([
+      ["ContactCard/query", { accountId, filter: { inAddressBook: "default" } }, "q"],
+    ]);
+    const ids = q.ids as string[];
+    if (ids.length === 0) return false;
+    const [[, got]] = await jmap([
+      ["ContactCard/get", { accountId, ids, properties: ["name"] }, "g"],
+    ]);
+    const list = got.list as Array<{ name?: { full?: string } }>;
+    return list.some((row) => row.name?.full === CREATED);
+  }
+
+  /** The teammate's copy of the owner's book, under "Shared with me". */
+  async function openSharedBook(tab: Tab): Promise<void> {
+    await expect(tab.getByRole("button", { name: "Refresh contacts" })).toBeEnabled({
+      timeout: 60_000,
+    });
+    await tab
+      .getByRole("region", { name: "Shared with me" })
+      .getByRole("button", { name: /^Personal/ })
+      .click();
+    await search(tab);
+  }
+
+  test("a new contact in the shared book stays, is sent once, and survives a reload", async ({
+    browser,
+  }) => {
+    test.setTimeout(240_000);
+    await shareBook(true);
+    const context = await openUser(browser, TEAMMATE);
+    try {
+      const tab = (await context.newPage()) as Tab;
+      let lastTraffic = Date.now();
+      let createSets = 0;
+      tab.on("request", (request) => {
+        if (!request.url().includes("/jmap") || request.method() !== "POST") return;
+        lastTraffic = Date.now();
+        let body: { methodCalls?: Array<[string, Record<string, unknown>, string]> };
+        try {
+          body = JSON.parse(request.postData() ?? "{}");
+        } catch {
+          return;
+        }
+        for (const [name, args] of body.methodCalls ?? []) {
+          if (name === "ContactCard/set" && Object.keys((args.create as object) ?? {}).length > 0) {
+            createSets += 1;
+          }
+        }
+      });
+
+      await tab.goto("/contacts");
+      await openSharedBook(tab);
+      await expect(tab.getByText(ORIGINAL, { exact: true }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      const newContact = tab.getByRole("button", { name: "New contact", exact: true });
+      await expect(newContact).toBeEnabled();
+
+      // Offline: create a contact in the shared book. Create does not autosave.
+      await setTabOffline(tab, true);
+      await newContact.click();
+      await tab.getByLabel("First name").fill(CREATED);
+      await tab.getByRole("button", { name: "Save", exact: true }).click();
+      await tab.getByPlaceholder("Search contacts...").fill(CREATED);
+      await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible();
+
+      // The owner makes the share view-only; the teammate reconnects.
+      await shareBook(false);
+      createSets = 0;
+      await setTabOffline(tab, false);
+
+      const notice = tab.getByText("Some changes couldn’t sync").first();
+      await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible();
+      await expect(tab.getByLabel(/conflict resolution/)).toHaveCount(0);
+      expect(await serverHasCreated(), "the refused create did not land").toBe(false);
+
+      // Quiet for 2 s, then 8 s more: the 5 s retry must not send the create again.
+      while (Date.now() - lastTraffic < 2_000) await tab.waitForTimeout(250);
+      await tab.waitForTimeout(8_000);
+      expect(createSets, "the refused create is sent once").toBe(1);
+
+      // A reload keeps the contact and the notice; the server still has no such card.
+      await tab.reload();
+      await openSharedBook(tab);
+      await tab.getByPlaceholder("Search contacts...").fill(CREATED);
+      await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(notice).toBeVisible({ timeout: 60_000 });
+      expect(await serverHasCreated()).toBe(false);
     } finally {
       await context.close();
     }
