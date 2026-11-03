@@ -27,8 +27,9 @@ export function useCanDownloadDriveItem(file: DriveFile | null, inTrash: boolean
 
 /**
  * Starts the download of a file, or of a folder as a zip. The browser saves
- * it natively. `onStarted` runs once the browser has the download, so an
- * offline refusal shows only its error; a failure reaches `onError`.
+ * it natively; a failure reaches `onError`. `onStarted` runs at once for a
+ * file (a guest's file loads before it saves), and for a folder only once the
+ * browser has the zip, so an offline refusal shows only its error.
  */
 export function startDriveItemDownload(
   operations: DriveAPIOperations | undefined,
@@ -41,8 +42,11 @@ export function startDriveItemDownload(
     file.kind === "folder"
       ? operations.downloadFolder?.(file.apiPath)
       : operations.downloadFile(file.apiPath);
+  if (file.kind !== "folder") onStarted?.();
   void started?.then(
-    () => onStarted?.(),
+    () => {
+      if (file.kind === "folder") onStarted?.();
+    },
     (error: unknown) => {
       onError(error instanceof Error ? error.message : String(error));
     },

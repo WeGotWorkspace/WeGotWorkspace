@@ -87,7 +87,14 @@ describe("startDriveItemDownload", () => {
     expect(onStarted).not.toHaveBeenCalled();
   });
 
-  it("says the download started only once the browser has it", async () => {
+  it("says a file download started at once", () => {
+    const onStarted = vi.fn();
+
+    startDriveItemDownload(operations(true), FILE, vi.fn(), onStarted);
+    expect(onStarted).toHaveBeenCalledOnce();
+  });
+
+  it("says a folder download started only once the browser has the zip", async () => {
     const ops = operations(true);
     const onStarted = vi.fn();
 

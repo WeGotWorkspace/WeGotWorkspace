@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PanelRight } from "lucide-react";
+import { Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -275,7 +275,11 @@ export function DriveWorkspace({
         isStarred={!!starred[active.id]}
         inTrash={inTrashView}
         onClose={handleDetailClose}
-        onDownload={() => startDriveItemDownload(operations, active, showError)}
+        onDownload={() =>
+          startDriveItemDownload(operations, active, showError, () =>
+            show("Download started", { icon: <Download className="size-4" /> }),
+          )
+        }
         onStar={() => toggleStar(active.id)}
         onRename={() => requestRenameItem(active)}
         onMove={() => requestMoveItem(active)}
@@ -320,6 +324,7 @@ export function DriveWorkspace({
     requestRenameItem,
     setConfirmDelete,
     shareEnabled,
+    show,
     showError,
     starred,
     structureEnabled,
