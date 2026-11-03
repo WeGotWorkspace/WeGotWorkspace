@@ -69,6 +69,20 @@ describe("readPendingWrites", () => {
     );
     expect(writes.get("a")?.blocksToken).toBe(true);
   });
+  it("reads a row that names several items, such as a path-keyed rename", () => {
+    const writes = readPendingWrites([outboxRow("r1", "rename", null, { ifInState: "v1" })], () => [
+      { id: "old.md", deleting: true },
+      { id: "new.md", fields: ["location"] },
+      { id: null },
+    ]);
+    expect([...writes.keys()].sort()).toEqual(["new.md", "old.md"]);
+    expect(writes.get("old.md")).toMatchObject({ deleting: true, queued: true, bases: ["v1"] });
+    expect(writes.get("new.md")).toMatchObject({
+      deleting: false,
+      fields: new Set(["location"]),
+      blocksToken: true,
+    });
+  });
 });
 
 describe("serverMovedSince", () => {
