@@ -7,8 +7,8 @@ import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
+import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
 import {
-  computeSaveDelayMs,
   computeShouldPersist,
   SAVE_DELAY_MS,
   saveFailureState,
@@ -97,25 +97,26 @@ export function useDocsCollabSave({
     await updatePendingState(true, false);
   }, [refs, updatePendingState]);
 
-  const persistToServer = useCallback(async (): Promise<void> => {
+  /** True when it should run again: a save was busy, or the text changed while it saved. */
+  const persistToServer = useCallback(async (): Promise<boolean> => {
     // First, before the offline pending mark. persistCollabSave checks it too.
-    if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
+    if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return false;
     // Not on the server yet: keep the edit marked unsaved so it uploads once the
     // room is persistent (the note's create landed).
     if (urls.roomNotPersistent) {
       await markPendingWhenUnsaved();
-      return;
+      return false;
     }
-    if (refs.externalWriteHoldRef.current) return;
-    if (refs.saveInFlightRef.current) return;
+    if (refs.externalWriteHoldRef.current) return false;
+    if (refs.saveInFlightRef.current) return true;
     if (!getConnectivitySnapshot()) {
       await markPendingWhenUnsaved();
-      return;
+      return false;
     }
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
     const override = refs.markdownOverrideRef.current;
-    if (!ydoc || (!getMd && override === null)) return;
+    if (!ydoc || (!getMd && override === null)) return false;
     const markdown = override ?? markdownForSave(ydoc, getMd ? getMd() : "");
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
@@ -131,7 +132,7 @@ export function useDocsCollabSave({
         await updatePendingState(false, false);
         setDocStatus("");
       }
-      return;
+      return false;
     }
     refs.saveInFlightRef.current = true;
     let savedMarkdown = markdown;
@@ -147,13 +148,16 @@ export function useDocsCollabSave({
         markdownOverrideRef: refs.markdownOverrideRef,
         externalWriteSeen: refs.externalWriteSeenRef.current,
       });
-      if (persisted.status === "skipped") return;
+      if (persisted.status === "skipped") return false;
       savedMarkdown = persisted.markdown;
       refs.externalWriteSeenRef.current = null;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
-      refs.localDirtySinceLastSaveRef.current = success.localDirtySinceLastSave ?? false;
+      // Typed while this save was on its way: still dirty, saved by the next round.
+      const latest = refs.getMarkdownRef.current;
+      const editedSince = latest ? markdownForSave(ydoc, latest()) !== savedMarkdown : false;
+      refs.localDirtySinceLastSaveRef.current = editedSince;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
       refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
@@ -162,6 +166,7 @@ export function useDocsCollabSave({
       setLastSavedAt(new Date().toISOString());
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
+      return editedSince;
     } catch (err) {
       // Not a failure to retry: the save stays pending until a person chooses.
       if (isExternalWriteRefusal(err) && (await askAboutRefusedSave({ refs, urls }))) {
@@ -212,21 +217,16 @@ export function useDocsCollabSave({
   const scheduleSave: () => void = useCallback(() => {
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (!refs.localDirtySinceLastSaveRef.current && !refs.pendingServerSaveRef.current) return;
-    if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
-    const delayMs = computeSaveDelayMs(refs.nextSaveAttemptAtRef.current);
-    refs.saveTimerRef.current = setTimeout(() => {
-      refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => scheduleSave());
-    }, delayMs);
+    armSaveTimer(refs.saveTimerRef, refs.nextSaveAttemptAtRef.current, () => {
+      void persistToServer().then((again) => again && scheduleSave(), scheduleSave);
+    });
   }, [persistToServer, refs]);
 
   const flushPendingSaveIfReady = useCallback(() => {
     if (!refs.pendingServerSaveRef.current || !getConnectivitySnapshot()) return;
-    if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
-    refs.saveTimerRef.current = setTimeout(() => {
-      refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => scheduleSave());
-    }, 0);
+    const save = () =>
+      void persistToServer().then((again) => again && scheduleSave(), scheduleSave);
+    armSaveTimer(refs.saveTimerRef, 0, save, true);
   }, [persistToServer, refs, scheduleSave]);
 
   const registerMarkdownGetter = useCallback(
@@ -240,7 +240,7 @@ export function useDocsCollabSave({
   );
 
   const saveNow = useCallback(async () => {
-    if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
+    cancelSaveTimer(refs.saveTimerRef);
     await persistToServer();
   }, [persistToServer, refs]);
 

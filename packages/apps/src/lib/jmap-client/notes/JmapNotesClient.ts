@@ -61,10 +61,21 @@ export class JmapNotesClient {
     return response;
   }
 
-  /** `ids` longer than the server's `maxObjectsInGet` are fetched in several requests. */
-  async getNotes(accountId: JmapId, ids?: JmapId[] | null): Promise<GetResponse<JmapNote>> {
+  /**
+   * `ids` longer than the server's `maxObjectsInGet` are fetched in several requests.
+   * `properties` limits what comes back; the server always adds `id`.
+   */
+  async getNotes(
+    accountId: JmapId,
+    ids?: JmapId[] | null,
+    properties?: readonly string[],
+  ): Promise<GetResponse<JmapNote>> {
     const getPage = (pageIds: JmapId[] | null) =>
-      this.client.call<GetResponse<JmapNote>>("Note/get", { accountId, ids: pageIds }, NOTES_USING);
+      this.client.call<GetResponse<JmapNote>>(
+        "Note/get",
+        { accountId, ids: pageIds, ...(properties ? { properties: [...properties] } : {}) },
+        NOTES_USING,
+      );
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);

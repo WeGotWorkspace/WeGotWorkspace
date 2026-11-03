@@ -336,7 +336,7 @@ describe("useNotesAPI", () => {
       await Promise.resolve();
     });
 
-    expect(warn).toHaveBeenCalledWith("[notes] live inbound poll unavailable", expect.any(Error));
+    expect(warn).toHaveBeenCalledWith("[notes] live inbound sync unavailable", expect.any(Error));
     expect(mockStartPolling).not.toHaveBeenCalled();
 
     await act(async () => {

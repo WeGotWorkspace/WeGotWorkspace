@@ -94,11 +94,13 @@ COPY docker/install/docker-entrypoint.sh /usr/local/bin/wgw-install-entrypoint
 COPY docker/install/wgw-install-wait-db.sh /usr/local/bin/wgw-install-wait-db.sh
 COPY docker/install/wgw-install-migrate.sh /usr/local/bin/wgw-install-migrate.sh
 COPY docker/install/wgw-install-seed-config.sh /usr/local/bin/wgw-install-seed-config.sh
+COPY docker/install/wgw-install-prepare-dirs.sh /usr/local/bin/wgw-install-prepare-dirs.sh
 RUN chmod +x \
     /usr/local/bin/wgw-install-entrypoint \
     /usr/local/bin/wgw-install-wait-db.sh \
     /usr/local/bin/wgw-install-migrate.sh \
-    /usr/local/bin/wgw-install-seed-config.sh
+    /usr/local/bin/wgw-install-seed-config.sh \
+    /usr/local/bin/wgw-install-prepare-dirs.sh
 
 COPY --from=builder /release/ /var/www/html/
 RUN chown -R www-data:www-data \
