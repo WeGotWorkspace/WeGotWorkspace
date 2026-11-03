@@ -90,6 +90,13 @@ async function cachedViews(page: Page): Promise<string[][]> {
 const moveOnServer = (from: string, to: string) =>
   dav("MOVE", from, { Destination: davUrl(to), Overwrite: "F" });
 
+/** Clean-up: delete what a test seeded, whatever state the test left it in. */
+async function deleteQuietly(apiPaths: readonly string[]): Promise<void> {
+  for (const apiPath of apiPaths) {
+    await dav("DELETE", apiPath).catch(() => undefined);
+  }
+}
+
 /** The Drive cache knows a node at this path (the first FileNode inbound ran). */
 async function driveCacheHas(page: Page, apiPath: string): Promise<boolean> {
   return page.evaluate(
@@ -155,6 +162,56 @@ async function holdServer(page: Page, blocks: Blocks): Promise<void> {
 
 test.describe("Docs inbound sync (#1563)", () => {
   test.beforeEach(nameThisAttempt);
+
+  test("a second tab follows changes that another tab pulled, without a reload", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(150_000);
+    const seeded = [DELETED, RENAMED_FROM].map((name) => `${HOME}/${name}`);
+    try {
+      for (const apiPath of seeded) await seedDocAtPath(apiPath, "# Seeded by #1563.\n");
+
+      // Tab A: both Docs listed, and the Drive cache knows both nodes.
+      await gotoDocsHome(page);
+      await openView(page, "My Docs");
+      for (const name of [DELETED, RENAMED_FROM]) {
+        await expect(docsHomeRow(page, name)).toBeVisible({ timeout: 30_000 });
+      }
+      for (const apiPath of seeded) {
+        await expect.poll(() => driveCacheHas(page, apiPath), { timeout: 60_000 }).toBe(true);
+      }
+
+      // Tab B: the same view. Its live listing is held from now on, so only
+      // the cache notice from tab A can change what it shows.
+      const tabB = await context.newPage();
+      await gotoDocsHome(tabB);
+      await openView(tabB, "My Docs");
+      for (const name of [DELETED, RENAMED_FROM]) {
+        await expect(docsHomeRow(tabB, name)).toBeVisible({ timeout: 30_000 });
+      }
+      await tabB.route("**/api/v1/search/results**", (route) => route.abort("failed"));
+
+      // Another device deletes one Doc and renames the other.
+      await dav("DELETE", `${HOME}/${DELETED}`);
+      await moveOnServer(`${HOME}/${RENAMED_FROM}`, `${HOME}/${RENAMED_TO}`);
+
+      // Tab A reloads: its start-up FileNode inbound pulls both changes. Its
+      // live listing is held too: a listing that lands first rewrites the
+      // view's cache, the inbound then finds nothing to change, and no tab is
+      // told. Held, the inbound is the only writer, as the test intends.
+      await page.route("**/api/v1/search/results**", (route) => route.abort("failed"));
+      await page.reload();
+      await expect(docsHomeRow(page, RENAMED_TO)).toBeVisible({ timeout: 30_000 });
+
+      // Tab B follows without a reload.
+      await expect(docsHomeRow(tabB, DELETED)).toHaveCount(0, { timeout: 30_000 });
+      await expect(docsHomeRow(tabB, RENAMED_FROM)).toHaveCount(0);
+      await expect(docsHomeRow(tabB, RENAMED_TO)).toBeVisible();
+    } finally {
+      await deleteQuietly([...seeded, `${HOME}/${RENAMED_TO}`]);
+    }
+  });
 
   test("outside deletes, renames and moves reach every cached view; a queued rename stays", async ({
     page,
