@@ -244,7 +244,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke current access token and the HttpOnly refresh cookie */
+        /**
+         * Sign out: revoke the access token and its session
+         * @description Revokes the presented access token and ends its sign-in session (the `sid` claim), so that session's refresh tokens and download tickets stop working even when the HttpOnly refresh cookie is not sent. A refresh cookie that is sent ends its session too. Other sessions of the user stay signed in.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2509,7 +2512,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download file content */
+        /**
+         * Download file content
+         * @description Streams with a single `Range` request honoured (206 / 416), `If-Range` and `If-None-Match` against the file's validators, and `Content-Length` from the file at stream time (#1500).
+         */
         get: {
             parameters: {
                 query?: {
@@ -2518,15 +2524,55 @@ export interface paths {
                     /** @description FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`. */
                     id?: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                    /** @description The `ETag` or `Last-Modified` of the earlier response. When it does not match the file now, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Stream */
+                /** @description File content (inline). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
                 200: {
                     headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        /** @description Strong tag from the file's inode, size, and mtime at stream time. With `Last-Modified`, absent while the file's mtime is in the current second (a second write in that second could keep both). */
+                        ETag?: string;
+                        /** @description The file's mtime; absent whenever `ETag` is. */
+                        "Last-Modified"?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
+                        /** @description Strong tag from the file's inode, size, and mtime at stream time. With `Last-Modified`, absent while the file's mtime is in the current second (a second write in that second could keep both). */
+                        ETag?: string;
+                        /** @description The file's mtime; absent whenever `ETag` is. */
+                        "Last-Modified"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -2539,6 +2585,14 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Error"];
                     };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -2650,7 +2704,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Star path */
+        /**
+         * Star path
+         * @description Stars the path for the caller only. Allowed on any path the caller may view, including items shared with them. Never changes the item or what other users see.
+         */
         post: {
             parameters: {
                 query: {
@@ -2680,7 +2737,10 @@ export interface paths {
                 };
             };
         };
-        /** Unstar path */
+        /**
+         * Unstar path
+         * @description Removes the caller's own star. Allowed on any path the caller may view.
+         */
         delete: {
             parameters: {
                 query: {
@@ -2722,7 +2782,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List starred paths */
+        /**
+         * List starred paths
+         * @description The caller's own stars, limited to paths the caller may still view. A star on an item the caller lost access to is hidden and shows again when access returns.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -3927,7 +3990,7 @@ export interface paths {
         };
         /**
          * Replace a task
-         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
+         * @description A `taskListIds` that names another writable list moves the task there; the task keeps its id and the answer carries the new `taskListId`. 409 when the task shares its iCalendar object with other tasks, or the target list already holds an object with its id. Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
          */
         put: {
             parameters: {
@@ -3956,6 +4019,7 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
@@ -4753,7 +4817,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent. A guest (share-link session) gets the Session of its guest upload account instead (#1715): one account `guest-{32 hex}` rooted at the shared folder, only the core, filenode, blob-assembly, and filenode-version-check capabilities, apiUrl /jmap/guest and uploadUrl /jmap/guest/upload/{accountId} (the download and event source templates are not served for guests). A guest whose link does not allow uploads (view, a file link, revoked, expired) gets 403 {code: "guest_upload_forbidden"}.
          */
         get: {
             parameters: {
@@ -4793,7 +4857,7 @@ export interface paths {
         };
         /**
          * JMAP blob download
-         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.
+         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` with `If-Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.
          */
         get: {
             parameters: {
@@ -4801,7 +4865,14 @@ export interface paths {
                     /** @description Overrides the response Content-Type. */
                     type?: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                    /** @description The `ETag` of the earlier response. When it is not the current one, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. A date or a weak tag never matches here: only a final blobId has a validator. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
+                };
                 path: {
                     accountId: string;
                     blobId: string;
@@ -4811,14 +4882,43 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Blob content */
+                /** @description Blob content. `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
                 200: {
                     headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        /** @description `private, immutable, max-age=31536000` for a final id; `private, no-cache` for a hash-pending FileNode's provisional id. */
+                        "Cache-Control"?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
                         [name: string]: unknown;
                     };
                     content: {
                         "application/octet-stream": string;
                     };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 403: components["responses"]["JmapForbidden"];
                 /** @description Unknown blob, or accountId does not match the authenticated principal (problem+json). */
@@ -4829,6 +4929,14 @@ export interface paths {
                     content: {
                         "application/problem+json": Record<string, never>;
                     };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -4851,12 +4959,19 @@ export interface paths {
         put?: never;
         /**
          * JMAP blob upload
-         * @description Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.
+         * @description Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload (the smaller of WGW_JMAP_MAX_SIZE_UPLOAD and post_max_size). The body is streamed to storage and hashed on the way (#1500), so memory_limit does not bound a part. Optional Wgw-Part-Length / Wgw-Part-Sha256 headers declare the part; a stored part that differs is rejected and not stored. Two shapes mean "too large": 413 {error, code: "post_too_large"} from the front controller (declared Content-Length over post_max_size) and 400 with the RFC 8620 limit problem (over maxSizeUpload, or a body PHP discarded). A write the disk or hosting quota refuses is 507.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Declared byte count of the part. A stored length that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Length"?: string;
+                    /** @description Declared sha256 of the part, 64 hex characters. A stored sha256 that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Sha256"?: string;
+                    /** @description Open blob assembly (https://wegotworkspace.org/jmap/blob-assembly) this part is uploaded for. Records a claim so another assembly that consumes the same content-addressed part does not delete it. Unknown ids are ignored. */
+                    "Wgw-Assembly-Id"?: string;
+                };
                 path: {
                     accountId: string;
                 };
@@ -4877,13 +4992,23 @@ export interface paths {
                         "application/json": components["schemas"]["JmapBlobUploadResponse"];
                     };
                 };
-                /** @description Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit). */
+                /** @description Problem+json. type urn:ietf:params:jmap:error:limit with limit "maxSizeUpload": the body exceeds maxSizeUpload, or PHP discarded it (an empty body with a declared length, a post_max_size warning, or chunked transfer) — never stored as an empty part. type https://wegotworkspace.org/jmap/problem/part-mismatch: the stored part differs from Wgw-Part-Length / Wgw-Part-Sha256 (mismatch lists "length" and/or "sha256", with expectedLength/receivedLength or expectedSha256/receivedSha256); nothing is stored. type about:blank: a malformed declaration header. */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": Record<string, never>;
+                        "application/problem+json": {
+                            type?: string;
+                            status?: number;
+                            detail?: string;
+                            limit?: string;
+                            mismatch?: ("length" | "sha256")[];
+                            expectedLength?: number;
+                            receivedLength?: number;
+                            expectedSha256?: string;
+                            receivedSha256?: string;
+                        };
                     };
                 };
                 403: components["responses"]["JmapForbidden"];
@@ -4894,6 +5019,28 @@ export interface paths {
                     };
                     content: {
                         "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Front controller, before Laravel runs: the declared Content-Length exceeds post_max_size. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            /** @enum {string} */
+                            code: "post_too_large";
+                        };
+                    };
+                };
+                /** @description The disk or the account's hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). Nothing is stored. */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
                     };
                 };
             };
@@ -5002,7 +5149,7 @@ export interface paths {
         put?: never;
         /**
          * JMAP batch API endpoint
-         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.
+         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits, plus 507 when a write the batch needed (a blob assembly step, a Blob/upload join) was refused because the disk or hosting quota is full (#1500; FileNode/set reports that as the overQuota SetError instead). ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.
          */
         post: {
             parameters: {
@@ -5036,6 +5183,15 @@ export interface paths {
                     };
                 };
                 403: components["responses"]["JmapForbidden"];
+                /** @description A write the batch needed was refused because the disk or hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -7628,6 +7784,508 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jmap/download-tickets/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one blob
+         * @description WGW extension (#1500). A native browser download cannot send the Authorization header, so the client asks for a ticket for one blobId and hands the browser the returned URL. The ticket is bound to this blobId, this account, and the sign-in session of the access token (its refresh-token family): signing out, a password change, or a revoked device ends it. It expires at `min(last request + idle time (30 min), issue + lifetime (24 h))`; every accepted request moves the idle expiry forward, and it never expires while a response streams. An access token minted before session binding existed gets 403 `session_required` (refresh the token and retry).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Any blobId the account can download through downloadUrl. */
+                        blobId: string;
+                        /** @description File name for Content-Disposition. */
+                        name: string;
+                        /** @description Optional Content-Type override. */
+                        type?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                /** @description `session_required`: the access token carries no session binding; or the caller lacks the role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Unknown blob, a blob the account cannot read, or accountId does not match the principal. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/download-ticket/{secret}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a blob through a ticket
+         * @description WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range and `If-Range` support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                    /** @description The `ETag` of the earlier response. When it is not the current one, `Range` is ignored and the whole body is served (200), so a resume never mixes two versions. A date or a weak tag never matches here: only a final blobId has a validator. */
+                    "If-Range"?: string;
+                    /** @description Entity tags the client holds; a match with the current `ETag` (or `*`) answers 304. */
+                    "If-None-Match"?: string;
+                };
+                path: {
+                    secret: string;
+                    /** @description Display only; Content-Disposition uses the name the ticket was issued with. */
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blob content as an attachment (`X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
+                200: {
+                    headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
+                        /** @description `"<blobId>"` when the id can never name other bytes (a content hash or a write-once id). Absent for a hash-pending FileNode's provisional id, whose bytes can change under it. */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description `If-None-Match` matched the current `ETag`; no body. */
+                304: {
+                    headers: {
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unknown, expired, or revoked ticket, or the blob is no longer readable (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/local-ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ack local delivery for many rows at once: a visible window or a Meet call showed them (skip VAPID push). Ids that are not the caller's rows are ignored. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationLocalAckBatchRequest"];
+                };
+            };
+            responses: {
+                /** @description Local deliveries acknowledged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationOkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/guest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP batch API endpoint for a guest upload account
+         * @description The apiUrl of a guest Session (#1715): a guest on a share link with edit access on a folder. Same envelope as POST /jmap, with only the methods an upload needs: Core/echo, FileNode/get, FileNode/query, FileNode/set, and BlobAssembly/set|append|finish|get; every other method is unknownMethod. Guest FileNode/get needs ids, and guest FileNode/query takes only isTopLevel: true or parentId (depth 0, no ancestorId, no filter operators), else invalidArguments and `using` accepts only core, filenode, blob-assembly, and filenode-version-check. FileNode/set for guests: create must be a file with a blobId; update may only carry blobId, size, and expectedBlobId (required); destroy is refused (SetError forbidden); onExists must be null. Every request re-checks the guest session and its share (revoked, expired, lowered to view, owner reach) before the body is read: 403 {code: "guest_upload_forbidden"} otherwise. Members get 403 here. A request budget per share applies (429 with Retry-After).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JmapApiRequest"];
+                };
+            };
+            responses: {
+                /** @description JMAP response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapApiResponse"];
+                    };
+                };
+                /** @description Request-level error (problem details) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description The share link's request budget is spent (all guests of one link share it). Retry-After says when to try again. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A write the batch needed was refused because the disk or hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/guest/upload/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP blob upload for a guest upload account
+         * @description The uploadUrl of a guest Session (#1715). Same as POST /jmap/upload/{accountId} (streamed, checked parts, Wgw-Part-* and Wgw-Assembly-Id headers), stored in the guest account's own blob space. The gate re-checks the guest session and its share first (403 {code: "guest_upload_forbidden"}). Content-Length is required (411). The share's byte budget (WGW_GUEST_UPLOAD_BYTES_PER_DAY, default 10 GiB per 24 hours, shared by every guest of the link) is charged from Content-Length before the body is read: 429 {code: "guest_upload_budget"} with Retry-After when it is spent. Members get 403 here.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Declared byte count of the part. A stored length that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Length"?: string;
+                    /** @description Declared sha256 of the part, 64 hex characters. A stored sha256 that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Sha256"?: string;
+                    /** @description Open blob assembly (https://wegotworkspace.org/jmap/blob-assembly) this part is uploaded for. Records a claim so another assembly that consumes the same content-addressed part does not delete it. Unknown ids are ignored. */
+                    "Wgw-Assembly-Id"?: string;
+                };
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "*/*": string;
+                };
+            };
+            responses: {
+                /** @description Upload response (RFC 8620 §6.1) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapBlobUploadResponse"];
+                    };
+                };
+                /** @description Problem+json. type urn:ietf:params:jmap:error:limit with limit "maxSizeUpload": the body exceeds maxSizeUpload, or PHP discarded it (an empty body with a declared length, a post_max_size warning, or chunked transfer) — never stored as an empty part. type https://wegotworkspace.org/jmap/problem/part-mismatch: the stored part differs from Wgw-Part-Length / Wgw-Part-Sha256 (mismatch lists "length" and/or "sha256", with expectedLength/receivedLength or expectedSha256/receivedSha256); nothing is stored. type about:blank: a malformed declaration header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": {
+                            type?: string;
+                            status?: number;
+                            detail?: string;
+                            limit?: string;
+                            mismatch?: ("length" | "sha256")[];
+                            expectedLength?: number;
+                            receivedLength?: number;
+                            expectedSha256?: string;
+                            receivedSha256?: string;
+                        };
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description accountId does not match the authenticated principal (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Guest parts need a Content-Length (problem+json). */
+                411: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+                /** @description Front controller, before Laravel runs: the declared Content-Length exceeds post_max_size. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            /** @enum {string} */
+                            code: "post_too_large";
+                        };
+                    };
+                };
+                /** @description The share link's request budget or byte budget is spent (code guest_upload_budget for bytes). Retry-After says when to try again. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The disk or the account's hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). Nothing is stored. */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/download-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one drive file by path
+         * @description WGW extension (#1622). Lets a share-link guest download a file natively: the browser streams it to disk and can resume it with `Range`. The server checks read access to `path` for the caller, finds the file's current node blobId, and issues the same kind of ticket as `POST /jmap/download-tickets/{accountId}`: same secret, idle expiry (30 min), absolute lifetime (24 h), and URL (`GET /jmap/download-ticket/{secret}/{name}`). A guest's ticket is bound to its share session: revoking the link, revoking or expiring the session, or a path leaving the share stops the download at its next request. A signed-in caller's ticket is bound to its sign-in session. The ticket serves only the bytes the file had when it was issued; after the content changes it answers 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Virtual drive path of a file the caller may read. */
+                        path: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                /** @description `bad_request`: path is missing. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Missing or invalid access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description `session_required`: a signed-in access token without session binding. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description No readable file at path: outside the share, a folder, missing, or the share session ended. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10074,7 +10732,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
@@ -10108,7 +10766,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
@@ -10651,7 +11309,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -10974,6 +11632,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
+            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
@@ -11036,7 +11695,7 @@ export interface components {
             name?: string;
             color?: string | null;
             topic?: string | null;
-            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). */
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
@@ -11482,6 +12141,9 @@ export interface components {
          * @enum {string}
          */
         InstallerErrorCode: "data_dir_not_absolute" | "data_dir_parent_missing" | "data_dir_published" | "data_dir_not_writable" | "data_dir_owned";
+        NotificationLocalAckBatchRequest: {
+            ids: string[];
+        };
     };
     responses: {
         /** @description Invalid request */

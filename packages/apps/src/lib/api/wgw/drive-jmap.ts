@@ -4,12 +4,22 @@ import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
   JmapClient,
+  QUOTA_CAPABILITY,
   JmapFileNodePathCache,
   JmapFileNodesClient,
   JmapSetItemError,
   type JmapFileNode,
 } from "@/lib/jmap-client";
 import { normalizeApiVirtualPath as normalizePath, parentAndName } from "@/lib/files/api-path";
+import {
+  DRIVE_READ_BLOB_MAX_BYTES,
+  DriveFileTooLargeToOpenError,
+} from "@/lib/files/read-blob-limit";
+import {
+  readDriveUploadCapabilities,
+  rememberDriveSessionCapabilities,
+  type DriveUploadCapabilities,
+} from "@/lib/api/wgw/drive-upload-capabilities";
 import type {
   WgwDriveDirectoryEntry,
   WgwDriveUserData,
@@ -20,6 +30,8 @@ import type {
   DriveUIData,
   DriveUploadProgress,
 } from "@/drive-core/src/drive-types";
+
+export { DRIVE_READ_BLOB_MAX_BYTES, DriveFileTooLargeToOpenError };
 
 export const JMAP_MAX_SIZE_UPLOAD_DEFAULT = 25_000_000;
 
@@ -79,6 +91,10 @@ export type DriveJmapSession = {
   cache: JmapFileNodePathCache;
   accountId: string;
   maxSizeUpload: number;
+  /** Blob, blob assembly, and version check support (#1500). */
+  uploadCapabilities: DriveUploadCapabilities;
+  /** The Session advertises `urn:ietf:params:jmap:quota` (Drive free space per root). */
+  quota?: boolean;
   uploadUrl: string;
   downloadUrl: string;
   sharedRootPaths: Set<string>;
@@ -86,7 +102,7 @@ export type DriveJmapSession = {
 
 let cachedSession: DriveJmapSession | null = null;
 
-function toApiRelativePath(input: string): string {
+export function toApiRelativePath(input: string): string {
   const base = wgwApiBaseUrl();
   const raw = String(input);
   if (raw.startsWith("/")) {
@@ -130,13 +146,18 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
     throw new Error("JMAP session does not advertise FileNode.");
   }
   const core = session.capabilities[CORE_CAPABILITY] as { maxSizeUpload?: number } | undefined;
+  const accountId = client.primaryAccountId(FILENODE_CAPABILITY);
+  const uploadCapabilities = readDriveUploadCapabilities(session, accountId);
+  if (session.username) rememberDriveSessionCapabilities(session.username, uploadCapabilities);
   cachedSession = {
     client,
     fileNodes: new JmapFileNodesClient(client),
     cache: new JmapFileNodePathCache(),
-    accountId: client.primaryAccountId(FILENODE_CAPABILITY),
+    accountId,
     maxSizeUpload:
       typeof core?.maxSizeUpload === "number" ? core.maxSizeUpload : JMAP_MAX_SIZE_UPLOAD_DEFAULT,
+    uploadCapabilities,
+    quota: QUOTA_CAPABILITY in session.capabilities,
     uploadUrl: session.uploadUrl,
     downloadUrl: session.downloadUrl,
     sharedRootPaths: new Set(),
@@ -155,6 +176,10 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
     size: node.size ?? 0,
     time: Number.isFinite(modified) ? Math.floor(modified / 1000) : 0,
     permissions: 0,
+    ...(node.nodeType !== "directory" && typeof node.blobId === "string"
+      ? { blobId: node.blobId }
+      : {}),
+    ...(node.contentHashPending === true ? { contentHashPending: true } : {}),
     myRights: {
       mayView: rights?.mayRead !== false,
       mayComment: false,
@@ -387,12 +412,13 @@ export async function uploadJmapBlob(
   return payload.blobId;
 }
 
-export async function downloadFileNodeBlob(
+/** The FileNode at `path` with its `blobId` (from the path cache, else `FileNode/get`). */
+export async function resolveDownloadableFileNode(
   session: DriveJmapSession,
   path: string,
   username: string,
   signal?: AbortSignal,
-): Promise<Blob> {
+): Promise<JmapFileNode & { blobId: string }> {
   const nodeId = await resolveFileNodeId(session, path, username, signal);
   let node = session.cache.node(nodeId);
   if (!node?.blobId) {
@@ -401,10 +427,29 @@ export async function downloadFileNodeBlob(
     if (node) session.cache.remember(path, node);
   }
   if (!node?.blobId) throw new Error(`FileNode has no blobId: ${path}`);
+  return node as JmapFileNode & { blobId: string };
+}
+
+/**
+ * Reads a file into memory, for previews and opening a file. Above
+ * {@link DRIVE_READ_BLOB_MAX_BYTES} it refuses before fetching: a download
+ * goes through a ticket (`downloadFileNodeWithTicket`) instead.
+ */
+export async function downloadFileNodeBlob(
+  session: DriveJmapSession,
+  path: string,
+  username: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const node = await resolveDownloadableFileNode(session, path, username, signal);
+  const name = node.name || parentAndName(path).from || "download";
+  if (typeof node.size === "number" && node.size > DRIVE_READ_BLOB_MAX_BYTES) {
+    throw new DriveFileTooLargeToOpenError(name, node.size);
+  }
   const url = expandJmapUrl(session.downloadUrl, {
     accountId: session.accountId,
     blobId: node.blobId,
-    name: node.name || parentAndName(path).from || "download",
+    name,
     type: node.type || "application/octet-stream",
   });
   const res = await wgwFetch(toApiRelativePath(url), { signal });
@@ -621,7 +666,30 @@ export async function listFileNodeEntriesByPaths(
       }
     }),
   );
+  const missing = normalized.filter((path) => !entriesByPath.has(path));
+  if (missing.length > 0) await addSharedRootEntries(session, missing, entriesByPath, opts?.signal);
   return normalized
     .map((path) => entriesByPath.get(path))
     .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
+}
+
+/**
+ * An item shared with the caller sits in the owner's folder, which the caller
+ * cannot list. Resolve such a path from the shared-with-me roots instead.
+ */
+async function addSharedRootEntries(
+  session: DriveJmapSession,
+  paths: readonly string[],
+  into: Map<string, WgwDriveDirectoryEntry>,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    await loadSharedRoots(session, signal);
+  } catch {
+    return;
+  }
+  for (const path of paths) {
+    const node = session.sharedRootPaths.has(path) ? session.cache.nodeAtPath(path) : undefined;
+    if (node) into.set(path, fileNodeToDirectoryEntry(path, node));
+  }
 }

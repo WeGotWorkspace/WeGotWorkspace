@@ -27,7 +27,11 @@ export type PendingWrite<F extends string = string> = {
   queued: boolean;
 };
 
-/** How a domain reads one of its outbox rows. */
+/**
+ * How a domain reads one of its outbox rows. A row can name more than one item:
+ * a path-keyed rename moves an item away from one path (`deleting`) and onto
+ * another (owned by the queued write).
+ */
 export type PendingRowView<F extends string = string> = {
   id: string | null;
   fields?: Iterable<F>;
@@ -45,20 +49,22 @@ function emptyWrite<F extends string>(): PendingWrite<F> {
  */
 export function readPendingWrites<F extends string = string>(
   rows: readonly OfflineOutboxRow[],
-  view: (row: OfflineOutboxRow) => PendingRowView<F>,
+  view: (row: OfflineOutboxRow) => PendingRowView<F> | readonly PendingRowView<F>[],
   pendingSyncIds: Iterable<string> = [],
 ): Map<string, PendingWrite<F>> {
   const writes = new Map<string, PendingWrite<F>>();
   for (const row of rows) {
-    const { id, fields, deleting } = view(row);
-    if (!id) continue;
-    const write = writes.get(id) ?? emptyWrite<F>();
-    write.queued = true;
-    if (row.ifInState) write.bases.push(row.ifInState);
-    for (const field of fields ?? []) write.fields.add(field);
-    if (deleting) write.deleting = true;
-    if (row.lastError !== "stateMismatch") write.blocksToken = true;
-    writes.set(id, write);
+    const viewed = view(row);
+    for (const { id, fields, deleting } of Array.isArray(viewed) ? viewed : [viewed]) {
+      if (!id) continue;
+      const write = writes.get(id) ?? emptyWrite<F>();
+      write.queued = true;
+      if (row.ifInState) write.bases.push(row.ifInState);
+      for (const field of fields ?? []) write.fields.add(field);
+      if (deleting) write.deleting = true;
+      if (row.lastError !== "stateMismatch") write.blocksToken = true;
+      writes.set(id, write);
+    }
   }
   for (const id of pendingSyncIds) {
     if (!writes.has(id)) writes.set(id, emptyWrite<F>());

@@ -174,7 +174,7 @@ final class CalendarRepository
 
             if ($mutations !== []) {
                 $propPatch = new PropPatch($mutations);
-                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $this->backends->make()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
                 $propPatch->commit();
             }
 
@@ -437,7 +437,7 @@ final class CalendarRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
-
+        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
         $existing = $this->findCalendarInstance($principalUri, (string) $instance->uri);
         if ($existing !== null && (int) $existing->id !== (int) $instance->id) {

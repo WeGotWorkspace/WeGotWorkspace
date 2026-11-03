@@ -1,6 +1,6 @@
 import { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
 import type { DriveUIData } from "@/drive-core/src/drive-types";
-import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, driveUploadStatusText } from "@/drive-core/src/drive-labels";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import {
   normalizeApiVirtualPath,
@@ -42,6 +42,19 @@ export function formatBytesCompact(bytes: number): string {
   }
   const precision = value >= 100 || unit === 0 ? 0 : 1;
   return `${value.toFixed(precision)} ${units[unit]}`;
+}
+
+/** Bytes from a listed size such as "1.5 MB"; `null` for folders or an unreadable size. */
+export function parseFileSizeBytes(file: Pick<DriveFile, "kind" | "size">): number | null {
+  if (file.kind === "folder") return null;
+  const raw = file.size?.replace(/[^\d.]/g, "");
+  if (!raw) return 0;
+  const kb = Number.parseFloat(raw);
+  if (Number.isNaN(kb)) return null;
+  if (file.size?.includes("MB")) return Math.round(kb * 1024 * 1024);
+  if (file.size?.includes("GB")) return Math.round(kb * 1024 * 1024 * 1024);
+  if (file.size?.includes("KB")) return Math.round(kb * 1024);
+  return Math.round(kb);
 }
 
 type DriveShareListingFlags = {
@@ -98,9 +111,20 @@ export function driveFileFromEntry(
   const size = entry.type === "dir" ? "—" : entry.size > 0 ? formatBytesCompact(entry.size) : "0 B";
   const location =
     driveLocationLabel(normalizeApiVirtualPath(apiPath).replace(/^\/+/, ""), username) ?? undefined;
+  const upload = entry.upload
+    ? {
+        id: entry.upload.id,
+        status: entry.upload.status,
+        ...(entry.upload.reason ? { reason: entry.upload.reason } : {}),
+      }
+    : undefined;
   return {
     id: apiPath,
-    notebook: entry.type === "dir" ? "Folder" : `File · ${size}`,
+    notebook: upload
+      ? `${driveUploadStatusText(upload)} · ${size}`
+      : entry.type === "dir"
+        ? "Folder"
+        : `File · ${size}`,
     category: entry.type === "dir" ? "Folder" : "File",
     date,
     title: entry.name,
@@ -116,6 +140,7 @@ export function driveFileFromEntry(
     mayShare: entry.myRights?.mayShare,
     mayManageStructure: entry.myRights?.mayManageStructure,
     ...driveShareFlagsFromListing(entry),
+    ...(upload ? { upload } : {}),
   };
 }
 

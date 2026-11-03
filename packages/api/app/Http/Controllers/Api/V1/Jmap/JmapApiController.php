@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Jmap;
 
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Support\JmapProblem;
+use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
+use App\Services\Jmap\Guest\GuestJmapGateway;
+use App\Services\Jmap\Guest\GuestUploadGate;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodDispatcher;
 use Illuminate\Http\JsonResponse;
@@ -18,15 +22,35 @@ use Illuminate\Http\Request;
  * failures travel as `error` invocations inside methodResponses. Non-2xx is
  * reserved for request-level errors (§3.6.1): malformed JSON, a body that is
  * not a Request object, unsupported capabilities, and size limits.
+ *
+ * `handleGuest` is the same endpoint for a guest upload account (#1715):
+ * the gate re-checks the share first, and the guest dispatcher knows only
+ * the methods an upload needs.
  */
 final class JmapApiController
 {
     public function __construct(
         private readonly JmapMethodDispatcher $dispatcher,
         private readonly JmapCapabilitySet $capabilities,
+        private readonly GuestJmapGateway $guest,
+        private readonly GuestUploadGate $guestGate,
     ) {}
 
     public function handle(Request $request): JsonResponse
+    {
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        return $this->run($request, $this->dispatcher, $this->capabilities, (string) $principal['username']);
+    }
+
+    public function handleGuest(Request $request): JsonResponse
+    {
+        $account = $this->guestGate->open($request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE));
+
+        return $this->run($request, $this->guest->dispatcher, $this->guest->capabilities, $account->accountId);
+    }
+
+    private function run(Request $request, JmapMethodDispatcher $dispatcher, JmapCapabilitySet $capabilities, string $accountId): JsonResponse
     {
         $content = $request->getContent();
         if (strlen($content) > JmapCapabilities::coreCapability()['maxSizeRequest']) {
@@ -45,7 +69,7 @@ final class JmapApiController
         // Derived from registered methods + feature gates, never hardcoded:
         // a gated-off domain is unknownCapability here and absent from the
         // Session resource in the same request.
-        $supported = $this->capabilities->supportedUrns();
+        $supported = $capabilities->supportedUrns();
         foreach ($using as $capability) {
             if (! is_string($capability) || ! in_array($capability, $supported, true)) {
                 return $this->problem('urn:ietf:params:jmap:error:unknownCapability', 400, sprintf('Unsupported capability: %s.', is_string($capability) ? $capability : gettype($capability)));
@@ -65,12 +89,15 @@ final class JmapApiController
             }
         }
 
-        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $responses = $this->dispatcher->dispatch((string) $principal['username'], $using, $methodCalls);
+        try {
+            $responses = $dispatcher->dispatch($accountId, $using, $methodCalls);
+        } catch (StorageFullException) {
+            return JmapProblem::insufficientStorage();
+        }
 
         return response()->json([
             'methodResponses' => $responses,
-            'sessionState' => $this->capabilities->sessionState(),
+            'sessionState' => $capabilities->sessionState(),
         ]);
     }
 

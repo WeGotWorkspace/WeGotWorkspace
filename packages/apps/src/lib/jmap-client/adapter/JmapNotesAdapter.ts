@@ -1,11 +1,23 @@
-import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { NOTES_CAPABILITY, type JmapId } from "../core/types.js";
 import { JmapNotesClient } from "../notes/JmapNotesClient.js";
 import type { JmapNote, JmapNotebook } from "../notes/types.js";
+import { JmapInboundAdapter } from "./JmapInboundAdapter.js";
 
 const NOTEBOOK_TYPE = "Notebook";
 const NOTE_TYPE = "Note";
+
+/** Every Note property the app reads, except `body`. */
+export const NOTE_METADATA_PROPERTIES = [
+  "notebookId",
+  "title",
+  "categories",
+  "status",
+  "etag",
+  "starred",
+  "updatedAt",
+  "contentUpdatedAt",
+] as const;
 
 export type JmapNotesAdapterOptions = {
   client: JmapClient;
@@ -16,22 +28,37 @@ export type JmapNotesAdapterOptions = {
   onRemoteNotebook?: (notebook: JmapNotebook) => void;
   onRemoteNotebookDestroyed?: (notebookId: JmapId) => void;
   onRefetchAll?: (snapshot: { notebooks: JmapNotebook[]; notes: JmapNote[] }) => void;
+  /**
+   * True while a live collab room in this tab holds the note's body. A sync
+   * then fetches that note without `body` (docs/architecture/jmap-push.md,
+   * "Collab rooms lead"), and `onRemoteNote` gets it without one.
+   */
+  bodyInRoom?: (noteId: JmapId) => boolean;
 };
 
 /**
  * Inbound-only JMAP adapter: Notebook/Note `/changes` polling.
  * Mutations stay on REST `/notes/*`.
  */
-export class JmapNotesAdapter {
+export class JmapNotesAdapter extends JmapInboundAdapter {
   #notes: JmapNotesClient;
   #options: JmapNotesAdapterOptions;
   #accountId: JmapId | null = null;
-  #pollTimer: ReturnType<typeof setInterval> | undefined;
-  #pollInFlight = false;
 
   constructor(options: JmapNotesAdapterOptions) {
+    super();
     this.#options = options;
     this.#notes = new JmapNotesClient(options.client);
+  }
+
+  protected readonly pushTypes = [NOTEBOOK_TYPE, NOTE_TYPE];
+
+  protected get jmapClient(): JmapClient {
+    return this.#options.client;
+  }
+
+  protected reportSyncError(error: unknown): void {
+    this.#options.onSyncError?.(error);
   }
 
   get accountId(): JmapId {
@@ -48,77 +75,74 @@ export class JmapNotesAdapter {
     await this.#notes.getNotes(this.accountId, []);
   }
 
-  async sync(): Promise<void> {
+  protected async pullChanges(): Promise<void> {
     const client = this.#options.client;
-    try {
-      const notebookState = client.getState(this.accountId, NOTEBOOK_TYPE);
-      if (notebookState) {
-        const changes = await this.#notes.notebookChanges(this.accountId, notebookState);
-        const changedIds = [...changes.created, ...changes.updated];
-        if (changedIds.length) {
-          const fetched = await this.#notes.getNotebooks(this.accountId, changedIds);
-          for (const notebook of fetched.list) {
-            this.#options.onRemoteNotebook?.(notebook);
-          }
-        }
-        for (const id of changes.destroyed) {
-          this.#options.onRemoteNotebookDestroyed?.(id);
+    const notebookState = client.getState(this.accountId, NOTEBOOK_TYPE);
+    if (notebookState) {
+      const changes = await this.#notes.notebookChanges(this.accountId, notebookState);
+      const changedIds = [...changes.created, ...changes.updated];
+      if (changedIds.length) {
+        const fetched = await this.#notes.getNotebooks(this.accountId, changedIds);
+        for (const notebook of fetched.list) {
+          this.#options.onRemoteNotebook?.(notebook);
         }
       }
+      for (const id of changes.destroyed) {
+        this.#options.onRemoteNotebookDestroyed?.(id);
+      }
+    }
 
-      const noteState = client.getState(this.accountId, NOTE_TYPE);
-      if (noteState) {
-        const changes = await this.#notes.noteChanges(this.accountId, noteState);
-        const created = new Set(changes.created);
-        const updated = changes.updated.filter((id) => !created.has(id));
-        const changedIds = [...changes.created, ...updated];
-        const destroyed = changes.destroyed.filter(
-          (id) => !created.has(id) && !updated.includes(id),
-        );
-        if (changedIds.length) {
-          const fetched = await this.#notes.getNotes(this.accountId, changedIds);
-          for (const note of fetched.list) {
-            this.#options.onRemoteNote?.(note);
-          }
-        }
-        let holdNoteState = false;
-        for (const id of destroyed) {
-          const result = await this.#options.onRemoteNoteDestroyed?.(id);
-          if (result === "skipped-pending") holdNoteState = true;
-        }
-        if (holdNoteState) {
-          client.setState(this.accountId, NOTE_TYPE, noteState);
+    const noteState = client.getState(this.accountId, NOTE_TYPE);
+    if (noteState) {
+      const changes = await this.#notes.noteChanges(this.accountId, noteState);
+      const created = new Set(changes.created);
+      const updated = changes.updated.filter((id) => !created.has(id));
+      const changedIds = [...changes.created, ...updated];
+      const destroyed = changes.destroyed.filter((id) => !created.has(id) && !updated.includes(id));
+      if (changedIds.length) {
+        for (const note of await this.#getChangedNotes(changedIds)) {
+          this.#options.onRemoteNote?.(note);
         }
       }
-    } catch (error) {
-      if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
-        await this.#refetchAll();
-        return;
+      let holdNoteState = false;
+      for (const id of destroyed) {
+        const result = await this.#options.onRemoteNoteDestroyed?.(id);
+        if (result === "skipped-pending") holdNoteState = true;
       }
-      this.#options.onSyncError?.(error);
+      if (holdNoteState) {
+        client.setState(this.accountId, NOTE_TYPE, noteState);
+      }
     }
   }
 
-  startPolling(intervalMs: number): void {
-    this.stopPolling();
-    this.#pollTimer = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      if (this.#pollInFlight) return;
-      this.#pollInFlight = true;
-      void this.sync().finally(() => {
-        this.#pollInFlight = false;
-      });
-    }, intervalMs);
+  /** Full notes, body included, for ids a metadata-only fetch could not complete. */
+  async fetchNotes(ids: JmapId[]): Promise<JmapNote[]> {
+    return (await this.#notes.getNotes(this.accountId, ids)).list;
   }
 
-  stopPolling(): void {
-    if (this.#pollTimer !== undefined) clearInterval(this.#pollTimer);
-    this.#pollTimer = undefined;
+  /** Changed notes; a note whose body a live room holds comes without it. */
+  async #getChangedNotes(ids: JmapId[]): Promise<JmapNote[]> {
+    const inRoom = this.#options.bodyInRoom;
+    const withoutBody = inRoom ? ids.filter((id) => inRoom(id)) : [];
+    const withBody = ids.filter((id) => !withoutBody.includes(id));
+    const notes: JmapNote[] = [];
+    if (withoutBody.length) {
+      const fetched = await this.#notes.getNotes(
+        this.accountId,
+        withoutBody,
+        NOTE_METADATA_PROPERTIES,
+      );
+      notes.push(...fetched.list);
+    }
+    if (withBody.length) {
+      notes.push(...(await this.#notes.getNotes(this.accountId, withBody)).list);
+    }
+    return notes;
   }
 
-  async #refetchAll(): Promise<void> {
+  protected async refetchAll(): Promise<void> {
     const notebooks = await this.#notes.getNotebooks(this.accountId);
-    const notes = await this.#notes.getNotes(this.accountId);
+    const notes = await this.#notes.getAllNotes(this.accountId);
     if (this.#options.onRefetchAll) {
       this.#options.onRefetchAll({ notebooks: notebooks.list, notes: notes.list });
       return;

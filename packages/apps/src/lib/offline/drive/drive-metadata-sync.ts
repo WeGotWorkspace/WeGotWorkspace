@@ -5,6 +5,7 @@ import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availability-store";
 import { writeDriveBootstrapToCache } from "@/lib/offline/drive/drive-directory-offline-store";
 import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
+import { rememberDriveFolderNodeId } from "@/lib/offline/drive/upload/drive-upload-target";
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 
@@ -55,6 +56,19 @@ async function cacheDirectoryEntries(
   await stampDocsAvailabilityNodeIds(username, entries);
 }
 
+/**
+ * Roots (home, group drives) have no row of their own in `drive_entries`.
+ * Remember their ids so files can be queued into them offline. Best effort.
+ */
+async function rememberRootFolderId(username: string, root: string): Promise<void> {
+  try {
+    const session = await driveJmapSession();
+    await rememberDriveFolderNodeId(username, root, session.cache.nodeIdForPath(root));
+  } catch {
+    // The next crawl tries again.
+  }
+}
+
 export async function readDriveMetadataSyncProgress(
   username: string,
 ): Promise<DriveMetadataSyncProgress> {
@@ -94,6 +108,7 @@ export async function syncDriveMetadataTree(
   await writeDriveBootstrapToCache(username, bootstrap);
 
   const roots = await collectMetadataRoots(username);
+  const rootKeys = new Set(roots.map(normalizeDriveEntryKey));
   const visited = new Set<string>();
   const queue: string[] = [...roots];
 
@@ -117,6 +132,7 @@ export async function syncDriveMetadataTree(
       const entries = await fetchDirectoryEntries(username, dir, signal);
       // Do not prune in the catch below: only a successful listing is a snapshot.
       await cacheDirectoryEntries(username, dir, entries);
+      if (rootKeys.has(normalized)) await rememberRootFolderId(username, dir);
       for (const entry of entries) {
         if (entry.type === "dir") {
           queue.push(normalizePath(entry.path));

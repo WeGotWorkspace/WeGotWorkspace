@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { JmapNotesAdapter } from "./JmapNotesAdapter";
+import { JmapNotesAdapter, NOTE_METADATA_PROPERTIES } from "./JmapNotesAdapter";
 import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { NOTES_CAPABILITY } from "../core/types.js";
 
 const getNotebooks = vi.fn();
 const getNotes = vi.fn();
+const getAllNotes = vi.fn();
 const notebookChanges = vi.fn();
 const noteChanges = vi.fn();
 
@@ -13,6 +14,7 @@ vi.mock("../notes/JmapNotesClient.js", () => ({
   JmapNotesClient: class {
     getNotebooks = getNotebooks;
     getNotes = getNotes;
+    getAllNotes = getAllNotes;
     notebookChanges = notebookChanges;
     noteChanges = noteChanges;
   },
@@ -39,6 +41,7 @@ describe("JmapNotesAdapter", () => {
   beforeEach(() => {
     getNotebooks.mockReset();
     getNotes.mockReset();
+    getAllNotes.mockReset();
     notebookChanges.mockReset();
     noteChanges.mockReset();
     getNotebooks.mockResolvedValue({
@@ -46,6 +49,10 @@ describe("JmapNotesAdapter", () => {
       state: "nb-1",
     });
     getNotes.mockResolvedValue({
+      list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
+      state: "n-1",
+    });
+    getAllNotes.mockResolvedValue({
       list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
       state: "n-1",
     });
@@ -93,6 +100,41 @@ describe("JmapNotesAdapter", () => {
     expect(onRemoteNoteDestroyed).toHaveBeenCalledWith("n-gone");
   });
 
+  it("fetches a note whose body a live room holds without its body", async () => {
+    const onRemoteNote = vi.fn();
+    const adapter = new JmapNotesAdapter({
+      client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      onRemoteNote,
+      bodyInRoom: (id) => id === "n-open",
+    });
+    notebookChanges.mockResolvedValue({
+      created: [],
+      updated: [],
+      destroyed: [],
+      newState: "nb-1",
+    });
+    noteChanges.mockResolvedValue({
+      created: [],
+      updated: ["n-open", "n-other"],
+      destroyed: [],
+      newState: "n-2",
+    });
+    getNotes.mockImplementation(async (_account: string, ids: string[], properties?: unknown) => ({
+      list: ids.map((id) =>
+        properties ? { id, title: "Meta" } : { id, title: "Full", body: "b" },
+      ),
+      state: "n-2",
+    }));
+
+    await adapter.sync();
+
+    expect(getNotes).toHaveBeenCalledWith("bob", ["n-open"], NOTE_METADATA_PROPERTIES);
+    expect(getNotes).toHaveBeenCalledWith("bob", ["n-other"]);
+    expect(NOTE_METADATA_PROPERTIES).not.toContain("body");
+    expect(onRemoteNote).toHaveBeenCalledWith({ id: "n-open", title: "Meta" });
+    expect(onRemoteNote).toHaveBeenCalledWith({ id: "n-other", title: "Full", body: "b" });
+  });
+
   it("re-primes on cannotCalculateChanges", async () => {
     const adapter = new JmapNotesAdapter({
       client: clientStub({ Note: "stale" }),
@@ -102,7 +144,8 @@ describe("JmapNotesAdapter", () => {
     );
     await adapter.sync();
     expect(getNotebooks).toHaveBeenCalled();
-    expect(getNotes).toHaveBeenCalled();
+    expect(getAllNotes).toHaveBeenCalledWith("bob");
+    expect(getNotes).not.toHaveBeenCalled();
   });
 
   it("does not destroy a note that is also created or updated in the same delta", async () => {
@@ -171,6 +214,42 @@ describe("JmapNotesAdapter", () => {
     expect(onRefetchAll).toHaveBeenCalledWith({
       notebooks: [{ id: "notes-general", name: "General" }],
       notes: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
+    });
+  });
+
+  describe("syncIfStale", () => {
+    it("skips /changes when the pushed states equal its own", async () => {
+      const adapter = new JmapNotesAdapter({
+        client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      });
+      await expect(adapter.syncIfStale({ Notebook: "nb-1", Note: "n-1" }, "bob")).resolves.toBe(
+        true,
+      );
+      expect(notebookChanges).not.toHaveBeenCalled();
+      expect(noteChanges).not.toHaveBeenCalled();
+    });
+
+    it("syncs when a pushed state differs", async () => {
+      const adapter = new JmapNotesAdapter({
+        client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      });
+      notebookChanges.mockResolvedValue({
+        created: [],
+        updated: [],
+        destroyed: [],
+        newState: "nb-1",
+      });
+      noteChanges.mockResolvedValue({ created: [], updated: [], destroyed: [], newState: "n-2" });
+      await expect(adapter.syncIfStale({ Note: "n-2" })).resolves.toBe(true);
+      expect(noteChanges).toHaveBeenCalledWith("bob", "n-1");
+    });
+
+    it("reports a failed sync, and still tells onSyncError", async () => {
+      const onSyncError = vi.fn();
+      const adapter = new JmapNotesAdapter({ client: clientStub({ Note: "n-1" }), onSyncError });
+      noteChanges.mockRejectedValue(new TypeError("Failed to fetch"));
+      await expect(adapter.syncIfStale({ Note: "n-2" })).resolves.toBe(false);
+      expect(onSyncError).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dueEditSendsShowWithoutTime,
   canChangeTaskListOwner,
   canDeleteTaskList,
   composerDefaultDueForView,
@@ -317,6 +318,23 @@ describe("tasks-task-utils", () => {
     ).toBe(true);
   });
 
+  it("canChangeTaskListOwner locks a group list for members without the delete right", () => {
+    const group = { id: "roadmap", scope: "group" as const, groupSlug: "team" };
+    expect(
+      canChangeTaskListOwner({ ...group, myRights: { mayShare: true, mayDelete: false } }),
+    ).toBe(false);
+    expect(
+      canChangeTaskListOwner({ ...group, myRights: { mayShare: true, mayDelete: true } }),
+    ).toBe(true);
+    expect(
+      canChangeTaskListOwner({
+        id: "work",
+        scope: "personal",
+        myRights: { mayShare: true, mayDelete: false },
+      }),
+    ).toBe(true);
+  });
+
   it("canDeleteTaskList allows owned custom lists including home and work roles", () => {
     expect(canDeleteTaskList({ id: "work", isDefault: false, isSharee: false })).toBe(true);
     expect(
@@ -395,5 +413,24 @@ describe("tasks-task-utils", () => {
         myRights: { mayShare: false },
       }),
     ).toBe(false);
+  });
+});
+
+describe("dueEditSendsShowWithoutTime (#1821)", () => {
+  it("sends the all-day flag with a due added to a task without one", () => {
+    expect(dueEditSendsShowWithoutTime({ due: null }, "2026-11-08", true)).toBe(true);
+  });
+
+  it("sends it when the due changes, and when only the flag changes", () => {
+    const allDay = { due: "2026-11-08", showWithoutTime: true };
+    expect(dueEditSendsShowWithoutTime(allDay, "2026-11-09", true)).toBe(true);
+    expect(dueEditSendsShowWithoutTime(allDay, "2026-11-08", false)).toBe(true);
+  });
+
+  it("leaves it out when the due and the flag stay, or there is no due", () => {
+    expect(
+      dueEditSendsShowWithoutTime({ due: "2026-11-08", showWithoutTime: true }, "2026-11-08", true),
+    ).toBe(false);
+    expect(dueEditSendsShowWithoutTime({ due: "2026-11-08" }, null, undefined)).toBe(false);
   });
 });

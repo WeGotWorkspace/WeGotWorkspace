@@ -87,6 +87,21 @@ export function taskDueIsDateOnly(
   return !/T\d{2}:\d{2}/.test(due);
 }
 
+/**
+ * Whether an edit sends `showWithoutTime`: whenever it sets a new due, or the
+ * all-day flag of the same due changes. The API stores a due without the flag
+ * as a time, so a date added to a task with no due would land at midnight (#1821).
+ */
+export function dueEditSendsShowWithoutTime(
+  task: Pick<Task, "due" | "showWithoutTime">,
+  nextDue: string | null,
+  nextShowWithoutTime: boolean | undefined,
+): boolean {
+  if (!nextDue) return false;
+  if (nextDue !== (task.due ?? null)) return true;
+  return nextShowWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime);
+}
+
 export function dueTimeInputValue(date: Date): string {
   return `${padDuePart(date.getHours())}:${padDuePart(date.getMinutes())}`;
 }
@@ -364,7 +379,8 @@ export function canShareTaskList(list?: { myRights?: { mayShare?: boolean } | nu
 
 /**
  * Move Owner between personal and group (same options as create).
- * Inbox, default, provisioned group, and sharees stay locked.
+ * Inbox, default, provisioned group, and sharees stay locked. Moving a group
+ * list out of its group needs the delete right (`myRights.mayDelete`).
  */
 export function canChangeTaskListOwner(list?: TaskListWriteInfo): boolean {
   const listId = list?.id;
@@ -382,6 +398,7 @@ export function canChangeTaskListOwner(list?: TaskListWriteInfo): boolean {
   if (list.isDefault) return false;
   if (list.isSharee) return false;
   if (!canShareTaskList(list)) return false;
+  if (list.scope === "group" && list.myRights?.mayDelete === false) return false;
   if (isProvisionedGroupTaskList(list)) return false;
   return true;
 }

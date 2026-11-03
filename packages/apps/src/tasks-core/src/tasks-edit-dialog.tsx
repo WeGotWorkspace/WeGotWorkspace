@@ -1,16 +1,11 @@
-import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import {
-  emptyTaskForm,
-  taskToFormValue,
-  TasksTaskFormFields,
-  type TasksTaskFormValue,
-} from "@/tasks-core/src/tasks-task-form";
+import { TasksTaskFormFields, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
+import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";
 
 export type TaskEditDialogState = null | { taskId: string };
 
@@ -35,12 +30,7 @@ export function TasksEditDialog({
   onSave,
   onDelete,
 }: TasksEditDialogProps) {
-  const [form, setForm] = useState(() => emptyTaskForm(task?.taskListId ?? "default"));
-
-  useEffect(() => {
-    if (!task) return;
-    setForm(taskToFormValue(task, task.taskListId));
-  }, [task]);
+  const [form, setForm] = useTaskEditForm(task, readOnly);
 
   const open = dialog !== null && task !== null;
   const trimmedTitle = form.title.trim();

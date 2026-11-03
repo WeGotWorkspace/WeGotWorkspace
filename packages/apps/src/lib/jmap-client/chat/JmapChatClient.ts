@@ -1,3 +1,4 @@
+import { fetchAllByQuery } from "../core/fetch-all.js";
 import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CHAT_CAPABILITY, CORE_CAPABILITY } from "../core/types.js";
@@ -75,6 +76,15 @@ export class JmapChatClient {
       this.client.setState(accountId, MESSAGE_TYPE, response.state);
     }
     return response;
+  }
+
+  /** Every message, via `ChatMessage/query` and explicit-id gets (no get-all; #1792). */
+  getAllMessages(accountId: JmapId): Promise<GetResponse<JmapChatMessage>> {
+    return fetchAllByQuery<JmapChatMessage>(this.client, {
+      accountId,
+      type: MESSAGE_TYPE,
+      using: CHAT_USING,
+    });
   }
 
   async messageChanges(

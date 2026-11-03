@@ -37,11 +37,14 @@ import {
   resetDriveJmapSessionForTests,
 } from "@/lib/api/wgw/drive";
 import {
+  DRIVE_READ_BLOB_MAX_BYTES,
+  DriveFileTooLargeToOpenError,
   DriveTransportError,
   FileNodeNotFoundError,
   FileNodeRootUnavailableError,
   UnsupportedDrivePathError,
 } from "@/lib/api/wgw/drive-jmap";
+import { stubAnchorClicks } from "@/lib/api/wgw/native-download.fixtures";
 
 const ACCOUNT_ID = "bob";
 const HOME_ID = "fn-home";
@@ -54,6 +57,7 @@ let hideHomeNode = false;
 let filesContextStatus = 200;
 let uploadStatus = 201;
 let downloadStatus = 200;
+let readmeSize = 12;
 
 function jmapSessionBody() {
   return {
@@ -122,7 +126,7 @@ function fileNode() {
     nodeType: "file",
     blobId: "fnb-fn-readme-aaaaaaaa",
     name: "readme.md",
-    size: 12,
+    size: readmeSize,
     type: "text/markdown",
   };
 }
@@ -224,6 +228,16 @@ function mockSignedInFetch() {
     if (path === "/jmap/upload/bob") {
       return jsonResponse({ blobId: "jb-uploaded", type: "text/plain", size: 1 }, uploadStatus);
     }
+    if (path === "/jmap/download-tickets/bob" && init?.method === "POST") {
+      return jsonResponse(
+        {
+          url: "https://drive.example.test/api/v1/jmap/download-ticket/secret/readme.md",
+          idleExpires: "2099-01-01T00:30:00Z",
+          absoluteExpires: "2099-01-02T00:00:00Z",
+        },
+        201,
+      );
+    }
     if (path.startsWith("/jmap/download/")) {
       return new Response(downloadStatus === 200 ? "hello" : "nope", { status: downloadStatus });
     }
@@ -273,6 +287,7 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     filesContextStatus = 200;
     uploadStatus = 201;
     downloadStatus = 200;
+    readmeSize = 12;
     resetDriveJmapSessionForTests();
     wgwIsGuestSession.mockReturnValue(false);
     wgwGuestSharePath.mockReturnValue(null);
@@ -329,6 +344,48 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path.includes("/files/content"))).toBe(false);
   });
 
+  it("downloads through a ticket the browser fetches natively, never building a Blob", async () => {
+    const { clicked, restore } = stubAnchorClicks();
+    readmeSize = 4 * 1024 * 1024 * 1024;
+    try {
+      const ops = createWgwDriveOperations("/users/bob");
+      await ops.downloadFile("/users/bob/readme.md");
+    } finally {
+      restore();
+    }
+
+    const ticketCall = wgwFetch.mock.calls.find(
+      (call) => String(call[0]) === "/jmap/download-tickets/bob",
+    );
+    expect(JSON.parse(String((ticketCall?.[1] as RequestInit).body))).toEqual({
+      blobId: "fnb-fn-readme-aaaaaaaa",
+      name: "readme.md",
+      type: "text/markdown",
+    });
+    const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith("/jmap/download/"))).toBe(false);
+    expect(clicked).toEqual([
+      {
+        href: "https://drive.example.test/api/v1/jmap/download-ticket/secret/readme.md",
+        download: "readme.md",
+      },
+    ]);
+  });
+
+  it("refuses to read a file above the in-memory limit, and says it is too large to open", async () => {
+    readmeSize = DRIVE_READ_BLOB_MAX_BYTES + 1;
+    const ops = createWgwDriveOperations("/users/bob");
+
+    await expect(ops.readFileBlob("/users/bob/readme.md")).rejects.toBeInstanceOf(
+      DriveFileTooLargeToOpenError,
+    );
+    await expect(ops.readFileBlob("/users/bob/readme.md")).rejects.toThrow(
+      /too large to open in the browser/,
+    );
+    const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith("/jmap/download/"))).toBe(false);
+  });
+
   function guestFileEntry(dir: string, name: string) {
     return {
       type: "file" as const,
@@ -382,6 +439,53 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path === "/jmap")).toBe(false);
     expect(paths.some((path) => path === "/files/context")).toBe(false);
     expect(paths.some((path) => path === "/files/starred")).toBe(false);
+  });
+
+  it("downloads a guest file through a guest ticket, never fetching content into a Blob", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    const ticketUrl = "https://drive.example.test/api/v1/jmap/download-ticket/guest/big.mp4";
+    wgwFetch.mockImplementation(async (path: string) => {
+      if (path === "/files/download-tickets") {
+        return jsonResponse({ url: ticketUrl, idleExpires: "", absoluteExpires: "" }, 201);
+      }
+      throw new Error(`guest download must not call ${path}`);
+    });
+    const blobSpy = vi.spyOn(Response.prototype, "blob");
+    const { clicked, restore } = stubAnchorClicks();
+    try {
+      const ops = createWgwDriveOperations("/users/bob/Test");
+      await ops.downloadFile(" users/bob/Test/big.mp4 ");
+    } finally {
+      restore();
+      blobSpy.mockRestore();
+    }
+
+    expect(wgwFetch).toHaveBeenCalledTimes(1);
+    const [path, init] = wgwFetch.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/files/download-tickets");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ path: "/users/bob/Test/big.mp4" });
+    expect(blobSpy).not.toHaveBeenCalled();
+    expect(clicked).toEqual([{ href: ticketUrl, download: "big.mp4" }]);
+  });
+
+  it("refuses a guest read whose Content-Length is above the in-memory limit", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    const cancel = vi.fn();
+    wgwFetch.mockImplementation(async () => {
+      const body = new ReadableStream<Uint8Array>({ cancel });
+      const size = String(DRIVE_READ_BLOB_MAX_BYTES + 1);
+      return new Response(body, { headers: { "Content-Length": size } });
+    });
+
+    const ops = createWgwDriveOperations("/users/bob/Test");
+    await expect(ops.readFileBlob("/users/bob/Test/big.mp4")).rejects.toMatchObject({
+      name: "DriveFileTooLargeToOpenError",
+      fileName: "big.mp4",
+    });
+    expect(cancel).toHaveBeenCalled();
   });
 
   it("refuses guest uploads before sending any request", async () => {
@@ -496,6 +600,20 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     await expect(ops.listDirectory("/users/alice/workspace/plan.md")).rejects.toBeInstanceOf(
       UnsupportedDrivePathError,
     );
+  });
+
+  it("resolves a starred share root whose parent the caller cannot list", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const entries = await ops.listEntriesByPaths([
+      "/users/alice/workspace",
+      "/users/alice/workspace/plan.md",
+      "/users/carol/secret.md",
+    ]);
+
+    expect(entries.map((entry) => [entry.path, entry.nodeId])).toEqual([
+      ["/users/alice/workspace", SHARE_ROOT_ID],
+      ["/users/alice/workspace/plan.md", SHARE_CHILD_ID],
+    ]);
   });
 
   it("rejects an unknown foreign path", async () => {

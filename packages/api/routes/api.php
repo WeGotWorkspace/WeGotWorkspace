@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DocsThreadsController;
+use App\Http\Controllers\Api\V1\Files\DriveDownloadTicketController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
 use App\Http\Controllers\Api\V1\Files\FilesController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionCon
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
+use App\Http\Controllers\Api\V1\Jmap\JmapDownloadTicketController;
 use App\Http\Controllers\Api\V1\Jmap\JmapEventSourceController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
@@ -60,8 +62,10 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Middleware\CspReportBodyLimit;
+use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
+use App\Services\Jmap\Download\DownloadTicketService;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -84,6 +88,13 @@ Route::post('auth/token', TokenController::class);
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
 Route::post('auth/password-resets', RequestPasswordResetController::class);
+
+// Download ticket URL (#1500): no Authorization header — the hashed 256-bit
+// secret, its session binding, and a per-request rights check guard it.
+Route::get('jmap/download-ticket/{secret}/{name}', [JmapDownloadTicketController::class, 'show'])
+    ->where('secret', DownloadTicketService::SECRET_PATTERN)
+    ->where('name', '[^/]+')
+    ->middleware('throttle:240,1');
 Route::post('auth/password-resets/{token}', ConsumePasswordResetController::class)
     ->where('token', '[A-Fa-f0-9]+');
 
@@ -149,6 +160,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::get('dav/capabilities', DavCapabilitiesController::class);
 
     Route::get('notifications', [NotificationsController::class, 'index']);
+    Route::post('notifications/local-ack', [NotificationsController::class, 'ackLocalBatch']);
     Route::post('notifications/{id}/ack', [NotificationsController::class, 'ack']);
     Route::post('notifications/{id}/local-ack', [NotificationsController::class, 'ackLocal']);
     Route::get('notifications/push/vapid-public-key', [PushSubscriptionsController::class, 'publicKey']);
@@ -320,10 +332,12 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     // feature-gate middleware: domain availability is expressed through the
     // advertised capabilities and the `using` guard (JmapCapabilitySet), so
     // disabling one domain never takes the whole envelope down.
-    Route::get('jmap/session', JmapSessionController::class);
     Route::post('jmap', [JmapApiController::class, 'handle']);
     Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
     Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
+    // Download tickets (#1500): issue on the authenticated route; the ticket
+    // URL itself is public (below) because a native download sends no header.
+    Route::post('jmap/download-tickets/{accountId}', [JmapDownloadTicketController::class, 'store']);
 });
 
 // JMAP event source (RFC 8620 §7.3, #1660): short-burst, its own bucket per
@@ -332,7 +346,24 @@ Route::middleware(['wgw.auth', 'throttle:'.JmapPushRateLimiters::PUSH, 'wgw.role
     Route::get('jmap/events/{types}/{closeafter}/{ping}', JmapEventSourceController::class);
 });
 
+// JMAP Session for members and guests: a member gets the full Session as
+// before; a guest gets its guest upload account, or 403 when its share link
+// does not allow uploads (#1715).
+Route::get('jmap/session', JmapSessionController::class)
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+
+// Guest uploads (#1715): guests only, their own method list, a request
+// budget per share (GuestUploadRateLimiters), and a gate on every request
+// that re-checks the share before any body is read (GuestUploadGate).
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'throttle:'.GuestUploadRateLimiters::UPLOAD, 'wgw.guest'])
+    ->group(function (): void {
+        Route::post('jmap/guest', [JmapApiController::class, 'handleGuest']);
+        Route::post('jmap/guest/upload/{accountId}', [JmapBlobController::class, 'uploadGuest']);
+    });
+
 Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
+    // Download tickets by path (#1622), reachable by share-link guests.
+    Route::post('files/download-tickets', [DriveDownloadTicketController::class, 'store']);
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);

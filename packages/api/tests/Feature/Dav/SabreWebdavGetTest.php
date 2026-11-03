@@ -75,6 +75,45 @@ final class SabreWebdavGetTest extends WgwDatabaseTestCase
         $this->assertSame($payload, $response->streamedContent());
     }
 
+    public function test_range_get_returns_the_requested_bytes(): void
+    {
+        Storage::disk('wgw_files')->put('users/alice/range.txt', '0123456789ABCDEFGHIJ');
+
+        $auth = 'Basic '.base64_encode('alice:secret');
+
+        $response = $this->call(
+            'GET',
+            '/files/users/alice/range.txt',
+            [],
+            [],
+            [],
+            ['HTTP_AUTHORIZATION' => $auth, 'HTTP_RANGE' => 'bytes=10-14'],
+        );
+
+        $response->assertStatus(206);
+        $response->assertHeader('Content-Range', 'bytes 10-14/20');
+        $this->assertSame('ABCDE', $response->streamedContent());
+    }
+
+    public function test_open_ended_range_get_returns_the_tail(): void
+    {
+        Storage::disk('wgw_files')->put('users/alice/tail.txt', '0123456789ABCDEFGHIJ');
+
+        $auth = 'Basic '.base64_encode('alice:secret');
+
+        $response = $this->call(
+            'GET',
+            '/files/users/alice/tail.txt',
+            [],
+            [],
+            [],
+            ['HTTP_AUTHORIZATION' => $auth, 'HTTP_RANGE' => 'bytes=15-'],
+        );
+
+        $response->assertStatus(206);
+        $this->assertSame('FGHIJ', $response->streamedContent());
+    }
+
     public function test_get_returns_file_body_with_ui_auth_cookie(): void
     {
         $payload = 'docx-cookie-'.random_bytes(4);

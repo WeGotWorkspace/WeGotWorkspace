@@ -4,6 +4,7 @@ import {
   CALENDARS_CAPABILITY,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_VERSION_CHECK_CAPABILITY,
   type JmapInvocation,
   type JmapRequest,
   type JmapSession,
@@ -16,12 +17,16 @@ const ACCOUNT_ID = "bob";
 
 type RecordedCall = { using: string[]; methodCalls: JmapInvocation[] };
 
-function session(core: Record<string, unknown> = {}): JmapSession {
+function session(
+  core: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
+): JmapSession {
   return {
     capabilities: {
       [CORE_CAPABILITY]: { maxSizeUpload: 25_000_000, ...core },
       [CALENDARS_CAPABILITY]: {},
       [FILENODE_CAPABILITY]: {},
+      ...extra,
     },
     accounts: {
       [ACCOUNT_ID]: {
@@ -47,6 +52,7 @@ function session(core: Record<string, unknown> = {}): JmapSession {
 function makeClient(
   handler: (body: JmapRequest) => unknown,
   core: Record<string, unknown> = {},
+  extraCapabilities: Record<string, unknown> = {},
 ): {
   client: JmapClient;
   recorded: RecordedCall[];
@@ -56,7 +62,7 @@ function makeClient(
     sessionUrl: SESSION_URL,
     fetch: async (input, init) => {
       if (input === SESSION_URL) {
-        return new Response(JSON.stringify(session(core)), { status: 200 });
+        return new Response(JSON.stringify(session(core, extraCapabilities)), { status: 200 });
       }
       const body = JSON.parse(String(init?.body)) as JmapRequest;
       recorded.push({ using: body.using, methodCalls: body.methodCalls });
@@ -341,5 +347,36 @@ describe("JmapFileNodesClient", () => {
       create: { d0: { parentId: "fn-home", name: "Docs" } },
     });
     expect(recorded[1]?.methodCalls[0]?.[1]).toMatchObject({ destroy: ["fn-1"] });
+  });
+  it("lists the version check in `using` only when the server advertises it", async () => {
+    const answer = (body: JmapRequest) => ({
+      methodResponses: [
+        [
+          body.methodCalls[0]![0],
+          { accountId: ACCOUNT_ID, newState: "2", updated: { "fn-1": null } },
+          body.methodCalls[0]![2],
+        ],
+      ],
+      sessionState: "1",
+    });
+    const update = {
+      accountId: ACCOUNT_ID,
+      update: { "fn-1": { blobId: "jb-new", expectedBlobId: "jb-old" } },
+    };
+
+    const advertised = makeClient(answer, {}, { [FILENODE_VERSION_CHECK_CAPABILITY]: {} });
+    await advertised.client.connect();
+    await new JmapFileNodesClient(advertised.client).setFileNodes(update);
+    expect(advertised.recorded[0]?.using).toEqual([
+      ...FILENODE_USING,
+      FILENODE_VERSION_CHECK_CAPABILITY,
+    ]);
+
+    const plain = makeClient(answer);
+    await plain.client.connect();
+    await new JmapFileNodesClient(plain.client)
+      .getFileNodes(ACCOUNT_ID, ["fn-1"])
+      .catch(() => null);
+    expect(plain.recorded[0]?.using).toEqual(FILENODE_USING);
   });
 });

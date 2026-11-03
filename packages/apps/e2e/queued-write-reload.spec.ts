@@ -32,17 +32,47 @@ function rowOf(page: Page, name: string) {
     .last();
 }
 
-async function apiGet(page: Page, path: string): Promise<unknown> {
+async function apiRequest(page: Page, method: string, path: string): Promise<Response> {
   const token = await page.evaluate(() => localStorage.getItem("wgw.api.access_token"));
-  const res = await fetch(`${API}/api/v1${path}`, {
+  return fetch(`${API}/api/v1${path}`, {
+    method,
     headers: { Authorization: `Bearer ${token}` },
   });
-  return res.json();
+}
+
+async function apiGet(page: Page, path: string): Promise<unknown> {
+  return (await apiRequest(page, "GET", path)).json();
 }
 
 async function isStarredOnServer(page: Page, name: string): Promise<boolean> {
   const body = (await apiGet(page, "/files/starred")) as { data: { paths?: string[] } };
   return (body.data.paths ?? []).some((path) => path.includes(name));
+}
+
+async function setStarOnServer(page: Page, name: string, starred: boolean): Promise<void> {
+  const path = encodeURIComponent(`users/${E2E_USERNAME}/${name}`);
+  const res = await apiRequest(page, starred ? "POST" : "DELETE", `/files/star?path=${path}`);
+  expect(res.ok, `${starred ? "star" : "unstar"} ${name}: ${res.status}`).toBe(true);
+}
+
+/** A second file that stays starred, so the starred view always has a row to wait for. */
+async function seedKeptStar(page: Page, name: string): Promise<void> {
+  await putDriveFile(`users/${E2E_USERNAME}/${name}`, `Kept ${RUN}\n`, "text/markdown");
+  await setStarOnServer(page, name, true);
+}
+
+/**
+ * Opens the starred view and checks `name` is not in it.
+ *
+ * Waits for `kept` (still starred) to show first: its row comes from the same
+ * server listing, so the check runs on the loaded list. `networkidle` does not
+ * settle here after other live specs: Drive's offline sync then fetches one
+ * file every 500 ms (#1820).
+ */
+async function expectNotInStarredView(page: Page, name: string, kept: string): Promise<void> {
+  await page.goto("/drive?view=starred");
+  await expect(rowOf(page, kept)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 }
 
 async function unstarFromStarredView(page: Page, name: string): Promise<void> {
@@ -57,21 +87,24 @@ async function unstarFromStarredView(page: Page, name: string): Promise<void> {
 test.describe("List writes inside the undo delay", () => {
   test("unstar then reload keeps the file unstarred", async ({ page }) => {
     const name = `Unstar reload ${RUN}.md`;
+    const kept = `Kept starred reload ${RUN}.md`;
     await seedAndStar(page, name);
+    await seedKeptStar(page, kept);
     await unstarFromStarredView(page, name);
 
     await page.waitForTimeout(300);
     await page.reload();
 
     await expect.poll(() => isStarredOnServer(page, name), { timeout: 15_000 }).toBe(false);
-    await page.goto("/drive?view=starred");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+    await expectNotInStarredView(page, name, kept);
+    await setStarOnServer(page, kept, false);
   });
 
   test("unstar then leave the list in the app still saves", async ({ page }) => {
     const name = `Unstar leave ${RUN}.md`;
+    const kept = `Kept starred leave ${RUN}.md`;
     await seedAndStar(page, name);
+    await seedKeptStar(page, kept);
     await unstarFromStarredView(page, name);
 
     await page.waitForTimeout(300);
@@ -85,9 +118,8 @@ test.describe("List writes inside the undo delay", () => {
     await page.waitForTimeout(4_000);
     await expect.poll(() => isStarredOnServer(page, name), { timeout: 15_000 }).toBe(false);
 
-    await page.goto("/drive?view=starred");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+    await expectNotInStarredView(page, name, kept);
+    await setStarOnServer(page, kept, false);
   });
 
   // Tasks reads its offline cache (IndexedDB) before the request, so the write has to

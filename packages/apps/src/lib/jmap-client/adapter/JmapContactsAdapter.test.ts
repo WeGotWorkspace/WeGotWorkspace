@@ -6,6 +6,7 @@ import { CONTACTS_CAPABILITY } from "../core/types.js";
 
 const getAddressBooks = vi.fn();
 const getContactCards = vi.fn();
+const getAllContactCards = vi.fn();
 const getContactCardsByQuery = vi.fn();
 const addressBookChanges = vi.fn();
 const contactCardChanges = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("../contacts/JmapContactsClient.js", () => ({
   JmapContactsClient: class {
     getAddressBooks = getAddressBooks;
     getContactCards = getContactCards;
+    getAllContactCards = getAllContactCards;
     getContactCardsByQuery = getContactCardsByQuery;
     addressBookChanges = addressBookChanges;
     contactCardChanges = contactCardChanges;
@@ -41,6 +43,7 @@ describe("JmapContactsAdapter", () => {
   beforeEach(() => {
     getAddressBooks.mockReset();
     getContactCards.mockReset();
+    getAllContactCards.mockReset();
     getContactCardsByQuery.mockReset();
     addressBookChanges.mockReset();
     contactCardChanges.mockReset();
@@ -49,6 +52,10 @@ describe("JmapContactsAdapter", () => {
       state: "ab-1",
     });
     getContactCards.mockResolvedValue({
+      list: [{ id: "c-1", addressBookIds: { default: true } }],
+      state: "c-1",
+    });
+    getAllContactCards.mockResolvedValue({
       list: [{ id: "c-1", addressBookIds: { default: true } }],
       state: "c-1",
     });
@@ -156,7 +163,7 @@ describe("JmapContactsAdapter", () => {
     );
     await adapter.sync();
     expect(getAddressBooks).toHaveBeenCalled();
-    expect(getContactCards).toHaveBeenCalled();
+    expect(getAllContactCards).toHaveBeenCalledWith("bob");
   });
 
   it("does not destroy a card that is also created or updated in the same delta", async () => {
@@ -205,6 +212,43 @@ describe("JmapContactsAdapter", () => {
     expect(onRefetchAll).toHaveBeenCalledWith({
       books: [{ id: "default", name: "Ada" }],
       cards: [{ id: "c-1", addressBookIds: { default: true } }],
+    });
+  });
+
+  describe("syncIfStale", () => {
+    it("skips /changes when the pushed states equal its own", async () => {
+      const adapter = new JmapContactsAdapter({
+        client: clientStub({ AddressBook: "ab-1", ContactCard: "c-1" }),
+      });
+      await expect(adapter.syncIfStale({ AddressBook: "ab-1", ContactCard: "c-1" })).resolves.toBe(
+        true,
+      );
+      expect(addressBookChanges).not.toHaveBeenCalled();
+      expect(contactCardChanges).not.toHaveBeenCalled();
+    });
+
+    it("syncs when a pushed state differs and reports failure", async () => {
+      const adapter = new JmapContactsAdapter({
+        client: clientStub({ AddressBook: "ab-1", ContactCard: "c-1" }),
+      });
+      addressBookChanges.mockResolvedValue({
+        created: [],
+        updated: [],
+        destroyed: [],
+        newState: "ab-1",
+      });
+      contactCardChanges.mockRejectedValue(new TypeError("Failed to fetch"));
+      await expect(adapter.syncIfStale({ ContactCard: "c-2" })).resolves.toBe(false);
+      expect(contactCardChanges).toHaveBeenCalledWith("bob", "c-1");
+    });
+
+    it("counts cannotCalculateChanges with a full refetch as synced", async () => {
+      const adapter = new JmapContactsAdapter({ client: clientStub({ ContactCard: "stale" }) });
+      contactCardChanges.mockRejectedValue(
+        new JmapMethodError("ContactCard/changes", "c0", { type: "cannotCalculateChanges" }),
+      );
+      await expect(adapter.syncIfStale({ ContactCard: "fresh" })).resolves.toBe(true);
+      expect(getAllContactCards).toHaveBeenCalledWith("bob");
     });
   });
 });

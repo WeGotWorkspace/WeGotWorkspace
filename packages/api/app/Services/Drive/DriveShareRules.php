@@ -220,10 +220,21 @@ final class DriveShareRules
         return strtolower(bin2hex(random_bytes(16)));
     }
 
-    public function assertPublicAccessCap(string $kind, string $access): void
+    /**
+     * A public link is `view`, or `edit` on a folder so guests can add files
+     * there (#1715). `comment` and `full` stay member-only: guests cannot
+     * comment, and get no renames, moves, or deletes (#1712).
+     */
+    public function assertPublicAccessCap(string $kind, string $access, string $path): void
     {
-        if ($kind === 'public' && $access !== DriveShareAccess::VIEW) {
-            throw new ApiHttpException(400, 'Public shares only support view access.', 'bad_request');
+        if ($kind !== 'public' || $access === DriveShareAccess::VIEW) {
+            return;
+        }
+        if ($access !== DriveShareAccess::EDIT) {
+            throw new ApiHttpException(400, 'Public links support view access, or edit access on a folder.', 'bad_request');
+        }
+        if (! $this->filesDisk()->directoryExists($this->paths->virtualToStorageKey($path))) {
+            throw new ApiHttpException(400, 'Public links to a file only support view access.', 'bad_request');
         }
     }
 

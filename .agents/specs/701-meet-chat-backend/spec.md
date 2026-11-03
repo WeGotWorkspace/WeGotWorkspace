@@ -62,7 +62,7 @@ Typing rides WebRTC data channels (`presence-core` from PR #690, on `main`): no 
 ### API surface (OpenAPI-first, mirrors Notes)
 
 - REST under `/api/v1/chat/`: channels CRUD + `shareWith` PATCH + `groupSlug` transfer; messages list (cursor paging) / send / edit / delete; reaction toggle; read-marker PUT. Schemas in `openapi/schemas/chat/` wired into `openapi.json` → `pnpm --filter @wgw/api typegen`; `OpenApiRouteContractTest` enforces parity.
-- JMAP capability `urn:wgw:jmap:chat`: `ChatChannel/get|changes|set`, `ChatMessage/get|changes|set` — new `Methods/*` in `JmapMethodDispatcher::METHODS` + capability provider + `JmapAccountStateCodec` fan-out (exact Notes recipe).
+- JMAP capability `urn:wgw:jmap:chat`: `ChatChannel/get|changes|set`, `ChatMessage/get|changes|set` (shipped: get/changes, plus `ChatMessage/query` from #1792) — new `Methods/*` in `JmapMethodDispatcher::METHODS` + capability provider + `JmapAccountStateCodec` fan-out (exact Notes recipe).
 - Edit/delete authorization: **strictly author-only** in v1 (enforced via `X-WGW-AUTHOR`).
 
 ### Screen-share parity (route flip)

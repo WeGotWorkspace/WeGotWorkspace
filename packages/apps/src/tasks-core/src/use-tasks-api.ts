@@ -11,16 +11,22 @@ import {
   getTasksSyncRunner,
 } from "@/lib/offline/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
-import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
+import {
+  notifyTasksBootstrapUpdated,
+  subscribeTasksBootstrapUpdated,
+} from "@/lib/offline/tasks-bootstrap-sync";
+import { syncTasksInbound } from "@/lib/offline/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
   resolveTasksOfflineUsername,
 } from "@/lib/offline/offline-session";
 import { setTasksSyncConflictListener } from "@/lib/offline/tasks-sync-conflicts";
+import { subscribeTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-write";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksUIData } from "@/tasks-core/src/tasks-types";
+import { useTasksLiveInbound } from "@/tasks-core/src/use-tasks-live-inbound";
 import {
   createDefaultTasksApiSource,
   type TasksApiSource,
@@ -28,6 +34,8 @@ import {
 
 export type UseTasksAPIOptions = {
   onSyncConflict?: (taskIds: string[]) => void;
+  /** The server refused a queued write for good; the task shows the server copy again. */
+  onWriteRefused?: (taskId: string) => void;
 };
 
 export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOptions) {
@@ -84,6 +92,21 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     }
   }, [offlineUsername, patchBootstrap]);
 
+  const onWriteRefused = options?.onWriteRefused;
+  useEffect(() => {
+    if (!offlineUsername) return;
+    return subscribeTaskWriteRefused(({ username, taskId, title, reason, parked }) => {
+      if (username !== offlineUsername) return;
+      onWriteRefused?.(taskId);
+      void patchFromCache();
+      // A parked write is in the rescue dialog instead.
+      if (!parked)
+        showError(
+          defaultTasksLabels.taskWriteRefused(title || defaultTasksLabels.untitledTask, reason),
+        );
+    });
+  }, [offlineUsername, onWriteRefused, patchFromCache, showError]);
+
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
@@ -95,27 +118,23 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
         await syncTasksInbound(offlineUsername, { waitForLock: true }).catch(() => undefined);
       }
       await patchFromCache();
+      notifyTasksBootstrapUpdated(offlineUsername);
     },
   });
 
+  // Another tab pulled or flushed into the shared cache (#1815).
   useEffect(() => {
-    if (!offlineUsername || !online || phase !== "ready") return;
-    if (!wgwLiveApiEnabled()) return;
-    const username = offlineUsername;
-    let cancelled = false;
-    const tick = () => {
-      void syncTasksInbound(username)
-        .then((result) => {
-          if (!cancelled && result?.changed) return patchFromCache();
-        })
-        .catch(() => undefined);
-    };
-    const timer = setInterval(tick, TASKS_INBOUND_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [offlineUsername, online, patchFromCache, phase]);
+    if (!offlineUsername) return;
+    return subscribeTasksBootstrapUpdated(offlineUsername, () => {
+      void patchFromCache().catch(() => undefined);
+    });
+  }, [offlineUsername, patchFromCache]);
+
+  useTasksLiveInbound({
+    username: offlineUsername,
+    enabled: online && phase === "ready" && wgwLiveApiEnabled(),
+    patchFromCache,
+  });
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
@@ -125,6 +144,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .then((next) => {
         patchBootstrap(() => next);
         setBootstrapRevision((revision) => revision + 1);
+        if (offlineUsername) notifyTasksBootstrapUpdated(offlineUsername);
         show(defaultTasksLabels.toastListUpdated, {
           icon: createElement(Check, { className: "size-4" }),
         });
@@ -135,7 +155,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [listRefreshing, patchBootstrap, resolvedSource, show, showError]);
+  }, [listRefreshing, offlineUsername, patchBootstrap, resolvedSource, show, showError]);
 
   return {
     phase,
@@ -151,5 +171,6 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     data: data?.data ?? placeholderData,
     operations,
     offlineUsername,
+    reloadFromCache: patchFromCache,
   };
 }

@@ -41,7 +41,6 @@ import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
-  encodeUploadFileForOutbox,
   flushDriveOutbox,
   removeOutboxMutationsForDrivePath,
   type DriveOutboxFlushResult,
@@ -56,6 +55,11 @@ import {
   applyDriveSidecarPathMigration,
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
+import {
+  driveUploadQueueOperations,
+  queueOfflineDriveUploadFiles,
+} from "@/lib/offline/drive/upload/drive-upload-operations";
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
@@ -167,7 +171,7 @@ export function createHybridDriveOperations(
           await writeDriveBootstrapToCache(username, nextBootstrap);
           rememberOfflineDriveUsername(username);
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -187,7 +191,7 @@ export function createHybridDriveOperations(
             await writeDriveBootstrapToCache(username, cachedBootstrap);
           }
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -207,7 +211,7 @@ export function createHybridDriveOperations(
         try {
           const data = await live.listDirectory(target, opts);
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -277,18 +281,11 @@ export function createHybridDriveOperations(
         }
       }
       const cwd = normalizeApiVirtualPath(input.cwd);
-      for (const file of input.files) {
-        const encoded = await encodeUploadFileForOutbox(file);
-        await queueDriveOutbox(username, {
-          op: "upload",
-          cwd,
-          name: file.name,
-          base64: encoded.base64,
-          mimeType: encoded.mimeType,
-        });
-      }
+      // Offline the files wait in the upload queue as Blobs, never as base64.
+      await queueOfflineDriveUploadFiles(username, input);
       return offlineQueuedDriveData(username, cwd);
     },
+    ...driveUploadQueueOperations(username),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);
       if (readBrowserOnline()) {

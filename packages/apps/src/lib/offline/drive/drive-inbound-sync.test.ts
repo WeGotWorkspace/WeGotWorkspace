@@ -66,6 +66,27 @@ import {
   syncDriveInboundFromFileNodes,
 } from "@/lib/offline/drive/drive-inbound-sync";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
+import {
+  readDriveAvailability,
+  writeDriveAvailability,
+} from "@/lib/offline/drive/drive-availability-store";
+import { writeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
+import {
+  readDocsListingFromCache,
+  writeDocsListingToCache,
+} from "@/lib/offline/docs-listing-offline-store";
+import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
+import { findUploadPlaceholder } from "@/lib/offline/drive/upload/drive-upload-placeholders";
+import { enqueueDriveUploadBatch } from "@/lib/offline/drive/upload/drive-upload-store";
+
+async function queuePlaceholder(folderPath: string): Promise<string> {
+  const { itemIds } = await enqueueDriveUploadBatch(username, {
+    folderPath,
+    targetFolder: { kind: "server", id: "fn-dir" },
+    files: [new File(["x"], "upload.pdf", { type: "application/pdf" })],
+  });
+  return itemIds[0]!;
+}
 
 const username = "ada";
 
@@ -217,6 +238,8 @@ describe("syncDriveInboundFromFileNodes", () => {
     syncDriveMetadataTree.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await driveEntriesTable(db).clear();
+    await db.table("drive_upload_items").clear();
+    await db.table("drive_upload_batches").clear();
     await db.table("docs_availability").clear();
     await db.meta.clear();
     getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
@@ -378,6 +401,54 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(await readCachedDriveNodeId(username, "/users/ada/notes/a.md")).toBe("fn-child");
   });
 
+  it("moves an upload placeholder with its folder on a remote rename", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/folder", "fn-dir", "dir"));
+    const itemId = await queuePlaceholder("/users/ada/folder");
+    installCatalog(
+      new Map([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-dir", node("fn-dir", "fn-home", "notes", "directory")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-dir"], newState: "6" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const placeholder = await findUploadPlaceholder(username, itemId);
+    expect(placeholder?.parentPath).toBe("users/ada/notes");
+    expect(placeholder?.uploadId).toBe(itemId);
+  });
+
+  it("keeps a placeholder with its folder when the folder move is blocked", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/folder", "fn-dir", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/taken.md", "fn-occupant"));
+    await seedPendingSave("/users/ada/taken.md", true);
+    const itemId = await queuePlaceholder("/users/ada/folder");
+    installCatalog(
+      new Map([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-dir", node("fn-dir", "fn-home", "taken.md", "directory")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-dir"], newState: "8" }));
+
+    const blocked = await syncDriveInboundFromFileNodes(username);
+
+    expect(blocked.keptUnsavedPaths).toEqual(["users/ada/taken.md"]);
+    const stayed = await findUploadPlaceholder(username, itemId);
+    expect(stayed?.parentPath).toBe("users/ada/folder");
+    expect(await readCachedDriveNodeId(username, "/users/ada/folder")).toBe("fn-dir");
+
+    await seedPendingSave("/users/ada/taken.md", false);
+    await syncDriveInboundFromFileNodes(username);
+
+    const moved = await findUploadPlaceholder(username, itemId);
+    expect(moved?.parentPath).toBe("users/ada/taken.md");
+    expect(await readCachedDriveNodeId(username, "/users/ada/taken.md")).toBe("fn-dir");
+  });
+
   it("falls back to the full crawl when changes cannot be calculated and then stores that state", async () => {
     await writeDriveBootstrapToCache(username, {
       session: { user: { displayName: "Ada", username } },
@@ -536,5 +607,108 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(rows).toHaveLength(catalog.size);
     expect(await readCachedDriveNodeId(username, "/users/ada/file-619.md")).toBe("fn-file-619");
     expect(await readDriveSyncToken(username)).toBe("10");
+  });
+});
+
+describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
+  const all = {};
+  const mine = { pathPrefix: "users/ada" };
+
+  function doc(sourceKey: string, id: number): WgwUnifiedSearchResult {
+    return {
+      id,
+      sourceType: "file",
+      sourceKey,
+      title: sourceKey.split("/").pop() ?? sourceKey,
+      extension: "md",
+      category: "document",
+      size: 4,
+      modifiedAt: 1,
+    };
+  }
+
+  async function listed(filters: object): Promise<string[] | undefined> {
+    const cached = await readDocsListingFromCache(username, filters);
+    return cached?.results.map((row) => row.sourceKey).sort();
+  }
+
+  beforeEach(async () => {
+    fileNodeChanges.mockReset();
+    getFileNodes.mockReset();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await driveEntriesTable(db).clear();
+    await db.table("docs_availability").clear();
+    await db.table("docs_listing_rows").clear();
+    await db.table("drive_availability").clear();
+    await db.table("drive_content_blobs").clear();
+    await db.outbox.clear();
+    await db.meta.clear();
+  });
+
+  it("applies a FileNode delete, rename and move to every cached Docs view", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/groups/team", "fn-team", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/deleted.md", "fn-del"));
+    await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
+    await upsertDriveEntry(username, entry("/users/ada/moving.md", "fn-mov"));
+    await upsertDriveEntry(username, entry("/users/ada/kept.md", "fn-kept"));
+    const docs = ["deleted.md", "before.md", "moving.md", "kept.md"].map((name, at) =>
+      doc(`users/ada/${name}`, at + 1),
+    );
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    await writeDocsListingToCache(username, mine, { results: docs, hasMore: false });
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-team", node("fn-team", null, "team", "directory")],
+        ["fn-ren", node("fn-ren", "fn-home", "after.md")],
+        ["fn-mov", node("fn-mov", "fn-team", "moving.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-ren", "fn-mov"], destroyed: ["fn-del"], newState: "6" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await listed(all)).toEqual([
+      "groups/team/moving.md",
+      "users/ada/after.md",
+      "users/ada/kept.md",
+    ]);
+    expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
+    expect(await readDriveSyncToken(username)).toBe("6");
+  });
+
+  it("keeps a Doc with unsaved text in every view when it is deleted elsewhere", async () => {
+    const path = "/users/ada/unsaved-view.md";
+    await upsertDriveEntry(username, entry(path, "fn-unsaved-view"));
+    await writeDocsListingToCache(username, all, {
+      results: [doc("users/ada/unsaved-view.md", 1)],
+      hasMore: false,
+    });
+    await seedPendingSave(path, true);
+    fileNodeChanges.mockResolvedValue(changes({ destroyed: ["fn-unsaved-view"], newState: "7" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await listed(all)).toEqual(["users/ada/unsaved-view.md"]);
+    await seedPendingSave(path, false);
+  });
+
+  it("removes the Drive availability row and content blob of a destroyed node", async () => {
+    const path = "/users/ada/report.md";
+    await upsertDriveEntry(username, entry(path, "fn-report"));
+    await writeDriveContentBlob(username, path, new Blob(["x"], { type: "text/markdown" }), 1);
+    await writeDriveAvailability(username, { id: path, source: "manual" });
+    fileNodeChanges.mockResolvedValue(changes({ destroyed: ["fn-report"], newState: "8" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    await expect(readDriveAvailability(username, path)).resolves.toBeUndefined();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await expect(db.table("drive_content_blobs").get("users/ada/report.md")).resolves.toBe(
+      undefined,
+    );
   });
 });

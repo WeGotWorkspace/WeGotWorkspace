@@ -7,6 +7,7 @@ import {
 } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
+import { useLeaveRemovedListView } from "@/tasks-core/src/use-leave-removed-list-view";
 import {
   canWriteTaskList,
   defaultTaskListId,
@@ -145,6 +146,7 @@ export function useTasksShell({
     },
     [taskLists],
   );
+  useLeaveRemovedListView(view, taskLists, selectView);
 
   const viewSyncedRef = useRef(false);
   useEffect(() => {
