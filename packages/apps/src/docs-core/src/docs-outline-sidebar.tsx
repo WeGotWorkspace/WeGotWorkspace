@@ -15,6 +15,8 @@ type DocsOutlineSidebarProps = {
   onSelect: (index: number) => void;
   /** Public share guests cannot navigate to docs home. */
   showBackToHome?: boolean;
+  /** Headings only exist in Markdown; plain text files keep just the way back. */
+  showOutline?: boolean;
 };
 
 export function DocsOutlineSidebar({
@@ -23,6 +25,7 @@ export function DocsOutlineSidebar({
   activeIndex,
   onSelect,
   showBackToHome = true,
+  showOutline = true,
 }: DocsOutlineSidebarProps) {
   const navigate = useNavigate();
 
@@ -54,7 +57,7 @@ export function DocsOutlineSidebar({
   return (
     <>
       {showBackToHome ? <SidebarSection items={homeItems} /> : null}
-      <SidebarSection title={labels.sidebarOutline} items={menuItems} />
+      {showOutline ? <SidebarSection title={labels.sidebarOutline} items={menuItems} /> : null}
     </>
   );
 }

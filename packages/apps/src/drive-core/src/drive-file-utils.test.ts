@@ -7,6 +7,7 @@ import {
   extensionFromFileName,
   formatBytesCompact,
   inferFileKindFromName,
+  parseFileSizeBytes,
   suggestNewMarkdownFileName,
 } from "@/drive-core/src/drive-file-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -279,5 +280,19 @@ describe("driveFileFromSharedWithMeEntry", () => {
     expect(mapped?.apiPath).toBe("/users/admin/Jaap.md");
     expect(mapped?.parent).toBe(SHARED_WITH_ME_UI_ROOT);
     expect(mapped?.location).toBe("Shared by admin");
+  });
+});
+
+describe("parseFileSizeBytes", () => {
+  it("reads the listed size back into bytes", () => {
+    expect(parseFileSizeBytes({ kind: "file", size: "512 B" })).toBe(512);
+    expect(parseFileSizeBytes({ kind: "file", size: "1.5 KB" })).toBe(1536);
+    expect(parseFileSizeBytes({ kind: "video", size: "100 MB" })).toBe(100 * 1024 * 1024);
+    expect(parseFileSizeBytes({ kind: "video", size: "4.0 GB" })).toBe(4 * 1024 * 1024 * 1024);
+  });
+
+  it("has no size for a folder and zero for an empty listing", () => {
+    expect(parseFileSizeBytes({ kind: "folder", size: "—" })).toBeNull();
+    expect(parseFileSizeBytes({ kind: "file", size: "—" })).toBe(0);
   });
 });

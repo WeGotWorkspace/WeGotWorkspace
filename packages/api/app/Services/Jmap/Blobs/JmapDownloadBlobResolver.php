@@ -38,4 +38,15 @@ class JmapDownloadBlobResolver
 
         return $this->fileNodeBlobs->retrieve($username, $blobId);
     }
+
+    /**
+     * A guest share session (#1622) can only read drive files inside its
+     * share, so only node-derived `fnb-…` ids resolve, checked for the guest.
+     *
+     * @param  array{username: string, role: string}  $guest
+     */
+    public function resolveForGuest(array $guest, string $blobId): ?BlobContent
+    {
+        return $this->fileNodeBlobs->retrieveAs($guest, $blobId);
+    }
 }
