@@ -32,8 +32,8 @@ export function writeNotificationSoundMuted(muted: boolean): void {
 }
 
 /**
- * In-app chime when the tab is focused. Hidden tabs use the OS toast path instead
- * (see `shouldShowOsNotification`) so we do not double-signal.
+ * In-app chime when the tab is visible. Hidden tabs rely on the service-worker
+ * push instead, so we do not double-signal.
  */
 export function shouldPlayInboxNotificationSound(visibilityState: string, muted: boolean): boolean {
   return !muted && visibilityState === "visible";

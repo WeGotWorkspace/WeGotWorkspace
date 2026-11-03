@@ -169,7 +169,7 @@ describe("NotesDetailActionBar", () => {
     expect(onCreateNotebook).not.toHaveBeenCalled();
   });
 
-  it("disables star and archive when readOnly (view-only share)", () => {
+  it("keeps star enabled and disables archive when readOnly (view-only share)", () => {
     const toggleStar = vi.fn();
     const toggleArchive = vi.fn();
     const { container } = renderBar(
@@ -187,11 +187,11 @@ describe("NotesDetailActionBar", () => {
     expect(row).toBeTruthy();
     const star = row!.querySelector('button[aria-label="Star"]');
     const archive = row!.querySelector('button[aria-label="Archive"]');
-    expect(star?.hasAttribute("disabled")).toBe(true);
+    expect(star?.hasAttribute("disabled")).toBe(false);
     expect(archive?.hasAttribute("disabled")).toBe(true);
     star?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     archive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(toggleStar).not.toHaveBeenCalled();
+    expect(toggleStar).toHaveBeenCalledWith("n-1");
     expect(toggleArchive).not.toHaveBeenCalled();
   });
 
@@ -231,18 +231,22 @@ describe("NotesDetailActionBar", () => {
     expect(toggleArchive).toHaveBeenCalledWith("n-1");
   });
 
-  it("omits star for personal shared-with-me notes", () => {
+  it("shows star for personal shared-with-me notes", () => {
+    const toggleStar = vi.fn();
     const { container } = renderBar(
       <NotesDetailActionBar
         active={shared}
         {...barProps}
-        toggleStar={vi.fn()}
+        toggleStar={toggleStar}
         toggleArchive={vi.fn()}
       />,
     );
 
     const row = container.querySelector(".action-bar__row");
-    expect(row!.querySelector('button[aria-label="Star"]')).toBeNull();
+    const star = row!.querySelector('button[aria-label="Star"]');
+    expect(star).toBeTruthy();
+    star?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(toggleStar).toHaveBeenCalledWith(shared.id);
     expect(row!.querySelector('button[aria-label="Archive"]')).toBeTruthy();
   });
 

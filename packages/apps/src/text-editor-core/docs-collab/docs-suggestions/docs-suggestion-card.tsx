@@ -81,8 +81,9 @@ export function DocsSuggestionCard({
       dataAttributes={{ "data-change-id": suggestion.changeId }}
     >
       <DocsCollabCardHeader
-        authorName={suggestion.authorName}
-        createdAt={suggestion.timestamp}
+        authorName={suggestion.authorName || labels.suggestionsUnknownAuthor}
+        authorColor={suggestion.authorColor}
+        createdAt={suggestion.timestamp || undefined}
         actions={
           canMutate ? (
             <>

@@ -3,6 +3,7 @@ import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import {
   markDocsAvailabilitySynced,
   normalizeDocsAvailabilityPath,
+  readDocsAvailability,
   removeDocsAvailability,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
@@ -18,16 +19,37 @@ import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-colla
 import { upsertDocsListingResult } from "@/lib/offline/docs-listing-offline-store";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 
+export type MakeDocsOfflineAvailableOptions = {
+  /** Background sync paces every request through this. */
+  beforeRequest?: () => Promise<void>;
+  /**
+   * When the file last changed, in ms. If the document was synced after that
+   * and its local copy is not empty, nothing is fetched. Background sync only.
+   */
+  modifiedAtMs?: number;
+};
+
 export async function makeDocsOfflineAvailable(
   username: string,
   apiPath: string,
   location: string,
+  options: MakeDocsOfflineAvailableOptions = {},
 ): Promise<void> {
   const room = apiPath.trim().replace(/^\/+/, "");
   if (!isDocsCollabEditablePath(room)) {
     throw new Error("Only editable text files can be made available offline.");
   }
-  await hydrateDocsCollabForOffline({ apiPath: room });
+  const { beforeRequest, modifiedAtMs } = options;
+  const lastSyncedAt =
+    modifiedAtMs === undefined
+      ? null
+      : ((await readDocsAvailability(username, room))?.lastSyncedAt ?? null);
+  await hydrateDocsCollabForOffline({
+    apiPath: room,
+    beforeRequest,
+    keepLocalCopy:
+      modifiedAtMs !== undefined && lastSyncedAt !== null && lastSyncedAt >= modifiedAtMs,
+  });
   const nodeId = await readCachedDriveNodeId(username, room);
   await writeDocsAvailability(username, { id: room, location, nodeId });
   await markDocsAvailabilitySynced(username, room);

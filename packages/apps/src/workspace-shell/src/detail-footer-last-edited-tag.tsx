@@ -22,13 +22,13 @@ export type DetailFooterLastEditedTagProps = {
   busyLabel?: string;
   /**
    * Presence pip beside the timestamp. Same component as the Meet sidebar:
-   * green when the document is saved, amber while a save is still pending.
+   * green when the document is saved, blue while a save is still pending.
    */
   sync?: DetailFooterSaveSync;
 };
 
 function saveSyncPresence(sync: DetailFooterSaveSync): UserAvatarPresence {
-  return sync === "saved" ? "online" : "away";
+  return sync === "saved" ? "online" : "pending";
 }
 
 /**

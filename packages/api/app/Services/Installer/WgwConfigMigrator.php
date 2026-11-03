@@ -25,6 +25,7 @@ final class WgwConfigMigrator
         $apiEnv = new ApiRuntimeEnvService;
         $apiEnv->seedEnvFromExampleIfMissing($apiPackageRoot);
         $envPath = $apiPackageRoot.'/.env';
+        self::relocateLegacyBackups($installRoot, $envPath);
 
         $legacyPath = self::resolveLegacySourcePath($installRoot, $envPath);
         if ($legacyPath === null) {
@@ -54,6 +55,7 @@ final class WgwConfigMigrator
         }
 
         $envPath = $apiRoot.'/.env';
+        self::relocateLegacyBackups($installRoot, $envPath);
 
         $legacyPath = self::resolveLegacySourcePath($installRoot, $envPath);
         if ($legacyPath === null) {
@@ -142,14 +144,24 @@ final class WgwConfigMigrator
             return null;
         }
 
-        $backups = glob($installRoot.'/wgw-config.php.bak.*');
-        if (! is_array($backups) || $backups === []) {
-            return null;
-        }
-        sort($backups);
-        $latest = end($backups);
+        return LegacyConfigBackups::latest($installRoot, self::envDataDir($envPath), dirname($envPath));
+    }
 
-        return is_readable($latest) ? $latest : null;
+    /** A migrated install keeps no credential backups in the published install root. */
+    private static function relocateLegacyBackups(string $installRoot, string $envPath): void
+    {
+        // Runs on every boot: the glob comes first so most requests stop there.
+        if (LegacyConfigBackups::hasInstallRootBackups($installRoot)
+            && WgwApiEnvFile::hasDatabaseConfigKeys($envPath)) {
+            LegacyConfigBackups::relocate($installRoot, self::envDataDir($envPath));
+        }
+    }
+
+    private static function envDataDir(string $envPath): string
+    {
+        $dataDir = is_readable($envPath) ? WgwApiEnvFile::readPath($envPath, 'WGW_DATA_DIR') : null;
+
+        return is_string($dataDir) && trim($dataDir) !== '' ? $dataDir : './wgw-content';
     }
 
     /**
@@ -183,8 +195,10 @@ final class WgwConfigMigrator
 
         if (! $alreadyApplied) {
             $timestamp = date('Ymd-His');
-            if (is_file($installRoot.'/wgw-config.php')) {
-                @copy($installRoot.'/wgw-config.php', $installRoot.'/wgw-config.php.bak.'.$timestamp);
+            $legacyActive = $installRoot.'/wgw-config.php';
+            if (is_file($legacyActive)) {
+                // Data directory, else packages/api; never the published install root.
+                LegacyConfigBackups::write($installRoot, $pairs['WGW_DATA_DIR'], dirname($envPath), $legacyActive, $timestamp);
             }
             if (is_file($envPath)) {
                 @copy($envPath, $envPath.'.bak.'.$timestamp);

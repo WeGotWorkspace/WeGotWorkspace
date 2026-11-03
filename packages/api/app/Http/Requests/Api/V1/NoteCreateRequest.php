@@ -24,7 +24,10 @@ final class NoteCreateRequest extends FormRequest
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string', 'max:255', 'regex:'.NoteTag::INPUT_PATTERN],
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],
-            // Accepted for back-compat only — NoteRepository always mints (Decision 7).
+            // The app picks the UID up front, so an offline create needs no
+            // temporary id. Only a UUID is used (a slash would read as a Drive
+            // room); anything else is ignored and the server mints, so an older
+            // cached app that still sends `local-*` keeps working.
             'uid' => ['sometimes', 'string', 'max:200'],
         ];
     }

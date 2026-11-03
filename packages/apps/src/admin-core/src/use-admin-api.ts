@@ -15,9 +15,6 @@ export function useAdminAPI(source?: AdminApiSource) {
       users: [],
       groups: [],
       mail: {
-        imapHost: "",
-        imapPort: 0,
-        imapSecurity: "",
         smtpHost: "",
         smtpPort: 0,
         smtpSecurity: "",

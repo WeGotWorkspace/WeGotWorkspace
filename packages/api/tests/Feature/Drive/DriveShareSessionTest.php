@@ -64,7 +64,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
             ->assertJsonFragment(['name' => 'guest-note.md']);
 
         $this->withBearer($guestJwt)->getJson('/api/v1/files/children?path=/users/bob')
-            ->assertStatus(400);
+            ->assertNotFound();
 
         $this->withBearer($guestJwt)->getJson('/api/v1/files/starred')
             ->assertForbidden();
@@ -73,7 +73,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $this->withBearer($guestJwt)->head('/api/v1/files/content?path='.self::SHARE_ROOT)
-            ->assertStatus(400);
+            ->assertNotFound();
 
         $this->withBearer($guestJwt)->postJson('/api/v1/files/directories?path='.self::SHARE_ROOT, [
             'name' => 'blocked.md',

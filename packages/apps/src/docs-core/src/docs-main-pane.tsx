@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import { Eye } from "lucide-react";
 import { TextEditor, TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsStatsTags } from "@/docs-core/src/docs-stats-tags";
@@ -12,6 +13,8 @@ export type DocsMainPaneProps = {
   controller: DocsController;
   fileKey: string;
   viewSource: boolean;
+  /** Plain-language reason the document is read-only, shown above the editor. */
+  readOnlyNotice?: string;
   onEditorReady: (editor: Editor | null) => void;
 };
 
@@ -19,6 +22,7 @@ export function DocsMainPane({
   controller,
   fileKey,
   viewSource,
+  readOnlyNotice,
   onEditorReady,
 }: DocsMainPaneProps) {
   if (controller.loading) {
@@ -46,6 +50,12 @@ export function DocsMainPane({
 
   return (
     <div className="docs-workspace__editor">
+      {readOnlyNotice ? (
+        <p className="docs-workspace__read-only-notice" role="note">
+          <Eye className="docs-workspace__read-only-notice-icon" aria-hidden />
+          <span>{readOnlyNotice}</span>
+        </p>
+      ) : null}
       <TextEditor
         key={fileKey}
         format={controller.editorFormat}

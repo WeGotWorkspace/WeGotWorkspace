@@ -10,10 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import { MailWorkspace } from "@/mail-core/src/mail-workspace";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { SettingsDialogProvider } from "@/settings-core/src/settings-dialog-provider";
@@ -73,7 +71,7 @@ function SettingsFromLocation() {
   return <SettingsWorkspace {...createSettingsAppBootstrap()} section={section} />;
 }
 
-async function renderHosted(ui: ReactNode, initialPath = "/mail") {
+async function renderHosted(ui: ReactNode, initialPath = "/host") {
   registerBuiltinSettings();
   const history = createMemoryHistory({ initialEntries: [initialPath] });
   const rootRoute = createRootRoute({
@@ -87,9 +85,9 @@ async function renderHosted(ui: ReactNode, initialPath = "/mail") {
       </TooltipProvider>
     ),
   });
-  const mailRoute = createRoute({
+  const hostRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/mail",
+    path: "/host",
     component: () => <>{ui}</>,
   });
   const notesRoute = createRoute({
@@ -108,7 +106,7 @@ async function renderHosted(ui: ReactNode, initialPath = "/mail") {
     component: SettingsFromLocation,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([mailRoute, notesRoute, settingsRoute, settingsSectionRoute]),
+    routeTree: rootRoute.addChildren([hostRoute, notesRoute, settingsRoute, settingsSectionRoute]),
     history,
   });
   await router.load();
@@ -141,21 +139,6 @@ describe("settings dialog and in-app footer", () => {
   afterEach(() => {
     cleanup();
     resetSettingsRegistryForTests();
-  });
-
-  it("hides the Settings row for Mail", async () => {
-    const bootstrap = createMailAppBootstrap();
-    await renderHosted(
-      <MailWorkspace
-        messages={bootstrap.data.mail}
-        mailboxes={bootstrap.data.mailboxes}
-        session={bootstrap.session}
-        listLoading={false}
-        onLogout={() => undefined}
-      />,
-    );
-
-    expect(footerSettingsButton()).toBeNull();
   });
 
   it("opens Calendar in the dialog from the footer", async () => {
@@ -242,10 +225,10 @@ describe("settings dialog and in-app footer", () => {
 describe("openPanel typing", () => {
   it("accepts BuiltinPanelId and rejects a typo at the type level", () => {
     type OpenPanelId = Parameters<SettingsDialogApi["openPanel"]>[0];
-    const mail: OpenPanelId = "mail";
-    expect(mail).toBe("mail");
-    // @ts-expect-error "mial" is not a BuiltinPanelId
-    const typo: OpenPanelId = "mial";
+    const calendar: OpenPanelId = "calendar";
+    expect(calendar).toBe("calendar");
+    // @ts-expect-error "calender" is not a BuiltinPanelId
+    const typo: OpenPanelId = "calender";
     void typo;
     const _assert: OpenPanelId extends BuiltinPanelId ? true : false = true;
     expect(_assert).toBe(true);

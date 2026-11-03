@@ -4,7 +4,6 @@ export const ADMIN_DEFAULT_SECTION: AdminSection = "users";
 
 export const ADMIN_SECTIONS = [
   "users",
-  "mail",
   "email-delivery",
   "collaboration",
   "webdav",

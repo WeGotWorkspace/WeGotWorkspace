@@ -27,6 +27,7 @@ function SuggestControlsHarness() {
         placeholder: "Press '/' for commands…",
         document: session.ydoc,
         awareness: session.awareness,
+        trackChangesUserKey: "story",
         user: session.user,
       }),
       editorProps: {

@@ -33,7 +33,7 @@ describe("planNoteTagRename", () => {
     );
   });
 
-  it("includes archived notes and counts notes that cannot take a tag", () => {
+  it("skips archived and read-only notes and counts them (#1535)", () => {
     const archived = note({ id: "arch", tags: ["focus"], archived: true });
     const writable = note({ id: "own", tags: ["Focus"] });
     const readOnly = note({ id: "ro", tags: ["focus"], sharedInbox: true, sharedBy: "bob" });
@@ -41,11 +41,11 @@ describe("planNoteTagRename", () => {
     expect(plan).toMatchObject({
       from: "focus",
       to: "reading",
-      skippedCount: 1,
+      skippedCount: 2,
       mergedIds: [],
     });
     if (typeof plan === "string") throw new Error(plan);
-    expect(plan.notes.map((row) => row.id)).toEqual(["arch", "own"]);
+    expect(plan.notes.map((row) => row.id)).toEqual(["own"]);
   });
 
   it("lists notes that already carried the target tag", () => {

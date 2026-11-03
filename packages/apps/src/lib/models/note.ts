@@ -31,6 +31,12 @@ export type Note = {
   starred?: boolean;
   /** From REST `status === CANCELLED`. */
   archived?: boolean;
+  /**
+   * Made here and not yet on the server. The id is already final (the app
+   * picks the UID); the create waits in the outbox, and the body stays in a
+   * local-only collab room until the server has the note.
+   */
+  createPending?: boolean;
   /** Personal vs group home; from Notes API / shared listings. */
   scope?: "personal" | "group";
   /** Present when {@link scope} is `group`. */

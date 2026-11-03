@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const indexHtml = readFileSync(join(here, "../../index.html"), "utf8");
 const stylesCss = readFileSync(join(here, "../styles.css"), "utf8");
+const themeBootJs = readFileSync(join(here, "../../public/assets/theme-boot.js"), "utf8");
 
 describe("PWA document shell", () => {
   it("extends under the iOS status bar from the first HTML byte", () => {
@@ -23,5 +25,25 @@ describe("PWA document shell", () => {
     expect(stylesCss).toMatch(/body \{\s*background-color:\s*var\(--color-background\);/);
     expect(stylesCss).not.toMatch(/html \{[^}]*background-color:\s*var\(--color-ink\)/);
     expect(stylesCss).toMatch(/html\.pwa-standalone \.app-sidebar \{[\s\S]*height:\s*100lvh/);
+  });
+
+  it("keeps the first-paint theme-color in step with the scheme surfaces", () => {
+    expect(indexHtml).toContain(
+      `<meta name="theme-color" content="${WORKSPACE_PWA_THEME_COLORS.light}" />`,
+    );
+    expect(themeBootJs).toContain(
+      `dark ? "${WORKSPACE_PWA_THEME_COLORS.dark}" : "${WORKSPACE_PWA_THEME_COLORS.light}"`,
+    );
+    expect(stylesCss).toContain(`--color-we-got-soft: ${WORKSPACE_PWA_THEME_COLORS.light};`);
+    expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
+  });
+
+  it("resolves the theme from a same-origin script the runtime CSP allows", () => {
+    expect(indexHtml).toContain('<script src="/assets/theme-boot.js"></script>');
+    expect(indexHtml).not.toContain("wgw.theme");
+    expect(themeBootJs).toContain('localStorage.getItem("wgw.theme")');
+    expect(themeBootJs).toContain(
+      'document.documentElement.dataset.theme = dark ? "dark" : "light"',
+    );
   });
 });

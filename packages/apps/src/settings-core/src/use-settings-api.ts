@@ -13,15 +13,6 @@ export function useSettingsAPI(source?: SettingsApiSource) {
     () => ({
       user: { username: "", displayName: "", email: "" },
       groups: [],
-      mail: { imapUsername: "", imapHasPassword: false },
-      mailServer: {
-        imapHost: "",
-        imapPort: 0,
-        imapSecurity: "",
-        smtpHost: "",
-        smtpPort: 0,
-        smtpSecurity: "",
-      },
       logoutUrl: "/logout",
       mcpEnabled: false,
     }),
@@ -84,11 +75,6 @@ export function useSettingsAPI(source?: SettingsApiSource) {
     const operations: SettingsAPIOperations = {
       saveProfile: async (input, opts) => {
         const next = await baseOperations.saveProfile(input, opts);
-        applySettingsState(next);
-        return next;
-      },
-      saveMail: async (input, opts) => {
-        const next = await baseOperations.saveMail(input, opts);
         applySettingsState(next);
         return next;
       },

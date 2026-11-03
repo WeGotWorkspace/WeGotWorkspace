@@ -341,18 +341,18 @@ function noteMetadataPatchAfterConflict(
   fresh: NotesVjournalNote,
   localTags: readonly string[] | undefined,
 ): NoteMetadataPatch {
-  const notebookStillMatches =
-    first.notebookId !== undefined && fresh.notebookId === first.notebookId;
+  // Only a move sends the notebook, and the last move wins.
+  const move = first.notebookId !== undefined ? { notebookId: first.notebookId } : {};
   if (isTagDeltaPatch(first)) {
     return {
-      ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+      ...move,
       ...(first.title !== undefined ? { title: first.title } : {}),
       ...(first.categoriesAdd !== undefined ? { categoriesAdd: first.categoriesAdd } : {}),
       ...(first.categoriesRemove !== undefined ? { categoriesRemove: first.categoriesRemove } : {}),
     };
   }
   return {
-    ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+    ...move,
     ...(first.title !== undefined ? { title: first.title } : {}),
     ...(first.categories !== undefined
       ? { categories: unionNoteTags(fresh.categories, localTags ?? []) }
@@ -370,6 +370,13 @@ export async function updateNoteItem(
     (body.notebookId ? notebooks.find((item) => item.id === body.notebookId) : undefined) ??
     notebooks.find((item) => item.name === body.notebook);
   const firstPatch = noteMetadataPatch(body, notebook?.id);
+  if (Object.keys(firstPatch).length === 0 && body.starred !== undefined) {
+    // A star is the caller's own and never writes the note, so a view-only
+    // share can star too. An empty PATCH would only bump the version.
+    await (body.starred ? starNote(id, opts) : unstarNote(id, opts));
+    const current = await getNote(id, opts);
+    return noteFromVjournal({ ...current, starred: body.starred }, notebooks);
+  }
   const apply = async (ifMatch: string | undefined, patch: NoteMetadataPatch) =>
     patchNote(id, patch, { ...opts, ifMatch });
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
@@ -380,8 +387,8 @@ export async function updateNoteItem(
     if (!isNotePreconditionFailed(error)) throw error;
     // Someone else wrote first. A tag delta is applied on the server to
     // whatever is stored, so the retry sends that same delta. A full tag
-    // list still unions with the fresh set. A different notebook means they
-    // moved it, so this retry leaves that move.
+    // list still unions with the fresh set. A notebook here is this tab's
+    // move, and the last move wins.
     const fresh = await getNote(id, opts);
     patched = await apply(fresh.etag, noteMetadataPatchAfterConflict(firstPatch, fresh, body.tags));
   }

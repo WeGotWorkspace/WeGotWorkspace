@@ -131,7 +131,7 @@ describe("SettingsAssistantsPane", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("shows a mail-only grant so it can be revoked", () => {
+  it("shows a grant holding only retired mail scopes so it can be revoked", () => {
     renderAssistantsPane({
       grants: [
         {
@@ -145,9 +145,9 @@ describe("SettingsAssistantsPane", () => {
         },
       ],
     });
-    expect(screen.getByRole("heading", { name: "Mail (not active in this release)" })).toBeTruthy();
-    expect(screen.getByText("Read mailboxes and messages")).toBeTruthy();
-    expect(screen.getByText("Send mail as you")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Other" })).toBeTruthy();
+    expect(screen.getByText("mail.read")).toBeTruthy();
+    expect(screen.getByText("mail.send")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke Old mail assistant" })).toBeTruthy();
   });
 

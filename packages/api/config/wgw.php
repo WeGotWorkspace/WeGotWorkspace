@@ -24,6 +24,30 @@ return [
     'jmap' => [
         'max_size_upload' => (int) env('WGW_JMAP_MAX_SIZE_UPLOAD', 25_000_000),
         'blob_ttl_hours' => (int) env('WGW_JMAP_BLOB_TTL_HOURS', 24),
+        // RFC 9404 maxSizeBlobSet in octets. Unset, empty or "null" means no
+        // limit per file: free disk space is the only bound.
+        'max_size_blob_set' => env('WGW_JMAP_MAX_SIZE_BLOB_SET'),
+        // Step budget = max_execution_time (0 → step_unlimited_seconds) × share × throughput.
+        'step_time_share' => (float) env('WGW_JMAP_STEP_TIME_SHARE', 0.5),
+        'step_throughput_bytes' => (int) env('WGW_JMAP_STEP_THROUGHPUT_BYTES', 8 * 1024 * 1024),
+        'step_unlimited_seconds' => (int) env('WGW_JMAP_STEP_UNLIMITED_SECONDS', 60),
+        'assembly_ttl_hours' => (int) env('WGW_JMAP_ASSEMBLY_TTL_HOURS', 24),
+        // Files discovered on disk up to this size are hashed during the walk.
+        'discovery_hash_max_bytes' => (int) env('WGW_JMAP_DISCOVERY_HASH_MAX_BYTES', 4 * 1024 * 1024),
+        // Share of /jmap/upload and Blob/upload requests that run bounded cleanup.
+        'maintenance_share' => (float) env('WGW_JMAP_MAINTENANCE_SHARE', 0.05),
+        'download_ticket_idle_minutes' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_IDLE_MINUTES', 30),
+        'download_ticket_lifetime_hours' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_LIFETIME_HOURS', 24),
+    ],
+    /**
+     * JMAP event source (RFC 8620 §7.3, #1660), short-burst only: every
+     * response ends at once. `retry_ms` is the reconnect interval sent to the
+     * client; raise it on a slow host. `server_timing` adds a `Server-Timing`
+     * header with the time per state source (for load tests, off by default).
+     */
+    'jmap_push' => [
+        'retry_ms' => (int) env('WGW_JMAP_PUSH_RETRY_MS', 3000),
+        'server_timing' => (bool) env('WGW_JMAP_PUSH_SERVER_TIMING', false),
     ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
@@ -79,28 +103,6 @@ return [
         'subject' => env('WGW_VAPID_SUBJECT', 'mailto:noreply@example.com'),
         'public_key' => env('WGW_VAPID_PUBLIC_KEY'),
         'private_key' => env('WGW_VAPID_PRIVATE_KEY'),
-    ],
-
-    'mail' => [
-        /** Set {@code WGW_MAIL_SMTP_VERIFY_TLS=false} for local/dev SMTP with self-signed certs. */
-        'smtp_verify_tls' => filter_var(env('WGW_MAIL_SMTP_VERIFY_TLS', true), FILTER_VALIDATE_BOOL),
-        /**
-         * Unsupported in v0.9. Test-only switch for mailbox REST and MCP mail tools.
-         * Default off: those routes are absent from OpenAPI and the UI does not mount them.
-         * A cached config or route file ignores this env (see WithMailClientEnabled).
-         */
-        'client_enabled' => filter_var(env('WGW_MAIL_CLIENT_ENABLED', false), FILTER_VALIDATE_BOOL),
-    ],
-
-    'plugins' => [
-        /**
-         * Unsupported in v0.9 (beta). Installable UI plugins: registry, ZIP install,
-         * activation, and plugin HTML/asset serving under the manifest appTile.route.
-         * Default off: those routes are absent from OpenAPI, the front controller does not
-         * match plugin paths, and the UI does not mount a Plugins pane.
-         * A cached config or route file ignores this env (see WithPluginsEnabled).
-         */
-        'enabled' => filter_var(env('WGW_PLUGINS_ENABLED', false), FILTER_VALIDATE_BOOL),
     ],
 
     /**

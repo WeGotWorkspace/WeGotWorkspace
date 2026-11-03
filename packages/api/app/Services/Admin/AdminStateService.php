@@ -13,7 +13,6 @@ use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
-use App\Services\Update\ShippedInstallEnvHardening;
 use App\Services\Update\UpdateStateService;
 use App\Support\ApiUrlBuilder;
 use App\Support\PublicAppUrl;
@@ -41,10 +40,8 @@ final class AdminStateService
         return [
             'users' => $this->users->listSummaries(),
             'groups' => $this->groups->listGroupSummaries(),
+            // Older installs stored one SMTP endpoint here; Email delivery prefills from it.
             'mail' => [
-                'imapHost' => (string) ($cfg[SettingKeys::MAIL_IMAP_HOST] ?? ''),
-                'imapPort' => (int) ($cfg[SettingKeys::MAIL_IMAP_PORT] ?? 993),
-                'imapSecurity' => (string) ($cfg[SettingKeys::MAIL_IMAP_SECURITY] ?? 'ssl'),
                 'smtpHost' => (string) ($cfg[SettingKeys::MAIL_SMTP_HOST] ?? ''),
                 'smtpPort' => (int) ($cfg[SettingKeys::MAIL_SMTP_PORT] ?? 587),
                 'smtpSecurity' => (string) ($cfg[SettingKeys::MAIL_SMTP_SECURITY] ?? 'starttls'),
@@ -77,37 +74,37 @@ final class AdminStateService
     }
 
     /**
-     * @return list<string>
+     * Each warning carries a stable `code`; the admin page acts on the code, never on the message.
+     *
+     * @return list<array{code: string, message: string}>
      */
     private function securityWarnings(): array
     {
         $warnings = [];
-        if (AppSetting::getValue('shipped_env_hardened') !== true
-            && (config('app.env') !== 'production' || config('app.debug') === true)) {
-            try {
-                $applied = app(ShippedInstallEnvHardening::class)->apply();
-            } catch (\Throwable) {
-                $applied = false;
-            }
-            if ($applied) {
-                AppSetting::setValue('shipped_env_hardened', true);
-                $warnings[] = 'Production settings were applied; reload the page';
-            }
-        }
         if (config('app.debug') === true) {
-            $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
+            $warnings[] = $this->warning('app_debug_on', 'APP_DEBUG is on. Error responses can include exception details.');
         }
         if (! app()->environment('production')) {
-            $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
+            $warnings[] = $this->warning('app_env_not_production', 'APP_ENV is '.app()->environment().', not production.');
         }
-        if (! PublicAppUrl::isConfigured()) {
-            $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
+        if (PublicAppUrl::isLoopback()) {
+            $warnings[] = $this->warning('app_url_local', 'APP_URL is a local address ('.rtrim((string) config('app.url'), '/').'). Host checks and password-reset mail stay off until it is the site\'s public address: reset links must point there.');
+        } elseif (! PublicAppUrl::isConfigured()) {
+            $warnings[] = $this->warning('app_url_unset', 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.');
         }
         if ($this->dataDirs->configuredDirectoryIsPublished()) {
-            $warnings[] = 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.';
+            $warnings[] = $this->warning('data_dir_published', 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.');
         }
 
         return $warnings;
+    }
+
+    /**
+     * @return array{code: string, message: string}
+     */
+    private function warning(string $code, string $message): array
+    {
+        return ['code' => $code, 'message' => $message];
     }
 
     private function imipExternalEnabled(): bool

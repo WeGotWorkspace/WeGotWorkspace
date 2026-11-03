@@ -22,6 +22,12 @@ An error that leaves the transport layer carries an HTTP status. A bare `Error` 
 
 Never classify a failure from the contents of `error.message`. The regex fallback in `isPermanentOutboxFailure` (`lib/offline/core/outbox-store.ts`) exists only for outbox rows already stored in IndexedDB before `lastStatus` existed. It is a migration path. Do not copy it, and do not widen it.
 
+**Lint:** `messageClassificationRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js) fails CI in `lib/api/**` and `lib/offline/**` (tests excluded) when code calls `.includes`, `.startsWith`, `.match` and similar on `.message` or an outbox row's `.lastError`, runs a regex `.test`/`.exec` on them, or does either on a local named like a message (`message`, `msg`, `*Message`). It does not follow every alias, so review still applies. Reviewed exceptions carry an `eslint-disable-next-line no-restricted-syntax` with a reason:
+
+- `isPermanentOutboxFailure` — the migration path above.
+- `isFetchNetworkError` (`lib/offline/core/browser-online.ts`) — a fetch that never reached a server has no HTTP status; the browser's `TypeError` text is the only signal.
+- The `precondition failed` fallback in `lib/offline/docs/docs-outbox-flush.ts` and `lib/offline/drive/drive-outbox-flush.ts` — some Drive REST writes in `lib/api/wgw/drive.ts` still throw an `Error` without a status. Remove the fallback once they throw a typed error.
+
 ## Why the status matters
 
 Without a status, a mutation for a file the server has already removed lands in the transient bucket. The client retries it without end, and the toast keeps saying to try again later.

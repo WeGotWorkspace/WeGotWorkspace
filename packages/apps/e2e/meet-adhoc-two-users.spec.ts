@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "./helpers/live-test";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
@@ -44,7 +44,9 @@ test("signed-in teammate joins the host ad-hoc room", async ({ browser }) => {
     const memberRequest = await memberJoin;
     expect(roomIdFromParticipantsUrl(memberRequest.url())).toBe(room);
 
-    await expect(host.page.getByRole("button", { name: "1 waiting to join" })).toBeVisible();
+    await expect(
+      host.page.getByRole("heading", { name: "1 person waiting in the lobby" }),
+    ).toBeVisible();
   } finally {
     await host.context.close();
     await member.context.close();

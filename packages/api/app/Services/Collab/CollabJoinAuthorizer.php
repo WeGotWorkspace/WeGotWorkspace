@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Collab;
 
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Notes\Conversion\NoteJournalConverter;
+use App\Services\Notes\NoteArchiveGuard;
 use App\Services\Notes\NoteRepository;
 use App\Services\Rtc\Signaling\RtcPeerAccess;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -24,6 +26,7 @@ final class CollabJoinAuthorizer
     public function __construct(
         private DriveShareAuthorizer $driveShares,
         private NoteRepository $notes,
+        private NoteJournalConverter $converter,
     ) {}
 
     /**
@@ -64,6 +67,10 @@ final class CollabJoinAuthorizer
             return RtcPeerAccess::READ;
         }
 
+        // An archived note does not change until it is restored (#1535).
+        if (NoteArchiveGuard::isArchived($this->converter, $note['object'])) {
+            return RtcPeerAccess::READ;
+        }
         $access = (int) ($note['instance']->access ?? SharingPlugin::ACCESS_SHAREDOWNER);
 
         return $access === SharingPlugin::ACCESS_READ ? RtcPeerAccess::READ : RtcPeerAccess::WRITE;

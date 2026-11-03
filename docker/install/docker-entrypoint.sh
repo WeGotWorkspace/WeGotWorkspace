@@ -26,8 +26,13 @@ if [ -d "$CONFIG_VOL" ]; then
   ln -sf "${CONFIG_VOL}/api.env" "$target"
 fi
 
+# Generate APP_KEY only when it is empty (first boot). Never replace it:
+# `key:generate --force` on every start broke everything sealed under the old
+# key (refresh tokens, share links, collab ticket key). Non-fatal.
 if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
-  php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+  if ! php "${API_ROOT}/artisan" wgw:ensure-app-key --no-interaction; then
+    echo "[wgw-install] Warning: could not generate APP_KEY in ${API_ROOT}/.env; check that file by hand (see the message above)." >&2
+  fi
 fi
 
 DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"

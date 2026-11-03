@@ -8,6 +8,7 @@ import {
   captureDocsCollabOfflinePersistence,
   docsCollabIndexedDbKey,
   hasDocsCollabPendingServerSave,
+  migrateCollabPersistence,
   migrateDocsCollabPendingSaveFromLegacy,
   restoreDocsCollabOfflinePersistence,
 } from "./docs-collab-persistence";
@@ -220,6 +221,36 @@ describe("docs-collab offline persistence snapshot", () => {
     const restored = await captureDocsCollabOfflinePersistence(apiPath);
     expect(restored?.pendingServerSave).toBe(true);
     expect(restored?.yjsUpdate).toEqual(snapshot?.yjsUpdate);
+  });
+
+  it("marks a body moved off a temp room as not yet on the server", async () => {
+    // A local-* note's room never saves, so it never gets the pending flag.
+    const tempDoc = new Y.Doc();
+    const paragraph = new Y.XmlElement("paragraph");
+    const text = new Y.XmlText();
+    text.insert(0, "typed offline");
+    paragraph.insert(0, [text]);
+    tempDoc.getXmlFragment("default").insert(0, [paragraph]);
+    const tempPersistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey("local-temp-1"),
+      tempDoc,
+    );
+    await tempPersistence.whenSynced;
+    await tempPersistence.destroy();
+    tempDoc.destroy();
+
+    await migrateCollabPersistence("local-temp-1", "server-uid-1");
+
+    const serverDoc = new Y.Doc();
+    const serverPersistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey("server-uid-1"),
+      serverDoc,
+    );
+    await serverPersistence.whenSynced;
+    expect(serverDoc.getXmlFragment("default").toString()).toContain("typed offline");
+    await expect(serverPersistence.get(PENDING_SERVER_SAVE_KEY)).resolves.toBeTruthy();
+    await serverPersistence.destroy();
+    serverDoc.destroy();
   });
 });
 

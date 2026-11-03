@@ -91,7 +91,7 @@ describe("detailFooterLastEditedTag", () => {
     expect(container.querySelector(".user-avatar__presence--online")).toBeTruthy();
   });
 
-  it("puts an amber presence pip beside the timestamp while a save is pending", () => {
+  it("puts a blue pending pip beside the timestamp while a save is pending", () => {
     const { container } = renderTag(
       <>
         {detailFooterLastEditedTag({
@@ -107,8 +107,9 @@ describe("detailFooterLastEditedTag", () => {
     expect(chip!.getAttribute("data-save-sync")).toBe("pending");
     expect(chip!.getAttribute("aria-label")).toBe("Unsaved changes");
     expect(screen.getByText("10 Aug 2026, 14:00")).toBeTruthy();
-    expect(container.querySelector("[data-presence='away']")).toBeTruthy();
-    expect(container.querySelector(".user-avatar__presence--away")).toBeTruthy();
+    expect(container.querySelector("[data-presence='pending']")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--pending")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--away")).toBeNull();
   });
 
   it("keeps the failed-sync label when the chip is busy and the save is still pending", () => {
@@ -129,7 +130,7 @@ describe("detailFooterLastEditedTag", () => {
     ).toBeTruthy();
     expect(screen.getByText("10 Aug 2026, 14:00")).toBeTruthy();
     expect(container.querySelector(".loading-spinner")).toBeTruthy();
-    expect(container.querySelector("[data-presence='away']")).toBeTruthy();
+    expect(container.querySelector("[data-presence='pending']")).toBeTruthy();
   });
 
   it("omits the chip when idle without a real timestamp", () => {

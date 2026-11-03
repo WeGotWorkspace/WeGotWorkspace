@@ -1,8 +1,8 @@
-import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CONTACTS_CAPABILITY, type JmapId } from "../core/types.js";
 import { JmapContactsClient } from "../contacts/JmapContactsClient.js";
 import type { JmapAddressBook, JmapContactCard } from "../contacts/types.js";
+import { JmapInboundAdapter } from "./JmapInboundAdapter.js";
 
 const ADDRESS_BOOK_TYPE = "AddressBook";
 const CONTACT_CARD_TYPE = "ContactCard";
@@ -22,16 +22,25 @@ export type JmapContactsAdapterOptions = {
  * Inbound-only JMAP adapter: AddressBook then ContactCard `/changes` polling.
  * Mutations stay on the Dexie-first contacts operations / outbox.
  */
-export class JmapContactsAdapter {
+export class JmapContactsAdapter extends JmapInboundAdapter {
   #contacts: JmapContactsClient;
   #options: JmapContactsAdapterOptions;
   #accountId: JmapId | null = null;
-  #pollTimer: ReturnType<typeof setInterval> | undefined;
-  #pollInFlight = false;
 
   constructor(options: JmapContactsAdapterOptions) {
+    super();
     this.#options = options;
     this.#contacts = new JmapContactsClient(options.client);
+  }
+
+  protected readonly pushTypes = [ADDRESS_BOOK_TYPE, CONTACT_CARD_TYPE];
+
+  protected get jmapClient(): JmapClient {
+    return this.#options.client;
+  }
+
+  protected reportSyncError(error: unknown): void {
+    this.#options.onSyncError?.(error);
   }
 
   get accountId(): JmapId {
@@ -48,54 +57,27 @@ export class JmapContactsAdapter {
     await this.#contacts.getContactCards(this.accountId, []);
   }
 
-  async sync(): Promise<void> {
+  protected async pullChanges(): Promise<void> {
     const client = this.#options.client;
-    try {
-      await this.#syncAddressBooks();
+    await this.#syncAddressBooks();
 
-      const cardState = client.getState(this.accountId, CONTACT_CARD_TYPE);
-      if (cardState) {
-        const changes = await this.#contacts.contactCardChanges(this.accountId, cardState);
-        const created = new Set(changes.created);
-        const updated = changes.updated.filter((id) => !created.has(id));
-        const changedIds = [...changes.created, ...updated];
-        const destroyed = changes.destroyed.filter(
-          (id) => !created.has(id) && !updated.includes(id),
-        );
-        if (changedIds.length) {
-          const fetched = await this.#contacts.getContactCards(this.accountId, changedIds);
-          for (const card of fetched.list) {
-            this.#options.onRemoteContactCard?.(card);
-          }
-        }
-        for (const id of destroyed) {
-          this.#options.onRemoteContactCardDestroyed?.(id);
+    const cardState = client.getState(this.accountId, CONTACT_CARD_TYPE);
+    if (cardState) {
+      const changes = await this.#contacts.contactCardChanges(this.accountId, cardState);
+      const created = new Set(changes.created);
+      const updated = changes.updated.filter((id) => !created.has(id));
+      const changedIds = [...changes.created, ...updated];
+      const destroyed = changes.destroyed.filter((id) => !created.has(id) && !updated.includes(id));
+      if (changedIds.length) {
+        const fetched = await this.#contacts.getContactCards(this.accountId, changedIds);
+        for (const card of fetched.list) {
+          this.#options.onRemoteContactCard?.(card);
         }
       }
-    } catch (error) {
-      if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
-        await this.#refetchAll();
-        return;
+      for (const id of destroyed) {
+        this.#options.onRemoteContactCardDestroyed?.(id);
       }
-      this.#options.onSyncError?.(error);
     }
-  }
-
-  startPolling(intervalMs: number): void {
-    this.stopPolling();
-    this.#pollTimer = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      if (this.#pollInFlight) return;
-      this.#pollInFlight = true;
-      void this.sync().finally(() => {
-        this.#pollInFlight = false;
-      });
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.#pollTimer !== undefined) clearInterval(this.#pollTimer);
-    this.#pollTimer = undefined;
   }
 
   async #syncAddressBooks(): Promise<void> {
@@ -122,7 +104,7 @@ export class JmapContactsAdapter {
     }
   }
 
-  async #refetchAll(): Promise<void> {
+  protected async refetchAll(): Promise<void> {
     const books = await this.#contacts.getAddressBooks(this.accountId);
     const cards = await this.#contacts.getContactCards(this.accountId);
     if (this.#options.onRefetchAll) {

@@ -131,11 +131,6 @@ final class AppPaths
         return $this->installRoot();
     }
 
-    public function pluginsRoot(): string
-    {
-        return rtrim($this->installRoot(), '/').'/wgw-plugins';
-    }
-
     public function installerSqlDir(string $driver): string
     {
         return dirname(__DIR__, 2).'/resources/installer/sql/'.$driver;

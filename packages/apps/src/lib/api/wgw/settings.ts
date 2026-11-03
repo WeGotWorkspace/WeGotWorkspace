@@ -1,7 +1,4 @@
-import type {
-  SettingsMailRequest,
-  SettingsProfileRequest,
-} from "@wgw/openapi-types/settings-types";
+import type { SettingsProfileRequest } from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import {
   wgwEnsureFreshAccessToken,
@@ -13,8 +10,6 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
   WgwSettingsStateResponse,
   WgwSettingsUserGroup,
-  WgwSettingsUserMail,
-  WgwSettingsUserMailServer,
   WgwSettingsUserProfile,
 } from "@/lib/api/wgw/types";
 import type { SettingsUIData, SettingsMcpGrant } from "@/settings-core/src/settings-types";
@@ -34,30 +29,10 @@ function toGroups(raw: WgwSettingsUserGroup[]): SettingsUIData["groups"] {
   }));
 }
 
-function toMail(raw: WgwSettingsUserMail): SettingsUIData["mail"] {
-  return {
-    imapUsername: raw.imapUsername,
-    imapHasPassword: raw.imapHasPassword,
-  };
-}
-
-function toMailServer(raw: WgwSettingsUserMailServer): SettingsUIData["mailServer"] {
-  return {
-    imapHost: raw.imapHost,
-    imapPort: raw.imapPort,
-    imapSecurity: raw.imapSecurity,
-    smtpHost: raw.smtpHost,
-    smtpPort: raw.smtpPort,
-    smtpSecurity: raw.smtpSecurity,
-  };
-}
-
 export function mapWgwSettingsStateToUI(state: WgwSettingsStateResponse): SettingsUIData {
   return {
     user: toUser(state.user),
     groups: toGroups(state.groups),
-    mail: toMail(state.mail),
-    mailServer: toMailServer(state.mailServer),
     logoutUrl: state.logoutUrl,
     mcpEnabled: state.mcpEnabled === true,
   };
@@ -84,7 +59,7 @@ export async function fetchSettingsLiveBootstrap(): Promise<SettingsAppBootstrap
 }
 
 async function requestSettings(
-  path: "/settings/profile" | "/settings/mail",
+  path: "/settings/profile",
   body: object,
   opts?: { signal?: AbortSignal },
 ): Promise<WgwSettingsStateResponse> {
@@ -106,14 +81,6 @@ export async function saveSettingsProfile(
 ): Promise<SettingsUIData> {
   await wgwEnsureFreshAccessToken();
   const state = await requestSettings("/settings/profile", input, opts);
-  return mapWgwSettingsStateToUI(state);
-}
-
-export async function saveSettingsMail(
-  input: SettingsMailRequest,
-  opts?: { signal?: AbortSignal },
-): Promise<SettingsUIData> {
-  const state = await requestSettings("/settings/mail", input, opts);
   return mapWgwSettingsStateToUI(state);
 }
 

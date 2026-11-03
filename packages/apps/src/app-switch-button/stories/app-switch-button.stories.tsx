@@ -36,7 +36,7 @@ type Story = StoryObj<typeof AppSwitchButton>;
 /** In-app trigger: user artwork icon + sans route label (no suite wordmark). */
 export const InApp: Story = {
   parameters: {
-    routerPath: "/mail",
+    routerPath: "/notes",
   },
 };
 

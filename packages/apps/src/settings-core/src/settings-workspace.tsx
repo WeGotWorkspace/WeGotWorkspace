@@ -102,7 +102,6 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
       ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
       slices={{
         profile: controller.profile,
-        mail: controller.mail,
         assistants: controller.assistants,
         memberships: controller.memberships,
       }}

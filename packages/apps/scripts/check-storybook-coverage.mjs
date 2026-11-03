@@ -25,7 +25,6 @@ const EXCLUDE_EXPORT_SUFFIXES = [
 ];
 const EXCLUDE_EXPORT_NAMES = new Set([
   "DOCS_EDITOR_EXTENSIONS",
-  "NOOP_MAIL_API_OPERATIONS",
   "MultiSelectionView",
   "WegotworkspaceRouter",
   "WegotworkspaceRouterShared",

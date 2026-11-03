@@ -4,11 +4,27 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Models\CalendarObject;
+use App\Models\CalendarShareDismissal;
+use App\Models\Card;
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class SearchDocumentStore
 {
+    /**
+     * Column lengths in search_documents. MySQL strict mode rejects a longer
+     * value (1406), which used to stop a whole reindex.
+     */
+    private const MAX_SOURCE_KEY_LENGTH = 512;
+
+    private const MAX_TITLE_LENGTH = 512;
+
+    private const MAX_EXTENSION_LENGTH = 32;
+
     public function __construct(
         private SearchTokenService $tokens,
     ) {}
@@ -19,6 +35,17 @@ final class SearchDocumentStore
      */
     public function upsert(string $sourceType, string $sourceKey, array $document, array $tokensByField): void
     {
+        // The key identifies the document, so it cannot be cut short. A file
+        // nested deeper than the column allows stays out of search.
+        if (mb_strlen($sourceKey) > self::MAX_SOURCE_KEY_LENGTH) {
+            Log::warning('search_index_source_key_too_long', [
+                'source_type' => $sourceType,
+                'length' => mb_strlen($sourceKey),
+            ]);
+
+            return;
+        }
+
         // UTC so updated_at stays in lexicographic order across a DST change.
         // deleteStaleRows() compares this string against a gmdate('c') cutoff.
         $now = gmdate('c');
@@ -27,9 +54,11 @@ final class SearchDocumentStore
             'source_subtype' => $this->nullableString($document['source_subtype'] ?? null),
             'source_key' => $sourceKey,
             'owner_username' => $this->nullableString($document['owner_username'] ?? null),
+            'collection_id' => $this->nullableInt($document['collection_id'] ?? null),
+            'object_id' => $this->nullableInt($document['object_id'] ?? null),
             'group_slug' => $this->nullableString($document['group_slug'] ?? null),
-            'title' => $this->nullableString($document['title'] ?? null),
-            'extension' => $this->nullableString($document['extension'] ?? null),
+            'title' => $this->nullableString($document['title'] ?? null, self::MAX_TITLE_LENGTH),
+            'extension' => $this->nullableString($document['extension'] ?? null, self::MAX_EXTENSION_LENGTH),
             'category' => $this->nullableString($document['category'] ?? null),
             'content_type' => $this->nullableString($document['content_type'] ?? null),
             'size' => $this->nullableInt($document['size'] ?? null),
@@ -119,10 +148,6 @@ final class SearchDocumentStore
         array $filters = [],
         int $offset = 0,
     ): array {
-        $groupPrincipalOwners = array_values(array_unique(array_map(
-            static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (string $slug): bool => trim($slug) !== ''))
-        )));
         $query = SearchDocument::query()
             ->from('search_documents as d')
             ->select('d.*');
@@ -139,31 +164,7 @@ final class SearchDocumentStore
             $query->selectRaw('0 AS token_score');
         }
 
-        $query->where(function ($auth) use ($username, $groupSlugs, $groupPrincipalOwners): void {
-            $auth->where(function ($q) use ($username): void {
-                $q->whereIn('d.source_type', ['file', 'note'])
-                    ->where('d.owner_username', $username);
-            });
-
-            if ($groupSlugs !== []) {
-                $auth->orWhere(function ($q) use ($groupSlugs): void {
-                    $q->where('d.source_type', 'file')
-                        ->whereIn('d.group_slug', $groupSlugs);
-                });
-            }
-
-            $auth->orWhere(function ($q) use ($username): void {
-                $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                    ->where('d.owner_username', $username);
-            });
-
-            if ($groupPrincipalOwners !== []) {
-                $auth->orWhere(function ($q) use ($groupPrincipalOwners): void {
-                    $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                        ->whereIn('d.owner_username', $groupPrincipalOwners);
-                });
-            }
-        });
+        $this->whereReadable($query, $username, $groupSlugs);
 
         if ($sources !== []) {
             $query->whereIn('d.source_type', $sources);
@@ -231,43 +232,100 @@ final class SearchDocumentStore
         string $sourceType,
         string $sourceKey,
     ): ?array {
-        $groupPrincipalOwners = array_values(array_unique(array_map(
-            static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (mixed $slug): bool => trim($slug) !== ''))
-        )));
-
-        $row = SearchDocument::query()
+        $query = SearchDocument::query()
             ->from('search_documents as d')
             ->where('d.source_type', $sourceType)
-            ->where('d.source_key', $sourceKey)
-            ->where(function ($auth) use ($username, $groupSlugs, $groupPrincipalOwners): void {
-                $auth->where(function ($q) use ($username): void {
-                    $q->whereIn('d.source_type', ['file', 'note'])
-                        ->where('d.owner_username', $username);
-                });
-
-                if ($groupSlugs !== []) {
-                    $auth->orWhere(function ($q) use ($groupSlugs): void {
-                        $q->where('d.source_type', 'file')
-                            ->whereIn('d.group_slug', $groupSlugs);
-                    });
-                }
-
-                $auth->orWhere(function ($q) use ($username): void {
-                    $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                        ->where('d.owner_username', $username);
-                });
-
-                if ($groupPrincipalOwners !== []) {
-                    $auth->orWhere(function ($q) use ($groupPrincipalOwners): void {
-                        $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                            ->whereIn('d.owner_username', $groupPrincipalOwners);
-                    });
-                }
-            })
-            ->first();
+            ->where('d.source_key', $sourceKey);
+        $this->whereReadable($query, $username, $groupSlugs);
+        $row = $query->first();
 
         return $row ? (array) $row->toArray() : null;
+    }
+
+    /**
+     * Rows the caller may read right now. Files and notes follow the storage
+     * path (own home, current groups). CalDAV and CardDAV rows also need their
+     * collection to still be the caller's: a live instance of one of the
+     * caller's principals, not dismissed by the caller, holding the object.
+     * A revoked share, a dismissed share, a left group or a deleted item drops
+     * out at once, without waiting for a reindex.
+     *
+     * @param  Builder<SearchDocument>  $query
+     * @param  list<string>  $groupSlugs
+     */
+    private function whereReadable(Builder $query, string $username, array $groupSlugs): void
+    {
+        $groupSlugs = array_values(array_filter($groupSlugs, static fn (string $slug): bool => trim($slug) !== ''));
+        $davOwners = array_values(array_unique(array_merge(
+            [$username],
+            array_map(static fn (string $slug): string => 'groups/'.$slug, $groupSlugs),
+        )));
+        $principalUris = array_map(static fn (string $owner): string => 'principals/'.$owner, $davOwners);
+
+        $query->where(function ($auth) use ($username, $groupSlugs, $davOwners, $principalUris): void {
+            $auth->where(function ($q) use ($username): void {
+                $q->whereIn('d.source_type', ['file', 'note'])
+                    ->where('d.owner_username', $username);
+            });
+
+            if ($groupSlugs !== []) {
+                $auth->orWhere(function ($q) use ($groupSlugs): void {
+                    $q->where('d.source_type', 'file')
+                        ->whereIn('d.group_slug', $groupSlugs);
+                });
+            }
+
+            $auth->orWhere(function ($q) use ($username, $davOwners, $principalUris): void {
+                $q->where('d.source_type', 'caldav')
+                    ->whereIn('d.owner_username', $davOwners)
+                    ->whereExists($this->liveCalendarObject($username, $principalUris));
+            });
+
+            $auth->orWhere(function ($q) use ($davOwners, $principalUris): void {
+                $q->where('d.source_type', 'carddav')
+                    ->whereIn('d.owner_username', $davOwners)
+                    ->whereExists($this->liveCard($principalUris));
+            });
+        });
+    }
+
+    /**
+     * @param  list<string>  $principalUris
+     * @return Builder<CalendarObject>
+     */
+    private function liveCalendarObject(string $username, array $principalUris): Builder
+    {
+        return CalendarObject::query()
+            ->from('calendarobjects as o')
+            ->join('calendarinstances as i', 'i.calendarid', '=', 'o.calendarid')
+            ->selectRaw('1')
+            ->whereColumn('o.id', 'd.object_id')
+            ->whereColumn('i.id', 'd.collection_id')
+            ->whereIn('i.principaluri', $principalUris)
+            ->where(function ($visible) use ($username): void {
+                // Same rule as CalendarShareVisibility: a dismissal hides sharee copies only.
+                $visible->whereNull('i.access')
+                    ->orWhereNotIn('i.access', [SharingPlugin::ACCESS_READ, SharingPlugin::ACCESS_READWRITE])
+                    ->orWhereNotIn(
+                        'i.calendarid',
+                        CalendarShareDismissal::query()->select('calendarid')->where('username', $username),
+                    );
+            });
+    }
+
+    /**
+     * @param  list<string>  $principalUris
+     * @return Builder<Card>
+     */
+    private function liveCard(array $principalUris): Builder
+    {
+        return Card::query()
+            ->from('cards as c')
+            ->join('addressbooks as a', 'a.id', '=', 'c.addressbookid')
+            ->selectRaw('1')
+            ->whereColumn('c.id', 'd.object_id')
+            ->whereColumn('a.id', 'd.collection_id')
+            ->whereIn('a.principaluri', $principalUris);
     }
 
     /**
@@ -305,19 +363,28 @@ final class SearchDocumentStore
             }
         }
         if ($rows !== []) {
-            SearchTerm::query()->insert($rows);
+            // The unique (document_id, token, field) index compares tokens with
+            // the column collation. MySQL utf8mb4_unicode_ci treats "één" and
+            // "een" (or "straße" and "strasse") as one value, and PHP cannot
+            // mirror every collation, so let the index decide. The first
+            // spelling stays; weight is per field, so nothing is lost. MySQL
+            // LIKE uses the same collation, so either spelling still matches.
+            SearchTerm::query()->upsert($rows, ['document_id', 'token', 'field'], ['weight', 'updated_at']);
         }
     }
 
-    private function nullableString(mixed $value): ?string
+    private function nullableString(mixed $value, ?int $maxLength = null): ?string
     {
         if (! is_string($value)) {
             return null;
         }
 
         $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
 
-        return $trimmed === '' ? null : $trimmed;
+        return $maxLength === null ? $trimmed : mb_substr($trimmed, 0, $maxLength);
     }
 
     private function nullableInt(mixed $value): ?int

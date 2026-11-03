@@ -5,7 +5,6 @@ import {
   resolveSettingsSection,
   SETTINGS_DEFAULT_SECTION,
 } from "@/settings-core/src/settings-section";
-import { useSettingsMailForm } from "@/settings-core/src/use-settings-mail-form";
 import { useSettingsMcpGrants } from "@/settings-core/src/use-settings-mcp-grants";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
 import {
@@ -15,8 +14,8 @@ import {
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
 /**
- * Settings workspace: section nav + sidebar visibility, plus independent profile and mail form
- * slices so each form hook can be reused outside this workspace.
+ * Settings workspace: section nav + sidebar visibility, plus an independent profile form
+ * slice so the form hook can be reused outside this workspace.
  */
 export function useSettingsController({
   data,
@@ -48,12 +47,6 @@ export function useSettingsController({
   };
 
   const profile = useSettingsProfileForm({ user: data.user, operations });
-  const mail = useSettingsMailForm({
-    profileEmail: data.user.email,
-    mail: data.mail,
-    mailServer: data.mailServer,
-    operations,
-  });
   const assistants = useSettingsMcpGrants(operations, mcpEnabled);
 
   return {
@@ -65,7 +58,6 @@ export function useSettingsController({
     selectSection,
     profile,
     memberships: data.groups,
-    mail,
     assistants,
     mcpEnabled,
   };

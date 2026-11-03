@@ -150,6 +150,8 @@ export function useCalendarInvitations(
 
   useEffect(() => {
     setCalendarsSchedulingConflictListener((ids) => {
+      // Every outbox flush reports, so an empty list means "no conflicts".
+      if (ids.length === 0) return;
       dropNotifications(ids);
       options?.onSchedulingConflict?.(ids);
     });

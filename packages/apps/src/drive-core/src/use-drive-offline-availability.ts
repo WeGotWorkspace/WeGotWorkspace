@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import {
+  isEligibleForAutoContentSync,
   readOfflineDeviceContentSettings,
   subscribeOfflineDeviceContentSettings,
+  type OfflineDeviceContentSettings,
 } from "@/lib/offline/core/offline-device-settings";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { driveOutboxApiPath } from "@/lib/offline/drive/drive-outbox-flush";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { readDriveContentSyncProgress } from "@/lib/offline/drive/drive-content-sync";
-import { readDriveMetadataSyncProgress } from "@/lib/offline/drive/drive-metadata-sync";
 import { hasOfflineFileContent } from "@/lib/offline/shared/content-availability";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { normalizeDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
@@ -28,6 +29,38 @@ function parseFileSizeBytes(file: DriveFile): number | null {
   if (file.size?.includes("GB")) return Math.round(kb * 1024 * 1024 * 1024);
   if (file.size?.includes("KB")) return Math.round(kb * 1024);
   return Math.round(kb);
+}
+
+const SYNC_POLL_INTERVAL_MS = 1500;
+
+export type DriveRowOfflineState = "available" | "syncing" | "too-large" | "none";
+
+/**
+ * Offline state of one row. A running background sync only marks the files it
+ * will copy itself: not yet on the device and within the automatic size limit.
+ * Folders, files above the limit and files already stored keep their own state.
+ */
+export function driveRowOfflineState(input: {
+  hasLocal: boolean;
+  isFolder: boolean;
+  sizeBytes: number | null;
+  syncRunning: boolean;
+  online: boolean;
+  settings: OfflineDeviceContentSettings;
+}): DriveRowOfflineState {
+  if (input.hasLocal) return "available";
+  if (input.isFolder) return "none";
+  const { settings, sizeBytes } = input;
+  if (input.syncRunning && isEligibleForAutoContentSync(sizeBytes, settings)) return "syncing";
+  if (
+    input.online &&
+    settings.contentSyncEnabled &&
+    sizeBytes != null &&
+    sizeBytes > settings.maxFileSizeBytes
+  ) {
+    return "too-large";
+  }
+  return "none";
 }
 
 export function useDriveOfflineAvailability(
@@ -82,10 +115,7 @@ export function useDriveOfflineAvailability(
 
     void (async () => {
       const settings = readOfflineDeviceContentSettings();
-      const [metadataProgress, contentProgress] = await Promise.all([
-        readDriveMetadataSyncProgress(username),
-        readDriveContentSyncProgress(username),
-      ]);
+      const contentProgress = await readDriveContentSyncProgress(username);
       const outboxRows = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
       const outboxPendingPaths = new Set<string>();
       for (const row of outboxRows) {
@@ -97,11 +127,8 @@ export function useDriveOfflineAvailability(
       const pinned = new Set<string>();
       const pending = new Set<string>();
 
-      if (metadataProgress.running || contentProgress.running) {
-        for (const file of files) {
-          pending.add(file.id);
-        }
-      }
+      // Only the content sync copies file bodies; the metadata crawl writes listings.
+      const syncRunning = contentProgress.running;
 
       await Promise.all(
         files.map(async (file) => {
@@ -112,15 +139,17 @@ export function useDriveOfflineAvailability(
             pending.add(file.id);
           }
 
-          const hasLocal = await hasOfflineFileContent(username, apiPath);
-          if (hasLocal) {
-            available.add(file.id);
-          } else if (online && settings.contentSyncEnabled) {
-            const sizeBytes = parseFileSizeBytes(file);
-            if (sizeBytes != null && sizeBytes > settings.maxFileSizeBytes) {
-              pinned.add(file.id);
-            }
-          }
+          const state = driveRowOfflineState({
+            hasLocal: await hasOfflineFileContent(username, apiPath),
+            isFolder: file.kind === "folder",
+            sizeBytes: parseFileSizeBytes(file),
+            syncRunning,
+            online,
+            settings,
+          });
+          if (state === "available") available.add(file.id);
+          else if (state === "syncing") pending.add(file.id);
+          else if (state === "too-large") pinned.add(file.id);
         }),
       );
 
@@ -135,6 +164,27 @@ export function useDriveOfflineAvailability(
       cancelled = true;
     };
   }, [enabled, fileKeys, files, online, refreshToken, settingsVersion, username]);
+
+  // Stored blobs do not change the file list, so watch the content sync on a
+  // fixed interval. Sampling continues while both flags are false: the content
+  // flag is only set after the metadata crawl and the cache scan. A pass runs
+  // while content runs and once after it ends, which clears the last spinners.
+  useEffect(() => {
+    if (!enabled || !username || files.length === 0) return;
+    let cancelled = false;
+    let wasRunning = false;
+    const timer = setInterval(() => {
+      void readDriveContentSyncProgress(username).then(({ running }) => {
+        if (cancelled) return;
+        if (running || wasRunning) setRefreshToken((value) => value + 1);
+        wasRunning = running;
+      });
+    }, SYNC_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [enabled, files.length, username]);
 
   return {
     offlineAvailableIds,

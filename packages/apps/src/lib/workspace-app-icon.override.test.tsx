@@ -16,15 +16,15 @@ const OVERRIDE_MARKUP =
 
 describe("WorkspaceAppIconOverrideProvider", () => {
   it("keeps build-time switch-trigger markup when the provider is absent", () => {
-    const { container } = render(<WorkspaceAppIcon appId="mail" variant="switch-trigger" />);
+    const { container } = render(<WorkspaceAppIcon appId="tasks" variant="switch-trigger" />);
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
     // jsdom may expand self-closing tags; assert production artwork cues, not byte equality.
     expect(trigger?.innerHTML).toContain('viewBox="0 0 60 60"');
     expect(trigger?.innerHTML).toContain(
-      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+      "var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))",
     );
     expect(trigger?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-red-tint, #f9b193))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-pink-tint, #ffe8ea))",
     );
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
@@ -32,35 +32,35 @@ describe("WorkspaceAppIconOverrideProvider", () => {
   it("swaps switch-trigger __html when svgMarkup is provided", () => {
     const { container } = render(
       <WorkspaceAppIconOverrideProvider svgMarkup={OVERRIDE_MARKUP}>
-        <WorkspaceAppIcon appId="mail" variant="switch-trigger" />
+        <WorkspaceAppIcon appId="tasks" variant="switch-trigger" />
       </WorkspaceAppIconOverrideProvider>,
     );
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
     expect(trigger?.querySelector("[data-branding-override='1']")).toBeTruthy();
     expect(trigger?.innerHTML).toContain("data-branding-override");
     expect(trigger?.innerHTML).not.toContain(
-      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+      "var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))",
     );
   });
 
   it("inlines the home tile and keeps the artwork's own fill variables", () => {
-    const { container } = render(<WorkspaceAppIcon appId="mail" variant="tile" />);
+    const { container } = render(<WorkspaceAppIcon appId="tasks" variant="tile" />);
     const tile = container.querySelector(".workspace-app-icon--tile");
     expect(tile?.tagName).toBe("SPAN");
     expect(tile?.querySelector("svg")).toBeTruthy();
     expect(tile?.querySelector("img")).toBeNull();
     expect(tile?.innerHTML).toContain(
-      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+      "var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))",
     );
     expect(tile?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-red-tint, #f9b193))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-pink-tint, #ffe8ea))",
     );
   });
 
   it("uses a data URL for default/tile variants when svgMarkup is provided", () => {
     const { container } = render(
       <WorkspaceAppIconOverrideProvider svgMarkup={OVERRIDE_MARKUP}>
-        <WorkspaceAppIcon appId="mail" variant="tile" className="size-8" />
+        <WorkspaceAppIcon appId="tasks" variant="tile" className="size-8" />
       </WorkspaceAppIconOverrideProvider>,
     );
     const img = container.querySelector("img.workspace-app-icon--tile") as HTMLImageElement | null;

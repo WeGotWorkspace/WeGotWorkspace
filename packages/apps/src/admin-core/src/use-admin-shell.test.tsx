@@ -49,14 +49,14 @@ describe("useAdminShell section routing", () => {
     expect(result.current.section).toBe("users");
 
     act(() => {
-      result.current.selectSection("mail");
+      result.current.selectSection("email-delivery");
     });
 
-    expect(onSectionChange).toHaveBeenCalledWith("mail");
+    expect(onSectionChange).toHaveBeenCalledWith("email-delivery");
     expect(result.current.section).toBe("users");
 
-    rerender({ section: "mail" });
-    expect(result.current.section).toBe("mail");
-    expect(result.current.currentSection.id).toBe("mail");
+    rerender({ section: "email-delivery" });
+    expect(result.current.section).toBe("email-delivery");
+    expect(result.current.currentSection.id).toBe("email-delivery");
   });
 });

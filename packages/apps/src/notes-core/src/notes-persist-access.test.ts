@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { JmapSetItemError } from "@/lib/jmap-client";
 import {
-  isNotesMetadataSyncRace,
   isNotesPersistForbidden,
   isNotesPersistGone,
   NOTES_ACCESS_LOST_MESSAGE,
@@ -65,11 +64,6 @@ describe("notes persist 404", () => {
     expect(onGone).toHaveBeenCalledOnce();
   });
 
-  it("does not treat a local-* 404 as gone", () => {
-    expect(isNotesPersistGone({ status: 404 }, "local-abc123")).toBe(false);
-    expect(isNotesPersistGone({ status: 404 }, "note-1")).toBe(true);
-  });
-
   it("warns with the note id when a 412 sync race is swallowed", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const onGone = vi.fn();
@@ -87,7 +81,7 @@ describe("notes persist 404", () => {
     warn.mockRestore();
   });
 
-  it("keeps optimistic tags on 412 or local-* 404 via persistNoteKeepingSyncRace", async () => {
+  it("keeps optimistic tags on a 412 via persistNoteKeepingSyncRace", async () => {
     const onGone = vi.fn();
     await expect(
       persistNoteKeepingSyncRace(
@@ -96,15 +90,7 @@ describe("notes persist 404", () => {
         "note-1",
       ),
     ).resolves.toBeUndefined();
-    await expect(
-      persistNoteKeepingSyncRace(
-        Promise.reject(Object.assign(new Error("not found"), { status: 404 })),
-        onGone,
-        "local-abc123",
-      ),
-    ).resolves.toBeUndefined();
     expect(onGone).not.toHaveBeenCalled();
-    expect(isNotesMetadataSyncRace({ status: 412 }, "note-1")).toBe(true);
   });
 
   it("rethrows 412/403 so callers keep the local row", async () => {

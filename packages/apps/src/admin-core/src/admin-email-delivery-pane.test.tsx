@@ -93,4 +93,27 @@ describe("AdminEmailDeliveryPane", () => {
     });
     expect(screen.getByText(/accepted by the smtp transport/i)).toBeTruthy();
   });
+
+  it("shows the external invitation switch and hourly limit", () => {
+    render(<EmailDeliveryHarness />);
+
+    expect(screen.getByLabelText("External invitations enabled")).toBeTruthy();
+    expect(screen.getByLabelText("Hourly invitation limit")).toBeTruthy();
+    expect(screen.getByLabelText("Daily invitation limit")).toBeTruthy();
+  });
+
+  it("keeps the hourly limit empty while the field is cleared", () => {
+    render(<EmailDeliveryHarness />);
+
+    const limit = screen.getByLabelText("Hourly invitation limit");
+    fireEvent.change(limit, { target: { value: "" } });
+    expect(limit).toHaveProperty("value", "");
+
+    fireEvent.change(limit, { target: { value: "42" } });
+    expect(limit).toHaveProperty("value", "42");
+
+    const daily = screen.getByLabelText("Daily invitation limit");
+    fireEvent.change(daily, { target: { value: "" } });
+    expect(daily).toHaveProperty("value", "");
+  });
 });

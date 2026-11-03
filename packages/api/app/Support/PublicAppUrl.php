@@ -23,6 +23,14 @@ final class PublicAppUrl
         return self::configuredHost() !== null;
     }
 
+    /** APP_URL is set, but to a loopback address, so it counts as unset. */
+    public static function isLoopback(): bool
+    {
+        $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        return is_string($host) && in_array(strtolower(trim($host, '[]')), self::LOOPBACK_HOSTS, true);
+    }
+
     /**
      * Trusted-host patterns. An empty list means no Host restriction.
      *
@@ -72,7 +80,8 @@ final class PublicAppUrl
             return null;
         }
         $host = strtolower($host);
-        if (in_array($host, self::LOOPBACK_HOSTS, true)) {
+        // parse_url keeps the brackets of an IPv6 literal: http://[::1] gives "[::1]".
+        if (in_array(trim($host, '[]'), self::LOOPBACK_HOSTS, true)) {
             return null;
         }
 

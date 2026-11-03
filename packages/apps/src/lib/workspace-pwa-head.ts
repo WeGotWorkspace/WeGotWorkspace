@@ -13,15 +13,7 @@ import {
  */
 export const WORKSPACE_PWA_ICON_CACHE_VERSION = pwaIconCacheVersion.version;
 
-/**
- * Installed window chrome for every suite PWA (`theme_color`, `background_color`,
- * and the `theme-color` meta). Same hex as `--color-we-got-sand`. UI accents use Dark.
- * Launcher tiles stay on `WORKSPACE_APP_ACCENT`.
- */
-export const WORKSPACE_PWA_THEME_COLOR = "#ba9689";
-
-/** Mail stays an app id for icons and mail-core. The live shell does not install its PWA. */
-export type WorkspacePwaAppKey = Exclude<WorkspaceAppId, "mail"> | "home";
+export type WorkspacePwaAppKey = WorkspaceAppId | "home";
 
 type WorkspacePwaMeta = {
   title: string;
@@ -75,7 +67,7 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
   },
   settings: {
     title: "Settings",
-    description: "Manage your account, memberships, and mail.",
+    description: "Manage your account and memberships.",
     appTitle: "Settings",
     manifest: "/manifests/settings.webmanifest",
   },
@@ -119,7 +111,6 @@ export function createWorkspacePwaHead(
   return createPwaHead({
     title: overrides?.title ?? meta.title,
     description: overrides?.description ?? meta.description,
-    themeColor: WORKSPACE_PWA_THEME_COLOR,
     appTitle: meta.appTitle,
     manifest: cacheBust(meta.manifest),
     appleTouchIcon: workspacePwaAppleTouchSrc(app),

@@ -121,7 +121,7 @@ final class JmapSessionTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('/jmap/events/{types}/{closeafter}/{ping}', $session['eventSourceUrl']);
     }
 
-    public function test_blob_urls_are_live_and_only_push_stays_stubbed(): void
+    public function test_blob_and_event_source_urls_are_live(): void
     {
         $token = $this->userBearerToken();
 
@@ -130,9 +130,10 @@ final class JmapSessionTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/jmap/download/bob/blob-1/file.ics')
             ->assertStatus(404);
-        // Push (RFC 8620 §7) stays an explicit non-goal.
-        $this->withBearer($token)
-            ->getJson('/api/v1/jmap/events/CalendarEvent/0/0')
-            ->assertStatus(501);
+        // The event source is live since #1660 (JmapEventSourceTest covers it).
+        $response = $this->withBearer($token)
+            ->get('/api/v1/jmap/events/CalendarEvent/state/0')
+            ->assertOk();
+        $this->assertStringStartsWith('text/event-stream', (string) $response->headers->get('Content-Type'));
     }
 }

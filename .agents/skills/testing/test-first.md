@@ -41,10 +41,14 @@ Optional after gate: `pnpm test:api-e2e:docker` (Playwright, local, not CI).
 ### UI rules
 
 1. **Mock-tier Storybook first** for any new export — must run without live API ([storybook/offline-first.md](../storybook/offline-first.md)).
-2. **Inject dependencies** — `operations` / slice handlers; never import `@/lib/api/wgw/http` in panes ([apps-ui/components.md](../apps-ui/components.md)).
+2. **Inject dependencies** — `operations` / slice handlers; never import `@/lib/api/wgw/http` in panes or stories ([apps-ui/components.md](../apps-ui/components.md); ESLint `paneAndStoryImportRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js)).
 3. **Vitest for logic** — state machines, mappers, hooks; co-locate `*.test.ts(x)` ([ui-architecture.md](ui-architecture.md)).
 4. **Do not** rely on live API stories for development or CI — `Live …` stories are optional smoke only.
-5. **Never read source or CSS files in a test to assert on their text.**
+5. **Never read source or CSS files in a test to assert on their text.** ESLint blocks `fs` imports in `*.test.ts(x)`; the exemptions are listed in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js).
+
+### Design-token tests
+
+Three tests read CSS on purpose: `src/control-height.tokens.test.ts`, `src/foundations/token-core.test.ts` and `src/foundations/token-catalog.test.ts`. They check design tokens (control heights, the core token set, the token catalog) and run in CI with Vitest unit. Decision in [#1642](https://github.com/WeGotWorkspace/wegotworkspace/issues/1642): they stay Vitest tests and keep their `fs` exemption. The repo has no stylelint, and adding it only to move three passing checks is not worth a new tool. Do not add new tests that read source or CSS; a new structural rule is a lint rule. Revisit when stylelint lands for another reason.
 
 ### Red step per change type
 

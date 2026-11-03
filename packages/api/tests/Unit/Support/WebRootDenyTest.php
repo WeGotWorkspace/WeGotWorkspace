@@ -219,6 +219,7 @@ HTACCESS;
 # BEGIN wgw-deny
 RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
 RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
 # END wgw-deny
 BLOCK;
     }

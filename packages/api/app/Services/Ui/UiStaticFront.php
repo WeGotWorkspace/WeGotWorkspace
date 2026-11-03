@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Ui;
 
 use App\Services\Installer\InstallerWebBase;
-use App\Services\Plugins\PluginRegistryService;
 use App\Support\AppPaths;
-use App\Ui\PluginStaticServer;
 use App\Ui\UiStaticServer;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,10 +14,7 @@ final class UiStaticFront
 {
     public function __construct(
         private AppPaths $paths,
-        private PluginRegistryService $plugins,
         private UiStaticServer $static,
-        private PluginStaticServer $pluginStatic,
-        private PluginHtmlResponder $pluginHtml,
     ) {}
 
     public function handle(Request $request): ?Response
@@ -63,13 +58,8 @@ final class UiStaticFront
             return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
         }
 
-        if (config('wgw.plugins.enabled')) {
-            $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
-            if ($pluginMatch !== null) {
-                return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
-            }
-        } elseif ($this->isUnshippedPluginAppPath($webBase, $path)) {
-            // Temporary. A 301 would stick in browsers after plugins return.
+        // 302, not 301: a permanent redirect would stick in browsers if /apps is reused.
+        if ($this->isRemovedPluginAppPath($webBase, $path)) {
             return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
         }
 
@@ -106,40 +96,6 @@ final class UiStaticFront
         return $served ?? $this->notFound();
     }
 
-    /**
-     * @param  array{
-     *   plugin: array<string, mixed>,
-     *   routePrefix: string,
-     *   indexPath: string|null,
-     *   buildRoot: string|null
-     * }  $pluginMatch
-     */
-    private function handlePluginRoutes(string $webBase, string $path, string $method, array $pluginMatch): Response
-    {
-        if ($method === 'HEAD') {
-            return response('', 200);
-        }
-
-        $html = $this->pluginHtml->tryRespond($webBase, $path, $pluginMatch);
-        if ($html !== null) {
-            return $html;
-        }
-
-        $buildRoot = $pluginMatch['buildRoot'] ?? null;
-        if ($buildRoot === null) {
-            $pluginId = (string) ($pluginMatch['plugin']['id'] ?? 'plugin');
-
-            return $this->distMissing($pluginId);
-        }
-
-        $route = isset($pluginMatch['plugin']['appTile']['route']) && is_string($pluginMatch['plugin']['appTile']['route'])
-            ? $pluginMatch['plugin']['appTile']['route']
-            : '/';
-        $served = $this->pluginStatic->tryServe($buildRoot, $webBase, $path, $route);
-
-        return $served ?? $this->notFound();
-    }
-
     private function handleShell(string $webBase, string $path, string $method): Response
     {
         $dist = $this->paths->shellDistRoot();
@@ -157,11 +113,12 @@ final class UiStaticFront
     }
 
     /**
-     * Bookmarks and an installed plugin PWA still request `/apps`. That prefix is
-     * not a shell route, and the shell service worker does not claim it, so without
-     * this redirect the request falls through to SabreDAV.
+     * Installable plugins were removed, but bookmarks and an installed plugin PWA
+     * still request `/apps`. That prefix is not a shell route, and the shell service
+     * worker does not claim it, so without this redirect the request falls through
+     * to SabreDAV.
      */
-    private function isUnshippedPluginAppPath(string $webBase, string $path): bool
+    private function isRemovedPluginAppPath(string $webBase, string $path): bool
     {
         $prefix = InstallerWebBase::url($webBase, '/apps');
 

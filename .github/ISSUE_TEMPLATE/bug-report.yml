@@ -15,17 +15,33 @@ body:
         Please write this report in **English**.
 
   - type: textarea
-    id: problem
+    id: summary
     attributes:
-      label: What is going wrong?
+      label: Summary
       description: >
-        Briefly describe the issue.
-        What behavior are you seeing that appears incorrect?
-      placeholder: >
-        Example:
-        While editing a table cell, pressing Enter crashes the editor and the document can no longer be recovered.
+        Three short lines in plain words. What goes wrong.
+        Who runs into it (just you, everyone, admins, guests).
+        What happens if it stays broken (you lose work, you need a workaround, or it is only annoying).
+        Keep the three labels and write after each one.
+        Example — What: Pressing Enter in a table cell closes the document and my changes are gone.
+        Who notices: Anyone who edits tables in Docs.
+        If we wait: People lose work every time they press Enter in a table.
+      value: |
+        **What:**
+        **Who notices:**
+        **If we wait:**
     validations:
       required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Details
+      description: >
+        Optional. Anything longer than one line about what goes wrong:
+        error messages, when it started, what you already tried.
+    validations:
+      required: false
 
   - type: textarea
     id: expected

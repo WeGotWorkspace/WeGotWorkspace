@@ -158,4 +158,37 @@ describe("useDocsCollabReconnect save gate", () => {
     expect(refs.nextSaveAttemptAtRef.current).toBe(Number.POSITIVE_INFINITY);
     expect(persistToServer).not.toHaveBeenCalled();
   });
+
+  it("saves edits it finds unsaved, also without a pending flag", async () => {
+    // Emptied offline: the edit is marked dirty, but no flag was written.
+    const refs = sessionRefs(null);
+    refs.saveRetryMsRef.current = 0;
+    refs.nextSaveAttemptAtRef.current = 0;
+    refs.pendingServerSaveRef.current = false;
+    refs.localDirtySinceLastSaveRef.current = true;
+    const persistToServer = vi.fn(async () => undefined);
+    const { result } = renderHook(() =>
+      useDocsCollabReconnect({
+        refs,
+        room: "users/ada/note.md",
+        urls,
+        userName: "Ada",
+        joined: true,
+        mesh: {
+          joinMesh: vi.fn(async () => []),
+          refreshMeshUi: vi.fn(),
+          setStatus: vi.fn(),
+          setConnectingPeers: vi.fn(),
+        },
+        save: { persistToServer, flushPendingSaveIfReady: vi.fn() },
+        join: { trySeedFromFile: vi.fn(), mergeServerState: vi.fn(async () => false) },
+        setDocStatus: vi.fn(),
+      }),
+    );
+
+    await result.current.handleReconnect();
+
+    expect(persistToServer).toHaveBeenCalledTimes(1);
+    expect(refs.localDirtySinceLastSaveRef.current).toBe(true);
+  });
 });

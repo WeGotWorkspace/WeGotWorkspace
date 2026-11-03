@@ -19,18 +19,6 @@ const DEFAULT_DATA: SettingsUIData = {
     { id: "principals/groups/northlight", displayName: "Northlight Project" },
     { id: "principals/groups/bindery", displayName: "Bindery Workshop" },
   ],
-  mail: {
-    imapUsername: "demo@example.test",
-    imapHasPassword: true,
-  },
-  mailServer: {
-    imapHost: "imap.northlight.studio",
-    imapPort: 993,
-    imapSecurity: "ssl",
-    smtpHost: "smtp.northlight.studio",
-    smtpPort: 465,
-    smtpSecurity: "ssl",
-  },
   logoutUrl: "/logout",
   mcpEnabled: true,
 };

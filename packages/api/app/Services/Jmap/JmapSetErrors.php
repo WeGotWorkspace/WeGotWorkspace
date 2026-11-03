@@ -31,6 +31,8 @@ final class JmapSetErrors
             'not_found' => 'notFound',
             'bad_request', 'invalidProperties' => 'invalidProperties',
             'forbidden', 'group_delete_admin_only' => 'forbidden',
+            // #1535: an archived note does not change until it is restored.
+            'note_archived' => 'forbidden',
             'stateMismatch', 'precondition_failed' => 'stateMismatch',
             // draft-ietf-jmap-calendars Calendar/set destroy without onDestroyRemoveEvents.
             'calendarHasContents' => 'calendarHasEvent',

@@ -46,15 +46,17 @@ export function useDocsHomeSidebarModel({
         selected: view.type === "starred",
         onClick: () => selectView({ type: "starred" }),
       },
+      // Docs has no upload queue: files reach Drive's Uploads view, not Docs home.
+      uploads: null,
       trash: {
         label: labels.homeTrash,
         icon: <DriveViewIcon view={{ type: "folder", path: "Trash" }} />,
         selected: view.type === "trash",
         onClick: () => selectView({ type: "trash" }),
       },
-    } satisfies Record<(typeof FILES_BROWSER_SIDEBAR_PRIMARY_ORDER)[number], MenuItemProps>;
+    } satisfies Record<(typeof FILES_BROWSER_SIDEBAR_PRIMARY_ORDER)[number], MenuItemProps | null>;
 
-    return FILES_BROWSER_SIDEBAR_PRIMARY_ORDER.map((id) => byId[id]);
+    return FILES_BROWSER_SIDEBAR_PRIMARY_ORDER.flatMap((id) => byId[id] ?? []);
   }, [
     labels.homeAllDocs,
     labels.homeRecent,

@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { Cloud, Download } from "lucide-react";
+import { useMemo, useRef } from "react";
+import { Cloud, CloudAlert, Download } from "lucide-react";
+import { Button } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -16,8 +17,15 @@ import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
+import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
+import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
 
 type DriveController = ReturnType<typeof useDriveController>;
+
+const NO_PLACEHOLDER_DRAG = {
+  onDragStart: (event: React.DragEvent) => event.preventDefault(),
+  onDragEnd: () => {},
+};
 
 export type DriveMainPaneProps = {
   controller: DriveController;
@@ -57,12 +65,15 @@ export function DriveMainPane({
     dropUploadActive,
     setDropUploadActive,
     handleUpload,
+    uploadEnabled,
+    structureEnabled,
     breadcrumbs,
     selectView,
     visibleItems,
     viewMode,
     filePreviews,
     richPreviews,
+    setTilesInView,
     selectedIds,
     starred,
     selectionMode,
@@ -84,16 +95,41 @@ export function DriveMainPane({
     searchQuery,
     uploadProgress,
     folderListingPending,
+    folderListingError,
+    retryFolderListing,
     listLoading,
   } = controller;
 
   const showFolderListingBusy =
     view.type === "folder" && !searchQuery.trim() && (folderListingPending || listLoading);
+  // A failed load with no rows to show must not read as an empty folder.
+  const showFolderListingFailed =
+    view.type === "folder" &&
+    !searchQuery.trim() &&
+    folderListingError?.path === view.path &&
+    visibleItems.length === 0;
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Grid previews load only for tiles on (or near) screen.
+  useDriveTilesInView(scrollRef, setTilesInView, viewMode === "grid");
 
   const { show, showError } = useAppToast();
   const { online } = useConnectivity();
 
   const handleDownload = (file: DriveFile) => {
+    // Still uploading: this device's copy, without waiting for the server.
+    if (file.upload && operations?.downloadQueuedUpload) {
+      void operations
+        .downloadQueuedUpload(file.upload.id)
+        .then((saved) => {
+          if (saved) show("Download started", { icon: <Download className="size-4" /> });
+          else showError(`"${file.title}" just finished uploading. Download it again.`);
+        })
+        .catch((error: unknown) => {
+          showError(error instanceof Error ? error.message : String(error));
+        });
+      return;
+    }
     if (operations && file.apiPath && file.kind !== "folder") {
       void operations.downloadFile(file.apiPath).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
@@ -104,6 +140,20 @@ export function DriveMainPane({
   };
 
   const searchActive = Boolean(searchQuery.trim());
+
+  // Upload placeholders are not on the server yet: no selection, batch actions, or drag.
+  const placeholderIds = useMemo(
+    () => new Set(visibleItems.filter((file) => file.upload).map((file) => file.id)),
+    [visibleItems],
+  );
+  const selectUnlessPlaceholder = (id: string, event: React.MouseEvent) => {
+    if (!placeholderIds.has(id)) handleSelect(id, event);
+  };
+  const longPressUnlessPlaceholder = (id: string) => {
+    if (!placeholderIds.has(id)) enterSelectionFor(id);
+  };
+  const dragUnlessPlaceholder = (id: string) =>
+    placeholderIds.has(id) ? NO_PLACEHOLDER_DRAG : itemDragHandlers(id);
 
   const handleShare = (file: DriveFile) => {
     if (!file.apiPath || !onOpenShare) return;
@@ -118,6 +168,7 @@ export function DriveMainPane({
   };
 
   const fileCanManageStructure = (file: DriveFile) =>
+    structureEnabled &&
     resolveDriveFileCanManageStructure(file.mayManageStructure, {
       isActive: file.id === active?.id,
       activeMayManageStructure,
@@ -135,11 +186,11 @@ export function DriveMainPane({
     showLocationColumn: true,
     locationColumnLabel: labels.listColumnLocation,
     isItemDragging,
-    itemDragHandlers,
+    itemDragHandlers: dragUnlessPlaceholder,
     folderDropZoneProps,
-    onSelect: handleSelect,
+    onSelect: selectUnlessPlaceholder,
     onOpen: openFileOverride ?? openFile,
-    onLongPress: enterSelectionFor,
+    onLongPress: longPressUnlessPlaceholder,
     onStar: toggleStar,
     onDownload: handleDownload,
     onRename: requestRenameItem,
@@ -183,6 +234,11 @@ export function DriveMainPane({
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) {
+          // Swallow the drop so the browser does not navigate away to the file.
+          event.dataTransfer.dropEffect = "none";
+          return;
+        }
         setDropUploadActive(true);
       }}
       onDragLeave={(event) => {
@@ -193,6 +249,7 @@ export function DriveMainPane({
       onDrop={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) return;
         setDropUploadActive(false);
         handleUpload(event.dataTransfer.files);
       }}
@@ -214,9 +271,27 @@ export function DriveMainPane({
       )}
 
       <div className="drive-main-pane__body">
-        <div className="drive-main-pane__scroll collection-state-host">
+        <div ref={scrollRef} className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
             <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
+          ) : showFolderListingFailed ? (
+            <CollectionState icon={<CloudAlert className="size-12" />}>
+              <p role="alert">{labels.folderListingFailed}</p>
+              <Button
+                className="drive-main-pane__retry"
+                variant="secondary"
+                size="sm"
+                onClick={retryFolderListing}
+              >
+                {labels.folderListingRetry}
+              </Button>
+            </CollectionState>
+          ) : view.type === "uploads" ? (
+            <DriveUploadsPane
+              files={visibleItems}
+              searchActive={searchActive}
+              onOpenFolder={(path) => selectView({ type: "folder", path })}
+            />
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
               {labels.emptyFolder}

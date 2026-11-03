@@ -244,7 +244,6 @@ function SettingsDialogApiBody({
       ctx={ctx}
       slices={{
         profile: controller.profile,
-        mail: controller.mail,
         assistants: controller.assistants,
         memberships: controller.memberships,
       }}

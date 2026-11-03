@@ -6,7 +6,6 @@ import {
   USER_AVATAR_COLORS,
   avatarColorForUserId,
 } from "../src/user-avatar";
-import "@/mail-core/src/mail-workspace.css";
 import "@/meet-core/src/meet-workspace.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
 import "@/docs-core/src/docs-workspace.css";
@@ -22,7 +21,7 @@ const meta: Meta<typeof UserAvatar> = {
     },
     presence: {
       control: "select",
-      options: [undefined, "online", "away", "offline"],
+      options: [undefined, "online", "away", "offline", "pending"],
     },
     compact: { control: "boolean" },
     color: {
@@ -114,17 +113,6 @@ export const SizeMatrix: Story = {
   ),
 };
 
-/** Mail detail sender row: larger chip, emerald fill, two-line label. */
-export const MailSenderRow: Story = {
-  render: () => (
-    <div className="mail-workspace">
-      <div className="mail-detail-view__sender-row max-w-[680px]">
-        <UserAvatar displayName="Ops Bot" subtitle="ops@example.com · to you" size="lg" />
-      </div>
-    </div>
-  ),
-};
-
 /** Meet lobby / peer tile: compact chip on dark workspace tokens. */
 export const MeetLobbyPreview: Story = {
   render: () => (
@@ -168,13 +156,17 @@ export const HashedColors: Story = {
   },
 };
 
-/** Presence pip: solid green online, amber away, transparent + ink ring offline. */
+/**
+ * Presence pip: solid green online, amber away, transparent + ink ring offline,
+ * blue pending (a save or sync still in flight, not a person's status).
+ */
 export const Presence: Story = {
   render: () => (
     <div className="flex items-center gap-4 p-4">
       <UserAvatar displayName="Ada Lovelace" compact size="sm" presence="online" />
       <UserAvatar displayName="Katherine Johnson" compact size="sm" presence="away" />
       <UserAvatar displayName="Grace Hopper" compact size="sm" presence="offline" />
+      <UserAvatar displayName="Dorothy Vaughan" compact size="sm" presence="pending" />
     </div>
   ),
 };
@@ -194,6 +186,10 @@ export const PresenceStandalone: Story = {
       <span className="inline-flex items-center gap-2">
         <UserPresenceDot presence="offline" standalone />
         Offline
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <UserPresenceDot presence="pending" standalone />
+        Pending sync
       </span>
     </div>
   ),

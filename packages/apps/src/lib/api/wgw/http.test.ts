@@ -23,6 +23,7 @@ import {
   wgwResetPasswordWithToken,
   wgwRedirectGuestShareReauth,
   wgwRefreshInFlight,
+  WgwSessionRenewalError,
 } from "./http";
 import { decodeJwtExp } from "./jwt-exp";
 
@@ -31,7 +32,8 @@ const SESSION_KIND_KEY = "wgw.api.session_kind";
 const LEGACY_REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
-const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
+/** Fallback record of the shared cross-tab lock, name `wgw-auth-refresh`. */
+const REFRESH_LOCK_KEY = "wgw.lock.wgw-auth-refresh";
 const SESSION_DEBUG_KEY = "wgw.api.session_debug";
 
 function sessionDebugRing(): Array<Record<string, unknown>> {
@@ -279,7 +281,7 @@ describe("wgw auth refresh behavior", () => {
 
     window.localStorage.setItem(
       REFRESH_LOCK_KEY,
-      JSON.stringify({ owner: "other-tab", acquiredAt: Date.now() }),
+      JSON.stringify({ owner: "other-tab", heartbeatAt: Date.now() }),
     );
     const fetchMock = vi.fn(async () => new Response("unexpected", { status: 500 }));
     globalThis.fetch = fetchMock as typeof fetch;
@@ -297,7 +299,8 @@ describe("wgw auth refresh behavior", () => {
     const storageEvent = new StorageEvent("storage");
     Object.defineProperty(storageEvent, "key", { value: REFRESH_LOCK_KEY });
     window.dispatchEvent(storageEvent);
-    vi.runAllTimers();
+    // The waiting tab takes the lock itself, re-reads storage, and skips the refresh.
+    await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toBe(refreshedInOtherTabAccessToken);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -306,7 +309,7 @@ describe("wgw auth refresh behavior", () => {
   it("reclaims stale refresh lock after timeout window", async () => {
     window.localStorage.setItem(
       REFRESH_LOCK_KEY,
-      JSON.stringify({ owner: "stale-tab", acquiredAt: Date.now() - 31_000 }),
+      JSON.stringify({ owner: "stale-tab", heartbeatAt: Date.now() - 31_000 }),
     );
     let ran = false;
     await expect(
@@ -335,8 +338,9 @@ describe("wgw auth refresh behavior", () => {
 
   it("keeps session when retry cap hits with unknown refresh expiry", async () => {
     setOnline(true);
+    const staleAccess = makeJwt(Math.floor(Date.now() / 1_000) - 100);
     installSession({
-      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessToken: staleAccess,
       accessExpiresAt: Date.now() - 60_000,
     });
     globalThis.fetch = vi.fn(async () => {
@@ -344,9 +348,27 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     for (let i = 0; i < 3; i += 1) {
-      await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+      await expect(wgwEnsureFreshAccessToken()).resolves.toBe(staleAccess);
     }
 
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+  });
+
+  it("treats an unreachable refresh as offline while navigator.onLine stays true", async () => {
+    setOnline(true);
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as typeof fetch;
+
+    const error = await wgwFetch("/admin/updates/apply", { method: "POST" }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(TypeError);
+    expect(String(error)).not.toContain("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(true);
   });
 
@@ -400,6 +422,71 @@ describe("wgw auth refresh behavior", () => {
     });
   });
 
+  it("posts one refresh when it cannot reach the server", async () => {
+    setOnline(true);
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => {
+      throw new TypeError("Failed to fetch");
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwFetch("/admin/updates")).rejects.toBeInstanceOf(TypeError);
+
+    const refreshPosts = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).endsWith("/auth/refresh"),
+    );
+    expect(refreshPosts).toHaveLength(1);
+  });
+
+  it("does not surface an API 401 as sign-out when the refresh fails transiently", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) + 3_600),
+      accessExpiresAt: Date.now() + 3_600_000,
+      refreshExpiresAt: Date.now() + 86_400_000,
+    });
+    globalThis.fetch = vi.fn(async (input) => {
+      if (String(input).endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ error: "JWT key configuration missing." }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "Missing or invalid bearer token." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    await expect(wgwFetch("/admin/updates")).rejects.toBeInstanceOf(WgwSessionRenewalError);
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+  });
+
+  it("returns the API 401 once the server rejects the refresh", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) + 3_600),
+      accessExpiresAt: Date.now() + 3_600_000,
+      refreshExpiresAt: Date.now() + 86_400_000,
+    });
+    globalThis.fetch = vi.fn(async (input) => {
+      const error = String(input).endsWith("/auth/refresh")
+        ? "Invalid refresh token."
+        : "Missing or invalid bearer token.";
+      return new Response(JSON.stringify({ error }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const res = await wgwFetch("/admin/updates");
+
+    expect(res.status).toBe(401);
+    expect(wgwHasAuthenticatedSession()).toBe(false);
+  });
+
   it("records a non-401 refresh failure without clearing the session", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
@@ -413,7 +500,10 @@ describe("wgw auth refresh behavior", () => {
       });
     }) as typeof fetch;
 
-    await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+    const error = await wgwEnsureFreshAccessToken().catch((e) => e);
+    expect(error).toBeInstanceOf(WgwSessionRenewalError);
+    expect(error).toMatchObject({ status: 503 });
+    expect(String(error)).not.toContain("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(true);
     expect(
       sessionDebugRing().find((record) => record.event === "wgw.refresh.failed"),
@@ -565,7 +655,8 @@ describe("wgw auth refresh behavior", () => {
 
     const refreshing = wgwEnsureFreshAccessToken();
     const gate = wgwAwaitSessionRefreshForReconnect();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The lock fallback settles its claim briefly before the refresh request starts.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     resolveRefresh(
       new Response(
@@ -788,6 +879,36 @@ describe("MCP OAuth web session", () => {
 });
 
 describe("guest share session", () => {
+  it("reports a share: subject as a guest session and a signed-in user as not", async () => {
+    wgwEstablishGuestShareSession({
+      access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+        sub: "share:abc123",
+        role: "guest",
+      }),
+      expires_in: 3600,
+    });
+    expect(wgwIsGuestSession()).toBe(true);
+
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+              sub: "alice",
+              role: "user",
+            }),
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    ) as typeof fetch;
+    await wgwLoginWithCredentials("alice", "secret");
+
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(wgwIsGuestSession()).toBe(false);
+  });
+
   it("stores a guest session kind with the access token", () => {
     const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
       sub: "share:abc123",

@@ -42,7 +42,22 @@ export type NotesRouteParams = {
   noteId?: string;
 };
 
-/** Derive the controller `view` string from the matched path and params. */
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Derive the controller `view` string from the matched path and params.
+ *
+ * Slugs come from the path first, like Tasks: while the router moves to a new
+ * route, `pathname` is already new but `params` can still belong to the old
+ * route (#1752). A path slug is encoded twice (`notesNavigateTarget` plus the
+ * router), so it is decoded twice, the same as a router param plus our decode.
+ */
 export function notesViewFromLocation(pathname: string, params: NotesRouteParams): string {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "notes") return "all";
@@ -52,12 +67,15 @@ export function notesViewFromLocation(pathname: string, params: NotesRouteParams
     if (segment === "inbox") return "all";
     return NOTES_RESERVED_VIEW_ALIASES[segment] ?? segment;
   }
-  if (segment === "shared-nb" && params.sharedNbSlug) {
-    const path = decodeURIComponent(params.sharedNbSlug);
+  const slug = parts[2] ? safeDecode(parts[2]) : undefined;
+  const sharedNbSlug = segment === "shared-nb" ? (slug ?? params.sharedNbSlug) : undefined;
+  if (sharedNbSlug) {
+    const path = safeDecode(sharedNbSlug);
     return `shared-nb:${path.startsWith("/") ? path : `/${path}`}`;
   }
-  if (segment === "tags" && params.tagSlug) {
-    return `tag:${decodeURIComponent(params.tagSlug)}`;
+  const tagSlug = segment === "tags" ? (slug ?? params.tagSlug) : undefined;
+  if (tagSlug) {
+    return `tag:${safeDecode(tagSlug)}`;
   }
   if (segment === "notebooks") {
     const notebookId = parts[2] ?? params.notebookId;

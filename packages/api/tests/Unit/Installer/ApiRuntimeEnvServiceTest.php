@@ -9,6 +9,8 @@ use App\Services\Installer\InstallerEnvWriter;
 use App\Support\AppPaths;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
+use Dotenv\Dotenv;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ApiRuntimeEnvServiceTest extends TestCase
@@ -105,6 +107,56 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertFalse($result['generatedKey']);
         $this->assertFalse($result['patchedUrl']);
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
+    }
+
+    /**
+     * Usable keys dotenv loads; replacing one loses everything Crypt sealed under it.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function usableKeysAfterOtherLines(): array
+    {
+        return [
+            'empty line first' => ["APP_KEY=\nAPP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n"],
+            'crlf, empty line first' => ["APP_KEY=\r\nAPP_KEY=base64:YWJj\r\nAPP_URL=https://existing.test\r\n"],
+            'export line' => ["APP_URL=https://existing.test\nexport APP_KEY=base64:YWJj\n"],
+        ];
+    }
+
+    #[DataProvider('usableKeysAfterOtherLines')]
+    public function test_ensure_keeps_a_usable_key_dotenv_loads(string $content): void
+    {
+        $env = $this->apiRoot.'/.env';
+        file_put_contents($env, $content);
+        $service = new ApiRuntimeEnvService;
+
+        $this->assertFalse($service->ensureAppKey($env));
+        $this->assertSame($content, file_get_contents($env));
+        $this->assertSame('base64:YWJj', Dotenv::parse((string) file_get_contents($env))['APP_KEY']);
+    }
+
+    public function test_ensure_patches_an_empty_app_url_followed_by_another_line(): void
+    {
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=\nSESSION_DRIVER=file\n");
+
+        $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'https://cloud.example.test');
+
+        $this->assertTrue($result['patchedUrl']);
+        $this->assertSame(
+            "APP_KEY=base64:YWJj\nAPP_URL=https://cloud.example.test\nSESSION_DRIVER=file\n",
+            file_get_contents($this->apiRoot.'/.env'),
+        );
+    }
+
+    public function test_ensure_writes_an_app_url_dotenv_loads_unchanged(): void
+    {
+        // The installer's app_url field is caller input; ${...} must stay literal.
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=\n");
+        $url = 'https://a${APP_KEY}.example';
+
+        $this->assertTrue((new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, $url)['patchedUrl']);
+
+        $this->assertSame($url, Dotenv::parse((string) file_get_contents($this->apiRoot.'/.env'))['APP_URL']);
     }
 
     public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void

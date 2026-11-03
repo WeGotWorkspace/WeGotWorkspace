@@ -1,6 +1,8 @@
 import { getCard } from "@/lib/api/wgw/contacts";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { withOutboxLock } from "@/lib/offline/core/connectivity-sync-runner";
+import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {
   listOutboxMutations,
   putOutboxMutation,
@@ -49,7 +51,7 @@ export async function resolveConflictKeepLocal(
     });
   }
 
-  return flushContactsOutbox(username);
+  return withOutboxLock(CONTACTS_DOMAIN, username, () => flushContactsOutbox(username));
 }
 
 /**
@@ -91,7 +93,7 @@ export async function resolveConflictFieldMerge(
     });
   }
 
-  return flushContactsOutbox(username);
+  return withOutboxLock(CONTACTS_DOMAIN, username, () => flushContactsOutbox(username));
 }
 
 export async function resolveConflictUseServer(username: string, cardId: string): Promise<void> {

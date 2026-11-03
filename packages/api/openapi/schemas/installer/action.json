@@ -1,0 +1,37 @@
+{
+  "InstallerActionResponse": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string",
+        "description": "English text for display."
+      },
+      "error_code": {
+        "$ref": "#/components/schemas/InstallerErrorCode"
+      },
+      "redirect": {
+        "type": "string"
+      },
+      "state": {
+        "$ref": "#/components/schemas/InstallerRuntimeState"
+      }
+    },
+    "required": [
+      "ok"
+    ]
+  },
+  "InstallerErrorCode": {
+    "type": "string",
+    "enum": [
+      "data_dir_not_absolute",
+      "data_dir_parent_missing",
+      "data_dir_published",
+      "data_dir_not_writable",
+      "data_dir_owned"
+    ],
+    "description": "Set when ok is false and the failure has a stable identifier. Clients act on this, not on the error text. The data_dir_* codes mean the typed data directory was refused."
+  }
+}

@@ -39,7 +39,7 @@ test.describe("Fresh install", () => {
     await expect(page.getByText("Needs attention.")).toHaveCount(0);
 
     if (database === "sqlite") {
-      await page.getByRole("group", { name: "Type" }).getByRole("button", { name: "SQLite" }).click();
+      await page.getByRole("group", { name: "Database type" }).getByRole("button", { name: "SQLite" }).click();
     } else {
       await page.getByLabel("Host", { exact: true }).fill(process.env.WGW_E2E_DB_HOST ?? "127.0.0.1");
       await page.getByLabel("Port", { exact: true }).fill(process.env.WGW_E2E_DB_PORT ?? "3306");

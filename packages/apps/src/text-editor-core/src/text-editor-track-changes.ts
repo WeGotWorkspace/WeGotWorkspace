@@ -1,11 +1,10 @@
 import { Editor } from "@tiptap/react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import {
-  TrackChangesExtension,
   getBaseText,
   getGroupedChanges,
   getPendingChangeCount,
-  type ChangeAuthor,
+  getTrackedChanges,
   type TrackedChangeInfo,
   type TrackChangesMode,
 } from "tiptap-track-changes";
@@ -15,33 +14,20 @@ import {
   type TextEditorContentFormat,
 } from "@/text-editor-core/src/text-editor-content";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
+import { isLiveEditor } from "@/text-editor-core/src/text-editor-live";
+import {
+  DocsTrackChangesExtension,
+  createTrackChangesSessionAuthor,
+} from "@/text-editor-core/src/text-editor-track-changes-marks";
 
 export type TextEditorCollabUser = {
-  id?: string;
   name: string;
   color: string;
 };
 
-/** Stable author id derived from a display name (matches collab session coloring). */
-export function trackChangesAuthorIdFromName(name: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < name.length; i += 1) {
-    hash ^= name.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `tc_${(hash >>> 0).toString(16)}`;
-}
-
-export function toTrackChangesAuthor(user: TextEditorCollabUser): ChangeAuthor {
-  return {
-    id: user.id ?? trackChangesAuthorIdFromName(user.name),
-    name: user.name,
-    color: user.color,
-  };
-}
-
 export function editorHasTrackChanges(editor: Editor | null): editor is Editor {
-  return Boolean(editor?.extensionManager.extensions.some((ext) => ext.name === "trackChanges"));
+  if (!isLiveEditor(editor)) return false;
+  return editor.extensionManager.extensions.some((ext) => ext.name === "trackChanges");
 }
 
 export function getTrackChangesMode(editor: Editor | null): TrackChangesMode {
@@ -54,10 +40,13 @@ export function getTrackChangesPendingCount(editor: Editor | null): number {
   return getPendingChangeCount(editor);
 }
 
+/**
+ * One pending suggestion as the editor sees it. Who made it is not here: the
+ * document carries only the change id, the suggestion thread carries the author.
+ */
 export type DocsTrackChangeGroup = {
   changeId: string;
-  authorName: string;
-  authorColor: string;
+  /** Mark time when this session still has it; the thread time wins. */
   timestamp: string;
   from: number;
   to: number;
@@ -143,12 +132,7 @@ function trackChangeAnchorText(editor: Editor, from: number, to: number): string
 }
 
 function trackChangePartScore(part: TrackedChangeInfo): number {
-  return (
-    (part.authorName?.trim() ? 4 : 0) +
-    (part.text ? 2 : 0) +
-    (part.authorColor ? 1 : 0) +
-    (part.timestamp ? 1 : 0)
-  );
+  return (part.text ? 2 : 0) + (part.timestamp ? 1 : 0);
 }
 
 function mergeTrackChangePartMetadata(
@@ -190,28 +174,17 @@ function mergeTrackChangePartsByType(parts: TrackedChangeInfo[]): TrackedChangeI
     .sort((left, right) => left.from - right.from || left.to - right.to);
 }
 
-function resolvePrimaryTrackChangePart(parts: TrackedChangeInfo[]): TrackedChangeInfo {
-  return (
-    parts.find((part) => part.authorName?.trim()) ??
-    parts.find((part) => part.authorColor) ??
-    parts[0]!
-  );
-}
-
 function buildDocsTrackChangeGroup(
   editor: Editor,
   changeId: string,
   rawParts: TrackedChangeInfo[],
 ): DocsTrackChangeGroup {
   const parts = mergeTrackChangePartsByType(enrichFormatChangePartText(editor, rawParts));
-  const primary = resolvePrimaryTrackChangePart(parts);
   const from = Math.min(...parts.map((part) => part.from));
   const to = Math.max(...parts.map((part) => part.to));
   return {
     changeId,
-    authorName: primary.authorName?.trim() || "Unknown",
-    authorColor: primary.authorColor,
-    timestamp: primary.timestamp,
+    timestamp: parts.find((part) => part.timestamp)?.timestamp ?? "",
     from,
     to,
     anchorText: trackChangeAnchorText(editor, from, to),
@@ -231,6 +204,22 @@ export function getDocsTrackChangeGroups(editor: Editor | null): DocsTrackChange
   }
 
   return groups.sort((left, right) => left.from - right.from || left.to - right.to);
+}
+
+/**
+ * Change ids this user made on this document: the marks carry the author id
+ * kept per user and document (see `createTrackChangesSessionAuthor`), so an
+ * earlier visit's marks are included. Everyone else's marks stay excluded.
+ */
+export function getSessionTrackChangeIds(editor: Editor | null): string[] {
+  if (!editorHasTrackChanges(editor)) return [];
+  const sessionAuthorId = editor.storage.trackChanges.author?.id;
+  if (!sessionAuthorId) return [];
+  const ids = new Set<string>();
+  for (const change of getTrackedChanges(editor)) {
+    if (change.changeId && change.authorId === sessionAuthorId) ids.add(change.changeId);
+  }
+  return [...ids];
 }
 
 export function editorHasPendingTrackChanges(editor: Editor): boolean {
@@ -257,9 +246,7 @@ export function getAcceptedTextEditorContent(
           throw new Error("export does not fetch image bytes");
         },
       }),
-      TrackChangesExtension.configure({
-        author: toTrackChangesAuthor({ name: "export", color: "#6b7280" }),
-      }),
+      DocsTrackChangesExtension.configure({ author: createTrackChangesSessionAuthor() }),
     ],
     content: editor.getJSON(),
   });

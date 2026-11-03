@@ -1,0 +1,106 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "body",
+    "comments",
+    "polish",
+    "for_human"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "request_changes"
+      ],
+      "description": "request_changes if and only if at least one blocking item remains."
+    },
+    "body": {
+      "type": "string",
+      "description": "Review summary in Markdown: every blocking item as a numbered list, then the non-blocking notes."
+    },
+    "comments": {
+      "type": "array",
+      "description": "Findings tied to a line in the diff.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repository-relative file path."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the new version of the file; must be inside the diff."
+          },
+          "body": {
+            "type": "string",
+            "description": "Starts with **Blocking:** or **Note:**."
+          }
+        }
+      }
+    },
+    "polish": {
+      "type": "array",
+      "description": "Only when approving: small mechanical changes that need no judgement and cannot change behaviour. The loop applies them once, then reviews again. Empty when requesting changes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repository-relative file path."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the new version of the file."
+          },
+          "body": {
+            "type": "string",
+            "description": "The exact change, concrete enough to apply without guessing."
+          }
+        }
+      }
+    },
+    "for_human": {
+      "type": "array",
+      "description": "Findings the fixer must not settle: code and a spec that disagree where either could be right, or a mechanical change in a file the fixer may not edit. They do not block; an approval with any of them goes to a human with needs-human.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repository-relative file path."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the new version of the file; must be inside the diff."
+          },
+          "body": {
+            "type": "string",
+            "description": "What a human has to decide or do. For a one-line replacement, end with a GitHub suggestion block."
+          }
+        }
+      }
+    }
+  }
+}

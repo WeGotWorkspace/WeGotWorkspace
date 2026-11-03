@@ -5,7 +5,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useIsTouch } from "@/hooks/use-is-touch";
 import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key-change";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
-import { filterDriveVisibleItems } from "@/drive-core/src/drive-visible-items";
+import { useDriveVisibleItems } from "@/drive-core/src/use-drive-visible-items";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
@@ -14,6 +14,8 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { isDocsEditorPreviewFile } from "@/lib/file-preview/file-preview-utils";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
+/** List view shows no thumbnails: only the detail file's preview loads. */
+const NO_TILES_IN_VIEW: ReadonlySet<string> = new Set();
 
 export type UseDriveListArgs = {
   shell: DriveShellState;
@@ -25,11 +27,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     files,
     setFiles,
     liveSearchResults,
-    starredItems,
-    sharedItems,
-    starred,
-    view,
-    searchQuery,
     currentUsername,
     operations,
     viewResetKey,
@@ -45,35 +42,13 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [viewMode, setViewMode] = usePersistedDriveViewMode("grid");
+  // Empty until the grid reports its tiles on screen; `null` = visibility unknown (load all).
+  const [tilesInView, setTilesInView] = useState<ReadonlySet<string> | null>(NO_TILES_IN_VIEW);
   const recentOpenRef = useRef<{ key: string; at: number } | null>(null);
   const isTouch = useIsTouch();
   const lastTouchTapRef = useRef<{ id: string; at: number } | null>(null);
 
-  const visibleItems = useMemo(
-    () =>
-      filterDriveVisibleItems({
-        files,
-        liveSearchResults,
-        starredItems,
-        sharedItems,
-        starred,
-        view,
-        searchQuery,
-        currentUsername,
-        operations,
-      }),
-    [
-      currentUsername,
-      files,
-      liveSearchResults,
-      operations,
-      searchQuery,
-      sharedItems,
-      starred,
-      starredItems,
-      view,
-    ],
-  );
+  const visibleItems = useDriveVisibleItems(shell);
 
   const visibleIds = useMemo(() => visibleItems.map((file) => file.id), [visibleItems]);
 
@@ -115,11 +90,11 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     lastTouchTapRef.current = null;
   }, [viewResetKey]);
 
-  const active = activeId
-    ? ((liveSearchResults?.find((f) => f.id === activeId) ??
-        files.find((f) => f.id === activeId) ??
-        null) as DriveFile | null)
-    : null;
+  // Shared with me and Starred list items that are not in the current folder.
+  const fileById = (id: string) =>
+    [...(liveSearchResults ?? []), ...files, ...visibleItems].find((f) => f.id === id) ?? null;
+
+  const active = activeId ? fileById(activeId) : null;
 
   const detailPreviewFile = active && (detailOpen || viewMode === "list") ? active : null;
 
@@ -128,6 +103,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     operations,
     enabled: viewMode === "grid" || detailOpen,
     extraFile: detailPreviewFile,
+    tilesInView: viewMode === "grid" ? tilesInView : NO_TILES_IN_VIEW,
   });
 
   const openFile = (f: DriveFile) => {
@@ -194,13 +170,10 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     [isTouch, listHandleSelect, openFile, selectionMode, visibleItems],
   );
 
-  const fileById = (id: string) =>
-    (liveSearchResults?.find((file) => file.id === id) ?? files.find((file) => file.id === id)) ||
-    null;
-
   const dropZoneProps = sidebarDropZoneProps;
 
   return {
+    setTilesInView,
     activeId,
     setActiveId,
     selectedIds,

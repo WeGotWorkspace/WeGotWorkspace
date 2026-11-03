@@ -8,9 +8,19 @@ import {
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
 } from "./notifications-core/src/notification-click-navigate";
 import { parseNotificationPushPayload } from "./notifications-core/src/parse-notification-push-payload";
+import {
+  handlePushSubscriptionChange,
+  serviceWorkerApiBaseUrl,
+} from "./notifications-core/src/push-subscription-change";
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
+};
+
+/** Not in the TypeScript webworker lib yet. */
+type PushSubscriptionChangeEvent = ExtendableEvent & {
+  readonly oldSubscription?: PushSubscription | null;
+  readonly newSubscription?: PushSubscription | null;
 };
 
 // skipWaiting stays false in production: a new worker waits until existing tabs close.
@@ -46,6 +56,28 @@ self.addEventListener("push", (event) => {
         ...({ renotify: parsed.renotify } as NotificationOptions),
       });
     })(),
+  );
+});
+
+// The browser rotated or expired the subscription: register the new endpoint now,
+// not on the next app open. See docs/architecture/suite-notify.md.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const change = event as PushSubscriptionChangeEvent;
+  change.waitUntil(
+    handlePushSubscriptionChange(
+      {
+        oldSubscription: change.oldSubscription ?? null,
+        newSubscription: change.newSubscription ?? null,
+      },
+      {
+        apiBaseUrl: serviceWorkerApiBaseUrl(
+          import.meta.env.VITE_WGW_API_BASE_URL as string | undefined,
+        ),
+        fetch: (input, init) => self.fetch(input, init),
+        pushManager: self.registration.pushManager,
+        locks: self.navigator.locks ?? null,
+      },
+    ),
   );
 });
 

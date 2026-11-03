@@ -105,7 +105,8 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     username: session.user.username ?? "",
   });
 
-  const showCollab = isDocsCollabEditablePath(filePath) && !wgwIsGuestSession();
+  const isGuestSession = wgwIsGuestSession();
+  const showCollab = isDocsCollabEditablePath(filePath) && !isGuestSession;
   const {
     myRights: collabMyRights,
     mayShare: collabMayShare,
@@ -227,7 +228,8 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               operations={driveOperations}
               shareOperations={shareOperations}
               onOpenFile={handleOpenHomeFile}
-              onCreateDocument={handleCreateHomeDocument}
+              // Guests cannot save a new document yet (#1713).
+              onCreateDocument={isGuestSession ? undefined : handleCreateHomeDocument}
               onLogout={handleLogout}
             />
           ) : showCollab && collabUrls ? (

@@ -73,7 +73,8 @@
         "enum": ["FINAL", "CANCELLED", null]
       },
       "uid": {
-        "type": "string"
+        "type": "string",
+        "description": "Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative."
       }
     }
   },

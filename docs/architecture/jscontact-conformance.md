@@ -176,7 +176,7 @@ Harmless normalizations (not findings): 3.0 `TYPE=INTERNET` and `TYPE=VOICE` are
 
 ## Filed
 
-Tracked in milestone [CardDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/12): Goal #1390, Epic #1417, A0-C #1418. Spec-conformance Tasks B-C1–B-C3: #1432–#1434 (no milestone). Contacts got their own milestone and Goal instead of joining the calendar one.
+Tracked in milestone [CardDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/12): Goal [Product#139](https://github.com/WeGotWorkspace/Product/issues/139), Epic #1417, A0-C #1418. Spec-conformance Tasks B-C1–B-C3: #1432–#1434 (no milestone). Contacts got their own milestone and Goal instead of joining the calendar one.
 
 The drafts below are what was filed.
 

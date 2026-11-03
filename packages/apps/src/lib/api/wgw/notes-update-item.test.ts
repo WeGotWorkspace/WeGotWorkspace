@@ -13,7 +13,13 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
   };
 });
 
-import { getNote, listNotebooks, patchNote } from "@/lib/api/wgw/notes-vjournal";
+import {
+  getNote,
+  listNotebooks,
+  patchNote,
+  starNote,
+  unstarNote,
+} from "@/lib/api/wgw/notes-vjournal";
 import { updateNoteItem } from "@/lib/api/wgw/notes";
 
 const notebooks = [
@@ -97,7 +103,8 @@ describe("updateNoteItem metadata conflict retry", () => {
     );
   });
 
-  it("omits notebookId on retry when someone else moved the note", async () => {
+  it("keeps this tab's move on a 412 retry: the last move wins", async () => {
+    // Another tab moved it to Work. This tab then moves it to General.
     vi.mocked(getNote).mockResolvedValue({
       ...activeRow,
       notebookId: "notes-work",
@@ -105,7 +112,7 @@ describe("updateNoteItem metadata conflict retry", () => {
     });
     vi.mocked(patchNote)
       .mockRejectedValueOnce(preconditionFailed())
-      .mockResolvedValueOnce({ ...activeRow, notebookId: "notes-work", etag: '"after"' });
+      .mockResolvedValueOnce({ ...activeRow, notebookId: "notes-general", etag: '"after"' });
 
     await updateNoteItem("n-1", {
       id: "n-1",
@@ -117,11 +124,11 @@ describe("updateNoteItem metadata conflict retry", () => {
     });
 
     const retry = vi.mocked(patchNote).mock.calls[1]?.[1];
-    expect(vi.mocked(patchNote).mock.calls[0]?.[1]).toMatchObject({
+    expect(retry).toMatchObject({
       notebookId: "notes-general",
+      title: "From A",
+      categories: ["focus"],
     });
-    expect(retry).not.toHaveProperty("notebookId");
-    expect(retry).toMatchObject({ title: "From A", categories: ["focus"] });
   });
 
   it("sends the fresh ETag on the retry", async () => {
@@ -227,5 +234,37 @@ describe("updateNoteItem metadata conflict retry", () => {
     expect(patchNote).toHaveBeenCalledTimes(1);
     expect(vi.mocked(patchNote).mock.calls[0]?.[1]).toMatchObject({ categories: ["focus"] });
     expect(getNote).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateNoteItem star only", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listNotebooks).mockResolvedValue(notebooks);
+    vi.mocked(getNote).mockResolvedValue(activeRow);
+    vi.mocked(patchNote).mockResolvedValue(activeRow);
+  });
+
+  it("stars without writing the note, so a view-only share can star", async () => {
+    const saved = await updateNoteItem("n-1", { id: "n-1", starred: true, etag: '"etag-1"' });
+
+    expect(starNote).toHaveBeenCalledWith("n-1", undefined);
+    expect(patchNote).not.toHaveBeenCalled();
+    expect(saved.starred).toBe(true);
+  });
+
+  it("unstars without writing the note", async () => {
+    const saved = await updateNoteItem("n-1", { id: "n-1", starred: false });
+
+    expect(unstarNote).toHaveBeenCalledWith("n-1", undefined);
+    expect(patchNote).not.toHaveBeenCalled();
+    expect(saved.starred).toBe(false);
+  });
+
+  it("still patches when a star travels with a metadata change", async () => {
+    await updateNoteItem("n-1", { id: "n-1", notebook: "General", starred: true });
+
+    expect(patchNote).toHaveBeenCalledTimes(1);
+    expect(starNote).toHaveBeenCalledWith("n-1", undefined);
   });
 });

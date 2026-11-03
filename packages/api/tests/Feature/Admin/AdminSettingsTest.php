@@ -25,16 +25,13 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_mail_settings_persist_in_admin_state(): void
+    public function test_legacy_smtp_settings_persist_in_admin_state(): void
     {
         $token = $this->adminBearerToken();
 
         $response = $this->withBearer($token)
             ->putJson('/api/v1/admin/settings', [
                 'values' => [
-                    SettingKeys::MAIL_IMAP_HOST => 'imap.example.test',
-                    SettingKeys::MAIL_IMAP_PORT => 993,
-                    SettingKeys::MAIL_IMAP_SECURITY => 'ssl',
                     SettingKeys::MAIL_SMTP_HOST => 'smtp.example.test',
                     SettingKeys::MAIL_SMTP_PORT => 587,
                     SettingKeys::MAIL_SMTP_SECURITY => 'starttls',
@@ -42,15 +39,12 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ]);
         $response->assertOk()->assertJsonPath('ok', true);
         $saved = $response->json('saved');
-        $this->assertContains(SettingKeys::MAIL_IMAP_HOST, $saved);
         $this->assertContains(SettingKeys::MAIL_SMTP_HOST, $saved);
 
         $this->withBearer($token)
             ->getJson('/api/v1/admin/state')
             ->assertOk()
-            ->assertJsonPath('mail.imapHost', 'imap.example.test')
-            ->assertJsonPath('mail.imapPort', 993)
-            ->assertJsonPath('mail.imapSecurity', 'ssl')
+            ->assertJsonMissingPath('mail.imapHost')
             ->assertJsonPath('mail.smtpHost', 'smtp.example.test')
             ->assertJsonPath('mail.smtpPort', 587)
             ->assertJsonPath('mail.smtpSecurity', 'starttls');

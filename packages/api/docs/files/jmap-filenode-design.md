@@ -45,7 +45,7 @@ Ancestor renames do **not** bump descendants (`parent_node_id` links by id), so 
 
 A new **`FileNodeIndexService`** owns all index mutations (`recordCreate`, `recordContentWrite`, `recordMove`, `recordDelete` — each bumping `change_seq`), invoked from:
 
-1. **REST:** `DriveService` mutation methods (`createItem`, `handleUpload`, `renameItem`, `deleteItems`), next to the existing search-sync calls.
+1. **REST:** `DriveService` mutation methods (`createItem`, `renameItem`, `deleteItems`), next to the existing search-sync calls. (`handleUpload` was removed in #1518.)
 2. **WebDAV:** a new **`FileNodeIndexPlugin`** modeled 1:1 on `SearchIndexPlugin` (`afterMethod:{PUT,PATCH,MKCOL,DELETE,MOVE,COPY}`). MOVE knows source + destination paths at the HTTP layer, so the plugin **re-keys the index subtree while keeping every `node_id`** — this is where rename-stability comes from on the DAV path.
 
 Rejected alternative — wrapping the Flysystem adapter: it would catch collab writes we deliberately do **not** index (decision 4; product Notes are CalDAV VJOURNAL and do not write this tree), misses `FlysystemFile::patch()` (raw `fopen`, bypasses `put()`), and loses MOVE semantics (adapter sees delete+create on some drivers). The two-call-site approach matches how search indexing already works and reuses its best-effort pattern (`BestEffortSearchIndexSync`): index failures log (`file_node_index_sync_failed`) and never fail the user's write.
@@ -81,7 +81,8 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 
 - **No symlink nodes.** The virtual tree has no symlink concept; `nodeType` is `file`/`directory` only. Creating a `symlink` node → `invalidProperties`.
 - **File content blobIds are node-derived, not blob-store copies:** `fnb-{node_id}-{sha256-prefix}` served by the existing `/jmap/download` endpoint via a third resolver that streams from disk through the index. Copying drive content into `jmap_blobs` would double storage for no gain. The blobId value changes when content changes — allowed by draft-14 (blobId is mutable; the server updates `size` with it).
-- **`FileNode/set` create/content-update consumes an uploaded `jb-…` blob and copies the bytes into the file on disk** — after the write the node's blobId is the `fnb-…` derived one and the upload can expire naturally. This is the contacts-media pattern (#438) and it means **no `JmapBlobReferenceCheckerInterface` registration is needed for filenode**: the draft's "referenced blobs must not be GC'd" constraint is satisfied by not holding references. The GC seam stays available if a future decision changes this.
+- **`FileNode/set` create/content-update consumes an uploaded `jb-…` blob** — after the write the node's blobId is the `fnb-…` derived one. Since #1500 the bytes are attached by streaming: a move for the last reference to the blob in the request, otherwise a streamed copy (split across calls when larger than one step). Nodes hold no references to `jb-` blobs; the reference checkers that exist cover part claims of open assemblies and attaches still copying a blob. See [jmap-blob-assembly.md](jmap-blob-assembly.md).
+- **`content_sha256` is the true sha256 of the bytes** (#1500): every write path passes it, DAV COPY carries it across, and files discovered on disk are hashed in the walk or marked hash-pending with a provisional `fnb-` id until a budgeted hash job stores the true hash.
 - **`webWriteUrlTemplate`: `null`** (clients use `FileNode/set` + upload), per the roadmap non-goal.
 
 ## Consequences for the build Task (chunk F acceptance criteria inputs)

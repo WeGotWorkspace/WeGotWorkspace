@@ -74,7 +74,7 @@ final class DataDirCandidateResolver
     public function isInsidePublishedTree(string $dataDir, ?string $documentRoot = null): bool
     {
         return $this->isInside(
-            $this->resolveDataDir($dataDir),
+            $this->absolutePath($dataDir),
             $this->boundary($documentRoot, $this->installRoot()),
         );
     }
@@ -98,29 +98,29 @@ final class DataDirCandidateResolver
     {
         $path = $this->normalize($path);
         if (! $this->isAbsolute($path)) {
-            throw new \RuntimeException('Enter an absolute path for the data directory.');
+            throw DataDirRejected::notAbsolute();
         }
 
         $parentReal = realpath(dirname($path));
         if ($parentReal === false) {
-            throw new \RuntimeException('The parent of that data directory does not exist.');
+            throw DataDirRejected::parentMissing();
         }
 
         $candidate = $this->normalize($parentReal).'/'.basename($path);
         if ($this->isInside($candidate, $this->boundary($documentRoot, $this->installRoot()))) {
-            throw new \RuntimeException('That directory is inside the published website. Choose a folder outside it.');
+            throw DataDirRejected::published();
         }
 
         if (! $this->parentAcceptsWrites($parentReal)) {
-            throw new \RuntimeException('That directory is not writable by the web server.');
+            throw DataDirRejected::notWritable();
         }
 
         $failure = $this->claim($candidate, $this->ownerId($this->installRoot()));
         if ($failure === 'owned') {
-            throw new \RuntimeException('That directory belongs to another installation.');
+            throw DataDirRejected::owned();
         }
         if ($failure !== null) {
-            throw new \RuntimeException('That directory is not writable by the web server.');
+            throw DataDirRejected::notWritable();
         }
 
         return new DataDirChoice($candidate, DataDirChoice::REASON_OUTSIDE, false);
@@ -293,7 +293,8 @@ final class DataDirCandidateResolver
             return false;
         }
 
-        return $this->samePath(trim($contents), $owner);
+        // Ownership is the install root string the marker was written with, not path equivalence.
+        return $this->normalize(trim($contents)) === $this->normalize($owner);
     }
 
     private function releaseUnusedReservation(DataDirChoice $proposal, DataDirChoice $chosen): void
@@ -349,7 +350,11 @@ final class DataDirCandidateResolver
         return $this->normalize($realInstall !== false ? $realInstall : $installRoot);
     }
 
-    private function resolveDataDir(string $dataDir): string
+    /**
+     * The absolute folder a data directory setting points at. A relative
+     * setting is resolved against the install root, as the runtime does.
+     */
+    public function absolutePath(string $dataDir): string
     {
         $dataDir = $this->normalize(trim($dataDir));
         if ($dataDir === '' || $dataDir === '.') {
@@ -363,8 +368,16 @@ final class DataDirCandidateResolver
         }
 
         $real = realpath($dataDir);
+        if ($real !== false) {
+            return $this->normalize($real);
+        }
 
-        return $this->normalize($real !== false ? $real : $dataDir);
+        // Not created yet: resolve the parent so a symlinked root still matches.
+        $parentReal = realpath(dirname($dataDir));
+
+        return $parentReal !== false
+            ? $this->normalize($parentReal).'/'.basename($dataDir)
+            : $this->normalize($dataDir);
     }
 
     private function installRoot(): string
@@ -385,12 +398,7 @@ final class DataDirCandidateResolver
             return true;
         }
 
-        $leftReal = realpath($left);
-        $rightReal = realpath($right);
-
-        return $leftReal !== false
-            && $rightReal !== false
-            && $this->normalize($leftReal) === $this->normalize($rightReal);
+        return $this->absolutePath($left) === $this->absolutePath($right);
     }
 
     private function isInside(string $path, string $root): bool

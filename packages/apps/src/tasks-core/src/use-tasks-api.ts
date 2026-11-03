@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createElement } from "react";
 import { Check } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useConnectivity } from "@/hooks/use-connectivity";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
@@ -9,6 +11,11 @@ import {
   getTasksSyncRunner,
 } from "@/lib/offline/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
+import {
+  notifyTasksBootstrapUpdated,
+  subscribeTasksBootstrapUpdated,
+} from "@/lib/offline/tasks-bootstrap-sync";
+import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
   resolveTasksOfflineUsername,
@@ -28,6 +35,7 @@ export type UseTasksAPIOptions = {
 };
 
 export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOptions) {
+  const { online } = useConnectivity();
   const resolvedSource = useMemo(() => source ?? createDefaultTasksApiSource(), [source]);
   const placeholderData = useMemo<TasksUIData>(
     () => ({
@@ -71,18 +79,59 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     onConflicts: options?.onSyncConflict,
   });
 
+  const patchFromCache = useCallback(async () => {
+    if (!offlineUsername) return;
+    const cached = await readTasksBootstrapFromCache(offlineUsername);
+    if (cached) {
+      patchBootstrap(() => cached);
+      setBootstrapRevision((revision) => revision + 1);
+    }
+  }, [offlineUsername, patchBootstrap]);
+
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
       if (!offlineUsername) return;
       await getTasksSyncRunner(offlineUsername).flush();
-      const cached = await readTasksBootstrapFromCache(offlineUsername);
-      if (cached) {
-        patchBootstrap(() => cached);
-        setBootstrapRevision((revision) => revision + 1);
+      if (wgwLiveApiEnabled()) {
+        // Server changes made while offline land before the cache is re-read.
+        // A failed pull leaves the cache as it is; the poll tries again.
+        await syncTasksInbound(offlineUsername, { waitForLock: true }).catch(() => undefined);
       }
+      await patchFromCache();
+      notifyTasksBootstrapUpdated(offlineUsername);
     },
   });
+
+  // Another tab pulled or flushed into the shared cache (#1815).
+  useEffect(() => {
+    if (!offlineUsername) return;
+    return subscribeTasksBootstrapUpdated(offlineUsername, () => {
+      void patchFromCache().catch(() => undefined);
+    });
+  }, [offlineUsername, patchFromCache]);
+
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (!wgwLiveApiEnabled()) return;
+    const username = offlineUsername;
+    let cancelled = false;
+    const tick = () => {
+      void syncTasksInbound(username)
+        .then((result) => {
+          if (!result?.changed) return;
+          // The token is shared: the other tabs' next pull sees no change.
+          notifyTasksBootstrapUpdated(username);
+          if (!cancelled) return patchFromCache();
+        })
+        .catch(() => undefined);
+    };
+    const timer = setInterval(tick, TASKS_INBOUND_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [offlineUsername, online, patchFromCache, phase]);
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
@@ -92,6 +141,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .then((next) => {
         patchBootstrap(() => next);
         setBootstrapRevision((revision) => revision + 1);
+        if (offlineUsername) notifyTasksBootstrapUpdated(offlineUsername);
         show(defaultTasksLabels.toastListUpdated, {
           icon: createElement(Check, { className: "size-4" }),
         });
@@ -102,7 +152,7 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [listRefreshing, patchBootstrap, resolvedSource, show, showError]);
+  }, [listRefreshing, offlineUsername, patchBootstrap, resolvedSource, show, showError]);
 
   return {
     phase,
@@ -110,8 +160,9 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     retry: load,
     successVersion,
     bootstrapRevision,
-    listLoading: phase === "loading" || reconnectSyncing,
-    listRefreshing,
+    // First paint only. A reconnect keeps the cached list and spins the refresh icon (#1532).
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

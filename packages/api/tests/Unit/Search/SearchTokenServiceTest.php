@@ -54,4 +54,27 @@ final class SearchTokenServiceTest extends TestCase
         $this->assertNotContains('token11', $capped);
         $this->assertCount(11, $service->tokenize($text));
     }
+
+    public function test_caps_tokens_at_the_column_length_for_index_and_query(): void
+    {
+        $service = new SearchTokenService;
+        $long = str_repeat('ab', 100); // 200 characters
+        $sameStart = substr($long, 0, SearchTokenService::MAX_TOKEN_LENGTH).'zz';
+
+        $tokens = $service->tokenize($long.' '.$sameStart);
+
+        // Both cap to the same 120 characters, so they become one token.
+        $this->assertSame([substr($long, 0, SearchTokenService::MAX_TOKEN_LENGTH)], $tokens);
+        $this->assertSame($tokens, $service->tokenize($long, SearchTokenService::MAX_QUERY_TOKENS));
+    }
+
+    public function test_token_cap_counts_characters_not_bytes(): void
+    {
+        $service = new SearchTokenService;
+        $word = str_repeat('é', 130);
+
+        $tokens = $service->tokenize($word);
+
+        $this->assertSame(SearchTokenService::MAX_TOKEN_LENGTH, mb_strlen($tokens[0]));
+    }
 }

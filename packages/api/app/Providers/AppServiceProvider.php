@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Database\WgwSqliteConnection;
 use App\Events\EventDispatch;
 use App\Events\NotifyListener;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
@@ -18,6 +19,7 @@ use App\Services\Notify\WebPushSender;
 use App\Support\CspFormActions;
 use App\Support\CspNonce;
 use App\Support\SqliteTextLobStatement;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
@@ -31,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Immediate SQLite transactions on PHP 8.3 too (see WgwSqliteConnection).
+        Connection::resolverFor('sqlite', static fn ($pdo, $database, $prefix, $config) => new WgwSqliteConnection($pdo, $database, $prefix, $config));
         $this->app->singleton(CspNonce::class);
         $this->app->singleton(CspFormActions::class);
         $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {

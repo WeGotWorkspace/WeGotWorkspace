@@ -39,7 +39,8 @@ x-wgw-web-environment: &wgw-web-environment
   WGW_INSTALL_BASE_URI: ${WGW_INSTALL_BASE_URI:-/}
   WGW_INSTALL_ADMIN_USERNAME: ${WGW_INSTALL_ADMIN_USERNAME:-}
   WGW_INSTALL_ADMIN_EMAIL: ${WGW_INSTALL_ADMIN_EMAIL:-}
-  WGW_INSTALL_ADMIN_PASSWORD: ${WGW_INSTALL_ADMIN_PASSWORD:-}
+  # WGW_INSTALL_ADMIN_PASSWORD is set on the migrator only: web and scheduler
+  # keep running and never need the first admin's password.
   WGW_DISABLE_LOGIN_THROTTLE: ${WGW_DISABLE_LOGIN_THROTTLE:-0}
 
 services:
@@ -49,7 +50,11 @@ services:
       dockerfile: docker/install/Dockerfile
     image: ${WGW_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace:latest}
     restart: "no"
-    environment: *wgw-web-environment
+    environment:
+      <<: *wgw-web-environment
+      # One-shot headless `wgw:install`. Remove it from .env after the first
+      # install; later starts find the install lock and skip wgw:install.
+      WGW_INSTALL_ADMIN_PASSWORD: ${WGW_INSTALL_ADMIN_PASSWORD:-}
     volumes:
       - wgw-content:/var/wgw/content
       - wgw-api-storage:/var/wgw/storage

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import {
   formatByteCount,
   formatHumanDateTime,

@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-logout";
 
 const navigate = vi.fn();
@@ -9,10 +9,20 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 describe("WeGotWorkspaceLogout", () => {
+  beforeEach(() => {
+    // The reachability probe answers: the server is up.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 200 })),
+    );
+  });
+
   afterEach(() => {
     cleanup();
     navigate.mockReset();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("signs out immediately when nothing is unsynced", async () => {
@@ -114,6 +124,121 @@ describe("WeGotWorkspaceLogout", () => {
       await screen.findByText("Unsynced changes on this device will be discarded."),
     ).toBeTruthy();
     expect(completeLogout).not.toHaveBeenCalled();
+  });
+
+  it("asks before signing out offline, even with nothing unsynced", async () => {
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        isOnline={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.getByText("Sign out while offline?")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "You're offline. Signing out clears this device, but the server cannot end your session. It stays valid until it expires.",
+      ),
+    ).toBeTruthy();
+    expect(completeLogout).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    await waitFor(() => expect(completeLogout).toHaveBeenCalledOnce());
+  });
+
+  it("probes reachability itself when navigator.onLine is stale", async () => {
+    // A fresh /logout tab has no started connectivity hub, and the DevTools
+    // service-worker offline toggle leaves navigator.onLine true.
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByText("Sign out while offline?")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ method: "HEAD" }),
+    );
+    expect(completeLogout).not.toHaveBeenCalled();
+  });
+
+  it("treats a probe that hangs as offline instead of waiting forever", async () => {
+    // Captive portal or half-open TCP: the HEAD neither answers nor fails until aborted.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("The operation was aborted.", "AbortError")),
+            );
+          }),
+      ),
+    );
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500);
+    });
+
+    expect(screen.getByText("Sign out while offline?")).toBeTruthy();
+    expect(completeLogout).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("asks as offline when the reachability check itself throws", async () => {
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        isOnline={async () => {
+          throw new TypeError("Invalid URL");
+        }}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByText("Sign out while offline?")).toBeTruthy();
+    expect(completeLogout).not.toHaveBeenCalled();
+  });
+
+  it("names both the offline session and the unsynced changes", async () => {
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 2}
+        isGuestSession={() => false}
+        isOnline={() => false}
+        completeLogout={vi.fn().mockResolvedValue("member_login")}
+      />,
+    );
+
+    expect(await screen.findByText("Discard unsynced changes?")).toBeTruthy();
+    expect(screen.getByText(/You're offline\. Signing out clears this device/)).toBeTruthy();
+    expect(screen.getByText(/This device has 2 unsynced changes\./)).toBeTruthy();
   });
 
   it("does not ask a guest share viewer to discard the member cache", async () => {

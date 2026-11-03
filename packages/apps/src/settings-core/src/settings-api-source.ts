@@ -8,7 +8,6 @@ import {
   fetchSettingsLiveBootstrap,
   listSettingsMcpGrants,
   revokeSettingsMcpGrant,
-  saveSettingsMail,
   saveSettingsProfile,
 } from "@/lib/api/wgw/settings";
 import type { SettingsAPIOperations } from "@/settings-core/src/settings-types";
@@ -21,7 +20,6 @@ export type SettingsApiSource = {
 function createWgwOperations(): SettingsAPIOperations {
   return {
     saveProfile: (input, opts) => saveSettingsProfile(input, opts),
-    saveMail: (input, opts) => saveSettingsMail(input, opts),
     listMcpGrants: (opts) => listSettingsMcpGrants(opts),
     revokeMcpGrant: (clientId, opts) => revokeSettingsMcpGrant(clientId, opts),
   };

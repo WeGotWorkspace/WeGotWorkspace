@@ -1,6 +1,7 @@
+import type { WgwAdminSecurityWarning } from "@/lib/api/wgw";
+
 export type AdminSection =
   | "users"
-  | "mail"
   | "email-delivery"
   | "collaboration"
   | "webdav"
@@ -8,6 +9,9 @@ export type AdminSection =
   | "updates"
   | "search"
   | "mcp";
+
+/** A configuration problem from the admin state. Act on `code`; `message` is for display. */
+export type AdminSecurityWarning = WgwAdminSecurityWarning;
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -68,10 +72,8 @@ export type AdminGroup = {
   displayName: string;
 };
 
+/** The pre-delivery SMTP endpoint. Email delivery prefills from it when its own host is empty. */
 export type AdminMailSettings = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
   smtpHost: string;
   smtpPort: number;
   smtpSecurity: string;
@@ -230,7 +232,7 @@ export type AdminUIData = {
   searchReindex: AdminSearchReindexState;
   currentUser: string;
   logoutUrl: string;
-  securityWarnings: string[];
+  securityWarnings: AdminSecurityWarning[];
   updateLogLines: string[];
 };
 

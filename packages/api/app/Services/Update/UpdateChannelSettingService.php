@@ -5,54 +5,61 @@ declare(strict_types=1);
 namespace App\Services\Update;
 
 use App\Exceptions\ApiHttpException;
-use App\Services\Installer\EnvFileWriter;
+use App\Models\AppSetting;
+use App\Services\Settings\SettingKeys;
 use App\Support\UpdateFeedDefaults;
-use App\Support\WgwApiEnvFile;
 use App\Support\WgwInstallConfig;
+use Illuminate\Database\QueryException;
 
 /**
- * Writes WGW_UPDATE_CHANNEL for the Admin web updater (ZIP installs).
- * Docker installs pick the channel on the host with setup.sh.
+ * The release channel the Admin web updater follows.
+ *
+ * ZIP installs store the admin's choice in app_settings; until then the
+ * WGW_UPDATE_CHANNEL env value applies. Docker installs pick the channel on
+ * the host with setup.sh, so they only ever read the env value.
  */
 final class UpdateChannelSettingService
 {
     public function __construct(
-        private EnvFileWriter $envFiles,
         private WgwInstallConfig $install,
         private UpdateStateStore $store,
     ) {}
+
+    public function current(): string
+    {
+        $fromEnv = UpdateFeedDefaults::normalizeChannel(config('wgw.update_channel'));
+        if ($this->isDocker()) {
+            return $fromEnv;
+        }
+
+        try {
+            $stored = AppSetting::getValue(SettingKeys::UPDATE_CHANNEL);
+        } catch (QueryException) {
+            // Update status must still render while the database is being restored.
+            $stored = null;
+        }
+
+        return is_string($stored) && UpdateFeedDefaults::isChannel($stored) ? $stored : $fromEnv;
+    }
+
+    public function feedUrl(): string
+    {
+        return UpdateFeedDefaults::feedUrl(config('wgw.update_feed_url'), $this->current());
+    }
 
     public function save(string $channel): string
     {
         if (! UpdateFeedDefaults::isChannel($channel)) {
             throw new ApiHttpException(422, 'Choose stable, beta, or edge.');
         }
-        if ($this->install->installChannel() === 'docker') {
+        if ($this->isDocker()) {
             throw new ApiHttpException(409, 'Docker installs choose the update channel on the host: bash setup.sh upgrade --channel '.$channel);
         }
         if ($this->store->isLocked()) {
             throw new ApiHttpException(409, 'An update is running. Change the channel after it finishes.');
         }
 
-        $envPath = app()->environmentFilePath();
-        if (! is_file($envPath) || ! is_writable($envPath)) {
-            throw new ApiHttpException(409, 'The environment file is not writable.');
-        }
-
-        $this->envFiles->update($envPath, static function (string $content) use ($channel): ?string {
-            if ((WgwApiEnvFile::readValue($content, 'WGW_UPDATE_CHANNEL') ?? '') === $channel) {
-                return null;
-            }
-            if (! WgwApiEnvFile::hasKey($content, 'WGW_UPDATE_CHANNEL')) {
-                return rtrim($content)."\nWGW_UPDATE_CHANNEL={$channel}\n";
-            }
-
-            return WgwApiEnvFile::setLine($content, 'WGW_UPDATE_CHANNEL', $channel, quote: false);
-        });
-        if (WgwApiEnvFile::readPath($envPath, 'WGW_UPDATE_CHANNEL') !== $channel) {
-            throw new ApiHttpException(409, 'The environment file is not writable.');
-        }
-        config(['wgw.update_channel' => $channel]);
+        AppSetting::setValue(SettingKeys::UPDATE_CHANNEL, $channel);
 
         // The last check came from the previous channel's feed.
         $state = $this->store->read();
@@ -60,5 +67,10 @@ final class UpdateChannelSettingService
         $this->store->write($state);
 
         return $channel;
+    }
+
+    private function isDocker(): bool
+    {
+        return $this->install->installChannel() === 'docker';
     }
 }

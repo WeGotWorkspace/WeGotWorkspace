@@ -124,23 +124,21 @@ final class ChatGroupDefaultChannelsTest extends WgwDatabaseTestCase
         $this->assertSame(1, CalendarInstance::query()->where('uri', $uri)->count());
         $this->assertSame(1, ChatChannelMeta::query()->where('default_for_group', 'devs')->count());
 
-        // A deterministic uri claimed via the client-supplied-id create path
-        // BEFORE the group default ever provisioned: channel ids are globally
-        // unique, so the provisioner must skip — never hijack or delete the
-        // squatter's channel (documented edge; the group then has no default).
+        // The deterministic uri of a group that has no default channel yet
+        // cannot be taken through the client-supplied-id create path: the
+        // `chat-grp-` prefix is reserved, so the group still gets its default.
         $this->seedGroupWithMembers('ops', 'Operations', ['alice']);
-        $squattedUri = ChatCollectionUris::groupDefaultUri('ops');
+        $reservedUri = ChatCollectionUris::groupDefaultUri('ops');
         $this->asUser('carol')->postJson('/api/v1/chat/channels', [
-            'name' => 'Squatted', 'kind' => 'channel', 'id' => $squattedUri,
-        ])->assertCreated();
+            'name' => 'Squatted', 'kind' => 'channel', 'id' => $reservedUri,
+        ])->assertStatus(400)->assertJsonPath('code', 'invalidProperties');
+        $this->assertSame(0, CalendarInstance::query()->where('uri', $reservedUri)->count());
 
         $list = $this->asUser('alice')->getJson('/api/v1/chat/channels')->assertOk()->json('list');
-        $opsDefault = collect($list)->firstWhere('id', $squattedUri);
-        $this->assertNull($opsDefault);
-        $this->assertSame(1, CalendarInstance::query()->where('uri', $squattedUri)->count());
-        $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$squattedUri)->assertOk()
-            ->assertJsonPath('isDefault', false)
-            ->assertJsonPath('name', 'Squatted');
+        $opsDefault = collect($list)->firstWhere('id', $reservedUri);
+        $this->assertNotNull($opsDefault);
+        $this->assertTrue($opsDefault['isDefault']);
+        $this->assertSame('ops', $opsDefault['groupSlug']);
     }
 
     public function test_admin_group_creation_provisions_eagerly(): void

@@ -1,4 +1,3 @@
-import { Temporal } from "@js-temporal/polyfill";
 import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   JmapCalendarsClient,
@@ -24,18 +23,16 @@ import {
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
 import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
 import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 /**
  * Calendar transport: the vendored jmap-client over the JMAP envelope
  * (`/api/v1/jmap`), with auth/refresh delegated to wgwFetch. The bootstrap
- * fetches a fixed window around today; incremental `/changes`-based polling is
+ * fetches a fixed window around today, periods outside it load on demand
+ * (`fetchCalendarEventsInRangeLive`); incremental `/changes`-based polling is
  * a documented follow-up (the envelope supports it — see
  * packages/api/docs/calendars/jmap-envelope.md).
  */
-
-/** Cached-events window relative to today. */
-const WINDOW_MONTHS_BACK = 12;
-const WINDOW_MONTHS_AHEAD = 24;
 
 /**
  * JmapClient fetches sessionUrl and the session's absolute apiUrl verbatim;
@@ -91,27 +88,29 @@ function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
   return calendarInfoFromJmap(calendar);
 }
 
-export function calendarBootstrapWindow(today = Temporal.Now.plainDateISO()): {
-  utcStart: Date;
-  utcEnd: Date;
-} {
-  const start = today.subtract({ months: WINDOW_MONTHS_BACK }).with({ day: 1 });
-  const end = today.add({ months: WINDOW_MONTHS_AHEAD }).with({ day: 1 });
-  return {
-    utcStart: new Date(`${start.toString()}T00:00:00Z`),
-    utcEnd: new Date(`${end.toString()}T00:00:00Z`),
-  };
+/**
+ * Events for one period outside the bootstrap window (#1675). Uses the shared
+ * set/bootstrap client: the inbound adapter's `/changes` state stays untouched.
+ */
+export async function fetchCalendarEventsInRangeLive(
+  range: CalendarUtcRange,
+  client?: JmapClient,
+): Promise<JmapCalendarEvent[]> {
+  const { calendars, accountId } = await connectedCalendars(client);
+  const response = await calendars.getCalendarEventsInRange(accountId, range);
+  return response.list;
 }
 
 /** Bootstrap against any client — the mock api source reuses this with a MockJmapServer client. */
 export async function fetchCalendarBootstrapForClient(
   client: JmapClient,
   session: CalendarAppBootstrap["session"],
+  window: CalendarUtcRange = calendarBootstrapWindow(),
 ): Promise<CalendarAppBootstrap> {
   const { calendars, accountId } = await connectedCalendars(client);
 
   const calendarGet = await calendars.getCalendars(accountId);
-  const events = await calendars.getCalendarEventsInRange(accountId, calendarBootstrapWindow());
+  const events = await calendars.getCalendarEventsInRange(accountId, window);
 
   return {
     session,
@@ -136,8 +135,11 @@ async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[]> 
   }
 }
 
-export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap> {
-  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal());
+/** `window` defaults to today's bootstrap window; pass the one the cache write uses. */
+export async function fetchCalendarLiveBootstrap(
+  window?: CalendarUtcRange,
+): Promise<CalendarAppBootstrap> {
+  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal(), window);
 }
 
 export async function createCalendarEventLive(

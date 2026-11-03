@@ -1,5 +1,5 @@
 name: "[Maintainers only] Task"
-description: Maintainers only — delivery task with implementable AC. Externals: use Discussions or Bug report.
+description: "Maintainers only — delivery task with implementable AC. Externals: use Discussions or Bug report."
 type: Task
 labels:
   - type:task
@@ -18,11 +18,26 @@ body:
         Do not put tasks on the Product roadmap Project.
 
   - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: >
+        For the product lead, in plain English (B1), no code or file names.
+        Three short lines: what changes, who notices, and what happens if we wait.
+        See .agents/skills/developer/plain-language.md.
+      value: |
+        **What:**
+        **Who notices:**
+        **If we wait:**
+    validations:
+      required: true
+
+  - type: textarea
     id: parent
     attributes:
       label: Parent Epic or Goal
-      description: Link to the `type:epic` or `type:goal` issue this task delivers.
-      placeholder: "#123 — Epic or Goal title"
+      description: Link to the Epic (this repository) or the Goal (WeGotWorkspace/Product) this task delivers.
+      placeholder: "#123 — Epic title, or WeGotWorkspace/Product#45 — Goal title"
     validations:
       required: true
 

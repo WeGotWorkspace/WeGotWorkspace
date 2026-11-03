@@ -7,6 +7,8 @@ import {
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
+import { NoteTitleCaretsLayer } from "@/note-detail-view/src/note-title-carets";
+import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets";
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import "@/note-detail-view/src/note-detail-view.css";
@@ -54,6 +56,8 @@ export type NoteDetailViewProps = {
    */
   storedTitle?: string | null;
   onTitleChange?: (title: string) => void;
+  /** Saves a title typed while no document is open. See {@link useNoteTitleField}. */
+  onTitleEdit?: (title: string) => void;
   titlePlaceholder?: string;
   /**
    * After create: land in the title. Stays applied across `noteId` remap
@@ -90,6 +94,7 @@ export function NoteDetailView({
   title = "",
   storedTitle,
   onTitleChange,
+  onTitleEdit,
   titlePlaceholder = "Title",
   autoFocusTitle = false,
   onAutoFocusTitleConsumed,
@@ -109,15 +114,22 @@ export function NoteDetailView({
     storedTitle,
     readOnly,
     onTitleChange,
+    onTitleEdit,
   });
   const titleReadOnly = titleField.onChange == null;
   const titleFieldId = useId();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const leftTitleRef = useRef(false);
+  const remoteTitleCarets = useNoteTitleCarets(titleRef, { publish: !titleReadOnly });
 
   useLayoutEffect(() => {
     if (!autoFocusTitle || titleReadOnly || leftTitleRef.current) return;
-    titleRef.current?.focus();
+    const field = titleRef.current;
+    if (!field) return;
+    field.focus();
+    // The temp → server id remap rebuilds the field with its caret at the start,
+    // so the next letter went before the ones typed so far.
+    field.setSelectionRange(field.value.length, field.value.length);
   }, [autoFocusTitle, noteId, titleReadOnly]);
 
   function handleTitleBlur(event: FocusEvent<HTMLTextAreaElement>): void {
@@ -131,21 +143,30 @@ export function NoteDetailView({
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>
-      <TextareaAutosize
-        ref={titleRef}
-        id={titleFieldId}
-        className="note-detail-view__title"
-        value={titleField.value}
-        placeholder={titlePlaceholder}
-        readOnly={titleReadOnly}
-        autoFocus={autoFocusTitle && !titleReadOnly}
-        minRows={1}
-        maxRows={12}
-        wrap="soft"
-        onChange={titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)}
-        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
-        onBlur={titleReadOnly ? undefined : handleTitleBlur}
-      />
+      <div className="note-detail-view__title-field">
+        <TextareaAutosize
+          ref={titleRef}
+          id={titleFieldId}
+          className="note-detail-view__title"
+          value={titleField.value}
+          placeholder={titlePlaceholder}
+          readOnly={titleReadOnly}
+          autoFocus={autoFocusTitle && !titleReadOnly}
+          minRows={1}
+          maxRows={12}
+          wrap="soft"
+          onChange={
+            titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)
+          }
+          onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
+          onBlur={titleReadOnly ? undefined : handleTitleBlur}
+        />
+        <NoteTitleCaretsLayer
+          textareaRef={titleRef}
+          carets={remoteTitleCarets}
+          value={titleField.value}
+        />
+      </div>
       {showTags ? (
         <TagGroup
           className="note-detail-view__tag-group"

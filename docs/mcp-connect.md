@@ -48,8 +48,6 @@ Calendar, Notes, Contacts, and Tasks keep sharing on their `*.write` scope. Thos
 
 Unchanged:
 
-- `mail.read` — read mailboxes and messages
-- `mail.send` — send mail as you
 - `settings` — profile (`whoami`)
 
 Refresh tokens are always issued so the assistant stays connected without repeating consent. `offline_access` is still listed in OAuth `scopes_supported` (MCP clients look for that literal id) but it is **not** a consent toggle and is **not** shown in Settings.
@@ -88,7 +86,7 @@ Always available when MCP is on: `whoami`, `capabilities`.
 
 `meet_create_scheduled` needs `meet.write`. Creating the calendar event half also needs `calendar.write`; without it the tool still creates the meeting-kind channel and returns the href.
 
-**Not MCP apps:** Mail, Admin, and Settings are not exposed as suite apps on MCP. `mail_status` and `mail_send` are not registered. `whoami` (scope `settings`) reports `mailClient: false`. `mail.read` and `mail.send` stay in the scope catalog and are hidden on consent; tokens that already have them stay valid and still appear on Settings → Connected assistants as Mail (not active in this release). There are no Admin tools and no Settings CRUD tools. See [packages/api/docs/mail/README.md](../packages/api/docs/mail/README.md).
+**Not MCP apps:** Admin and Settings are not exposed as suite apps on MCP. There is no mail client and no mail tool. `whoami` (scope `settings`) reports `mailClient: false`. The retired `mail.read` and `mail.send` scopes are no longer advertised or offered on consent; Passport still recognizes them so tokens that already have them keep refreshing, and Settings → Connected assistants lists them under Other so an old grant can be revoked. There are no Admin tools and no Settings CRUD tools. See [packages/api/docs/mail/README.md](../packages/api/docs/mail/README.md).
 
 **Meet** has no join, call, or RTC/signaling tools. Channel and message CRUD only.
 

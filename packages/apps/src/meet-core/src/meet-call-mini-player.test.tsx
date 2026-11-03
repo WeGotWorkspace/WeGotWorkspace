@@ -168,7 +168,8 @@ describe("MeetCallMiniPlayer active speaker", () => {
     await waitFor(() => {
       expect(previewVideo()?.srcObject).toBe(felix);
     });
-    expect(previewVideo()?.classList.contains("meet-mini-player__video--mirrored")).toBe(true);
+    // A remote camera is shown the right way round; only the self-view is mirrored.
+    expect(previewVideo()?.classList.contains("meet-mini-player__video--mirrored")).toBe(false);
   });
 
   it("shows the local camera when the local user is the one talking", async () => {
@@ -183,6 +184,7 @@ describe("MeetCallMiniPlayer active speaker", () => {
     await waitFor(() => {
       expect(previewVideo()?.srcObject).toBe(local);
     });
+    expect(previewVideo()?.classList.contains("meet-mini-player__video--mirrored")).toBe(true);
   });
 
   it("shows the talking peer's avatar when their camera is off", async () => {

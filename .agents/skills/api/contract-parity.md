@@ -10,7 +10,6 @@
 
 - Same path, method, status code, JSON keys as contract
 - Do not break `packages/apps` generated types until OpenAPI is intentionally versioned
-- Mail errors keep v1 shape: `{ "error": "imap_connect", "message": "..." }` where documented
 
 ## Not required
 

@@ -29,15 +29,6 @@ const baseUser = {
 function createSaveProfileMock() {
   const nextData = {
     user: { ...baseUser, displayName: "Alice Updated" },
-    mail: { imapUsername: "alice@example.com", imapHasPassword: true },
-    mailServer: {
-      imapHost: "imap.example.com",
-      imapPort: 993,
-      imapSecurity: "ssl",
-      smtpHost: "smtp.example.com",
-      smtpPort: 587,
-      smtpSecurity: "starttls",
-    },
     groups: [],
     logoutUrl: "/logout",
     mcpEnabled: true,
@@ -55,12 +46,11 @@ describe("useSettingsProfileForm", () => {
 
   it("calls saveProfile with OpenAPI-shaped identity fields", async () => {
     const saveProfile = createSaveProfileMock();
-    const saveMail = vi.fn();
 
     const { result } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail },
+        operations: { saveProfile },
       }),
     );
 
@@ -83,12 +73,11 @@ describe("useSettingsProfileForm", () => {
 
   it("includes password in the request when a new password is set", async () => {
     const saveProfile = createSaveProfileMock();
-    const saveMail = vi.fn();
 
     const { result } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail },
+        operations: { saveProfile },
       }),
     );
 
@@ -128,7 +117,7 @@ describe("useSettingsProfileForm", () => {
     const { result } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail: vi.fn() },
+        operations: { saveProfile },
       }),
     );
 
@@ -166,7 +155,7 @@ describe("useSettingsProfileForm", () => {
     const { result } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail: vi.fn() },
+        operations: { saveProfile },
       }),
     );
 
@@ -199,7 +188,7 @@ describe("useSettingsProfileForm", () => {
     const { result } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail: vi.fn() },
+        operations: { saveProfile },
       }),
     );
 
@@ -230,7 +219,7 @@ describe("useSettingsProfileForm", () => {
     const { result, unmount } = renderHook(() =>
       useSettingsProfileForm({
         user: baseUser,
-        operations: { saveProfile, saveMail: vi.fn() },
+        operations: { saveProfile },
       }),
     );
 

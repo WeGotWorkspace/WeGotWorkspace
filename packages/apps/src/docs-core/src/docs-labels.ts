@@ -32,8 +32,9 @@ export const docsLabels = {
     `"${title}" changed on the server while you were offline. Keep your version or use the server copy?`,
   conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
-  documentGoneTitle: "This document no longer exists",
-  documentGoneDescription: "It was deleted on the server. Your local copy is still here.",
+  documentGoneTitle: "This document is no longer available",
+  documentGoneDescription:
+    "It was deleted, or you no longer have access to it. Your local copy is still here.",
   documentGoneKeep: "Keep local copy",
   documentGoneClose: "Dismiss",
   accessLostTitle: "Access lost",
@@ -89,7 +90,12 @@ export const docsLabels = {
   insertImageChooseFromDrive: "Choose from Drive",
   deleteImage: "Delete image",
   viewSource: "Edit source",
+  /** Source toggle when the document cannot be edited (guest view). */
+  viewSourceReadOnly: "View source",
   hideSource: "Hide source",
+  /** Shown above a Doc opened through a share link; guests cannot save yet (#1713). */
+  guestReadOnlyNotice:
+    "Editing isn't available for guests yet. You can read and print this document.",
   rename: driveLabels.detailRename,
   /** Docs rename dialog copy (Drive uses generic "Rename item"). */
   renameDialogTitle: "Rename document",
@@ -111,6 +117,8 @@ export const docsLabels = {
     "No comments or suggestions yet. Select text to comment, or switch to Suggest mode to track edits.",
   reviewEmptyResolved: "No resolved comments or suggestions yet.",
   suggestionsArchivedEmpty: "Resolved suggestion",
+  /** Suggestion card author when the suggestion has no thread (older documents). */
+  suggestionsUnknownAuthor: "Unknown author",
   reviewCountOne: "1 item",
   reviewCountMany: (count: number) => `${count} items`,
   reviewToggleShow: "Show review",

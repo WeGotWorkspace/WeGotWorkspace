@@ -2,6 +2,8 @@
 
 This is the quickest way to install on a normal Apache/PHP host.
 
+**Requirement: https.** Serve the site over `https://`. On a plain `http://` address the browser turns off live editing of documents together, push notifications, offline use, and large uploads. Most hosts offer a free certificate (for example from Let's Encrypt) with one switch in the control panel. The installer warns you when it is opened over `http://`. Details: [docs/getting-started.md § Requirement: https](docs/getting-started.md#requirement-https).
+
 ## 1) Upload files
 
 Upload the deploy package contents to your website folder so these files are in place:
@@ -28,11 +30,12 @@ If that file is missing or empty, re-upload the full deploy ZIP — do not uploa
 
 Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk. Also set `client_max_body_size 32m;` so uploads are not rejected before PHP (`post_max_size` / `upload_max_filesize` are aligned to 32M; lockstep-tested in `UploadLimitParityTest`). `.user.ini` / `.htaccess` also set `display_errors=0` so PHP's line-0 `post_max_size` warning cannot leak HTML before the JSON 413.
 
-Nginx does not read `.htaccess`. Deny the private trees and the same sensitive dotfiles. Leave other `/.` segments alone so WebDAV can serve `.attachments`, `.notes`, `.Trash`, and AppleDouble files:
+Nginx does not read `.htaccess`. Deny the private trees, the same sensitive dotfiles, and legacy `wgw-config.php` backups. Leave other `/.` segments alone so WebDAV can serve `.attachments`, `.notes`, `.Trash`, and AppleDouble files:
 
 ```nginx
 location ~ ^/(wgw-content|wgw-plugins|packages)(/|$) { deny all; }
 location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
+location ~ ^/wgw-config\.php\.bak(?:\.|$) { deny all; }
 ```
 
 ## 2) First request bootstrap
@@ -42,7 +45,7 @@ On the first HTTP request, the install bootstrap automatically:
 - creates `packages/api/.env` from `.env.example` and generates `APP_KEY` when missing
 - creates `.htaccess` from `example.htaccess` when missing (common when SFTP drops dotfiles)
 
-`APP_URL` is not taken from the request `Host` header. The installer asks for the public site address (`app_url`), prefilled from the browser origin, and writes it only after that address is confirmed. On an existing install where `APP_URL` is unset or still a loopback address, Administration shows "APP_URL is not set…" with a **Use this address** button that saves the address open in the browser, including the install base path.
+`APP_URL` is not taken from the request `Host` header. The installer sends the address the admin's browser has open (`app_url`: the browser origin plus the install base path, such as `https://example.org/office`) with the install request, and the server writes only that. On an existing install where `APP_URL` is unset, Administration shows "APP_URL is not set…"; when it is a loopback address such as `http://localhost:8080`, it shows "APP_URL is a local address…". Opened on the public address, Administration offers a **Use this address** button that saves that address, including the install base path, to `packages/api/.env`. When the server does not write that file (it is missing, marked read-only, in a read-only folder, or the config is cached), the button shows the reason and the exact `APP_URL=` line to add by hand. Opened on a local address, it shows an info note instead, because a loopback `APP_URL` is ignored: set `APP_URL` in `packages/api/.env` (Docker: `api.env` on the config volume), or open Administration on the public address. Password-reset mail stays off until `APP_URL` is public, because reset links must point at the site's real address.
 
 `WGW_TRUSTED_HOSTS` is a comma-separated list of extra hosts trusted in addition to the `APP_URL` host: a LAN IP, both www and apex, or a reverse proxy that rewrites the `Host` header or sends `X-Original-Host`. MCP metadata uses that name only when it is the `APP_URL` host or listed here. A different name falls back to the request `Host` until it is added.
 
@@ -68,12 +71,14 @@ Visit:
 
 - `https://your-domain/install/`
 
+Opened over `http://`, the installer first shows a **Not secure** page that lists what will not work and asks you to confirm before setup goes on. Turn on a certificate and open the `https://` address instead, or choose **Continue without https** for a first look.
+
 Then follow first-run setup:
 - Welcome
 - Database (MySQL / MariaDB by default, or SQLite). Skipped when `WGW_INSTALL_*` already has a database
 - First account (username and password)
 
-Required server failures interrupt setup. `php-imap` is not required for this release and is not an installer check. The Mail client is not in the v0.9 suite — see [packages/api/docs/mail/README.md](packages/api/docs/mail/README.md).
+Required server failures interrupt setup. The Mail client is not in the v0.9 suite — see [packages/api/docs/mail/README.md](packages/api/docs/mail/README.md).
 
 ## 4) Done
 
@@ -129,7 +134,7 @@ php -S localhost:8080 -t . index.php
 - **Beta**: prereleases (`-beta.N`, `-rc.N`) and stable releases, whichever is newer.
 - **Edge**: a build of every merge to `main`. For testing only, not for data you need.
 
-The choice is saved as `WGW_UPDATE_CHANNEL` in `packages/api/.env`. Updates never downgrade: schema migrations only go forward, so after a switch to an older channel the install stays on its version until that channel catches up. A `WGW_UPDATE_FEED_URL` other than the stable default overrides the channel.
+The choice is saved in the database, so `packages/api/.env` does not need to be writable. Until you pick one, `WGW_UPDATE_CHANNEL` in `packages/api/.env` applies (default `stable`). Updates never downgrade: schema migrations only go forward, so after a switch to an older channel the install stays on its version until that channel catches up. A `WGW_UPDATE_FEED_URL` other than the stable default overrides the channel.
 
 ## Move an existing data directory out of the web root
 

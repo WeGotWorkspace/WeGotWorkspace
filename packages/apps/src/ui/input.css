@@ -251,6 +251,26 @@ html[data-modality="pointer"]
   min-height: 0;
 }
 
+/*
+ * Browser autofill paints its own fill and text colour, which ignores the theme.
+ * Keep the field's own fill (the UA background never transitions in) and ink.
+ */
+.input:-webkit-autofill,
+.input__field:-webkit-autofill,
+.textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-foreground);
+  caret-color: var(--color-foreground);
+  transition: background-color 0s 600000s;
+}
+
+/* Neutral selection, same wash as notes — not the platform highlight. */
+.input::selection,
+.input__field::selection,
+.textarea::selection {
+  background-color: color-mix(in oklab, var(--color-foreground) 18%, transparent);
+  color: var(--color-foreground);
+}
+
 .input__field[type="search"]::-webkit-search-cancel-button,
 .input__field[type="search"]::-webkit-search-decoration {
   appearance: none;

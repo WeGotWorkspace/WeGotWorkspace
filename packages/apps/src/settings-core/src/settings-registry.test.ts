@@ -60,7 +60,7 @@ describe("settings-registry", () => {
     expect(panelsForNav({ mcpEnabled: true }).map((panel) => panel.id)).toContain("assistants");
   });
 
-  it("keeps Calendar, Tasks, Contacts, Notes, and Meet under Apps with no Mail nav and no production Notifications panel", () => {
+  it("keeps Calendar, Tasks, Contacts, Notes, and Meet under Apps with no Mail and no production Notifications panel", () => {
     registerBuiltinSettings();
     const nav = panelsForNav({});
     expect(nav.filter((panel) => panel.group === "apps").map((panel) => panel.id)).toEqual([
@@ -73,32 +73,23 @@ describe("settings-registry", () => {
     expect(nav.map((panel) => panel.id)).not.toContain("mail");
     expect(nav.map((panel) => panel.id)).not.toContain("notifications");
     expect(getSettingsPanel("notifications")).toBeUndefined();
-    expect(panelForApp("mail", {})).toMatchObject({
-      id: "mail",
-      appId: "mail",
-      showInNav: false,
-    });
     expect(panelForApp("calendar", {})?.id).toBe("calendar");
     expect(panelForApp("tasks", {})?.id).toBe("tasks");
     expect(panelForApp("contacts", {})?.id).toBe("contacts");
     expect(panelForApp("notes", {})?.id).toBe("notes");
     expect(panelForApp("meet", {})?.id).toBe("meet");
     expect(panelForApp("drive", {})).toBeUndefined();
-    expect(getSettingsPanel("mail")).toMatchObject({
-      id: "mail",
-      appId: "mail",
-      showInNav: false,
-    });
+    expect(getSettingsPanel("mail")).toBeUndefined();
   });
 
   it("returns the same test-only dual-placement slice from two panel queries", () => {
     registerBuiltinSettings();
     registerSlice({
       id: "test-dual-notify",
-      panelIds: ["mail", "notifications"],
+      panelIds: ["calendar", "notifications"],
       render: () => null,
     });
-    expect(slicesFor("mail", {}).map((slice) => slice.id)).toContain("test-dual-notify");
+    expect(slicesFor("calendar", {}).map((slice) => slice.id)).toContain("test-dual-notify");
     expect(slicesFor("notifications", {}).map((slice) => slice.id)).toEqual(["test-dual-notify"]);
     expect(panelsForNav({}).map((panel) => panel.id)).not.toContain("notifications");
   });
@@ -107,8 +98,8 @@ describe("settings-registry", () => {
     registerBuiltinSettings();
     expect(() =>
       registerPanel({
-        id: "mail",
-        label: "Mail",
+        id: "calendar",
+        label: "Calendar",
         description: "",
         icon: null,
         group: "apps",
@@ -116,8 +107,8 @@ describe("settings-registry", () => {
     ).toThrow(/already registered/);
     expect(() =>
       registerSlice({
-        id: "mail-accounts",
-        panelIds: ["mail"],
+        id: "calendar-display",
+        panelIds: ["calendar"],
         render: () => null,
       }),
     ).toThrow(/already registered/);
@@ -126,12 +117,11 @@ describe("settings-registry", () => {
   it("treats a second registerBuiltinSettings call as a no-op", () => {
     registerBuiltinSettings();
     expect(() => registerBuiltinSettings()).not.toThrow();
-    expect(getSettingsPanel("mail")?.id).toBe("mail");
+    expect(getSettingsPanel("calendar")?.id).toBe("calendar");
     expect(getSettingsPanel("profile")?.needsSettingsApi).toBe(true);
     expect(getSettingsPanel("memberships")?.needsSettingsApi).toBe(true);
     expect(getSettingsPanel("assistants")?.needsSettingsApi).toBe(true);
     expect(getSettingsPanel("calendar")?.needsSettingsApi).toBeUndefined();
-    expect(getSettingsPanel("mail")?.needsSettingsApi).toBeUndefined();
     expect(getSettingsPanel("tasks")?.needsSettingsApi).toBeUndefined();
     expect(getSettingsPanel("offline")?.needsSettingsApi).toBeUndefined();
   });
@@ -139,9 +129,9 @@ describe("settings-registry", () => {
   it("clears the builtin flag so reset then register restores builtins", () => {
     registerBuiltinSettings();
     resetSettingsRegistryForTests();
-    expect(getSettingsPanel("mail")).toBeUndefined();
+    expect(getSettingsPanel("calendar")).toBeUndefined();
     registerBuiltinSettings();
-    expect(getSettingsPanel("mail")?.id).toBe("mail");
+    expect(getSettingsPanel("calendar")?.id).toBe("calendar");
     expect(panelsForNav({}).map((panel) => panel.id)).toContain("profile");
   });
 });

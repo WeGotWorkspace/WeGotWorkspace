@@ -6,6 +6,7 @@ namespace Tests\Unit\Installer;
 
 use App\Services\Installer\DataDirCandidateResolver;
 use App\Services\Installer\DataDirChoice;
+use App\Services\Installer\DataDirRejected;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
 use Tests\TestCase;
@@ -92,6 +93,27 @@ final class DataDirCandidateResolverTest extends TestCase
         $this->assertSame(DataDirChoice::REASON_FALLBACK_UNAVAILABLE, $choice->reason);
         $this->assertTrue($choice->insidePublishedTree);
         $this->assertFileDoesNotExist($this->root.'/wgw-content');
+    }
+
+    public function test_absolute_form_of_the_fallback_is_the_same_choice(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('The root user can still write a mode 0555 directory.');
+        }
+
+        $install = $this->makeInstall($this->root.'/public');
+        $resolver = $this->resolver($install);
+        $absolute = $resolver->absolutePath(DataDirChoice::FALLBACK_PATH);
+        chmod($this->root, 0555);
+        try {
+            $choice = $resolver->accept($absolute, $install);
+        } finally {
+            chmod($this->root, 0755);
+        }
+
+        $this->assertSame($this->real($install).'/wgw-content', $absolute);
+        $this->assertSame(DataDirChoice::FALLBACK_PATH, $choice->path);
+        $this->assertSame(DataDirChoice::REASON_FALLBACK_UNAVAILABLE, $choice->reason);
     }
 
     public function test_stock_env_default_is_not_treated_as_an_operator_choice(): void
@@ -195,14 +217,16 @@ final class DataDirCandidateResolverTest extends TestCase
         try {
             $resolver->validateOverride('wgw-content', $install);
             $this->fail('A relative override must be rejected.');
-        } catch (\RuntimeException $e) {
+        } catch (DataDirRejected $e) {
+            $this->assertSame(DataDirRejected::NOT_ABSOLUTE, $e->errorCode);
             $this->assertSame('Enter an absolute path for the data directory.', $e->getMessage());
         }
 
         try {
             $resolver->validateOverride($install.'/private-data', $install);
             $this->fail('An in-tree override must be rejected.');
-        } catch (\RuntimeException $e) {
+        } catch (DataDirRejected $e) {
+            $this->assertSame(DataDirRejected::PUBLISHED, $e->errorCode);
             $this->assertSame('That directory is inside the published website. Choose a folder outside it.', $e->getMessage());
         }
     }

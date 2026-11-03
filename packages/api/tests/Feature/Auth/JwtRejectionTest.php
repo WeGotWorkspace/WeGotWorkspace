@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Services\Auth\JwtCodec;
+use App\Services\Auth\JwtConfigService;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
@@ -162,6 +163,45 @@ final class JwtRejectionTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/admin/state')
             ->assertUnauthorized()
             ->assertJsonPath('code', 'unauthorized');
+    }
+
+    public function test_missing_jwt_keys_answer_503_not_401(): void
+    {
+        $token = JwtCodec::issue([
+            'sub' => 'alice',
+            'role' => 'user',
+            'exp' => time() + 3600,
+        ], $this->signingConfig());
+        config([
+            'wgw.jwt.private_key' => '',
+            'wgw.jwt.public_key' => '',
+            'wgw.jwt.private_key_path' => '/nonexistent/api-jwt-private.pem',
+            'wgw.jwt.public_key_path' => '/nonexistent/api-jwt-public.pem',
+            'wgw.data_dir' => sys_get_temp_dir().'/wgw-no-jwt-keys-'.uniqid('', true),
+        ]);
+        $this->assertNull(app(JwtConfigService::class)->signingConfig());
+
+        $this->withBearer($token)->getJson('/api/v1/me')
+            ->assertStatus(503)
+            ->assertJson([
+                'error' => 'JWT key configuration missing.',
+                'code' => 'config_error',
+            ]);
+    }
+
+    public function test_missing_jwt_keys_keep_401_without_a_bearer_token(): void
+    {
+        config([
+            'wgw.jwt.private_key' => '',
+            'wgw.jwt.public_key' => '',
+            'wgw.jwt.private_key_path' => '/nonexistent/api-jwt-private.pem',
+            'wgw.jwt.public_key_path' => '/nonexistent/api-jwt-public.pem',
+            'wgw.data_dir' => sys_get_temp_dir().'/wgw-no-jwt-keys-'.uniqid('', true),
+        ]);
+
+        $this->getJson('/api/v1/me')
+            ->assertUnauthorized()
+            ->assertJson(['code' => 'unauthorized']);
     }
 
     private function assertBearerRejected(string $token): void

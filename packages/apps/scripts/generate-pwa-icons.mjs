@@ -72,7 +72,6 @@ const WORKSPACE_APPS = [
   "contacts",
   "docs",
   "drive",
-  "mail",
   "meet",
   "notes",
   "settings",
@@ -155,7 +154,7 @@ function imageSize(file) {
 function writeOpaquePng(src, size, dest) {
   const { width, height } = imageSize(src);
   const args = [src];
-  // A one-pixel export sliver (mail is 512×513) is cropped. Resampling would
+  // A one-pixel export sliver (e.g. 512×513) is cropped. Resampling would
   // squash the artwork. Semi-transparent fringe rows keep their stored RGB;
   // compositing them onto white shifts the tile color.
   if (width === size && height === size + 1) {

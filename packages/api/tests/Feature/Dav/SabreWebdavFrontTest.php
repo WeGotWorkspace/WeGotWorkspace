@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Dav;
 
 use App\Dav\SabreServerFactory;
+use App\Dav\Server\FileNodeIndexPlugin;
 use App\Support\AppPaths;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
@@ -29,7 +30,7 @@ final class SabreWebdavFrontTest extends WgwDatabaseTestCase
         $factory = $this->app->make(SabreServerFactory::class);
         $server = $factory->create();
         $this->assertSame('/', $server->getBaseUri());
-        $this->assertNotNull($server->getPlugin('drive-star-path'));
+        $this->assertInstanceOf(FileNodeIndexPlugin::class, $server->getPlugin(FileNodeIndexPlugin::class));
 
         $this->assertTrue($this->app->make(AppPaths::class)->isInstalled());
     }

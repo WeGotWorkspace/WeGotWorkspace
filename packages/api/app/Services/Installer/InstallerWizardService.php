@@ -145,6 +145,8 @@ final class InstallerWizardService
     {
         try {
             [$state, $db] = $this->dataDirs->bind($this->wizardState(), $this->readDbFromPayload($payload), $payload);
+        } catch (DataDirRejected $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'error_code' => $e->errorCode, 'state' => $this->runtimeState($webBase)];
         } catch (\RuntimeException $e) {
             return ['ok' => false, 'error' => $e->getMessage(), 'state' => $this->runtimeState($webBase)];
         }
@@ -183,6 +185,8 @@ final class InstallerWizardService
     {
         try {
             [$state, $db] = $this->dataDirs->bind($this->wizardState(), $this->readDbFromPayload($payload), $payload);
+        } catch (DataDirRejected $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'error_code' => $e->errorCode, 'state' => $this->runtimeState($webBase)];
         } catch (\RuntimeException $e) {
             return ['ok' => false, 'error' => $e->getMessage(), 'state' => $this->runtimeState($webBase)];
         }

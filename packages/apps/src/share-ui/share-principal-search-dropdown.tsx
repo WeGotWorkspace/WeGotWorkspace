@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -38,7 +38,11 @@ export function SharePrincipalSearchDropdown({
   onSelect,
 }: SharePrincipalSearchDropdownProps) {
   const trimmedQuery = query.trim();
-  const open = trimmedQuery.length >= minQueryLength || searching;
+  // `open` follows the query, so Escape needs its own state: it hides the list
+  // for this query, and typing reopens it. The next Escape reaches the dialog.
+  const [escapedQuery, setEscapedQuery] = useState<string | null>(null);
+  const open =
+    (trimmedQuery.length >= minQueryLength || searching) && escapedQuery !== trimmedQuery;
 
   return (
     <Popover open={open} modal={false}>
@@ -61,6 +65,7 @@ export function SharePrincipalSearchDropdown({
           )}
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
+          onEscapeKeyDown={() => setEscapedQuery(trimmedQuery)}
         >
           {searching ? (
             <div

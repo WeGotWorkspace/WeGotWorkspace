@@ -27,6 +27,7 @@ import {
 import { fetchMeetLiveBootstrap } from "@/lib/api/wgw/meet";
 import { fetchMeetChatDirectory, type MeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
@@ -71,7 +72,9 @@ export type MeetChatAuthor = {
   displayName: string;
 };
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<MeetChatOutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<MeetChatOutboxFlushResult>(
+  MEET_CHAT_DOMAIN,
+);
 
 export function getMeetChatSyncRunner(
   username: string,

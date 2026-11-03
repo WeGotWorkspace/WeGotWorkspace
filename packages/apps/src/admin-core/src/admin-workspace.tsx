@@ -12,9 +12,9 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
+import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
-import { AdminMailPane } from "@/admin-core/src/admin-mail-pane";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
@@ -22,41 +22,57 @@ import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
 import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
+import { AdminNotSecureNotice } from "@/admin-core/src/admin-not-secure-notice";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
-import { appUrlFromBrowserLocation } from "@/admin-core/src/admin-workspace-utils";
+import {
+  appUrlFromBrowserLocation,
+  isAppUrlWarning,
+  isLoopbackOrigin,
+} from "@/admin-core/src/admin-workspace-utils";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
 
 export function AdminSecurityWarnings({
   warnings,
   baseUri,
+  origin = globalThis.location?.origin ?? "",
   onUseThisAddress,
 }: {
-  warnings: readonly string[];
+  /** From the latest admin state: a saved address clears the warning only once the server agrees. */
+  warnings: readonly AdminSecurityWarning[];
   baseUri: string;
+  /** Browser origin; a prop so tests can pass a public one. */
+  origin?: string;
   onUseThisAddress?: (url: string) => Promise<boolean | void> | boolean | void;
 }) {
   const [pending, setPending] = useState(false);
-  const [appUrlSaved, setAppUrlSaved] = useState(false);
-  const visibleWarnings = appUrlSaved
-    ? warnings.filter((warning) => !warning.startsWith("APP_URL is not set"))
-    : warnings;
-  if (visibleWarnings.length === 0) {
+  if (warnings.length === 0) {
     return null;
   }
+  const url = origin === "" ? "" : appUrlFromBrowserLocation(origin, baseUri);
+  // The server ignores a loopback APP_URL, so saving it would change nothing.
+  const local = origin !== "" && isLoopbackOrigin(origin);
 
   return (
     <div className="admin-security-warnings">
-      {visibleWarnings.map((warning) => {
-        const isAppUrl = warning.startsWith("APP_URL is not set");
+      {warnings.map((warning) => {
+        const isAppUrl = isAppUrlWarning(warning);
+        const offer = isAppUrl && url !== "" && !local;
+        // On a local address the admin cannot fix it from here: inform, do not alarm.
+        const localNote = isAppUrl && local;
+        const message = localNote
+          ? `${warning.message} To set it, open Admin on the site's public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume).`
+          : offer
+            ? `${warning.message} "Use this address" saves ${url} as the site address.`
+            : warning.message;
         return (
           <Callout
-            key={warning}
-            severity="error"
-            title="Security warning"
-            message={warning}
+            key={warning.code}
+            severity={localNote ? "info" : "error"}
+            title={localNote ? "Local address" : "Security warning"}
+            message={message}
             action={
-              isAppUrl ? (
+              offer ? (
                 <Button
                   label="Use this address"
                   variant="outline"
@@ -64,13 +80,8 @@ export function AdminSecurityWarnings({
                   disabled={pending || onUseThisAddress == null}
                   onClick={() => {
                     if (onUseThisAddress == null) return;
-                    const url = appUrlFromBrowserLocation(window.location.origin, baseUri);
                     setPending(true);
-                    void Promise.resolve(onUseThisAddress(url))
-                      .then((saved) => {
-                        if (saved === true) setAppUrlSaved(true);
-                      })
-                      .finally(() => setPending(false));
+                    void Promise.resolve(onUseThisAddress(url)).finally(() => setPending(false));
                   }}
                 />
               ) : undefined
@@ -164,8 +175,9 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         main={
           <>
             <AdminWebRootProbe />
+            <AdminNotSecureNotice secureContext={props.secureContext} />
             <AdminSecurityWarnings
-              warnings={data.securityWarnings}
+              warnings={controller.securityWarnings}
               baseUri={data.webdav.baseUri}
               onUseThisAddress={(url) => controller.actions.useThisAddress(url)}
             />
@@ -181,7 +193,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
                 onDeleteGroup={setDeleteGroupId}
               />
             ) : null}
-            {controller.section === "mail" ? <AdminMailPane controller={controller} /> : null}
             {controller.section === "email-delivery" ? (
               <AdminEmailDeliveryPane controller={controller} />
             ) : null}

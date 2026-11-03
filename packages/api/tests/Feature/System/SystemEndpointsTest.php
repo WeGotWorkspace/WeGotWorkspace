@@ -33,5 +33,6 @@ final class SystemEndpointsTest extends TestCase
         $names = array_column($response->json('domains'), 'name');
         $this->assertContains('settings', $names);
         $this->assertNotContains('mail', $names);
+        $this->assertNotContains('plugins', $names);
     }
 }

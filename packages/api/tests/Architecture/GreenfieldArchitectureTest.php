@@ -33,7 +33,6 @@ final class GreenfieldArchitectureTest extends TestCase
         $app = dirname(__DIR__, 2).'/app/Services/';
         $files = [
             'Update/UpdateRunnerBackupArchive.php',
-            'Mail/MailFolderOperations.php',
             'Calendars/CalendarEventMutationSupport.php',
             'Contacts/Conversion/VCardToJsContactCoreFields.php',
         ];

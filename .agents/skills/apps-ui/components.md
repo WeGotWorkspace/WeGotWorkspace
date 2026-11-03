@@ -16,12 +16,14 @@ Extends primitive API rules in [SKILL.md](SKILL.md). For *App / *Workspace split
 
 - **Behavior props** over presentation props: `variant`, `disabled`, `onClick` — not `toolbarStyle`.
 - **Descriptor arrays** for actions: `{ id, label, icon, onClick, active }[]` — not ad-hoc dropdown JSX at callsites.
-- **Callbacks upward** for shell-owned flows: `onLogout`, navigation — workspace must not call `window.location` ([workspace](../workspace/SKILL.md)).
+- **Callbacks upward** for shell-owned flows: `onLogout`, navigation — workspace must not call `window.location` ([workspace](../workspace/SKILL.md#navigation-and-logout), lint-enforced).
 - Optional props with sensible defaults; avoid required props that are always the same at every callsite.
 
 ## Dependency injection (target standard)
 
 **Goal:** one consistent pipeline so every layer is testable without module mocks. Side effects enter **only through props** — never by importing `@/lib/api/wgw/*` inside panes, composites, or primitives.
+
+**Lint:** `paneAndStoryImportRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js) fails CI when a `*-pane.tsx` file or a story file (`*.stories.ts(x)`, `*.stories.*.ts(x)`) imports `@/lib/api/wgw/http`, a relative path to it, or the `@/lib/api/wgw` barrel that re-exports it.
 
 ### Target pipeline (all new work)
 

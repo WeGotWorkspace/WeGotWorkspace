@@ -68,7 +68,8 @@
     var(--user-avatar-hue) 14%,
     var(--_user-avatar-surface)
   );
-  --user-avatar-tile-fg: color-mix(in oklab, var(--user-avatar-hue) 32%, var(--color-we-got-dark));
+  /* `--scheme-ink` (not `--color-we-got-dark`) so the glyph stays readable in dark mode. */
+  --user-avatar-tile-fg: color-mix(in oklab, var(--user-avatar-hue) 32%, var(--scheme-ink));
   --user-avatar-bg: var(--user-avatar-tile-bg);
   --user-avatar-fg: var(--user-avatar-tile-fg);
   --user-avatar-hover-bg: color-mix(
@@ -126,6 +127,11 @@
 
 .user-avatar__presence--away {
   background-color: var(--user-avatar-presence-away, #eab308);
+}
+
+/* Save / sync still in flight (not someone's presence). */
+.user-avatar__presence--pending {
+  background-color: var(--user-avatar-presence-pending, var(--color-sync-pending));
 }
 
 .user-avatar__presence--offline {

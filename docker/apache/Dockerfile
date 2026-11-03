@@ -12,10 +12,7 @@ RUN apt-get update \
         libxml2-dev \
         libsqlite3-dev \
         default-libmysqlclient-dev \
-        libc-client-dev \
-        libkrb5-dev \
         libgmp-dev \
-    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-install \
         pdo \
         pdo_sqlite \
@@ -23,7 +20,6 @@ RUN apt-get update \
         mbstring \
         zip \
         intl \
-        imap \
         gmp \
         bcmath \
     && apt-get clean \

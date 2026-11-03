@@ -5,14 +5,14 @@ import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-
 describe("wegotworkspace settings routes", () => {
   it("matches section on direct /settings/$section loads", async () => {
     const history = createMemoryHistory({
-      initialEntries: ["/settings/mail"],
+      initialEntries: ["/settings/calendar"],
     });
     const router = createWeGotWorkspaceRouter({ mode: "mock", history });
     await router.load();
 
     const match = router.state.matches.find((entry) => entry.params.section);
-    expect(match?.params).toMatchObject({ section: "mail" });
-    expect(router.state.location.pathname).toBe("/settings/mail");
+    expect(match?.params).toMatchObject({ section: "calendar" });
+    expect(router.state.location.pathname).toBe("/settings/calendar");
   });
 
   it("navigates from /settings to /settings/$section with route params", async () => {

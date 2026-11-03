@@ -71,7 +71,6 @@ export const BRANDING_APP_ACCENT_DEFAULT = "var(--color-we-got-dark)";
 
 export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
   notes: BRANDING_APP_ACCENT_DEFAULT,
-  mail: BRANDING_APP_ACCENT_DEFAULT,
   calendar: BRANDING_APP_ACCENT_DEFAULT,
   contacts: BRANDING_APP_ACCENT_DEFAULT,
   tasks: BRANDING_APP_ACCENT_DEFAULT,
@@ -185,7 +184,6 @@ export function createAppBrandingCssprops(
 
 /** Per-app icon-pair defaults — the surface/foreground fallbacks in `src/assets/app-icons/*.svg`. */
 export const BRANDING_APP_ICON_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
-  mail: { bg: "var(--color-we-got-red)", fg: "var(--color-we-got-red-tint)" },
   notes: { bg: "var(--color-we-got-yellow)", fg: "var(--color-we-got-yellow-tint)" },
   docs: { bg: "var(--color-we-got-blue)", fg: "var(--color-we-got-blue-tint)" },
   drive: { bg: "var(--color-we-got-forest)", fg: "var(--color-we-got-brat)" },

@@ -1,0 +1,31 @@
+import type { DriveFile } from "@/drive-core/src/drive-models";
+import { driveLabels } from "@/drive-core/src/drive-labels";
+import { useDriveUploadRowState } from "@/drive-core/src/drive-upload-queue";
+import { cn } from "@/lib/utils";
+import "@/drive-core/src/drive-uploads.css";
+
+/**
+ * Status line of an upload placeholder (grid tile and list row). Nothing for
+ * real files. While uploading, a phone shows only the percentage.
+ */
+export function DriveUploadStatus({ file }: { file: DriveFile }) {
+  const state = useDriveUploadRowState(file);
+  if (!state) return null;
+  return (
+    <span
+      className={cn("drive-upload-status", `drive-upload-status--${state.kind}`)}
+      title={state.notOnDevice ? driveLabels.uploadNotOnDeviceDetail : state.statusText}
+    >
+      {state.kind === "uploading" && state.percent !== null ? (
+        <>
+          {/* On a phone the percentage alone says enough. */}
+          <span className="drive-upload-status__words">{driveLabels.uploadState.uploading} · </span>
+          {driveLabels.uploadPercent(state.percent)}
+          {state.notOnDevice ? ` · ${driveLabels.uploadNotOnDevice}` : null}
+        </>
+      ) : (
+        state.statusText
+      )}
+    </span>
+  );
+}

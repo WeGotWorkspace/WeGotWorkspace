@@ -123,6 +123,7 @@ function useEchoSession(
     urls,
     markDocReady,
     trySeedFromFile,
+    setDocStatus: onDocStatus ?? (() => undefined),
   });
   const join = useDocsCollabJoin({
     refs,
@@ -527,6 +528,40 @@ describe("useDocsCollabJoin server bootstrap", () => {
     server.destroy();
   });
 
+  it("keeps an offline edit when the server has no collab state yet (204)", async () => {
+    const room = "docs/bootstrap-no-sidecar.md";
+    // Opened offline before: the local copy came from the cached text.
+    const cached = new Y.Doc();
+    writeBody(cached, "Body to clear");
+    await storeLocalCopy(room, cached);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes("format=yjs")
+          ? new Response(null, { status: 204 })
+          : new Response("Body to clear\n", { status: 200 }),
+      ),
+    );
+    const { hook, pendingCalls } = renderJoinedSession(room);
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+
+    // Cleared while offline, then the connection comes back.
+    const fragment = local.getXmlFragment("default");
+    fragment.delete(0, fragment.length);
+    await bootstrap(hook);
+
+    expect(bodyText(local)).toBe("");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    expect(pendingCalls).toContain(true);
+
+    closeSession(hook);
+    cached.destroy();
+  });
+
   it("drops a stale local seed but keeps what was typed on top of it", async () => {
     const room = "docs/bootstrap-stale-seed.md";
     const stale = new Y.Doc();
@@ -555,6 +590,34 @@ describe("useDocsCollabJoin server bootstrap", () => {
 
     closeSession(hook);
     stale.destroy();
+    server.destroy();
+  });
+
+  it("keeps text another tab typed that the server snapshot does not have yet (#1722)", async () => {
+    const room = "docs/bootstrap-other-tab-unsaved.md";
+    const server = new Y.Doc();
+    writeBody(server, "Saved line");
+    // The other tab typed into the shared local copy; its debounced save is still waiting.
+    const otherTab = new Y.Doc();
+    Y.applyUpdate(otherTab, Y.encodeStateAsUpdate(server));
+    const paragraph = otherTab.getXmlFragment("default").get(0) as Y.XmlElement;
+    (paragraph.get(0) as Y.XmlText).insert(10, " typed just now");
+    await storeLocalCopy(room, otherTab);
+    stubServer(server, "Saved line\n");
+    const { hook, statuses } = renderJoinedSession(room);
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+    await bootstrap(hook);
+
+    expect(bodyText(local)).toBe("Saved line typed just now");
+    expect(statuses).not.toContain(DOC_STATUS_RESTORED_WORKING_VERSION);
+
+    closeSession(hook);
+    otherTab.destroy();
     server.destroy();
   });
 

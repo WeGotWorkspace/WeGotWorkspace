@@ -50,3 +50,23 @@ export const Busy: Story = {
     await expect(canvas.getByRole("status", { name: "Unsaved changes" })).toBeInTheDocument();
   },
 };
+
+/** Save not on the server yet: blue pending pip beside the timestamp (not the amber offline pip). */
+export const PendingSave: Story = {
+  tags: ["vitest-ci"],
+  render: () => (
+    <WorkspaceDetailFooter
+      tags={detailFooterLastEditedTag({
+        lastEdited: "10 Aug 2026, 14:00",
+        editedLabel: "Last edited",
+        busyLabel: "Unsaved changes",
+        sync: "pending",
+      })}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText("Unsaved changes")).toBeInTheDocument();
+    await expect(canvasElement.querySelector("[data-presence='pending']")).toBeTruthy();
+  },
+};

@@ -50,6 +50,11 @@ export type DocsCollabHttpSyncPorts = {
   myAccess: () => DocsCollabAccess;
   /** False while HTTP / sidecar bootstrap has not hydrated the Y.Doc yet. */
   meshHydrated?: () => boolean;
+  /**
+   * Hand a remote update to the session's receive path instead of applying it
+   * here. That path runs the same guard and also relays to follower tabs.
+   */
+  deliverRemoteUpdate?: (from: string, update: Uint8Array) => void;
 };
 
 /**
@@ -195,8 +200,6 @@ export class DocsCollabHttpSync {
   }
 
   ingest(messages: readonly DocsHttpMailboxMessage[]): void {
-    const doc = this.ports.getYDoc();
-    if (!doc) return;
     for (const message of messages) {
       if (message.type !== "yjs" && message.type !== "yjs-sv") continue;
       const decoded = decodeYjsHttpPayload(message.payload);
@@ -205,6 +208,12 @@ export class DocsCollabHttpSync {
         this.answerStateVector(message.from, decoded.bytes);
         continue;
       }
+      if (this.ports.deliverRemoteUpdate) {
+        this.ports.deliverRemoteUpdate(message.from, decoded.bytes);
+        continue;
+      }
+      const doc = this.ports.getYDoc();
+      if (!doc) continue;
       const trust = this.ports.trust(message.from);
       applyGuardedRemoteUpdate({
         doc,

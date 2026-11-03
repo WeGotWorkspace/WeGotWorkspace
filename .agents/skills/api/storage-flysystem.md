@@ -35,9 +35,9 @@ file_put_contents(Paths::data().'/files/'.$path, $contents);
 
 ## SabreDAV / WebDAV
 
-- File tree nodes (`IFile` / `ICollection`) **delegate to the same Flysystem disk** as REST drive/plugins — not a second copy of `data/files` logic.
+- File tree nodes (`IFile` / `ICollection`) **delegate to the same Flysystem disk** as REST drive — not a second copy of `data/files` logic.
 - Implement under `app/DAV/Storage/` (e.g. FlysystemCollection, FlysystemFileNode) or a maintained Sabre↔Flysystem bridge.
-- **Plugins** (git versioning, write guard) call Laravel **services** that use `WgwStorage` — no `readfile` / direct path in plugins.
+- **Sabre server plugins** (e.g. the write guard) call Laravel **services** that use `WgwStorage` — no `readfile` / direct path in plugins.
 - CalDAV/CardDAV stay on PDO backends; only **file** WebDAV shares the files disk.
 
 ## Notes

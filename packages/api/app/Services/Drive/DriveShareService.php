@@ -34,6 +34,8 @@ final class DriveShareService
         private DriveShareByPrincipalQuery $byPrincipalQuery,
         private DriveShareNotifier $notifier,
         private FileNodeIndexService $fileNodes,
+        private DriveShareOwnerReach $ownerReach,
+        private DriveShareRevoker $revoker,
     ) {}
 
     /**
@@ -53,6 +55,7 @@ final class DriveShareService
 
         /** @var Collection<int, DriveShare> $shares */
         $shares = $query->get();
+        $shares = $shares->filter(fn (DriveShare $share): bool => $this->ownerReach->ownerReachesShare($share));
 
         return array_values($shares->map(fn (DriveShare $share): array => $this->presenter->serializeShareForOwner($share))->all());
     }
@@ -235,7 +238,7 @@ final class DriveShareService
     {
         DB::connection('wgw')->transaction(function () use ($username, $shareId): void {
             $share = $this->ownerShareOrFail($username, $shareId, lockForUpdate: true);
-            $this->revokeShareRecord($share);
+            $this->revoker->revoke($share);
         });
     }
 
@@ -264,7 +267,7 @@ final class DriveShareService
                     continue;
                 }
 
-                $this->revokeShareRecord($share);
+                $this->revoker->revoke($share);
                 $revokedIds[] = (string) $share->id;
             }
 
@@ -376,6 +379,11 @@ final class DriveShareService
         $user = strtolower(trim($username));
         $groupSlugs = $this->groups->allowedGroupSlugs($user);
         $now = Carbon::now();
+        $inForce = function (DriveShare $share) use ($now): bool {
+            return $this->presenter->isShareLive($share, $now)
+                && ! $this->scope->isInProductTrash((string) $share->path)
+                && $this->ownerReach->ownerReachesShare($share);
+        };
 
         /** @var Collection<int, DriveShareGrant> $userGrants */
         $userGrants = DriveShareGrant::query()
@@ -398,10 +406,7 @@ final class DriveShareService
         $directByShareId = [];
         foreach ($userGrants as $grant) {
             $share = $grant->share;
-            if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
-                continue;
-            }
-            if ($this->scope->isInProductTrash((string) $share->path)) {
+            if ($share === null || ! $inForce($share)) {
                 continue;
             }
             $directByShareId[(string) $share->id] = $grant;
@@ -430,10 +435,7 @@ final class DriveShareService
 
         foreach ($groupGrants as $grant) {
             $share = $grant->share;
-            if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
-                continue;
-            }
-            if ($this->scope->isInProductTrash((string) $share->path)) {
+            if ($share === null || ! $inForce($share)) {
                 continue;
             }
             $shareId = (string) $share->id;
@@ -500,7 +502,7 @@ final class DriveShareService
             throw new ApiHttpException(404, 'This share link is invalid or has expired.', 'share_unavailable');
         }
 
-        if ($share->revoked_at !== null || $share->kind !== 'public') {
+        if ($share->revoked_at !== null || $share->kind !== 'public' || ! $this->ownerReach->ownerReachesShare($share)) {
             throw new ApiHttpException(410, 'This share link is no longer available.', 'share_unavailable');
         }
 
@@ -585,6 +587,7 @@ final class DriveShareService
                 || ! hash_equals($storedHash, $expectedHash)
                 || $grant->share === null
                 || $grant->share->revoked_at !== null
+                || ! $this->ownerReach->ownerReachesShare($grant->share)
             ) {
                 throw new ApiHttpException(404, 'Invite not found.', 'not_found');
             }
@@ -750,22 +753,10 @@ final class DriveShareService
 
         /** @var DriveShare|null $share */
         $share = $query->first();
-        if ($share === null) {
+        if ($share === null || ! $this->ownerReach->ownerReachesShare($share)) {
             throw new ApiHttpException(404, 'Share not found.', 'not_found');
         }
 
         return $share;
-    }
-
-    private function revokeShareRecord(DriveShare $share): void
-    {
-        $now = Carbon::now();
-        $share->revoked_at = $now;
-        $share->save();
-
-        DriveShareSession::query()
-            ->where('share_id', $share->id)
-            ->whereNull('revoked_at')
-            ->update(['revoked_at' => $now]);
     }
 }

@@ -242,7 +242,7 @@ Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` read
 
 ## Filed
 
-Tracked in milestone [CalDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/11): Goal #1389, Epic #1391, A0 #1392. Spec-conformance Tasks B1–B6: #1411–#1416 (no milestone). NT-1 is #1410.
+Tracked in milestone [CalDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/11): Goal [Product#138](https://github.com/WeGotWorkspace/Product/issues/138), Epic #1391, A0 #1392. Spec-conformance Tasks B1–B6: #1411–#1416 (no milestone). NT-1 is #1410.
 
 The drafts below are what was filed.
 

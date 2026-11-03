@@ -8,7 +8,6 @@ export type SettingsPaths = {
 };
 
 export type OkResponse = components["schemas"]["OkResponse"];
-export type SettingsMailRequest = components["schemas"]["SettingsMailRequest"];
 export type SettingsMcpGrant = components["schemas"]["SettingsMcpGrant"];
 export type SettingsMcpGrantList = components["schemas"]["SettingsMcpGrantList"];
 export type SettingsMcpShareCall = components["schemas"]["SettingsMcpShareCall"];
@@ -16,8 +15,6 @@ export type SettingsProfileRequest = components["schemas"]["SettingsProfileReque
 export type SettingsStateResponse = components["schemas"]["SettingsStateResponse"];
 export type SettingsUserGroup = components["schemas"]["SettingsUserGroup"];
 export type SettingsUserGroupList = components["schemas"]["SettingsUserGroupList"];
-export type SettingsUserMail = components["schemas"]["SettingsUserMail"];
-export type SettingsUserMailServer = components["schemas"]["SettingsUserMailServer"];
 export type SettingsUserProfile = components["schemas"]["SettingsUserProfile"];
 
 export type { components, paths };

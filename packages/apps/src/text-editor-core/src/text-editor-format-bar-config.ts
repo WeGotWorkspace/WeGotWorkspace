@@ -18,7 +18,7 @@ export type TextEditorFormatBarConfig = {
   className?: string;
 };
 
-/** Full toolbar (mail and docs). */
+/** Full toolbar. */
 export const TEXT_EDITOR_FORMAT_BAR_FULL: TextEditorFormatBarGroup[] = [
   "history",
   "heading",
@@ -27,13 +27,6 @@ export const TEXT_EDITOR_FORMAT_BAR_FULL: TextEditorFormatBarGroup[] = [
   "blocksBasic",
   "blocksExtra",
   "link",
-];
-
-/** Typical mail compose: no print, history, link, code, highlight, or extra blocks. */
-export const TEXT_EDITOR_FORMAT_BAR_MAIL: TextEditorFormatBarGroup[] = [
-  "heading",
-  "marksBasic",
-  "blocksBasic",
 ];
 
 export function resolveTextEditorFormatBarConfig(

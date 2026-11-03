@@ -73,6 +73,7 @@ final class NoteCollaborativeWrite
                 ? null
                 : DocCollabDocumentService::sidecarEtag($this->binaryString($stored->getAttributes()['state'] ?? $stored->state));
             $this->assertStatePrecondition($ifMatch, $ifNoneMatch, $storedEtag);
+            NoteArchiveGuard::assertNotArchived($this->converter, $object);
             $this->assertNoUnseenExternalWrite($stored, $object, $externalWriteSeen);
 
             $instance = $located['instance'];

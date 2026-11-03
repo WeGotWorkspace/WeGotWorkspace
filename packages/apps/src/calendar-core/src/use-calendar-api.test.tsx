@@ -137,4 +137,33 @@ describe("useCalendarAPI applyBootstrapRefresh", () => {
       expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("keeps the calendar out of the loading state while a reconnect syncs (#1532)", async () => {
+    let finishFlush!: () => void;
+    mockFlush.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishFlush = () => resolve({ conflicts: [], schedulingConflicts: [], bootstrap: null });
+      }),
+    );
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useCalendarAPI(source));
+
+    await act(async () => {
+      mockOnReconnect();
+    });
+    await waitFor(() => expect(mockFlush).toHaveBeenCalledTimes(1));
+
+    expect(result.current.listLoading).toBe(false);
+    expect(result.current.data.events).toEqual(bootstrap.data.events);
+
+    await act(async () => {
+      finishFlush();
+    });
+    await waitFor(() => expect(mockLoadBootstrap).toHaveBeenCalledTimes(1));
+    expect(result.current.listLoading).toBe(false);
+  });
 });

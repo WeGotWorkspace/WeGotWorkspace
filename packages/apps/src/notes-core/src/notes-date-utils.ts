@@ -18,6 +18,23 @@ export function compareNotesDesc(
   return b.id.localeCompare(a.id);
 }
 
+/**
+ * Sort in place by {@link compareNotesDesc}, parsing each date once instead of
+ * twice per comparison.
+ */
+export function sortNotesDesc<T extends Pick<Note, "id" | "date">>(notes: T[]): T[] {
+  const stamps = new Map<T, number | null>();
+  for (const note of notes) stamps.set(note, parseTimestamp(note.date));
+  return notes.sort((a, b) => {
+    const da = stamps.get(a) ?? null;
+    const db = stamps.get(b) ?? null;
+    if (da !== null && db !== null && da !== db) return db - da;
+    if (da !== null && db === null) return -1;
+    if (da === null && db !== null) return 1;
+    return b.id.localeCompare(a.id);
+  });
+}
+
 export function formatNoteDateForList(raw: string): string {
   return formatListDateTime(raw);
 }

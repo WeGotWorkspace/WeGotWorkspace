@@ -1,11 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { createBrandingStoryMeta } from "@/branding-playground";
-import { createInstallerAppBootstrap } from "@/lib/api/mock/installer-bootstrap";
+import { createBrandingStoryMeta, withDarkTheme } from "@/branding-playground";
+import {
+  MOCK_DATA_DIR_PATH,
+  createInstallerAppBootstrap,
+} from "@/lib/api/mock/installer-bootstrap";
 import { InstallerAccountPage } from "@/installer-core/src/installer-account-page";
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
 import { installerCopy } from "@/installer-core/src/installer-copy";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
+import { InstallerNotSecurePage } from "@/installer-core/src/installer-not-secure-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
 import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
@@ -41,7 +45,7 @@ const brandingMeta = createBrandingStoryMeta({
           "Designer branding for the installer cream shell (same `.login-screen` paper as Login): " +
           "`--color-we-got-soft` / `--color-we-got-dark` via cssprops, and BrandLockup suite-mark SVG slot. " +
           "State matrix: Welcome, database (MySQL / SQLite), account (+ env-omitted database step), " +
-          "installing, ready, and server-needs-attention. " +
+          "installing, ready, server-needs-attention, and the not-secure (http) warning in light and dark. " +
           "Interactive flow walks the full mock InstallerWorkspace setup (Welcome → Ready).",
       },
     },
@@ -76,6 +80,11 @@ export const InteractiveFlow: Story = {
         canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
       ).toBeInTheDocument(),
     );
+    await expect(canvas.getByRole("textbox", { name: installerCopy.dataDirLabel })).toHaveValue(
+      MOCK_DATA_DIR_PATH,
+    );
+    // Storybook runs on localhost, a secure context: no http warning on the way.
+    await expect(canvas.queryByRole("heading", { name: installerCopy.notSecureTitle })).toBeNull();
   },
 };
 
@@ -91,7 +100,7 @@ export const Welcome: Story = {
     await expect(canvas.getByRole("button", { name: "Get started" })).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
     await expect(canvas.getByText("Welcome, current")).toBeInTheDocument();
-    await expect(canvas.getByText("Database")).toBeInTheDocument();
+    await expect(canvas.getByText("Your data")).toBeInTheDocument();
     // BrandLockup wordmark is aria-hidden; assert old marketing heroes stay gone.
     await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
     await expect(canvas.queryByText("Files on every device")).toBeNull();
@@ -100,17 +109,19 @@ export const Welcome: Story = {
 };
 
 export const Database: Story = {
-  name: "Your database",
+  name: "Your data",
   tags: ["vitest-ci"],
-  render: () => <InstallerDatabasePage />,
+  render: () => <InstallerDatabasePage dataDirPath={MOCK_DATA_DIR_PATH} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
       canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
     ).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
-    await expect(canvas.getByText("Database, current")).toBeInTheDocument();
-    const engines = within(canvas.getByRole("group", { name: "Type" })).getAllByRole("button");
+    await expect(canvas.getByText("Your data, current")).toBeInTheDocument();
+    const engines = within(canvas.getByRole("group", { name: "Database type" })).getAllByRole(
+      "button",
+    );
     await expect(engines[0]).toHaveAccessibleName("MySQL / MariaDB");
     await expect(engines[0]).toHaveAttribute("aria-pressed", "true");
     await expect(engines[1]).toHaveAccessibleName("SQLite");
@@ -122,19 +133,43 @@ export const Database: Story = {
     await expect(panels).toHaveLength(2);
     await expect(panels[1]).toHaveClass("installer__engine-panel--hidden");
     await expect(canvas.queryByLabelText("Database file")).toBeNull();
+    const dataDir = canvas.getByRole("textbox", { name: installerCopy.dataDirLabel });
+    await expect(dataDir).toHaveValue(MOCK_DATA_DIR_PATH);
+    await expect(canvas.queryByRole("alert")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Continue" })).toBeInTheDocument();
   },
 };
 
 export const DatabaseSqlite: Story = {
-  name: "Your database (SQLite)",
+  name: "Your data (SQLite)",
   tags: ["vitest-ci"],
-  render: () => <InstallerDatabasePage initialEngine="sqlite" />,
+  render: () => <InstallerDatabasePage initialEngine="sqlite" dataDirPath={MOCK_DATA_DIR_PATH} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Uses the default SQLite file.")).toBeInTheDocument();
     await expect(canvas.queryByRole("textbox", { name: "Host" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "MySQL / MariaDB" })).toBeInTheDocument();
+  },
+};
+
+export const DatabaseDataFolderPublic: Story = {
+  name: "Your data (folder inside website)",
+  tags: ["vitest-ci"],
+  render: () => (
+    <InstallerDatabasePage
+      initialEngine="sqlite"
+      dataDirPath="/var/www/html/wgw-content"
+      dataDirReason="fallback_unavailable"
+      dataDirInsideWebRoot
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(installerCopy.dataDirInsideUnavailable)).toBeInTheDocument();
+    const field = canvas.getByRole("textbox", { name: installerCopy.dataDirLabel });
+    await userEvent.clear(field);
+    await userEvent.type(field, "/var/wgw-data");
+    await expect(canvas.queryByText(installerCopy.dataDirInsideUnavailable)).toBeNull();
   },
 };
 
@@ -154,7 +189,7 @@ export const Account: Story = {
       canvas.getByRole("heading", { name: installerCopy.accountTitle }),
     ).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
-    await expect(canvas.getByText("Database, done")).toBeInTheDocument();
+    await expect(canvas.getByText("Your data, done")).toBeInTheDocument();
     await expect(canvas.getByText("Your account, current")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Username")).toHaveValue("jane");
     await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");
@@ -249,5 +284,64 @@ export const ServerNeedsAttention: Story = {
     await expect(canvas.queryByRole("button", { name: "Create workspace" })).toBeNull();
     await expect(canvas.queryByRole("list", { name: "Setup progress" })).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Re-run checks" }));
+  },
+};
+
+async function expectNotSecureWarning(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await expect(
+    canvas.getByRole("heading", { name: installerCopy.notSecureTitle }),
+  ).toBeInTheDocument();
+  await expect(canvas.getByText(installerCopy.notSecureLead)).toBeInTheDocument();
+  const losses = within(
+    canvas.getByRole("list", { name: installerCopy.notSecureListLabel }),
+  ).getAllByRole("listitem");
+  await expect(losses.map((item) => item.textContent)).toEqual([...installerCopy.notSecureLosses]);
+  await expect(canvas.getByText(installerCopy.notSecureFix)).toBeInTheDocument();
+  await expect(
+    canvas.getByRole("button", { name: installerCopy.notSecureContinue }),
+  ).toBeInTheDocument();
+}
+
+/** Opened over http (not localhost): what will not work, how to fix it, and a confirm to go on. */
+export const NotSecure: Story = {
+  name: "Not secure (http)",
+  tags: ["vitest-ci"],
+  render: () => <InstallerNotSecurePage />,
+  play: async ({ canvasElement }) => {
+    await expectNotSecureWarning(canvasElement);
+    await expect(document.documentElement.dataset.theme).not.toBe("dark");
+  },
+};
+
+export const NotSecureDark: Story = {
+  name: "Not secure (http, dark theme)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <InstallerNotSecurePage />,
+  play: async ({ canvasElement }) => {
+    await expectNotSecureWarning(canvasElement);
+    await expect(document.documentElement.dataset.theme).toBe("dark");
+  },
+};
+
+/** Over http, Get started shows the warning first; Continue without https goes on with setup. */
+export const InteractiveFlowNotSecure: Story = {
+  name: "Interactive flow (http)",
+  tags: ["vitest-ci"],
+  render: () => {
+    const { data, operations } = createInstallerAppBootstrap();
+    return <InstallerWorkspace data={data} operations={operations} secureContext={false} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: installerCopy.getStarted }));
+    await expectNotSecureWarning(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: installerCopy.notSecureContinue }));
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
+      ).toBeInTheDocument(),
+    );
   },
 };

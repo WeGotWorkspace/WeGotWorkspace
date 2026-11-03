@@ -13,7 +13,6 @@ Users can pick Auto (System), Light, or Dark in Settings → Appearance. Dark re
 
 - Account-synced preference (no API or OpenAPI change)
 - Dark variants of app icon tiles, chart palettes, or Docs highlight / track-change washes
-- PWA `theme-color` meta per theme
 
 ## Affected packages
 
@@ -31,3 +30,4 @@ Users can pick Auto (System), Light, or Dark in Settings → Appearance. Dark re
 - OS scheme changes while on Auto: a `matchMedia` listener re-applies `data-theme`.
 - Other tabs: the `storage` event keeps them in step.
 - Meet's light-pair restores inside its dark shell follow the theme tokens.
+- Installed window chrome: `syncDocumentTheme` writes the `theme-color` meta (sidebar surface per scheme). Manifests stay on the light surface; they cannot vary by scheme.

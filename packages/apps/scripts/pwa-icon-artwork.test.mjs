@@ -86,7 +86,6 @@ const BRAND_ICON_TOKEN = {
   contacts: "--color-we-got-sky",
   docs: "--color-we-got-blue",
   drive: "--color-we-got-brat",
-  mail: "--color-we-got-red",
   meet: "--color-we-got-sand",
   notes: "--color-we-got-yellow",
   settings: "--color-we-got-dark",

@@ -34,9 +34,6 @@ trait SettingsTestFixtures
         config(['wgw.auth_realm' => 'SabreDAV']);
         $this->setAppSettings([
             'auth_realm' => 'SabreDAV',
-            WgwSettings::MAIL_IMAP_HOST => 'imap.example.test',
-            WgwSettings::MAIL_IMAP_PORT => 993,
-            WgwSettings::MAIL_IMAP_SECURITY => 'ssl',
             WgwSettings::MAIL_SMTP_HOST => 'smtp.example.test',
             WgwSettings::MAIL_SMTP_PORT => 587,
             WgwSettings::MAIL_SMTP_SECURITY => 'starttls',

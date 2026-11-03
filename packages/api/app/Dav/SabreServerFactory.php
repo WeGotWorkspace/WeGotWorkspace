@@ -12,9 +12,8 @@ use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
+use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
 use App\Dav\Server\DocYjsStateDavPlugin;
-use App\Dav\Server\DriveShareMovePlugin;
-use App\Dav\Server\DriveStarPathPlugin;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
@@ -24,16 +23,12 @@ use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
+use App\Dav\Server\WgwCardBackend;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
-use App\Services\Drive\DocAttachmentsService;
-use App\Services\Drive\DriveShareService;
-use App\Services\Drive\DriveStarService;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
-use App\Storage\StoragePaths;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -49,11 +44,6 @@ final class SabreServerFactory
     public function __construct(
         private WgwInstallConfig $install,
         private SearchIndexerService $searchIndexer,
-        private FileNodeIndexService $fileNodeIndex,
-        private DocAttachmentsService $docAttachments,
-        private DriveShareService $driveShares,
-        private DriveStarService $stars,
-        private StoragePaths $paths,
         private CalendarMeetLinkWriteHook $meetLinkHook,
         private EventDispatch $eventDispatch,
     ) {}
@@ -90,7 +80,7 @@ final class SabreServerFactory
             $nodes[] = new AppCalendarRoot($principalBackend, $caldavBackend, $authPlugin);
         }
         if ($card) {
-            $carddavBackend = new CardDAV\Backend\PDO($pdo);
+            $carddavBackend = new WgwCardBackend($pdo);
             $nodes[] = new AppAddressBookRoot($principalBackend, $carddavBackend, $authPlugin);
         }
         if ($files) {
@@ -114,10 +104,8 @@ final class SabreServerFactory
         $server->addPlugin(app(WebdavWriteGuardPlugin::class));
         $server->addPlugin(app(DocYjsStateDavPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
-        $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
-        $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));
+        $server->addPlugin(app(FileNodeIndexPlugin::class));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
-        $server->addPlugin(new DriveShareMovePlugin($this->driveShares));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
         if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? false)) {
@@ -137,6 +125,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\Plugin);
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(new CalDAV\Schedule\Plugin);
+            $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
