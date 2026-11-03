@@ -32,6 +32,11 @@ export type WorkspaceAppLayoutSplitProps = WorkspaceAppLayoutBaseProps & {
   mainHeader?: React.ReactNode;
   /** Optional right-hand panel (e.g. docs comments sidebar). */
   panel?: React.ReactNode;
+  /**
+   * Main pads the status bar and home indicator itself (full-bleed Meet guest
+   * lobby and call stage). Every other main gets the shared safe-area padding.
+   */
+  mainOwnsSafeArea?: boolean;
   children?: undefined;
 };
 
@@ -76,7 +81,10 @@ export function WorkspaceAppLayout(props: WorkspaceAppLayoutProps) {
       {isSplitLayout(props) ? (
         <>
           {props.sidebar}
-          <section className="workspace-app-layout__main">
+          <section
+            className="workspace-app-layout__main"
+            data-owns-safe-area={props.mainOwnsSafeArea ? "" : undefined}
+          >
             {props.mainHeader != null ? (
               <header className="workspace-app-layout__main-header">{props.mainHeader}</header>
             ) : null}
