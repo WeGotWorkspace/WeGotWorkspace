@@ -124,18 +124,21 @@ final class DriveGuestDownloadTicketTest extends WgwDatabaseTestCase
 
     public function test_an_expired_session_ends_its_tickets(): void
     {
-        Carbon::setTestNow('2026-11-03 10:00:00');
+        // Start from the real clock: bearer tokens are checked against it, so a
+        // fixed date makes them expire once that date is an hour in the past.
+        $start = Carbon::now()->startOfMinute();
+        Carbon::setTestNow($start);
         $guest = $this->guestToken();
         $path = $this->ticketPath($this->issue($guest, '/users/bob/shared/report.txt')->assertCreated()->json());
         $this->flushHeaders();
 
         // Each request keeps the ticket's idle window open, but the guest
         // session lasts one hour.
-        Carbon::setTestNow('2026-11-03 10:25:00');
+        Carbon::setTestNow($start->copy()->addMinutes(25));
         $this->get($path)->assertOk();
-        Carbon::setTestNow('2026-11-03 10:50:00');
+        Carbon::setTestNow($start->copy()->addMinutes(50));
         $this->get($path)->assertOk();
-        Carbon::setTestNow('2026-11-03 11:01:00');
+        Carbon::setTestNow($start->copy()->addMinutes(61));
         $this->get($path)->assertNotFound();
     }
 
