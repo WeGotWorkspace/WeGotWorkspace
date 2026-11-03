@@ -10989,6 +10989,10 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "scope": {
+                        "$ref": "#/components/schemas/PushScope",
+                        "description": "Manifest id of the installed app that subscribes where each installed app has its own subscription (iOS Home Screen apps), otherwise `/`. The subscription then only receives push that opens inside that app (the longest manifest scope holding `navigate`; for `navigate` `/`, the app of the notification domain); `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: a new subscription receives everything until a request names a scope, and a known one keeps its scopes."
                     }
                 }
             },
@@ -10996,7 +11000,8 @@
                 "type": "object",
                 "required": [
                     "id",
-                    "endpoint"
+                    "endpoint",
+                    "scopes"
                 ],
                 "additionalProperties": false,
                 "properties": {
@@ -11005,6 +11010,13 @@
                     },
                     "endpoint": {
                         "type": "string"
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PushScope"
+                        },
+                        "description": "App scopes this subscription now receives push for; [\"/\"] while unknown."
                     }
                 }
             },
@@ -11636,6 +11648,22 @@
                         }
                     }
                 }
+            },
+            "PushScope": {
+                "type": "string",
+                "enum": [
+                    "/",
+                    "/admin",
+                    "/calendar",
+                    "/contacts",
+                    "/docs",
+                    "/drive",
+                    "/meet",
+                    "/notes",
+                    "/settings",
+                    "/tasks"
+                ],
+                "description": "Web manifest id of a WeGotWorkspace app. A notification maps to the app whose scope holds its navigate path; one that opens / maps by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet."
             }
         },
         "responses": {
@@ -20500,6 +20528,112 @@
                             "schema": {
                                 "type": "string",
                                 "format": "binary"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/files/download-tickets": {
+            "post": {
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Issue a download ticket for one drive file by path",
+                "description": "WGW extension (#1622). Lets a share-link guest download a file natively: the browser streams it to disk and can resume it with `Range`. The server checks read access to `path` for the caller, finds the file's current node blobId, and issues the same kind of ticket as `POST /jmap/download-tickets/{accountId}`: same secret, idle expiry (30 min), absolute lifetime (24 h), and URL (`GET /jmap/download-ticket/{secret}/{name}`). A guest's ticket is bound to its share session: revoking the link, revoking or expiring the session, or a path leaving the share stops the download at its next request. A signed-in caller's ticket is bound to its sign-in session. The ticket serves only the bytes the file had when it was issued; after the content changes it answers 404.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "guest",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "path"
+                                ],
+                                "properties": {
+                                    "path": {
+                                        "type": "string",
+                                        "maxLength": 4096,
+                                        "description": "Virtual drive path of a file the caller may read."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ticket issued.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "url",
+                                        "idleExpires",
+                                        "absoluteExpires"
+                                    ],
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "description": "Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed."
+                                        },
+                                        "idleExpires": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "absoluteExpires": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`bad_request`: path is missing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid access token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "`session_required`: a signed-in access token without session binding.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No readable file at path: outside the share, a folder, missing, or the share session ended.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
                             }
                         }
                     }

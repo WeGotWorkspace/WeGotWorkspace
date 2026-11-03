@@ -8197,6 +8197,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/download-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one drive file by path
+         * @description WGW extension (#1622). Lets a share-link guest download a file natively: the browser streams it to disk and can resume it with `Range`. The server checks read access to `path` for the caller, finds the file's current node blobId, and issues the same kind of ticket as `POST /jmap/download-tickets/{accountId}`: same secret, idle expiry (30 min), absolute lifetime (24 h), and URL (`GET /jmap/download-ticket/{secret}/{name}`). A guest's ticket is bound to its share session: revoking the link, revoking or expiring the session, or a path leaving the share stops the download at its next request. A signed-in caller's ticket is bound to its sign-in session. The ticket serves only the bytes the file had when it was issued; after the content changes it answers 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Virtual drive path of a file the caller may read. */
+                        path: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                /** @description `bad_request`: path is missing. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Missing or invalid access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description `session_required`: a signed-in access token without session binding. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description No readable file at path: outside the share, a folder, missing, or the share session ended. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11840,10 +11929,14 @@ export interface components {
                 p256dh: string;
                 auth: string;
             };
+            /** @description Manifest id of the installed app that subscribes where each installed app has its own subscription (iOS Home Screen apps), otherwise `/`. The subscription then only receives push that opens inside that app (the longest manifest scope holding `navigate`; for `navigate` `/`, the app of the notification domain); `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: a new subscription receives everything until a request names a scope, and a known one keeps its scopes. */
+            scope?: components["schemas"]["PushScope"];
         };
         PushSubscriptionResponse: {
             id: string;
             endpoint: string;
+            /** @description App scopes this subscription now receives push for; ["/"] while unknown. */
+            scopes: components["schemas"]["PushScope"][];
         };
         PushUnsubscribeRequest: {
             /** Format: uri */
@@ -12055,6 +12148,11 @@ export interface components {
         NotificationLocalAckBatchRequest: {
             ids: string[];
         };
+        /**
+         * @description Web manifest id of a WeGotWorkspace app. A notification maps to the app whose scope holds its navigate path; one that opens / maps by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet.
+         * @enum {string}
+         */
+        PushScope: "/" | "/admin" | "/calendar" | "/contacts" | "/docs" | "/drive" | "/meet" | "/notes" | "/settings" | "/tasks";
     };
     responses: {
         /** @description Invalid request */

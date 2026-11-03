@@ -38,7 +38,7 @@ Move the inbound half of offline sync (pull what changed on the server and fold 
    - The outbox row, not only the cache flag, is what keeps a queued delete from being brought back.
 2. **Conflict only when the server moved.**
    - A remote change to an id with a pending write is a conflict only when the remote version differs from a base the queued write started from.
-   - What an unknown base or a missing remote version means is a per-binding policy. Notes counts either as moved (`serverMovedSinceQueued`). Tasks counts either as not moved and compares only its first queued base (`tasks-inbound.ts`). Both keep their current policy.
+   - What an unknown base or a missing remote version means is a per-binding policy. Notes counts either as moved (`serverMovedSinceQueued`). Tasks counts either as not moved and compares only its first queued base (`tasks/tasks-inbound.ts`). Both keep their current policy.
    - Whether a remote destroy of a queued id is reported stays with the binding. Tasks does not report it when the queued write is a delete. Notes reports any destroy of an id still in its outbox (`ingestRemoteNoteDestroyed`). Neither changes.
 3. **Per-field merge.** A binding can name the fields its queued writes own (Notes). The engine adopts every other field from the remote copy. A binding without field ownership (Tasks) skips the whole item.
 4. **Full list with removal.**

@@ -40,7 +40,7 @@ describe("useSettingsDefaultCollectionForm onSaved", () => {
 
     await act(async () => {
       result.current.form.setValue("collectionId", "work", { shouldDirty: true });
-      await result.current.saveDisplay();
+      await result.current.save();
     });
 
     expect(
@@ -60,7 +60,7 @@ describe("useSettingsDefaultCollectionForm onSaved", () => {
 
     await act(async () => {
       result.current.form.setValue("collectionId", "work", { shouldDirty: true });
-      await result.current.saveDisplay();
+      await result.current.save();
     });
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });

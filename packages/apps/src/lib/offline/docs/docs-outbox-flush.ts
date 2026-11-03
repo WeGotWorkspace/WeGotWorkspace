@@ -1,6 +1,7 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { createDriveFileKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { parentAndName } from "@/lib/files/api-path";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
@@ -49,7 +50,8 @@ async function applyRenameSideEffects(
   destination: string,
   to: string,
 ): Promise<void> {
-  await applyDriveSidecarPathMigration(username, from, destination, to);
+  // Page setup moved when the rename or trash was queued.
+  await applyDriveSidecarPathMigration(username, from, destination, to, { movePageSetup: false });
 }
 
 export async function flushDocsOutbox(username: string): Promise<OutboxFlushResult> {
@@ -191,7 +193,15 @@ export async function removeOutboxMutationsForDocsPath(
   for (const row of rows) {
     const path = docsOutboxApiPath(row);
     if (path !== normalized) continue;
-    if (parsePayload(row)?.op === "trash") removedTrash = true;
+    const payload = parsePayload(row);
+    if (payload?.op === "trash") {
+      removedTrash = true;
+      // The offline trash moved the page setup under the trash path; put it back.
+      moveDocsPageSetupOverride(
+        nextPathAfterRename(payload.from, payload.destination, payload.to),
+        payload.from,
+      );
+    }
     await removeOutboxMutation(username, row.id);
   }
   return removedTrash;

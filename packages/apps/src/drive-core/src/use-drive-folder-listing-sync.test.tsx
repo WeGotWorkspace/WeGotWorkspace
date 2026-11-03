@@ -7,6 +7,15 @@ import {
   isRetryableListingError,
   useDriveFolderListingSync,
 } from "@/drive-core/src/use-drive-folder-listing-sync";
+import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+
+const driveOutboxHasPending = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/offline/drive/drive-file-node-push", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/drive/drive-file-node-push")>()),
+  driveOutboxHasPending,
+}));
 
 const USER = "alice";
 const FOLDER = "My Drive/Projects";
@@ -55,7 +64,7 @@ function setup(operations: Partial<DriveAPIOperations>) {
       showError,
     }),
   );
-  return { hook, showError, setFiles, setHydratedFolderPath };
+  return { hook, showError, setFiles, setHydratedFolderPath, syncedFolderPathRef };
 }
 
 async function advance(ms: number) {
@@ -163,5 +172,148 @@ describe("useDriveFolderListingSync", () => {
 
     expect(setFiles).toHaveBeenCalled();
     expect(hook.result.current.folderListingError).toBeNull();
+  });
+});
+
+describe("useDriveFolderListingSync on another user's change (#1663)", () => {
+  const OPTIMISTIC: DriveFile = {
+    ...driveFileFromEntry(ROW, USER),
+    id: "f-1",
+    title: "New folder",
+    apiPath: undefined,
+  };
+  const QUEUED = driveFileFromEntry(
+    { ...ROW, name: "queued.md", path: "/users/alice/Projects/queued.md" },
+    USER,
+  );
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    driveOutboxHasPending.mockReset();
+    driveOutboxHasPending.mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function loaded(changeDir: DriveAPIOperations["changeDir"]) {
+    const ctx = setup({ changeDir });
+    await flush();
+    ctx.setFiles.mockClear();
+    ctx.setHydratedFolderPath.mockClear();
+    return ctx;
+  }
+
+  function lastUpdate(setFiles: ReturnType<typeof vi.fn>) {
+    const update = setFiles.mock.calls.at(-1)?.[0] as (previous: DriveFile[]) => DriveFile[];
+    return update;
+  }
+
+  it("loads the open folder again in place and drops rows the server removed", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    const { setFiles, setHydratedFolderPath } = await loaded(changeDir);
+
+    changeDir.mockResolvedValue(listing([]));
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+
+    expect(changeDir).toHaveBeenCalledTimes(2);
+    // No pending state: the rows stay on screen while the folder loads again.
+    expect(setHydratedFolderPath).not.toHaveBeenCalled();
+    const next = lastUpdate(setFiles)([driveFileFromEntry(ROW, USER), OPTIMISTIC]);
+    expect(next.map((file) => file.id)).toEqual(["f-1"]);
+  });
+
+  it("keeps rows of writes that wait in the outbox", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    const { setFiles } = await loaded(changeDir);
+    driveOutboxHasPending.mockResolvedValue(true);
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+
+    const next = lastUpdate(setFiles)([QUEUED]);
+    expect(next.map((file) => file.title)).toEqual(["plan.md", "queued.md"]);
+  });
+
+  it("collapses changes during a load into one more load", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    await loaded(changeDir);
+    let release: (value: DriveUIData) => void = () => undefined;
+    changeDir.mockImplementationOnce(
+      () => new Promise<DriveUIData>((resolve) => (release = resolve)),
+    );
+
+    act(() => {
+      notifyDriveRemoteChange(USER);
+      notifyDriveRemoteChange(USER);
+      notifyDriveRemoteChange(USER);
+    });
+    await flush();
+    expect(changeDir).toHaveBeenCalledTimes(2);
+
+    release(listing([ROW]));
+    await flush();
+    expect(changeDir).toHaveBeenCalledTimes(3);
+  });
+
+  it("leaves a folder that is still loading to that load", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    const { syncedFolderPathRef } = await loaded(changeDir);
+    syncedFolderPathRef.current = null;
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+
+    expect(changeDir).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed refresh of the open folder, and not a refused one", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    await loaded(changeDir);
+    changeDir.mockRejectedValueOnce(statusError(503)).mockResolvedValueOnce(listing([ROW]));
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+    expect(changeDir).toHaveBeenCalledTimes(2);
+    await advance(FOLDER_LISTING_RETRY_DELAYS_MS[0]);
+    expect(changeDir).toHaveBeenCalledTimes(3);
+
+    changeDir.mockRejectedValue(statusError(404));
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+    await advance(60_000);
+    expect(changeDir).toHaveBeenCalledTimes(4);
+  });
+
+  it("backs off a failing refresh through the delay list, then stops", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    await loaded(changeDir);
+    changeDir.mockRejectedValue(statusError(503));
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+    let calls = 2;
+    expect(changeDir).toHaveBeenCalledTimes(calls);
+    for (const delay of FOLDER_LISTING_RETRY_DELAYS_MS) {
+      await advance(delay - 1);
+      expect(changeDir).toHaveBeenCalledTimes(calls);
+      await advance(1);
+      calls += 1;
+      expect(changeDir).toHaveBeenCalledTimes(calls);
+    }
+    await advance(120_000);
+    expect(changeDir).toHaveBeenCalledTimes(calls);
+  });
+
+  it("ignores another account's changes", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    await loaded(changeDir);
+
+    act(() => notifyDriveRemoteChange("bob"));
+    await flush();
+
+    expect(changeDir).toHaveBeenCalledTimes(1);
   });
 });

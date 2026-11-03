@@ -52,6 +52,7 @@ import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-confli
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import "@/docs-core/src/docs-workspace.css";
@@ -253,6 +254,11 @@ export function DocsHomeWorkspace({
     onRetry: retryFailedOutbox,
   });
   useDriveFileNodeInbound(offlineUsername, outboxNoticeKey);
+  // Another user's change: the lists load again and keep their rows meanwhile (#1663).
+  useEffect(
+    () => (offlineUsername ? subscribeDriveRemoteChanges(offlineUsername, reload) : undefined),
+    [offlineUsername, reload],
+  );
 
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {

@@ -23,7 +23,13 @@ import {
   runProgressiveSync,
   type ProgressiveSyncProgress,
 } from "@/lib/offline/core/progressive-sync-runner";
+import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
+import { collabUploadLockName } from "@/text-editor-core/docs-collab/docs-collab-pending-upload";
+import {
+  docsCollabRoomKey,
+  resolveDocsCollabDatabase,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 const DOCS_BODY_SYNC_META_KEY = "docs:auto-sync:body-progress";
 /** Low on purpose: the pacer sets the rate; this keeps browser connections free for the user. */
@@ -103,16 +109,20 @@ export async function syncDocsBodiesFromListingResults(
     pacer,
     syncOne: async (row) => {
       const apiPath = `/${normalizeSourceKey(row.sourceKey)}`;
-      await makeDocsOfflineAvailable(
-        username,
-        apiPath,
-        fileLocationFromSourceKey(row.sourceKey, username),
-        {
-          beforeRequest: () => pacer.acquire(signal),
-          // Drive sync usually got here first; an unchanged document costs no request.
-          // An unknown mtime means "fetch": it never proves the local copy is current.
-          modifiedAtMs: listingModifiedAtMs(row.modifiedAt),
-        },
+      const database = await resolveDocsCollabDatabase(docsCollabRoomKey(apiPath));
+      // An open editor holds this lock for its room, in any tab; it owns the body.
+      await withCrossTabLockIfFree(collabUploadLockName(database.name), () =>
+        makeDocsOfflineAvailable(
+          username,
+          apiPath,
+          fileLocationFromSourceKey(row.sourceKey, username),
+          {
+            beforeRequest: () => pacer.acquire(signal),
+            // Drive sync usually got here first; an unchanged document costs no request.
+            // An unknown mtime means "fetch": it never proves the local copy is current.
+            modifiedAtMs: listingModifiedAtMs(row.modifiedAt),
+          },
+        ),
       );
     },
   });

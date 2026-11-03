@@ -4,7 +4,7 @@ import {
   isDisplayCaptureUnsupportedError,
   isDisplayCaptureUserCancel,
 } from "@/meet-core/src/meet-display-capture";
-import { readMeetLowData, subscribeMeetLowData } from "@/meet-core/src/meet-low-data";
+import { readMeetLowData, subscribeMeetLowData } from "@/lib/meet-low-data";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   applyScreenOptimize,

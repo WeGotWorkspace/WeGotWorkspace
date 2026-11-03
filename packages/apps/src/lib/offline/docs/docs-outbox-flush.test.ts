@@ -1,5 +1,6 @@
+/** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import "@/lib/offline/drive/drive-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   flushDocsOutbox,
@@ -48,6 +50,10 @@ describe("flushDocsOutbox", () => {
     moveDocsPath.mockClear();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it("reports state mismatches for 409/412 drive failures", async () => {
@@ -111,6 +117,33 @@ describe("flushDocsOutbox", () => {
       "fn-queued",
     );
     expect(await readCachedDriveNodeId(username, oldPath)).toBeUndefined();
+  });
+
+  it("keeps a new document's page setup when a queued trash of the old one flushes", async () => {
+    const trashed = { format: "a5", orientation: "portrait" } as const;
+    const recreated = { format: "letter", orientation: "landscape" } as const;
+    // The offline trash moved the page setup when it was queued.
+    writeDocsPageSetupOverride("/users/alice/.Trash/plan.md", trashed, 1);
+    // A new document was made at the old path before reconnect.
+    writeDocsPageSetupOverride("/users/alice/plan.md", recreated, 2);
+    await enqueueOutboxMutation(username, {
+      id: "trash-plan",
+      domain: DOCS_DOMAIN,
+      op: "trash",
+      payload: JSON.stringify({
+        op: "trash",
+        from: "/users/alice/plan.md",
+        destination: "/users/alice/.Trash",
+        to: "plan.md",
+      }),
+    });
+    renameItem.mockResolvedValue(undefined);
+
+    await flushDocsOutbox(username);
+
+    const overrides = readDocsPageSetupOverrides();
+    expect(overrides["/users/alice/plan.md"]).toMatchObject(recreated);
+    expect(overrides["/users/alice/.Trash/plan.md"]).toMatchObject(trashed);
   });
 
   it("reports when removing a path drops a queued trash", async () => {
@@ -182,6 +215,30 @@ describe("flushDocsOutbox", () => {
     expect(result).toMatchObject({ flushed: 1, failed: 0 });
     expect(createDriveFileKeepingBoth.mock.calls[1]![2]).toEqual({ mayHaveLanded: true });
     expect(moveDocsPath).not.toHaveBeenCalled();
+  });
+
+  it("puts a folder's page setup back when its queued trash is dropped", async () => {
+    const setup = { format: "a4", orientation: "landscape" } as const;
+    writeDocsPageSetupOverride("/users/alice/.Trash/Notes/plan.md", setup);
+    writeDocsPageSetupOverride("/users/alice/Notes2/x.md", setup);
+    await enqueueOutboxMutation(username, {
+      id: "trash-folder",
+      domain: DOCS_DOMAIN,
+      op: "trash",
+      payload: JSON.stringify({
+        op: "trash",
+        from: "/users/alice/Notes",
+        destination: "/users/alice/.Trash",
+        to: "Notes",
+      }),
+    });
+
+    await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/Notes")).resolves.toBe(
+      true,
+    );
+
+    const keys = Object.keys(readDocsPageSetupOverrides()).sort();
+    expect(keys).toEqual(["/users/alice/Notes/plan.md", "/users/alice/Notes2/x.md"]);
   });
 
   it("does not report a trash when the removed op is not trash", async () => {

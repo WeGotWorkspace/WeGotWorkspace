@@ -1,3 +1,4 @@
+import { readLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import {
@@ -5,10 +6,16 @@ import {
   isPushSubscribedByOtherAccount,
   recordPushSubscriber,
 } from "@/notifications-core/src/push-subscriber";
+import {
+  currentPushScope,
+  pushScopesToPost,
+  readPushScopes,
+  rememberPushScope,
+} from "./push-scope";
+import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
-const PUSH_SUBSCRIBE_LOCK = "wgw-push-subscribe";
 /**
  * A hung subscribe() (Safari outside a user gesture) must not block later
  * retries forever: it bounds both the wait for the lock and a run holding it.
@@ -99,7 +106,9 @@ function subscribePushManagerOnce(): Promise<boolean> {
  * Run the subscribe work, but give up after the limit so a hung subscribe()
  * releases the Web Lock and the in-tab queue. The abandoned run cannot be
  * cancelled; it checks `isCurrent` after each await and stops touching the
- * subscription once it timed out or a newer run started.
+ * subscription once it timed out, a newer run started, or logout began. The
+ * /logout page mounts the notifications provider too, so a run can start while
+ * logout releases push; it must not post the row or the scope back.
  */
 async function subscribeWithinLimit(): Promise<boolean> {
   runCounter += 1;
@@ -113,7 +122,8 @@ async function subscribeWithinLimit(): Promise<boolean> {
     }, PUSH_SUBSCRIBE_MAX_WAIT_MS);
   });
   try {
-    return await Promise.race([subscribePushManager(() => activeRun === id), limit]);
+    const isCurrent = () => activeRun === id && !readLoggedOutMarker();
+    return await Promise.race([subscribePushManager(isCurrent), limit]);
   } finally {
     clearTimeout(timer);
   }
@@ -121,6 +131,7 @@ async function subscribeWithinLimit(): Promise<boolean> {
 
 async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!isCurrent()) return false;
   const key = urlBase64ToUint8Array(await fetchVapidPublicKey());
   if (!isCurrent()) return false;
   const registration = await navigator.serviceWorker.ready;
@@ -146,15 +157,40 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
     if (!isCurrent()) return false;
     existing = null;
   }
+  const isNew = existing === null;
   const subscription =
     existing ??
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: key as BufferSource,
     }));
-  if (!isCurrent()) return false;
-  await subscribePush(subscription.toJSON());
+  if (!isCurrent()) {
+    // Logout may already have passed getSubscription(): drop the subscription
+    // this run made. One that was already there is left to the logout release.
+    // A run that only timed out or was superseded leaves it: a newer run may use it.
+    if (isNew && readLoggedOutMarker()) await subscription.unsubscribe().catch(() => undefined);
+    return false;
+  }
+  const scope = currentPushScope();
+  // A new endpoint (first subscribe, a swap after a VAPID key change, or a
+  // replaced subscription of another account) also carries the scopes the old
+  // one had, as `pushsubscriptionchange` does. Scopes describe the installed
+  // apps on this device, not the account.
+  const scopes = isNew ? pushScopesToPost(await readPushScopes().catch(() => []), scope) : [scope];
+  for (const each of scopes) {
+    if (!isCurrent()) return false;
+    await subscribePush(subscription.toJSON(), each);
+    if (!isCurrent()) {
+      // The POST landed after logout's DELETE: remove the row it just wrote.
+      // A timed-out or superseded run leaves it: a newer run may have posted it.
+      if (readLoggedOutMarker())
+        await unsubscribePush(subscription.endpoint).catch(() => undefined);
+      return false;
+    }
+  }
   recordPushSubscriber(account);
+  // For `pushsubscriptionchange`: the worker cannot tell which app it serves.
+  if (scope !== null) await rememberPushScope(scope).catch(() => undefined);
   return true;
 }
 
