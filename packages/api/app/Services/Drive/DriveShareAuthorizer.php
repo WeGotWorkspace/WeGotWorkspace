@@ -304,6 +304,23 @@ final class DriveShareAuthorizer
         $this->deny();
     }
 
+    /**
+     * The live share session behind a guest subject (`share:{sessionKey}`),
+     * or null when it was revoked or expired, or its share was revoked,
+     * expired, or lost its owner (#1622 download tickets).
+     */
+    public function liveGuestSession(string $username): ?DriveShareSession
+    {
+        if (! str_starts_with($username, 'share:') || $username === 'share:') {
+            return null;
+        }
+        try {
+            return $this->activeSession(substr($username, strlen('share:')));
+        } catch (DriveAccessDeniedException) {
+            return null;
+        }
+    }
+
     private function activeSession(string $sessionKey): DriveShareSession
     {
         /** @var DriveShareSession|null $session */

@@ -214,9 +214,14 @@ final class FileNodeMapper
             $mayStructure = $mayView;
         }
 
+        // A guest on an `edit` link may add files (#1715); the guest write
+        // rules refuse folders, renames, moves, and deletes whatever this says.
+        $mayAddChildren = $mayStructure
+            || (strtolower($principal['role']) === 'guest' && $mayEdit);
+
         return [
             'mayRead' => $mayView,
-            'mayAddChildren' => $mayStructure,
+            'mayAddChildren' => $mayAddChildren,
             'mayRename' => $mayStructure && ! $isGrantRoot,
             'mayDelete' => $mayStructure && ! $isGrantRoot,
             'mayModifyContent' => $mayEdit,

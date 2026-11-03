@@ -1,6 +1,7 @@
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { driveJmapSession, fileNodeToDirectoryEntry } from "@/lib/api/wgw/drive-jmap";
 import { parentAndName } from "@/lib/files/api-path";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import type { JmapFileNode } from "@/lib/jmap-client";
 import { JmapMethodError } from "@/lib/jmap-client";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
@@ -12,6 +13,10 @@ import {
   stampDocsAvailabilityNodeIds,
 } from "@/lib/offline/docs/docs-availability-store";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
+import {
+  applyDocsInboundChanges,
+  type DocsInboundChange,
+} from "@/lib/offline/docs/docs-inbound-sync";
 import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 import { migrateDriveContentBlobPath } from "@/lib/offline/drive/drive-content-sync";
 import {
@@ -208,6 +213,7 @@ async function applyFileNodeChanges(
   let changed = false;
   let blocked = false;
   const keptUnsavedPaths: string[] = [];
+  const docsChanges: DocsInboundChange[] = [];
   if (upsertIds.length > 0) {
     const got = await session.fileNodes.getFileNodes(session.accountId, upsertIds, { signal });
     const ordered = parentsBeforeChildren(got.list);
@@ -218,13 +224,16 @@ async function applyFileNodeChanges(
         console.warn("[drive-inbound] skipped FileNode with no resolvable path", { id: node.id });
         continue;
       }
+      const previous = cachePaths.get(node.id);
       const placement = await moveCachedNodeToPath(username, node, path, cachePaths);
       if (placement === "blocked") {
         keptUnsavedPaths.push(normalizePath(path));
         blocked = true;
         continue;
       }
-      await upsertDriveEntry(username, fileNodeToDirectoryEntry(path, node));
+      const entry = fileNodeToDirectoryEntry(path, node);
+      docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
+      await upsertDriveEntry(username, entry);
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
       await moveDocsAvailabilityForNode(username, node.id, path);
       cachePaths.set(node.id, path);
@@ -244,10 +253,25 @@ async function applyFileNodeChanges(
         continue;
       }
       await deleteDriveEntryByPath(username, path);
+      docsChanges.push({ kind: "removed", path });
       changed = true;
     }
   }
+  // Every cached Docs view follows; rows a queued Docs write owns stay (#1563).
+  await applyDocsInboundChanges(username, docsChanges);
   return { changed, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
+}
+
+/** What Docs needs to know about one placed node: moved from `previous`, or upserted. */
+function docsChangeFor(entry: WgwDriveDirectoryEntry, previous?: string): DocsInboundChange {
+  const node = {
+    directory: entry.type === "dir",
+    size: entry.size ?? 0,
+    modifiedAt: entry.time ?? 0,
+  };
+  return previous
+    ? { kind: "moved", from: previous, to: entry.path, node }
+    : { kind: "upserted", path: entry.path, node };
 }
 
 async function moveCachedNodeToPath(
