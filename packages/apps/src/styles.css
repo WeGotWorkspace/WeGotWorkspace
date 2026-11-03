@@ -219,8 +219,9 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
-   * Desktop keeps those steps. Phones floor real text entry to 1rem below
-   * so iOS Safari does not zoom the viewport on focus.
+   * Desktop keeps those steps. Phones lift xs/sm/md to 1rem below: text
+   * entry so iOS Safari does not zoom on focus, and SelectTrigger /
+   * `.control-surface` so they match the text fields in the same form.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -372,9 +373,9 @@
 
 /*
  * Unmanaged native `input` / `textarea` / `select` stay ≥1rem.
- * Shared Input / Textarea use the size-step tokens, then the phone block
- * floors those text fields at 1rem. SelectTrigger and `.control-surface`
- * stay on the desktop steps (they are buttons; iOS does not zoom them).
+ * Shared Input / Textarea / SelectTrigger / `.control-surface` use the size-step
+ * tokens; the phone block below lifts xs/sm/md to 1rem on all of them so a
+ * form keeps one text size.
  *
  * Opt-outs from the unmanaged floor (own type scale):
  * - `.input` / `.input__field` / `.textarea` — size-class tokens
@@ -396,7 +397,8 @@ select {
 @media (max-width: 767px) {
   /*
    * iOS Safari zooms the viewport when a focused field is under 16px.
-   * Floor real text entry only. Do not lift xs/sm fields onto the md step.
+   * Floor real text entry here; the next rule matches dropdowns to it.
+   * Do not lift xs/sm fields onto the md step (height).
    */
   .input,
   .input__field,
@@ -409,6 +411,23 @@ select {
     --tag-font-size: 1rem;
     /* Height stays on the shared scale so fields line up with selects and buttons. */
     font-size: 1rem;
+  }
+
+  /*
+   * Dropdowns and pickers that sit next to text fields in a form
+   * (SelectTrigger, LocaleDatePicker, labelled ColorSwatchTrigger — anything on
+   * `.select-trigger` / `.control-surface`) take the same 1rem steps, so the
+   * text field and the dropdown above it read in one size. iOS does not zoom
+   * these (they are buttons); this is for alignment. Same rules as above:
+   * heights stay on the shared scale and only the step tokens change, so a
+   * control that pins its own font-size (Tasks composer chips, share-row role
+   * select, RSVP select) keeps it. Icon-only swatches carry no text.
+   */
+  .select-trigger,
+  .control-surface {
+    --input-font-size-xs: 1rem;
+    --input-font-size-sm: 1rem;
+    --input-font-size-md: 1rem;
   }
 
   .text-editor,

@@ -1,6 +1,7 @@
 // Tasks inbound sync (live app, #1613). An open Tasks list follows changes
 // made elsewhere (another tab, a phone, a CalDAV client) without a reload:
-// within one poll while online, and right after reconnect.
+// within one poll while online (push is the main path, #1665; see
+// tasks-push.spec.ts), and right after reconnect.
 //
 // The changes are made through the REST API as the same user, which is what
 // tab B, a phone or a CalDAV client does from tab A's point of view.
@@ -10,10 +11,10 @@ const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const USER = process.env.WGW_E2E_USERNAME ?? "admin";
 const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 
-/** One poll (10 s) plus the time to re-list and paint. */
+/** Push or, failing that, one poll (10 s) plus the time to re-list and paint. */
 const FOLLOW_TIMEOUT_MS = 25_000;
 
-type ServerTask = { id: string; title: string; etag?: string };
+type ServerTask = { id: string; title: string; description?: string | null; etag?: string };
 
 let accessToken: string | null = null;
 
@@ -70,6 +71,11 @@ async function createTask(taskListId: string, title: string): Promise<ServerTask
 async function currentEtag(taskId: string): Promise<string | undefined> {
   const res = await api("GET", `/tasks/items/${encodeURIComponent(taskId)}`);
   return (res.json as ServerTask | null)?.etag;
+}
+
+async function readTask(taskId: string): Promise<ServerTask | null> {
+  const res = await api("GET", `/tasks/items/${encodeURIComponent(taskId)}`);
+  return res.status === 200 ? (res.json as ServerTask) : null;
 }
 
 async function renameTask(taskId: string, title: string): Promise<void> {
@@ -148,5 +154,46 @@ test.describe("Tasks inbound sync (live app)", () => {
     await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 20_000 });
     await expect(taskTitle(page, toDelete.title)).toHaveCount(0, { timeout: FOLLOW_TIMEOUT_MS });
     await expect(taskTitle(page, renamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
+  });
+
+  test("an open Edit dialog keeps its draft when tasks sync in (#1858)", async ({ page }) => {
+    const stamp = Date.now();
+    const listId = await defaultTaskListId();
+    const edited = await createTask(listId, `e2e-draft-edited-${stamp}`);
+    const other = await createTask(listId, `e2e-draft-other-${stamp}`);
+    created.push(edited.id, other.id);
+
+    await openTasks(page);
+    await taskTitle(page, edited.title).click({ timeout: 30_000 });
+    const dialog = page.getByRole("dialog", { name: "Edit task" });
+    await expect(dialog).toBeVisible();
+    const notes = dialog.getByRole("textbox", { name: "Notes" });
+    const name = dialog.getByRole("textbox", { name: "Task name" });
+    const draft = `Draft, not saved ${stamp}`;
+    await notes.fill(draft);
+
+    // Another task changes elsewhere: the list repaints behind the dialog.
+    const otherRenamed = `e2e-draft-other-renamed-${stamp}`;
+    await renameTask(other.id, otherRenamed);
+    await expect(taskTitle(page, otherRenamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
+    await expect(notes).toHaveValue(draft);
+
+    // This task's title changes elsewhere: the title follows, the draft stays.
+    const editedRenamed = `e2e-draft-edited-renamed-${stamp}`;
+    await renameTask(edited.id, editedRenamed);
+    await expect(name).toHaveValue(editedRenamed, { timeout: FOLLOW_TIMEOUT_MS });
+    await expect(notes).toHaveValue(draft);
+
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(
+        async () => {
+          const server = await readTask(edited.id);
+          return server ? { title: server.title, description: server.description } : null;
+        },
+        { timeout: 15_000 },
+      )
+      .toEqual({ title: editedRenamed, description: draft });
   });
 });

@@ -10204,6 +10204,48 @@
         "x-wgw-access": "user"
       }
     },
+    "/notifications/local-ack": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Ack local delivery for many rows at once: a visible window or a Meet call showed them (skip VAPID push). Ids that are not the caller's rows are ignored.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationLocalAckBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Local deliveries acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/notifications/{id}/ack": {
       "post": {
         "tags": [

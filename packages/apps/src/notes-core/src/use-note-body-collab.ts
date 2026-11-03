@@ -4,6 +4,7 @@ import type { Note } from "@/lib/models/note";
 import { settleNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
 import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
 import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
+import { holdNoteBodyRoom } from "@/notes-core/src/note-body-rooms";
 import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
 
 type UseNoteBodyCollabArgs = {
@@ -31,6 +32,8 @@ export function useNoteBodyCollab({
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
+  /** The note `noteCollabUrls` were built for; the previous note's URLs linger until the next resolve. */
+  const [roomNoteId, setRoomNoteId] = useState<string | undefined>(undefined);
   const [accessLost, setAccessLost] = useState(false);
   const activeNoteId = active?.id;
   const activeCreatePending = active?.createPending === true;
@@ -55,7 +58,9 @@ export function useNoteBodyCollab({
       },
     })
       .then((urls) => {
-        if (!cancelled) setNoteCollabUrls(urls);
+        if (cancelled) return;
+        setNoteCollabUrls(urls);
+        setRoomNoteId(activeNoteId);
       })
       .catch(() => {
         if (!cancelled) setNoteCollabUrls(undefined);
@@ -65,6 +70,12 @@ export function useNoteBodyCollab({
       cancelled = true;
     };
   }, [activeCreatePending, activeNoteId, archived, offlineUsername, username]);
+
+  const roomOpen = Boolean(noteCollabUrls && activeNoteId && roomNoteId === activeNoteId);
+  useEffect(() => {
+    if (!roomOpen || !activeNoteId) return;
+    return holdNoteBodyRoom(activeNoteId);
+  }, [activeNoteId, roomOpen]);
 
   const notesCollabWire = useMemo(() => createWgwNotesCollabWire(), []);
   const noteBodyCollab = useMemo<NoteCollabConfig | undefined>(() => {
