@@ -49,8 +49,8 @@ export function createDocsLocatorDeps(username: string | null | undefined): Docs
         : undefined,
     readCachedNodeId: async (path) =>
       username
-        ? ((await readCachedDriveNodeId(username, path)) ??
-          (await readDocsNodeIdForPath(username, path)))
+        ? ((await readDocsNodeIdForPath(username, path)) ??
+          (await readCachedDriveNodeId(username, path)))
         : undefined,
     recordLocation: (nodeId, path) =>
       username ? recordDocsNodePath(username, nodeId, path) : Promise.resolve(),

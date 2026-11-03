@@ -51,6 +51,8 @@ export type DocsCollabUrls = {
   documentUrl: string;
   yjsUrl: string;
   room?: string;
+  /** The FileNode the route opened; it picks the local database over any path lookup. */
+  nodeId?: string;
   authToken?: string;
   authTokenUrl?: string;
   authUser?: string;

@@ -4,6 +4,7 @@ import { encodeFileRoomId } from "@/lib/rtc/room-id";
 export type DocsCollabUrls = {
   /** Canonical collab room: the drive path without its leading slash. */
   room: string;
+  nodeId?: string;
   roomId: string;
   signalUrl: string;
   collabApiBaseUrl: string;
@@ -27,6 +28,7 @@ export function buildDocsCollabUrls(filePath: string, nodeId?: string): DocsColl
   const pathQuery = encodeURIComponent(room);
   return {
     room,
+    nodeId,
     roomId,
     signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,
     collabApiBaseUrl: `${baseUrl}/rooms`,

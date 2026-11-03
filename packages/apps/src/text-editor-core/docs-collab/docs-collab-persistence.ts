@@ -135,10 +135,10 @@ async function withRawIndexedDbPersistence<T>(
 async function cachedNodeIdForRoom(roomKey: string): Promise<string | undefined> {
   const username = readOfflineDriveUsername() ?? readOfflineDocsUsername();
   if (!username || !roomKey) return undefined;
-  // Docs records the id it opened (#1751) for files the Drive crawl has not reached.
+  // Docs records the id it opened (#1751) straight from the server; the Drive crawl may be older.
   return (
-    (await readCachedDriveNodeId(username, roomKey)) ??
-    (await readDocsNodeIdForPath(username, roomKey))
+    (await readDocsNodeIdForPath(username, roomKey)) ??
+    (await readCachedDriveNodeId(username, roomKey))
   );
 }
 
@@ -150,13 +150,15 @@ export type DocsCollabDatabaseChoice = {
 
 /**
  * Resolve the FileNode id before IndexedDB opens.
+ * An id the route already names (`knownNodeId`) wins over any path lookup.
  * An unknown id (no crawl yet, or a deeplink) uses the path-keyed `:v2` database.
  */
 export async function resolveDocsCollabDatabase(
   apiPath: string,
+  knownNodeId?: string,
 ): Promise<DocsCollabDatabaseChoice> {
   const room = docsCollabRoomKey(apiPath);
-  const nodeId = await cachedNodeIdForRoom(room);
+  const nodeId = knownNodeId || (await cachedNodeIdForRoom(room));
   if (!nodeId) {
     console.warn("[docs-collab] nodeId unknown, opening path-keyed database", { room });
     return {
