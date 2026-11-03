@@ -10986,7 +10986,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };

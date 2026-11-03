@@ -100,7 +100,7 @@ export class JmapNotesAdapter extends JmapInboundAdapter {
 
   protected async refetchAll(): Promise<void> {
     const notebooks = await this.#notes.getNotebooks(this.accountId);
-    const notes = await this.#notes.getNotes(this.accountId);
+    const notes = await this.#notes.getAllNotes(this.accountId);
     if (this.#options.onRefetchAll) {
       this.#options.onRefetchAll({ notebooks: notebooks.list, notes: notes.list });
       return;
