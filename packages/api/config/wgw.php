@@ -109,6 +109,18 @@ return [
     ],
 
     /**
+     * Urgent Web Push (#1670): sent right after the write's response. At most
+     * this many subscriptions per event, all in parallel, within one deadline;
+     * the rest goes out on the next cron sweep. Change only to measure.
+     */
+    'push' => [
+        'urgent' => [
+            'max_subscriptions' => (int) env('WGW_PUSH_URGENT_MAX_SUBSCRIPTIONS', 20),
+            'timeout_ms' => (int) env('WGW_PUSH_URGENT_TIMEOUT_MS', 1500),
+        ],
+    ],
+
+    /**
      * Public SPA origin for {@see ApiUrlBuilder::appPath()} (reset mail, /logout).
      * Leave unset in production (SPA and API share a host). Local `pnpm dev` uses the Vite
      * origin from {@code WGW_PUBLIC_WEB_URL} or {@code WGW_VITE_DEV_PORT} in repo-root {@code .env.local}.

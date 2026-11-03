@@ -14,6 +14,7 @@ use App\Services\Notify\WebPushSender;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\RecordingWebPushSender;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class VapidPushTest extends WgwDatabaseTestCase
@@ -24,23 +25,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
-        $this->app->instance(WebPushSender::class, new class implements WebPushSender
-        {
-            /** @var list<array{endpoint: string, payload: string}> */
-            public array $sent = [];
-
-            public int $status = 201;
-
-            /** @var array<string, int> */
-            public array $statusByEndpoint = [];
-
-            public function send(string $endpoint, string $p256dh, string $auth, string $payload, array $vapid): int
-            {
-                $this->sent[] = ['endpoint' => $endpoint, 'payload' => $payload];
-
-                return $this->statusByEndpoint[$endpoint] ?? $this->status;
-            }
-        });
+        $this->app->instance(WebPushSender::class, new RecordingWebPushSender);
         $this->app->forgetInstance(VapidPushService::class);
     }
 

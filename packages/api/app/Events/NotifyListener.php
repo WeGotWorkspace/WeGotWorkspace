@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\Notification;
 use App\Models\NotificationDelivery;
 use App\Services\Notify\NotificationCopyFormatter;
+use App\Services\Notify\UrgentPushService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,9 @@ use Illuminate\Support\Str;
  *
  * Stores structured facts in {@see Notification::$data}; title/body columns are
  * denormalized via {@see NotificationCopyFormatter} for legacy readers.
+ *
+ * Urgent actions ({@see UrgentPushService::ACTIONS}) skip the local-ack grace:
+ * their Web Push goes out right after the response (#1670).
  */
 final class NotifyListener implements WorkspaceEventListener
 {
@@ -41,6 +45,8 @@ final class NotifyListener implements WorkspaceEventListener
             return;
         }
 
+        $urgent = UrgentPushService::isUrgent($event->domain, $event->action);
+        $created = [];
         $recipients = $this->recipients($event);
         foreach ($recipients as $principal) {
             if ($principal === '' || strcasecmp($principal, $event->actor) === 0) {
@@ -51,7 +57,13 @@ final class NotifyListener implements WorkspaceEventListener
 
                 continue;
             }
-            $this->upsertInbox($event, $principal);
+            $id = $this->upsertInbox($event, $principal, $urgent);
+            if ($id !== null) {
+                $created[] = $id;
+            }
+        }
+        if ($urgent) {
+            UrgentPushService::sendAfterResponse($created);
         }
     }
 
@@ -103,7 +115,10 @@ final class NotifyListener implements WorkspaceEventListener
         $existing->delete();
     }
 
-    private function upsertInbox(WorkspaceEvent $event, string $principal): void
+    /**
+     * @return string|null id of a newly created row (null when it existed already)
+     */
+    private function upsertInbox(WorkspaceEvent $event, string $principal, bool $urgent): ?string
     {
         $dedupe = $this->dedupeKey($event, $principal);
         $existing = Notification::query()
@@ -117,7 +132,7 @@ final class NotifyListener implements WorkspaceEventListener
 
         if ($existing !== null) {
             if (($event->data['supersede'] ?? false) !== true) {
-                return;
+                return null;
             }
             $existing->fill([
                 'event_id' => $event->eventId,
@@ -131,7 +146,7 @@ final class NotifyListener implements WorkspaceEventListener
                 'read_at' => null,
             ])->save();
 
-            return;
+            return null;
         }
 
         $id = (string) Str::ulid();
@@ -157,11 +172,15 @@ final class NotifyListener implements WorkspaceEventListener
             'notification_id' => $row->id,
             'principal' => $principal,
             'channel' => NotificationDelivery::CHANNEL_LOCAL,
-            'due_at' => $now->copy()->addSeconds(NotificationDelivery::LOCAL_ACK_GRACE_SECONDS),
+            'due_at' => $now->copy()->addSeconds($urgent
+                ? UrgentPushService::SWEEP_HOLD_SECONDS
+                : NotificationDelivery::LOCAL_ACK_GRACE_SECONDS),
             'acked_at' => null,
             'sent_at' => null,
             'created_at' => $now,
         ]);
+
+        return $row->id;
     }
 
     /**

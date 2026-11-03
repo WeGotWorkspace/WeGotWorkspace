@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Notify;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface as GuzzleClientInterface;
+use GuzzleHttp\Promise\Utils as PromiseUtils;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Minishlink\WebPush\MessageSentReport;
@@ -22,10 +24,12 @@ final class MinishlinkWebPushSender implements WebPushSender
 
     /**
      * @param  ClientInterface|null  $httpClient  Tests inject a stub; production uses the default Guzzle client.
+     * @param  GuzzleClientInterface|null  $asyncClient  For {@see sendMany()}; production uses Guzzle's curl multi handler.
      */
     public function __construct(
         private readonly PushFailureTally $failures,
         private readonly ?ClientInterface $httpClient = null,
+        private readonly ?GuzzleClientInterface $asyncClient = null,
     ) {}
 
     public static function isIgnorableCalculatorWarning(string $message): bool
@@ -51,6 +55,109 @@ final class MinishlinkWebPushSender implements WebPushSender
             return 0;
         }
 
+        try {
+            $report = $this->withCalculatorWarningsMuted(function () use ($endpoint, $p256dh, $auth, $payload, $vapid) {
+                return $this->webPush($vapid)->sendOneNotification(
+                    self::subscription($endpoint, $p256dh, $auth),
+                    $payload,
+                    ['contentType' => 'application/notification+json'],
+                );
+            });
+        } catch (\Throwable $e) {
+            $this->logSendFailure($endpoint, $e);
+
+            return 0;
+        }
+
+        if ($report->isSuccess()) {
+            return 201;
+        }
+
+        return $this->logRejection($endpoint, $report);
+    }
+
+    /**
+     * Encrypts every message, then sends them all at once (Guzzle async requests
+     * over curl multi). One deadline covers both steps, so the caller's worker is
+     * free after `$timeoutSeconds` at the latest. Unanswered messages report 0.
+     *
+     * @param  list<WebPushMessage>  $messages
+     * @param  array{subject: string, publicKey: string, privateKey: string}  $vapid
+     * @return list<int>
+     */
+    public function sendMany(array $messages, array $vapid, float $timeoutSeconds): array
+    {
+        $deadline = microtime(true) + $timeoutSeconds;
+        $statuses = array_fill(0, count($messages), 0);
+        if ($messages === []) {
+            return [];
+        }
+        if (! class_exists(WebPush::class)) {
+            Log::warning('vapid_send_skipped', ['reason' => 'web-push library missing']);
+
+            return $statuses;
+        }
+
+        try {
+            [$webPush, $requests] = $this->withCalculatorWarningsMuted(function () use ($messages, $vapid): array {
+                $webPush = $this->webPush($vapid);
+                $webPush->setReuseVAPIDHeaders(true);
+                foreach ($messages as $message) {
+                    $webPush->queueNotification(
+                        self::subscription($message->endpoint, $message->p256dh, $message->auth),
+                        $message->payload,
+                        ['contentType' => 'application/notification+json'],
+                    );
+                }
+
+                return [$webPush, $webPush->takePreparedRequests()];
+            });
+        } catch (\Throwable $e) {
+            foreach ($messages as $message) {
+                $this->logSendFailure($message->endpoint, $e);
+            }
+
+            return $statuses;
+        }
+
+        $remaining = $deadline - microtime(true);
+        if ($remaining <= 0.0) {
+            return $statuses;
+        }
+        $client = $this->asyncClient ?? self::defaultAsyncClient();
+        $promises = [];
+        foreach ($requests as $i => $request) {
+            $promises[$i] = $client->sendAsync($request, [
+                'timeout' => $remaining,
+                'connect_timeout' => $remaining,
+                'http_errors' => false,
+                'allow_redirects' => false,
+            ]);
+        }
+
+        foreach (PromiseUtils::settle($promises)->wait() as $i => $result) {
+            $endpoint = $messages[$i]->endpoint;
+            if ($result['state'] !== 'fulfilled') {
+                $reason = $result['reason'];
+                $this->logSendFailure($endpoint, $reason instanceof \Throwable ? $reason : new \RuntimeException('push send rejected'));
+
+                continue;
+            }
+            $report = $webPush->reportFor($requests[$i], $result['value']);
+            $statuses[$i] = $report->isSuccess() ? 201 : $this->logRejection($endpoint, $report);
+        }
+
+        return array_values($statuses);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    private function withCalculatorWarningsMuted(callable $work): mixed
+    {
         $previous = set_error_handler(function (int $severity, string $message, string $file, int $line) use (&$previous): bool {
             if (self::isIgnorableCalculatorWarning($message)) {
                 return true;
@@ -63,42 +170,44 @@ final class MinishlinkWebPushSender implements WebPushSender
         });
 
         try {
-            $webPush = new WebPush([
-                'VAPID' => [
-                    'subject' => $vapid['subject'],
-                    'publicKey' => $vapid['publicKey'],
-                    'privateKey' => $vapid['privateKey'],
-                ],
-            ], [], $this->httpClient ?? self::defaultHttpClient());
-            $subscription = Subscription::create([
-                'endpoint' => $endpoint,
-                'publicKey' => $p256dh,
-                'authToken' => $auth,
-            ]);
-            $report = $webPush->sendOneNotification(
-                $subscription,
-                $payload,
-                ['contentType' => 'application/notification+json'],
-            );
-        } catch (\Throwable $e) {
-            $host = self::endpointHost($endpoint);
-            Log::warning('vapid_send_failed', [
-                'host' => $host,
-                'exception' => $e::class,
-                'message' => self::forLog($e->getMessage(), $host),
-            ]);
-            $this->failures->record($host, 0);
-
-            return 0;
+            return $work();
         } finally {
             restore_error_handler();
         }
+    }
 
-        if ($report->isSuccess()) {
-            return 201;
-        }
+    /**
+     * @param  array{subject: string, publicKey: string, privateKey: string}  $vapid
+     */
+    private function webPush(array $vapid): PreparedWebPush
+    {
+        return new PreparedWebPush([
+            'VAPID' => [
+                'subject' => $vapid['subject'],
+                'publicKey' => $vapid['publicKey'],
+                'privateKey' => $vapid['privateKey'],
+            ],
+        ], [], $this->httpClient ?? self::defaultHttpClient());
+    }
 
-        return $this->logRejection($endpoint, $report);
+    private static function subscription(string $endpoint, string $p256dh, string $auth): Subscription
+    {
+        return Subscription::create([
+            'endpoint' => $endpoint,
+            'publicKey' => $p256dh,
+            'authToken' => $auth,
+        ]);
+    }
+
+    private function logSendFailure(string $endpoint, \Throwable $e): void
+    {
+        $host = self::endpointHost($endpoint);
+        Log::warning('vapid_send_failed', [
+            'host' => $host,
+            'exception' => $e::class,
+            'message' => self::forLog($e->getMessage(), $host),
+        ]);
+        $this->failures->record($host, 0);
     }
 
     /**
@@ -136,6 +245,11 @@ final class MinishlinkWebPushSender implements WebPushSender
         $text = trim((string) preg_replace('/\s+/', ' ', $text));
 
         return Str::limit($text, self::LOG_TEXT_LIMIT);
+    }
+
+    private static function defaultAsyncClient(): Client
+    {
+        return new Client(['allow_redirects' => false, 'http_errors' => false]);
     }
 
     private static function defaultHttpClient(): Client
