@@ -4,12 +4,19 @@ import {
   normalizeDocsAvailabilityPath,
   removeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
+import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
+import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
 import { rememberKeptUnsavedDocuments } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import {
   clearDocsCollabOfflinePersistence,
   hasDocsCollabPendingServerSave,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+
+/** A collab document whose local text has not reached the server yet. */
+export function documentHasUnsavedLocalWork(apiPath: string): Promise<boolean> {
+  return hasDocsCollabPendingServerSave(normalizeDocsAvailabilityPath(apiPath));
+}
 
 /**
  * Keep the drive row, pin, and collab database when the document still has
@@ -22,7 +29,7 @@ export async function retainOrDropLocalDocument(
   apiPath: string,
 ): Promise<"kept" | "dropped"> {
   const id = normalizeDocsAvailabilityPath(apiPath);
-  if (await hasDocsCollabPendingServerSave(id)) {
+  if (await documentHasUnsavedLocalWork(id)) {
     await rememberKeptUnsavedDocuments(username, [id]);
     return "kept";
   }
@@ -33,7 +40,14 @@ export async function retainOrDropLocalDocument(
   return "dropped";
 }
 
+/**
+ * Drop a node gone from the server: its drive row and the offline copies Drive
+ * keeps for it (content blob, availability row), as the tree-crawl prune does.
+ */
 export async function deleteDriveEntryByPath(username: string, apiPath: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await driveEntriesTable(db).delete(normalizeDocsAvailabilityPath(apiPath));
+  const id = normalizeDocsAvailabilityPath(apiPath);
+  await removeDriveContentBlob(username, id);
+  await removeDriveAvailability(username, id);
+  await driveEntriesTable(db).delete(id);
 }

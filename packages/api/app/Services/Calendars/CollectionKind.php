@@ -30,11 +30,12 @@ enum CollectionKind: string
     /**
      * Sharees get their own copy of the name and colour when a collection is
      * shared. For these kinds an owner's later rename or recolour reaches every
-     * copy the sharee did not change (#1822).
+     * copy the sharee did not change (#1822). Chat channels and the docs thread
+     * pool have no sharee copies a person names.
      */
     public function shareesFollowOwnerAppearance(): bool
     {
-        return $this === self::TaskList;
+        return in_array($this, [self::EventCalendar, self::TaskList, self::Notebook], true);
     }
 
     /** Guard against a kind being stored on a collection that cannot hold its data. */

@@ -174,7 +174,7 @@ final class CalendarRepository
 
             if ($mutations !== []) {
                 $propPatch = new PropPatch($mutations);
-                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $this->backends->make()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
                 $propPatch->commit();
             }
 

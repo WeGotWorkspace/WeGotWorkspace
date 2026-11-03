@@ -16,11 +16,18 @@ export async function ackNotification(id: string): Promise<void> {
   if (!res.ok) throw new Error(`POST /notifications/${id}/ack failed (${res.status})`);
 }
 
-export async function ackLocalNotification(id: string): Promise<void> {
-  const res = await wgwFetch(`/notifications/${encodeURIComponent(id)}/local-ack`, {
+/**
+ * Tell the server a visible window (or a Meet call) showed these rows, so the
+ * VAPID sweep skips push for them. At most 100 ids; ids that are not the
+ * user's rows are ignored.
+ */
+export async function ackLocalNotifications(ids: readonly string[]): Promise<void> {
+  const res = await wgwFetch("/notifications/local-ack", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
   });
-  if (!res.ok) throw new Error(`POST /notifications/${id}/local-ack failed (${res.status})`);
+  if (!res.ok) throw new Error(`POST /notifications/local-ack failed (${res.status})`);
 }
 
 export async function fetchVapidPublicKey(): Promise<string> {
@@ -30,7 +37,14 @@ export async function fetchVapidPublicKey(): Promise<string> {
   return json.publicKey ?? "";
 }
 
-export async function subscribePush(subscription: PushSubscriptionJSON): Promise<void> {
+/**
+ * `scope` is the installed app's manifest id, or `/` (see `push-scope.ts`).
+ * Null leaves it out: the server then keeps the scopes it has.
+ */
+export async function subscribePush(
+  subscription: PushSubscriptionJSON,
+  scope: string | null,
+): Promise<void> {
   const res = await wgwFetch("/notifications/push/subscriptions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,6 +54,7 @@ export async function subscribePush(subscription: PushSubscriptionJSON): Promise
         p256dh: subscription.keys?.p256dh,
         auth: subscription.keys?.auth,
       },
+      ...(scope === null ? {} : { scope }),
     }),
   });
   if (!res.ok) throw new Error(`POST push subscription failed (${res.status})`);

@@ -16,6 +16,8 @@ use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Blobs\JmapDownloadBlobResolver;
 use App\Services\Jmap\Blobs\PartMismatchException;
 use App\Services\Jmap\Blobs\StorageFullException;
+use App\Services\Jmap\Guest\GuestUploadBudget;
+use App\Services\Jmap\Guest\GuestUploadGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +31,10 @@ use Symfony\Component\HttpFoundation\Response;
  * node-derived `fnb-…` ids (FileNodeBlobResolver, #450) — every blobId the
  * envelope surfaces must be downloadable through the Session's downloadUrl.
  * Downloads stream with single-range support (RangeResponder, #1500).
+ *
+ * `uploadGuest` is the upload URL of a guest upload account (#1715): the
+ * gate re-checks the share, a Content-Length is required, and the share's
+ * byte budget is charged before the body is read.
  */
 final class JmapBlobController
 {
@@ -38,6 +44,8 @@ final class JmapBlobController
         private readonly RangeResponder $ranges,
         private readonly BlobClaimService $claims,
         private readonly JmapBlobMaintenance $maintenance,
+        private readonly GuestUploadGate $guestGate,
+        private readonly GuestUploadBudget $guestBudget,
     ) {}
 
     public function upload(Request $request, string $accountId): JsonResponse
@@ -47,6 +55,33 @@ final class JmapBlobController
             return $this->notFoundProblem('Account not found.');
         }
 
+        return $this->store($request, $username, null);
+    }
+
+    public function uploadGuest(Request $request, string $accountId): JsonResponse
+    {
+        $account = $this->guestGate->open($request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE));
+        if ($accountId !== $account->accountId) {
+            return $this->notFoundProblem('Account not found.');
+        }
+        if (WgwOversizedPost::declaredContentLength($request) === null) {
+            return response()
+                ->json(['type' => 'about:blank', 'status' => 411, 'detail' => 'Guest uploads need a Content-Length.'], 411)
+                ->header('Content-Type', 'application/problem+json');
+        }
+
+        return $this->store(
+            $request,
+            $account->accountId,
+            fn (int $contentLength) => $this->guestBudget->charge($account, $contentLength),
+        );
+    }
+
+    /**
+     * @param  (\Closure(int): void)|null  $beforeRead  runs after the size checks, before a byte is read
+     */
+    private function store(Request $request, string $username, ?\Closure $beforeRead): JsonResponse
+    {
         $declaredLength = $this->declaredPartLength($request);
         $declaredSha256 = $this->declaredPartSha256($request);
         if ($declaredLength === false || $declaredSha256 === false) {
@@ -74,6 +109,10 @@ final class JmapBlobController
             || WgwOversizedPost::phpWarnedPostTooLarge()
             || ($contentLength !== null && $contentLength > 0)
             || ($declaredLength !== null && $declaredLength > 0);
+
+        if ($beforeRead !== null) {
+            $beforeRead($contentLength ?? 0);
+        }
 
         $body = $request->getContent(true);
         try {

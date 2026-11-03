@@ -1,3 +1,4 @@
+import { moveDocsPageSetupOverride, startDocWithDefaultPageSetup } from "@/lib/docs-page-setup";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -93,7 +94,13 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     window.location.assign("/logout");
   }, []);
 
-  const handleFileRenamed = followPath;
+  const handleFileRenamed = useCallback(
+    (apiPath: string) => {
+      if (filePath) moveDocsPageSetupOverride(filePath, apiPath);
+      void followPath(apiPath);
+    },
+    [filePath, followPath],
+  );
 
   const handleOpenHomeFile = useOpenDocsFile();
 
@@ -145,6 +152,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
           showError(docsLabels.homeCreateError);
           return;
         }
+        startDocWithDefaultPageSetup(apiPath);
         void navigate({
           to: "/docs",
           search: docsSearchFromApiPath(apiPath),

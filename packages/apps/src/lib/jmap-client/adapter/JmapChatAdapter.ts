@@ -135,7 +135,7 @@ export class JmapChatAdapter extends JmapInboundAdapter {
   /** Full resync after `cannotCalculateChanges` (server pruned the change log). */
   protected async refetchAll(): Promise<void> {
     const channels = await this.#chat.getChannels(this.accountId);
-    const messages = await this.#chat.getMessages(this.accountId);
+    const messages = await this.#chat.getAllMessages(this.accountId);
     if (this.#options.onRefetchAll) {
       this.#options.onRefetchAll({ channels: channels.list, messages: messages.list });
       return;

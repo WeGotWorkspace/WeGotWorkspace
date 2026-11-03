@@ -12,12 +12,13 @@ import {
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
 import { DocsStatsTags } from "@/docs-core/src/docs-stats-tags";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
@@ -82,10 +83,7 @@ import {
   useDocsExternalWritePrompt,
   useDocsExternalWriteRequest,
 } from "./use-docs-external-write-prompt";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -297,6 +295,7 @@ function DocsCollabWorkspaceInner({
   const showMarkdownOutline = resolvedDocumentTitle.toLowerCase().endsWith(".md");
   const imageInsertEnabled = permissions.editable && editorFormat !== "text";
   const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
+  const pageSetup = useDocsPageSetup(resolvedDocApiPath);
   const pickerUsername = driveUsername?.trim() || session.user.username || "";
   const imageInsert = useDocsImageInsert({
     editor,
@@ -602,11 +601,11 @@ function DocsCollabWorkspaceInner({
               onCloseMobile={() => setSidebarOpen(false)}
               appSwitchSubtitle="Docs"
               footer={
-                <WorkspaceUserFooter
-                  name={session.user.displayName}
-                  initials={workspaceUserInitials(session.user)}
+                <WorkspaceAppSettingsFooter
+                  appId="docs"
+                  session={session}
                   detailLine={session.user.username}
-                  onLogoutClick={onLogout}
+                  onLogout={onLogout}
                 />
               }
             >
@@ -648,6 +647,7 @@ function DocsCollabWorkspaceInner({
               }
               actions={
                 <DocsHeaderActions
+                  pageSetup={{ ...pageSetup, labels }}
                   leading={
                     permissions.editable ? (
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
@@ -706,6 +706,7 @@ function DocsCollabWorkspaceInner({
                   }
                   commentControlLabels={labels}
                   onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
+                  pageSetup={pageSetup.pageSetup}
                 />
               ) : null}
               <WorkspaceDetailFooter

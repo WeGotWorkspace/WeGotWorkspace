@@ -12,23 +12,12 @@ import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { readDriveContentSyncProgress } from "@/lib/offline/drive/drive-content-sync";
 import { hasOfflineFileContent } from "@/lib/offline/shared/content-availability";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { parseFileSizeBytes } from "@/drive-core/src/drive-file-utils";
 import { normalizeDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 
 function fileApiPath(file: DriveFile): string | null {
   const path = file.apiPath?.trim();
   return path ? normalizeDriveAvailabilityPath(path) : null;
-}
-
-function parseFileSizeBytes(file: DriveFile): number | null {
-  if (file.kind === "folder") return null;
-  const raw = file.size?.replace(/[^\d.]/g, "");
-  if (!raw) return 0;
-  const kb = Number.parseFloat(raw);
-  if (Number.isNaN(kb)) return null;
-  if (file.size?.includes("MB")) return Math.round(kb * 1024 * 1024);
-  if (file.size?.includes("GB")) return Math.round(kb * 1024 * 1024 * 1024);
-  if (file.size?.includes("KB")) return Math.round(kb * 1024);
-  return Math.round(kb);
 }
 
 const SYNC_POLL_INTERVAL_MS = 1500;

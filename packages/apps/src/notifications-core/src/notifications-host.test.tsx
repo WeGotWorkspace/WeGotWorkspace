@@ -10,7 +10,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(async () => ({ list: [], unreadCount: 0 })),
   ackNotification: vi.fn(),
-  ackLocalNotification: vi.fn(),
+  ackLocalNotifications: vi.fn(),
   fetchVapidPublicKey: vi.fn(),
   subscribePush: vi.fn(),
 }));
@@ -32,7 +32,7 @@ vi.mock("@/notifications-core/src/notification-click-navigate", async (importOri
 
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import {
-  ackLocalNotification,
+  ackLocalNotifications,
   ackNotification,
   listNotifications,
 } from "@/lib/api/wgw/notifications";
@@ -59,6 +59,9 @@ import type {
   PresenceMeshSession,
 } from "@/presence-core/src/presence-types";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
+
+/** Every id sent to `POST /notifications/local-ack`, across batches. */
+const ackedIds = () => vi.mocked(ackLocalNotifications).mock.calls.flatMap(([ids]) => [...ids]);
 
 class FakeSession implements PresenceMeshSession {
   peers: RtcPeerDescriptor[] = [];
@@ -100,11 +103,12 @@ describe("NotificationsHost", () => {
     vi.mocked(wgwIsGuestSession).mockReturnValue(false);
     vi.mocked(ensurePushPermissionAndSubscribe).mockClear();
     vi.mocked(listNotifications).mockReset();
-    vi.mocked(ackLocalNotification).mockReset();
+    localStorage.clear();
+    vi.mocked(ackLocalNotifications).mockReset();
     vi.mocked(ackNotification).mockReset();
     vi.mocked(assignNotificationNavigate).mockReset();
     vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
-    vi.mocked(ackLocalNotification).mockResolvedValue(undefined);
+    vi.mocked(ackLocalNotifications).mockResolvedValue(undefined);
     vi.mocked(ackNotification).mockResolvedValue(undefined);
     window.localStorage.removeItem(NOTIFICATION_INBOX_SOUND_MUTED_KEY);
     resetInboxNotificationSoundForTests();
@@ -274,7 +278,7 @@ describe("NotificationsHost", () => {
     render(<NotificationsHost />);
 
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+      expect(ackedIds()).toContain("n1");
     });
   });
 

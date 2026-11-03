@@ -11,7 +11,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(async () => ({ list: [], unreadCount: 0 })),
   ackNotification: vi.fn(),
-  ackLocalNotification: vi.fn(),
+  ackLocalNotifications: vi.fn(),
   fetchVapidPublicKey: vi.fn(),
   subscribePush: vi.fn(),
 }));
@@ -22,7 +22,7 @@ vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({
   ensurePushPermissionAndSubscribe: vi.fn(async () => false),
 }));
 
-import { ackLocalNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import { ackLocalNotifications, listNotifications } from "@/lib/api/wgw/notifications";
 import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 import {
@@ -30,6 +30,9 @@ import {
   NotificationsProvider,
   useNotificationsInbox,
 } from "@/notifications-core/src/notifications-provider";
+
+/** Every id sent to `POST /notifications/local-ack`, across batches. */
+const ackedIds = () => vi.mocked(ackLocalNotifications).mock.calls.flatMap(([ids]) => [...ids]);
 
 const unreadItem = {
   id: "n1",
@@ -103,9 +106,10 @@ describe("local-ack from a live window", () => {
       value: FakeNotification,
     });
     vi.mocked(listNotifications).mockReset();
-    vi.mocked(ackLocalNotification).mockReset();
+    localStorage.clear();
+    vi.mocked(ackLocalNotifications).mockReset();
     vi.mocked(listNotifications).mockResolvedValue({ list: [unreadItem], unreadCount: 1 });
-    vi.mocked(ackLocalNotification).mockResolvedValue(undefined);
+    vi.mocked(ackLocalNotifications).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -119,7 +123,7 @@ describe("local-ack from a live window", () => {
     renderInbox();
 
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+      expect(ackedIds()).toContain("n1");
     });
   });
 
@@ -128,7 +132,7 @@ describe("local-ack from a live window", () => {
     renderInbox();
 
     await waitForUnreadList();
-    expect(ackLocalNotification).not.toHaveBeenCalled();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
   });
 
   it("creates no page-level OS notification from a hidden window", async () => {
@@ -143,17 +147,17 @@ describe("local-ack from a live window", () => {
     setVisibility("hidden");
     renderInbox();
     await waitForUnreadList();
-    expect(ackLocalNotification).not.toHaveBeenCalled();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
 
     becomeVisible();
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+      expect(ackedIds()).toContain("n1");
     });
 
     // A second visibility flip does not ack the same row again.
     setVisibility("hidden");
     becomeVisible();
-    expect(ackLocalNotification).toHaveBeenCalledTimes(1);
+    expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("re-fetches the inbox when the window becomes visible and acks rows that arrived meanwhile", async () => {
@@ -170,9 +174,9 @@ describe("local-ack from a live window", () => {
     becomeVisible();
 
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n2");
+      expect(ackedIds()).toContain("n2");
     });
-    expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+    expect(ackedIds()).toContain("n1");
     expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThan(listedWhileHidden);
   });
 
@@ -195,7 +199,7 @@ describe("local-ack from a live window", () => {
     renderInbox(callStore);
 
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+      expect(ackedIds()).toContain("n1");
     });
     expect(FakeNotification.created).toHaveLength(0);
   });
@@ -205,13 +209,13 @@ describe("local-ack from a live window", () => {
     setVisibility("hidden");
     renderInbox(callStore);
     await waitForUnreadList();
-    expect(ackLocalNotification).not.toHaveBeenCalled();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
 
     act(() => {
       callStore.setStatus("in-call");
     });
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+      expect(ackedIds()).toContain("n1");
     });
   });
 
@@ -222,7 +226,7 @@ describe("local-ack from a live window", () => {
     setVisibility("hidden");
     renderInbox(callStore);
     await vi.advanceTimersByTimeAsync(0);
-    expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+    expect(ackedIds()).toContain("n1");
 
     act(() => {
       callStore.setStatus("idle");
@@ -234,8 +238,8 @@ describe("local-ack from a live window", () => {
     await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_POLL_MS);
 
     expect(probe.inbox?.items).toHaveLength(2);
-    expect(ackLocalNotification).not.toHaveBeenCalledWith("n2");
-    expect(ackLocalNotification).toHaveBeenCalledTimes(1);
+    expect(ackedIds()).not.toContain("n2");
+    expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("does not count the Meet lobby as being in a call", async () => {
@@ -245,21 +249,21 @@ describe("local-ack from a live window", () => {
     renderInbox(callStore);
 
     await waitForUnreadList();
-    expect(ackLocalNotification).not.toHaveBeenCalled();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
   });
 
   it("retries a failed ack the next time the window is visible", async () => {
-    vi.mocked(ackLocalNotification).mockRejectedValueOnce(new Error("offline"));
+    vi.mocked(ackLocalNotifications).mockRejectedValueOnce(new Error("offline"));
     setVisibility("visible");
     renderInbox();
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledTimes(1);
+      expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
     });
 
     setVisibility("hidden");
     becomeVisible();
     await waitFor(() => {
-      expect(ackLocalNotification).toHaveBeenCalledTimes(2);
+      expect(ackLocalNotifications).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -38,6 +38,15 @@ function resetApiBudget(): BudgetReport {
   return JSON.parse(out.trim().split("\n").at(-1) ?? "") as BudgetReport;
 }
 
+/**
+ * Gives the accounts a fresh budget mid-test. Only for test setup that spends
+ * the budget itself (seeding hundreds of records), so the app's own requests
+ * after it are measured on their own. A no-op against a remote API.
+ */
+export function resetApiBudgetAfterSetup(): void {
+  if (apiIsLocal()) resetApiBudget();
+}
+
 /** Accounts that reached the limit in the test's last minute window. */
 function accountsOverBudget(report: BudgetReport): string[] {
   return Object.entries(report.used)

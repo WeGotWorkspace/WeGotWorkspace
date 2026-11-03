@@ -5,9 +5,12 @@ import {
   syncDocsBodiesFromHomeListing,
 } from "@/lib/offline/docs/docs-body-sync";
 
-const { makeDocsOfflineAvailable } = vi.hoisted(() => ({
+const { makeDocsOfflineAvailable, withCrossTabLockIfFree } = vi.hoisted(() => ({
   makeDocsOfflineAvailable: vi.fn(),
+  withCrossTabLockIfFree: vi.fn(),
 }));
+
+vi.mock("@/lib/offline/core/cross-tab-lock", () => ({ withCrossTabLockIfFree }));
 
 vi.mock("@/lib/offline/docs/docs-offline-pin-core", () => ({
   makeDocsOfflineAvailable,
@@ -31,6 +34,35 @@ describe("syncDocsBodiesFromHomeListing", () => {
   beforeEach(() => {
     makeDocsOfflineAvailable.mockReset();
     makeDocsOfflineAvailable.mockResolvedValue(undefined);
+    withCrossTabLockIfFree.mockReset();
+    withCrossTabLockIfFree.mockImplementation((_name: string, task: () => Promise<unknown>) =>
+      task(),
+    );
+  });
+
+  it("does not fetch the body of a doc whose collab room is held open", async () => {
+    withCrossTabLockIfFree.mockImplementation(async (name: string, task: () => Promise<unknown>) =>
+      name.includes("held.md") ? undefined : task(),
+    );
+    const row = (name: string) => ({
+      id: 1,
+      sourceType: "file",
+      sourceKey: `users/alice/${name}`,
+      title: name,
+      extension: "md",
+      category: "document",
+      size: 0,
+      modifiedAt: 10,
+      snippet: "",
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ results: [row("held.md"), row("free.md")], hasMore: false });
+
+    await syncDocsBodiesFromHomeListing("alice", { fetcher });
+
+    expect(makeDocsOfflineAvailable).toHaveBeenCalledTimes(1);
+    expect(makeDocsOfflineAvailable.mock.calls[0]?.[1]).toBe("/users/alice/free.md");
   });
 
   it("hydrates home-listed markdown/txt docs newest-first", async () => {

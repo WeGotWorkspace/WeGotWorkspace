@@ -1,3 +1,4 @@
+import { fetchAllByQuery } from "../core/fetch-all.js";
 import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { JmapSetItemError } from "../core/errors.js";
@@ -61,15 +62,35 @@ export class JmapNotesClient {
     return response;
   }
 
-  /** `ids` longer than the server's `maxObjectsInGet` are fetched in several requests. */
-  async getNotes(accountId: JmapId, ids?: JmapId[] | null): Promise<GetResponse<JmapNote>> {
+  /**
+   * `ids` longer than the server's `maxObjectsInGet` are fetched in several requests.
+   * `properties` limits what comes back; the server always adds `id`.
+   */
+  async getNotes(
+    accountId: JmapId,
+    ids?: JmapId[] | null,
+    properties?: readonly string[],
+  ): Promise<GetResponse<JmapNote>> {
     const getPage = (pageIds: JmapId[] | null) =>
-      this.client.call<GetResponse<JmapNote>>("Note/get", { accountId, ids: pageIds }, NOTES_USING);
+      this.client.call<GetResponse<JmapNote>>(
+        "Note/get",
+        { accountId, ids: pageIds, ...(properties ? { properties: [...properties] } : {}) },
+        NOTES_USING,
+      );
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);
     this.client.setState(accountId, NOTE_TYPE, response.state);
     return response;
+  }
+
+  /** Every note, via `Note/query` and explicit-id gets (no get-all; #1792). */
+  getAllNotes(accountId: JmapId): Promise<GetResponse<JmapNote>> {
+    return fetchAllByQuery<JmapNote>(this.client, {
+      accountId,
+      type: NOTE_TYPE,
+      using: NOTES_USING,
+    });
   }
 
   async noteChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {
