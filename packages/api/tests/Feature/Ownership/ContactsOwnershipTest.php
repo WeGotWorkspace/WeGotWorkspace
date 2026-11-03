@@ -115,6 +115,9 @@ final class ContactsOwnershipTest extends WgwDatabaseTestCase implements Ownersh
             $cases[] = OwnershipCase::of(OwnershipRegistry::jmapKey($method), Actor::Member, Scope::OtherUser, Outcome::AccountNotFound)->variant('foreign-account');
         }
 
+        // Group membership is checked per request: leaving `crew` ends the access.
+        $cases[] = OwnershipCase::of(OwnershipRegistry::jmapKey('AddressBook/get'), Actor::Member, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
+
         $cases[] = OwnershipCase::of(self::IMPORT, Actor::Anonymous, Scope::OtherUser, Outcome::Unauthenticated);
 
         return array_values(array_filter($cases, self::inRuntimeBudget(...)));
@@ -193,6 +196,12 @@ final class ContactsOwnershipTest extends WgwDatabaseTestCase implements Ownersh
             return;
         }
 
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target);
+
+            return;
+        }
+
         match ($case->operation) {
             OwnershipRegistry::jmapKey('AddressBook/get') => $this->runBookGet($case, $target),
             OwnershipRegistry::jmapKey('AddressBook/changes') => $this->runBookChanges($case, $target),
@@ -205,6 +214,30 @@ final class ContactsOwnershipTest extends WgwDatabaseTestCase implements Ownersh
             self::IMPORT => $this->runImport($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
+    }
+
+    /**
+     * @param  array{owner: string, ownerBookId: string, actorBookId: string, bookPk: int, cardId: string, liveState: string}  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target): void
+    {
+        $account = $this->actorAccount($case);
+        $get = fn (string $username) => $this->jmap($username, [
+            ['AddressBook/get', ['accountId' => $username, 'ids' => [$target['actorBookId']]], 'g'],
+            ['AddressBook/get', ['accountId' => $username, 'ids' => null], 'a'],
+        ]);
+
+        $before = $get($account);
+        $this->assertSame($target['actorBookId'], $before->json('methodResponses.0.1.list.0.id'), $case->key());
+
+        $this->assertUnchanged(fn () => $this->ownerSnapshot($target), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $after = $get($account);
+        $this->assertJmapGetOutcome($after, $target['actorBookId'], $case);
+        $all = array_map('strval', array_column((array) $after->json('methodResponses.1.1.list'), 'id'));
+        $this->assertIdsAbsent([$target['actorBookId']], $all, $case->key());
+        $this->assertSame($target['actorBookId'], $get(OwnershipPrincipals::DAVE)->json('methodResponses.0.1.list.0.id'), $case->key().': dave lost access.');
     }
 
     // ---- Target seeding -------------------------------------------------

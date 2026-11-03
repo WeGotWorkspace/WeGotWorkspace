@@ -73,8 +73,16 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         Scope::UserToActorGroup,
     ];
 
+    /** Grant scopes where the sharee finds the shared collection and nothing else of the owner. */
+    private const SEARCH_GRANT_SCOPES = [
+        Scope::UserToActorRead, Scope::UserToActorWrite,
+        Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite,
+        Scope::UserToActorGroup,
+    ];
+
     private const SEARCH_SCOPES = [
         Scope::OwnUser, Scope::OwnGroup, Scope::OtherUser, Scope::OtherGroup, Scope::FormerGroup, Scope::GrantRevoked,
+        ...self::SEARCH_GRANT_SCOPES,
     ];
 
     /** Sources a sharee gets its own index rows for (calendar-backed collections). */
@@ -170,10 +178,15 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             }
             $cases[] = OwnershipCase::of(self::THREAD_PATCH, $actor, Scope::OtherUser, Outcome::NotFound)->variant('change-id-via-shared-doc');
 
+            // Group membership is checked per request: leaving `crew` ends the access.
+            if ($actor === Actor::Member) {
+                $cases[] = OwnershipCase::of('GET /files/threads', $actor, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
+            }
+
             foreach (self::SEARCH_SCOPES as $scope) {
-                $own = in_array($scope, [Scope::OwnUser, Scope::OwnGroup], true);
-                $cases[] = OwnershipCase::of(self::SEARCH, $actor, $scope, $own ? Outcome::Allowed : Outcome::NotFound);
-                $cases[] = OwnershipCase::of(self::SEARCH_CONTENT, $actor, $scope, $own ? Outcome::Allowed : Outcome::NotFound);
+                $allowed = in_array($scope, [Scope::OwnUser, Scope::OwnGroup, ...self::SEARCH_GRANT_SCOPES], true);
+                $cases[] = OwnershipCase::of(self::SEARCH, $actor, $scope, $allowed ? Outcome::Allowed : Outcome::NotFound);
+                $cases[] = OwnershipCase::of(self::SEARCH_CONTENT, $actor, $scope, $allowed ? Outcome::Allowed : Outcome::NotFound);
             }
             foreach (['malformed-key', 'file-source'] as $variant) {
                 $cases[] = OwnershipCase::of(self::SEARCH_CONTENT, $actor, Scope::OtherUser, Outcome::NotFound)->variant($variant);
@@ -289,7 +302,11 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             $author = $carol;
         }
 
-        $access = self::accessFor($case->scope, $case->variant === 'comment-own-thread' ? 'comment' : $case->variant);
+        $access = self::accessFor($case->scope, match ($case->variant) {
+            'comment-own-thread' => 'comment',
+            'left-crew' => null,
+            default => $case->variant,
+        });
         $shareId = null;
         switch ($case->scope) {
             case Scope::UserToActorRead:
@@ -428,12 +445,35 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
 
         $target = $this->seedThreadTarget($case);
         $query = '?path='.urlencode($target['path']);
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target, '/files/threads'.$query);
+
+            return;
+        }
 
         match ($case->operation) {
             'GET /files/threads' => $this->runThreadIndex($case, $target, '/files/threads'.$query),
             'GET /files/threads/changes' => $this->runThreadChanges($case, $target, '/files/threads/changes'.$query),
             default => $this->runThreadWrite($case, $target, $query),
         };
+    }
+
+    /**
+     * @param  array{owner: string, path: string, threadId: string, body: string}  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target, string $uri): void
+    {
+        $listed = fn (TestResponse $response): array => array_column(is_array($response->json('list')) ? $response->json('list') : [], 'id');
+        $this->assertContains($target['threadId'], $listed($this->requestAs($case->actor, 'GET', $uri)), $case->key());
+
+        $this->assertUnchanged(fn () => $this->threadSnapshot($target['owner'], $target['path']), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $response = $this->requestAs($case->actor, 'GET', $uri);
+        $this->assertIdsAbsent([$target['threadId']], $listed($response), $case->key());
+        $this->assertNoThreadContent($response, $target, $case);
+        $this->assertRestOutcome($response, $case);
+        $this->assertContains($target['threadId'], $listed($this->requestAsUsername(OwnershipPrincipals::DAVE, 'GET', $uri)), $case->key().': dave lost access.');
     }
 
     /**
@@ -572,7 +612,10 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
     /**
      * Seeds one object per searchable source in the scope and reindexes.
      *
-     * @return array{owner: string, marker: string, sources: list<string>, actorKeysBefore: list<array{0: string, 1: string}>}
+     * `unsharedMarker` names a second set of the same sources, owned by the
+     * same owner and shared with nobody. Grant scopes and grant-revoked have it.
+     *
+     * @return array{owner: string, marker: string, unsharedMarker: ?string, sources: list<string>, actorKeysBefore: list<array{0: string, 1: string}>}
      */
     private function seedSearchScope(OwnershipCase $case): array
     {
@@ -584,17 +627,26 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         [$owner, $group] = match ($case->scope) {
             Scope::OwnUser => [$self, null],
             Scope::OwnGroup => [OwnershipPrincipals::DAVE, OwnershipPrincipals::CREW],
-            Scope::OtherGroup => [OwnershipPrincipals::CAROL, OwnershipPrincipals::OUTSIDERS],
+            Scope::OtherGroup, Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite => [OwnershipPrincipals::CAROL, OwnershipPrincipals::OUTSIDERS],
             Scope::FormerGroup => [$otherActor, OwnershipPrincipals::ALUMNI],
             default => [OwnershipPrincipals::CAROL, null],
         };
 
-        $sources = $case->scope === Scope::GrantRevoked ? self::SHAREABLE_SOURCES : self::ALL_SOURCES;
+        $granted = in_array($case->scope, self::SEARCH_GRANT_SCOPES, true);
+        $shared = $granted || $case->scope === Scope::GrantRevoked;
+        $grantee = $case->scope === Scope::UserToActorGroup ? 'groups/'.OwnershipPrincipals::CREW : $self;
+        $write = in_array($case->scope, [Scope::UserToActorWrite, Scope::GroupToNonmemberWrite, Scope::UserToActorGroup], true);
+        $unsharedMarker = $shared ? 'zqun'.substr($marker, 2) : null;
+
+        $sources = $shared ? self::SHAREABLE_SOURCES : self::ALL_SOURCES;
         $revokers = [];
         foreach ($sources as $source) {
-            $revoker = $this->seedSource($source, $owner, $group, $marker, $case->scope === Scope::GrantRevoked ? $self : null);
+            $revoker = $this->seedSource($source, $owner, $group, $marker, $shared ? $grantee : null, $write);
             if ($revoker !== null) {
                 $revokers[] = $revoker;
+            }
+            if ($unsharedMarker !== null) {
+                $this->seedSource($source, $owner, $group, $unsharedMarker, null);
             }
         }
 
@@ -602,8 +654,11 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
 
         $actorKeysBefore = [];
         if ($case->scope === Scope::GrantRevoked) {
-            // The sharee's own index rows exist now; the owner then revokes.
-            $actorKeysBefore = $this->resultKeys($this->search($self, $marker));
+            // The sharee's own index rows exist now, for the shared sources only; the owner then revokes.
+            $before = $this->search($self, $marker);
+            $this->assertSame($this->sorted($sources), $this->sourcesFound($before, $marker), $case->key().': sharee hits before the revoke are not the shared sources.');
+            $this->assertSame([], $this->sourcesFound($this->search($self, (string) $unsharedMarker), (string) $unsharedMarker), $case->key().': unshared sources found before the revoke.');
+            $actorKeysBefore = $this->resultKeys($before);
             foreach ($revokers as $revoke) {
                 $revoke();
             }
@@ -612,7 +667,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             $this->leaveFormerGroup($actor);
         }
 
-        return ['owner' => $owner, 'marker' => $marker, 'sources' => $sources, 'actorKeysBefore' => $actorKeysBefore];
+        return ['owner' => $owner, 'marker' => $marker, 'unsharedMarker' => $unsharedMarker, 'sources' => $sources, 'actorKeysBefore' => $actorKeysBefore];
     }
 
     /**
@@ -620,7 +675,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
      * collection is shared to it and a callback that revokes the share is
      * returned.
      */
-    private function seedSource(string $source, string $owner, ?string $group, string $marker, ?string $sharee): ?callable
+    private function seedSource(string $source, string $owner, ?string $group, string $marker, ?string $sharee, bool $write = false): ?callable
     {
         $groupPayload = $group === null ? [] : ['groupSlug' => $group];
 
@@ -632,7 +687,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
                     'notebookId' => $notebookId, 'title' => $marker.' note', 'body' => $marker.' note body',
                 ])->assertCreated();
 
-                return $sharee === null ? null : $this->shareCollection($owner, '/notes/notebooks/'.$notebookId, $sharee);
+                return $sharee === null ? null : $this->shareCollection($owner, '/notes/notebooks/'.$notebookId, $sharee, $write);
             case 'task':
                 $listId = (string) $this->requestAsUsername($owner, 'POST', '/tasks/tasklists', ['name' => $marker.' list'] + $groupPayload)
                     ->assertCreated()->json('id');
@@ -640,9 +695,9 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
                     'taskListIds' => [$listId => true], 'title' => $marker.' task',
                 ])->assertCreated();
 
-                return $sharee === null ? null : $this->shareCollection($owner, '/tasks/tasklists/'.$listId, $sharee);
+                return $sharee === null ? null : $this->shareCollection($owner, '/tasks/tasklists/'.$listId, $sharee, $write);
             case 'event':
-                return $this->seedEvent($owner, $groupPayload, $marker, $sharee);
+                return $this->seedEvent($owner, $groupPayload, $marker, $sharee, $write);
             case 'contact':
                 $this->seedContact($owner, $group, $marker);
 
@@ -655,7 +710,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
                     'id' => $this->nextUlid(), 'body' => $marker.' chat message',
                 ])->assertCreated();
 
-                return $sharee === null ? null : $this->shareCollection($owner, '/chat/channels/'.$channelId, $sharee);
+                return $sharee === null ? null : $this->shareCollection($owner, '/chat/channels/'.$channelId, $sharee, $write);
             case 'file':
                 $this->createDriveFile($owner, $group, $marker.'-file.md', '# '.$marker." file\n");
 
@@ -672,9 +727,9 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         }
     }
 
-    private function shareCollection(string $owner, string $uri, string $sharee): callable
+    private function shareCollection(string $owner, string $uri, string $sharee, bool $write): callable
     {
-        $this->requestAsUsername($owner, 'PATCH', $uri, ['shareWith' => [$sharee => ['mayReadItems' => true]]])->assertOk();
+        $this->requestAsUsername($owner, 'PATCH', $uri, ['shareWith' => [$sharee => $write ? ['mayWriteAll' => true] : ['mayReadItems' => true]]])->assertOk();
 
         return fn () => $this->requestAsUsername($owner, 'PATCH', $uri, ['shareWith' => [$sharee => null]])->assertOk();
     }
@@ -682,7 +737,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
     /**
      * @param  array<string, string>  $groupPayload
      */
-    private function seedEvent(string $owner, array $groupPayload, string $marker, ?string $sharee): ?callable
+    private function seedEvent(string $owner, array $groupPayload, string $marker, ?string $sharee, bool $write): ?callable
     {
         $calendarId = (string) $this->ownerJmap($owner, JmapCapabilities::CALENDARS, [
             ['Calendar/set', ['accountId' => $owner, 'create' => ['c' => ['name' => $marker.' calendar'] + $groupPayload]], 'c0'],
@@ -705,7 +760,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         $share = fn (?array $rights) => $this->ownerJmap($owner, JmapCapabilities::CALENDARS, [
             ['Calendar/set', ['accountId' => $owner, 'update' => [$calendarId => ['shareWith' => [$sharee => $rights]]]], 'c0'],
         ]);
-        $this->assertEmpty($share(['mayReadItems' => true])->json('methodResponses.0.1.notUpdated'));
+        $this->assertEmpty($share($write ? ['mayWriteAll' => true] : ['mayReadItems' => true])->json('methodResponses.0.1.notUpdated'));
 
         return fn () => $this->assertEmpty($share(null)->json('methodResponses.0.1.notUpdated'));
     }
@@ -834,6 +889,17 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         return array_values($found);
     }
 
+    /**
+     * @param  list<string>  $values
+     * @return list<string>
+     */
+    private function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
+    }
+
     private function resultIdFor(string $sourceType, string $sourceKey): string
     {
         return rtrim(strtr(base64_encode((string) json_encode(['source_type' => $sourceType, 'source_key' => $sourceKey])), '+/', '-_'), '=');
@@ -854,6 +920,9 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
 
         if ($case->outcome === Outcome::Allowed) {
             $this->assertSame($expected, $found, $case->key().': own sources missing from search.');
+            if ($target['unsharedMarker'] !== null) {
+                $this->assertUnsharedHidden($case, $target, $response);
+            }
 
             return;
         }
@@ -866,12 +935,35 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             $this->assertNotSame([], $target['actorKeysBefore'], $case->key().': sharee had no index rows before the revoke.');
         }
         $this->assertSame([], $found, $case->key().': hits from a denied scope.');
+        if ($target['unsharedMarker'] !== null) {
+            $this->assertUnsharedHidden($case, $target, $response);
+        }
         $actorKeys = array_map(static fn (array $key): string => $key[0].':'.$key[1], $this->resultKeys($response));
         $deniedKeys = array_map(
             static fn (array $key): string => $key[0].':'.$key[1],
             array_merge($target['actorKeysBefore'], $case->scope === Scope::GrantRevoked ? [] : $this->resultKeys($this->search($target['owner'], $target['marker']))),
         );
         $this->assertIdsAbsent($deniedKeys, $actorKeys, $case->key());
+    }
+
+    /**
+     * The owner's other sources, which the actor has no grant on, are indexed
+     * and still absent from the actor's search.
+     *
+     * @param  array{owner: string, marker: string, unsharedMarker: ?string, sources: list<string>, actorKeysBefore: list<array{0: string, 1: string}>}  $target
+     */
+    private function assertUnsharedHidden(OwnershipCase $case, array $target, TestResponse $actorSearch): void
+    {
+        $unshared = (string) $target['unsharedMarker'];
+        $expected = $this->sorted($target['sources']);
+        $ownerSearch = $this->search($target['owner'], $unshared);
+        $this->assertSame($expected, $this->sourcesFound($ownerSearch, $unshared), $case->key().': unshared sources not indexed.');
+
+        $self = $this->usernameFor($case->actor);
+        $actorUnshared = $this->search($self, $unshared);
+        $this->assertSame([], $this->sourcesFound($actorUnshared, $unshared), $case->key().': unshared sources found by the sharee.');
+        $actorKeys = array_map(static fn (array $key): string => $key[0].':'.$key[1], array_merge($this->resultKeys($actorSearch), $this->resultKeys($actorUnshared)));
+        $this->assertIdsAbsent(array_map(static fn (array $key): string => $key[0].':'.$key[1], $this->resultKeys($ownerSearch)), $actorKeys, $case->key());
     }
 
     private function runSearchContent(OwnershipCase $case): void
@@ -892,11 +984,35 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         $keys = array_values(array_filter($keys, static fn (array $key): bool => in_array($key[0], ['caldav', 'carddav'], true)));
         $this->assertNotSame([], $keys, $case->key().': no downloadable records seeded.');
 
+        $this->assertContentOutcome($case, $keys, $target['marker']);
+
+        if ($target['unsharedMarker'] !== null) {
+            // The owner's unshared records are downloadable by the owner and hidden from the sharee.
+            $unsharedKeys = array_values(array_filter(
+                $this->resultKeys($this->search($target['owner'], $target['unsharedMarker'])),
+                static fn (array $key): bool => in_array($key[0], ['caldav', 'carddav'], true),
+            ));
+            $this->assertNotSame([], $unsharedKeys, $case->key().': no unshared downloadable records seeded.');
+            $denied = new OwnershipCase($case->operation, $case->actor, $case->scope, Outcome::NotFound, null, null, 'unshared');
+            $this->assertContentOutcome($denied, $unsharedKeys, $target['unsharedMarker']);
+        }
+    }
+
+    /**
+     * @param  list<array{0: string, 1: string}>  $keys
+     */
+    private function assertContentOutcome(OwnershipCase $case, array $keys, string $marker): void
+    {
         foreach ($keys as [$type, $key]) {
             $byId = $this->requestAs($case->actor, 'GET', '/search/results/'.$this->resultIdFor($type, $key).'/content');
             $this->assertRestOutcome($byId, $this->contentCase($case, $type, $key, 'result-id'));
             $byQuery = $this->requestAs($case->actor, 'GET', '/search/results/lookup/content?'.http_build_query(['source_type' => $type, 'source_key' => $key]));
             $this->assertRestOutcome($byQuery, $this->contentCase($case, $type, $key, 'query'));
+            if ($case->outcome === Outcome::NotFound) {
+                foreach ([$byId, $byQuery] as $response) {
+                    $this->assertStringNotContainsString($marker, strtolower((string) $response->getContent()), $case->key().': record content in a refused response.');
+                }
+            }
         }
     }
 

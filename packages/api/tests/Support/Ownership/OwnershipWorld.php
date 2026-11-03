@@ -110,7 +110,21 @@ trait OwnershipWorld
      */
     protected function leaveFormerGroup(Actor $actor): void
     {
-        $group = $this->ownershipPrincipalByUri(OwnershipPrincipals::groupUri(OwnershipPrincipals::ALUMNI));
+        $this->removeFromGroup($actor, OwnershipPrincipals::ALUMNI);
+    }
+
+    /**
+     * Removes the actor from `crew`, the group a `user-to-actor-group` grant
+     * reaches it through. Its token, minted before, stays valid.
+     */
+    protected function leaveCrew(Actor $actor): void
+    {
+        $this->removeFromGroup($actor, OwnershipPrincipals::CREW);
+    }
+
+    private function removeFromGroup(Actor $actor, string $slug): void
+    {
+        $group = $this->ownershipPrincipalByUri(OwnershipPrincipals::groupUri($slug));
         $member = $this->ownershipPrincipal($this->usernameFor($actor));
 
         GroupMember::query()

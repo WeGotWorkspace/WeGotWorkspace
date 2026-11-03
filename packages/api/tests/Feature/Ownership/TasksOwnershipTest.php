@@ -117,6 +117,9 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             $cases[] = OwnershipCase::of('PUT /tasks/items/{taskId}', $actor, Scope::OtherUser, Outcome::NotFound)->variant('body-target');
         }
 
+        // Group membership is checked per request: leaving `crew` ends the access.
+        $cases[] = OwnershipCase::of('GET /tasks/tasklists/{taskListId}', Actor::Member, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
+
         foreach (array_merge(self::READ_OPS, self::ITEM_WRITE_OPS, [
             'PATCH /tasks/tasklists/{taskListId}',
             'DELETE /tasks/tasklists/{taskListId}',
@@ -181,6 +184,11 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         }
 
         $target = $this->seedTarget($case->scope, $case->actor);
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target);
+
+            return;
+        }
 
         match ($case->operation) {
             'GET /tasks/tasklists' => $this->runListIndex($case, $target),
@@ -195,6 +203,23 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'PUT /tasks/items/{taskId}', 'PATCH /tasks/items/{taskId}', 'DELETE /tasks/items/{taskId}' => $this->runItemWrite($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
+    }
+
+    /**
+     * @param  array{owner: string, name: string, ownerListId: string, actorListId: string, taskId: string}  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target): void
+    {
+        $daveListId = $this->copyIdFor(OwnershipPrincipals::DAVE, $target['name']);
+        $this->requestAs($case->actor, 'GET', '/tasks/tasklists/'.$target['actorListId'])->assertOk();
+
+        $this->assertUnchanged(fn () => $this->ownerSnapshot($target), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $this->assertRestOutcome($this->requestAs($case->actor, 'GET', '/tasks/tasklists/'.$target['actorListId']), $case);
+        $ids = array_map('strval', array_column($this->listRows($this->requestAs($case->actor, 'GET', '/tasks/tasklists')), 'id'));
+        $this->assertIdsAbsent([$target['actorListId'], $target['ownerListId']], $ids, $case->key());
+        $this->requestAsUsername(OwnershipPrincipals::DAVE, 'GET', '/tasks/tasklists/'.$daveListId)->assertOk();
     }
 
     // ---- Target seeding -------------------------------------------------

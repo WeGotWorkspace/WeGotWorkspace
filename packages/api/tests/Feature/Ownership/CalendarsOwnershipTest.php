@@ -241,6 +241,9 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             $cases[] = OwnershipCase::of(self::SCHED_INVITEES, $actor, Scope::None, Outcome::Allowed);
         }
 
+        // Group membership is checked per request: leaving `crew` ends the access.
+        $cases[] = OwnershipCase::of(self::CAL_GET, Actor::Member, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
+
         // A foreign accountId is refused before any lookup.
         foreach ([self::CAL_GET, self::CAL_CHANGES, self::CAL_SET, self::EVT_GET, self::EVT_CHANGES, self::EVT_QUERY, self::EVT_SET, self::EVT_QUERY_CHANGES] as $op) {
             $cases[] = OwnershipCase::of($op, Actor::Member, Scope::OtherUser, Outcome::AccountNotFound)->variant('foreign-account');
@@ -335,6 +338,11 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             && ! in_array($case->operation, [self::CAL_GET, self::CAL_CHANGES], true)
             && ! in_array($case->variant, ['rename', 'reshare'], true);
         $target = $this->seedTarget($case->scope, $case->actor, $withEvent, $withFeed);
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target);
+
+            return;
+        }
 
         match ($case->operation) {
             self::CAL_GET => $this->runCalendarGet($case, $target),
@@ -349,6 +357,29 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             self::FEED_GET, self::FEED_POST, self::FEED_DELETE => $this->runFeed($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
+    }
+
+    /**
+     * @param  array{owner: string, name: string, ownerCalendarId: string, actorCalendarId: string, eventId: string}  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target): void
+    {
+        $accountId = $this->accountIdFor($case->actor);
+        $daveCalendarId = $this->copyIdFor(OwnershipPrincipals::DAVE, $target['name']);
+        $get = fn (): TestResponse => $this->jmapAs($case->actor, [
+            ['Calendar/get', ['accountId' => $accountId, 'ids' => [$target['actorCalendarId']]], 'c0'],
+            ['Calendar/get', ['accountId' => $accountId, 'ids' => null], 'c1'],
+        ], self::USING);
+
+        $this->assertSame($target['name'], $get()->json('methodResponses.0.1.list.0.name'), $case->key());
+
+        $this->assertUnchanged(fn () => $this->ownerSnapshot($target), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $response = $get();
+        $this->assertJmapGetOutcome($response, $target['actorCalendarId'], $case);
+        $this->assertIdsAbsent([$target['ownerCalendarId'], $target['actorCalendarId']], self::idsFrom($response->json('methodResponses.1.1.list')), $case->key());
+        $this->assertContains($daveCalendarId, array_column($this->calendarRows(OwnershipPrincipals::DAVE), 'id'), $case->key().': dave lost access.');
     }
 
     // ---- Target seeding -------------------------------------------------

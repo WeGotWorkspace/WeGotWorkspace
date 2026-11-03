@@ -149,6 +149,8 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             array_push($cases, ...self::scopeCases(Actor::Member, $scope));
         }
         array_push($cases, ...self::targetCases(Actor::Member));
+        // Group membership is checked per request: leaving `crew` ends the access.
+        $cases[] = OwnershipCase::of('GET /notes/notebooks/{notebookId}', Actor::Member, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
 
         foreach (self::scopeCases(Actor::Admin, Scope::OtherGroup) as $case) {
             if (in_array($case->operation, self::ADMIN_OPS, true)) {
@@ -368,6 +370,11 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         }
 
         $target = $this->seedTarget($case);
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target);
+
+            return;
+        }
 
         match ($case->operation) {
             'GET /notes/notebooks' => $this->runNotebookIndex($case, $target),
@@ -389,6 +396,23 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'JMAP Note/set' => $this->runJmapNoteSet($case, $target),
             default => throw new LogicException('No runner for '.$case->key()),
         };
+    }
+
+    /**
+     * @param  array{owner: string, name: string, ownerNotebookId: string, actorNotebookId: string, noteId: string, etag: string, since: ?string}  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target): void
+    {
+        $daveNotebookId = $this->copyIdFor(OwnershipPrincipals::DAVE, $target['name']);
+        $this->requestAs($case->actor, 'GET', '/notes/notebooks/'.$target['actorNotebookId'])->assertOk();
+
+        $this->assertUnchanged(fn () => $this->ownerSnapshot($target), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $this->assertRestOutcome($this->requestAs($case->actor, 'GET', '/notes/notebooks/'.$target['actorNotebookId']), $case);
+        $ids = array_map('strval', array_column($this->listRows($this->requestAs($case->actor, 'GET', '/notes/notebooks')), 'id'));
+        $this->assertIdsAbsent([$target['actorNotebookId'], $target['ownerNotebookId']], $ids, $case->key());
+        $this->requestAsUsername(OwnershipPrincipals::DAVE, 'GET', '/notes/notebooks/'.$daveNotebookId)->assertOk();
     }
 
     // ---- Target seeding -------------------------------------------------

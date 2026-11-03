@@ -318,6 +318,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         // A ticket serves only the blob it was minted for, whatever name the URL carries.
         $cases[] = OwnershipCase::of('POST /jmap/download-tickets/{accountId}', $member, Scope::OwnUser, Outcome::Allowed)->variant('other-name');
 
+        // Group membership is checked per request: leaving `crew` ends the access.
+        $cases[] = OwnershipCase::of('GET /files/children', $member, Scope::UserToActorGroup, Outcome::NotFound)->variant('left-crew');
+
         // Moving the actor's own document into a folder of the scope.
         $cases[] = OwnershipCase::of('JMAP FileNode/set', $member, Scope::OtherUser, Outcome::NotFound)->variant('move-into');
         $cases[] = OwnershipCase::of('JMAP FileNode/set', $member, Scope::UserToActorRead, Outcome::Forbidden)->variant('move-into');
@@ -525,6 +528,11 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
     private function runTargetCase(OwnershipCase $case): void
     {
         $target = $this->seedTarget($case);
+        if ($case->variant === 'left-crew') {
+            $this->runLeftCrew($case, $target);
+
+            return;
+        }
 
         match ($case->operation) {
             'GET /files' => $this->runSearch($case, $target),
@@ -552,6 +560,23 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'JMAP FileNode/set' => $this->runNodeSet($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $target
+     */
+    private function runLeftCrew(OwnershipCase $case, array $target): void
+    {
+        $uri = '/files/children?path='.rawurlencode($target['folder']);
+        $this->assertContains($target['docName'], $this->entryNames($this->requestAs($case->actor, 'GET', $uri)), $case->key());
+
+        $this->assertUnchanged(fn () => $this->ownerSnapshot($target), fn () => $this->leaveCrew($case->actor), $case->key());
+
+        // Same token as before leaving.
+        $response = $this->requestAs($case->actor, 'GET', $uri);
+        $this->assertTargetHidden($response, $target, $case);
+        $this->assertRestOutcome($response, $case);
+        $this->assertContains($target['docName'], $this->entryNames($this->requestAsUsername(OwnershipPrincipals::DAVE, 'GET', $uri)), $case->key().': dave lost access.');
     }
 
     // ---- Target seeding --------------------------------------------------
