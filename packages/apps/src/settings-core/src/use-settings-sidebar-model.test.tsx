@@ -14,7 +14,7 @@ describe("useSettingsSidebarModel", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("groups Account plus Apps → Calendar, Tasks, Contacts, Notes and includes Connected assistants when MCP is on", () => {
+  it("groups Account plus Apps → Calendar, Tasks, Contacts, Notes, Docs and includes Connected assistants when MCP is on", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(true));
     expect(result.current.account.map((section) => section.id)).toEqual([
       "profile",
@@ -29,6 +29,7 @@ describe("useSettingsSidebarModel", () => {
       "tasks",
       "contacts",
       "notes",
+      "docs",
       "meet",
     ]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(
@@ -50,6 +51,7 @@ describe("useSettingsSidebarModel", () => {
       "tasks",
       "contacts",
       "notes",
+      "docs",
       "meet",
     ]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(

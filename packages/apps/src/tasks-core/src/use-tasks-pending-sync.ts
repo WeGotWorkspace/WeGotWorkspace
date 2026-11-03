@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { listPendingTaskIds } from "@/lib/offline/tasks-offline-store";
+import { listPendingTaskIds } from "@/lib/offline/tasks/tasks-offline-store";
 
 const POLL_INTERVAL_MS = 4000;
 

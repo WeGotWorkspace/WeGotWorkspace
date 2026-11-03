@@ -16,7 +16,7 @@ import {
 import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,
-} from "@/lib/offline/tasks-hybrid-operations";
+} from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { resolveTasksOfflineUsername } from "@/lib/offline/offline-session";
 
 function taskListAfterSharePatch(list: TaskList, patch: TaskListPatch): TaskList {
