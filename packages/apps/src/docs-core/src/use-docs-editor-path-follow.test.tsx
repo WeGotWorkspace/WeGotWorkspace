@@ -82,6 +82,23 @@ describe("useDocsEditorPathFollow", () => {
     expect(result.current.holdServerSave).toBe(false);
   });
 
+  it("keeps the hold after a followed move until the open path changes", () => {
+    state.online = false;
+    let path = "/users/alice/Plan.md";
+    const { result, rerender } = renderHook(() =>
+      useDocsEditorPathFollow({ username: "alice", filePath: path, onFollow: vi.fn() }),
+    );
+    state.online = true;
+    act(() => state.onReconnect?.());
+    act(() => publishDocsPathMoved("alice", "/users/alice/Plan.md", "/users/alice/New.md"));
+    act(() => state.onSettled?.(1));
+    expect(result.current.holdServerSave).toBe(true);
+
+    path = "/users/alice/New.md";
+    rerender();
+    expect(result.current.holdServerSave).toBe(false);
+  });
+
   it("ignores a pull that settled for an older reconnect", () => {
     state.online = false;
     const { result } = render("/users/alice/Plan.md");

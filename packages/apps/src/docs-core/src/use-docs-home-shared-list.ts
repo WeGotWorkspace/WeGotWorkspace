@@ -42,8 +42,8 @@ export function useDocsHomeSharedList({
   return {
     files,
     loading: drive.loading,
-    // Offline the list cannot load; say so instead of the browser's fetch error.
-    error: drive.error && !online ? docsLabels.homeSharedOffline : drive.error,
+    // Offline the list cannot be refreshed; say so, also when an earlier fetch succeeded.
+    error: online ? drive.error : docsLabels.homeSharedOffline,
     reload: drive.reload,
   };
 }

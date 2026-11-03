@@ -15,6 +15,7 @@ export type CreateKeepingBothOptions = {
   /**
    * An earlier attempt of this create may have landed with its answer lost.
    * A file under the wanted name with exactly this file's size is then taken
+   * (never for an empty file)
    * as that create, not as a clash.
    */
   mayHaveLanded?: boolean;
@@ -37,7 +38,9 @@ export async function createDriveFileKeepingBoth(
   const siblings = async () =>
     (await session.fileNodes.queryAndGetFileNodes(session.accountId, { parentId }, { signal }))
       .list;
-  if (opts.mayHaveLanded) {
+  // An empty file is never matched: every new Doc is uploaded empty, so a same-named
+  // empty sibling is as likely someone else's create as our own lost one.
+  if (opts.mayHaveLanded && file.size > 0) {
     const wanted = file.name.toLowerCase();
     const own = (await siblings()).find(
       (node) =>

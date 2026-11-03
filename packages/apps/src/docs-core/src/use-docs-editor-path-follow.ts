@@ -51,7 +51,8 @@ function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: s
  * create met a taken name), the editor opens the new path. Its text is held
  * on this device, not saved, while the server does not have the path yet (a
  * queued create or rename owns it) and, after being offline, until the first
- * FileNode pull tells whether the file moved meanwhile. So unsaved text never
+ * FileNode pull tells whether the file moved meanwhile and, when it did, until
+ * the editor is on the new path. So unsaved text never
  * lands in a new file at the old path.
  */
 export function useDocsEditorPathFollow({
@@ -63,6 +64,8 @@ export function useDocsEditorPathFollow({
   const { online } = useConnectivity();
   const [inboundKey, setInboundKey] = useState(0);
   const latestInboundKeyRef = useRef(0);
+  // A followed move was announced; the open path is still the old one until it changes.
+  const [followPending, setFollowPending] = useState(false);
   const [awaitingPathCheck, setAwaitingPathCheck] = useState(() => !getConnectivitySnapshot());
 
   useEffect(() => {
@@ -89,12 +92,17 @@ export function useDocsEditorPathFollow({
     if (!editorUsername || !filePath) return;
     return subscribeDocsPathMoved(editorUsername, (from, to) => {
       const next = docsPathAfterMove(filePath, from, to);
-      if (next) onFollow(`/${next}`);
+      if (!next) return;
+      setFollowPending(true);
+      onFollow(`/${next}`);
     });
   }, [editorUsername, filePath, onFollow]);
 
+  useEffect(() => setFollowPending(false), [filePath]);
+
   const ownedByQueuedWrite = useQueuedWriteOwnsPath(editorUsername, filePath);
   return {
-    holdServerSave: Boolean(editorUsername) && (ownedByQueuedWrite || awaitingPathCheck),
+    holdServerSave:
+      Boolean(editorUsername) && (ownedByQueuedWrite || awaitingPathCheck || followPending),
   };
 }

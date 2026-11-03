@@ -79,6 +79,15 @@ describe("createDriveFileKeepingBoth (#1563)", () => {
     expect(setFileNodes).not.toHaveBeenCalled();
   });
 
+  it("never takes an empty sibling as its own create, even on a retry", async () => {
+    siblings({ name: "Plan.md", size: 0 });
+    setFileNodes.mockRejectedValueOnce(taken()).mockResolvedValueOnce({});
+
+    await expect(
+      createDriveFileKeepingBoth("/users/alice", file("Plan.md", ""), { mayHaveLanded: true }),
+    ).resolves.toBe("Plan (1).md");
+  });
+
   it("keeps both on a retry when the file there is a different one", async () => {
     siblings({ name: "Plan.md", size: 999 });
     setFileNodes.mockRejectedValueOnce(taken()).mockResolvedValueOnce({});

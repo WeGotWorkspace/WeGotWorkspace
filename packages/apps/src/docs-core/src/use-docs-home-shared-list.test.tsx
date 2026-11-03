@@ -169,4 +169,18 @@ describe("useDocsHomeSharedList", () => {
     );
     connectivity.online = true;
   });
+
+  it("says it too when the list loaded and the tab then went offline (#1563)", async () => {
+    const listSharedWithMe = vi.fn().mockResolvedValue([]);
+    const { result, rerender } = renderHook(() =>
+      useDocsHomeSharedList({ username: "alice", shareOperations: { listSharedWithMe } }),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
+
+    connectivity.online = false;
+    rerender();
+    expect(result.current.error).toBe("Shared documents are not available offline.");
+    connectivity.online = true;
+  });
 });
