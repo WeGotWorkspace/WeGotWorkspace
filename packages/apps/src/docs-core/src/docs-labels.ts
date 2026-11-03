@@ -19,6 +19,8 @@ export const docsLabels = {
   homeLoadMore: "Load more",
   homeLoadError: "Could not load documents.",
   homeNotAvailableOffline: "This document is not available offline.",
+  /** Shared with me is read from the server only (#1563). */
+  homeSharedOffline: "Shared documents are not available offline.",
   /** Drive SST — single source (`driveLabels`). */
   offlineAvailable: driveLabels.offlineAvailable,
   syncingOffline: "Syncing offline",

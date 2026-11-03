@@ -390,6 +390,51 @@ async function moveIndexedDbPersistence(fromName: string, toName: string): Promi
   }
 }
 
+function pathKeyedRoomOf(databaseName: string): string | null {
+  const suffix = `:${DOCS_COLLAB_PATH_DB_VERSION}`;
+  return databaseName.endsWith(suffix) ? databaseName.slice(0, -suffix.length) : null;
+}
+
+/**
+ * A Doc, or the folder that holds it, now lives at another path (#1563). Text
+ * kept in a path-keyed database (a Doc opened before its FileNode id was
+ * known, or created offline) moves with it, so it is saved to the file and
+ * not stranded at the old path. A database keyed by FileNode id needs nothing.
+ * Only databases that exist are opened. Returns whether one moved.
+ */
+export async function moveDocsCollabPathDatabases(
+  oldPath: string,
+  newPath: string,
+): Promise<boolean> {
+  const oldRoom = docsCollabRoomKey(oldPath);
+  const newRoom = docsCollabRoomKey(newPath);
+  if (!oldRoom || !newRoom || oldRoom === newRoom) return false;
+  const existing = await listExistingIndexedDatabaseNames();
+  const moves = new Map<string, string>();
+  const oldNames = indexedDbNamesForRoom(oldRoom);
+  const newNames = indexedDbNamesForRoom(newRoom);
+  oldNames.forEach((name, index) => {
+    const target = newNames[index];
+    if (target && (!existing || existing.has(name))) moves.set(name, target);
+  });
+  for (const name of existing ?? []) {
+    const room = pathKeyedRoomOf(name);
+    if (!room?.startsWith(`${oldRoom}/`)) continue;
+    moves.set(name, docsCollabIndexedDbKey(`${newRoom}${room.slice(oldRoom.length)}`));
+  }
+  let movedAny = false;
+  for (const [fromName, toName] of moves) {
+    if (!(await moveIndexedDbPersistence(fromName, toName))) continue;
+    movedAny = true;
+    const fromRoom = pathKeyedRoomOf(fromName) ?? oldRoom;
+    const toRoom = pathKeyedRoomOf(toName) ?? newRoom;
+    // A moved database always carries the pending flag (see above).
+    setCollabRoomPendingServerSave(fromRoom, false);
+    setCollabRoomPendingServerSave(toRoom, true);
+  }
+  return movedAny;
+}
+
 /**
  * Copies a Notes y-indexeddb database when an offline-created UID is remapped
  * to the server UID. Docs path changes do not call this: the database name is

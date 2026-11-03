@@ -1,10 +1,12 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
+import { createDriveFileKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,
   markOutboxError,
+  putOutboxMutation,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
@@ -14,6 +16,11 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import {
+  moveKeptBothDocsCreate,
+  retargetDocsOutboxPayload,
+  type DocsKeptBoth,
+} from "@/lib/offline/docs/docs-create-kept-both";
 
 export type DocsOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
@@ -52,12 +59,17 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
   let failed = 0;
   const stateMismatches: string[] = [];
 
-  for (const row of rows) {
+  const keptBoth: DocsKeptBoth[] = [];
+
+  for (const queued of rows) {
+    // A later write on a kept-both create's path follows it to the name it got.
+    const row = retargetQueuedRow(queued, keptBoth);
     const payload = parsePayload(row);
     if (!payload) {
       await removeOutboxMutation(username, row.id);
       continue;
     }
+    if (row !== queued) await putOutboxMutation(username, row);
 
     try {
       if (payload.op === "rename" || payload.op === "trash") {
@@ -71,17 +83,19 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
         });
         await applyRenameSideEffects(username, payload.from, payload.destination, payload.to);
       } else if (payload.op === "create") {
+        // A name taken on the server meanwhile keeps both: that file is never replaced.
         const { destination, from } = parentAndName(payload.apiPath);
-        const lower = from.toLowerCase();
-        const mime = lower.endsWith(".txt")
-          ? "text/plain;charset=utf-8"
-          : "text/markdown;charset=utf-8";
-        const blob = new Blob([payload.content], { type: mime });
-        const file = new File([blob], from, {
-          type: lower.endsWith(".txt") ? "text/plain" : "text/markdown",
-          lastModified: Date.now(),
+        const name = await createDriveFileKeepingBoth(destination, docsCreateFile(payload), {
+          mayHaveLanded: row.retries > 0,
         });
-        await drive.uploadFiles({ cwd: destination, files: [file] });
+        if (name !== from) {
+          const move = {
+            from: payload.apiPath,
+            to: nextPathAfterRename(payload.apiPath, destination, name),
+          };
+          await moveKeptBothDocsCreate(username, move);
+          keptBoth.push(move);
+        }
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
       }
@@ -107,6 +121,29 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
   }
 
   return { flushed, failed, stateMismatches };
+}
+
+function docsCreateFile(payload: Extract<DocsOutboxPayload, { op: "create" }>): File {
+  const { from } = parentAndName(payload.apiPath);
+  const isText = from.toLowerCase().endsWith(".txt");
+  const blob = new Blob([payload.content], {
+    type: isText ? "text/plain;charset=utf-8" : "text/markdown;charset=utf-8",
+  });
+  return new File([blob], from, {
+    type: isText ? "text/plain" : "text/markdown",
+    lastModified: Date.now(),
+  });
+}
+
+function retargetQueuedRow(
+  row: OfflineOutboxRow,
+  keptBoth: readonly DocsKeptBoth[],
+): OfflineOutboxRow {
+  const payload = keptBoth.length > 0 ? parsePayload(row) : null;
+  if (!payload) return row;
+  let next = payload;
+  for (const move of keptBoth) next = retargetDocsOutboxPayload(next, move.from, move.to);
+  return next === payload ? row : { ...row, payload: JSON.stringify(next) };
 }
 
 export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] {

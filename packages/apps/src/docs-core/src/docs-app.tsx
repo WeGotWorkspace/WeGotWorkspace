@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
@@ -32,7 +31,7 @@ import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
-import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
+import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
@@ -59,14 +58,17 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [search],
   );
   const offlineUsername = resolveDocsOfflineUsername(session.user.username);
-  const [editorInboundKey, setEditorInboundKey] = useState(0);
-  useDriveFileNodeInbound(filePath ? offlineUsername : undefined, editorInboundKey);
-  useOnReconnect(
-    useCallback(() => {
-      if (!filePath) return;
-      setEditorInboundKey((key) => key + 1);
-    }, [filePath]),
+  const followMovedFile = useCallback(
+    (apiPath: string) => {
+      void navigate({ to: "/docs", search: docsSearchFromApiPath(apiPath), replace: true });
+    },
+    [navigate],
   );
+  const { holdServerSave } = useDocsEditorPathFollow({
+    username: offlineUsername,
+    filePath,
+    onFollow: followMovedFile,
+  });
 
   useNotificationsMarkReadOnConsume({
     docsApiPath: filePath,
@@ -194,15 +196,17 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       documentUrl,
       yjsUrl,
       room,
+      // Held on this device while the server does not have this path yet, or may have moved it.
+      roomNotPersistent: holdServerSave,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
     };
-  }, [collabAuthToken, filePath, showCollab, showError]);
+  }, [collabAuthToken, filePath, holdServerSave, showCollab, showError]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 
-  useOfflinePendingToast(pendingCollabSync, docsLabels.toastSynced, showCollab);
+  useOfflinePendingToast(pendingCollabSync, docsLabels.toastSynced, showCollab, collabUrls?.room);
 
   const collabUserName = session.user.displayName || session.user.username || "User";
   const collabDocumentTitle = useMemo(() => {

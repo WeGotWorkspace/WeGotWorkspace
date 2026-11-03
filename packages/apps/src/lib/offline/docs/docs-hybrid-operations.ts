@@ -29,6 +29,13 @@ import {
   type OutboxFlushResult,
 } from "@/lib/offline/docs/docs-outbox-flush";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
+import { notifyDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
+import {
+  readDocsOfflineDirectory,
+  rememberDocsLiveDirectory,
+  readDocsOfflineEntriesByPaths,
+} from "@/lib/offline/docs/docs-offline-entries";
+import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
   buildOfflineDocsSearchResult,
@@ -66,8 +73,13 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>
 async function flushDocsOutboxTask(username: string): Promise<OutboxFlushResult> {
   const result = await flushDocsOutbox(username);
   reportDocsSyncConflicts(result.stateMismatches);
+  // Open tabs re-read what the flush settled (an editor waiting on a queued create, a list).
+  if (result.flushed > 0) notifyDocsCachesChanged(username);
   return result;
 }
+
+/** Permanent delete is not queued: it cannot be undone, so it waits for a connection. */
+export const DOCS_DELETE_NEEDS_CONNECTION = "Deleting permanently needs a connection.";
 
 function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> {
   return syncRunnerRegistry.getOrCreate(username, async () => flushDocsOutboxTask(username));
@@ -201,6 +213,11 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
             await applyOfflineTrashSideEffectsSafely(username, input.from);
           } else {
             await applyOnlineRenameSideEffects(username, input.from, input.destination, input.to);
+            await moveDocsPath(
+              username,
+              input.from,
+              docsOutboxPathFromRename(input.from, destination, to),
+            );
           }
           return data;
         } catch (error) {
@@ -220,7 +237,42 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
         ? { op: "trash", from, destination, to }
         : { op: "rename", from, destination, to: input.to };
       await queueDocsOutbox(username, payload);
+      // An editor of this Doc in another tab follows it now, while both are offline.
+      if (!isTrash) {
+        await moveDocsPath(username, from, docsOutboxPathFromRename(from, destination, input.to));
+      }
       return offlineQueuedDriveData(destination);
+    },
+    listDirectory: async (at, opts) => {
+      if (readBrowserOnline()) {
+        try {
+          const data = await live.listDirectory(at, opts);
+          rememberDocsLiveDirectory(username, normalizeApiVirtualPath(at), data.directory.files);
+          return data;
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      return readDocsOfflineDirectory(username, normalizeApiVirtualPath(at));
+    },
+    listEntriesByPaths: async (paths, opts) => {
+      if (readBrowserOnline()) {
+        try {
+          return await live.listEntriesByPaths(paths, opts);
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      return readDocsOfflineEntriesByPaths(username, paths);
+    },
+    deleteItems: async (paths, opts) => {
+      if (!readBrowserOnline()) throw new Error(DOCS_DELETE_NEEDS_CONNECTION);
+      try {
+        return await live.deleteItems(paths, opts);
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error, opts?.signal);
+        throw new Error(DOCS_DELETE_NEEDS_CONNECTION);
+      }
     },
     uploadFiles: async (input, opts) => {
       if (readBrowserOnline()) {

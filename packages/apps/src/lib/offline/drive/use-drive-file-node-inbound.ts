@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
@@ -15,8 +15,12 @@ function shownPaths(paths: readonly string[]): string {
 export function useDriveFileNodeInbound(
   username: string | null | undefined,
   refreshKey: number,
+  /** Called once the pull for `refreshKey` finished, whether it worked or not. */
+  onSettled?: (refreshKey: number) => void,
 ): void {
   const { show } = useAppToast();
+  const onSettledRef = useRef(onSettled);
+  onSettledRef.current = onSettled;
   useEffect(() => {
     if (!username) return;
     let cancelled = false;
@@ -32,6 +36,9 @@ export function useDriveFileNodeInbound(
       })
       .catch((error: unknown) => {
         console.warn("[drive-inbound] FileNode sync failed", error);
+      })
+      .finally(() => {
+        if (!cancelled) onSettledRef.current?.(refreshKey);
       });
     return () => {
       cancelled = true;

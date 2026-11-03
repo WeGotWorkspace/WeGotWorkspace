@@ -13,8 +13,10 @@ import {
 import {
   captureOfflineDocsTrashSnapshot,
   createHybridDocsDriveOperations,
+  DOCS_DELETE_NEEDS_CONNECTION,
   undoOfflineDocsTrash,
 } from "@/lib/offline/docs/docs-hybrid-operations";
+import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
 import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -354,5 +356,95 @@ describe("createHybridDocsDriveOperations offline star and download", () => {
     await expect(operations.readFileBlob("/users/alice/missing.md")).rejects.toThrow(
       "This file is not available offline.",
     );
+  });
+});
+
+describe("createHybridDocsDriveOperations offline gaps (#1563)", () => {
+  const trashDir = "/users/alice/.Trash";
+  const trashListing = {
+    user: { username, name: username, role: "user" as const, roots: [] },
+    cwd: trashDir,
+    directory: {
+      location: trashDir,
+      files: [
+        {
+          type: "file" as const,
+          path: `${trashDir}/Listed.md`,
+          name: "Listed.md",
+          size: 3,
+          time: 1,
+          permissions: 0,
+        },
+      ],
+    },
+  };
+  const live = {
+    renameItem: vi.fn(),
+    listDirectory: vi.fn(),
+    listEntriesByPaths: vi.fn(),
+    deleteItems: vi.fn(),
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(createWgwDriveOperations).mockReturnValue(
+      live as unknown as ReturnType<typeof createWgwDriveOperations>,
+    );
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await docsListingRowsTable(db).clear();
+  });
+
+  it("lists a folder from this device when offline, with the last live listing", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.listDirectory.mockResolvedValue(trashListing);
+    const operations = createHybridDocsDriveOperations(username);
+    await operations.listDirectory(trashDir);
+
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const offline = await operations.listDirectory(trashDir);
+
+    expect(live.listDirectory).toHaveBeenCalledTimes(1);
+    expect(offline.directory.files.map((file) => file.path)).toEqual([`${trashDir}/Listed.md`]);
+  });
+
+  it("falls back to this device when the live listing fails on the network", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.listEntriesByPaths.mockRejectedValue(new TypeError("Failed to fetch"));
+    const operations = createHybridDocsDriveOperations(username);
+
+    const entries = await operations.listEntriesByPaths(["/users/alice/Starred.md"]);
+
+    expect(entries.map((entry) => entry.path)).toEqual(["/users/alice/Starred.md"]);
+  });
+
+  it("says deleting permanently needs a connection instead of failing to fetch", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridDocsDriveOperations(username);
+    await expect(operations.deleteItems([`${trashDir}/Listed.md`])).rejects.toThrow(
+      DOCS_DELETE_NEEDS_CONNECTION,
+    );
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.deleteItems.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(operations.deleteItems([`${trashDir}/Listed.md`])).rejects.toThrow(
+      DOCS_DELETE_NEEDS_CONNECTION,
+    );
+    expect(await listOutboxMutations(username)).toEqual([]);
+  });
+
+  it("tells every tab where an offline-renamed Doc went", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const heard: Array<[string, string]> = [];
+    const unsubscribe = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
+    const operations = createHybridDocsDriveOperations(username);
+
+    await operations.renameItem({
+      from: "/users/alice/Open.md",
+      destination: "/users/alice",
+      to: "Renamed.md",
+    });
+    await expect.poll(() => heard).toEqual([["users/alice/Open.md", "users/alice/Renamed.md"]]);
+    unsubscribe();
   });
 });

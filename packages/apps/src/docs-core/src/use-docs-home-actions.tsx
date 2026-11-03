@@ -3,7 +3,11 @@ import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { captureOfflineDocsTrashSnapshot } from "@/lib/offline/docs/docs-hybrid-operations";
+import {
+  captureOfflineDocsTrashSnapshot,
+  DOCS_DELETE_NEEDS_CONNECTION,
+} from "@/lib/offline/docs/docs-hybrid-operations";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
@@ -48,6 +52,37 @@ type UseDocsHomeActionsArgs = {
   /** When true, delete confirms permanently remove files instead of moving to Trash. */
   inTrashView?: boolean;
 };
+
+function filesWithApiPath(
+  ids: readonly string[],
+  fileById: (id: string) => DriveFile | undefined,
+): DriveFile[] {
+  return ids.map((id) => fileById(id)).filter((file): file is DriveFile => !!file?.apiPath);
+}
+
+/** A Doc moved back out of Trash gets its old row id again: stop hiding it (#1563). */
+function unhideArrivedFiles(
+  hidden: Set<string>,
+  destination: string,
+  moved: readonly DriveFile[],
+): Set<string> {
+  const arrived = moved.map(
+    (file) => `:${normalizeApiVirtualPath(`${destination}/${file.title}`).replace(/^\/+/, "")}`,
+  );
+  const next = new Set([...hidden].filter((id) => !arrived.some((key) => id.endsWith(key))));
+  return next.size === hidden.size ? hidden : next;
+}
+
+/** Deleting for good is never queued offline: say so instead of hiding the row (#1563). */
+function permanentDeleteNeedsConnection(
+  state: DocsHomeDeleteState,
+  offlineUsername: string | null | undefined,
+  showError: (message: string) => void,
+): boolean {
+  if (!state.permanent || !offlineUsername || getConnectivitySnapshot()) return false;
+  showError(DOCS_DELETE_NEEDS_CONNECTION);
+  return true;
+}
 
 export function useDocsHomeActions({
   operations,
@@ -229,9 +264,7 @@ export function useDocsHomeActions({
       const state = moveState;
       closeMove();
       if (!state || !operations) return;
-      const rows = state.ids
-        .map((id) => fileById(id))
-        .filter((file): file is DriveFile => !!file?.apiPath);
+      const rows = filesWithApiPath(state.ids, fileById);
       if (rows.length === 0) return;
       const destination = apiPathFromUiPath(destinationUiPath, username, groupRootNames);
       void (async () => {
@@ -240,6 +273,7 @@ export function useDocsHomeActions({
             const apiPath = normalizeApiVirtualPath(file.apiPath!);
             await operations.renameItem({ destination, from: apiPath, to: file.title });
           }
+          setHiddenFileIds((prev) => unhideArrivedFiles(prev, destination, rows));
           show(rows.length === 1 ? `Moved “${rows[0]!.title}”` : `Moved ${rows.length} files`);
           reload();
         } catch (error: unknown) {
@@ -268,10 +302,9 @@ export function useDocsHomeActions({
     const state = deleteState;
     closeDelete();
     if (!state || !operations) return;
-    const rows = state.ids
-      .map((id) => fileById(id))
-      .filter((file): file is DriveFile => !!file?.apiPath);
+    const rows = filesWithApiPath(state.ids, fileById);
     if (rows.length === 0) return;
+    if (permanentDeleteNeedsConnection(state, offlineUsername, showError)) return;
 
     const ids = rows.map((file) => file.id);
     setHiddenFileIds((prev) => {

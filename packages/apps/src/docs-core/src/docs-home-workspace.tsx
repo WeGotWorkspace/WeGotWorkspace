@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
@@ -217,11 +217,15 @@ export function DocsHomeWorkspace({
   );
 
   const [outboxNoticeKey, setOutboxNoticeKey] = useState(0);
+  // "Changes synced" only when this reconnect's queued changes all reached the server.
+  const flushLandedRef = useRef(false);
   const syncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
+      flushLandedRef.current = false;
       if (!offlineUsername) return;
-      await getDocsSyncRunner(offlineUsername).flush();
+      const result = await getDocsSyncRunner(offlineUsername).flush();
+      flushLandedRef.current = Boolean(result && result.flushed > 0 && result.failed === 0);
     },
     afterFlush: async () => {
       await refresh();
@@ -268,7 +272,7 @@ export function DocsHomeWorkspace({
     readProgress: readBodySyncProgress,
   });
 
-  useOfflineSyncToast(syncing, labels.toastSynced);
+  useOfflineSyncToast(syncing, labels.toastSynced, () => flushLandedRef.current);
 
   useEffect(() => {
     if (online && offlineUsername) refresh();
