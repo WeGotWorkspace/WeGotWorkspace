@@ -165,7 +165,7 @@ function SidebarHarness() {
   const { primarySidebarItems } = useDriveSidebarModel({
     labels: driveLabels,
     view: { type: "folder", path: "My Drive" },
-    uploads: { count: 3, failed: 0, paused: true },
+    uploads: { count: 3, failed: 1, paused: true },
     sidebarGroupRoots: [],
     selectView: STORY_NOOP,
     sidebarDropZoneProps: () => ({}),

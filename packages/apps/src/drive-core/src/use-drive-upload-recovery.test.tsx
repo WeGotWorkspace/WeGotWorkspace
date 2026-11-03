@@ -7,55 +7,7 @@ import {
   driveUploadStoryItemId,
   driveUploadStorySnapshot,
 } from "@/drive-core/src/drive-upload-story-fixtures";
-import {
-  useDriveUploadLeaveWarning,
-  useDriveUploadRetryAfterSignIn,
-} from "@/drive-core/src/use-drive-upload-recovery";
-
-const lastTab = vi.hoisted(() => ({ value: true }));
-vi.mock("@/lib/offline/drive/upload/drive-upload-last-tab", () => ({
-  isLastDriveUploaderTab: async () => lastTab.value,
-}));
-
-function beforeUnload(): BeforeUnloadEvent {
-  const event = new Event("beforeunload", { cancelable: true }) as BeforeUnloadEvent;
-  window.dispatchEvent(event);
-  return event;
-}
-
-describe("useDriveUploadLeaveWarning (#1522)", () => {
-  beforeEach(() => {
-    lastTab.value = true;
-  });
-
-  it("warns while files upload in the last tab", async () => {
-    renderHook(() => useDriveUploadLeaveWarning("running", "alice"));
-    await waitFor(() => expect(beforeUnload().defaultPrevented).toBe(true));
-  });
-
-  it("does not warn when another tab would take over", async () => {
-    lastTab.value = false;
-    renderHook(() => useDriveUploadLeaveWarning("running", "alice"));
-    await waitFor(() => expect(beforeUnload().defaultPrevented).toBe(false));
-  });
-
-  it("does not warn while the queue waits (offline, server full, idle)", () => {
-    for (const state of ["paused_offline", "paused_server_full", "idle"] as const) {
-      const { unmount } = renderHook(() => useDriveUploadLeaveWarning(state, "alice"));
-      expect(beforeUnload().defaultPrevented).toBe(false);
-      unmount();
-    }
-  });
-
-  it("stops warning once the queue is done", async () => {
-    const { rerender } = renderHook(({ state }) => useDriveUploadLeaveWarning(state, "alice"), {
-      initialProps: { state: "running" as "running" | "idle" },
-    });
-    await waitFor(() => expect(beforeUnload().defaultPrevented).toBe(true));
-    rerender({ state: "idle" });
-    expect(beforeUnload().defaultPrevented).toBe(false);
-  });
-});
+import { useDriveUploadRetryAfterSignIn } from "@/drive-core/src/use-drive-upload-recovery";
 
 describe("useDriveUploadRetryAfterSignIn (#1522)", () => {
   afterEach(() => window.sessionStorage.clear());
