@@ -109,9 +109,12 @@ final class VapidPushService
     /**
      * Send VAPID for local deliveries that were not acked in the 20s local-ack window.
      *
-     * Oldest due first. A failed delivery is moved back by its own age (at least one
-     * tick), so it queues behind newer deliveries, and it is dropped once it is older
-     * than GIVE_UP_AFTER_SECONDS. One failing subscription cannot hold up the batch.
+     * Oldest due first. Only subscriptions that have not got the notification yet
+     * are sent to (#1670), so a delivery the urgent send started, or one that
+     * partly failed, never repeats a push. While a subscription stays open the
+     * delivery is moved back by its own age (at least one tick), so it queues
+     * behind newer deliveries, and it is dropped once it is older than
+     * GIVE_UP_AFTER_SECONDS. One failing subscription cannot hold up the batch.
      */
     public function sweepDue(): int
     {
@@ -138,15 +141,14 @@ final class VapidPushService
 
                     continue;
                 }
-                $completed = $this->sendNotification($notification);
-                if ($completed === 0 && $this->receivingSubscriptions($notification) !== []) {
+                $sent += $this->sendNotification($notification);
+                if ($this->openSubscriptions($notification) !== []) {
                     $this->scheduleRetry($delivery, $now);
 
                     continue;
                 }
                 $delivery->sent_at = $now;
                 $delivery->save();
-                $sent += $completed;
             }
         } finally {
             $this->failedEndpoints = [];
@@ -164,24 +166,22 @@ final class VapidPushService
     }
 
     /**
-     * Send to the principal's subscriptions whose app scope holds the path this
-     * notification opens (#1606); each gets a payload that opens inside its app.
+     * Send, one at a time, to the principal's subscriptions that are still open
+     * for this notification (see {@see openSubscriptions()}); each gets a payload
+     * that opens inside its app.
+     *
+     * @return int subscriptions done with: sent, or pruned after a permanent rejection
      */
     public function sendNotification(Notification $notification): int
     {
         $payloads = [];
         $completed = 0;
-        foreach ($this->receivingSubscriptions($notification) as [$sub, $scope]) {
-            if (! $this->endpoints->isAllowed((string) $sub->endpoint)) {
-                $this->pruneEndpoint((string) $sub->endpoint);
-
-                continue;
-            }
+        foreach ($this->openSubscriptions($notification) as [$sub, $scope]) {
             $hash = (string) $sub->endpoint_hash;
             if (isset($this->failedEndpoints[$hash])) {
                 continue;
             }
-            $payloads[$scope] ??= json_encode($this->pushPayload($notification, $scope), JSON_THROW_ON_ERROR);
+            $payloads[$scope] ??= $this->encodedPayload($notification, $scope);
             $status = $this->sender->send(
                 (string) $sub->endpoint,
                 (string) $sub->p256dh,
@@ -189,10 +189,7 @@ final class VapidPushService
                 $payloads[$scope],
                 $this->vapidAuth(),
             );
-            if (in_array($status, self::PERMANENT_REJECTIONS, true)) {
-                $this->pruneEndpoint((string) $sub->endpoint);
-                $completed++;
-            } elseif ($status >= 200 && $status < 300) {
+            if ($this->settle($notification, $sub, $status)) {
                 $completed++;
             } else {
                 $this->failedEndpoints[$hash] = true;
@@ -200,6 +197,92 @@ final class VapidPushService
         }
 
         return $completed;
+    }
+
+    /**
+     * Subscriptions that should still get this notification: they receive it by
+     * app scope (#1606) and have no `vapid` delivery row for it yet (#1670).
+     * A subscription whose endpoint the policy no longer allows is pruned here.
+     *
+     * @return list<array{0: PushSubscription, 1: string}> subscription and the scope it receives under
+     */
+    public function openSubscriptions(Notification $notification): array
+    {
+        $delivered = array_flip(array_map('strval', NotificationDelivery::query()
+            ->where('notification_id', $notification->id)
+            ->where('channel', NotificationDelivery::CHANNEL_VAPID)
+            ->whereNotNull('endpoint_hash')
+            ->pluck('endpoint_hash')
+            ->all()));
+        $open = [];
+        foreach ($this->receivingSubscriptions($notification) as [$sub, $scope]) {
+            if (isset($delivered[(string) $sub->endpoint_hash])) {
+                continue;
+            }
+            if (! $this->endpoints->isAllowed((string) $sub->endpoint)) {
+                $this->pruneEndpoint((string) $sub->endpoint);
+
+                continue;
+            }
+            $open[] = [$sub, $scope];
+        }
+
+        return $open;
+    }
+
+    /**
+     * Apply one push service answer. A success is recorded per subscription, a
+     * permanent rejection prunes the subscription.
+     *
+     * @return bool true when the subscription is done with, false when it stays open
+     */
+    public function settle(Notification $notification, PushSubscription $sub, int $status): bool
+    {
+        if (in_array($status, self::PERMANENT_REJECTIONS, true)) {
+            $this->pruneEndpoint((string) $sub->endpoint);
+
+            return true;
+        }
+        if ($status < 200 || $status >= 300) {
+            return false;
+        }
+        $now = Carbon::now();
+        NotificationDelivery::query()->create([
+            'id' => (string) Str::ulid(),
+            'notification_id' => $notification->id,
+            'principal' => (string) $notification->principal,
+            'channel' => NotificationDelivery::CHANNEL_VAPID,
+            'endpoint_hash' => (string) $sub->endpoint_hash,
+            'due_at' => $now,
+            'sent_at' => $now,
+            'created_at' => $now,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Mark the local delivery sent once no subscription is open for it, so the
+     * sweep stops looking at it. Acked deliveries stay as they are.
+     */
+    public function finishIfNothingOpen(Notification $notification): bool
+    {
+        if ($this->openSubscriptions($notification) !== []) {
+            return false;
+        }
+        NotificationDelivery::query()
+            ->where('notification_id', $notification->id)
+            ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
+            ->whereNull('acked_at')
+            ->whereNull('sent_at')
+            ->update(['sent_at' => Carbon::now()]);
+
+        return true;
+    }
+
+    public function encodedPayload(Notification $notification, string $scope): string
+    {
+        return json_encode($this->pushPayload($notification, $scope), JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -216,7 +299,11 @@ final class VapidPushService
      *     tag: string,
      *     renotify: bool,
      *     app_badge: int,
-     *     scope: string
+     *     scope: string,
+     *     id: string,
+     *     domain: string,
+     *     action: string,
+     *     created_at: string
      * }
      */
     public function pushPayload(Notification $notification, string $scope = PushScopes::ROOT): array
@@ -247,6 +334,11 @@ final class VapidPushService
             'renotify' => true,
             'app_badge' => 1,
             'scope' => $scope,
+            // Lets a visible window show the row before its own inbox fetch (#1670).
+            'id' => (string) $notification->id,
+            'domain' => (string) $notification->domain,
+            'action' => (string) $notification->action,
+            'created_at' => $notification->created_at->toIso8601ZuluString(),
         ];
     }
 
