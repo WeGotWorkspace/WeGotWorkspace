@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./helpers/live-test";
+import { expect, test } from "./helpers/live-test";
 import {
   FULL,
   WAITING_SPACE,
@@ -7,18 +7,15 @@ import {
   openMyDrive,
   pickFile,
   queueIntoFolder,
-  goOfflineKeepingShell,
   goOnlineAgain,
   uniqueName,
   namesIn,
   renameFolderOnServer,
   trashFolderOnServer,
-  createFolder,
   openFolder,
   openUploads,
   uploadRow,
 } from "./helpers/drive-upload-live";
-import { E2E_USERNAME } from "./helpers/notes-live";
 
 test.describe("Drive upload errors (live app)", () => {
   test.beforeEach(async ({ context }) => {
