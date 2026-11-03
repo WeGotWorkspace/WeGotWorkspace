@@ -24,6 +24,7 @@ import {
   useDocsListingCacheRefresh,
   useDocsListingReconnectRefresh,
 } from "@/docs-core/src/use-docs-listing-cache-refresh";
+import { retryFailedListing } from "@/docs-core/src/docs-listing-retry";
 
 export type DocsHomeFetcher = (
   params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
@@ -113,6 +114,7 @@ export function useDocsHomeListingLoad({
   const [error, setError] = useState<string | null>(null);
   const [isOfflineListing, setIsOfflineListing] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const failedReloadsRef = useRef(0);
   const resultsRef = useRef(results);
   resultsRef.current = results;
   /** Cache key of the filters the visible `results` belong to. */
@@ -261,6 +263,7 @@ export function useDocsHomeListingLoad({
       const liveLoaded = await fetchLiveListing(controller.signal);
       if (cancelled) return;
 
+      retryFailedListing(failedReloadsRef, liveLoaded, setReloadToken, controller.signal);
       if (!liveLoaded) {
         if (hasRows) {
           setIsOfflineListing(true);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
+use App\Services\Notify\PushScopes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -18,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $p256dh
  * @property string $auth
  * @property string|null $user_agent
+ * @property string|null $scopes space-separated manifest ids; null = unknown, see PushScopes
  * @property Carbon $created_at
  * @property Carbon|null $updated_at
  */
@@ -42,6 +44,7 @@ final class PushSubscription extends Model
         'p256dh',
         'auth',
         'user_agent',
+        'scopes',
         'created_at',
         'updated_at',
     ];
@@ -51,4 +54,14 @@ final class PushSubscription extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * App scopes this subscription receives; null while unknown (receives everything).
+     *
+     * @return list<string>|null
+     */
+    public function scopeList(): ?array
+    {
+        return PushScopes::decode($this->scopes);
+    }
 }

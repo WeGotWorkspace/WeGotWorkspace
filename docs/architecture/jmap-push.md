@@ -209,7 +209,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.sync()` |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
 | Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); toast to do ([notifications.md](notifications.md#active-news-on-the-client)) |
-| Drive, Docs home | `FileNode` | `FileNode/changes` for the visible folder (`use-drive-file-node-inbound.ts`) |
+| Drive, Docs home | `FileNode` | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
 | Tasks | `Task`, `TaskList` | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`) |
 
 The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`. Work that one tab should do per push, such as fetching the inbox once and sharing it, checks `hub.leading`: the tab that holds the stream is visible whenever any subscribed tab is.
@@ -239,6 +239,7 @@ After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` ove
 1. **Collection metadata:** not a gap in the state. Every rename or recolour, from the app or from a DAV `PROPPATCH`, goes through Sabre's `updateCalendar` / `updateAddressBook`, which move the shared synctoken, so `/changes` and push see it for everyone with access (#1671). What stays per user: when a calendar, notebook or task list is shared with a person, each sharee has their own name and colour for the collection, so the owner's rename wakes the sharee's app but does not change the name the sharee sees. Group collections have one name for every member.
 2. **Docs threads:** they use the Drive ACL; a later slice.
 3. **Tasks:** there is no JMAP type yet. Push uses the REST list state.
+4. **Drive shares from another user:** `FileNode/changes` lists the change, but the offline cache cannot place a node under a share rooted in someone else's tree (`resolveNodePath`). The open folder still refreshes, because it loads the folder from the server; the cache for that share does not follow. The Docs home does not list files inside such a share at all, push or not.
 
 ## Open questions
 
