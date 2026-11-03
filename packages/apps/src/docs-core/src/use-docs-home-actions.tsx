@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
-import { useQueuedMutation } from "@/hooks/use-queued-mutation";
+import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -403,7 +403,7 @@ export function useDocsHomeActions({
         toastMessage: nextValue ? "Starred" : "Unstarred",
         icon: toastIcon,
         execute: async (signal, markCompleted) => {
-          await Promise.all(
+          await settleAll(
             rows.map(async (file) => {
               const path = normalizeApiVirtualPath(file.apiPath!);
               await operations.setStar({ path, starred: nextValue }, { signal });

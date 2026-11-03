@@ -1,4 +1,4 @@
-import type { CompletedWriteKeys } from "@/hooks/use-queued-mutation";
+import { settleAll, type CompletedWriteKeys } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
 import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
 import type { NoteMetadataField, NotesAPIOperations } from "./notes-types";
@@ -36,7 +36,7 @@ export function sendNoteFields(
   markCompleted?: MarkCompleted,
 ): Promise<void> {
   if (!operations) return Promise.resolve();
-  return Promise.all(
+  return settleAll(
     rows.map(async (row) => {
       await persistNoteOrDropGone(operations.upsertNote(row, { fields }), () => onGone(row.id));
       markCompleted?.(row.id);
@@ -57,7 +57,7 @@ export function sendTagDelta(
   markCompleted?: MarkCompleted,
 ): Promise<void> {
   if (!operations) return Promise.resolve();
-  return Promise.all(
+  return settleAll(
     rows.map(async (row) => {
       let gone = false;
       const saved = await persistNoteKeepingSyncRace(
@@ -95,7 +95,7 @@ export function sendArchiveState(
   markCompleted?: MarkCompleted,
 ): Promise<(Note | undefined)[]> {
   if (!operations) return Promise.resolve([]);
-  return Promise.all(
+  return settleAll(
     ids.map(async (id) => {
       const saved = await persistNoteOrDropGone(
         archived ? operations.archiveNote(id) : operations.restoreNote(id),

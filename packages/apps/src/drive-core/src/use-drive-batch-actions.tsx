@@ -2,7 +2,7 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { useAppToast } from "@/hooks/use-app-toast";
-import type { QueueMutation } from "@/hooks/use-queued-mutation";
+import { settleAll, type QueueMutation } from "@/hooks/use-queued-mutation";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
   driveRestoreMoves,
@@ -330,7 +330,7 @@ export function useDriveBatchActions({
       icon: toastIcon,
       execute: async (signal, markCompleted) => {
         if (!operations) return;
-        await Promise.all(
+        await settleAll(
           rows.map(async (file) => {
             const path = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
             await operations.setStar({ path, starred: nextValue }, { signal });

@@ -21,6 +21,18 @@ type UndoableWriteBase = {
 export type CompletedWriteKeys = ReadonlySet<string> | null;
 
 /**
+ * Runs the items of a batch and waits for every one to settle before it rejects with the
+ * first failure. `Promise.all` would reject at once and the hook would revert before a slower
+ * item called `markCompleted`, leaving that item applied on the server.
+ */
+export async function settleAll<T>(tasks: Promise<T>[]): Promise<T[]> {
+  const results = await Promise.allSettled(tasks);
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed) throw (failed as PromiseRejectedResult).reason;
+  return results.map((result) => (result as PromiseFulfilledResult<T>).value);
+}
+
+/**
  * A write the server can take back. It is sent right away, so other people see it within
  * seconds. Undo puts the screen back and then sends `revert`, a compensating write, once
  * `execute` has settled. Write `revert` as a delta (star back to its old value, move back,
