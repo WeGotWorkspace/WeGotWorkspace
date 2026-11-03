@@ -65,6 +65,7 @@ export const shareLabels = {
   publicLinkContinue: "Continue",
   publicLinkErrorTitle: "Could not open link",
   publicLinkOpenError: "This share link is invalid or has expired.",
+  publicLinkDownloadError: "The download could not start. Try again in a moment.",
   publicLinkMissingToken: "This share URL is missing a token.",
   publicLinkErrorHint: "Ask the owner for a new link, or",
   publicLinkSignIn: "sign in to your workspace",

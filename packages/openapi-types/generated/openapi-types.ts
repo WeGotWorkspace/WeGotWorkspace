@@ -8197,6 +8197,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/download-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one drive file by path
+         * @description WGW extension (#1622). Lets a share-link guest download a file natively: the browser streams it to disk and can resume it with `Range`. The server checks read access to `path` for the caller, finds the file's current node blobId, and issues the same kind of ticket as `POST /jmap/download-tickets/{accountId}`: same secret, idle expiry (30 min), absolute lifetime (24 h), and URL (`GET /jmap/download-ticket/{secret}/{name}`). A guest's ticket is bound to its share session: revoking the link, revoking or expiring the session, or a path leaving the share stops the download at its next request. A signed-in caller's ticket is bound to its sign-in session. The ticket serves only the bytes the file had when it was issued; after the content changes it answers 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Virtual drive path of a file the caller may read. */
+                        path: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                /** @description `bad_request`: path is missing. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Missing or invalid access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description `session_required`: a signed-in access token without session binding. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description No readable file at path: outside the share, a folder, missing, or the share session ended. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11220,7 +11309,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };

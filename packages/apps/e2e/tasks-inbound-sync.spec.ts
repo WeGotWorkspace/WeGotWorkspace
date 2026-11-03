@@ -1,6 +1,7 @@
 // Tasks inbound sync (live app, #1613). An open Tasks list follows changes
 // made elsewhere (another tab, a phone, a CalDAV client) without a reload:
-// within one poll while online, and right after reconnect.
+// within one poll while online (push is the main path, #1665; see
+// tasks-push.spec.ts), and right after reconnect.
 //
 // The changes are made through the REST API as the same user, which is what
 // tab B, a phone or a CalDAV client does from tab A's point of view.
@@ -10,7 +11,7 @@ const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const USER = process.env.WGW_E2E_USERNAME ?? "admin";
 const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 
-/** One poll (10 s) plus the time to re-list and paint. */
+/** Push or, failing that, one poll (10 s) plus the time to re-list and paint. */
 const FOLLOW_TIMEOUT_MS = 25_000;
 
 type ServerTask = { id: string; title: string; description?: string | null; etag?: string };

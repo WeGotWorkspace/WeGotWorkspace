@@ -18,6 +18,10 @@ import {
 } from "@/lib/jmap-client";
 import { normalizeApiVirtualPath as normalizePath, parentAndName } from "@/lib/files/api-path";
 import {
+  DRIVE_READ_BLOB_MAX_BYTES,
+  DriveFileTooLargeToOpenError,
+} from "@/lib/files/read-blob-limit";
+import {
   readDriveUploadCapabilities,
   rememberDriveSessionCapabilities,
   type DriveUploadCapabilities,
@@ -32,6 +36,8 @@ import type {
   DriveUIData,
   DriveUploadProgress,
 } from "@/drive-core/src/drive-types";
+
+export { DRIVE_READ_BLOB_MAX_BYTES, DriveFileTooLargeToOpenError };
 
 export const JMAP_MAX_SIZE_UPLOAD_DEFAULT = 25_000_000;
 
@@ -469,20 +475,6 @@ export async function resolveDownloadableFileNode(
   }
   if (!node?.blobId) throw new Error(`FileNode has no blobId: ${path}`);
   return node as JmapFileNode & { blobId: string };
-}
-
-/** Largest file `readFileBlob` fetches into memory (previews, opening a file). */
-export const DRIVE_READ_BLOB_MAX_BYTES = 100 * 1024 * 1024;
-
-/** A file too large to open in the browser; download it instead. */
-export class DriveFileTooLargeToOpenError extends Error {
-  constructor(
-    readonly fileName: string,
-    readonly size: number,
-  ) {
-    super(`"${fileName}" is too large to open in the browser. Download it instead.`);
-    this.name = "DriveFileTooLargeToOpenError";
-  }
 }
 
 /**

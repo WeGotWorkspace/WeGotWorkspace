@@ -95,15 +95,22 @@ describe("SharePublicRoute", () => {
     expect(screen.queryByRole("heading", { name: shareLabels.publicLinkPasswordTitle })).toBeNull();
   });
 
-  it("shows the downloaded phase for a download destination", async () => {
+  it("downloads a file destination through a guest ticket and shows the downloaded phase", async () => {
+    const ticketUrl = "https://drive.example.test/api/v1/jmap/download-ticket/secret/contacts.vcf";
     installFetch((url) => {
       if (url.endsWith("/files/share-sessions")) {
         return jsonResponse(200, sessionBody(DOWNLOAD_PATH));
       }
-      if (url.includes("/files/content?")) {
-        return new Response("BEGIN:VCARD", { status: 200 });
+      if (url.endsWith("/files/download-tickets")) {
+        return jsonResponse(201, { url: ticketUrl, idleExpires: "", absoluteExpires: "" });
       }
       throw new Error(`Unexpected fetch ${url}`);
+    });
+    const clicked: string[] = [];
+    vi.mocked(HTMLAnchorElement.prototype.click).mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      clicked.push(this.href);
     });
 
     render(<SharePublicRoute />);
@@ -113,6 +120,7 @@ describe("SharePublicRoute", () => {
     ).toBeTruthy();
     expect(screen.getByText(shareLabels.publicLinkDownloadHint)).toBeTruthy();
     expect(harness.navigate).not.toHaveBeenCalled();
+    expect(clicked).toEqual([ticketUrl]);
   });
 
   it.each([
