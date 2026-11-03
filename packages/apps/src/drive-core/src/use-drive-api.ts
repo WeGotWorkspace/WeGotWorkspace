@@ -32,6 +32,9 @@ import {
 } from "@/lib/offline/offline-session";
 
 const DRIVE_BOOTSTRAP_SESSION_KEY = "wgw.drive.bootstrap.session";
+const GUEST_ACCOUNT_RETRY_BASE_MS = 2_000;
+const GUEST_ACCOUNT_RETRY_MAX_MS = 30_000;
+const GUEST_ACCOUNT_MAX_BACKOFF_RETRIES = 6;
 
 function readCachedDriveSession(): DriveAppBootstrap["session"] | null {
   if (typeof window === "undefined") return null;
@@ -227,7 +230,3 @@ function useGuestUploadAccount(ready: boolean): string | null {
   );
   return account;
 }
-
-const GUEST_ACCOUNT_RETRY_BASE_MS = 2_000;
-const GUEST_ACCOUNT_RETRY_MAX_MS = 30_000;
-const GUEST_ACCOUNT_MAX_BACKOFF_RETRIES = 6;
