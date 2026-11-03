@@ -62,7 +62,7 @@ The owner was asleep; each open point is decided here.
 
 - **Lost create answer.** Decision 1 takes a same-named file of the same size as our own create on a retry, but never for an empty file: every new Doc is uploaded empty, so an empty create always keeps both (the worst case is an empty orphan). A different non-empty file of exactly the same size, created in the same window, would be taken for ours, and the editor then saves into it.
 - **`cannotCalculateChanges`.** Drive falls back to a full resync, which reports no moves. An editor of a Doc renamed elsewhere then does not follow; its next save goes to the old path, as before this step.
-- **Opening a Doc online while it is being renamed elsewhere.** The hold of decision 2 covers the time after being offline only. A rename in the seconds between opening a Doc online and its first save is not caught.
+- **Opening a Doc online while it is being renamed elsewhere.** A published move holds the save until the editor is on the new path, including when the tab was already online. A rename that has not been published yet, in the seconds between opening a Doc online and its first save, is not caught.
 - **Two tabs migrating the same text.** Both tabs run the inbound. The second finds the old database empty and moves nothing.
 - **Starred view freshness.** Star and trash run once their Undo toast closes. A Starred list opened before that shows the state from before the star. This is unchanged from before this step.
 

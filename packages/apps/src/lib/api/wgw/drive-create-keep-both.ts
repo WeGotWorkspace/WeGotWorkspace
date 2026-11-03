@@ -14,9 +14,8 @@ export type CreateKeepingBothOptions = {
   signal?: AbortSignal;
   /**
    * An earlier attempt of this create may have landed with its answer lost.
-   * A file under the wanted name with exactly this file's size is then taken
-   * (never for an empty file)
-   * as that create, not as a clash.
+   * A file under the wanted name with exactly this file's size (never for an empty
+   * file) is then taken as that create, not as a clash.
    */
   mayHaveLanded?: boolean;
 };

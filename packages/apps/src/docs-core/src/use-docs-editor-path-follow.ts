@@ -52,8 +52,8 @@ function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: s
  * on this device, not saved, while the server does not have the path yet (a
  * queued create or rename owns it) and, after being offline, until the first
  * FileNode pull tells whether the file moved meanwhile and, when it did, until
- * the editor is on the new path. So unsaved text never
- * lands in a new file at the old path.
+ * the editor is on the new path. So unsaved text never lands in a new file at
+ * the old path.
  */
 export function useDocsEditorPathFollow({
   username,
