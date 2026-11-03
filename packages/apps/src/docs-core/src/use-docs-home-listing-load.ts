@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useOnReconnect } from "@/hooks/use-connectivity";
 import type {
   WgwUnifiedSearchData,
   WgwUnifiedSearchParams,
@@ -13,9 +12,19 @@ import {
   type DocsListingBrowseFilters,
 } from "@/lib/offline/docs/docs-listing-cache-key";
 import {
+  docsListingRowsDiffer,
+  mergeLiveDocsListing,
+  notifyDocsCachesChanged,
+} from "@/lib/offline/docs/docs-inbound-sync";
+import {
   readDocsListingFromCache,
   writeDocsListingToCache,
 } from "@/lib/offline/docs-listing-offline-store";
+import {
+  useDocsListingCacheRefresh,
+  useDocsListingReconnectRefresh,
+} from "@/docs-core/src/use-docs-listing-cache-refresh";
+import { retryFailedListing } from "@/docs-core/src/docs-listing-retry";
 
 export type DocsHomeFetcher = (
   params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
@@ -59,6 +68,18 @@ export async function fetchAllDocsHomeListingPages(
   return { results: merged, hasMore: false };
 }
 
+/** Keep rows a queued write still owns: the server has not seen that write yet. */
+async function mergeWithQueuedWrites(
+  username: string | null,
+  filters: DocsListingBrowseFilters,
+  live: { results: WgwUnifiedSearchResult[] },
+  cacheTimeoutMs: number,
+): Promise<WgwUnifiedSearchResult[]> {
+  if (!username) return live.results;
+  const merged = mergeLiveDocsListing(username, filters, live.results);
+  return guardOfflineCacheStep(merged, live.results, cacheTimeoutMs);
+}
+
 export type UseDocsHomeListingLoadOptions = {
   enabled: boolean;
   offlineUsername: string | null;
@@ -93,6 +114,7 @@ export function useDocsHomeListingLoad({
   const [error, setError] = useState<string | null>(null);
   const [isOfflineListing, setIsOfflineListing] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const failedReloadsRef = useRef(0);
   const resultsRef = useRef(results);
   resultsRef.current = results;
   /** Cache key of the filters the visible `results` belong to. */
@@ -139,12 +161,22 @@ export function useDocsHomeListingLoad({
       try {
         const live = await fetchAllDocsHomeListingPages(fetcher, baseParams, query, signal);
         if (signal.aborted) return false;
+        const results = await mergeWithQueuedWrites(offlineUsername, filters, live, cacheTimeoutMs);
+        if (signal.aborted) return false;
         shownKeyRef.current = filtersKey;
-        setResults(live.results);
+        setResults(results);
         setHasMore(live.hasMore);
         setIsOfflineListing(false);
         setError(null);
-        await persistListingCache(live.results, live.hasMore);
+        const rowsChanged = offlineUsername
+          ? await guardOfflineCacheStep(
+              docsListingRowsDiffer(offlineUsername, filters, results),
+              false,
+              cacheTimeoutMs,
+            )
+          : false;
+        await persistListingCache(results, live.hasMore);
+        if (offlineUsername && rowsChanged) notifyDocsCachesChanged(offlineUsername);
         if (offlineUsername) {
           void syncDocsBodiesFromListingResults(offlineUsername, live.results, { signal });
         }
@@ -153,8 +185,27 @@ export function useDocsHomeListingLoad({
         return false;
       }
     },
-    [baseParams, fetcher, filtersKey, offlineUsername, persistListingCache, query],
+    [
+      baseParams,
+      cacheTimeoutMs,
+      fetcher,
+      filters,
+      filtersKey,
+      offlineUsername,
+      persistListingCache,
+      query,
+    ],
   );
+
+  const refreshUsername = enabled ? offlineUsername : null;
+  useDocsListingCacheRefresh({
+    username: refreshUsername,
+    filters,
+    shownKeyRef,
+    cacheTimeoutMs,
+    setResults,
+    setHasMore,
+  });
 
   useEffect(() => {
     if (!enabled) {
@@ -212,6 +263,7 @@ export function useDocsHomeListingLoad({
       const liveLoaded = await fetchLiveListing(controller.signal);
       if (cancelled) return;
 
+      retryFailedListing(failedReloadsRef, liveLoaded, setReloadToken, controller.signal);
       if (!liveLoaded) {
         if (hasRows) {
           setIsOfflineListing(true);
@@ -233,19 +285,7 @@ export function useDocsHomeListingLoad({
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
-  useOnReconnect(
-    useCallback(() => {
-      if (!enabled || !offlineUsername) return;
-      void (async () => {
-        await new Promise((resolve) => window.setTimeout(resolve, 400));
-        if (!getConnectivitySnapshot()) return;
-        const controller = new AbortController();
-        setRefreshing(true);
-        await fetchLiveListing(controller.signal);
-        setRefreshing(false);
-      })();
-    }, [enabled, fetchLiveListing, offlineUsername]),
-  );
+  useDocsListingReconnectRefresh(refreshUsername, fetchLiveListing, setRefreshing);
 
   return {
     results,

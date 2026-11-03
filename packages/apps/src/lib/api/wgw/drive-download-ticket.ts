@@ -1,4 +1,4 @@
-import { parentAndName } from "@/lib/files/api-path";
+import { normalizeApiVirtualPath, parentAndName } from "@/lib/files/api-path";
 import {
   DriveTransportError,
   resolveDownloadableFileNode,
@@ -31,8 +31,29 @@ export async function issueDriveDownloadTicket(
     }),
     signal,
   });
+  return readDownloadTicket(res, "POST /jmap/download-tickets");
+}
+
+/**
+ * Asks the server for a download ticket for one file by path
+ * (`POST /files/download-tickets`, #1622). Used by guests, who have no FileNode id.
+ */
+export async function issueGuestDriveDownloadTicket(
+  path: string,
+  signal?: AbortSignal,
+): Promise<DriveDownloadTicket> {
+  const res = await wgwFetch("/files/download-tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ path: normalizeApiVirtualPath(path) }),
+    signal,
+  });
+  return readDownloadTicket(res, "POST /files/download-tickets");
+}
+
+async function readDownloadTicket(res: Response, route: string): Promise<DriveDownloadTicket> {
   if (!res.ok) {
-    throw new DriveTransportError(`POST /jmap/download-tickets failed (${res.status})`, res.status);
+    throw new DriveTransportError(`${route} failed (${res.status})`, res.status);
   }
   const ticket = (await res.json()) as Partial<DriveDownloadTicket>;
   if (!ticket.url) throw new Error("The download ticket has no URL.");
@@ -114,7 +135,7 @@ export async function issueFolderDownloadTicket(
 }
 
 /**
- * *Download as zip* on a folder (#1621): the server writes the zip while the
+ * *Download* on a folder (#1621): the server writes the zip while the
  * browser saves it natively; the client never builds the zip or a `Blob`.
  */
 export async function downloadFolderAsZipWithTicket(
@@ -126,4 +147,17 @@ export async function downloadFolderAsZipWithTicket(
   const nodeId = await resolveFileNodeId(session, path, username, signal);
   const ticket = await issueFolderDownloadTicket(session, nodeId, signal);
   startNativeDownload(ticket.url, ticket.name);
+}
+
+/**
+ * The guest download: a ticket for the file in the share, downloaded by the
+ * browser natively, so a large file streams to disk and can resume.
+ */
+export async function downloadGuestFileWithTicket(
+  path: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const name = parentAndName(path).from || "download";
+  const ticket = await issueGuestDriveDownloadTicket(path, signal);
+  startNativeDownload(ticket.url, name);
 }

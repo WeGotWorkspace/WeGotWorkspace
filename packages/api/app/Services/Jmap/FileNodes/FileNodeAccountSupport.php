@@ -8,12 +8,17 @@ use App\Models\JmapFileNode;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareGrantResolver;
+use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Storage\StoragePaths;
 
 /**
  * Per-account context for the FileNode envelope methods: the drive principal
  * shape, the visible roots (own tree + member groups + live member-grant
  * share roots — #990), and visibility checks against them.
+ *
+ * A guest upload account (#1715) is known only through the request-scoped
+ * {@see GuestJmapAccounts} registry the guest gate fills: its principal is
+ * the guest, and its one root is the share root.
  */
 final class FileNodeAccountSupport
 {
@@ -23,6 +28,7 @@ final class FileNodeAccountSupport
         private readonly AdminRoleResolver $adminRoles,
         private readonly DriveShareGrantResolver $grants,
         private readonly StoragePaths $paths,
+        private readonly GuestJmapAccounts $guests,
     ) {}
 
     /**
@@ -30,6 +36,11 @@ final class FileNodeAccountSupport
      */
     public function principalFor(string $username): array
     {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return $guest->principal;
+        }
+
         return [
             'username' => $username,
             'role' => $this->adminRoles->isAdmin($username) ? 'admin' : 'user',
@@ -43,6 +54,11 @@ final class FileNodeAccountSupport
      */
     public function accountRootsFor(string $username): array
     {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return [$guest->rootKey];
+        }
+
         return $this->index->visibleRoots($username, $this->groups->allowedGroupSlugs($username));
     }
 
@@ -53,6 +69,11 @@ final class FileNodeAccountSupport
      */
     public function rootsFor(string $username): array
     {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return [$guest->rootKey];
+        }
+
         return array_values(array_unique([
             ...$this->accountRootsFor($username),
             ...$this->shareRootKeysFor($username),
@@ -61,6 +82,14 @@ final class FileNodeAccountSupport
 
     public function ensureAccountIndexed(string $username): void
     {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            if ($this->index->liveByKey($guest->rootKey) === null) {
+                $this->index->recordCreate($guest->rootKey);
+            }
+
+            return;
+        }
         $this->index->ensureRootsIndexed($username, $this->groups->allowedGroupSlugs($username));
         foreach ($this->shareRootKeysFor($username) as $key) {
             if ($this->index->liveByKey($key) === null) {

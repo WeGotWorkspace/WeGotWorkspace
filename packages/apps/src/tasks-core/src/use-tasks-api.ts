@@ -9,18 +9,18 @@ import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridTasksOperations,
   getTasksSyncRunner,
-} from "@/lib/offline/tasks-hybrid-operations";
-import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-hybrid-operations";
+import { readTasksBootstrapFromCache } from "@/lib/offline/tasks/tasks-offline-store";
 import {
   notifyTasksBootstrapUpdated,
   subscribeTasksBootstrapUpdated,
-} from "@/lib/offline/tasks-bootstrap-sync";
-import { syncTasksInbound } from "@/lib/offline/tasks-inbound-sync";
+} from "@/lib/offline/tasks/tasks-bootstrap-sync";
+import { syncTasksInbound } from "@/lib/offline/tasks/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
   resolveTasksOfflineUsername,
 } from "@/lib/offline/offline-session";
-import { setTasksSyncConflictListener } from "@/lib/offline/tasks-sync-conflicts";
+import { setTasksSyncConflictListener } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import { subscribeTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-write";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";

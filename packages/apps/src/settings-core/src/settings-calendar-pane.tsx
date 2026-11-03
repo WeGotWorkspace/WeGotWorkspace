@@ -17,12 +17,10 @@ import {
 } from "@/lib/calendar-event-calendar-picker";
 import { useCalendarPickerCollections } from "@/lib/calendar-picker-collections";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
-import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
-import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { useSettingsCalendarForm } from "@/settings-core/src/use-settings-calendar-form";
+import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Form, FormField } from "@/ui/form";
-import { FormSaveActionRow } from "@/ui/form-save-action-row";
+import { FormField } from "@/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 /**
@@ -30,7 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  * Language stays off this pane until workspace-wide i18n exists.
  */
 export function SettingsCalendarPane() {
-  const { form, saveDisplay } = useSettingsCalendarForm();
+  const controller = useSettingsCalendarForm();
+  const { form } = controller;
   const { collections: calendars, loaded: calendarsLoaded } = useCalendarPickerCollections();
   const uiLocale = resolveLocale(undefined);
   const deviceZone = Temporal.Now.timeZoneId();
@@ -83,100 +82,90 @@ export function SettingsCalendarPane() {
   }, [visibleHoursWatch]);
 
   return (
-    <Form {...form}>
-      <SettingsPaneCard>
-        <div className={settingsWorkspacePaneClasses.stack}>
-          {calendars.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="inviteCalendarId"
-              render={({ field }) => (
-                <FieldLabelRow label="Default calendar">
-                  <CalendarEventCalendarPicker
-                    calendars={calendars}
-                    calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
-                    label="Default calendar"
-                    showName
-                    onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
-                  />
-                </FieldLabelRow>
-              )}
-            />
-          ) : null}
-          <FormField
-            control={form.control}
-            name="timeZone"
-            render={({ field }) => (
-              <FieldLabelRow label="Timezone">
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-label="Timezone">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    <SelectItem value={CALENDAR_DISPLAY_DEVICE_ZONE}>
-                      Device default ({formatTimeZoneLabel(deviceZone, uiLocale)})
-                    </SelectItem>
-                    {timeZoneOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldLabelRow>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="weekStart"
-            render={({ field }) => (
-              <FieldLabelRow label="Week starts on">
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-label="Week starts on">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
-                      Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
-                    </SelectItem>
-                    {weekStartDays.map((day) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {calendarWeekdayLabel(day, uiLocale)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldLabelRow>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="visibleHours"
-            render={({ field }) => (
-              <FieldLabelRow label="Visible hours">
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-label="Visible hours">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {visibleHoursDays.map((hours) => (
-                      <SelectItem key={hours} value={String(hours)}>
-                        {calendarVisibleHoursLabel(hours)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldLabelRow>
-            )}
-          />
-          <FormSaveActionRow
-            className={settingsWorkspacePaneClasses.saveActionRow}
-            label="Save"
-            disabled={!form.formState.isDirty}
-            onSave={saveDisplay}
-          />
-        </div>
-      </SettingsPaneCard>
-    </Form>
+    <SettingsPrefsFormPane controller={controller}>
+      {calendars.length > 0 ? (
+        <FormField
+          control={form.control}
+          name="inviteCalendarId"
+          render={({ field }) => (
+            <FieldLabelRow label="Default calendar">
+              <CalendarEventCalendarPicker
+                calendars={calendars}
+                calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
+                label="Default calendar"
+                showName
+                onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
+              />
+            </FieldLabelRow>
+          )}
+        />
+      ) : null}
+      <FormField
+        control={form.control}
+        name="timeZone"
+        render={({ field }) => (
+          <FieldLabelRow label="Timezone">
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger aria-label="Timezone">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value={CALENDAR_DISPLAY_DEVICE_ZONE}>
+                  Device default ({formatTimeZoneLabel(deviceZone, uiLocale)})
+                </SelectItem>
+                {timeZoneOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="weekStart"
+        render={({ field }) => (
+          <FieldLabelRow label="Week starts on">
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger aria-label="Week starts on">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
+                  Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
+                </SelectItem>
+                {weekStartDays.map((day) => (
+                  <SelectItem key={day} value={String(day)}>
+                    {calendarWeekdayLabel(day, uiLocale)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="visibleHours"
+        render={({ field }) => (
+          <FieldLabelRow label="Visible hours">
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger aria-label="Visible hours">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {visibleHoursDays.map((hours) => (
+                  <SelectItem key={hours} value={String(hours)}>
+                    {calendarVisibleHoursLabel(hours)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+    </SettingsPrefsFormPane>
   );
 }

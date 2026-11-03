@@ -20,7 +20,11 @@ import {
   removeDocsAvailability,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
-import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
+import {
+  applyDriveSidecarPathMigration,
+  nextPathAfterRename,
+} from "@/lib/offline/shared/drive-sidecar-mutations";
 import { DOCS_DOMAIN, type OfflineDocsAvailabilityRow } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import {
@@ -199,6 +203,7 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
           );
           if (isTrash) {
             await applyOfflineTrashSideEffectsSafely(username, input.from);
+            moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
           } else {
             await applyOnlineRenameSideEffects(username, input.from, input.destination, input.to);
           }
@@ -212,6 +217,7 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
       if (isTrash) {
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
         to = resolveFreeName(input.to, trashNames);
+        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
         await applyOfflineTrashSideEffects(username, from);
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);

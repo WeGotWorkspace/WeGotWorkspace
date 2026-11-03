@@ -1,6 +1,7 @@
 import {
   downloadFileNodeWithTicket,
   downloadFolderAsZipWithTicket,
+  downloadGuestFileWithTicket,
 } from "@/lib/api/wgw/drive-download-ticket";
 import {
   wgwFetch,
@@ -23,6 +24,7 @@ import type {
 } from "@/drive-core/src/drive-types";
 
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
+import { DRIVE_READ_BLOB_MAX_BYTES, readResponseBlobWithin } from "@/lib/files/read-blob-limit";
 import { isShareTargetFile } from "@/share-ui/share-destination";
 import {
   createFileNodeFile,
@@ -310,15 +312,13 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
       throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
     async downloadFile(path, opts) {
-      const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
-      const blob = await res.blob();
-      triggerBrowserDownload(blob, path.split("/").pop() || "download");
+      await downloadGuestFileWithTicket(path, opts?.signal);
     },
     async readFileBlob(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
       if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
-      return res.blob();
+      const name = parentAndName(path).from || "download";
+      return readResponseBlobWithin(res, DRIVE_READ_BLOB_MAX_BYTES, name);
     },
     async checkUploadReady() {
       throw new Error(GUEST_UPLOAD_UNAVAILABLE);
@@ -359,21 +359,6 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
       throw new Error(GUEST_UPLOAD_UNAVAILABLE);
     },
   };
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string): void {
-  if (typeof document === "undefined") return;
-  const url = URL.createObjectURL(blob);
-  try {
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }
 
 function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperations {

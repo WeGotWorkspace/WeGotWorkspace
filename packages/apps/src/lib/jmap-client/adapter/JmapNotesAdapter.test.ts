@@ -6,6 +6,7 @@ import { NOTES_CAPABILITY } from "../core/types.js";
 
 const getNotebooks = vi.fn();
 const getNotes = vi.fn();
+const getAllNotes = vi.fn();
 const notebookChanges = vi.fn();
 const noteChanges = vi.fn();
 
@@ -13,6 +14,7 @@ vi.mock("../notes/JmapNotesClient.js", () => ({
   JmapNotesClient: class {
     getNotebooks = getNotebooks;
     getNotes = getNotes;
+    getAllNotes = getAllNotes;
     notebookChanges = notebookChanges;
     noteChanges = noteChanges;
   },
@@ -39,6 +41,7 @@ describe("JmapNotesAdapter", () => {
   beforeEach(() => {
     getNotebooks.mockReset();
     getNotes.mockReset();
+    getAllNotes.mockReset();
     notebookChanges.mockReset();
     noteChanges.mockReset();
     getNotebooks.mockResolvedValue({
@@ -46,6 +49,10 @@ describe("JmapNotesAdapter", () => {
       state: "nb-1",
     });
     getNotes.mockResolvedValue({
+      list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
+      state: "n-1",
+    });
+    getAllNotes.mockResolvedValue({
       list: [{ id: "n-1", notebookId: "notes-general", title: "Hi" }],
       state: "n-1",
     });
@@ -137,7 +144,8 @@ describe("JmapNotesAdapter", () => {
     );
     await adapter.sync();
     expect(getNotebooks).toHaveBeenCalled();
-    expect(getNotes).toHaveBeenCalled();
+    expect(getAllNotes).toHaveBeenCalledWith("bob");
+    expect(getNotes).not.toHaveBeenCalled();
   });
 
   it("does not destroy a note that is also created or updated in the same delta", async () => {

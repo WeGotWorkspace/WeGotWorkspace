@@ -5,6 +5,12 @@ type CacheChanged = { type: string; username: string };
 export type CacheChangedTopic = {
   /** Tell the other tabs that the shared cache changed. This tab already shows it. */
   notifyOtherTabs: (username: string) => void;
+  /**
+   * Tell every tab, this one included. For a cache written outside the view
+   * that shows it (an inbound pull run by another app hook), so this tab's
+   * open view re-reads it too.
+   */
+  notifyAllTabs: (username: string) => void;
   /** Hear another tab's change for the same offline account. */
   subscribe: (username: string, onChange: () => void) => () => void;
 };
@@ -27,6 +33,10 @@ export function cacheChangedTopic(domain: string): CacheChangedTopic {
     notifyOtherTabs(username) {
       if (!username) return;
       topic.publish({ type, username }, { otherTabsOnly: true });
+    },
+    notifyAllTabs(username) {
+      if (!username) return;
+      topic.publish({ type, username });
     },
     subscribe(username, onChange) {
       if (!username) return () => undefined;

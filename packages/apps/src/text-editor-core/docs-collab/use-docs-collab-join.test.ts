@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
+import * as leaveRoom from "./docs-collab-leave-room";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { resolveDocsCollabDatabase } from "./docs-collab-persistence";
@@ -22,6 +23,11 @@ import type { DocsRtcSession } from "./docs-rtc-session";
 import { useDocsCollabJoin } from "./use-docs-collab-join";
 import { useDocsCollabMesh } from "./use-docs-collab-mesh";
 import { useDocsCollabSessionRefs } from "./use-docs-collab-session-refs";
+
+vi.mock("./docs-collab-leave-room", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./docs-collab-leave-room")>();
+  return { ...actual, closeCollabRoomStore: vi.fn(actual.closeCollabRoomStore) };
+});
 
 const ROOM = "docs/echo-loop.md";
 /** Stop a synchronous echo from overflowing the stack. The assertion is stricter. */
@@ -377,6 +383,37 @@ describe("useDocsCollabJoin teardown", () => {
       clientID: clientId,
       state: null,
     });
+    resetDocsCollabMeshLingerForTests();
+  });
+
+  it("sends the background save to the room it joined when the room changes in place", async () => {
+    const closeStore = vi.mocked(leaveRoom.closeCollabRoomStore);
+    closeStore.mockClear();
+    const hook = renderHook(
+      ({ room }: { room: string }) => {
+        const session = useEchoSession("Ada", { room });
+        const teardownRef = useRef(session.teardown);
+        teardownRef.current = session.teardown;
+        useEffect(() => () => teardownRef.current(), []);
+        return session;
+      },
+      { initialProps: { room: "docs/room-a.md" } },
+    );
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    hook.result.current.refs.saveTimerRef.current = setTimeout(() => undefined, 60_000);
+
+    hook.rerender({ room: "docs/room-b.md" });
+    act(() => {
+      hook.result.current.teardown();
+    });
+
+    expect(closeStore).toHaveBeenCalledTimes(1);
+    const target = closeStore.mock.calls[0]?.[1];
+    expect(target?.room).toBe("docs/room-a.md");
+    expect(target?.urls.room).toBe("docs/room-a.md");
     resetDocsCollabMeshLingerForTests();
   });
 

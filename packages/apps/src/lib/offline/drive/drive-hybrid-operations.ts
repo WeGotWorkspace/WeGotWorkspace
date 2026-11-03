@@ -50,7 +50,11 @@ import {
   readOfflineDriveFileBlob,
 } from "@/lib/offline/drive/drive-offline-read";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
-import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
+import {
+  applyDriveSidecarPathMigration,
+  nextPathAfterRename,
+} from "@/lib/offline/shared/drive-sidecar-mutations";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
   driveUploadQueueOperations,
@@ -243,6 +247,7 @@ export function createHybridDriveOperations(
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
             await applyOfflineTrashSideEffects(username, input.from);
+            moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
           } else {
             await applyDriveSidecarPathMigration(username, input.from, input.destination, input.to);
           }
@@ -257,6 +262,7 @@ export function createHybridDriveOperations(
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
         to = resolveFreeName(input.to, trashNames);
         await applyOfflineTrashSideEffects(username, from);
+        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }

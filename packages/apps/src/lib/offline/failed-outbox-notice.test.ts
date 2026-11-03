@@ -14,7 +14,7 @@ import {
 } from "@/lib/offline/core/outbox-store";
 import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
-import { listFailedTaskOutbox } from "@/lib/offline/tasks-offline-store";
+import { listFailedTaskOutbox } from "@/lib/offline/tasks/tasks-offline-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 
 const username = "alice";

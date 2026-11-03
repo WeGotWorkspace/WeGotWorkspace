@@ -46,7 +46,7 @@ describe("useSettingsCalendarForm onSaved", () => {
       result.current.form.setValue("weekStart", "7", { shouldDirty: true });
       result.current.form.setValue("inviteCalendarId", "work", { shouldDirty: true });
       result.current.form.setValue("visibleHours", "16", { shouldDirty: true });
-      await result.current.saveDisplay();
+      await result.current.save();
     });
 
     expect(
@@ -77,7 +77,7 @@ describe("useSettingsCalendarForm onSaved", () => {
 
     await act(async () => {
       result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
-      await result.current.saveDisplay();
+      await result.current.save();
     });
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });

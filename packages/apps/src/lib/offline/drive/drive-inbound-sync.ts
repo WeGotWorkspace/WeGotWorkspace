@@ -1,6 +1,7 @@
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { driveJmapSession, fileNodeToDirectoryEntry } from "@/lib/api/wgw/drive-jmap";
 import { parentAndName } from "@/lib/files/api-path";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import type { JmapFileNode } from "@/lib/jmap-client";
 import { JmapMethodError } from "@/lib/jmap-client";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
@@ -12,6 +13,10 @@ import {
   stampDocsAvailabilityNodeIds,
 } from "@/lib/offline/docs/docs-availability-store";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
+import {
+  applyDocsInboundChanges,
+  type DocsInboundChange,
+} from "@/lib/offline/docs/docs-inbound-sync";
 import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 import { migrateDriveContentBlobPath } from "@/lib/offline/drive/drive-content-sync";
 import {
@@ -37,6 +42,12 @@ const INITIAL_FILE_NODE_STATE = "0";
 
 export type DriveInboundSyncResult = {
   changed: boolean;
+  /**
+   * `FileNode/changes` listed at least one node, placed in the cache or not.
+   * A node under a share rooted in someone else's tree has no cache path, but
+   * an open listing of that folder still shows the change (#1663).
+   */
+  listedChanges: boolean;
   usedFullResync: boolean;
   /** Paths left in place because they still have unsaved collab work. */
   keptUnsavedPaths: string[];
@@ -67,7 +78,12 @@ export function syncDriveInboundFromFileNodes(
   options?: { signal?: AbortSignal },
 ): Promise<DriveInboundSyncResult> {
   if (!username) {
-    return Promise.resolve({ changed: false, usedFullResync: false, keptUnsavedPaths: [] });
+    return Promise.resolve({
+      changed: false,
+      listedChanges: false,
+      usedFullResync: false,
+      keptUnsavedPaths: [],
+    });
   }
   const existing = inFlight.get(username);
   if (existing) return existing;
@@ -78,24 +94,32 @@ export function syncDriveInboundFromFileNodes(
   return run;
 }
 
+/** Resolves once the sync already running for `username`, if any, has settled. */
+export async function settleDriveInbound(username: string): Promise<void> {
+  await inFlight.get(username)?.catch(() => undefined);
+}
+
 async function runDriveInbound(
   username: string,
   options?: { signal?: AbortSignal },
 ): Promise<DriveInboundSyncResult> {
   if (!getConnectivitySnapshot()) {
-    return { changed: false, usedFullResync: false, keptUnsavedPaths: [] };
+    return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
   }
   const since = (await readDriveSyncToken(username)) ?? INITIAL_FILE_NODE_STATE;
   const session = await driveJmapSession();
   try {
     const drained = await drainFileNodeChanges(session, since, options?.signal);
     if (options?.signal?.aborted) {
-      return { changed: false, usedFullResync: false, keptUnsavedPaths: [] };
+      return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
     }
     const kept = await applyFileNodeChanges(username, session, drained, options?.signal);
+    const listedChanges =
+      drained.created.length + drained.updated.length + drained.destroyed.length > 0;
     if (options?.signal?.aborted) {
       return {
         changed: kept.changed,
+        listedChanges,
         usedFullResync: false,
         keptUnsavedPaths: kept.keptUnsavedPaths,
       };
@@ -106,6 +130,7 @@ async function runDriveInbound(
     }
     return {
       changed: kept.changed,
+      listedChanges,
       usedFullResync: false,
       keptUnsavedPaths: kept.keptUnsavedPaths,
     };
@@ -162,12 +187,13 @@ async function fullResync(
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
   const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
-    return { changed: true, usedFullResync: true, keptUnsavedPaths: [] };
+    return { changed: true, listedChanges: true, usedFullResync: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   await writeDriveSyncToken(username, state.state);
   return {
     changed: true,
+    listedChanges: true,
     usedFullResync: true,
     keptUnsavedPaths: await listKeptUnsavedDocumentPaths(username),
   };
@@ -187,6 +213,7 @@ async function applyFileNodeChanges(
   let changed = false;
   let blocked = false;
   const keptUnsavedPaths: string[] = [];
+  const docsChanges: DocsInboundChange[] = [];
   if (upsertIds.length > 0) {
     const got = await session.fileNodes.getFileNodes(session.accountId, upsertIds, { signal });
     const ordered = parentsBeforeChildren(got.list);
@@ -197,13 +224,16 @@ async function applyFileNodeChanges(
         console.warn("[drive-inbound] skipped FileNode with no resolvable path", { id: node.id });
         continue;
       }
+      const previous = cachePaths.get(node.id);
       const placement = await moveCachedNodeToPath(username, node, path, cachePaths);
       if (placement === "blocked") {
         keptUnsavedPaths.push(normalizePath(path));
         blocked = true;
         continue;
       }
-      await upsertDriveEntry(username, fileNodeToDirectoryEntry(path, node));
+      const entry = fileNodeToDirectoryEntry(path, node);
+      docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
+      await upsertDriveEntry(username, entry);
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
       await moveDocsAvailabilityForNode(username, node.id, path);
       cachePaths.set(node.id, path);
@@ -223,10 +253,25 @@ async function applyFileNodeChanges(
         continue;
       }
       await deleteDriveEntryByPath(username, path);
+      docsChanges.push({ kind: "removed", path });
       changed = true;
     }
   }
+  // Every cached Docs view follows; rows a queued Docs write owns stay (#1563).
+  await applyDocsInboundChanges(username, docsChanges);
   return { changed, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
+}
+
+/** What Docs needs to know about one placed node: moved from `previous`, or upserted. */
+function docsChangeFor(entry: WgwDriveDirectoryEntry, previous?: string): DocsInboundChange {
+  const node = {
+    directory: entry.type === "dir",
+    size: entry.size ?? 0,
+    modifiedAt: entry.time ?? 0,
+  };
+  return previous
+    ? { kind: "moved", from: previous, to: entry.path, node }
+    : { kind: "upserted", path: entry.path, node };
 }
 
 async function moveCachedNodeToPath(
