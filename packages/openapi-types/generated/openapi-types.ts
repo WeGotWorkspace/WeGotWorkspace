@@ -4817,7 +4817,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent. A guest (share-link session) gets the Session of its guest upload account instead (#1715): one account `guest-{32 hex}` rooted at the shared folder, only the core, filenode, blob-assembly, and filenode-version-check capabilities, apiUrl /jmap/guest and uploadUrl /jmap/guest/upload/{accountId} (the download and event source templates are not served for guests). A guest whose link does not allow uploads (view, a file link, revoked, expired) gets 403 {code: "guest_upload_forbidden"}.
          */
         get: {
             parameters: {
@@ -8005,6 +8005,287 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jmap/guest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP batch API endpoint for a guest upload account
+         * @description The apiUrl of a guest Session (#1715): a guest on a share link with edit access on a folder. Same envelope as POST /jmap, with only the methods an upload needs: Core/echo, FileNode/get, FileNode/query, FileNode/set, and BlobAssembly/set|append|finish|get; every other method is unknownMethod. Guest FileNode/get needs ids, and guest FileNode/query takes only isTopLevel: true or parentId (depth 0, no ancestorId, no filter operators), else invalidArguments and `using` accepts only core, filenode, blob-assembly, and filenode-version-check. FileNode/set for guests: create must be a file with a blobId; update may only carry blobId, size, and expectedBlobId (required); destroy is refused (SetError forbidden); onExists must be null. Every request re-checks the guest session and its share (revoked, expired, lowered to view, owner reach) before the body is read: 403 {code: "guest_upload_forbidden"} otherwise. Members get 403 here. A request budget per share applies (429 with Retry-After).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JmapApiRequest"];
+                };
+            };
+            responses: {
+                /** @description JMAP response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapApiResponse"];
+                    };
+                };
+                /** @description Request-level error (problem details) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description The share link's request budget is spent (all guests of one link share it). Retry-After says when to try again. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A write the batch needed was refused because the disk or hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/guest/upload/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * JMAP blob upload for a guest upload account
+         * @description The uploadUrl of a guest Session (#1715). Same as POST /jmap/upload/{accountId} (streamed, checked parts, Wgw-Part-* and Wgw-Assembly-Id headers), stored in the guest account's own blob space. The gate re-checks the guest session and its share first (403 {code: "guest_upload_forbidden"}). Content-Length is required (411). The share's byte budget (WGW_GUEST_UPLOAD_BYTES_PER_DAY, default 10 GiB per 24 hours, shared by every guest of the link) is charged from Content-Length before the body is read: 429 {code: "guest_upload_budget"} with Retry-After when it is spent. Members get 403 here.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Declared byte count of the part. A stored length that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Length"?: string;
+                    /** @description Declared sha256 of the part, 64 hex characters. A stored sha256 that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Sha256"?: string;
+                    /** @description Open blob assembly (https://wegotworkspace.org/jmap/blob-assembly) this part is uploaded for. Records a claim so another assembly that consumes the same content-addressed part does not delete it. Unknown ids are ignored. */
+                    "Wgw-Assembly-Id"?: string;
+                };
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "*/*": string;
+                };
+            };
+            responses: {
+                /** @description Upload response (RFC 8620 §6.1) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapBlobUploadResponse"];
+                    };
+                };
+                /** @description Problem+json. type urn:ietf:params:jmap:error:limit with limit "maxSizeUpload": the body exceeds maxSizeUpload, or PHP discarded it (an empty body with a declared length, a post_max_size warning, or chunked transfer) — never stored as an empty part. type https://wegotworkspace.org/jmap/problem/part-mismatch: the stored part differs from Wgw-Part-Length / Wgw-Part-Sha256 (mismatch lists "length" and/or "sha256", with expectedLength/receivedLength or expectedSha256/receivedSha256); nothing is stored. type about:blank: a malformed declaration header. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": {
+                            type?: string;
+                            status?: number;
+                            detail?: string;
+                            limit?: string;
+                            mismatch?: ("length" | "sha256")[];
+                            expectedLength?: number;
+                            receivedLength?: number;
+                            expectedSha256?: string;
+                            receivedSha256?: string;
+                        };
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description accountId does not match the authenticated principal (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Guest parts need a Content-Length (problem+json). */
+                411: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+                /** @description Front controller, before Laravel runs: the declared Content-Length exceeds post_max_size. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            /** @enum {string} */
+                            code: "post_too_large";
+                        };
+                    };
+                };
+                /** @description The share link's request budget or byte budget is spent (code guest_upload_budget for bytes). Retry-After says when to try again. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The disk or the account's hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). Nothing is stored. */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/download-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one drive file by path
+         * @description WGW extension (#1622). Lets a share-link guest download a file natively: the browser streams it to disk and can resume it with `Range`. The server checks read access to `path` for the caller, finds the file's current node blobId, and issues the same kind of ticket as `POST /jmap/download-tickets/{accountId}`: same secret, idle expiry (30 min), absolute lifetime (24 h), and URL (`GET /jmap/download-ticket/{secret}/{name}`). A guest's ticket is bound to its share session: revoking the link, revoking or expiring the session, or a path leaving the share stops the download at its next request. A signed-in caller's ticket is bound to its sign-in session. The ticket serves only the bytes the file had when it was issued; after the content changes it answers 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Virtual drive path of a file the caller may read. */
+                        path: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                /** @description `bad_request`: path is missing. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Missing or invalid access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description `session_required`: a signed-in access token without session binding. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description No readable file at path: outside the share, a folder, missing, or the share session ended. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11028,7 +11309,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };

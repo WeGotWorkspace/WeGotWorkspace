@@ -27,6 +27,8 @@ use App\Services\Jmap\Methods\ChatChannelChangesMethod;
 use App\Services\Jmap\Methods\ChatChannelGetMethod;
 use App\Services\Jmap\Methods\ChatMessageChangesMethod;
 use App\Services\Jmap\Methods\ChatMessageGetMethod;
+use App\Services\Jmap\Methods\ChatMessageQueryChangesMethod;
+use App\Services\Jmap\Methods\ChatMessageQueryMethod;
 use App\Services\Jmap\Methods\ContactCardChangesMethod;
 use App\Services\Jmap\Methods\ContactCardGetMethod;
 use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
@@ -46,6 +48,7 @@ use App\Services\Jmap\Methods\NotebookSetMethod;
 use App\Services\Jmap\Methods\NoteChangesMethod;
 use App\Services\Jmap\Methods\NoteGetMethod;
 use App\Services\Jmap\Methods\NoteQueryChangesMethod;
+use App\Services\Jmap\Methods\NoteQueryMethod;
 use App\Services\Jmap\Methods\NoteSetMethod;
 use App\Services\Jmap\Methods\QuotaChangesMethod;
 use App\Services\Jmap\Methods\QuotaGetMethod;
@@ -109,13 +112,16 @@ final class JmapMethodDispatcher
         NoteGetMethod::class,
         NoteChangesMethod::class,
         NoteSetMethod::class,
+        NoteQueryMethod::class,
         NoteQueryChangesMethod::class,
         // urn:wgw:jmap:chat (vendor Meet chat envelope; mutations stay REST,
-        // so only get/changes are registered — meet-chat-client.md)
+        // so there are no /set methods — meet-chat-client.md)
         ChatChannelGetMethod::class,
         ChatChannelChangesMethod::class,
         ChatMessageGetMethod::class,
         ChatMessageChangesMethod::class,
+        ChatMessageQueryMethod::class,
+        ChatMessageQueryChangesMethod::class,
         // urn:ietf:params:jmap:quota (RFC 9425; one Drive quota per writable root)
         QuotaGetMethod::class,
         QuotaChangesMethod::class,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName, parseFileSizeBytes } from "@/drive-core/src/drive-file-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
@@ -17,10 +17,21 @@ import {
   TILE_TEXT_FETCH_BYTES,
   TILE_TEXT_PREVIEW_MAX_CHARS,
 } from "@/lib/file-preview/file-preview-utils";
+import { DRIVE_READ_BLOB_MAX_BYTES } from "@/lib/files/read-blob-limit";
 
 const MAX_CONCURRENT_FETCHES = 4;
 
 type PreviewEntry = FilePreviewPayload;
+
+/**
+ * Whether a preview may fetch the file's bytes. A listed size above `limit`
+ * skips the fetch, so the tile keeps the file-type icon.
+ */
+function canReadPreviewBytes(file: DriveFile, limit = DRIVE_READ_BLOB_MAX_BYTES): boolean {
+  if (!file.apiPath) return false;
+  const size = parseFileSizeBytes(file);
+  return size == null || size <= limit;
+}
 
 /** Upload placeholders have no bytes on the server to preview yet. */
 function isMediaPreviewable(file: DriveFile): boolean {
@@ -203,7 +214,7 @@ export function useDriveGridPreviews({
 
   const fetchMediaPreview = useCallback(
     (file: DriveFile) => {
-      if (!operations?.readFileBlob || !file.apiPath) return;
+      if (!operations?.readFileBlob || !canReadPreviewBytes(file)) return;
       if (fetchedPreviewsRef.current[file.id]?.kind === "blob-url") return;
       if (requestedMediaRef.current.has(file.id)) return;
       requestedMediaRef.current.add(file.id);
@@ -251,7 +262,7 @@ export function useDriveGridPreviews({
     (file: DriveFile) => {
       if (excerptPreview(file)) return;
       if (fetchedPreviewsRef.current[file.id]) return;
-      if (!operations?.readFileBlob || !file.apiPath) return;
+      if (!operations?.readFileBlob || !canReadPreviewBytes(file)) return;
 
       enqueue(() => {
         inFlightRef.current += 1;
@@ -285,7 +296,7 @@ export function useDriveGridPreviews({
     (file: DriveFile) => {
       if (!isDocsEditorPreviewFile(file.title, file.apiPath)) return;
       if (richPreviewsRef.current[file.id]?.kind === "docs") return;
-      if (!operations?.readFileBlob || !file.apiPath) return;
+      if (!operations?.readFileBlob || !canReadPreviewBytes(file, DOCS_PREVIEW_MAX_BYTES)) return;
 
       enqueue(() => {
         inFlightRef.current += 1;

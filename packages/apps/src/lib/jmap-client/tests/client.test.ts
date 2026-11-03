@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { JmapCalendarsClient } from "../calendars/JmapCalendarsClient.js";
 import { JmapMethodError, JmapRequestError } from "../core/errors.js";
 import { JmapClient } from "../core/JmapClient.js";
+import { CALENDARS_CAPABILITY, CONTACTS_CAPABILITY, NOTES_CAPABILITY } from "../core/types.js";
 import { recurringEvent, timedEvent, workCalendar } from "../mock/fixtures.js";
 import { MockJmapServer } from "../mock/MockJmapServer.js";
 
@@ -18,12 +19,14 @@ describe("JmapClient", () => {
     expect(client.primaryAccountId()).toBe(server.accountId);
   });
 
-  it("rejects servers without the calendars capability", async () => {
+  it("rejects servers without a calendars, contacts or notes capability", async () => {
     const server = new MockJmapServer();
     const brokenFetch: typeof server.fetch = async (input, init) => {
       if (input === server.sessionUrl) {
         const session = server.session();
-        delete (session.capabilities as Record<string, unknown>)["urn:ietf:params:jmap:calendars"];
+        for (const capability of [CALENDARS_CAPABILITY, CONTACTS_CAPABILITY, NOTES_CAPABILITY]) {
+          delete (session.capabilities as Record<string, unknown>)[capability];
+        }
         return new Response(JSON.stringify(session), { status: 200 });
       }
       return server.fetch(input, init);
