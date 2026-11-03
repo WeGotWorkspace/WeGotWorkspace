@@ -1,13 +1,18 @@
-import { Upload, ScrollText } from "lucide-react";
+import { FolderUp, Upload, ScrollText } from "lucide-react";
 import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 
 export type DriveNewMenuProps = {
-  labels: Pick<DriveUILabels, "newFolder" | "newButtonMenu" | "uploadFiles" | "newMarkdown">;
+  labels: Pick<
+    DriveUILabels,
+    "newFolder" | "newButtonMenu" | "uploadFiles" | "uploadFolder" | "newMarkdown"
+  >;
   onCreateFolder: () => void;
   /** Omitted when the session cannot upload (guests). */
   onUploadFiles?: () => void;
+  /** Omitted without the upload queue: folders upload through it only (#1620). */
+  onUploadFolder?: () => void;
   onCreateMarkdown?: () => void;
 };
 
@@ -15,6 +20,7 @@ export function DriveNewMenu({
   labels,
   onCreateFolder,
   onUploadFiles,
+  onUploadFolder,
   onCreateMarkdown,
 }: DriveNewMenuProps) {
   const items: DropdownMenuItemProps[] = [];
@@ -24,6 +30,14 @@ export function DriveNewMenu({
       label: labels.uploadFiles,
       icon: <Upload aria-hidden />,
       onClick: onUploadFiles,
+    });
+  }
+  if (onUploadFolder) {
+    items.push({
+      id: "upload-folder",
+      label: labels.uploadFolder,
+      icon: <FolderUp aria-hidden />,
+      onClick: onUploadFolder,
     });
   }
   if (onCreateMarkdown) {

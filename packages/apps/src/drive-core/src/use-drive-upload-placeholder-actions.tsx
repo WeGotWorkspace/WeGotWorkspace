@@ -40,6 +40,8 @@ export function useDriveUploadPlaceholderActions(
       if (
         state.kind === "failed" &&
         canChooseDriveUploadFolder(state.reason) &&
+        // A folder of a folder upload stays where it is (#1620).
+        !model.folderById.has(upload.id) &&
         model.chooseFolder
       ) {
         const chooseFolder = model.chooseFolder;
