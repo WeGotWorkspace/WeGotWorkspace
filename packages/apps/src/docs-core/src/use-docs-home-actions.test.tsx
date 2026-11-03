@@ -19,7 +19,8 @@ const { showToast, showErrorToast } = vi.hoisted(() => ({
   showErrorToast: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-queued-mutation", () => ({
+vi.mock("@/hooks/use-queued-mutation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/use-queued-mutation")>()),
   useQueuedMutation: () => ({ queueMutation, undoLatest }),
 }));
 
