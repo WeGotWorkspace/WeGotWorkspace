@@ -47,7 +47,7 @@ export const driveUploadBatchLabels = {
   keepOfflineOverLimit: (count: number, limit: string) =>
     `${count === 1 ? "This file is" : `These ${count} files are`} larger than ${limit}, so ${
       count === 1 ? "it is" : "they are"
-    } not kept offline on its own:`,
+    } not kept offline on ${count === 1 ? "its" : "their"} own:`,
   keepOfflineSyncOff: (count: number) =>
     `Make files available offline is switched off on this device, so ${
       count === 1 ? "this file is" : `these ${count} files are`
