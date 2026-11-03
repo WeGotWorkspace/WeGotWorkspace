@@ -139,7 +139,7 @@ export async function renameFolderOnServer(page: Page, from: string, to: string)
 export async function trashFolderOnServer(page: Page, name: string): Promise<void> {
   const node = await findNode(page, name);
   const nodes = (await jmapFileNodes(page, "FileNode/get", { ids: null })).list as FileNodeRow[];
-  let root = nodes.find((n) => n.id === node.parentId)!;
+  const root = nodes.find((n) => n.id === node.parentId)!;
   let trash = nodes.find((n) => n.name === ".Trash" && n.parentId === root.id);
   if (!trash) {
     const created = await jmapFileNodes(page, "FileNode/set", {
