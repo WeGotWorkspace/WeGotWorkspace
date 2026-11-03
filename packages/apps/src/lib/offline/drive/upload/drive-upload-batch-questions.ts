@@ -1,4 +1,5 @@
 import type { DriveUploadBatchConflicts } from "@/lib/offline/drive/upload/drive-upload-conflicts";
+import type { DriveUploadFolderQuestion } from "@/lib/offline/drive/upload/drive-upload-folder-conflicts";
 import type { DriveUploadKeepOfflineQuestion } from "@/lib/offline/drive/upload/drive-upload-keep-offline";
 import type { DriveUploadSpaceCheck } from "@/lib/offline/drive/upload/drive-upload-schema";
 
@@ -14,8 +15,12 @@ export type DriveUploadBatchQuestions = {
   space: DriveUploadKnownSpaceCheck | null;
   conflicts: DriveUploadBatchConflicts | null;
   keepOffline: DriveUploadKeepOfflineQuestion | null;
+  /** A folder upload whose top-level folder name is taken (#1620). */
+  folders?: DriveUploadFolderQuestion | null;
 };
 
 export function hasDriveUploadBatchQuestions(questions: DriveUploadBatchQuestions): boolean {
-  return Boolean(questions.space || questions.conflicts || questions.keepOffline);
+  return Boolean(
+    questions.space || questions.conflicts || questions.keepOffline || questions.folders,
+  );
 }

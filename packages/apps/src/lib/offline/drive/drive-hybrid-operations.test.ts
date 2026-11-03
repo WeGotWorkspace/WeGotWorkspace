@@ -170,4 +170,28 @@ describe("createHybridDriveOperations upload queue", () => {
       ops.enqueueUploads!({ cwd: "/users/alice/Unknown", files: [new File(["x"], "a.pdf")] }),
     ).rejects.toThrow(/not available offline/);
   });
+
+  it("opens a folder an upload has not created yet from its placeholders, also online", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    await upsertDriveEntry(username, {
+      ...entry("/users/alice/Projects", "Projects"),
+      type: "dir",
+      nodeId: "fn-projects",
+    });
+    const ops = createHybridDriveOperations(username, bootstrap());
+    await ops.enqueueUploads!({
+      cwd: "/users/alice/Projects",
+      files: [],
+      tree: { folders: ["Scans"], files: [{ file: new File(["x"], "a.pdf"), folder: "Scans" }] },
+    });
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const listing = await ops.listDirectory("/users/alice/Projects/Scans");
+    const opened = await ops.changeDir("/users/alice/Projects/Scans");
+
+    expect(listing.directory.files.map((file) => [file.name, file.upload?.status])).toEqual([
+      ["a.pdf", "queued"],
+    ]);
+    expect(opened.cwd).toBe("/users/alice/Projects/Scans");
+  });
 });

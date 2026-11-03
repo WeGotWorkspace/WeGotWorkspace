@@ -99,6 +99,7 @@ describe("useDriveMutations upload action", () => {
         createdAt: 1,
         canRetry: false,
       })),
+      folders: [],
       batches: [],
       hasItems: ids.length > 0,
       totalBytes: ids.length,

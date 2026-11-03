@@ -129,6 +129,7 @@ export function driveUploadStorySnapshot({
   return {
     state,
     items,
+    folders: [],
     batches: BATCHES,
     hasItems: items.length > 0,
     totalBytes: items.reduce((sum, entry) => sum + entry.bytesTotal, 0),

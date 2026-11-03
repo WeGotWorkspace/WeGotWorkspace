@@ -51,6 +51,7 @@ import {
 } from "@/lib/offline/drive/drive-offline-read";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { isPendingUploadFolderPath } from "@/lib/offline/drive/upload/drive-upload-folder-placeholders";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
   driveUploadQueueOperations,
@@ -116,6 +117,13 @@ async function readCachedDriveState(username: string, cwd: string): Promise<Driv
   return buildOfflineDriveUIData(bootstrap, cwd, entries);
 }
 
+/** A folder an upload has not created yet: only this device has it, as placeholders. */
+async function pendingUploadFolderState(username: string, cwd: string) {
+  return (await isPendingUploadFolderPath(username, cwd))
+    ? readCachedDriveState(username, cwd)
+    : null;
+}
+
 async function applyOfflineTrashSideEffects(username: string, from: string): Promise<void> {
   const apiPath = normalizeApiVirtualPath(from);
   const room = normalizeDriveAvailabilityPath(apiPath);
@@ -179,6 +187,8 @@ export function createHybridDriveOperations(
     },
     changeDir: async (to, opts) => {
       const target = normalizeApiVirtualPath(to);
+      const pending = await pendingUploadFolderState(username, target);
+      if (pending) return pending;
       if (readBrowserOnline()) {
         try {
           const data = await live.changeDir(target, opts);
@@ -203,6 +213,8 @@ export function createHybridDriveOperations(
     },
     listDirectory: async (at, opts) => {
       const target = normalizeApiVirtualPath(at);
+      const pending = await pendingUploadFolderState(username, target);
+      if (pending) return pending;
       if (readBrowserOnline()) {
         try {
           const data = await live.listDirectory(target, opts);

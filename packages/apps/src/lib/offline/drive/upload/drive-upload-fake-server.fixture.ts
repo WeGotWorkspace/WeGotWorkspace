@@ -74,6 +74,12 @@ export class FakeDriveServer {
     ["fn-trash", { id: "fn-trash", parentId: "fn-home", name: ".Trash" }],
     ["fn-docs", { id: "fn-docs", parentId: "fn-home", name: "docs" }],
   ]);
+  /** Creates of files and folders the server refuses, by name. */
+  readonly refuseNames = new Map<string, "forbidden" | "overQuota">();
+  /** The next folder creates succeed, but their answer is lost on the network. */
+  loseFolderCreateAnswers = 0;
+  /** The next reads of a new folder fail on the network. */
+  failFolderReadBacks = 0;
   /** Quotas `Quota/get` returns; null = the Session has no quota capability. */
   quotas: Array<{ id: string; used: number; hardLimit: number }> | null = null;
   private sequence = 0;
@@ -339,12 +345,74 @@ export class FakeDriveServer {
       _account: string,
       filter: { parentId: string; name?: string },
     ) => ({
-      list: this.nodes
-        .filter((row) => row.parentId === filter.parentId)
-        .filter((row) => filter.name === undefined || row.name === filter.name)
-        .map((row) => this.toNode(row)),
+      list: [
+        ...this.nodes
+          .filter((row) => row.parentId === filter.parentId)
+          .filter((row) => filter.name === undefined || row.name === filter.name)
+          .map((row) => this.toNode(row)),
+        ...[...this.folders.values()]
+          .filter((row) => row.parentId === filter.parentId)
+          .filter((row) => filter.name === undefined || row.name === filter.name)
+          .map((row) => this.toFolder(row)),
+      ],
     }),
-    getFileNodes: async (_account: string, ids: string[]) => ({
+    getFileNodes: async (_account: string, ids: string[]) => {
+      if (this.failFolderReadBacks > 0 && ids.some((id) => id.startsWith("fd-"))) {
+        this.failFolderReadBacks -= 1;
+        throw new TypeError("Failed to fetch");
+      }
+      return this.getNodes(ids);
+    },
+    setFileNodes: async (args: Record<string, unknown>) => {
+      this.fileNodeSets.push(args);
+      const create = args.create as
+        Record<string, { parentId: string; name: string; blobId?: string }> | undefined;
+      const [key, folder] = Object.entries(create ?? {})[0] ?? [];
+      if (key && folder && folder.blobId === undefined) return this.createFolder(key, folder);
+      return this.setFile(args);
+    },
+  };
+
+  /** Names taken under `parentId`, files and folders. */
+  private nameTaken(parentId: string, name: string): boolean {
+    return (
+      this.nodes.some((row) => row.parentId === parentId && row.name === name) ||
+      [...this.folders.values()].some((row) => row.parentId === parentId && row.name === name)
+    );
+  }
+
+  private createFolder(key: string, create: { parentId: string; name: string }) {
+    if (!this.folders.has(create.parentId)) {
+      throw new JmapSetItemError("create", key, {
+        type: "invalidProperties",
+        properties: ["parentId"],
+      });
+    }
+    const refused = this.refuseNames.get(create.name);
+    if (refused) throw new JmapSetItemError("create", key, { type: refused });
+    if (this.nameTaken(create.parentId, create.name)) {
+      throw new JmapSetItemError("create", key, { type: "alreadyExists" });
+    }
+    this.sequence += 1;
+    const id = `fd-${this.sequence}`;
+    this.folders.set(id, { id, parentId: create.parentId, name: create.name });
+    if (this.loseFolderCreateAnswers > 0) {
+      this.loseFolderCreateAnswers -= 1;
+      throw new TypeError("Failed to fetch");
+    }
+    return { created: { [key]: { id } } };
+  }
+
+  /** Folders by name under `parentId`. */
+  foldersIn(parentId: string): string[] {
+    return [...this.folders.values()]
+      .filter((row) => row.parentId === parentId)
+      .map((row) => row.name)
+      .sort();
+  }
+
+  private getNodes(ids: string[]) {
+    return {
       list: [
         ...this.nodes.filter((row) => ids.includes(row.id)).map((row) => this.toNode(row)),
         ...ids.flatMap((id) => {
@@ -352,65 +420,65 @@ export class FakeDriveServer {
           return folder ? [this.toFolder(folder)] : [];
         }),
       ],
-    }),
-    setFileNodes: async (args: Record<string, unknown>) => {
-      this.fileNodeSets.push(args);
-      if (args.create) {
-        const create = (
-          args.create as Record<string, { parentId: string; name: string; blobId: string }>
-        ).upload!;
-        if (!this.folders.has(create.parentId)) {
-          throw new JmapSetItemError("create", "upload", {
-            type: "invalidProperties",
-            properties: ["parentId"],
-          });
-        }
-        if (this.folders.get(create.parentId)?.mayAddChildren === false) {
-          throw new JmapSetItemError("create", "upload", { type: "forbidden" });
-        }
-        if (!this.blobs.has(create.blobId)) {
-          throw new JmapSetItemError("create", "upload", {
-            type: "invalidProperties",
-            properties: ["blobId"],
-          });
-        }
-        if (
-          this.nodes.some((row) => row.parentId === create.parentId && row.name === create.name)
-        ) {
-          throw new JmapSetItemError("create", "upload", { type: "alreadyExists" });
-        }
-        this.sequence += 1;
-        const id = `fn-${this.sequence}`;
-        this.nodes.push({
-          id,
-          parentId: create.parentId,
-          name: create.name,
-          blobId: create.blobId,
+    };
+  }
+
+  private setFile(args: Record<string, unknown>) {
+    if (args.create) {
+      const create = (
+        args.create as Record<string, { parentId: string; name: string; blobId: string }>
+      ).upload!;
+      if (!this.folders.has(create.parentId)) {
+        throw new JmapSetItemError("create", "upload", {
+          type: "invalidProperties",
+          properties: ["parentId"],
         });
-        return { created: { upload: { id } } };
       }
-      const [id, patch] = Object.entries(args.update as Record<string, Record<string, string>>)[0]!;
-      const row = this.nodes.find((node) => node.id === id);
-      if (!row) throw new JmapSetItemError("update", id, { type: "notFound" });
-      if ("expectedBlobId" in patch) {
-        if (!this.versionCheck) {
-          throw new JmapSetItemError("update", id, {
-            type: "invalidProperties",
-            properties: ["expectedBlobId"],
-          });
-        }
-        if (row.contentHashPending || patch.expectedBlobId !== row.blobId) {
-          throw new JmapSetItemError("update", id, {
-            type: "versionMismatch",
-            existingId: id,
-            existingBlobId: row.blobId,
-          });
-        }
+      if (this.folders.get(create.parentId)?.mayAddChildren === false) {
+        throw new JmapSetItemError("create", "upload", { type: "forbidden" });
       }
-      row.blobId = patch.blobId!;
-      return { updated: { [id]: null } };
-    },
-  };
+      const refused = this.refuseNames.get(create.name);
+      if (refused) throw new JmapSetItemError("create", "upload", { type: refused });
+      if (!this.blobs.has(create.blobId)) {
+        throw new JmapSetItemError("create", "upload", {
+          type: "invalidProperties",
+          properties: ["blobId"],
+        });
+      }
+      if (this.nameTaken(create.parentId, create.name)) {
+        throw new JmapSetItemError("create", "upload", { type: "alreadyExists" });
+      }
+      this.sequence += 1;
+      const id = `fn-${this.sequence}`;
+      this.nodes.push({
+        id,
+        parentId: create.parentId,
+        name: create.name,
+        blobId: create.blobId,
+      });
+      return { created: { upload: { id } } };
+    }
+    const [id, patch] = Object.entries(args.update as Record<string, Record<string, string>>)[0]!;
+    const row = this.nodes.find((node) => node.id === id);
+    if (!row) throw new JmapSetItemError("update", id, { type: "notFound" });
+    if ("expectedBlobId" in patch) {
+      if (!this.versionCheck) {
+        throw new JmapSetItemError("update", id, {
+          type: "invalidProperties",
+          properties: ["expectedBlobId"],
+        });
+      }
+      if (row.contentHashPending || patch.expectedBlobId !== row.blobId) {
+        throw new JmapSetItemError("update", id, {
+          type: "versionMismatch",
+          existingId: id,
+          existingBlobId: row.blobId,
+        });
+      }
+    }
+    row.blobId = patch.blobId!;
+    return { updated: { [id]: null } };
+  }
 
   session(): DriveJmapSession {
     return {
