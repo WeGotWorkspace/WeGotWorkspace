@@ -12,10 +12,10 @@ import {
   resolveDocsCollabDatabase,
 } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
+import { closeCollabRoomStore } from "./docs-collab-leave-room";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { cancelSaveTimer } from "./docs-collab-save-timer";
-import { closeCollabRoomStore } from "./docs-collab-leave-room";
 import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
