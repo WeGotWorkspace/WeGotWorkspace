@@ -34,8 +34,12 @@ async function serverText(apiPath: string): Promise<string | null> {
   return res.ok ? res.text() : null;
 }
 
-/** Fresh names per attempt, so a retry never meets the last attempt's files. */
-const run = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+/**
+ * Fresh names per attempt, so a retry never meets the last attempt's files.
+ * No `x`: typed into the editor, "6x9" becomes "6×9" and the token no longer matches.
+ */
+const run = () =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.replaceAll("x", "k");
 
 /** Uncaught errors and "Failed to fetch" console errors, for the end-of-test check. */
 function watchErrors(page: Page): string[] {
