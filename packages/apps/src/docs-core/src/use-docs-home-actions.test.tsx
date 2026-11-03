@@ -164,6 +164,30 @@ describe("useDocsHomeActions", () => {
     expect(result.current.starred["search:file:users/alice/B.md"]).toBeUndefined();
   });
 
+  it("reads the stars again when the refresh key changes (#1563)", async () => {
+    const operations = createMockOperations();
+    // The read when the connection came back predates the queued star.
+    operations.listStars.mockResolvedValueOnce([]).mockResolvedValue(["/users/alice/A.md"]);
+    const { result, rerender } = renderHook(
+      ({ key }) =>
+        useDocsHomeActions({
+          operations,
+          files: FILES,
+          username: "alice",
+          groupRoots: [],
+          reload: vi.fn(),
+          starsRefreshKey: key,
+        }),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.starsReady).toBe(true));
+    expect(result.current.starred["search:file:users/alice/A.md"]).toBeUndefined();
+
+    rerender({ key: 1 });
+    await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
+    expect(operations.listStars).toHaveBeenCalledTimes(2);
+  });
+
   it("toggles a star optimistically and persists via setStar", async () => {
     const operations = createMockOperations(["/users/alice/A.md"]);
     const { result } = renderActions(operations);

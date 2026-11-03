@@ -230,6 +230,8 @@ export function DocsHomeWorkspace({
     },
     afterFlush: async () => {
       await refresh();
+      // The lists and stars may have been read before the queued writes landed.
+      reload();
       setOutboxNoticeKey((key) => key + 1);
     },
   });
@@ -321,6 +323,7 @@ export function DocsHomeWorkspace({
     onAvailabilityChanged: refresh,
     reload,
     inTrashView: isTrashView,
+    starsRefreshKey: outboxNoticeKey,
   });
 
   const visibleFiles = useMemo(

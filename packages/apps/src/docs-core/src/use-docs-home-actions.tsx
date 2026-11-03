@@ -51,6 +51,11 @@ type UseDocsHomeActionsArgs = {
   reload: () => void;
   /** When true, delete confirms permanently remove files instead of moving to Trash. */
   inTrashView?: boolean;
+  /**
+   * Bump to read the stars again, e.g. after a reconnect's queued writes reached
+   * the server: a read when the connection came back can predate them (#1563).
+   */
+  starsRefreshKey?: number;
 };
 
 function filesWithApiPath(
@@ -93,6 +98,7 @@ export function useDocsHomeActions({
   onAvailabilityChanged,
   reload,
   inTrashView = false,
+  starsRefreshKey = 0,
 }: UseDocsHomeActionsArgs) {
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -140,7 +146,7 @@ export function useDocsHomeActions({
         setStarsReady(true);
       });
     return () => controller.abort();
-  }, [operations]);
+  }, [operations, starsRefreshKey]);
 
   /** Star map keyed by file id (search ids differ from api paths, so resolve per file). */
   const starred = useMemo(() => {
