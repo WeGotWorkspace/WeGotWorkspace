@@ -339,6 +339,55 @@ describe("useDriveGridPreviews", () => {
     expect(readFileBlob).toHaveBeenCalledTimes(5);
   });
 
+  it("keeps the icon for media listed above the in-memory limit and still loads a small one", async () => {
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const video: DriveFile = {
+      ...IMAGE,
+      id: "vid-1",
+      title: "holiday.mp4",
+      kind: "video",
+      size: "4.0 GB",
+      apiPath: "/users/alice/holiday.mp4",
+    };
+    const readFileBlob = vi.fn(async (_path: string) => new Blob(["png"], { type: "image/png" }));
+    const operations = createOperations({ readFileBlob });
+
+    const { result, rerender } = renderHook(
+      ({ items }: { items: DriveFile[] }) =>
+        useDriveGridPreviews({ items, operations, enabled: true }),
+      { initialProps: { items: [video, IMAGE] } },
+    );
+    await waitFor(() => {
+      expect(result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url");
+    });
+    rerender({ items: [video, IMAGE] });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(readFileBlob.mock.calls.map((call) => String(call[0]))).toEqual([IMAGE.apiPath]);
+    expect(result.current.filePreviews[video.id]).toBeUndefined();
+  });
+
+  it("does not fetch a detail text preview for a file listed above the in-memory limit", async () => {
+    const readFileBlob = vi.fn(async () => new Blob(["huge log"], { type: "text/plain" }));
+    const bigLog = { ...TEXT_FILE, size: "150 MB" };
+
+    renderHook(() =>
+      useDriveGridPreviews({
+        items: [bigLog],
+        operations: createOperations({ readFileBlob }),
+        enabled: true,
+        extraFile: bigLog,
+      }),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(readFileBlob).not.toHaveBeenCalled();
+  });
+
   it("loads nothing while no tile is in view", async () => {
     const readFileBlob = vi.fn(async (_path: string) => new Blob(["png"], { type: "image/png" }));
     renderHook(() =>
