@@ -52,19 +52,29 @@ test("a new notification reaches the bell of both tabs on push, fetched and acke
     await Promise.all([openBell(tabA), openBell(tabB)]);
 
     const first = await notifyAdmin(context, memberToken, channelId, counter, [tabA, tabB]);
-    test.info().annotations.push({ type: "latency", description: `first: ${first} ms` });
-    expect(first).toBeLessThan(PUSH_BOUND_MS);
+    test.info().annotations.push({ type: "latency", description: `first: ${first.latency} ms` });
+    expect(first.latency).toBeLessThan(PUSH_BOUND_MS);
 
     // Reload the tab that holds the stream; the other tab takes it over.
     const leader = streamTab();
     if (!leader) throw new Error("No tab sent a push request.");
+    counter.reset();
     await Promise.all([pushConnected(context), leader.reload()]);
     await openBell(leader);
+    // The reloaded inbox load lists the first row as unread, yet it is not acked again.
+    await expect(
+      leader.locator(".notification-inbox-tray__popover").getByText(first.text, { exact: false }),
+    ).toBeVisible({ timeout: PUSH_BOUND_MS });
+    await leader.waitForTimeout(3_000);
+    expect(counter.acks(), "local-acks after reload").toHaveLength(0);
 
-    const second = await notifyAdmin(context, memberToken, channelId, counter, [tabA, tabB]);
+    const second = (await notifyAdmin(context, memberToken, channelId, counter, [tabA, tabB]))
+      .latency;
     test.info().annotations.push({ type: "latency", description: `after reload: ${second} ms` });
     expect(second).toBeLessThan(PUSH_BOUND_MS);
-    console.log(`[inbox-push] DM sent → row in both bells: ${first} ms, after reload ${second} ms`);
+    console.log(
+      `[inbox-push] DM sent → row in both bells: ${first.latency} ms, after reload ${second} ms`,
+    );
   } finally {
     await context.close();
   }
@@ -81,7 +91,7 @@ async function notifyAdmin(
   channelId: string,
   counter: ReturnType<typeof countInboxRequests>,
   tabs: Page[],
-): Promise<number> {
+): Promise<{ latency: number; text: string }> {
   const text = `inbox push ${Date.now()}`;
   counter.reset();
   const sentAt = Date.now();
@@ -107,7 +117,7 @@ async function notifyAdmin(
   await tabs[0]!.waitForTimeout(3_000);
   expect(counter.gets(), "inbox GETs across both tabs").toHaveLength(1);
   expect(counter.acks(), "local-acks across both tabs").toHaveLength(1);
-  return latency;
+  return { latency, text };
 }
 
 function countInboxRequests(pages: Page[]) {

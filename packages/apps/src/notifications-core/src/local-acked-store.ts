@@ -72,6 +72,9 @@ export function createLocalAckedStore(
       if (!storage) return;
       try {
         storage.setItem(LOCAL_ACKED_STORAGE_KEY, JSON.stringify(memory));
+        // Storage is shared between tabs and now holds the list; keeping a copy
+        // would put ids another tab trimmed back in as if they were newer.
+        memory = [];
       } catch {
         // Quota or private mode: the in-memory list still covers this tab.
       }

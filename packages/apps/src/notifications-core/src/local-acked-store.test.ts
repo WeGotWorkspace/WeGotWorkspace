@@ -29,6 +29,16 @@ describe("createLocalAckedStore", () => {
     expect([...store.read()]).toEqual(["n2", "n3", "n4"]);
   });
 
+  it("does not bring back ids another tab trimmed from the shared list", () => {
+    const storage = memoryStorage();
+    const tabA = createLocalAckedStore(storage, 3);
+    const tabB = createLocalAckedStore(storage, 3);
+    tabA.add(["n1", "n2"]);
+    tabB.add(["n3", "n4", "n5"]);
+
+    expect([...tabA.read()]).toEqual(["n3", "n4", "n5"]);
+  });
+
   it("moves a re-added id to the newest end instead of storing it twice", () => {
     const store = createLocalAckedStore(memoryStorage(), 3);
     store.add(["n1", "n2", "n3"]);
