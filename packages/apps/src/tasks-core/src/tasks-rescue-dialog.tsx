@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ListPlus } from "lucide-react";
 import { Button } from "@/button/src/button";
 import {
@@ -64,8 +64,9 @@ export function TasksRescueDialog({
   // Every list offered since the dialog opened, so the step count stays put.
   const [offered, setOffered] = useState<ReadonlySet<string>>(new Set());
 
+  // Cleared on close, so a reopened dialog starts with every list waiting.
   useEffect(() => {
-    if (!open) return;
+    if (open) return;
     setSkipped(new Set());
     setOffered(new Set());
   }, [open]);
@@ -88,6 +89,18 @@ export function TasksRescueDialog({
     if (!current || waiting.length <= 1) onLater();
     else setSkipped((skip) => new Set([...skip, current.containerId]));
   };
+
+  // Moving or discarding the last list on screen while earlier ones were put off
+  // leaves only skipped lists: close as "later" so the lock is let go and the
+  // header entry can ask about them again.
+  const onLaterRef = useRef(onLater);
+  useEffect(() => {
+    onLaterRef.current = onLater;
+  }, [onLater]);
+  const onlySkippedLeft = open && groups.length > 0 && waiting.length === 0;
+  useEffect(() => {
+    if (onlySkippedLeft) onLaterRef.current();
+  }, [onlySkippedLeft]);
 
   return (
     <Dialog open={open && !!current} onOpenChange={(next) => !next && !busy && onLater()}>

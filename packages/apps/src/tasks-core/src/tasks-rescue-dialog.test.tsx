@@ -92,6 +92,19 @@ describe("TasksRescueDialog", () => {
     );
   });
 
+  it("takes the reason from the list's newest refusal", () => {
+    renderDialog([
+      parked("Renew passport", "Team errands", "readOnly"),
+      parked("Book train tickets", "Team errands", "gone"),
+    ]);
+
+    expect(screen.getByText(L.rescueReason("Team errands", "gone"))).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: L.rescueNewListLabel })).toHaveProperty(
+      "value",
+      "Team errands",
+    );
+  });
+
   it("moves to an existing list, which hides the new-list name", () => {
     const writes = [parked("Call the dentist", "Groceries")];
     const list = bootstrap.data.taskLists[0]!;
@@ -132,6 +145,36 @@ describe("TasksRescueDialog", () => {
     expect(onDiscard).toHaveBeenCalledWith([errands[0]!.id]);
 
     fireEvent.click(screen.getByRole("button", { name: L.rescueLater }));
+    expect(onLater).toHaveBeenCalledOnce();
+  });
+
+  it("lets go once only put-off lists are left, and asks about them on the next open", () => {
+    const groceries = [parked("Call the dentist", "Groceries")];
+    const errands = [parked("Renew passport", "Team errands", "readOnly")];
+    const onLater = vi.fn();
+    const dialog = (open: boolean, writes: ParkedTask[]) => (
+      <TasksRescueDialog
+        open={open}
+        writes={writes}
+        lists={bootstrap.data.taskLists}
+        labels={L}
+        onMove={vi.fn()}
+        onDiscard={vi.fn()}
+        onLater={onLater}
+      />
+    );
+    const { rerender } = render(dialog(true, [...groceries, ...errands]));
+
+    fireEvent.click(screen.getByRole("button", { name: L.rescueLater }));
+    expect(onLater).not.toHaveBeenCalled();
+
+    // Moving or discarding "Team errands" leaves only the put-off list.
+    rerender(dialog(true, groceries));
+    expect(onLater).toHaveBeenCalledOnce();
+
+    rerender(dialog(false, groceries));
+    rerender(dialog(true, groceries));
+    expect(screen.getByRole("heading", { name: L.rescueListTitle(1, "Groceries") })).toBeTruthy();
     expect(onLater).toHaveBeenCalledOnce();
   });
 
