@@ -1,3 +1,4 @@
+import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type TasksUILabels = {
@@ -132,6 +133,25 @@ export type TasksUILabels = {
   conflictFieldLocal: string;
   conflictFieldServer: string;
   conflictApplyMerge: string;
+  /** A queued write the server refused for good (#1825). */
+  taskWriteRefused: (title: string, reason: TaskWriteRefusal) => string;
+  /** The dialog that asks where refused offline tasks go (#1825). */
+  rescueStep: (step: number, total: number) => string;
+  rescueListTitle: (count: number, listName: string) => string;
+  rescueReason: (listName: string, reason: "gone" | "readOnly") => string;
+  rescueEditsAsNew: string;
+  rescueDestinationLabel: string;
+  rescueNewList: string;
+  rescueNewListLabel: string;
+  rescueNewListName: (listName: string, reason: "gone" | "readOnly") => string;
+  rescueMove: (count: number) => string;
+  rescueDiscard: (count: number) => string;
+  rescueLater: string;
+  rescueEntry: (lists: number) => string;
+  rescueMoved: (count: number, listName: string) => string;
+  rescueDiscarded: (count: number) => string;
+  rescueFailed: string;
+  rescueOpenElsewhere: string;
 };
 
 export const defaultTasksLabels: TasksUILabels = {
@@ -273,6 +293,40 @@ export const defaultTasksLabels: TasksUILabels = {
   conflictFieldLocal: "Your edits",
   conflictFieldServer: "Server version",
   conflictApplyMerge: "Apply merged changes",
+  taskWriteRefused: (title, reason) =>
+    ({
+      gone: `“${title}” was deleted, or you no longer have access to its list. Your offline changes to it were not kept.`,
+      readOnly: `You can only view the list with “${title}” now. Your offline changes to it were not saved.`,
+      notSaved: `Your offline changes to “${title}” could not be saved. It shows the server version again.`,
+    })[reason],
+  rescueStep: (step, total) => `List ${step} of ${total}`,
+  rescueListTitle: (count, listName) => {
+    const list = listName ? `“${listName}”` : "a list";
+    return count === 1 ? `A task from ${list}` : `${count} tasks from ${list}`;
+  },
+  rescueReason: (listName, reason) => {
+    const list = listName ? `“${listName}”` : "This list";
+    return reason === "readOnly"
+      ? `You can only view ${list} now, so your offline changes could not be saved there. Choose where to keep them.`
+      : `${list} was deleted or is no longer shared with you, so your offline changes could not be saved there. Choose where to keep them.`;
+  },
+  rescueEditsAsNew: "Edited tasks are kept as new tasks.",
+  rescueDestinationLabel: "Move to",
+  rescueNewList: "New list",
+  rescueNewListLabel: "Name of the new list",
+  rescueNewListName: (listName, reason) =>
+    !listName ? "Rescued tasks" : reason === "readOnly" ? `${listName} (copy)` : listName,
+  rescueMove: (count) => (count === 1 ? "Move task" : `Move ${count} tasks`),
+  rescueDiscard: (count) => (count === 1 ? "Discard task" : `Discard ${count} tasks`),
+  rescueLater: "Decide later",
+  rescueEntry: (lists) =>
+    lists === 1 ? "Tasks need a new list" : `Tasks from ${lists} lists need a new list`,
+  rescueMoved: (count, listName) =>
+    count === 1 ? `Moved 1 task to “${listName}”` : `Moved ${count} tasks to “${listName}”`,
+  rescueDiscarded: (count) => (count === 1 ? "Discarded 1 task" : `Discarded ${count} tasks`),
+  rescueFailed: "Some tasks could not be moved. They are still waiting for a list.",
+  rescueOpenElsewhere:
+    "These tasks are open in another Tasks tab. Choose where to keep them there.",
 };
 
 export function mergeTasksLabels(overrides?: Partial<TasksUILabels>): TasksUILabels {
