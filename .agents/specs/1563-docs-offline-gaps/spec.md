@@ -35,13 +35,13 @@ The owner was asleep; each open point is decided here.
 1. **Offline create keeps both.**
    - The flush creates the Doc with FileNode/set `create`, which refuses a taken name (`alreadyExists`). It never uploads over a file. On a clash it retries under Drive's keep-both name (`name (1).md`, then `(2)`, …, the same `keepBothName` rule as Drive uploads), up to five times.
    - The Doc then moves on this device to the name it got: listing rows, the pin and Drive sidecars, and the local text. Every tab hears the move. Later queued writes on the old path (rename, star, trash) are re-aimed at the new name before they run.
-   - A retried create may have landed with its answer lost. On a retry, a file under the wanted name with exactly the same size counts as our own earlier create, not as a clash.
+   - A retried create may have landed with its answer lost. On a retry, a non-empty file under the wanted name with exactly the same size counts as our own earlier create, not as a clash. An empty file never matches, so the name keeps both.
    - While a queued create owns the path, the editor holds its server save, so the open room cannot write to the name before the flush settles it.
 2. **The text follows the file.**
    - A cross-tab topic (`docs-path-moves.ts`) tells every tab, this one included, that a path (a file or a folder) is now another path. An open editor of that path, or of a Doc under that folder, opens the new path in place (history replace).
    - The topic is published after an offline rename (queued), an online rename, a kept-both create, and a move that Drive's FileNode inbound reports. It is not published for a path a queued local write still owns: the local name wins until that write settles (step 1, decision 5).
    - Before the topic is published, text in a path-keyed collab database (a Doc opened before its FileNode id was known, or created offline) moves to the new path. Only databases that exist are opened. A database keyed by FileNode id needs nothing, because the id survives a rename.
-   - After being offline, the editor holds its server save until the first FileNode pull after reconnect settles. So a rename on another device is known before the editor saves, and nothing is written to the old name.
+   - After being offline, the editor holds its server save until the first FileNode pull after reconnect settles. When a move of the open Doc is published, the hold also lasts until the editor is on the new path, online or after that pull. So nothing is written to the old name.
 3. **Starred and Trash work offline; what cannot, says so.**
    - Starred offline: the starred paths cached on the device, each given an entry from the Drive cache, else from a cached Docs listing row, else a bare entry. Star and unstar stay queued as before.
    - Trash offline: the Drive cache of the Trash folder, plus the last live listing this tab saw (kept in memory, like step 1 kept Shared and Trash), minus what a queued move took out, plus what a queued trash or move put in. Restore is "Move" out of Trash and is queued like any move.
@@ -60,7 +60,7 @@ The owner was asleep; each open point is decided here.
 
 ## Edge cases
 
-- **Lost create answer.** Decision 1 takes a same-size file under the wanted name as our own create on a retry. A different file of exactly the same size, created in the same window, would be taken for ours. The Doc's text then stays in the local database and shows as unsaved.
+- **Lost create answer.** Decision 1 takes a same-named file of the same size as our own create on a retry, but never for an empty file: every new Doc is uploaded empty, so an empty create always keeps both (the worst case is an empty orphan). A different non-empty file of exactly the same size, created in the same window, would be taken for ours, and the editor then saves into it.
 - **`cannotCalculateChanges`.** Drive falls back to a full resync, which reports no moves. An editor of a Doc renamed elsewhere then does not follow; its next save goes to the old path, as before this step.
 - **Opening a Doc online while it is being renamed elsewhere.** The hold of decision 2 covers the time after being offline only. A rename in the seconds between opening a Doc online and its first save is not caught.
 - **Two tabs migrating the same text.** Both tabs run the inbound. The second finds the old database empty and moves nothing.
