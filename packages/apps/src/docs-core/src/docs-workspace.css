@@ -310,6 +310,21 @@
   height: auto;
 }
 
+/* Pages (#1810): each page draws its own sheet, so the surface only centres the column. */
+@media screen {
+  .docs-workspace__editor
+    .text-editor:not(.text-editor--view-source)
+    .text-editor-sheet--paginated
+    .text-editor-sheet__surface {
+    width: max-content;
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
 /*
  * Flush sheet chrome on small viewports (same 767px band as Docs header
  * overflow / stats footer). Notes flushes below sidebar-dock (72.49rem);

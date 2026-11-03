@@ -11,14 +11,14 @@ import {
 import {
   buildResolvedTaskPatch,
   type TaskConflictFieldChoices,
-} from "@/lib/offline/tasks-conflict-merge";
+} from "@/lib/offline/tasks/tasks-conflict-merge";
 import {
   removeTaskFromCache,
   tasksOutboxTaskId,
   upsertTaskInCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { taskEtag } from "@/lib/offline/tasks/tasks-patch-merge";
-import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks-outbox-flush";
+import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
 
 async function outboxRowsForTask(username: string, taskId: string) {
   const rows = await listOutboxMutations(username);

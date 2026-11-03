@@ -32,12 +32,12 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/tasks-hybrid-operations", () => ({
+vi.mock("@/lib/offline/tasks/tasks-hybrid-operations", () => ({
   createHybridTasksOperations: vi.fn(),
   getTasksSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/tasks-offline-store", () => ({
+vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
   readTasksBootstrapFromCache: vi.fn(async () => bootstrap),
 }));
 

@@ -6,6 +6,7 @@ import { DocsStatsTags } from "@/docs-core/src/docs-stats-tags";
 import type { useDocsController } from "@/docs-core/src/use-docs-controller";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
+import type { TextEditorPageSetup } from "@/lib/page-format";
 
 type DocsController = ReturnType<typeof useDocsController>;
 
@@ -15,6 +16,8 @@ export type DocsMainPaneProps = {
   viewSource: boolean;
   /** Plain-language reason the document is read-only, shown above the editor. */
   readOnlyNotice?: string;
+  /** The person's page setup: pages on screen and the print paper size. */
+  pageSetup?: TextEditorPageSetup;
   onEditorReady: (editor: Editor | null) => void;
 };
 
@@ -23,6 +26,7 @@ export function DocsMainPane({
   fileKey,
   viewSource,
   readOnlyNotice,
+  pageSetup,
   onEditorReady,
 }: DocsMainPaneProps) {
   if (controller.loading) {
@@ -71,6 +75,7 @@ export function DocsMainPane({
         }
         onUpdate={({ content }) => controller.onContentChange(content)}
         onEditorReady={onEditorReady}
+        pageSetup={pageSetup}
       />
       <WorkspaceDetailFooter
         className="docs-workspace__stats-footer"

@@ -13,6 +13,11 @@ import type { TextEditorSheetVariant } from "@/text-editor-core/src/text-editor-
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
+import type { TextEditorPageSetup } from "@/lib/page-format";
+import {
+  useTextEditorPageSetup,
+  textEditorPaginated,
+} from "@/text-editor-core/src/use-text-editor-page-setup";
 
 import "@/text-editor-core/src/text-editor.css";
 
@@ -44,6 +49,8 @@ export type TextEditorProps = {
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
   /** Called when the TipTap instance is created or destroyed (e.g. document outline). */
   onEditorReady?: (editor: Editor | null) => void;
+  /** Docs only: the person's page setup. Turns on pages and the Page break slash item. */
+  pageSetup?: TextEditorPageSetup;
 };
 
 /**
@@ -64,7 +71,9 @@ export function TextEditor({
   onInsertImage,
   onUpdate,
   onEditorReady,
+  pageSetup,
 }: TextEditorProps) {
+  const paginated = textEditorPaginated(pageSetup, viewSource);
   const editor = useTextEditor({
     format,
     content: content ?? textEditorDemoContent(format),
@@ -72,7 +81,9 @@ export function TextEditor({
     placeholder,
     ariaLabel,
     onUpdate,
+    pagination: pageSetup ? { setup: pageSetup, enabled: paginated } : undefined,
   });
+  useTextEditorPageSetup(editor, pageSetup, paginated);
 
   const { sourceValue, onSourceChange, onSourceFocus, onSourceBlur } = useTextEditorSourceSync({
     editor,
@@ -113,6 +124,8 @@ export function TextEditor({
       fill={sheetFill}
       slashMenu={format !== "text"}
       onInsertImage={onInsertImage}
+      pageBreak={pageSetup != null}
+      paginated={paginated}
       className="min-h-0 flex-1"
     />
   );
