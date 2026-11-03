@@ -37,7 +37,15 @@ describe("docs node paths", () => {
     await recordDocsNodePath("np-took", A, "/users/ada/plan.md");
     await recordDocsNodePath("np-took", B, "/users/ada/plan.md");
     expect(await readDocsNodeIdForPath("np-took", "/users/ada/plan.md")).toBe(B);
-    expect(await readDocsPathForNodeId("np-took", A)).toBeUndefined();
+    // A keeps its last known path: a link to A can still find what replaced it.
+    expect(await readDocsPathForNodeId("np-took", A)).toBe("/users/ada/plan.md");
+  });
+
+  it("gives the path back to an older id that is recorded there again", async () => {
+    await recordDocsNodePath("np-again", A, "/users/ada/plan.md");
+    await recordDocsNodePath("np-again", B, "/users/ada/plan.md");
+    await recordDocsNodePath("np-again", A, "/users/ada/plan.md");
+    expect(await readDocsNodeIdForPath("np-again", "/users/ada/plan.md")).toBe(A);
   });
 
   it("is empty for an unknown id, path, or account", async () => {

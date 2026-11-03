@@ -8,6 +8,7 @@ import {
 } from "@/docs-core/src/docs-route-search";
 import {
   createDocsLocatorDeps,
+  fallbackForMissingDocsId,
   justLocatedDocsPath,
   knownDocsPath,
   locateDocsById,
@@ -42,7 +43,10 @@ type Options = {
  * elsewhere moves the editor to the new path. `?file=` waits for its id and is
  * replaced by `?id=`: the editor's local copy is keyed by id, so opening on the
  * path first would leave typed text behind after a rename. Without an id
- * (offline, unknown file) it opens by path.
+ * (offline, unknown file) it opens by path. An id the server no longer finds
+ * opens the file that replaced it, or its last known path so the editor's
+ * "no longer available" flow keeps the local copy; "not found" is only for
+ * an id this device never opened.
  */
 export function useDocsRouteDocument({ search, canResolve, username, refreshKey, deps }: Options) {
   const navigate = useNavigate();
@@ -55,6 +59,8 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
   const [recheck, setRecheck] = useState(0);
   /** The id the lookup effect last ran for: its first run may reuse a fresh answer. */
   const checkedIdRef = useRef<string | null>(null);
+  /** The id whose editor is mounted now. */
+  const openNodeIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -79,26 +85,40 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
       return;
     }
     const controller = new AbortController();
-    void locateDocsById(id, locator, controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setIdState((current) => {
-          const opened = current?.id === id && current.status === "ready";
-          if (result.kind === "found") {
-            rememberDocsLocation(id, result.path);
-            return { id, status: "ready", path: result.path };
-          }
-          // Once open, a Doc that is gone or unreachable stays mounted: the
-          // editor's own "document gone" flow keeps the local copy.
-          if (opened) return current;
-          const known = knownDocsPath(id);
-          if (known) return { id, status: "ready", path: known };
-          return { id, status: "not-found", offline: result.kind === "unknown" };
-        });
-      })
-      .catch(() => {});
+    const { signal } = controller;
+    void (async () => {
+      const result = await locateDocsById(id, locator, signal);
+      if (signal.aborted) return;
+      if (result.kind === "found") {
+        rememberDocsLocation(id, result.path);
+        setIdState({ id, status: "ready", path: result.path });
+        return;
+      }
+      // Once open, a Doc that is gone or unreachable stays mounted: the
+      // editor's own "document gone" flow keeps the local copy.
+      if (openNodeIdRef.current === id) return;
+      if (result.kind === "unknown") {
+        const known = knownDocsPath(id);
+        setIdState(
+          known ? { id, status: "ready", path: known } : { id, status: "not-found", offline: true },
+        );
+        return;
+      }
+      const fallback = await fallbackForMissingDocsId(id, locator, signal);
+      if (signal.aborted) return;
+      if (fallback.kind === "replaced") {
+        rememberDocsLocation(fallback.id, fallback.path);
+        void navigate({ to: "/docs", search: docsSearchFromNodeId(fallback.id), replace: true });
+        return;
+      }
+      setIdState(
+        fallback.kind === "last-known"
+          ? { id, status: "ready", path: fallback.path }
+          : { id, status: "not-found", offline: false },
+      );
+    })().catch(() => {});
     return () => controller.abort();
-  }, [canResolve, id, locator, recheck, refreshKey]);
+  }, [canResolve, id, locator, navigate, recheck, refreshKey]);
 
   useEffect(() => {
     if (id || !filePath || !canResolve) return;
@@ -167,9 +187,11 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
   }
 
   const openPath = routeDocument.status === "ready" ? routeDocument.path : null;
+  const openNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
   useEffect(() => {
     openPathRef.current = openPath;
-  }, [openPath]);
+    openNodeIdRef.current = openNodeId ?? null;
+  }, [openNodeId, openPath]);
 
   return { document: routeDocument, followPath, retry, relocate };
 }

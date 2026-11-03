@@ -116,12 +116,11 @@ describe("useDocsRouteDocument", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("shows not found when the server has no readable file", async () => {
+  it("shows not found when the server has no readable file this device never opened", async () => {
     const locator = deps({
       fetchLocation: vi.fn(async () => {
         throw new WgwRequestError("GET /files/node failed (404)", 404);
       }),
-      readCachedPath: vi.fn(async () => PATH),
     });
     const { result } = render({ id: ID }, locator);
 
@@ -132,8 +131,46 @@ describe("useDocsRouteDocument", () => {
         offline: false,
       }),
     );
-    // A 403/404 is the answer: the cache must not reopen a deleted or unshared Doc.
-    expect(locator.readCachedPath).not.toHaveBeenCalled();
+  });
+
+  it("opens the last known path when access is gone, so the editor keeps the local copy", async () => {
+    const locator = deps({
+      fetchLocation: vi.fn(async () => {
+        throw new WgwRequestError("GET /files/node failed (404)", 404);
+      }),
+      readCachedPath: vi.fn(async () => PATH),
+    });
+    const { result } = render({ id: ID }, locator);
+
+    // The editor's "no longer available" flow takes over from here.
+    await waitFor(() =>
+      expect(result.current.document).toEqual({ status: "ready", path: PATH, nodeId: ID }),
+    );
+    expect(locator.fetchLocation).toHaveBeenCalledWith({ path: PATH }, expect.anything());
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("opens the file that replaced the id at its last known path", async () => {
+    const replacement = `fn-${"b".repeat(32)}`;
+    const locator = deps({
+      fetchLocation: vi.fn(async (query) => {
+        if ("id" in query && query.id === ID) {
+          throw new WgwRequestError("GET /files/node failed (404)", 404);
+        }
+        return { id: replacement, path: PATH };
+      }),
+      readCachedPath: vi.fn(async () => PATH),
+    });
+    render({ id: ID }, locator);
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/docs",
+        search: { id: replacement },
+        replace: true,
+      }),
+    );
+    expect(locator.recordLocation).toHaveBeenCalledWith(replacement, PATH);
   });
 
   it("falls back to the cached path when the network fails", async () => {

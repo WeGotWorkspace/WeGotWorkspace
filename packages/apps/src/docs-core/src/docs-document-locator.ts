@@ -108,6 +108,32 @@ export async function locateDocsByPath(
 }
 
 /**
+ * The server no longer finds an id. `replaced`: another file now holds its last
+ * known path (a same-path replace gives a new id), so open that one.
+ * `last-known`: open the last known path; the editor's own "no longer
+ * available" flow then keeps the local copy (revoked share, deleted file).
+ * `none`: this device never knew where the id lived.
+ */
+export type DocsMissingFallback =
+  | { kind: "replaced"; id: string; path: string }
+  | { kind: "last-known"; path: string }
+  | { kind: "none" };
+
+export async function fallbackForMissingDocsId(
+  nodeId: string,
+  deps: DocsLocatorDeps,
+  signal?: AbortSignal,
+): Promise<DocsMissingFallback> {
+  const path = knownDocsPath(nodeId) ?? (await deps.readCachedPath(nodeId));
+  if (!path) return { kind: "none" };
+  const atPath = await fromServer({ path }, deps, signal);
+  if (atPath?.kind === "found" && atPath.id !== nodeId) {
+    return { kind: "replaced", id: atPath.id, path: atPath.path };
+  }
+  return { kind: "last-known", path };
+}
+
+/**
  * Paths this tab already knows for an id, so swapping `?file=` for `?id=`
  * (or a rename inside Docs) does not flash a loading state.
  */

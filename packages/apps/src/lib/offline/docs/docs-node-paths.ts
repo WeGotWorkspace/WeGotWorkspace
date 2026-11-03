@@ -24,7 +24,11 @@ async function readMap(username: string): Promise<NodePaths> {
   }
 }
 
-/** The id now lives at `path`. A path holds one file, so older claims on it go. */
+/**
+ * The id now lives at `path`. A path holds one file: the newest claim wins the
+ * path → id lookup. Older ids keep the path as their last known one, so a link
+ * to a file replaced in place can find what took its path.
+ */
 export async function recordDocsNodePath(
   username: string,
   nodeId: string,
@@ -34,9 +38,8 @@ export async function recordDocsNodePath(
   const key = normalizeOfflinePath(path);
   if (!id || !key) return;
   const map = await readMap(username);
-  for (const [otherId, otherPath] of Object.entries(map)) {
-    if (otherId === id || otherPath === key) delete map[otherId];
-  }
+  // Re-insert so insertion order stays recency.
+  delete map[id];
   map[id] = key;
   // Insertion order is recency: drop the oldest beyond the cap.
   const ids = Object.keys(map);
@@ -57,7 +60,7 @@ export async function readDocsPathForNodeId(
   return path ? `/${path}` : undefined;
 }
 
-/** Id last seen at the path, or `undefined`. */
+/** Id last seen at the path (the newest claim), or `undefined`. */
 export async function readDocsNodeIdForPath(
   username: string,
   path: string,
@@ -65,5 +68,7 @@ export async function readDocsNodeIdForPath(
   const key = normalizeOfflinePath(path);
   if (!key) return undefined;
   const map = await readMap(username);
-  return Object.keys(map).find((id) => map[id] === key);
+  return Object.keys(map)
+    .reverse()
+    .find((id) => map[id] === key);
 }
