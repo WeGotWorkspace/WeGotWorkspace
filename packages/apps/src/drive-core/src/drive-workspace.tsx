@@ -110,12 +110,15 @@ export function DriveWorkspace({
 
   const handleOpenShareForFile = useCallback(
     (apiPath: string, title: string) => {
-      // A path outside the listing is the open folder or one of its parents.
-      const entry = controller.files.find((file) => file.apiPath === apiPath);
+      // The active item may be a file the listing does not show (opened from
+      // search, say). A path outside both is the open folder or one of its parents.
+      const entry =
+        controller.files.find((file) => file.apiPath === apiPath) ??
+        (controller.active?.apiPath === apiPath ? controller.active : undefined);
       shareDialog.openShareDialog(apiPath, title, entry ? entry.kind === "folder" : true);
       onOpenShare?.(apiPath);
     },
-    [controller.files, onOpenShare, shareDialog],
+    [controller.active, controller.files, onOpenShare, shareDialog],
   );
 
   const {
