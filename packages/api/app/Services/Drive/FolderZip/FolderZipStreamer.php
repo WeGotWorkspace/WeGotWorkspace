@@ -64,13 +64,26 @@ final class FolderZipStreamer
 
         try {
             $stat = @fstat($stream);
-            $size = is_array($stat) ? (int) $stat['size'] : 0;
+            $size = is_array($stat) && (int) $stat['size'] > 0 ? (int) $stat['size'] : $this->storedSize($key);
             $mtime = is_array($stat) && (int) $stat['mtime'] > 0 ? (int) $stat['mtime'] : $this->directoryTime($key);
             $zip->addFile($path, $stream, $mtime, $size, $activity);
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
             }
+        }
+    }
+
+    /**
+     * The size from storage when the stream reports none, so a file of 4 GiB
+     * or more still takes the ZIP64 path instead of being cut at 4 GiB.
+     */
+    private function storedSize(string $key): int
+    {
+        try {
+            return $this->storage->files()->fileSize($key);
+        } catch (\Throwable) {
+            return 0;
         }
     }
 
