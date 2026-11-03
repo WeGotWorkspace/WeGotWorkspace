@@ -27,8 +27,10 @@ final class UrgentPushService
     public const ACTIONS = ['meet.started'];
 
     /**
-     * The sweep leaves an urgent delivery alone this long, so it never sends
-     * while the after-response send is still running.
+     * The sweep leaves an urgent delivery alone this long, so it does not send
+     * while the after-response send is still running. The hold counts from
+     * when the row is written during the request, so a join that takes longer
+     * than this to answer could still meet a sweep and send twice.
      */
     public const SWEEP_HOLD_SECONDS = 5;
 
