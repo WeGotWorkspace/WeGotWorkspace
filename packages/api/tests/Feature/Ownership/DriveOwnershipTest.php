@@ -709,7 +709,13 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             $level = self::levelOf($scope === Scope::GrantRevoked ? Scope::UserToActorWrite : $scope, $case->variant) ?? 'edit';
             $grantee = $scope === Scope::UserToActorGroup ? 'groups/'.OwnershipPrincipals::CREW : $self;
 
-            return [$carol, [$grantee => ['access' => $level], $dave => ['access' => 'view']], $dave];
+            // left-crew: dave reads through the group grant alone, so his read
+            // proves the grant survives another member leaving.
+            $grants = $case->variant === 'left-crew'
+                ? [$grantee => ['access' => $level]]
+                : [$grantee => ['access' => $level], $dave => ['access' => 'view']];
+
+            return [$carol, $grants, $dave];
         }
 
         return match ($scope) {
