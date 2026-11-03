@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   editPatchRevert,
   occurrenceOverridesRevert,
+  revertSeriesSplit,
 } from "@/calendar-core/src/calendar-undo-writes";
 
 const original = {
@@ -42,16 +43,30 @@ describe("editPatchRevert", () => {
 });
 
 describe("occurrenceOverridesRevert", () => {
-  it("restores the old overrides and drops the new instance with an explicit null", () => {
+  it("sends only the instances this edit changed, not the unchanged ones", () => {
     const edited = {
       "2033-01-17T10:00:00": { title: "Moved" },
       "2033-01-24T10:00:00": { title: "Edited" },
     };
     expect(occurrenceOverridesRevert(original, edited)).toEqual({
-      recurrenceOverrides: {
-        "2033-01-17T10:00:00": { title: "Moved" },
-        "2033-01-24T10:00:00": null,
-      },
+      recurrenceOverrides: { "2033-01-24T10:00:00": null },
+    });
+  });
+});
+
+describe("revertSeriesSplit", () => {
+  it("puts back only the overrides the truncate dropped", async () => {
+    const patchEvent = vi.fn().mockResolvedValue(undefined);
+    await revertSeriesSplit({ patchEvent, deleteEvent: vi.fn(), createEvent: vi.fn() }, null, {
+      masterId: "m",
+      forkedId: undefined,
+      truncatePatch: { recurrenceOverrides: { kept: { title: "K" }, dropped: null } },
+      seriesRules: undefined,
+      seriesOverrides: { kept: { title: "K" }, dropped: { title: "D" } },
+    });
+    expect(patchEvent).toHaveBeenCalledWith("m", {
+      recurrenceRules: null,
+      recurrenceOverrides: { dropped: { title: "D" } },
     });
   });
 });

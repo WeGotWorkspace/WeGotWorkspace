@@ -76,18 +76,21 @@ export function editPatchRevert(
 }
 
 /**
- * Puts a recurring event's overrides back as they were before an only-this-instance edit.
- * The edited instance gets an explicit `null` when it had no override, so a server that
- * merges override maps drops it too.
+ * Puts back the overrides an only-this-instance edit changed, and only those: the server
+ * merges override maps, so an instance someone else changed since is left alone. An instance
+ * that had no override gets an explicit `null`.
  */
 export function occurrenceOverridesRevert(
   original: JmapCalendarEvent,
   overrides: Record<string, unknown>,
 ): CalendarEventPatch {
   const before = original.recurrenceOverrides ?? {};
-  const revert: NonNullable<CalendarEventPatch["recurrenceOverrides"]> = { ...before };
+  const revert: NonNullable<CalendarEventPatch["recurrenceOverrides"]> = {};
   for (const rid of Object.keys(overrides)) {
     if (!(rid in before)) revert[rid] = null;
+    else if (JSON.stringify(before[rid]) !== JSON.stringify(overrides[rid])) {
+      revert[rid] = before[rid];
+    }
   }
   return { recurrenceOverrides: revert };
 }
@@ -97,7 +100,7 @@ export const SPLIT_STEPS = { truncate: "truncate", fork: "fork" } as const;
 
 /**
  * Undoes a this-and-future split: deletes the fork, then gives the master back the rules
- * (and overrides) the truncate patch changed.
+ * (and the overrides) the truncate patch dropped.
  */
 export async function revertSeriesSplit(
   operations: EventWrites,
@@ -118,8 +121,19 @@ export async function revertSeriesSplit(
     recurrenceRules: split.seriesRules?.length ? split.seriesRules : null,
   };
   if ("recurrenceOverrides" in split.truncatePatch) {
-    // The truncate only drops or keeps instances of the original map: put it back whole.
-    restore.recurrenceOverrides = split.seriesOverrides ?? null;
+    // Put back only what the truncate dropped; instances it kept were not touched.
+    const patched = split.truncatePatch.recurrenceOverrides;
+    if (!patched) {
+      restore.recurrenceOverrides = split.seriesOverrides ?? null;
+    } else {
+      const dropped: NonNullable<CalendarEventPatch["recurrenceOverrides"]> = {};
+      for (const [rid, value] of Object.entries(patched)) {
+        if (value === null && split.seriesOverrides?.[rid] !== undefined) {
+          dropped[rid] = split.seriesOverrides[rid];
+        }
+      }
+      if (Object.keys(dropped).length > 0) restore.recurrenceOverrides = dropped;
+    }
   }
   await operations.patchEvent(split.masterId, restore);
 }

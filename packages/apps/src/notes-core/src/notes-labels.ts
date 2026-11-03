@@ -43,7 +43,6 @@ export type NotesUILabels = {
   tagRenamedSomeSkipped: (tag: string, count: number, skipped: number) => string;
   tagRenameInvalidMessage: string;
   tagRenameUndone: string;
-  /** Toast for the queued write that puts the old tag back. Distinct from `tagRenameUndone`. */
   listSelected: (count: number) => string;
   listItems: (count: number) => string;
   emptyList: string;

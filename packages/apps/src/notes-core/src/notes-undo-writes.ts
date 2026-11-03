@@ -44,7 +44,11 @@ export function sendNoteFields(
   ).then(() => undefined);
 }
 
-/** Adds or removes tags on each row. A 412 sync race is logged, not thrown (see callers). */
+/**
+ * Adds or removes tags on each row. A row is marked done only when the server returned the
+ * note (or it is gone). A lost 412 sync race rejects, so the write fails and Undo never sends
+ * the inverse for a write that did not land.
+ */
 export function sendTagDelta(
   operations: Operations,
   rows: readonly Note[],
@@ -55,11 +59,16 @@ export function sendTagDelta(
   if (!operations) return Promise.resolve();
   return Promise.all(
     rows.map(async (row) => {
-      await persistNoteKeepingSyncRace(
+      let gone = false;
+      const saved = await persistNoteKeepingSyncRace(
         operations.upsertNote(row, delta),
-        () => onGone(row.id),
+        () => {
+          gone = true;
+          onGone(row.id);
+        },
         row.id,
       );
+      if (!saved && !gone) throw new Error(`Tag change for note ${row.id} lost a sync race`);
       markCompleted?.(row.id);
     }),
   ).then(() => undefined);

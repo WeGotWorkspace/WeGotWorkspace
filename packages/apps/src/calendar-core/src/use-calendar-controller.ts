@@ -594,7 +594,11 @@ export function useCalendarController({
             createdId = created.id;
           },
           revert: async () => {
-            if (createdId) await operations.deleteEvent(createdId);
+            if (!createdId) return;
+            // The card stays in the surface's working set until a sync: hide it now.
+            const id = createdId;
+            setPendingDeletedEventIds((current) => new Set(current).add(id));
+            await operations.deleteEvent(id);
           },
           rollback: () => setHeldCreateIntent(null),
         });

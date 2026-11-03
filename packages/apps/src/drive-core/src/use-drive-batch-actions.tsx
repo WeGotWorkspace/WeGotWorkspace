@@ -328,24 +328,23 @@ export function useDriveBatchActions({
       key: `drive:batch-star:${selectedIds.slice().sort().join(",")}`,
       toastMessage: `${nextValue ? "Starred" : "Unstarred"} ${selectedIds.length}`,
       icon: toastIcon,
-      execute: async (signal) => {
+      execute: async (signal, markCompleted) => {
         if (!operations) return;
         await Promise.all(
-          rows.map((file) =>
-            operations.setStar(
-              {
-                path: resolveDriveFileApiPath(file, currentUsername, groupRootNames),
-                starred: nextValue,
-              },
-              { signal },
-            ),
-          ),
+          rows.map(async (file) => {
+            const path = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
+            await operations.setStar({ path, starred: nextValue }, { signal });
+            markCompleted(path);
+          }),
         );
         reloadStarredFromServer(); // Starred spans folders: refresh from any view.
       },
-      revert: async () => {
+      revert: async (completedKeys) => {
         if (!operations) return;
-        await restoreDriveStars(operations, starChanges);
+        await restoreDriveStars(
+          operations,
+          starChanges.filter(({ path }) => !completedKeys || completedKeys.has(path)),
+        );
         if (viewType === "starred") reloadStarredFromServer();
       },
       rollback: () => {

@@ -11,7 +11,6 @@ import {
   revertDocsHomeTrash,
   type DocsHomeTrashOfflineSnapshot,
 } from "@/docs-core/src/docs-home-trash-undo";
-
 import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
@@ -403,22 +402,20 @@ export function useDocsHomeActions({
         key: `docs:batch-star:${ids.slice().sort().join(",")}`,
         toastMessage: nextValue ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
           await Promise.all(
-            rows.map((file) =>
-              operations.setStar(
-                {
-                  path: normalizeApiVirtualPath(file.apiPath!),
-                  starred: nextValue,
-                },
-                { signal },
-              ),
-            ),
+            rows.map(async (file) => {
+              const path = normalizeApiVirtualPath(file.apiPath!);
+              await operations.setStar({ path, starred: nextValue }, { signal });
+              markCompleted(path);
+            }),
           );
         },
-        revert: async () => {
+        revert: async (completedKeys) => {
           await Promise.all(
-            starChanges.map((path) => operations.setStar({ path, starred: !nextValue })),
+            starChanges
+              .filter((path) => !completedKeys || completedKeys.has(path))
+              .map((path) => operations.setStar({ path, starred: !nextValue })),
           );
         },
         rollback: () => setStarredPaths(previousPaths),
