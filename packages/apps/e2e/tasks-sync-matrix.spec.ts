@@ -1130,18 +1130,26 @@ const REFUSALS = {
 type Refusal = keyof typeof REFUSALS;
 type Rescue = "existing list" | "new list" | "discard";
 
+/** One dialog per refused list: "A task from “M <id>”" or "2 tasks from …". */
 function rescueDialog(tab: Tab) {
-  return tab.getByRole("dialog", { name: /tasks? needs? a list/ });
+  return tab.getByRole("dialog", { name: /^(A task|\d+ tasks) from / });
 }
 
 function rescueEntry(tab: Tab) {
-  return tab.getByRole("button", { name: /tasks? needs? a list/ });
+  return tab.getByRole("button", { name: /^Tasks (from \d+ lists )?need a new list$/ });
+}
+
+/** A rescue into a new list keeps the old name, or "(copy)" when the old list stays. */
+function rescuedListName(f: Fixture, refusal: Refusal) {
+  return REFUSALS[refusal].listStays ? `${f.listA} (copy)` : f.listA;
 }
 
 /** The teammate's own lists the case made (a rescue into a new list), deleted as them. */
 async function cleanUpTeammateLists(caseId: string) {
+  const names = new Set([`M ${caseId}`, `M ${caseId} (copy)`]);
   for (const list of (await serverState(caseId, TEAMMATE).catch(() => null))?.lists ?? []) {
-    if (!list.name.startsWith("Rescued from")) continue;
+    // The owner's lists show up too; only the teammate's own are writable and unshared.
+    if (!names.has(list.name) || !list.writable || list.shares.length > 0) continue;
     await api(TEAMMATE, "DELETE", `/tasks/tasklists/${encodeURIComponent(list.id)}`, {
       onDestroyRemoveContents: true,
     });
@@ -1167,28 +1175,33 @@ async function refuseOffline(
   return title;
 }
 
-async function chooseRescue(b: Tab, f: Fixture, title: string, rescue: Rescue) {
+async function chooseRescue(b: Tab, f: Fixture, refusal: Refusal, rescue: Rescue) {
   const dialog = rescueDialog(b);
   await expect(dialog, "the rescue dialog asks").toBeVisible({ timeout: 30_000 });
-  await expect(dialog.getByText(title, { exact: true })).toBeVisible();
+  await expect(dialog, "it names the refused list").toHaveAccessibleName(
+    `A task from “${f.listA}”`,
+  );
   await expect(conflictDialog(b), "no sync conflict").toHaveCount(0);
   if (rescue === "discard") {
     await dialog.getByRole("button", { name: /^Discard/ }).click();
   } else {
     if (rescue === "existing list") {
-      await dialog.getByRole("radio", { name: "An existing list" }).click();
-      await dialog.getByRole("combobox", { name: "List" }).click();
+      await dialog.getByRole("button", { name: "Move to: New list" }).click();
       // Only lists the teammate can write to: never the refused one.
-      await expect(b.getByRole("option", { name: f.listA, exact: true })).toHaveCount(0);
-      await b.getByRole("option", { name: f.listB, exact: true }).click();
+      await expect(b.getByRole("menuitem", { name: f.listA, exact: true })).toHaveCount(0);
+      await b.getByRole("menuitem", { name: f.listB, exact: true }).click();
+    } else {
+      await expect(dialog.getByRole("textbox", { name: "Name of the new list" })).toHaveValue(
+        rescuedListName(f, refusal),
+      );
     }
-    await dialog.getByRole("button", { name: /^Move/ }).click();
+    await dialog.getByRole("button", { name: /^Move (task|\d+ tasks)$/ }).click();
   }
   await expect(dialog).toHaveCount(0, { timeout: 15_000 });
   await expect(rescueEntry(b)).toHaveCount(0);
 }
 
-async function expectRescued(f: Fixture, title: string, rescue: Rescue) {
+async function expectRescued(f: Fixture, title: string, refusal: Refusal, rescue: Rescue) {
   const mate = await serverState(f.id, TEAMMATE);
   const copies = mate.tasks.filter((task) => task.title === title);
   if (rescue === "discard") {
@@ -1197,7 +1210,7 @@ async function expectRescued(f: Fixture, title: string, rescue: Rescue) {
   }
   expect(copies, "exactly one rescued copy").toHaveLength(1);
   const list = mate.lists.find((entry) => entry.id === copies[0]!.listId);
-  expect(list?.name).toBe(rescue === "new list" ? `Rescued from ${f.listA}` : f.listB);
+  expect(list?.name).toBe(rescue === "new list" ? rescuedListName(f, refusal) : f.listB);
 }
 
 test.describe("a refused offline write is rescued", () => {
@@ -1214,15 +1227,16 @@ test.describe("a refused offline write is rescued", () => {
             const [a, b] = all as [Tab, Tab];
             await expectLoaded(session, id);
             const title = await refuseOffline(a, b, f, kind, refusal);
-            await chooseRescue(b, f, title, rescue);
+            await chooseRescue(b, f, refusal, rescue);
 
             expect((await tabCache(b, f.id)).outbox, "nothing left queued").toEqual([]);
-            await expectRescued(f, title, rescue);
+            await expectRescued(f, title, refusal, rescue);
             if (kind === "edit" && REFUSALS[refusal].listStays) {
               expect((await serverTask(f.taskId))?.title, "the original is untouched").toBe(f.task);
             }
             if (!REFUSALS[refusal].listStays) {
-              await expect(sidebarList(b, f.listA)).toHaveCount(0);
+              // A rescue into a new list made a list of the same name; the old one is gone.
+              await expect(sidebarList(b, f.listA)).toHaveCount(rescue === "new list" ? 1 : 0);
               await expect(b).not.toHaveTitle(new RegExp(f.listAId));
             }
             expect(await converge(all, id, MIRROR_MS), "every tab mirrors the server").toEqual({});
@@ -1256,8 +1270,8 @@ test.describe("a refused offline write is rescued", () => {
       await expect(rescueDialog(b), "it comes back").toBeVisible({ timeout: 15_000 });
       await rescueDialog(b).getByRole("button", { name: "Decide later" }).click();
       await rescueEntry(b).click();
-      await chooseRescue(b, f, title, "new list");
-      await expectRescued(f, title, "new list");
+      await chooseRescue(b, f, "deleted", "new list");
+      await expectRescued(f, title, "deleted", "new list");
     } finally {
       await closeTabs(session);
       await cleanUpTeammateLists(id);
@@ -1276,9 +1290,8 @@ test.describe("a refused offline write is rescued", () => {
       const title = await refuseOffline(a, b, f, "create", "deleted");
       const dialog = rescueDialog(b);
       await expect(dialog).toBeVisible({ timeout: 30_000 });
-      await dialog.getByRole("radio", { name: "An existing list" }).click();
-      await dialog.getByRole("combobox", { name: "List" }).click();
-      await b.getByRole("option", { name: f.listB, exact: true }).click();
+      await dialog.getByRole("button", { name: "Move to: New list" }).click();
+      await b.getByRole("menuitem", { name: f.listB, exact: true }).click();
 
       // The create never gets an answer: the tab dies with the write in flight.
       const itemsUrl = (url: URL) => url.pathname.endsWith("/api/v1/tasks/items");
@@ -1290,7 +1303,7 @@ test.describe("a refused offline write is rescued", () => {
       const sent = b.waitForRequest(
         (request) => request.method() === "POST" && itemsUrl(new URL(request.url())),
       );
-      await dialog.getByRole("button", { name: /^Move/ }).click();
+      await dialog.getByRole("button", { name: /^Move (task|\d+ tasks)$/ }).click();
       await sent;
       await hardRefresh([b]);
       await b.unroute(itemsUrl, handler);
@@ -1299,8 +1312,8 @@ test.describe("a refused offline write is rescued", () => {
         (await serverState(f.id, TEAMMATE)).tasks.filter((task) => task.title === title),
         "the server has no copy yet",
       ).toEqual([]);
-      await chooseRescue(b, f, title, "existing list");
-      await expectRescued(f, title, "existing list");
+      await chooseRescue(b, f, "deleted", "existing list");
+      await expectRescued(f, title, "deleted", "existing list");
       expect((await tabCache(b, f.id)).outbox, "nothing left queued").toEqual([]);
     } finally {
       await closeTabs(session);
@@ -1338,10 +1351,10 @@ test.describe("a refused offline write is rescued", () => {
       await expect(rescueDialog(other)).toHaveCount(0);
 
       await asking.bringToFront();
-      await chooseRescue(asking, f, title, "existing list");
+      await chooseRescue(asking, f, "revoked", "existing list");
       await expect(rescueEntry(other), "the other tab follows").toHaveCount(0, { timeout: 15_000 });
       await expect(row(other, title)).toHaveCount(1, { timeout: 15_000 });
-      await expectRescued(f, title, "existing list");
+      await expectRescued(f, title, "revoked", "existing list");
     } finally {
       await closeTabs(session);
       await cleanUpCase(id);
