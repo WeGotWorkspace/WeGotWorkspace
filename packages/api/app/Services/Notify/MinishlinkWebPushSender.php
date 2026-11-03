@@ -98,26 +98,25 @@ final class MinishlinkWebPushSender implements WebPushSender
             return $statuses;
         }
 
-        try {
-            [$webPush, $requests] = $this->withCalculatorWarningsMuted(function () use ($messages, $vapid): array {
-                $webPush = $this->webPush($vapid);
-                $webPush->setReuseVAPIDHeaders(true);
-                foreach ($messages as $message) {
+        $webPush = $this->webPush($vapid);
+        $webPush->setReuseVAPIDHeaders(true);
+        // Prepared one by one: a message that cannot be encrypted (a malformed
+        // key) fails alone. Keyed by message index.
+        $requests = [];
+        foreach ($messages as $i => $message) {
+            try {
+                $requests[$i] = $this->withCalculatorWarningsMuted(function () use ($webPush, $message) {
                     $webPush->queueNotification(
                         self::subscription($message->endpoint, $message->p256dh, $message->auth),
                         $message->payload,
                         ['contentType' => 'application/notification+json'],
                     );
-                }
 
-                return [$webPush, $webPush->takePreparedRequests()];
-            });
-        } catch (\Throwable $e) {
-            foreach ($messages as $message) {
+                    return $webPush->takePreparedRequests()[0];
+                });
+            } catch (\Throwable $e) {
                 $this->logSendFailure($message->endpoint, $e);
             }
-
-            return $statuses;
         }
 
         $remaining = $deadline - microtime(true);

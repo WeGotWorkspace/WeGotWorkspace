@@ -61,6 +61,25 @@ final class MinishlinkWebPushSendManyTest extends TestCase
         $this->assertSame(['failed' => 2, 'by_status' => ['no_response' => 1, 410 => 1], 'by_host' => ['fcm.googleapis.com' => 2]], $tally->summary());
     }
 
+    public function test_a_malformed_key_fails_only_its_own_message(): void
+    {
+        $history = [];
+        $stack = HandlerStack::create(new MockHandler([new Response(201), new Response(201)]));
+        $stack->push(Middleware::history($history));
+        $tally = new PushFailureTally;
+        $sender = new MinishlinkWebPushSender($tally, null, new Client(['handler' => $stack]));
+        $keys = $this->subscriptionKeys();
+
+        $statuses = $sender->sendMany([
+            $this->message('https://fcm.googleapis.com/fcm/send/a'),
+            new WebPushMessage('https://fcm.googleapis.com/fcm/send/b', 'pub', $keys['auth'], '{"title":"x"}'),
+            $this->message('https://fcm.googleapis.com/fcm/send/c'),
+        ], $this->vapidKeys(), 1.5);
+
+        $this->assertSame([201, 0, 201], $statuses);
+        $this->assertCount(2, $history);
+    }
+
     public function test_slow_push_services_are_waited_for_in_parallel_up_to_the_deadline(): void
     {
         // Accepts connections but never answers: every send runs into the deadline.
