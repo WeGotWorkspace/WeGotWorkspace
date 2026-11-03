@@ -23,6 +23,8 @@ export type TasksWorkspaceProps = {
   onViewChange?: (view: string) => void;
   /** Extra buttons in the view header, before Refresh (the rescue entry point). */
   headerActions?: ReactNode;
+  /** Shown between the header and the list, e.g. a `NoticeBar` for refused offline changes. */
+  notice?: ReactNode;
 };
 
 export function taskProjectGroupsFromBootstrap(data: TasksUIData): TaskProjectGroupOption[] {
