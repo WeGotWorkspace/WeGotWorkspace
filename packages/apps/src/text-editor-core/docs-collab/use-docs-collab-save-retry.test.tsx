@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MutableRefObject } from "react";
 import * as Y from "yjs";
 import type { DocsCollabSessionRefs } from "./docs-collab-types";
+import { SAVE_DELAY_MS, SAVE_MAX_WAIT_MS } from "./docs-collab-save-queue";
 import { CollabHttpError } from "./docs-collab-utils";
 
 const persistCollabSave = vi.hoisted(() => vi.fn());
@@ -96,5 +97,108 @@ describe("useDocsCollabSave after a failed save", () => {
 
     expect(persistCollabSave).toHaveBeenCalledTimes(2);
     expect(refs.pendingServerSaveRef.current).toBe(false);
+  });
+});
+
+describe("useDocsCollabSave while someone keeps typing (#1533)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    persistCollabSave.mockReset();
+    persistCollabSave.mockImplementation(async ({ markdown }: { markdown: string }) => ({
+      status: "saved",
+      markdown,
+    }));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function renderSave(refs: DocsCollabSessionRefs) {
+    return renderHook(() =>
+      useDocsCollabSave({
+        refs,
+        room: "note-uid-1",
+        urls: { signalUrl: "/events", documentUrl: "/notes/items/1", yjsUrl: "/y", room: "n1" },
+        setDocStatus: vi.fn(),
+        setLastSavedAt: vi.fn(),
+        setPendingSync: vi.fn(),
+        setFailedSync: vi.fn(),
+      }),
+    );
+  }
+
+  it("saves at most SAVE_MAX_WAIT_MS after the first keystroke, not only once typing stops", async () => {
+    const refs = sessionRefs();
+    refs.localDirtySinceLastSaveRef.current = false;
+    const { result } = renderSave(refs);
+    let text = "";
+    const savedAt: number[] = [];
+    const start = Date.now();
+    persistCollabSave.mockImplementation(async ({ markdown }: { markdown: string }) => {
+      savedAt.push(Date.now() - start);
+      return { status: "saved", markdown };
+    });
+
+    // A keystroke every 400 ms for 10 s: each one alone would push a plain debounce back.
+    for (let i = 0; i < 25; i++) {
+      text += "a";
+      const typed = text;
+      act(() => result.current.onMarkdownChange(() => typed));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(400);
+      });
+    }
+
+    expect(savedAt[0]).toBeLessThanOrEqual(SAVE_MAX_WAIT_MS);
+    expect(savedAt.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("still waits for a pause when there is only one keystroke", async () => {
+    const refs = sessionRefs();
+    refs.localDirtySinceLastSaveRef.current = false;
+    const { result } = renderSave(refs);
+    act(() => result.current.onMarkdownChange(() => "one"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS - 1);
+    });
+    expect(persistCollabSave).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(persistCollabSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves text typed while the previous save was on its way", async () => {
+    const refs = sessionRefs();
+    refs.localDirtySinceLastSaveRef.current = false;
+    const { result } = renderSave(refs);
+    let finishFirst: () => void = () => undefined;
+    persistCollabSave.mockImplementationOnce(
+      ({ markdown }: { markdown: string }) =>
+        new Promise((resolve) => {
+          finishFirst = () => resolve({ status: "saved", markdown });
+        }),
+    );
+
+    act(() => result.current.onMarkdownChange(() => "first"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    });
+    expect(persistCollabSave).toHaveBeenCalledTimes(1);
+
+    // Typed during the save; its own timer fires while that save still runs.
+    act(() => result.current.onMarkdownChange(() => "first and more"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SAVE_MAX_WAIT_MS + 500);
+    });
+    finishFirst();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SAVE_MAX_WAIT_MS + 500);
+    });
+
+    expect(persistCollabSave).toHaveBeenCalledTimes(2);
+    expect(persistCollabSave.mock.calls[1]?.[0]).toMatchObject({ markdown: "first and more" });
+    expect(refs.localDirtySinceLastSaveRef.current).toBe(false);
   });
 });

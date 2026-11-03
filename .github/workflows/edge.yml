@@ -144,3 +144,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash tools/ghcr-delete-old-candidates.sh
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # Keeps every edge build for 14 days: Docker installs pin an exact
+      # X.Y.Z-edge.N tag and may lag behind :edge.
+      - name: Delete edge images older than 14 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node tools/ghcr-prune-edge-images.mjs

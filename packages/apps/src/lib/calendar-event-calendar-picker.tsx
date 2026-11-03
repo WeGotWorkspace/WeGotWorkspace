@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import type { ControlSize } from "@/ui/control-size";
@@ -25,18 +26,23 @@ export type CalendarPickerMenuItemProps = {
   onSelect: () => void;
   /** Omit for action rows (e.g. New calendar) that should not show a color dot. */
   color?: string;
+  /** Replaces the color dot, for collections with their own glyph (task lists). */
+  icon?: ReactNode;
 };
 
 /** Shared calendar option: color dot + name + check, matching the event-dialog picker. */
 export function CalendarPickerMenuItem({
   name,
   color,
+  icon,
   selected,
   onSelect,
 }: CalendarPickerMenuItemProps) {
   return (
     <DropdownMenuItem className="calendar-event-dialog__calendar-option" onSelect={onSelect}>
-      {color != null && color !== "" ? (
+      {icon != null ? (
+        icon
+      ) : color != null && color !== "" ? (
         <span className="calendar-sidebar-dot" style={{ backgroundColor: color }} aria-hidden />
       ) : null}
       <span className="calendar-event-dialog__calendar-name">{name}</span>

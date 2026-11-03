@@ -226,6 +226,24 @@ describe("applyDocsInboundChanges", () => {
     expect(await keys(ALL)).toEqual(["users/alice/a.md"]);
   });
 
+  it("shows a Doc trashed offline again under the name it got elsewhere (deliberate)", async () => {
+    // The queued trash names the old path only, and its server write fails
+    // once the old path is gone: the Doc is not trashed, so it is listed.
+    await cache(ALL, ["users/alice/a.md"]);
+    await queue({
+      op: "trash",
+      from: "/users/alice/gone.md",
+      destination: "/users/alice/.Trash",
+      to: "gone.md",
+    });
+
+    await applyDocsInboundChanges(username, [
+      moved("/users/alice/gone.md", "/users/alice/renamed.md"),
+    ]);
+
+    expect(await keys(ALL)).toEqual(["users/alice/a.md", "users/alice/renamed.md"]);
+  });
+
   it("does not keep a Doc deleted elsewhere for a queued star", async () => {
     await cache(ALL, ["users/alice/a.md"]);
     await queue({ op: "star", path: "/users/alice/a.md", starred: true });

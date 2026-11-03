@@ -14,7 +14,6 @@ packages/apps/src/meet-core/src/use-meet-chat-api.ts#useMeetChatAPI	212	3	grandf
 packages/apps/src/meet-core/src/use-meet-chat-call.ts#useMeetChatCall	219	0	grandfathered
 packages/apps/src/meet-core/src/use-meet-local-media.ts#useMeetLocalMedia	386	2	grandfathered
 packages/apps/src/meet-core/src/use-meet-mutations.ts#useMeetMutations	385	3	grandfathered
-packages/apps/src/notes-core/src/use-notes-api.ts#useNotesAPI	250	3	grandfathered
 packages/apps/src/notes-core/src/use-notes-batch-actions.tsx#useNotesBatchActions	210	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-list.tsx#useNotesList	231	5	grandfathered
 packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	739	2	grandfathered

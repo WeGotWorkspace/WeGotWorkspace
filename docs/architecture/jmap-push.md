@@ -204,13 +204,13 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 
 | App | Types | Calls |
 |-----|-------|-------|
-| Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` |
+| Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` (built, `use-notes-live-inbound.ts`); the open note comes without `body` (`note-body-rooms.ts`) |
 | Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
 | Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.sync()` |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
 | Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); toast to do ([notifications.md](notifications.md#active-news-on-the-client)) |
 | Drive, Docs home | `FileNode` | `FileNode/changes` for the visible folder (`use-drive-file-node-inbound.ts`) |
-| Tasks | `Task`, `TaskList` | `refreshList` |
+| Tasks | `Task`, `TaskList` | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`) |
 
 The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`. Work that one tab should do per push, such as fetching the inbox once and sharing it, checks `hub.leading`: the tab that holds the stream is visible whenever any subscribed tab is.
 
