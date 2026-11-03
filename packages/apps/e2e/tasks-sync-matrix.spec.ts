@@ -1202,12 +1202,22 @@ async function chooseRescue(b: Tab, f: Fixture, refusal: Refusal, rescue: Rescue
 }
 
 async function expectRescued(f: Fixture, title: string, refusal: Refusal, rescue: Rescue) {
-  const mate = await serverState(f.id, TEAMMATE);
-  const copies = mate.tasks.filter((task) => task.title === title);
+  const copiesOf = async () => {
+    const state = await serverState(f.id, TEAMMATE);
+    return { state, copies: state.tasks.filter((task) => task.title === title) };
+  };
   if (rescue === "discard") {
-    expect(copies, "a discarded task is nowhere").toEqual([]);
+    expect((await copiesOf()).copies, "a discarded task is nowhere").toEqual([]);
     return;
   }
+  // The dialog closes once the writes are claimed; the list and task land on the server after.
+  await expect
+    .poll(async () => (await copiesOf()).copies.length, {
+      message: "exactly one rescued copy",
+      timeout: 15_000,
+    })
+    .toBe(1);
+  const { state: mate, copies } = await copiesOf();
   expect(copies, "exactly one rescued copy").toHaveLength(1);
   const list = mate.lists.find((entry) => entry.id === copies[0]!.listId);
   expect(list?.name).toBe(rescue === "new list" ? rescuedListName(f, refusal) : f.listB);
