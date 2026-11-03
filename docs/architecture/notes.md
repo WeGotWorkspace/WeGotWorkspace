@@ -84,7 +84,7 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 **Decision:**
 
-- **Vendor JMAP envelope** `urn:wgw:jmap:notes` on `POST /jmap` — `Notebook/get|changes|set` and `Note/get|changes|set`. Not IETF `urn:ietf:params:jmap:notes` (no such type).
+- **Vendor JMAP envelope** `urn:wgw:jmap:notes` on `POST /jmap` — `Notebook/get|changes|set` and `Note/get|changes|set|query`. Not IETF `urn:ietf:params:jmap:notes` (no such type).
 - **JMAP-shaped REST DTOs remain** — `Notebook`, `Note` (`id` = `UID`, `title`, `body`, `categories`, `notebookId`, `status`, `etag`) for non-sync CRUD.
 - **Dexie inbound:** the Notes app working set is Dexie. Live inbound is `Note/changes` → `Note/get` (account-wide fan-out). REST `GET /notes/*/changes` is reconnect / manual refresh / mock-tier fallback only. The UI does not remount from a full live GET.
 

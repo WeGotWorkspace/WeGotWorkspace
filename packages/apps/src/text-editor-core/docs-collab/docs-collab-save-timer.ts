@@ -31,8 +31,11 @@ export function armSaveTimer(
   }, delayMs);
 }
 
-export function cancelSaveTimer(timerRef: SaveTimerRef): void {
+/** True when a save was armed, so cancelling it left a save undone. */
+export function cancelSaveTimer(timerRef: SaveTimerRef): boolean {
+  const armed = timerRef.current !== null;
   if (timerRef.current) clearTimeout(timerRef.current);
   timerRef.current = null;
   firstArmedAt.delete(timerRef);
+  return armed;
 }

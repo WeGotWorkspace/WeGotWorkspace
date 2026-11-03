@@ -15,7 +15,7 @@ import {
   notifyTasksBootstrapUpdated,
   subscribeTasksBootstrapUpdated,
 } from "@/lib/offline/tasks-bootstrap-sync";
-import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
+import { syncTasksInbound } from "@/lib/offline/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
   resolveTasksOfflineUsername,
@@ -26,6 +26,7 @@ import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queu
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksUIData } from "@/tasks-core/src/tasks-types";
+import { useTasksLiveInbound } from "@/tasks-core/src/use-tasks-live-inbound";
 import {
   createDefaultTasksApiSource,
   type TasksApiSource,
@@ -129,27 +130,11 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     });
   }, [offlineUsername, patchFromCache]);
 
-  useEffect(() => {
-    if (!offlineUsername || !online || phase !== "ready") return;
-    if (!wgwLiveApiEnabled()) return;
-    const username = offlineUsername;
-    let cancelled = false;
-    const tick = () => {
-      void syncTasksInbound(username)
-        .then((result) => {
-          if (!result?.changed) return;
-          // The token is shared: the other tabs' next pull sees no change.
-          notifyTasksBootstrapUpdated(username);
-          if (!cancelled) return patchFromCache();
-        })
-        .catch(() => undefined);
-    };
-    const timer = setInterval(tick, TASKS_INBOUND_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [offlineUsername, online, patchFromCache, phase]);
+  useTasksLiveInbound({
+    username: offlineUsername,
+    enabled: online && phase === "ready" && wgwLiveApiEnabled(),
+    patchFromCache,
+  });
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;

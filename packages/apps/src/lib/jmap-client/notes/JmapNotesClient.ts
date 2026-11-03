@@ -1,3 +1,4 @@
+import { fetchAllByQuery } from "../core/fetch-all.js";
 import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { JmapSetItemError } from "../core/errors.js";
@@ -81,6 +82,15 @@ export class JmapNotesClient {
       : await getPage(null);
     this.client.setState(accountId, NOTE_TYPE, response.state);
     return response;
+  }
+
+  /** Every note, via `Note/query` and explicit-id gets (no get-all; #1792). */
+  getAllNotes(accountId: JmapId): Promise<GetResponse<JmapNote>> {
+    return fetchAllByQuery<JmapNote>(this.client, {
+      accountId,
+      type: NOTE_TYPE,
+      using: NOTES_USING,
+    });
   }
 
   async noteChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {
