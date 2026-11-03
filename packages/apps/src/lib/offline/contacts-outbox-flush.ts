@@ -65,10 +65,10 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
           await removeOutboxMutation(username, row.id);
           continue;
         }
+        // A refused create (`forbidden`) keeps its 403 in the catch below.
+        if (notCreated) throw new JmapSetItemError("create", creationId, notCreated);
         const serverId = response.created[creationId];
-        if (!serverId) {
-          throw new Error(notCreated?.description ?? "Create failed");
-        }
+        if (!serverId) throw new Error("Create failed");
         const tempId = String(payload.tempCardId ?? "");
         if (tempId) await removeContactCardFromCache(username, tempId);
         const card = await getCard(serverId);
@@ -89,6 +89,10 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
           await markOutboxError(username, row.id, "stateMismatch");
           continue;
         }
+        // Never settle a refused update with the server copy: that loses the
+        // offline edit. `forbidden` becomes a permanent 403 in the catch below.
+        const notUpdated = response.notUpdated[cardId];
+        if (notUpdated) throw new JmapSetItemError("update", cardId, notUpdated);
         const card = await getCard(cardId);
         // A patch merged in while this one was sent is owed on the new state.
         const settlement = await settleSentOutboxMutation(username, row, {
