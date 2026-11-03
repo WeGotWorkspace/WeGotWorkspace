@@ -78,8 +78,15 @@ test.describe("Drive upload recovery (live app)", () => {
     await picker.getByText(dest, { exact: true }).first().click();
     await picker.getByRole("button", { name: "Upload here" }).click();
 
-    await expect.poll(() => namesIn(page, dest), { timeout: 60_000 }).toContain(file);
+    await expect
+      .poll(async () => (await namesIn(page, dest)).filter((name) => name === file).length, {
+        timeout: 60_000,
+      })
+      .toBe(1);
     await expect(page.getByText("All uploads are done")).toBeVisible({ timeout: 60_000 });
+    await page.reload();
+    await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
+    await expect(page.locator(".drive-uploads__row")).toHaveCount(0);
     expect(await countOnServer(page, file)).toBe(0);
   });
 
