@@ -43,18 +43,8 @@
   @apply font-we-got-headline font-semibold not-italic;
 }
 
-.installer__dots {
-  @apply mb-6 flex list-none items-center gap-2 p-0;
-}
-
-.installer__dot {
-  @apply size-1.5 rounded-full;
-  background-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
-}
-
-.installer__dot--current,
-.installer__dot--done {
-  background-color: var(--workspace-accent);
+.installer .installer__dots {
+  @apply mb-6;
 }
 
 .installer__lead {
