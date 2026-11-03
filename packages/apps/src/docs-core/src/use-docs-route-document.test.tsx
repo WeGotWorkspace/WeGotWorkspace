@@ -260,10 +260,13 @@ describe("useDocsRouteDocument", () => {
   });
 
   it("followPath moves an id route to the renamed path without navigating", async () => {
-    const { result } = render({ id: ID }, deps());
+    const locator = deps();
+    const { result } = render({ id: ID }, locator);
     await waitFor(() => expect(result.current.document).toMatchObject({ path: PATH }));
 
-    act(() => result.current.followPath("/users/alice/Renamed.md"));
+    await act(async () => result.current.followPath("/users/alice/Renamed.md"));
+
+    expect(locator.recordLocation).toHaveBeenCalledWith(ID, "/users/alice/Renamed.md");
 
     expect(result.current.document).toEqual({
       status: "ready",
@@ -273,10 +276,10 @@ describe("useDocsRouteDocument", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("followPath on a file route navigates to the new path", () => {
+  it("followPath on a file route navigates to the new path", async () => {
     const { result } = render({ file: "users/alice/Roadmap.md" }, deps(), false);
 
-    act(() => result.current.followPath("/users/alice/Renamed.md"));
+    await act(async () => result.current.followPath("/users/alice/Renamed.md"));
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/docs",

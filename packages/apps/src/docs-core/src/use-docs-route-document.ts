@@ -119,15 +119,17 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
 
   /** The open Doc now lives at `path` (renamed inside Docs). */
   const followPath = useCallback(
-    (path: string) => {
+    async (path: string) => {
       if (id) {
         rememberDocsLocation(id, path);
+        // Persist id ↔ path so the remounted editor keeps the id-keyed database.
+        await locator.recordLocation(id, path).catch(() => {});
         setIdState({ id, status: "ready", path });
         return;
       }
       void navigate({ to: "/docs", search: docsSearchFromApiPath(path) });
     },
-    [id, navigate],
+    [id, locator, navigate],
   );
 
   const retry = useCallback(() => setRecheck((n) => n + 1), []);
