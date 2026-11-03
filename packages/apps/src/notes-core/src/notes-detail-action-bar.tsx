@@ -6,7 +6,7 @@ import {
   NotesNotebookSelect,
   type NotesNotebookSelectItem,
 } from "@/notes-core/src/notes-notebook-select";
-import { notebookDisplayName, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
+import { notebookDisplayName } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor } from "@/notes-core/src/notes-notebook-color";
 
 type NotesDetailActionBarProps = {
@@ -25,8 +25,8 @@ type NotesDetailActionBarProps = {
   /** Notebook `calendarcolor` for the switcher (same colored notebook icon as list/sidebar). */
   notebookColor?: string | null;
   /**
-   * View-only share: disable move / star (body+tags gated separately
-   * via NoteDetailView `readOnly`).
+   * View-only share: disable move (body+tags gated separately via
+   * NoteDetailView `readOnly`). Star stays enabled: it is the caller's own.
    */
   readOnly?: boolean;
   /**
@@ -63,7 +63,6 @@ export function NotesDetailActionBar({
   // Lock inbound Shared-with-me leftovers, view-only shares, and archived
   // notes, which do not move until they are restored (#1535).
   const notebookLocked = sharedInbox || readOnly || !!archived[active.id];
-  const showStar = noteShowsStarControls(active);
   const archiveLocked = !canArchive;
   // Personal shares: keep grantor username on the list row only — detail switcher
   // shows notebook / Shared with me, not the username chip. Group notebooks use
@@ -74,18 +73,13 @@ export function NotesDetailActionBar({
   const selectColor = notebookColor ?? notebookDisplayColor(active, notebooks);
 
   const rightActions = [
-    ...(showStar
-      ? [
-          {
-            id: "toggle-star",
-            label: labels.toolbarStar,
-            onClick: readOnly ? undefined : () => toggleStar(active.id),
-            active: !!starred[active.id],
-            icon: <Star />,
-            disabled: readOnly,
-          },
-        ]
-      : []),
+    {
+      id: "toggle-star",
+      label: labels.toolbarStar,
+      onClick: () => toggleStar(active.id),
+      active: !!starred[active.id],
+      icon: <Star />,
+    },
     {
       id: "toggle-archive",
       label: archived[active.id] ? labels.toolbarUnarchive : labels.toolbarArchive,

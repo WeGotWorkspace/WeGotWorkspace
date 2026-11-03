@@ -17,5 +17,7 @@ export { InstallerReadyPage } from "./installer-ready-page";
 export type { InstallerReadyPageProps } from "./installer-ready-page";
 export { InstallerAttentionPage } from "./installer-attention-page";
 export type { InstallerAttentionPageProps } from "./installer-attention-page";
+export { InstallerNotSecurePage } from "./installer-not-secure-page";
+export type { InstallerNotSecurePageProps } from "./installer-not-secure-page";
 export { InstallerWorkspace } from "./installer-workspace";
 export type { InstallerWorkspaceProps } from "./installer-workspace";

@@ -19,8 +19,8 @@ use App\Services\Installer\InstallerVapidKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
-use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
-use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
+use App\Services\Jmap\Blobs\JmapBlobMaintenance;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
@@ -451,8 +451,8 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
     return Command::SUCCESS;
 })->purpose('Shared local-dev seeder: calendars, notes, and contacts (pass app names to limit; --force recreates)');
 
-Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
-    $result = $index->reindexAll();
+Artisan::command('wgw:jmap:filenodes-reindex', function (FileNodeReindexer $reindexer): int {
+    $result = $reindexer->reindexAll();
     $this->info(sprintf(
         'Indexed %d new node(s); tombstoned %d vanished node(s); pruned %d stale tombstone(s).',
         $result['indexed'],
@@ -481,16 +481,20 @@ Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping
     return Command::SUCCESS;
 })->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
 
-Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
-    $result = $collector->collect();
+Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance): int {
+    $result = $maintenance->runFull();
     $this->info(sprintf(
-        'Deleted %d expired blob(s); retained %d referenced blob(s).',
-        $result['deleted'],
-        $result['retained'],
+        'Deleted %d expired blob(s); retained %d referenced blob(s); expired %d assembl(ies) and %d staged copy(ies); swept %d temp file(s); stored %d pending content hash(es).',
+        $result['blobsDeleted'],
+        $result['blobsRetained'],
+        $result['assembliesExpired'],
+        $result['stagingExpired'],
+        $result['tempFilesDeleted'],
+        $result['hashesStored'],
     ));
 
     return Command::SUCCESS;
-})->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
+})->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk (domain references are never collected)');
 
 Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
     $fired = $scheduler->scan();

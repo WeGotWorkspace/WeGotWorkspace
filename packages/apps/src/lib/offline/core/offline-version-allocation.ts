@@ -48,6 +48,7 @@ export const DRIVE_OFFLINE_VERSION = {
   contentTables: 31,
   availabilityTables: 32,
   entryNodeId: 33,
+  uploadQueue: 34,
 } as const;
 
 /** Tasks version steps within the tasks block (40–49). */
