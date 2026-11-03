@@ -26,7 +26,7 @@ Reference implementation: `feature/docs-comments-sidebar` — `use-docs-comments
 
 ## When to split during a feature
 
-After **two or more unrelated concerns** land in one hook (e.g. Yjs sync + draft UI + DOM listeners), run a **structure pass before handoff** — extract pure `*.ts` modules and focused sub-hooks. Thresholds and blockers: [clean-code/smells.md](../clean-code/smells.md) (React hooks section) and [code-review/SKILL.md](../code-review/SKILL.md).
+After **two or more unrelated concerns** land in one hook (e.g. Yjs sync + draft UI + DOM listeners), run a **structure pass before handoff** — extract pure `*.ts` modules and focused sub-hooks. CI size limits (`pnpm check:hook-size`) and review prompts: [clean-code/smells.md](../clean-code/smells.md) (React hooks section) and [code-review/SKILL.md](../code-review/SKILL.md).
 
 ## Testing
 

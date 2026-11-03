@@ -16,10 +16,12 @@ final class SecurityHeaderPolicy
      * The runtime shell has no inline script. 'wasm-unsafe-eval' covers plugin
      * bundles that compile .wasm; Chromium blocks that under script-src 'self'.
      * The nonce is only present on responses that injected an inline script
-     * (plugin pages); every other HTML response gets the same policy Apache
-     * sets for /index.html.
+     * (the MCP consent page); every other HTML response gets the same policy
+     * Apache sets for /index.html.
+     *
+     * @param  list<string>  $formActions  extra form-action sources (OAuth consent redirect)
      */
-    public static function policy(?string $nonce = null): string
+    public static function policy(?string $nonce = null, array $formActions = []): string
     {
         $scriptSrc = "script-src 'self' 'wasm-unsafe-eval'";
         if ($nonce !== null) {
@@ -38,7 +40,7 @@ final class SecurityHeaderPolicy
             "manifest-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
-            "form-action 'self'",
+            implode(' ', ["form-action 'self'", ...$formActions]),
             "frame-ancestors 'self'",
             'report-uri /api/v1/csp-reports',
         ]);

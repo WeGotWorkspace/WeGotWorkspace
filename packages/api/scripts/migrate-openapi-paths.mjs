@@ -298,19 +298,6 @@ paths["/admin/search/jobs/{jobId}"] = {
 };
 paths["/admin/backups/{name}"] = clone(paths["/admin/updates/backups/{name}"]);
 delete paths["/admin/updates/backups/{name}"];
-paths["/admin/plugins"] = {
-  post: { tags: ["Admin"], summary: "Install plugin", security: [{ bearerAuth: [] }], responses: { 200: { description: "Installed" } }, "x-wgw-access": "admin" },
-};
-paths["/plugins/{id}/activation"] = {
-  put: {
-    tags: ["Plugins"],
-    summary: "Set plugin activation",
-    security: [{ bearerAuth: [] }],
-    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-    responses: { 200: { description: "Updated" } },
-    "x-wgw-access": "user",
-  },
-};
 
 for (const p of drop) delete paths[p];
 

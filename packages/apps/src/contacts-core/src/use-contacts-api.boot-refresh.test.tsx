@@ -7,6 +7,8 @@ import { JmapMethodError } from "@/lib/jmap-client";
 import {
   readContactsBootstrapFromCache,
   readSyncToken,
+  saveContactsColdDownloadPage,
+  startContactsColdDownload,
 } from "@/lib/offline/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
@@ -20,6 +22,7 @@ const {
   contactCardChanges,
   connectedContacts,
   fetchContactsLiveBootstrap,
+  fetchContactCardPages,
 } = vi.hoisted(() => ({
   listCards: vi.fn(),
   listAddressBooks: vi.fn(),
@@ -27,6 +30,7 @@ const {
   contactCardChanges: vi.fn(),
   connectedContacts: vi.fn(),
   fetchContactsLiveBootstrap: vi.fn(),
+  fetchContactCardPages: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
@@ -44,6 +48,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
     contactCardChanges,
     connectedContacts,
     fetchContactsLiveBootstrap,
+    fetchContactCardPages,
     getCard: vi.fn(),
     getAddressBook: vi.fn(),
   };
@@ -109,6 +114,7 @@ const session = {
 type BootSnapshot = {
   session: typeof session;
   data: { addressBooks: (typeof book)[]; cards: ContactCard[] };
+  pendingContactCount?: number;
 };
 
 function emptyChanges(since: string, newState: string) {
@@ -188,6 +194,42 @@ describe("useContactsAPI first visit", () => {
     expect(listAddressBooks).not.toHaveBeenCalled();
   });
 
+  it("reports the contacts still downloading until the snapshot is complete", async () => {
+    let resolveBoot: (value: BootSnapshot) => void = () => undefined;
+    const boot = new Promise<BootSnapshot>((resolve) => {
+      resolveBoot = resolve;
+    });
+    fetchContactsLiveBootstrap.mockImplementation(
+      async (options?: { onProgress?: (partial: BootSnapshot) => void }) => {
+        options?.onProgress?.({
+          session,
+          data: { addressBooks: [book], cards: [card("page-1")] },
+          pendingContactCount: 2,
+        });
+        return boot;
+      },
+    );
+
+    const { result } = renderHook(() => useContactsAPI());
+
+    await waitFor(() => {
+      expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
+    });
+    expect(result.current.pendingContactCount).toBe(2);
+
+    await act(async () => {
+      resolveBoot({
+        session,
+        data: { addressBooks: [book], cards: [card("page-1"), card("page-2"), card("page-3")] },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.mutationsLocked).toBe(false);
+    });
+    expect(result.current.pendingContactCount).toBeUndefined();
+  });
+
   it("stays read-only during a cold download and fetches a page-1 edit on the next changes", async () => {
     let resolveBoot: (
       value: BootSnapshot & {
@@ -262,5 +304,51 @@ describe("useContactsAPI first visit", () => {
     expect(result.current.listRefreshing).toBe(false);
     const cached = await readContactsBootstrapFromCache(username);
     expect(cached?.data.cards.find((row) => row.id === "page-1")?.name?.full).toBe("Ada Updated");
+  });
+
+  it("reopening after a dropped first download fetches only the rest, read-only until done", async () => {
+    await startContactsColdDownload(username, session, [book], {
+      id: "first-download",
+      addressBookState: "books-at-query",
+      contactCardState: "cards-at-query",
+      remainingCardIds: ["page-1", "page-2"],
+    });
+    await saveContactsColdDownloadPage(username, "first-download", [card("page-1")], ["page-2"]);
+    let deliver: () => Promise<void> = async () => undefined;
+    fetchContactCardPages.mockImplementation(
+      (
+        _ids: string[],
+        onCardPage: (page: { cards: ContactCard[]; remainingCardIds: string[] }) => Promise<void>,
+      ) =>
+        new Promise<void>((resolve) => {
+          deliver = async () => {
+            await onCardPage({ cards: [card("page-2")], remainingCardIds: [] });
+            resolve();
+          };
+        }),
+    );
+
+    const { result } = renderHook(() => useContactsAPI());
+
+    await waitFor(() => {
+      expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
+    });
+    await waitFor(() => {
+      expect(fetchContactCardPages).toHaveBeenCalledWith(["page-2"], expect.any(Function));
+    });
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(result.current.mutationsLocked).toBe(true);
+    expect(contactCardChanges).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await deliver();
+    });
+
+    await waitFor(() => {
+      expect(contactCardChanges).toHaveBeenCalledWith("cards-at-query", undefined);
+    });
+    expect(addressBookChanges).toHaveBeenCalledWith("books-at-query", undefined);
+    expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1", "page-2"]);
+    expect(result.current.mutationsLocked).toBe(false);
   });
 });

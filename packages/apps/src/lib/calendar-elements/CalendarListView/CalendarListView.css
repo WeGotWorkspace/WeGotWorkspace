@@ -99,6 +99,11 @@
   --_lc-event-card-text-color: var(--_lc-event-text-color, CanvasText);
 }
 
+.agenda-event-item event-card:focus-visible {
+  outline: 2px solid var(--_lc-event-accent-color, CanvasText);
+  outline-offset: -2px;
+}
+
 .agenda-event-item event-card[data-selected] {
   --_lc-event-card-bg-active: transparent;
 }

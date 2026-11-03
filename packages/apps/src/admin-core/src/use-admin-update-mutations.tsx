@@ -8,6 +8,7 @@ import {
 } from "@/admin-core/src/admin-update-progress";
 import { mutationErrorMessage } from "@/admin-core/src/admin-mutation-feedback";
 import type { AdminMutationSliceArgs } from "@/admin-core/src/admin-mutation-slice";
+import type { AdminUpdateChannel } from "@/admin-core/src/admin-types";
 
 type UpdateShell = AdminMutationSliceArgs<
   "updates" | "setUpdates" | "updateLogLines" | "setUpdateLogLines" | "applyRequestPendingRef"
@@ -21,6 +22,7 @@ export function useAdminUpdateMutations({
 }: UpdateShell) {
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [refreshingServerChecks, setRefreshingServerChecks] = useState(false);
+  const [savingUpdateChannel, setSavingUpdateChannel] = useState(false);
   const { updates, setUpdates, updateLogLines, setUpdateLogLines, applyRequestPendingRef } = shell;
 
   const checkUpdates = async () => {
@@ -36,6 +38,25 @@ export function useAdminUpdateMutations({
     } finally {
       setCheckingUpdates(false);
     }
+  };
+
+  const setUpdateChannel = async (channel: AdminUpdateChannel) => {
+    if (channel === updates.updateChannel) return;
+    setSavingUpdateChannel(true);
+    let switched = false;
+    try {
+      const next = await operations?.setUpdateChannel(channel);
+      if (!next) return;
+      setUpdates(next);
+      showSuccess(`Update channel set to ${channel}`);
+      switched = true;
+    } catch (error) {
+      showError(mutationErrorMessage(error, "Could not change the update channel"));
+    } finally {
+      setSavingUpdateChannel(false);
+    }
+    // The API drops the previous channel's check: look at the new feed now.
+    if (switched) await checkUpdates();
   };
 
   /** Re-fetch update state (including server checks) without running POST /updates/check. */
@@ -128,7 +149,9 @@ export function useAdminUpdateMutations({
   return {
     checkingUpdates,
     refreshingServerChecks,
+    savingUpdateChannel,
     checkUpdates,
+    setUpdateChannel,
     refreshServerChecks,
     clearUpdateLog,
     refreshUpdateLog,

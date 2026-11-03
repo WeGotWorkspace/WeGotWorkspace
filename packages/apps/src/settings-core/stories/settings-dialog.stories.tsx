@@ -48,9 +48,9 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
 export default meta;
 type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
 
-export const VisibleForMail: Story = {
+export const VisibleForCalendar: Story = {
   args: {
-    appId: "mail",
+    appId: "calendar",
     session: namedSession,
   },
   play: async ({ canvasElement }) => {

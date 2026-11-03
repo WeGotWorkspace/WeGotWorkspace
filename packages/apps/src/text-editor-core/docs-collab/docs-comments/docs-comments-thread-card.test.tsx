@@ -61,7 +61,7 @@ describe("DocsCommentsThreadCard", () => {
 
     expect(screen.getByText("🎉")).toBeTruthy();
     expect(screen.getByText("1")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "🎉 Sam Lee" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "🎉 1 Sam Lee" })).toBeTruthy();
     expect(screen.queryByLabelText("Add reaction")).toBeNull();
     expect(screen.queryByRole("button", { name: docsLabels.commentsResolve })).toBeNull();
   });

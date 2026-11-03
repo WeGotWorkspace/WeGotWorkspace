@@ -97,4 +97,19 @@
         <input type="hidden" name="intent" value="{{ $intent }}">
         <input type="hidden" name="client_id" value="{{ $client->id }}">
     </form>
+    {{-- One decision per page: a second submit would reach Passport after it consumed the auth token. --}}
+    <script nonce="{{ app(\App\Support\CspNonce::class)->value() }}">
+        document.querySelectorAll('form[action$="/oauth/authorize"]').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (document.documentElement.dataset.mcpDecided === '1') {
+                    event.preventDefault();
+                    return;
+                }
+                document.documentElement.dataset.mcpDecided = '1';
+                document.querySelectorAll('.mcp-actions button').forEach(function (button) {
+                    button.setAttribute('aria-disabled', 'true');
+                });
+            });
+        });
+    </script>
 @endsection

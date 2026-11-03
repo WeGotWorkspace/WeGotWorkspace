@@ -10,10 +10,9 @@ use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
 use App\Models\Principal;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
-use App\Services\Drive\CollabDocFormats;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notify\DocsThreadActivityNotify;
-use App\Storage\StoragePaths;
+use App\Services\VObject\VJournalUidGuard;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
@@ -36,8 +35,8 @@ final class DocsThreadRepository
         private readonly DocsThreadPoolProvisioner $pools,
         private readonly DocsThreadEventEmitter $events,
         private readonly DriveShareAuthorizer $authorizer,
-        private readonly StoragePaths $paths,
-        private readonly CollabDocFormats $collabDocs,
+        private readonly DocsThreadDocAccess $docs,
+        private readonly VJournalUidGuard $uidGuard,
     ) {}
 
     /**
@@ -46,7 +45,7 @@ final class DocsThreadRepository
      */
     public function list(array $principal, string $path): array
     {
-        $path = $this->requireReadableDocPath($path, $principal);
+        $path = $this->docs->requireReadable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return ['list' => []];
@@ -62,7 +61,7 @@ final class DocsThreadRepository
      */
     public function create(array $principal, string $path, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $kind = (string) ($payload['kind'] ?? '');
         if (! in_array($kind, [DocsThreadJournalConverter::KIND_COMMENT, DocsThreadJournalConverter::KIND_SUGGESTION], true)) {
             throw new ApiHttpException(400, 'kind must be comment or suggestion.', 'invalidProperties', ['kind']);
@@ -82,15 +81,6 @@ final class DocsThreadRepository
         $this->converter->assertBodySize($body);
 
         $instance = $this->pools->ensureForOwner(DocsThreadCollectionUris::ownerPrincipalUri($path));
-
-        $existing = $this->findObjectByUid((int) $instance->calendarid, $uid);
-        if ($existing !== null) {
-            return ['thread' => $this->presentThread($instance, $path, $uid), 'created' => false];
-        }
-        if (CalendarObject::query()->where('uid', $uid)->where('componenttype', 'VJOURNAL')->exists()) {
-            throw new ApiHttpException(409, 'A thread with this id already exists.', 'alreadyExists');
-        }
-
         $ics = $this->converter->toIcs([
             'id' => $uid,
             'body' => $body,
@@ -104,16 +94,17 @@ final class DocsThreadRepository
             'anchorOccurrence' => is_int($payload['anchorOccurrence'] ?? null) ? $payload['anchorOccurrence'] : null,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
-        $created = $this->writeObject($instance, $uid, $ics);
+        // One root per change: after a move the client derives another id for it.
+        $existingRoot = $kind === DocsThreadJournalConverter::KIND_SUGGESTION ? fn (): ?string => $this->suggestionRootUid($instance, $path, (string) $changeId) : null;
+        $existingUid = $this->insertOnce($instance, $uid, $ics, 'A thread with this id already exists.', [
+            'doc_path' => $path,
+            'kind' => $kind,
+            'parent_uid' => null,
+            'change_id' => $changeId,
+        ], $existingRoot);
+        $created = $existingUid === null;
+        $uid = $existingUid ?? $uid;
         if ($created) {
-            DocsThreadIndex::query()->create([
-                'calendarid' => (int) $instance->calendarid,
-                'uid' => $uid,
-                'doc_path' => $path,
-                'kind' => $kind,
-                'parent_uid' => null,
-                'change_id' => $changeId,
-            ]);
             if (trim($body) !== '') {
                 $mentions = DocsThreadActivityNotify::mentionUsernamesFromBody($body);
                 $this->events->posted(
@@ -140,7 +131,7 @@ final class DocsThreadRepository
      */
     public function reply(array $principal, string $path, string $threadId, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $rootUid = DocsThreadJournalConverter::normalizeUlid($threadId);
         $instance = $this->requirePoolForPath($path);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
@@ -152,14 +143,6 @@ final class DocsThreadRepository
         }
         $this->converter->assertBodySize($body);
 
-        $existing = $this->findObjectByUid((int) $instance->calendarid, $uid);
-        if ($existing !== null) {
-            return $this->presentThread($instance, $path, $rootUid);
-        }
-        if (CalendarObject::query()->where('uid', $uid)->where('componenttype', 'VJOURNAL')->exists()) {
-            throw new ApiHttpException(409, 'A message with this id already exists.', 'alreadyExists');
-        }
-
         $ics = $this->converter->toIcs([
             'id' => $uid,
             'body' => $body,
@@ -168,15 +151,13 @@ final class DocsThreadRepository
             'parentId' => $rootUid,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
-        if ($this->writeObject($instance, $uid, $ics)) {
-            DocsThreadIndex::query()->create([
-                'calendarid' => (int) $instance->calendarid,
-                'uid' => $uid,
-                'doc_path' => $path,
-                'kind' => DocsThreadIndex::KIND_REPLY,
-                'parent_uid' => $rootUid,
-                'change_id' => null,
-            ]);
+        $created = $this->insertOnce($instance, $uid, $ics, 'A message with this id already exists.', [
+            'doc_path' => $path,
+            'kind' => DocsThreadIndex::KIND_REPLY,
+            'parent_uid' => $rootUid,
+            'change_id' => null,
+        ]) === null;
+        if ($created) {
             $kind = (string) ($root['kind'] ?? DocsThreadJournalConverter::KIND_COMMENT);
             $participants = $this->threadParticipantUsernames($instance, $path, $rootUid);
             $mentions = array_values(array_unique([
@@ -205,7 +186,7 @@ final class DocsThreadRepository
      */
     public function toggleReaction(array $principal, string $path, string $threadId, string $emoji): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $emoji = trim($emoji);
         if ($emoji === '') {
             throw new ApiHttpException(400, 'emoji is required.', 'bad_request');
@@ -240,14 +221,14 @@ final class DocsThreadRepository
      */
     public function patch(array $principal, string $path, string $threadId, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $instance = $this->requirePoolForPath($path);
 
         $changeId = isset($payload['changeId']) && $payload['changeId'] !== ''
             ? $payload['changeId']
             : null;
         $rootUid = $changeId !== null
-            ? $this->rootUidForChangeId($instance, $path, $changeId)
+            ? ($this->suggestionRootUid($instance, $path, $changeId) ?? throw new ApiHttpException(404, 'Thread not found.', 'not_found'))
             : DocsThreadJournalConverter::normalizeUlid($threadId);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
         if (strtolower(trim((string) ($root['authorId'] ?? ''))) !== strtolower(trim($principal['username']))
@@ -298,7 +279,7 @@ final class DocsThreadRepository
      */
     public function archiveOrphanSuggestions(array $principal, string $path, array $activeChangeIds): void
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return;
@@ -325,7 +306,7 @@ final class DocsThreadRepository
      */
     public function changes(array $principal, string $path, ?string $since): array
     {
-        $path = $this->requireReadableDocPath($path, $principal);
+        $path = $this->docs->requireReadable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return [
@@ -364,98 +345,6 @@ final class DocsThreadRepository
         ];
     }
 
-    public function retargetPath(string $from, string $to): void
-    {
-        $from = $this->paths->normalizeVirtualPath($from);
-        $to = $this->paths->normalizeVirtualPath($to);
-        $rows = DocsThreadIndex::query()
-            ->where('doc_path', $from)
-            ->orWhere('doc_path', 'like', $from.'/%')
-            ->get();
-        foreach ($rows as $row) {
-            $newPath = (string) $row->doc_path === $from
-                ? $to
-                : $to.substr((string) $row->doc_path, strlen($from));
-            $instance = CalendarInstance::query()
-                ->where('calendarid', (int) $row->calendarid)
-                ->where('uri', DocsThreadCollectionUris::POOL_URI)
-                ->first();
-            $object = $this->findObjectByUid((int) $row->calendarid, (string) $row->uid);
-            if ($instance !== null && $object !== null) {
-                $ics = $this->converter->applyDocPath($this->rawIcs($object), $newPath);
-                $this->calBackend()->updateCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                    $ics,
-                );
-            }
-            $row->doc_path = $newPath;
-            $row->save();
-        }
-    }
-
-    public function dropPath(string $path): void
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $rows = DocsThreadIndex::query()
-            ->where('doc_path', $path)
-            ->orWhere('doc_path', 'like', $path.'/%')
-            ->get();
-        foreach ($rows as $row) {
-            $instance = CalendarInstance::query()
-                ->where('calendarid', (int) $row->calendarid)
-                ->where('uri', DocsThreadCollectionUris::POOL_URI)
-                ->first();
-            $object = $this->findObjectByUid((int) $row->calendarid, (string) $row->uid);
-            if ($instance !== null && $object !== null) {
-                $this->calBackend()->deleteCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                );
-            }
-            $row->delete();
-        }
-    }
-
-    /**
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function requireReadableDocPath(string $path, array $principal): string
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $this->assertCollabDoc($path);
-        try {
-            $this->authorizer->assertMayRead($path, $principal);
-        } catch (\InvalidArgumentException) {
-            throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
-        }
-
-        return $path;
-    }
-
-    /**
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function requireMutableDocPath(string $path, array $principal): string
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $this->assertCollabDoc($path);
-        try {
-            $this->authorizer->assertMayComment($path, $principal);
-        } catch (\InvalidArgumentException) {
-            throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
-        }
-
-        return $path;
-    }
-
-    private function assertCollabDoc(string $path): void
-    {
-        if (! $this->collabDocs->isCollabDocPath($path)) {
-            throw new ApiHttpException(400, 'Threads are only available on Docs files.', 'bad_request');
-        }
-    }
-
     private function requirePoolForPath(string $path): CalendarInstance
     {
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
@@ -486,19 +375,18 @@ final class DocsThreadRepository
         return $message;
     }
 
-    private function rootUidForChangeId(CalendarInstance $instance, string $path, string $changeId): string
+    /** The suggestion root (never a comment) for $changeId on $path, archived or not. Locks the rows it reads. */
+    private function suggestionRootUid(CalendarInstance $instance, string $path, string $changeId): ?string
     {
-        $row = DocsThreadIndex::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('doc_path', $path)
-            ->where('change_id', $changeId)
+        $uid = DocsThreadIndex::query()
+            ->where(['calendarid' => (int) $instance->calendarid, 'doc_path' => $path, 'change_id' => $changeId])
+            ->where('kind', DocsThreadJournalConverter::KIND_SUGGESTION)
             ->whereNull('parent_uid')
-            ->first();
-        if ($row === null) {
-            throw new ApiHttpException(404, 'Thread not found.', 'not_found');
-        }
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->value('uid');
 
-        return (string) $row->uid;
+        return $uid === null ? null : (string) $uid;
     }
 
     /**
@@ -742,21 +630,39 @@ final class DocsThreadRepository
         return $result;
     }
 
-    private function writeObject(CalendarInstance $instance, string $uid, string $ics): bool
+    /**
+     * All or nothing: the UID checks, the VJOURNAL and its index row commit
+     * together. Null when it stored the thread, else the UID already there:
+     * this one in this pool (a replay) or the root $existingRoot finds.
+     * Callers fire events only after this returns, so after the commit.
+     *
+     * @param  array{doc_path: string, kind: string, parent_uid: string|null, change_id: string|null}  $index
+     */
+    private function insertOnce(CalendarInstance $instance, string $uid, string $ics, string $conflict, array $index, ?\Closure $existingRoot = null): ?string
     {
+        $calendarId = (int) $instance->calendarid;
         try {
-            $this->calBackend()->createCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
-                $uid.'.ics',
-                $ics,
-            );
+            return DB::connection('wgw')->transaction(function () use ($instance, $calendarId, $uid, $ics, $conflict, $index, $existingRoot): ?string {
+                // Concurrent creates of a new UID can deadlock on MySQL; the retry
+                // (attempts: 3) then sees the winner's row and replays.
+                $this->uidGuard->assertAvailable($uid, $conflict, $calendarId);
+                $existing = $this->findObjectByUid($calendarId, $uid) !== null ? $uid : $existingRoot?->__invoke();
+                if ($existing !== null) {
+                    return $existing;
+                }
+                $this->calBackend()->createCalendarObject([$calendarId, (int) $instance->id], $uid.'.ics', $ics);
+                DocsThreadIndex::query()->create(['calendarid' => $calendarId, 'uid' => $uid, ...$index]);
 
-            return true;
-        } catch (QueryException|PDOException) {
-            if ($this->findObjectByUid((int) $instance->calendarid, $uid) !== null) {
-                return false;
+                return null;
+            }, 3);
+        } catch (QueryException|PDOException $exception) {
+            // A duplicate in this pool means a concurrent create already stored the thread: replay.
+            $existing = $this->findObjectByUid($calendarId, $uid) !== null ? $uid : $existingRoot?->__invoke();
+            if ($existing !== null) {
+                return $existing;
             }
-            throw new ApiHttpException(500, 'Could not persist thread.', 'server_error');
+            VJournalUidGuard::throwIfUniqueViolation($exception, $conflict);
+            throw $exception;
         }
     }
 

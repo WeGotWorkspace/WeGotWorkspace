@@ -15,9 +15,6 @@ export function useAdminAPI(source?: AdminApiSource) {
       users: [],
       groups: [],
       mail: {
-        imapHost: "",
-        imapPort: 0,
-        imapSecurity: "",
         smtpHost: "",
         smtpPort: 0,
         smtpSecurity: "",
@@ -52,6 +49,7 @@ export function useAdminAPI(source?: AdminApiSource) {
       },
       updates: {
         installChannel: null,
+        updateChannel: "stable",
         installedVersion: "",
         schemaVersion: 0,
         latest: null,

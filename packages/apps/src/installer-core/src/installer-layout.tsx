@@ -11,7 +11,7 @@ const STEPS_WITHOUT_DATABASE: InstallerFlowStep[] = ["welcome", "account", "read
 
 const DOT_LABELS: Record<InstallerFlowStep, string> = {
   welcome: "Welcome",
-  database: "Database",
+  database: "Your data",
   account: "Your account",
   ready: "Ready",
 };

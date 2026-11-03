@@ -5,29 +5,21 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
-use App\Services\Docs\DocsThreadRepository;
-use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DrivePathBookkeeping;
 use App\Services\Drive\DriveShareAuthorizer;
-use App\Services\Drive\DriveShareService;
-use App\Services\Drive\DriveStarService;
 use App\Services\Drive\DriveTrashNames;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Facades\Log;
 
 /**
- * Disk move plus the bookkeeping DriveService already does on REST rename:
- * attachments, stars, share paths, and docs threads (#990 D6).
- * Search follows FileNodeIndexService::recordMove.
+ * JMAP FileNode/set disk moves and trash. The move and delete bookkeeping
+ * itself lives in DrivePathBookkeeping, shared with REST and WebDAV.
  */
 final class FileNodeRelocator
 {
     public function __construct(
         private readonly WgwStorage $storage,
         private readonly FileNodeIndexService $index,
-        private readonly DocAttachmentsService $docAttachments,
-        private readonly DriveStarService $stars,
-        private readonly DriveShareService $shares,
-        private readonly DocsThreadRepository $docsThreads,
+        private readonly DrivePathBookkeeping $pathBookkeeping,
         private readonly DriveTrashNames $trashNames,
         private readonly DriveShareAuthorizer $authorizer,
     ) {}
@@ -42,13 +34,8 @@ final class FileNodeRelocator
         if (! $this->storage->files()->move($fromKey, $toKey)) {
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
         }
-        $node = $this->index->recordMoveWithSidecar($fromKey, $toKey) ?? $node;
-        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
-        $this->stars->rewritePathPrefix($fromKey, $toKey);
-        $this->shares->rewritePathPrefix('/'.$fromKey, '/'.$toKey);
-        $this->bestEffortThreads(fn () => $this->docsThreads->retargetPath('/'.$fromKey, '/'.$toKey));
 
-        return $node;
+        return $this->pathBookkeeping->afterMove($fromKey, $toKey) ?? $node;
     }
 
     /**
@@ -81,18 +68,9 @@ final class FileNodeRelocator
         return $this->move($node, $trashKey.'/'.$name);
     }
 
-    /** Bookkeeping after a hard delete: docs threads (D6). */
+    /** All bookkeeping after a hard delete that already landed on disk. */
     public function afterHardDelete(string $key): void
     {
-        $this->bestEffortThreads(fn () => $this->docsThreads->dropPath('/'.$key));
-    }
-
-    private function bestEffortThreads(callable $operation): void
-    {
-        try {
-            $operation();
-        } catch (\Throwable $e) {
-            Log::warning('docs_thread_path_sync_failed', ['error' => $e->getMessage()]);
-        }
+        $this->pathBookkeeping->afterDelete($key);
     }
 }

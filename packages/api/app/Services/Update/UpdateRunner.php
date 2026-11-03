@@ -10,12 +10,16 @@ use App\Services\Installer\InstallerEnvChecker;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\AppVersion;
+use App\Support\ReleaseVersion;
 use App\Support\WgwInstallConfig;
 
 final class UpdateRunner
 {
     /** Orphan progress in state.json without a lock is cleared after this many seconds. */
     private const STALE_PROGRESS_SECONDS = 120;
+
+    /** How long apply() waits for a request that is running pending migrations. */
+    private const SCHEMA_LOCK_WAIT_SECONDS = 120;
 
     private bool $applyFinished = false;
 
@@ -30,6 +34,8 @@ final class UpdateRunner
         private UpdateRunnerPackageIo $packages,
         private UpdateRunnerFilesystem $files,
         private UpdateRunnerBackupArchive $backups,
+        private UpdateChannelSettingService $channels,
+        private SchemaMigrationLock $schemaLock,
     ) {
         $this->packages->bindRunner($this);
     }
@@ -68,6 +74,7 @@ final class UpdateRunner
 
         $response = [
             'installChannel' => $installChannel,
+            'updateChannel' => $this->channels->current(),
             'installedVersion' => $installedVersion,
             'schemaVersion' => $this->schemaMigrator->currentVersion(),
             'latest' => $latest,
@@ -272,6 +279,13 @@ final class UpdateRunner
     {
         self::assertWebUpdaterAllowed();
         self::ensureRateLimit('apply', 30);
+        // The stored check can be from another channel: never install a
+        // release that does not move this install forward.
+        $checkedVersion = $this->packages->latestFromState()['version'];
+        $installedVersion = $this->appVersion->current();
+        if (! ReleaseVersion::isUpgrade($checkedVersion, $installedVersion)) {
+            throw new \InvalidArgumentException("{$checkedVersion} is not newer than the installed {$installedVersion}. Check for updates again.");
+        }
         $lock = @fopen($this->store->absolutePath($this->store->lockPath()), 'c+');
         if (! is_resource($lock)) {
             throw new \RuntimeException('Could not create update lock file.');
@@ -356,7 +370,11 @@ final class UpdateRunner
 
             self::writeStatus('running_migrations', $beforeVersion, $targetVersion);
             $this->configMigrator->migrateIfNeeded();
-            $this->schemaMigrator->migrate();
+            $migrate = fn () => $this->schemaMigrator->migrate();
+            if (! $this->schemaLock->runExclusive($migrate, self::SCHEMA_LOCK_WAIT_SECONDS)) {
+                $this->store->appendLog('Skipped database migrations: another process held the schema lock for '
+                    .self::SCHEMA_LOCK_WAIT_SECONDS.' s. The first request after this update runs them.');
+            }
             self::recordHistory($beforeVersion, $targetVersion, 'success', 'Update applied successfully.');
             $result['ok'] = true;
             $result['message'] = 'Update applied successfully.';
@@ -515,17 +533,7 @@ final class UpdateRunner
             return false;
         }
 
-        return version_compare(self::normalizeVersion($candidate), self::normalizeVersion($installed), '>');
-    }
-
-    private function normalizeVersion(string $version): string
-    {
-        $trimmed = trim($version);
-        if (str_starts_with($trimmed, 'v')) {
-            return substr($trimmed, 1);
-        }
-
-        return $trimmed;
+        return ReleaseVersion::isUpgrade($candidate, $installed);
     }
 
     private static function dockerImageTagFromEnv(): ?string

@@ -147,6 +147,22 @@ describe("NoteDetailView readOnly", () => {
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Title" }));
   });
 
+  it("puts the caret after the typed title when noteId remaps mid-typing", () => {
+    const props = { onTitleChange: () => {}, tags: [], body: [""], autoFocusTitle: true };
+    const { rerender } = render(
+      <NoteDetailView noteId="local-1" contentRevision="rev-1" title="O" {...props} />,
+    );
+    const field = screen.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;
+    // A field rebuilt for the server id gets its caret at the start: the next
+    // letter then landed before the first one ("nline wordsO").
+    field.setSelectionRange(0, 0);
+
+    rerender(<NoteDetailView noteId="n-server-1" contentRevision="rev-2" title="O" {...props} />);
+
+    expect(field.selectionStart).toBe(1);
+    expect(field.selectionEnd).toBe(1);
+  });
+
   it("does not focus the title when opening an existing note", () => {
     render(
       <NoteDetailView

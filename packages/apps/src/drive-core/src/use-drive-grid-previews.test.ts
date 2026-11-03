@@ -306,4 +306,52 @@ describe("useDriveGridPreviews", () => {
       expect(result.current.filePreviews[TEXT_FILE.id]?.kind).toBe("text");
     });
   });
+
+  it("fetches previews only for the tiles in view, once each", async () => {
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const images = Array.from({ length: 20 }, (_, index) => ({
+      ...IMAGE,
+      id: `img-${index}`,
+      title: `photo-${index}.png`,
+      apiPath: `/users/alice/photo-${index}.png`,
+    }));
+    const readFileBlob = vi.fn(async (_path: string) => new Blob(["png"], { type: "image/png" }));
+    const operations = createOperations({ readFileBlob });
+
+    const { rerender } = renderHook(
+      ({ tilesInView }: { tilesInView: ReadonlySet<string> | null }) =>
+        useDriveGridPreviews({ items: images, operations, enabled: true, tilesInView }),
+      { initialProps: { tilesInView: new Set(["img-0", "img-1", "img-2"]) } },
+    );
+    await waitFor(() => expect(readFileBlob).toHaveBeenCalledTimes(3));
+    expect(readFileBlob.mock.calls.map((call) => String(call[0]))).toEqual([
+      "/users/alice/photo-0.png",
+      "/users/alice/photo-1.png",
+      "/users/alice/photo-2.png",
+    ]);
+
+    // Scrolling on: two new tiles load, the three already loaded do not load again.
+    rerender({ tilesInView: new Set(["img-1", "img-2", "img-3", "img-4"]) });
+    await waitFor(() => expect(readFileBlob).toHaveBeenCalledTimes(5));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(readFileBlob).toHaveBeenCalledTimes(5);
+  });
+
+  it("loads nothing while no tile is in view", async () => {
+    const readFileBlob = vi.fn(async (_path: string) => new Blob(["png"], { type: "image/png" }));
+    renderHook(() =>
+      useDriveGridPreviews({
+        items: [IMAGE],
+        operations: createOperations({ readFileBlob }),
+        enabled: true,
+        tilesInView: new Set(),
+      }),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(readFileBlob).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,6 @@
 /** Workspace product ids that have branded launcher / PWA icons under `/app-icons/`. */
 export const WORKSPACE_APP_IDS = [
   "notes",
-  "mail",
   "calendar",
   "contacts",
   "tasks",
@@ -20,10 +19,9 @@ export type WorkspaceAppId = (typeof WORKSPACE_APP_IDS)[number];
  */
 export const WORKSPACE_FUTURE_APP_ICON_IDS = ["reminders", "sheets", "ai"] as const;
 
-/** Sampled from launcher tile artwork. PWA window chrome uses `WORKSPACE_PWA_THEME_COLOR`. */
+/** Sampled from launcher tile artwork. PWA window chrome uses `WORKSPACE_PWA_THEME_COLORS`. */
 export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   notes: "#ffc800",
-  mail: "#de4b0e",
   calendar: "#962fa8",
   contacts: "#a3c4e8",
   tasks: "#ffbdc2",

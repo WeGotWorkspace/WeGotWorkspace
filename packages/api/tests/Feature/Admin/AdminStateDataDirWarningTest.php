@@ -21,7 +21,10 @@ final class AdminStateDataDirWarningTest extends WgwDatabaseTestCase
         $warnings = app(AdminStateService::class)->snapshot('alice')['securityWarnings'];
 
         $this->assertContains(
-            'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.',
+            [
+                'code' => 'data_dir_published',
+                'message' => 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.',
+            ],
             $warnings,
         );
     }
@@ -44,9 +47,6 @@ final class AdminStateDataDirWarningTest extends WgwDatabaseTestCase
             @rmdir($outside);
         }
 
-        $this->assertNotContains(
-            'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.',
-            $warnings,
-        );
+        $this->assertNotContains('data_dir_published', array_column($warnings, 'code'));
     }
 }

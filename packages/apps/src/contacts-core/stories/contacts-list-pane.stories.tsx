@@ -75,6 +75,11 @@ const primaryChannelCards: ContactCard[] = [
   }),
 ];
 
+// Stable references: a fresh `[]` per render rebuilds the bootstrap data and loops.
+const NO_CARDS: ContactCard[] = [];
+const EMPTY_PRESET = { cardsOverride: NO_CARDS };
+const LOADING_PRESET = { listLoading: true, cardsOverride: NO_CARDS };
+
 function ContactsListPaneHarness({
   preset = "default",
   pendingCardIds,
@@ -88,9 +93,9 @@ function ContactsListPaneHarness({
 }) {
   const controller = useContactsPaneStoryController(
     preset === "empty"
-      ? { cardsOverride: [] }
+      ? EMPTY_PRESET
       : preset === "loading"
-        ? { listLoading: true, cardsOverride: [] }
+        ? LOADING_PRESET
         : visibleCards
           ? { cardsOverride: visibleCards }
           : undefined,

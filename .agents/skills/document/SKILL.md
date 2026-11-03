@@ -30,6 +30,8 @@ Update docs when the user asks, or when shipping:
 
 **Do not** create markdown files the user did not ask for. Propose doc updates in chat; write only when requested or clearly part of the task.
 
+**Feature design is spec-first** — a design note or a new `docs/architecture/*.md` for an Epic starts with [plan-feature](../plan-feature/SKILL.md): add `.agents/specs/<epic>-<slug>/` (spec, plan, tasks) in the same PR, on any branch. Review history and rejected alternatives go in `plan.md` under Considered, not in the architecture doc. CI guard: [specs/README.md](../../specs/README.md#when-a-spec-is-required).
+
 **English only** — docs, plan archives, and GitHub-facing summaries are English even if the user prompt is Dutch ([english-only.md](../developer/english-only.md)). Chat replies may stay Dutch.
 
 ## Templates

@@ -1,6 +1,8 @@
 import { getTask } from "@/lib/api/wgw/tasks";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { withOutboxLock } from "@/lib/offline/core/connectivity-sync-runner";
+import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import {
   listOutboxMutations,
   putOutboxMutation,
@@ -41,7 +43,7 @@ export async function resolveTaskConflictKeepLocal(
     });
   }
 
-  return flushTasksOutbox(username);
+  return withOutboxLock(TASKS_DOMAIN, username, () => flushTasksOutbox(username));
 }
 
 export async function resolveTaskConflictFieldMerge(
@@ -74,7 +76,7 @@ export async function resolveTaskConflictFieldMerge(
     });
   }
 
-  return flushTasksOutbox(username);
+  return withOutboxLock(TASKS_DOMAIN, username, () => flushTasksOutbox(username));
 }
 
 export async function resolveTaskConflictUseServer(

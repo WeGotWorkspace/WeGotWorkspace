@@ -137,6 +137,11 @@ jobs:
         with:
           fail_on_unmatched_files: true
           generate_release_notes: true
+          # A tag with a suffix (v1.0.0-beta.1) is a prerelease. GitHub's
+          # releases/latest skips prereleases, so the stable feed never
+          # offers one to ZIP or Docker installs.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
           files: |
             dist/releases/*.zip
             dist/releases/manifest.json
@@ -146,6 +151,15 @@ jobs:
             dist/releases/docker-compose.yml
             dist/releases/env.example
             dist/releases/wgw-docker-install-*.tar.gz
+
+      # The beta channel offers the newest of beta and stable, so every tag
+      # publishes here. The manifest's package_url points at this tag's
+      # release, so the channel needs only the manifest.
+      - name: Publish to the beta channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: node tools/publish-release-channel.mjs beta dist/releases
 
       - name: Upload bundle for smoke
         uses: actions/upload-artifact@v7

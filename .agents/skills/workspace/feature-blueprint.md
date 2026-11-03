@@ -28,7 +28,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 | Need | Use | Reference |
 |------|-----|-----------|
 | Section surface + title | **`Card`** (`@/card/src/card`) | `settings-profile-pane.tsx`, `admin-meet-pane.tsx` |
-| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-mail-pane.tsx`, `admin-meet-pane.tsx` |
+| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-email-delivery-pane.tsx`, `admin-meet-pane.tsx` |
 | Label + control (react-hook-form + zod) | **`Form`** + **`FormTextField`** + **`FormSaveActionRow`** | `settings-profile-pane.tsx` |
 | Boolean row with title + description | **`FeatureRow`** pattern: copy **`admin-workspace-widgets.tsx`** `FeatureRow` markup and add **`.<product>-feature-row`** rules in **`*-workspace.css`** (same structure as `admin-panes.css`) — do not invent a second TS wrapper per product unless promoting to `@/ui` |
 | Primary / ghost actions | **`Button`** / **`IconButton`** (`@/button/src/button`) with workspace CSS variables on the root class — no `*PrimaryButton` wrappers |
@@ -73,6 +73,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - A second **mobile scrim** beside `AppSidebar` (scrim lives inside `AppSidebar`).
 - **`*Workspace`** importing routers or assigning `window.location` (belongs in **`*App`** or routes).
 - **`use*Controller`** reading/writing `window.location` or router search (belongs in **`*App`** via route-sync hooks and callbacks such as `onNavigate`, `onRoomChange`).
+  ESLint enforces both navigation rules (`workspaceNavigationRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js)); see [SKILL.md](SKILL.md#navigation-and-logout).
 - **Panes** importing **`use*API`** or holding section state (belongs in controller / shell hook).
 - **Read-only `Input`** styling via repeated one-off `className`s when the shell can scope **`:has(input[readonly])`** under the workspace root.
 - Product-prefixed **`InstallCard`**, **`InstallField`**, **`SettingsCard`**, etc. that duplicate **`Card`** / **`FieldLabelRow`** / **`Label`** — rename to shared imports and workspace-scoped CSS only.

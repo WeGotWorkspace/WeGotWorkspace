@@ -3,6 +3,16 @@ import type { DocsCollabMeshMessage, DocsCollabMeshPeer } from "./docs-collab-ty
 export const BC_TAB_ORIGIN = "bc-tab";
 export const TAB_PING_INTERVAL_MS = 2000;
 export const LEADER_STALE_MS = 6000;
+/**
+ * How long a newly opened tab listens for a leader before it claims the mesh.
+ * The leader answers a new tab's ping at once; this only covers the delivery.
+ */
+export const LEADER_CLAIM_GRACE_MS = 400;
+
+export type DocsCollabTabCoordinatorOptions = {
+  /** 0 elects on `start()` without waiting. Tests with a synchronous channel use it. */
+  claimGraceMs?: number;
+};
 
 export type TabPresence = {
   tabId: string;
@@ -21,6 +31,11 @@ export type TabMeshStateSnapshot = {
 export type TabSyncMessage =
   | { type: "sync"; u: Uint8Array; fromTab: string }
   | { type: "awareness"; u: Uint8Array; fromTab: string }
+  /**
+   * State pull between tabs: "send me what I lack". Without `toTab` it is a
+   * newly opened tab asking every tab; the answer then asks back with `toTab`.
+   */
+  | { type: "state-request"; sv: Uint8Array; fromTab: string; toTab?: string }
   | { type: "tab-ping"; tabId: string; visible: boolean; at: number; isLeader?: boolean }
   | { type: "tab-leave"; tabId: string; at: number }
   | { type: "leader-resign"; tabId: string; at: number }
@@ -32,6 +47,10 @@ export type TabSyncHandlers = {
   onMeshStateFromLeader: (state: TabMeshStateSnapshot) => void;
   onBecomeLeader: () => void;
   onResignLeader: () => void;
+  /** This tab's Y.Doc state vector. */
+  localStateVector?: () => Uint8Array | null;
+  /** Sync message with what the asking tab lacks, or null when it lacks nothing. */
+  answerStateRequest?: (stateVector: Uint8Array) => Uint8Array | null;
 };
 
 export function tabSyncChannelName(room: string): string {
@@ -83,6 +102,13 @@ export function isTabSyncMessage(value: unknown): value is TabSyncMessage {
   if (msg.type === "sync" || msg.type === "awareness") {
     return typeof msg.fromTab === "string" && msg.u instanceof Uint8Array;
   }
+  if (msg.type === "state-request") {
+    return (
+      typeof msg.fromTab === "string" &&
+      msg.sv instanceof Uint8Array &&
+      (msg.toTab === undefined || typeof msg.toTab === "string")
+    );
+  }
   if (msg.type === "tab-ping" || msg.type === "tab-leave" || msg.type === "leader-resign") {
     return typeof msg.tabId === "string";
   }
@@ -97,7 +123,12 @@ export function routeTabSyncMessage(
   myTabId: string,
   handlers: Pick<TabSyncHandlers, "onSyncFromTab" | "onAwarenessFromTab" | "onMeshStateFromLeader">,
 ): void {
-  if (msg.type === "tab-ping" || msg.type === "tab-leave" || msg.type === "leader-resign") {
+  if (
+    msg.type === "tab-ping" ||
+    msg.type === "tab-leave" ||
+    msg.type === "leader-resign" ||
+    msg.type === "state-request"
+  ) {
     return;
   }
   if (msg.fromTab === myTabId) return;
@@ -189,6 +220,13 @@ export class DocsCollabTabCoordinator {
 
   private electTimer: ReturnType<typeof setInterval> | null = null;
 
+  private claimTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** True between `start()` and the end of the claim grace. */
+  private settling = false;
+
+  private readonly claimGraceMs: number;
+
   private isLeader = false;
 
   /** Last known leader. Sticky until resign, pagehide, or tab-leave. */
@@ -207,7 +245,9 @@ export class DocsCollabTabCoordinator {
     private readonly room: string,
     private readonly handlers: TabSyncHandlers,
     readonly tabId: string = createTabId(),
+    options: DocsCollabTabCoordinatorOptions = {},
   ) {
+    this.claimGraceMs = options.claimGraceMs ?? LEADER_CLAIM_GRACE_MS;
     this.onVisibilityChange = () => {
       this.visible = document.visibilityState === "visible";
       this.sendPing();
@@ -237,7 +277,22 @@ export class DocsCollabTabCoordinator {
     }
 
     this.sendPing();
-    this.runElection();
+    // An existing leader's ping arrives a moment after ours went out. Claiming
+    // before it lands moves the mesh to this tab whenever its id sorts first.
+    if (this.claimGraceMs > 0) {
+      this.settling = true;
+      this.claimTimer = setTimeout(() => {
+        this.claimTimer = null;
+        this.settling = false;
+        this.runElection();
+      }, this.claimGraceMs);
+    } else {
+      this.runElection();
+    }
+    // Only the leader hears the mesh, and the channel carries increments only.
+    // A tab that opens after the leader received edits would never get them,
+    // and Yjs holds every later edit from that author until the gap is filled.
+    this.requestState();
 
     this.pingTimer = setInterval(() => this.sendPing(), TAB_PING_INTERVAL_MS);
     this.electTimer = setInterval(() => this.runElection(), TAB_PING_INTERVAL_MS);
@@ -260,8 +315,11 @@ export class DocsCollabTabCoordinator {
 
     if (this.pingTimer) clearInterval(this.pingTimer);
     if (this.electTimer) clearInterval(this.electTimer);
+    if (this.claimTimer) clearTimeout(this.claimTimer);
     this.pingTimer = null;
     this.electTimer = null;
+    this.claimTimer = null;
+    this.settling = false;
 
     if (typeof document !== "undefined") {
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
@@ -294,8 +352,28 @@ export class DocsCollabTabCoordinator {
     else this.publishAwareness(relay.u);
   }
 
+  private requestState(toTab?: string): void {
+    const sv = this.handlers.localStateVector?.();
+    if (!sv) return;
+    this.post({ type: "state-request", sv, fromTab: this.tabId, ...(toTab ? { toTab } : {}) });
+  }
+
+  private answerStateRequest(msg: Extract<TabSyncMessage, { type: "state-request" }>): void {
+    if (msg.fromTab === this.tabId) return;
+    if (msg.toTab !== undefined && msg.toTab !== this.tabId) return;
+    const reply = this.handlers.answerStateRequest?.(msg.sv);
+    if (reply) this.publishSync(reply);
+    // The opening tab may hold edits this tab lacks, such as an offline draft.
+    if (msg.toTab === undefined) this.requestState(msg.fromTab);
+  }
+
   private handleMessage(data: unknown): void {
     if (this.stopped || !isTabSyncMessage(data)) return;
+
+    if (data.type === "state-request") {
+      this.answerStateRequest(data);
+      return;
+    }
 
     if (data.type === "tab-ping") {
       const wasKnown = this.tabs.has(data.tabId);
@@ -338,6 +416,8 @@ export class DocsCollabTabCoordinator {
 
   private runElection(): void {
     if (this.stopped) return;
+    // Still listening for a leader: only adopting a known one may happen now.
+    if (this.settling && this.knownLeaderId === null) return;
     const leaderId = electStickyDocsLeaderTabId(this.tabs, this.knownLeaderId);
     const shouldLead = leaderId === this.tabId;
 

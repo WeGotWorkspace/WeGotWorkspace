@@ -36,7 +36,7 @@ export const Default: Story = {
 
     await userEvent.click(menuTrigger());
     await userEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.createCalendar }),
+      screen.getByRole("menuitem", { name: defaultCalendarLabels.createCalendar }),
     );
     await expect(args.onCreateCalendar).toHaveBeenCalledOnce();
     await waitFor(() => {
@@ -45,7 +45,7 @@ export const Default: Story = {
 
     await userEvent.click(menuTrigger());
     await userEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }),
+      screen.getByRole("menuitem", { name: defaultCalendarLabels.subscribeCalendar }),
     );
     await expect(args.onSubscribeCalendar).toHaveBeenCalledOnce();
     await waitFor(() => {
@@ -53,7 +53,7 @@ export const Default: Story = {
     });
 
     await userEvent.click(menuTrigger());
-    await userEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.importIcs }));
+    await userEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.importIcs }));
     await expect(args.onImportEvents).toHaveBeenCalledOnce();
   },
 };

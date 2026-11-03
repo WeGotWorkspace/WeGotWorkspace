@@ -36,18 +36,29 @@ export function isListRelativeOrderPreserved(
   return i === nextIds.length;
 }
 
+type RowBox = { top: number; height: number };
+
+function isInViewport(viewportTop: number, height: number): boolean {
+  return viewportTop + height > 0 && viewportTop < window.innerHeight;
+}
+
 /**
  * FLIP-animates `[data-list-item-id]` rows when their DOM order changes.
  * No-op when order is unchanged, `prefers-reduced-motion` is set, or the change
  * is a pure removal/insertion (swipe-archive already animates the row out —
  * FLIP would briefly translate siblings back and cause a jump).
+ *
+ * Row positions are stored relative to the list, so scrolling between two
+ * reorders does not make every row look moved. Only rows on screen before or
+ * after the change animate, and all transforms are written before one reflow
+ * (not one reflow per row): a long list stays cheap to reorder (#1714).
  */
 export function useListReorderAnimation(
   containerRef: RefObject<HTMLElement | null>,
   itemIds: readonly string[],
   options?: { durationMs?: number; disabled?: boolean },
 ) {
-  const prevRectsRef = useRef(new Map<string, number>());
+  const prevBoxesRef = useRef(new Map<string, RowBox>());
   const prevIdsRef = useRef<readonly string[]>([]);
   const prevOrderKeyRef = useRef("");
   const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
@@ -58,12 +69,14 @@ export function useListReorderAnimation(
     const container = containerRef.current;
     if (!container) return;
 
+    const containerTop = container.getBoundingClientRect().top;
     const nodes = readItemNodes(container);
-    const nextTops = new Map<string, number>();
+    const nextBoxes = new Map<string, RowBox>();
     for (const node of nodes) {
       const id = node.getAttribute("data-list-item-id");
       if (!id) continue;
-      nextTops.set(id, animationTarget(node).getBoundingClientRect().top);
+      const rect = animationTarget(node).getBoundingClientRect();
+      nextBoxes.set(id, { top: rect.top - containerTop, height: rect.height });
     }
 
     const prevIds = prevIdsRef.current;
@@ -85,27 +98,36 @@ export function useListReorderAnimation(
     prevOrderKeyRef.current = orderKey;
     prevIdsRef.current = nextIds;
 
-    if (skipAnimate) {
-      prevRectsRef.current = nextTops;
-      return;
-    }
+    const prevBoxes = prevBoxesRef.current;
+    prevBoxesRef.current = nextBoxes;
+    if (skipAnimate) return;
 
-    const prevTops = prevRectsRef.current;
-    const cleanupFns: Array<() => void> = [];
-
+    const moves: { target: HTMLElement; dy: number }[] = [];
     for (const node of nodes) {
       const id = node.getAttribute("data-list-item-id");
       if (!id) continue;
-      const firstTop = prevTops.get(id);
-      const lastTop = nextTops.get(id);
-      if (firstTop === undefined || lastTop === undefined) continue;
-      const dy = firstTop - lastTop;
+      const first = prevBoxes.get(id);
+      const last = nextBoxes.get(id);
+      if (first === undefined || last === undefined) continue;
+      const dy = first.top - last.top;
       if (Math.abs(dy) < MIN_DELTA_PX) continue;
+      const onScreen =
+        isInViewport(containerTop + first.top, first.height) ||
+        isInViewport(containerTop + last.top, last.height);
+      if (!onScreen) continue;
+      moves.push({ target: animationTarget(node), dy });
+    }
+    if (moves.length === 0) return;
 
-      const target = animationTarget(node);
+    for (const { target, dy } of moves) {
       target.style.transition = "none";
       target.style.transform = `translateY(${dy}px)`;
-      void target.offsetHeight;
+    }
+    // One reflow commits every start position before the transitions begin.
+    void container.offsetHeight;
+
+    const cleanupFns: Array<() => void> = [];
+    for (const { target } of moves) {
       target.style.transition = `transform ${durationMs}ms ${DEFAULT_EASING}`;
       target.style.transform = "";
 
@@ -121,7 +143,6 @@ export function useListReorderAnimation(
       });
     }
 
-    prevRectsRef.current = nextTops;
     return () => {
       for (const cleanup of cleanupFns) cleanup();
     };

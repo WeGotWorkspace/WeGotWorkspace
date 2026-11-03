@@ -34,9 +34,11 @@ export function useAdminController({
     updateLogLines: shell.updateLogLines,
     checkingUpdates: mutations.checkingUpdates,
     refreshingServerChecks: mutations.refreshingServerChecks,
+    savingUpdateChannel: mutations.savingUpdateChannel,
     settingsForm: shell.settingsForm,
     setSettingsForm: shell.setSettingsForm,
     mailDelivery: shell.mailDelivery,
+    securityWarnings: shell.securityWarnings,
     actions: mutations.actions,
   };
 }

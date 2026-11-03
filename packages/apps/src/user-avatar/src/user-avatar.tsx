@@ -26,8 +26,14 @@ export {
  */
 export type UserAvatarSize = ControlSize | "2xl";
 
-/** Presence pip: online green, away amber, offline transparent + ink ring. */
-export type UserAvatarPresence = "online" | "offline" | "away";
+/**
+ * Presence pip: online green, away amber, offline transparent + ink ring.
+ * `pending` (blue, `--color-sync-pending`) is not a person's status: it marks a save
+ * or sync still in flight. Use it for that instead of `away`.
+ * The signed-in user's own offline state (sidebar account footer) uses `away` with an
+ * overridden accessible label; `offline` stays reserved for other people's presence.
+ */
+export type UserAvatarPresence = "online" | "offline" | "away" | "pending";
 
 const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {
   xs: "user-avatar--xs",
@@ -137,6 +143,7 @@ export function UserAvatar({
     setImageFailed(false);
   }, [imageSrc]);
 
+  const markShowsInitials = !showImage && fallback == null;
   const sizeClass = USER_AVATAR_SIZE_CLASS[size] ?? USER_AVATAR_SIZE_CLASS.md;
 
   const markContent = showImage ? (
@@ -159,13 +166,21 @@ export function UserAvatar({
         ? "away"
         : presence === "offline"
           ? "offline"
-          : null;
+          : presence === "pending"
+            ? "syncing"
+            : null;
   const avatarLabel =
     ariaLabel ??
     (presenceLabel ? `${resolvedName} avatar, ${presenceLabel}` : `${resolvedName} avatar`);
 
   const circle = onClick ? (
-    <button type="button" onClick={onClick} aria-label={avatarLabel} className="user-avatar__mark">
+    <button
+      type="button"
+      onClick={onClick}
+      // Visible initials stay in the name so voice control can target them (WCAG 2.5.3).
+      aria-label={markShowsInitials ? `${avatarLabel}, ${initials}` : avatarLabel}
+      className="user-avatar__mark"
+    >
       {markContent}
     </button>
   ) : (

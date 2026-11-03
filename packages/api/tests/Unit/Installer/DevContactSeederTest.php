@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Installer;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\Card;
 use App\Models\JmapContactState;
@@ -18,7 +19,6 @@ use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -304,9 +304,9 @@ final class DevContactSeederTest extends WgwDatabaseTestCase
         $this->fail('Missing card containing '.$needle);
     }
 
-    private function carddav(): CardPDO
+    private function carddav(): WgwCardBackend
     {
-        return new CardPDO(DB::connection('wgw')->getPdo());
+        return WgwCardBackend::fromConnection();
     }
 }
 

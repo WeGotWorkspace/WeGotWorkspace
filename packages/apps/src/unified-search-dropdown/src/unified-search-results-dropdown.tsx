@@ -54,7 +54,8 @@ export function UnifiedSearchResultsDropdown({
   return (
     <div
       className={cn("unified-search-results-dropdown", className)}
-      role="listbox"
+      // Grouped result buttons, not listbox options.
+      role="group"
       aria-label="Search results"
     >
       {loading ? (

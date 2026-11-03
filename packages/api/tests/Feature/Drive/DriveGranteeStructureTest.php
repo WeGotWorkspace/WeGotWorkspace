@@ -245,13 +245,13 @@ final class DriveGranteeStructureTest extends WgwDatabaseTestCase
             ->assertJsonPath('methodResponses.0.1.notFound.0', $planId);
 
         $this->download($trashedPlan, 'editor')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->withBearer($guestToken)
             ->get('/api/v1/files/content?path='.urlencode($trashedPlan))
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->moveNode('owner', $workspaceId, $homeId)->assertOk()
             ->assertJsonPath('methodResponses.0.1.updated.'.$workspaceId, null);

@@ -9,8 +9,9 @@ use App\Services\Meet\MeetRequestAuth;
 use Illuminate\Http\Request;
 
 /**
- * Authenticated-principal resolution for principal presence rooms. Guests have
- * no Sabre username and are excluded automatically (401).
+ * Authenticated-principal resolution for principal presence rooms. Only
+ * accounts join: anonymous callers and guest-role bearers (public link
+ * sessions) get 401.
  */
 final class PrincipalActorResolver
 {
@@ -23,7 +24,7 @@ final class PrincipalActorResolver
     {
         /** @var array{username: string, role: string}|null $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        if (is_array($principal) && $principal['username'] !== '') {
+        if (is_array($principal) && $principal['username'] !== '' && $principal['role'] !== 'guest') {
             return (string) $principal['username'];
         }
 

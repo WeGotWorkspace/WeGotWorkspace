@@ -18,7 +18,9 @@ import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/
  */
 export const notesOfflineDomainStore = {
   readBootstrap: readNotesBootstrapFromCache,
-  writeBootstrap: writeNotesBootstrapToCache,
+  // The generic contract has no snapshot time: treat the bootstrap as taken now.
+  writeBootstrap: (username, bootstrap) =>
+    writeNotesBootstrapToCache(username, bootstrap, Date.now()),
   upsertEntity: upsertNoteInCache,
   removeEntity: removeNoteFromCache,
   readSyncToken,

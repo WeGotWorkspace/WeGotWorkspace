@@ -55,8 +55,8 @@ Designer URL examples (Storybook id encoding may vary slightly):
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | `Interactive flow`                         | Full mock walkthrough (`InstallerWorkspace`) — click through Welcome → Ready with cream/ink + BrandLockup knobs |
 | `Welcome`                                  | First setup step + progress dots                                                                                |
-| `Your database`                            | MySQL / MariaDB fields (default engine)                                                                         |
-| `Your database (SQLite)`                   | SQLite engine selected                                                                                          |
+| `Your data`                                | MySQL / MariaDB fields (default engine) and the data folder                                                     |
+| `Your data (SQLite)`                       | SQLite engine selected                                                                                          |
 | `Your account`                             | Admin account form (database step done)                                                                         |
 | `Your account (database from environment)` | Account with database step omitted                                                                              |
 | `Installing`                               | Account form + in-progress install list                                                                         |

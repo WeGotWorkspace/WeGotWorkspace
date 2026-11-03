@@ -1,6 +1,6 @@
 @import "../../styles.css" reference;
 
-:is(.drive-dialog-surface, .mail-dialog-surface, .docs-dialog-surface) {
+:is(.drive-dialog-surface, .docs-dialog-surface) {
   --destination-picker-body-height: 16.5rem;
 }
 

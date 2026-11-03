@@ -20,9 +20,6 @@ export type McpConsentGroup = {
   scopes: McpConsentScope[];
 };
 
-/** Settings grant cards. Not offered on the consent screen. */
-export const MCP_MAIL_GRANT_GROUP_LABEL = "Mail (not active in this release)";
-
 export const MCP_CONSENT_GROUP_APP_ID: Record<string, WorkspaceAppId | undefined> = {
   Calendar: "calendar",
   Notes: "notes",
@@ -31,8 +28,6 @@ export const MCP_CONSENT_GROUP_APP_ID: Record<string, WorkspaceAppId | undefined
   Docs: "docs",
   Drive: "drive",
   Meet: "meet",
-  Mail: "mail",
-  [MCP_MAIL_GRANT_GROUP_LABEL]: "mail",
   Profile: "settings",
 };
 
@@ -52,8 +47,6 @@ export const MCP_SCOPE_CATALOG: Record<string, string> = {
   "drive.share": "Share Drive files and Docs with workspace members",
   "meet.read": "Read Meet channels and messages",
   "meet.write": "Create, update, and delete Meet channels and messages",
-  "mail.read": "Read mailboxes and messages",
-  "mail.send": "Send mail as you",
   settings: "Read your profile and user settings",
   // Advertised on the authorization server; not shown on consent or Settings cards.
   offline_access: "Refresh token (always issued)",
@@ -72,12 +65,8 @@ const GROUP_IDS: { label: string; ids: string[]; legacyId?: string }[] = [
   { label: "Docs", ids: ["docs.read", "docs.write"], legacyId: "docs" },
   { label: "Drive", ids: ["drive.read", "drive.write", "drive.share"], legacyId: "drive" },
   { label: "Meet", ids: ["meet.read", "meet.write"] },
-  { label: MCP_MAIL_GRANT_GROUP_LABEL, ids: ["mail.read", "mail.send"] },
   { label: "Profile", ids: ["settings"] },
 ];
-
-/** On existing tokens, shown on grant cards, omitted from the consent catalog. */
-const GRANT_ONLY_GROUP_LABELS = new Set<string>([MCP_MAIL_GRANT_GROUP_LABEL]);
 
 export function mcpScopeActionLabel(id: string): string {
   if (id.endsWith(".read")) return "Read";
@@ -85,8 +74,6 @@ export function mcpScopeActionLabel(id: string): string {
   switch (id) {
     case "drive.share":
       return "Share";
-    case "mail.send":
-      return "Send";
     case "settings":
       return "Read";
     case "offline_access":
@@ -131,11 +118,9 @@ export function groupMcpScopeIds(ids: string[]): McpScopeGroup[] {
   return groups;
 }
 
-/** Advertised consent rows (no legacy aliases, no `offline_access`, no unshipped Mail). */
+/** Advertised consent rows (no legacy aliases, no `offline_access`). */
 export function mcpConsentCatalogScopeIds(): string[] {
-  return GROUP_IDS.filter((def) => !GRANT_ONLY_GROUP_LABELS.has(def.label)).flatMap(
-    (def) => def.ids,
-  );
+  return GROUP_IDS.flatMap((def) => def.ids);
 }
 
 export function mcpConsentGroupsFor(ids: readonly string[]): McpConsentGroup[] {

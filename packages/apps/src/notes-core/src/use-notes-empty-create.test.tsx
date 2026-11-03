@@ -69,7 +69,7 @@ describe("useNotesController empty create persist", () => {
       result.current.createNote();
     });
     const createdId = result.current.activeId;
-    expect(createdId).toMatch(/^local-/);
+    expect(createdId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(operations.upsertNote).toHaveBeenCalledWith(
       expect.objectContaining({
         id: createdId,

@@ -32,6 +32,7 @@ export const COLOR_SEMANTIC = [
   "--color-warning",
   "--color-success",
   "--color-info",
+  "--color-sync-pending",
 ] as const;
 
 /**

@@ -323,7 +323,7 @@ describe("DocsSuggestionCard", () => {
 
     expect(screen.getByText("👍")).toBeTruthy();
     expect(screen.getByText("1")).toBeTruthy();
-    expect(screen.getByLabelText("👍 u-2")).toBeTruthy();
+    expect(screen.getByLabelText("👍 1 u-2")).toBeTruthy();
     expect(screen.queryByLabelText("Add reaction")).toBeNull();
   });
 });

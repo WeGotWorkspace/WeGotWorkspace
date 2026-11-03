@@ -24,7 +24,7 @@
 }
 
 .tasks-main-view__row--completed .tasks-main-view__title {
-  @apply line-through opacity-60;
+  @apply line-through opacity-75;
 }
 
 .tasks-main-view__row--exiting {

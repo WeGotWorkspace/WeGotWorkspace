@@ -610,14 +610,13 @@ function DocsCollabWorkspaceInner({
                 />
               }
             >
-              {showMarkdownOutline ? (
-                <DocsOutlineSidebar
-                  labels={labels}
-                  items={outline}
-                  activeIndex={activeOutlineIndex}
-                  onSelect={handleOutlineSelect}
-                />
-              ) : null}
+              <DocsOutlineSidebar
+                labels={labels}
+                items={outline}
+                activeIndex={activeOutlineIndex}
+                onSelect={handleOutlineSelect}
+                showOutline={showMarkdownOutline}
+              />
             </AppSidebar>
           }
           mainHeader={
@@ -679,6 +678,7 @@ function DocsCollabWorkspaceInner({
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
                   user={collabSession.user}
+                  trackChangesUserKey={`${driveUsername?.trim() || session.user.username || ""}:${urls?.room ?? ""}`}
                   format={editorFormat}
                   sheetFill
                   viewSource={viewSource}

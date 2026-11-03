@@ -25,6 +25,11 @@ import {
   docsHomeStorySession,
   mapStoryDocsHomeResults,
 } from "@/docs-core/stories/docs-home-story-shared";
+import {
+  STATUS_BAR_INSET_PX,
+  offsetFromStoryTop,
+  withStatusBarInset,
+} from "@/workspace-shell/stories/status-bar-inset-story-shared";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
@@ -183,7 +188,7 @@ export const MoveToTrash: StoryObj<typeof DocsTrashConfirmHarness> = {
     await userEvent.click(within(row).getByRole("button", { name: "More actions" }));
     const menu = await canvas.findByRole("menu");
     await userEvent.click(
-      await within(menu).findByRole("button", { name: driveLabels.detailDelete }),
+      await within(menu).findByRole("menuitem", { name: driveLabels.detailDelete }),
     );
     const dialog = await canvas.findByRole("alertdialog", {
       name: docsLabels.homeMoveToTrashTitle,
@@ -220,7 +225,7 @@ export const ShareFromRowMenu: Story = {
     // MenuItem does not forward Radix item props, so the row is a button inside the menu.
     const menu = await body.findByRole("menu");
     await userEvent.click(
-      await within(menu).findByRole("button", { name: driveLabels.detailShare }),
+      await within(menu).findByRole("menuitem", { name: driveLabels.detailShare }),
     );
     await expect(
       await body.findByRole("dialog", { name: "Share Roadmap 2026" }),
@@ -405,3 +410,26 @@ function DocsHomePaneHarness({ initialViewMode = "list" }: { initialViewMode?: V
     </div>
   );
 }
+
+/** #1851: in the installed iPhone app the list header and menu toggle stay below the status bar. */
+export const UnderStatusBar: Story = {
+  name: "Under the iPhone status bar",
+  tags: ["vitest-ci"],
+  decorators: [withStatusBarInset],
+  globals: {
+    viewport: { value: "mobile1", isRotated: false },
+  },
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
+    const main = canvasElement.querySelector<HTMLElement>(".workspace-app-layout__main");
+    await expect(main).toBeTruthy();
+    const toggle = within(main!).getAllByRole("button", { name: /sidebar/i })[0];
+    await expect(offsetFromStoryTop(canvasElement, toggle)).toBeGreaterThanOrEqual(
+      STATUS_BAR_INSET_PX,
+    );
+  },
+};

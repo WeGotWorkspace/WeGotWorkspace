@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
@@ -15,7 +16,6 @@ use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -350,7 +350,7 @@ final class JmapContactsProvisionTest extends WgwDatabaseTestCase
             }
         }
 
-        $carddav = new CardPDO($pdo);
+        $carddav = new WgwCardBackend($pdo);
         foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
             if (($book['uri'] ?? '') === AddressBookCollectionUris::CALDAV_URI && isset($book['id'])) {
                 $carddav->createCard((int) $book['id'], 'lead.vcf', $this->sampleVcard('Studio Lead'));

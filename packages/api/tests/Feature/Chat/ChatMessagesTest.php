@@ -89,6 +89,41 @@ final class ChatMessagesTest extends WgwDatabaseTestCase
         ])->assertStatus(409);
     }
 
+    public function test_an_id_only_a_message_out_of_reach_has_is_replaced_by_a_fresh_one(): void
+    {
+        $id = $this->ulid('AA');
+        $this->asUser('alice')->postJson($this->messagesPath(), [
+            'id' => $id, 'body' => 'alice private',
+        ])->assertCreated();
+        $carolChannel = (string) $this->asUser('carol')->postJson('/api/v1/chat/channels', [
+            'name' => 'Carol own', 'kind' => 'channel',
+        ])->assertCreated()->json('id');
+
+        // Carol cannot see alice's channel: her post answers like any other
+        // post, under a message id of its own.
+        $created = $this->asUser('carol')->postJson('/api/v1/chat/channels/'.$carolChannel.'/messages', [
+            'id' => $id, 'body' => 'carol own',
+        ])->assertCreated()->assertJsonPath('body', 'carol own');
+        $carolsId = (string) $created->json('id');
+        $this->assertNotSame($id, $carolsId);
+        $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', $carolsId);
+        $this->assertStringNotContainsString('alice private', (string) $created->getContent());
+
+        $carolList = $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$carolChannel.'/messages')->assertOk()->json('list');
+        $this->assertSame([$carolsId], array_column($carolList, 'id'));
+        $aliceList = $this->asUser('alice')->getJson($this->messagesPath())->assertOk()->json('list');
+        $this->assertSame([$id], array_column($aliceList, 'id'));
+        $this->assertSame('alice private', $aliceList[0]['body']);
+
+        // Bob can see alice's channel: the same id in his own channel is a conflict.
+        $bobChannel = (string) $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+            'name' => 'Bob own', 'kind' => 'channel',
+        ])->assertCreated()->json('id');
+        $this->asUser('bob')->postJson('/api/v1/chat/channels/'.$bobChannel.'/messages', [
+            'id' => $id, 'body' => 'bob own',
+        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
+    }
+
     public function test_create_validation_matrix(): void
     {
         $this->asUser('alice')->postJson($this->messagesPath(), [

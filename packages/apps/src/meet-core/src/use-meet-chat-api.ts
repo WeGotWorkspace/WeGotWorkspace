@@ -255,7 +255,7 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
     retry: load,
     successVersion,
     syncing: reconnectSyncing,
-    listLoading: phase === "loading" || reconnectSyncing,
+    listLoading: phase === "loading",
     listRefreshing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,

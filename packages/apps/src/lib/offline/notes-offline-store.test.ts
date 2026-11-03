@@ -4,6 +4,7 @@ import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { ingestRemoteNote, ingestRemoteNoteDestroyed } from "@/lib/offline/notes-jmap-inbound";
@@ -13,6 +14,9 @@ import {
   enqueueOutboxMutation,
   getNoteFromCache,
   listOutboxMutations,
+  listNoteIdsBlockingSyncToken,
+  listOutboxNoteIds,
+  listPendingNoteBases,
   listPendingNoteFields,
   listPendingNoteIds,
   readNotesBootstrapFromCache,
@@ -51,7 +55,7 @@ describe("notes offline store", () => {
   beforeEach(async () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await notesNotesTable(db).clear();
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
     await db.outbox.clear();
   });
 
@@ -62,17 +66,21 @@ describe("notes offline store", () => {
 
   it("persists notebook color and does not drop sibling collections on upsert", async () => {
     const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notebooks: ["Drafts", "General"],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
-          { id: "notes-general", name: "General", color: "#0ea5e9" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notebooks: ["Drafts", "General"],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+            { id: "notes-general", name: "General", color: "#0ea5e9" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     await upsertNotebookInCache(username, {
       id: "notes-ideas",
@@ -94,17 +102,21 @@ describe("notes offline store", () => {
   });
 
   it("persists notebookCollections and groups for edit/save", async () => {
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notebooks: ["General"],
-        notebookCollections: [
-          { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
-        ],
-        groups: [{ slug: "team", displayName: "Team" }],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notebooks: ["General"],
+          notebookCollections: [
+            { id: "notes-general", name: "General", color: "#14b8a6", isSharee: false },
+          ],
+          groups: [{ slug: "team", displayName: "Team" }],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notebookCollections).toEqual([
@@ -115,21 +127,25 @@ describe("notes offline store", () => {
 
   it("rewrites cached note.notebook when a collection is renamed", async () => {
     const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [
-          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
-          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
-        ],
-        notebooks: ["Drafts", "Work"],
-        tags: ["essay"],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
-          { id: "notes-work", name: "Work", color: "#0ea5e9" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [
+            { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+            { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+          ],
+          notebooks: ["Drafts", "Work"],
+          tags: ["essay"],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+            { id: "notes-work", name: "Work", color: "#0ea5e9" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     await upsertNotebookInCache(username, {
       id: "notes-drafts",
@@ -154,21 +170,25 @@ describe("notes offline store", () => {
   });
 
   it("drops a notebook and its synced notes from Dexie", async () => {
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [
-          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
-          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
-        ],
-        notebooks: ["Drafts", "Work"],
-        tags: ["essay"],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts" },
-          { id: "notes-work", name: "Work" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [
+            { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+            { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+          ],
+          notebooks: ["Drafts", "Work"],
+          tags: ["essay"],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts" },
+            { id: "notes-work", name: "Work" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     await removeNotebookFromCache(username, "notes-drafts", { keepPendingNotes: false });
 
@@ -181,15 +201,19 @@ describe("notes offline store", () => {
   });
 
   it("keeps pending notes when a remote notebook destroy is ingested", async () => {
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [{ ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" }],
-        notebooks: ["Drafts"],
-        tags: ["essay"],
-        notebookCollections: [{ id: "notes-drafts", name: "Drafts" }],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [{ ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" }],
+          notebooks: ["Drafts"],
+          tags: ["essay"],
+          notebookCollections: [{ id: "notes-drafts", name: "Drafts" }],
+        },
       },
-    });
+      Date.now(),
+    );
     await upsertNoteInCache(
       username,
       { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts", title: "Local" },
@@ -203,21 +227,25 @@ describe("notes offline store", () => {
   });
 
   it("rewrites notes to the destination, including pending rows, and drops both sync tokens", async () => {
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [
-          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
-          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
-        ],
-        notebooks: ["Drafts", "Work"],
-        tags: ["essay"],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts", scope: "personal" },
-          { id: "notes-work", name: "Work", scope: "personal" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [
+            { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+            { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+          ],
+          notebooks: ["Drafts", "Work"],
+          tags: ["essay"],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts", scope: "personal" },
+            { id: "notes-work", name: "Work", scope: "personal" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
     await upsertNoteInCache(
       username,
       {
@@ -263,13 +291,17 @@ describe("notes offline store", () => {
     const localNote = { ...note, body: ["Local body"] };
     await upsertNoteInCache(username, localNote, true);
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notes: [{ ...note, body: ["Server body"] }],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notes: [{ ...note, body: ["Server body"] }],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notes[0]?.body).toEqual(["Local body"]);
@@ -279,21 +311,25 @@ describe("notes offline store", () => {
     const emptyLocal = { ...note, excerpt: "", body: [""], wordCount: 0, tags: ["pending"] };
     await upsertNoteInCache(username, emptyLocal, true);
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notes: [
-          {
-            ...note,
-            excerpt: "Donec ullamcorper nulla non metus auctor fringilla.",
-            body: ["Donec ullamcorper nulla non metus auctor fringilla."],
-            tags: ["server"],
-            wordCount: 7,
-          },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notes: [
+            {
+              ...note,
+              excerpt: "Donec ullamcorper nulla non metus auctor fringilla.",
+              body: ["Donec ullamcorper nulla non metus auctor fringilla."],
+              tags: ["server"],
+              wordCount: 7,
+            },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notes[0]?.tags).toEqual(["pending"]);
@@ -493,5 +529,78 @@ describe("notes offline store", () => {
 
     await expect(ingestRemoteNoteDestroyed(username, local.id)).resolves.toBe("removed");
     expect(await getNoteFromCache(username, local.id)).toBeNull();
+  });
+
+  describe("pending-write readers", () => {
+    const row = (
+      id: string,
+      op: string,
+      payload: Record<string, unknown>,
+      extra: { ifInState?: string; lastError?: string } = {},
+    ) =>
+      putOutboxMutation(username, {
+        id,
+        domain: NOTES_DOMAIN,
+        op,
+        payload: JSON.stringify(payload),
+        createdAt: Date.now(),
+        retries: extra.lastError ? 1 : 0,
+        ...extra,
+      });
+
+    beforeEach(async () => {
+      await row("r1", "upsert", { noteId: "n-a", fields: ["title", "bogus"] }, { ifInState: "e1" });
+      await row("r2", "upsert", { noteId: "n-a", fields: ["tags"] }, { ifInState: "e2" });
+      await row("r3", "archive", { noteId: "n-b" });
+      await row("r4", "delete", { noteId: "n-c" }, { ifInState: "e9", lastError: "stateMismatch" });
+      await row("r5", "upsert", { noteId: "n-d" });
+      await row("r6", "upsert", {});
+      await putOutboxMutation(username, {
+        id: "r7",
+        domain: NOTES_DOMAIN,
+        op: "upsert",
+        payload: "not json",
+        createdAt: Date.now(),
+        retries: 0,
+      });
+      await putOutboxMutation(username, {
+        id: "r8",
+        domain: "tasks",
+        op: "upsert",
+        payload: JSON.stringify({ noteId: "n-other-domain" }),
+        createdAt: Date.now(),
+        retries: 0,
+      });
+    });
+
+    it("lists queued fields per note, delete and archive included", async () => {
+      const fields = await listPendingNoteFields(username);
+      expect([...fields.keys()].sort()).toEqual(["n-a", "n-b", "n-c", "n-d"]);
+      expect([...(fields.get("n-a") ?? [])].sort()).toEqual(["tags", "title"]);
+      expect([...(fields.get("n-b") ?? [])]).toEqual(["archived"]);
+      expect([...(fields.get("n-c") ?? [])]).toEqual(["delete"]);
+      expect(fields.get("n-d")?.size).toBe(0);
+    });
+
+    it("lists the base versions of queued writes in order, only where one was recorded", async () => {
+      expect(await listPendingNoteBases(username)).toEqual(
+        new Map([
+          ["n-a", ["e1", "e2"]],
+          ["n-c", ["e9"]],
+        ]),
+      );
+    });
+
+    it("lists every note with an outbox row", async () => {
+      expect([...(await listOutboxNoteIds(username))].sort()).toEqual(["n-a", "n-b", "n-c", "n-d"]);
+    });
+
+    it("lets a stateMismatch row stop holding the sync token", async () => {
+      expect([...(await listNoteIdsBlockingSyncToken(username))].sort()).toEqual([
+        "n-a",
+        "n-b",
+        "n-d",
+      ]);
+    });
   });
 });

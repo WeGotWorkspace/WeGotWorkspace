@@ -6,7 +6,6 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import {
   TextEditorFormatBar,
   TEXT_EDITOR_FORMAT_BAR_GROUPS,
-  TEXT_EDITOR_FORMAT_BAR_MAIL,
   type TextEditorFormatBarGroup,
 } from "@/text-editor-core/src/text-editor-format-bar";
 import {
@@ -35,7 +34,11 @@ function TextEditorFormatBarDemo({ format, groups, showPrint, editable }: Format
   return (
     <div className="text-editor text-editor--format-bar-story flex h-[min(420px,70dvh)] w-full flex-col">
       <TextEditorFormatBar editor={editor} groups={groups} showPrint={showPrint} />
-      <div className="text-editor-format-bar-story__body">
+      {/* A read-only body has nothing focusable; keep the scroll box reachable. */}
+      <div
+        className="text-editor-format-bar-story__body"
+        {...(editable ? {} : { role: "region", "aria-label": "Document", tabIndex: 0 })}
+      >
         <EditorContent editor={editor} />
       </div>
     </div>
@@ -86,16 +89,6 @@ export const Html: Story = {
     const bold = canvas.getByRole("button", { name: "Bold" });
     await userEvent.click(bold);
     await expect(bold).toHaveAttribute("aria-pressed", "true");
-  },
-};
-
-export const MailToolbar: Story = {
-  name: "Mail toolbar",
-  args: {
-    format: "html",
-    groups: TEXT_EDITOR_FORMAT_BAR_MAIL,
-    showPrint: false,
-    editable: true,
   },
 };
 

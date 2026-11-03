@@ -10,6 +10,7 @@ For monorepo development (bind mounts, Vite HMR), use [dev-layout.md](dev-layout
 
 - Docker Engine 24+ and Docker Compose v2
 - ~2 GB disk for the image; more for uploads and database volume
+- **https in production.** `http://localhost:8080` is fine to try it out, but on any other address serve the site over `https://` (see [TLS (HTTPS)](#tls-https)). On plain `http://` the browser turns off live editing of documents together, push notifications, offline use, and large uploads — [getting-started.md § Requirement: https](getting-started.md#requirement-https).
 - **Apple Silicon (M1/M2/M3) / ARM:** current releases ship native `linux/arm64` plus `linux/amd64`. Older tags may be amd64-only — `install` / `setup.sh` then sets `DOCKER_DEFAULT_PLATFORM=linux/amd64` and logs a Rosetta hint. Enable x86_64/amd64 emulation in Docker Desktop when needed. See [install-docker-ops.md § Apple Silicon & ARM](install-docker-ops.md#apple-silicon--arm).
 
 ## Quick start (recommended)
@@ -89,6 +90,25 @@ curl -fsSL .../install | sh -s -- --upgrade 1.2.0
 ```
 
 Upgrades always pin `WGW_IMAGE` to a semver tag in `.env` (never `:latest`).
+
+### Update channels
+
+`WGW_UPDATE_CHANNEL` in `.env` picks the release feed for `check` and `upgrade`:
+
+| Channel | Gets | Feed |
+|---------|------|------|
+| `stable` (default) | Every `vX.Y.Z` release | `releases/latest/download/manifest.json` |
+| `beta` | Prereleases (`vX.Y.Z-beta.N`, `-rc.N`) and stable releases, whichever is newer | `releases/download/channel-beta/manifest.json` |
+| `edge` | A build of every merge to `main` (`X.Y.Z-edge.N`) | `releases/download/channel-edge/manifest.json` |
+
+Switch once with `--channel`; it is saved to `.env`:
+
+```bash
+bash setup.sh upgrade --channel beta
+curl -fsSL .../install | sh -s -- --channel beta     # new install on beta
+```
+
+Edge is for testing, not production data. Schema migrations only go forward, so a switch to an older release never downgrades: `upgrade` keeps the installed version until the new channel catches up. Admin → Updates shows the channel read-only on Docker.
 
 Run `bash setup.sh --help` for the full command list.
 
@@ -192,6 +212,8 @@ WGW_INSTALL_ADMIN_EMAIL=admin@example.com
 WGW_INSTALL_ADMIN_PASSWORD=your-long-password
 ```
 
+Only the one-shot migrator receives `WGW_INSTALL_ADMIN_PASSWORD`. The `web` and `scheduler` containers keep running, so Compose does not pass them the password; they get the other `WGW_INSTALL_*` values for the first-run screens. Keep the password in this Compose `.env`, not in `api.env`, which every container reads. Remove it from `.env` after the first install: a later start finds the `.installed` lock and skips `wgw:install`.
+
 ## What persists
 
 Named volumes (survive `docker compose down` and image updates):
@@ -213,7 +235,7 @@ Each `docker compose up` runs a **one-shot migrator** before the web container s
    - Seeds [wgw-install-seed-config.sh](../docker/install/wgw-install-seed-config.sh) into the `wgw-install-config` volume (`api.env` with `WGW_INSTALL_*` pre-install keys).
    - **Fresh install** (no `wgw-content/.installed`): runs headless `wgw:install` when `WGW_INSTALL_HEADLESS=1` and env is complete; otherwise skips schema migration — the web first-run installer runs initial setup.
    - **Existing install**: runs `php artisan wgw:schema-migrate` (same as ZIP in-place updates).
-2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `key:generate` when needed, starts Apache. The runtime image is Apache mod_php (`docker/install/Dockerfile.runtime`, `docker/apache/Dockerfile`). Password reset delivery runs after the response via Laravel `defer()`; mod_php has no `fastcgi_finish_request` or `litespeed_finish_request`, so that falls back to flushing the body, and output compression on that path can make the timing difference visible again. LiteSpeed and PHP-FPM finish the request.
+2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `artisan wgw:ensure-app-key`, which generates `APP_KEY` only when it is empty (an existing key is never replaced, so restarts keep refresh tokens, share links and other encrypted data valid), starts Apache. The runtime image is Apache mod_php (`docker/install/Dockerfile.runtime`, `docker/apache/Dockerfile`). Password reset delivery runs after the response via Laravel `defer()`; mod_php has no `fastcgi_finish_request` or `litespeed_finish_request`, so that falls back to flushing the body, and output compression on that path can make the timing difference visible again. LiteSpeed and PHP-FPM finish the request.
 3. **Scheduler** sidecar: loops `php artisan schedule:run` every 60 seconds (due Calendar/Task alarms and VAPID fallback). This is the Docker equivalent of host cron — **not** a `queue:work` daemon.
 
 Failed migrations block the web service from starting, preventing a half-upgraded state.
@@ -330,3 +352,13 @@ A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two
 ## TLS (HTTPS)
 
 Automatic TLS termination is not included in the default stack. Terminate HTTPS on a reverse proxy (Caddy, Traefik, nginx) in front of `WGW_HTTP_PORT`, or use your platform’s load balancer. A dedicated Compose TLS profile may be added later.
+
+https is a requirement outside `localhost`, not an option: see [getting-started.md § Requirement: https](getting-started.md#requirement-https) for what does not work without it. Caddy requests a free Let's Encrypt certificate on its own; a minimal `Caddyfile`:
+
+```text
+office.example.org {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+With Traefik, use its Let's Encrypt (ACME) resolver; with nginx, use certbot. Then open the installer on the `https://` address so `APP_URL` is saved with `https://`.

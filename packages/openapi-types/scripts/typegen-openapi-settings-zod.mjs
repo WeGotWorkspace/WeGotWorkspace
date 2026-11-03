@@ -9,7 +9,7 @@ const outputPath = path.resolve(packageRoot, "generated/settings-request-zod.ts"
 
 /**
  * Minimal OpenAPI component schema → Zod emitter for flat string-only objects
- * (Settings profile/mail PUT bodies). Extend this script if new primitive types appear.
+ * (Settings profile PUT body). Extend this script if new primitive types appear.
  */
 function propertyToZod(propSchema, requiredSet, key) {
   const required = requiredSet.has(key);
@@ -30,9 +30,7 @@ function emitObjectSchema(schemaName, schema) {
   const exportName =
     schemaName === "SettingsProfileRequest"
       ? "settingsProfileRequestOpenapiSchema"
-      : schemaName === "SettingsMailRequest"
-        ? "settingsMailRequestOpenapiSchema"
-        : `${schemaName.charAt(0).toLowerCase()}${schemaName.slice(1)}OpenapiSchema`;
+      : `${schemaName.charAt(0).toLowerCase()}${schemaName.slice(1)}OpenapiSchema`;
 
   return [
     `/** OpenAPI \`components.schemas.${schemaName}\` */`,
@@ -47,11 +45,8 @@ export function generateSettingsRequestZod() {
   const built = JSON.parse(readFileSync(builtDocPath, "utf8"));
   const schemas = built?.components?.schemas ?? {};
   const profile = schemas.SettingsProfileRequest;
-  const mail = schemas.SettingsMailRequest;
-  if (!profile || !mail) {
-    throw new Error(
-      "typegen-openapi-settings-zod: missing SettingsProfileRequest or SettingsMailRequest in built OpenAPI",
-    );
+  if (!profile) {
+    throw new Error("typegen-openapi-settings-zod: missing SettingsProfileRequest in built OpenAPI");
   }
 
   const body = [
@@ -60,7 +55,6 @@ export function generateSettingsRequestZod() {
     'import { z } from "zod";',
     "",
     emitObjectSchema("SettingsProfileRequest", profile),
-    emitObjectSchema("SettingsMailRequest", mail),
   ].join("\n");
 
   writeFileSync(outputPath, body, "utf8");

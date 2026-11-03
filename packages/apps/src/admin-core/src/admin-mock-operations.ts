@@ -1,3 +1,4 @@
+import { isAppUrlWarning } from "@/admin-core/src/admin-workspace-utils";
 import type {
   AdminAPIOperations,
   AdminUIData,
@@ -51,12 +52,6 @@ function applySettingsMap(
     return typeof v === "boolean" ? v : undefined;
   };
 
-  const imapHost = readString("mail_imap_host");
-  if (imapHost !== undefined) data.mail.imapHost = imapHost;
-  const imapPort = readNumber("mail_imap_port");
-  if (imapPort !== undefined) data.mail.imapPort = imapPort;
-  const imapSecurity = readString("mail_imap_security");
-  if (imapSecurity !== undefined) data.mail.imapSecurity = imapSecurity;
   const smtpHost = readString("mail_smtp_host");
   if (smtpHost !== undefined) data.mail.smtpHost = smtpHost;
   const smtpPort = readNumber("mail_smtp_port");
@@ -173,7 +168,7 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
     setAppUrl: async (_url, opts) => {
       await sleep(120, opts?.signal);
       current.securityWarnings = current.securityWarnings.filter(
-        (warning) => !warning.startsWith("APP_URL is not set"),
+        (warning) => !isAppUrlWarning(warning),
       );
       return snapshot();
     },
@@ -214,6 +209,17 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
         updateAvailable: Boolean(current.updates.latest),
       };
       return snapshot();
+    },
+    setUpdateChannel: async (channel, opts) => {
+      await sleep(120, opts?.signal);
+      current.updates = {
+        ...current.updates,
+        updateChannel: channel,
+        latest: null,
+        updateAvailable: false,
+        lastCheckedAt: null,
+      };
+      return cloneData(current).updates;
     },
     refreshUpdateState: async (opts) => {
       await sleep(80, opts?.signal);

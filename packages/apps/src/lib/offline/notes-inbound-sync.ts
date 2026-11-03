@@ -17,10 +17,15 @@ import {
 } from "@/lib/offline/notes-jmap-inbound";
 import {
   listNoteIdsBlockingSyncToken,
+  listOutboxNoteIds,
   readNotesBootstrapFromCache,
   readSyncToken,
   writeSyncToken,
 } from "@/lib/offline/notes-offline-store";
+import { runScopedInbound } from "@/lib/offline/core/inbound-sync";
+
+type NoteRow = Awaited<ReturnType<typeof getNote>>;
+type CachedNote = { id: string; scope: string | undefined; createPending: boolean };
 
 export const NOTES_NOTEBOOKS_TOKEN_KEY = "__notebooks__";
 
@@ -70,7 +75,8 @@ async function syncNotebooks(username: string): Promise<{
 /**
  * REST `/changes` inbound (reconnect / manual refresh / mock-tier fallback).
  * Live poll uses `POST /jmap` via `JmapNotesAdapter`. Notebooks first, then
- * per-visible-notebook items. Full list only on `cannotCalculateChanges`.
+ * per-visible-notebook items through the shared inbound engine. Full list with
+ * no token or on `cannotCalculateChanges`.
  */
 export async function syncNotesInboundFromRest(
   username: string,
@@ -87,86 +93,48 @@ export async function syncNotesInboundFromRest(
         ? [...visibleNotebookIds]
         : [];
 
-  const deltas: Array<{
-    notebookId: string;
-    created: string[];
-    updated: string[];
-    destroyed: string[];
-    newState: string;
-    usedFullResync: boolean;
-  }> = [];
+  const notes = await runScopedInbound<NoteRow, CachedNote>(ids, {
+    readToken: (notebookId) => readSyncToken(username, notebookId),
+    writeToken: (notebookId, token) => writeSyncToken(username, notebookId, token),
+    changes: (notebookId, since) => listNoteChanges(notebookId, since),
+    isCannotCalculateChanges: isNotesCannotCalculateChanges,
+    // A full list is the whole notebook: what the cache has there and the list
+    // lacks was deleted elsewhere. Its rows are ingested as they are (no GET each).
+    list: (notebookId) => listNotes({ notebookId }),
+    currentState: async (notebookId) => (await listNoteChanges(notebookId, null)).newState,
+    rowId: (row) => row.id,
+    fetch: (id) => getNote(id),
+    readCached: async () => {
+      const cachedBefore = await readNotesBootstrapFromCache(username);
+      // Still in the outbox is "not sent yet", not "deleted": leave those alone.
+      const queuedIds = await listOutboxNoteIds(username);
+      return {
+        items: (cachedBefore?.data.notes ?? []).map((note) => ({
+          id: note.id,
+          scope: note.notebookId,
+          createPending: Boolean(note.createPending),
+        })),
+        keep: (note) => note.createPending || queuedIds.has(note.id),
+      };
+    },
+    scopeGone: {
+      matches: isNotesNotFound,
+      apply: (notebookId) => ingestRemoteNotebookDestroyed(username, notebookId).then(() => {}),
+    },
+    createApplier: async () => {
+      const cached = await readNotesBootstrapFromCache(username);
+      const notebookRows = cached?.data.notebookCollections ?? [];
+      return {
+        ingest: (row) => ingestRemoteNote(username, noteFromVjournal(row, notebookRows)),
+        ingestDestroyed: (id) => ingestRemoteNoteDestroyed(username, id),
+        // A stateMismatch row is absent here, so it does not pin a token.
+        blocksToken: await listNoteIdsBlockingSyncToken(username),
+      };
+    },
+  });
 
-  let usedFullResync = notebooks.usedFullResync;
-  let changed = notebooks.changed;
-  for (const notebookId of ids) {
-    const since = await readSyncToken(username, notebookId);
-    try {
-      const delta = await listNoteChanges(notebookId, since);
-      deltas.push({
-        notebookId,
-        created: delta.created,
-        updated: delta.updated,
-        destroyed: delta.destroyed,
-        newState: delta.newState,
-        usedFullResync: false,
-      });
-    } catch (error) {
-      if (isNotesNotFound(error)) {
-        await ingestRemoteNotebookDestroyed(username, notebookId);
-        changed = true;
-        continue;
-      }
-      if (!isNotesCannotCalculateChanges(error)) throw error;
-      usedFullResync = true;
-      const items = await listNotes({ notebookId });
-      deltas.push({
-        notebookId,
-        created: items.map((item) => item.id),
-        updated: [],
-        destroyed: [],
-        newState: (await listNoteChanges(notebookId, null)).newState,
-        usedFullResync: true,
-      });
-    }
-  }
-
-  const created = new Set<string>();
-  const updated = new Set<string>();
-  const destroyed = new Set<string>();
-  for (const delta of deltas) {
-    for (const id of delta.created) created.add(id);
-    for (const id of delta.updated) updated.add(id);
-    for (const id of delta.destroyed) destroyed.add(id);
-  }
-  const upsertIds = [...created, ...[...updated].filter((id) => !created.has(id))];
-  const destroyIds = [...destroyed].filter((id) => !created.has(id) && !updated.has(id));
-
-  const cached = await readNotesBootstrapFromCache(username);
-  const notebookRows = cached?.data.notebookCollections ?? [];
-  const blockingIds = await listNoteIdsBlockingSyncToken(username);
-  const skippedIds = new Set<string>();
-  // A skipped upsert (queued delete) or destroy holds the notebook token.
-  // A stateMismatch row is absent from blockingIds, so it does not pin it.
-  for (const id of upsertIds) {
-    const row = await getNote(id);
-    const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
-    if (result === "upserted" || result === "merged-pending") changed = true;
-    if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
-  }
-  for (const id of destroyIds) {
-    const result = await ingestRemoteNoteDestroyed(username, id);
-    if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
-    if (result === "removed") changed = true;
-  }
-  for (const delta of deltas) {
-    const skipped = [...delta.created, ...delta.updated, ...delta.destroyed].some((id) =>
-      skippedIds.has(id),
-    );
-    if (!skipped) {
-      await writeSyncToken(username, delta.notebookId, delta.newState);
-    }
-    usedFullResync = usedFullResync || delta.usedFullResync;
-  }
-
-  return { changed, usedFullResync };
+  return {
+    changed: notebooks.changed || notes.changed,
+    usedFullResync: notebooks.usedFullResync || notes.usedFullResync,
+  };
 }

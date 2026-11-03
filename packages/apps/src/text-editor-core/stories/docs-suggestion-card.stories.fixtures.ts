@@ -1,16 +1,23 @@
 import type { DocsSuggestionWithThread } from "@/text-editor-core/docs-collab/docs-suggestions-types";
-import { trackChangesAuthorIdFromName } from "@/text-editor-core/src/text-editor-track-changes";
+import {
+  UNKNOWN_SUGGESTION_AUTHOR,
+  suggestionAuthorFromThread,
+} from "@/text-editor-core/docs-collab/docs-suggestions/docs-suggestion-author";
 import type { TrackedChangeInfo } from "tiptap-track-changes";
 
 const TIMESTAMP = "2026-06-01T09:05:00.000Z";
 
-function author(name: string, color: string) {
-  return {
-    authorId: trackChangesAuthorIdFromName(name),
-    authorName: name,
-    authorColor: color,
-  };
+type ThreadAuthor = { id: string; name: string };
+
+/** Editor parts carry only an opaque session id; the thread root carries the person. */
+function sessionPart(sessionId: string) {
+  return { authorId: sessionId, authorName: "", authorColor: "" };
 }
+
+const threadAuthors: Record<string, ThreadAuthor> = {
+  tc_story_alex: { id: "u-alex", name: "Alex Example" },
+  tc_story_sam: { id: "u-sam", name: "Sam Lee" },
+};
 
 function buildSuggestion(
   changeId: string,
@@ -24,8 +31,7 @@ function buildSuggestion(
 
   return {
     changeId,
-    authorName: primary.authorName,
-    authorColor: primary.authorColor,
+    ...suggestionAuthorFromThread(threadAuthors[primary.authorId]),
     timestamp: primary.timestamp,
     from,
     to,
@@ -36,8 +42,8 @@ function buildSuggestion(
   };
 }
 
-const alex = author("Alex Example", "#2563eb");
-const sam = author("Sam Lee", "#16a34a");
+const alex = sessionPart("tc_story_alex");
+const sam = sessionPart("tc_story_sam");
 
 export const insertSuggestion = buildSuggestion(
   "change-insert-1",
@@ -174,4 +180,18 @@ export const replaceSuggestionWithReactions = {
   ...replaceSuggestion,
   messages: [],
   reactions: [{ emoji: "👀", userIds: ["u-alex"] }],
+};
+
+/** Older document: the suggestion has no thread, so author and time are unknown. */
+export const unknownAuthorSuggestion: DocsSuggestionWithThread = {
+  ...deleteSuggestion,
+  changeId: "change-delete-legacy-1",
+  ...UNKNOWN_SUGGESTION_AUTHOR,
+  timestamp: "",
+  parts: deleteSuggestion.parts.map((part) => ({
+    ...part,
+    changeId: "change-delete-legacy-1",
+    authorId: "",
+    timestamp: "",
+  })),
 };

@@ -88,6 +88,12 @@ final class SettingKeys
     public const MAIL_DELIVERY_LAST_TEST_SEND = 'mail_delivery_last_test_send';
 
     /**
+     * Admin choice of release feed on ZIP installs. Written only by
+     * UpdateChannelSettingService, so it is not in {@see all()}.
+     */
+    public const UPDATE_CHANNEL = 'update_channel';
+
+    /**
      * @return list<string>
      */
     public static function all(): array

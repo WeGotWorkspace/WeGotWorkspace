@@ -488,7 +488,7 @@
       },
       "code": {
         "type": "string",
-        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex)."
+        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed)."
       }
     },
     "additionalProperties": false

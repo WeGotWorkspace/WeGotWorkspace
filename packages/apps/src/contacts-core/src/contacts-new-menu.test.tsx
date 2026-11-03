@@ -35,7 +35,7 @@ describe("ContactsNewMenu", () => {
     const chevron = screen.getByRole("button", { name: L.newContactMenu });
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.newGroup }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.newGroup }));
     expect(onCreateGroup).toHaveBeenCalledOnce();
   });
 
@@ -45,8 +45,8 @@ describe("ContactsNewMenu", () => {
     const chevron = screen.getByRole("button", { name: L.newContactMenu });
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    expect(screen.queryByRole("button", { name: L.newGroup })).toBeNull();
-    expect(screen.getByRole("button", { name: L.importVcf })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: L.newGroup })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: L.importVcf })).toBeTruthy();
   });
 
   it("hides the chevron when neither group create nor import is available", () => {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Database\WgwSqliteConnection;
 use App\Events\EventDispatch;
 use App\Events\NotifyListener;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
@@ -15,8 +16,10 @@ use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PassportKeyStore;
 use App\Services\Notify\MinishlinkWebPushSender;
 use App\Services\Notify\WebPushSender;
+use App\Support\CspFormActions;
 use App\Support\CspNonce;
 use App\Support\SqliteTextLobStatement;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
@@ -30,7 +33,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Immediate SQLite transactions on PHP 8.3 too (see WgwSqliteConnection).
+        Connection::resolverFor('sqlite', static fn ($pdo, $database, $prefix, $config) => new WgwSqliteConnection($pdo, $database, $prefix, $config));
         $this->app->singleton(CspNonce::class);
+        $this->app->singleton(CspFormActions::class);
         $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {
             return new EventDispatch([
                 $app->make(NotifyListener::class),
@@ -80,6 +86,11 @@ class AppServiceProvider extends ServiceProvider
                 if ($origin === '' && is_array($client->redirect_uris ?? null) && isset($client->redirect_uris[0])) {
                     $origin = McpRedirectUris::originOf((string) $client->redirect_uris[0]);
                 }
+            }
+            $authRequest = request()->hasSession() ? request()->session()->get('authRequest') : null;
+            $redirect = McpRedirectUris::consentRedirectUri($client, $authRequest);
+            if ($redirect !== null) {
+                $this->app->make(CspFormActions::class)->allowRedirectTo($redirect);
             }
             $username = is_object($user) ? (string) ($user->username ?? '') : '';
             $scopes = $data['scopes'] ?? [];

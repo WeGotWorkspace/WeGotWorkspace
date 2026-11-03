@@ -46,7 +46,7 @@
 }
 
 .notes-list-panel__pending-dot {
-  color: var(--color-warning);
+  color: var(--color-sync-pending);
 }
 
 .notes-list-panel__notebook {

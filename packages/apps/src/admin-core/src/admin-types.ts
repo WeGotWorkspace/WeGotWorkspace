@@ -1,6 +1,7 @@
+import type { WgwAdminSecurityWarning } from "@/lib/api/wgw";
+
 export type AdminSection =
   | "users"
-  | "mail"
   | "email-delivery"
   | "collaboration"
   | "webdav"
@@ -8,6 +9,9 @@ export type AdminSection =
   | "updates"
   | "search"
   | "mcp";
+
+/** A configuration problem from the admin state. Act on `code`; `message` is for display. */
+export type AdminSecurityWarning = WgwAdminSecurityWarning;
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -68,10 +72,8 @@ export type AdminGroup = {
   displayName: string;
 };
 
+/** The pre-delivery SMTP endpoint. Email delivery prefills from it when its own host is empty. */
 export type AdminMailSettings = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
   smtpHost: string;
   smtpPort: number;
   smtpSecurity: string;
@@ -169,8 +171,12 @@ export type AdminUpdateResult = {
   finishedAt: string | null;
 };
 
+/** Release feed the updater follows. Edge is built from main; not for production data. */
+export type AdminUpdateChannel = "stable" | "beta" | "edge";
+
 export type AdminUpdateState = {
   installChannel: string | null;
+  updateChannel: AdminUpdateChannel;
   installedVersion: string;
   imageTag?: string | null;
   schemaVersion: number;
@@ -226,7 +232,7 @@ export type AdminUIData = {
   searchReindex: AdminSearchReindexState;
   currentUser: string;
   logoutUrl: string;
-  securityWarnings: string[];
+  securityWarnings: AdminSecurityWarning[];
   updateLogLines: string[];
 };
 
@@ -239,6 +245,10 @@ export type AdminAPIOperations = {
   setAppUrl: (url: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
+  setUpdateChannel: (
+    channel: AdminUpdateChannel,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<AdminUpdateState>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   applyUpdate: (version?: string, opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   cancelUpdate: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;

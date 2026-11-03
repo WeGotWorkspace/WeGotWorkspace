@@ -26,6 +26,15 @@ const meta = {
 } satisfies Meta<typeof MeetWorkspaceStoryHarness>;
 
 export default meta;
+
+/** After join the pre-join bar stays in the parked chat surface, hidden from AT behind the stage. */
+async function expectPreJoinBarParked(title: HTMLElement | null) {
+  if (!title) return;
+  await expect(title.closest(".meet-workspace__surface--parked")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+}
 type Story = StoryObj<MeetWorkspaceStoryArgs>;
 
 /** Chrome Default lives under Themes/Meet — join/leave call SST. */
@@ -63,7 +72,7 @@ export const Default: Story = {
       within(bar as HTMLElement).queryByRole("img", { name: "Demo User avatar" }),
     ).not.toBeInTheDocument();
     await userEvent.click(join);
-    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
+    await expectPreJoinBarParked(canvas.queryByText(meetLabels.meetingStarted));
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
@@ -209,7 +218,7 @@ export const CallBar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
-    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
+    await expectPreJoinBarParked(canvas.queryByText(meetLabels.meetingStarted));
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });

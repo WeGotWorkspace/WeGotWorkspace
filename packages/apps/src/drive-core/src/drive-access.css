@@ -72,7 +72,7 @@
 
 .drive-workspace .drive-access-tree__empty {
   @apply py-1 text-xs;
-  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
 }
 
 .drive-workspace .drive-access-detail {
@@ -182,7 +182,7 @@
 }
 
 .drive-workspace .drive-access-grant-row__inherited {
-  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__header {

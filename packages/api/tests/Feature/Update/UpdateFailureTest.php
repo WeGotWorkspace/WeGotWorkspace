@@ -51,6 +51,25 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
         $this->assertSame('Could not download release package.', $state['last_result']['message']);
     }
 
+    public function test_apply_refuses_a_release_that_is_not_newer(): void
+    {
+        $fixture = $this->releaseFixture;
+        $this->assertNotNull($fixture);
+        $this->publishRelease('0.0.9', $fixture->zip($this->releaseTree()));
+        $this->operations()->check();
+
+        try {
+            $this->operations()->apply(['version' => '0.0.9']);
+            $this->fail('Expected apply to refuse an older release.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame('0.0.9 is not newer than the installed 0.1.0. Check for updates again.', $e->getMessage());
+        }
+
+        $this->assertUpdaterIdle();
+        $this->assertSame([], $this->backupZips());
+        $this->assertStringContainsString('old-index', (string) file_get_contents($this->installRoot.'/index.php'));
+    }
+
     public function test_checksum_failure_discards_partial_package(): void
     {
         $fixture = $this->releaseFixture;

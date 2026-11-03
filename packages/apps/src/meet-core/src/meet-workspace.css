@@ -300,7 +300,7 @@
   --color-muted-foreground: var(--meet-muted);
   --background: var(--workspace-surface);
   --modal-title-foreground: var(--workspace-foreground);
-  --button-destructive-bg: var(--color-red-500, #dc2626);
+  --button-destructive-bg: var(--color-red-600, #dc2626);
   --button-destructive-fg: var(--workspace-accent-foreground);
   @apply max-w-sm;
   background-color: var(--workspace-surface) !important;
@@ -356,7 +356,7 @@
 
 .meet-device-menu .meet-device-menu__label {
   @apply py-1 text-xs font-semibold tracking-normal;
-  color: color-mix(in oklab, var(--workspace-foreground) 48%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
 }
 
 .meet-device-menu .dropdown-menu-ui__separator {
@@ -974,7 +974,9 @@
   --user-avatar-presence-ring: var(--meet-call-surface);
 }
 
-.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark {
+/* Dark call surfaces: the tinted mark would mix its ink into the dark wash. */
+.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark,
+.meet-lobby-banner .user-avatar--colored .user-avatar__mark {
   color: var(--workspace-foreground);
 }
 

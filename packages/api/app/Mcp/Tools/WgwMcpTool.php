@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Exceptions\ApiHttpException;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
-use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpExternalShareRefused;
 use App\Services\Mcp\McpScopes;
@@ -61,11 +60,6 @@ abstract class WgwMcpTool extends Tool
             $this->record('error', $request);
 
             return Response::error($e->getMessage());
-        } catch (MailResponseException $e) {
-            $this->record('error', $request);
-            $msg = (string) ($e->payload['error'] ?? $e->getMessage());
-
-            return Response::error($msg !== '' ? $msg : 'Mail operation failed.');
         } catch (McpExternalShareRefused $e) {
             $this->record('denied', $request);
 

@@ -19,7 +19,7 @@
   --_lc-grid-line-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
-  --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
+  --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   /* Today pill fill is `--lc-higlight-color` → `--color-error`. Ink must be the accent
      pair, not `#fff`, or a remapped white accent is white-on-white. */
   --_lc-today-day-color: var(--lc-today-on-color, var(--workspace-accent-foreground));

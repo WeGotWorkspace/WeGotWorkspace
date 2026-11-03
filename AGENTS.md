@@ -10,21 +10,26 @@
 
 **English-only:** Specs, plans, docs, GitHub issues (including Goals), and issue/PR comments are **English** even when the user writes Dutch. [english-only.md](.agents/skills/developer/english-only.md).
 
+**Plain-language issues:** Goals are plain English for customers and the product lead, with no technical content. Every Epic, Task, Chore, and Bug opens with a three-line `Summary` (What / Who notices / If we wait) in plain English; the technical part below it is written for a medior developer. [plain-language.md](.agents/skills/developer/plain-language.md).
+
 **File size:** A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered.
 
 ## Start here
 
 Load **[developer](.agents/skills/developer/)** for dev layout, skill routing, multitask handoffs, and links to package-specific depth. **Policy vs CI:** [.agents/POLICY.md](.agents/POLICY.md). **Done verification:** [developer/done-checklist.md](.agents/skills/developer/done-checklist.md); MCP tools: [developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md); issue AC: [verify-issue](.agents/skills/verify-issue/).
 
-## Spec-first (feat/ branches)
+## Spec-first (feat/ branches and feature design)
 
-**Goal** = user outcome (`type:goal`, never `Source:`). **Task/Epic** = implementable AC. **Specs = how** (repo): `.agents/specs/<N>-<slug>/` with `spec.md` → `plan.md` → `tasks.md`.
+**Goal** = user outcome, filed in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (every issue there is a Goal; never `Source:`). **Task/Epic** = implementable AC. **Specs = how** (repo): `.agents/specs/<N>-<slug>/` with `spec.md` → `plan.md` → `tasks.md`.
 
-| Branch | Spec required? |
-|--------|----------------|
-| `feat/` | **Yes** — derive `spec.md` from **Task/Epic** (`Source: #N (body-hash: …)`); without issue: `Source: ad-hoc` |
-| `fix/`, `chore/`, `docs/`, `refactor/`, `test/` | Optional |
+| Work | Spec required? |
+|------|----------------|
+| `feat/` branch | **Yes** — derive `spec.md` from **Task/Epic** (`Source: #N (body-hash: …)`); without issue: `Source: ad-hoc` |
+| Feature design on **any** branch, `docs/` included: designing a feature, a design note, or a new `docs/architecture/*.md` for an Epic | **Yes** — load [plan-feature](.agents/skills/plan-feature/) and add `.agents/specs/<epic>-<slug>/` (spec, plan, tasks) in the same PR. CI: `pnpm run check:agent-docs` |
+| Other `fix/`, `chore/`, `docs/`, `refactor/`, `test/` work | Optional |
 | Single-file fix | No |
+
+Design review history and rejected alternatives go in `plan.md` under **Considered**, not in the architecture doc. The architecture doc states the design as decided and links its spec folder.
 
 See [.agents/specs/README.md](.agents/specs/README.md). File issues with [developer/issue-filing.md](.agents/skills/developer/issue-filing.md). Plan with [plan-feature](.agents/skills/plan-feature/); verify drift + AC with [verify-issue](.agents/skills/verify-issue/).
 
@@ -37,7 +42,6 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 | [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks/Chores; [english-only.md](.agents/skills/developer/english-only.md) for specs, docs, and GitHub language |
 | [dev-environment](.agents/skills/dev-environment/) | Docker, ports, Storybook proxy, troubleshooting |
 | [api](.agents/skills/api/) | `packages/api` — REST, auth, storage, WebDAV, tests |
-| [plugins](.agents/skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |
 | [meet](.agents/skills/meet/) | Meet UI, RTC, room signaling |
 | [apps-ui](.agents/skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [client-transport](.agents/skills/client-transport/) | Client API calls in `lib/api/wgw` — typed errors with an HTTP status for the offline outbox |

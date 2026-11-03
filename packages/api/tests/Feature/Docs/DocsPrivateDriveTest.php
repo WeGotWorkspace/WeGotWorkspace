@@ -38,11 +38,11 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/bob/docs/report.md'));
     }
 
-    public function test_save_markdown_via_drive_service(): void
+    public function test_save_markdown_via_file_node_set(): void
     {
         $token = $this->userBearerToken();
 
-        $this->assertSame('Stored', $this->storeDoc('bob', '/users/bob/docs', 'note.md', "# Draft\n\nFirst save."));
+        $this->storeDoc('bob', '/users/bob/docs', 'note.md', "# Draft\n\nFirst save.");
 
         $download = $this->getDocContent($token, '/users/bob/docs/note.md');
         $download->assertOk();
@@ -96,7 +96,7 @@ final class DocsPrivateDriveTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('# Old title', $download->streamedContent());
 
         $oldPath = $this->getDocContent($token, '/users/bob/docs/old.md');
-        $oldPath->assertStatus(400)->assertJsonPath('error', 'File not found.');
+        $oldPath->assertNotFound()->assertJsonPath('error', 'File not found.');
     }
 
     public function test_admin_can_load_and_save_own_private_docs(): void

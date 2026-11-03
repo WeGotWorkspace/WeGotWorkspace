@@ -43,6 +43,8 @@ The dimmed full-screen scrim is **rendered inside `AppSidebar`** when `open` is 
 
 **Workspace / feature packages must not call `window.location.assign` or router APIs** for flows the app shell should own (logout, deep links to other apps). Expose **callbacks** on workspace props (e.g. `onLogout?: () => void`) and implement navigation only in route-level **`*App`** components (or route modules).
 
+**Lint:** `workspaceNavigationRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js) fails CI when a `*-workspace.tsx` or `use-*-controller.ts(x)` file uses `location` or `history`, uses `window.location` for anything but reading `.origin`, or imports `@tanstack/react-router`, a `use-*-route-sync` hook, or the app router.
+
 ## Toasts and deferred API writes
 
 - Use **`useAppToast`** / **`useToast`** (`@/hooks/use-app-toast`, `@/hooks/use-toast`) for in-app feedback. Toasts render **`Callout`** via Sonner `toast.custom` (severity: `info` | `success` | `warning` | `error`). Prefer **`showSuccess` / `showError`** when the tone is fixed.

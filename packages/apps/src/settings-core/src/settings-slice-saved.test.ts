@@ -13,10 +13,10 @@ describe("settings-slice-saved", () => {
     const stop = subscribeSettingsSliceSaved((event) => {
       seen.push(event);
     });
-    notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
-    expect(seen).toEqual([{ panelId: "mail", sliceId: "mail-accounts" }]);
+    notifySettingsSliceSaved({ panelId: "profile", sliceId: "profile" });
+    expect(seen).toEqual([{ panelId: "profile", sliceId: "profile" }]);
     stop();
-    notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
+    notifySettingsSliceSaved({ panelId: "profile", sliceId: "profile" });
     expect(seen).toHaveLength(1);
     resetSettingsSliceSavedForTests();
   });

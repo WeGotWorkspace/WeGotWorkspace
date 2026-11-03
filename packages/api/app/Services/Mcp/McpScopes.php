@@ -40,8 +40,10 @@ final class McpScopes
 
     public const MEET_WRITE = 'meet.write';
 
+    /** Retired with the mail client. Still recognized; see {@see legacyDescriptions()}. */
     public const MAIL_READ = 'mail.read';
 
+    /** Retired with the mail client. Still recognized; see {@see legacyDescriptions()}. */
     public const MAIL_SEND = 'mail.send';
 
     public const SETTINGS = 'settings';
@@ -86,8 +88,6 @@ final class McpScopes
             self::DRIVE_SHARE => 'Share Drive files and Docs with workspace members',
             self::MEET_READ => 'Read Meet channels and messages',
             self::MEET_WRITE => 'Create, update, and delete Meet channels and messages',
-            self::MAIL_READ => 'Read mailboxes and messages',
-            self::MAIL_SEND => 'Send mail as you',
             self::SETTINGS => 'Read your profile and user settings',
             // Advertised so MCP clients that look for this literal id can request
             // it. Not a consent toggle; refresh tokens are always issued.
@@ -97,6 +97,10 @@ final class McpScopes
 
     /**
      * Legacy aliases so existing grants keep working. Not shown as the default consent set.
+     *
+     * The mail scopes no longer unlock any tool. They stay recognized because a
+     * refresh re-validates the token's scopes: dropping them would fail the
+     * refresh of every grant issued with them.
      *
      * @return array<string, string>
      */
@@ -108,6 +112,8 @@ final class McpScopes
             self::TASKS => 'Read and write tasks and task lists (legacy grant)',
             self::CONTACTS => 'Read and write contacts (legacy grant)',
             self::DOCS => 'Read and write Docs and Notes (legacy grant)',
+            self::MAIL_READ => 'Read mailboxes and messages (retired)',
+            self::MAIL_SEND => 'Send mail as you (retired)',
         ];
     }
 
@@ -230,7 +236,7 @@ final class McpScopes
     }
 
     /**
-     * Still valid on existing tokens. Hidden from consent until the client ships.
+     * Still valid on existing tokens, never offered on consent.
      * Grant cards keep them so an old token can be revoked.
      *
      * @return list<string>
@@ -298,7 +304,7 @@ final class McpScopes
     /**
      * Scopes shown on Settings grant cards.
      * `offline_access` stays in {@see advertisedDescriptions()} / `scopes_supported`.
-     * Mail scopes stay here; consent hides them in {@see groupConsentScopes()}.
+     * Retired mail scopes stay here; consent hides them in {@see groupConsentScopes()}.
      *
      * @param  list<string>  $ids
      * @return list<string>
@@ -326,7 +332,6 @@ final class McpScopes
             'Docs' => 'docs',
             'Drive' => 'drive',
             'Meet' => 'meet',
-            'Mail' => 'mail',
             'Profile' => 'settings',
             default => null,
         };

@@ -1,6 +1,7 @@
 import type { DocsCommentThread } from "./docs-comments-types";
 import type { DocsSuggestionThread, DocsSuggestionWithThread } from "./docs-suggestions-types";
 import type { DocsFileThread } from "./docs-threads-types";
+import { suggestionAuthorFromThread } from "./docs-suggestions/docs-suggestion-author";
 
 export function docsFileThreadToComment(thread: DocsFileThread): DocsCommentThread {
   return {
@@ -33,8 +34,7 @@ export function docsFileThreadToArchivedSuggestion(
   const from = thread.anchorFrom ?? Number.MAX_SAFE_INTEGER;
   return {
     changeId: thread.changeId ?? thread.id,
-    authorName: thread.createdBy.name,
-    authorColor: "",
+    ...suggestionAuthorFromThread(thread.createdBy),
     timestamp: thread.createdAt,
     from,
     to: thread.anchorTo ?? from,

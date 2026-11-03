@@ -546,7 +546,13 @@ const scenarios: Scenario[] = [
       expect(decideExternalWrite(true, false)).toBe("rebuild");
       const text = await loadCollabText(urls.documentUrl);
       const rebuilt = new Y.Doc();
-      replaceDocumentWithExternalText(rebuilt, text.markdown, text.title, "markdown");
+      replaceDocumentWithExternalText(
+        rebuilt,
+        text.markdown,
+        text.title,
+        "markdown",
+        flagged.update!,
+      );
       rememberSidecarEtag(room, flagged.etag);
       // The rebuild saw the outside text, so its save names it.
       await save(urls, rebuilt, text.markdown, text.etag ?? null);

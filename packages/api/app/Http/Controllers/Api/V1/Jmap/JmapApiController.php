@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Jmap;
 
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Support\JmapProblem;
+use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodDispatcher;
@@ -66,7 +68,11 @@ final class JmapApiController
         }
 
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $responses = $this->dispatcher->dispatch((string) $principal['username'], $using, $methodCalls);
+        try {
+            $responses = $this->dispatcher->dispatch((string) $principal['username'], $using, $methodCalls);
+        } catch (StorageFullException) {
+            return JmapProblem::insufficientStorage();
+        }
 
         return response()->json([
             'methodResponses' => $responses,

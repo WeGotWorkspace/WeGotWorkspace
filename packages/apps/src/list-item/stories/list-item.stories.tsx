@@ -59,7 +59,8 @@ export const MailStyleTouch: Story = {
     isTouch: true,
     swipeLeftAction: {
       icon: <Star className="size-5" fill="currentColor" />,
-      color: "var(--color-emerald)",
+      // White label needs a deep enough fill for AA.
+      color: "color-mix(in oklab, var(--color-emerald) 45%, var(--color-we-got-dark))",
       label: "Star",
       onActivate: () => {},
     },

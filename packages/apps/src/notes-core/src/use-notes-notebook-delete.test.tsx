@@ -119,18 +119,22 @@ async function seedNotebookCache(notes: Note[]) {
   await notesNotesTable(db).clear();
   await notesNotebooksTable(db).clear();
   await db.meta.clear();
-  await writeNotesBootstrapToCache(cacheUsername, {
-    session: {
-      ...mockWorkspaceSession,
-      user: { ...mockWorkspaceSession.user, username: cacheUsername },
+  await writeNotesBootstrapToCache(
+    cacheUsername,
+    {
+      session: {
+        ...mockWorkspaceSession,
+        user: { ...mockWorkspaceSession.user, username: cacheUsername },
+      },
+      data: {
+        notes,
+        notebooks: ["Scratch", "Ideas", "Work"],
+        tags: [],
+        notebookCollections: collections,
+      },
     },
-    data: {
-      notes,
-      notebooks: ["Scratch", "Ideas", "Work"],
-      tags: [],
-      notebookCollections: collections,
-    },
-  });
+    Date.now(),
+  );
 }
 
 function stubSelectEnv() {

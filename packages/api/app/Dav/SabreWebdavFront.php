@@ -106,6 +106,8 @@ final class SabreWebdavFront
         $error->appendChild($dom->createElement('s:message', $h($e->getMessage())));
 
         if ($e instanceof DAV\Exception) {
+            // Precondition elements such as CARDDAV:no-uid-conflict (as Sabre's own handler does).
+            $e->serialize($server, $error);
             $httpCode = $e->getHTTPCode();
             $headers = $e->getHTTPHeaders($server);
         } else {

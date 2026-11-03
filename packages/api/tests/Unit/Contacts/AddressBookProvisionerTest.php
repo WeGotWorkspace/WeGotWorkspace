@@ -49,6 +49,22 @@ final class AddressBookProvisionerTest extends WgwDatabaseTestCase
         ], 'wgw');
     }
 
+    public function test_putting_the_personal_name_back_moves_the_sync_token(): void
+    {
+        $this->seedWgwUser('provision-bob', displayName: 'Provision Bob');
+        $provisioner = app(AddressBookProvisioner::class);
+        $provisioner->ensureForPrincipal('principals/provision-bob', 'Provision Bob');
+        $book = Addressbook::query()->where('principaluri', 'principals/provision-bob')->firstOrFail();
+        $book->update(['displayname' => 'Renamed by a DAV client']);
+        $token = (int) $book->synctoken;
+
+        $provisioner->ensureForPrincipal('principals/provision-bob', 'Provision Bob');
+        $this->assertSame($token + 1, (int) $book->refresh()->synctoken);
+
+        $provisioner->ensureForPrincipal('principals/provision-bob', 'Provision Bob');
+        $this->assertSame($token + 1, (int) $book->refresh()->synctoken, 'an unchanged name does not move the token');
+    }
+
     public function test_ensure_for_group_principal_creates_one_book(): void
     {
         $this->seedWgwGroup('principals/groups/design', 'Design');

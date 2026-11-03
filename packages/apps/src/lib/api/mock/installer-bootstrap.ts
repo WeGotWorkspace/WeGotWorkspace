@@ -12,6 +12,9 @@ export type InstallerAppBootstrap = InstallerWorkspaceBootstrap & {
   session: WorkspaceSession;
 };
 
+/** The folder a real server proposes: next to the published website, not inside it. */
+export const MOCK_DATA_DIR_PATH = "/var/www/wgw-content";
+
 const DEFAULT_INSTALLER_STATE: WgwInstallerRuntimeState = {
   step: "welcome",
   flash: null,
@@ -19,6 +22,11 @@ const DEFAULT_INSTALLER_STATE: WgwInstallerRuntimeState = {
   db_driver: "sqlite",
   db: {
     sqlite_path: "wgw-content/db.sqlite",
+  },
+  data_dir: {
+    path: MOCK_DATA_DIR_PATH,
+    reason: "outside",
+    inside_web_root: false,
   },
   enable_files: true,
   enable_contacts: true,

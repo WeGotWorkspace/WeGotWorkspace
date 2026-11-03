@@ -216,8 +216,10 @@
   background-color: var(--color-emerald);
 }
 
+/* Pair of the accent fill: white on Dark ink, near-black on Soft ink in the dark theme. */
 .drive-workspace .drive-selection-checkbox__icon {
-  @apply size-3 text-white;
+  @apply size-3;
+  color: var(--workspace-accent-foreground);
 }
 
 /*
@@ -282,34 +284,17 @@
 
 .drive-workspace .drive-file-tile__preview > img,
 .drive-workspace .drive-file-tile__preview > video,
-.drive-workspace .drive-file-tile__preview .file-preview__fallback,
-.drive-workspace .drive-file-tile__preview .drive-media-preview__fallback {
+.drive-workspace .drive-file-tile__preview .file-preview__fallback {
   @apply absolute inset-0 h-full w-full;
 }
 
-.drive-workspace .file-preview__fallback,
-.drive-workspace .drive-media-preview__fallback {
+.drive-workspace .file-preview__fallback {
   @apply flex h-full w-full min-h-0 items-center justify-center opacity-80;
 }
 
-.drive-workspace .file-preview__fallback svg,
-.drive-workspace .drive-media-preview__fallback svg {
+.drive-workspace .file-preview__fallback svg {
   width: 3rem;
   height: 3rem;
-}
-
-@media (min-width: 30rem) {
-  .drive-workspace .drive-media-preview__fallback svg {
-    width: 3.5rem;
-    height: 3.5rem;
-  }
-}
-
-@media (min-width: 64rem) {
-  .drive-workspace .drive-media-preview__fallback svg {
-    width: 4rem;
-    height: 4rem;
-  }
 }
 
 .drive-workspace .drive-file-tile__kind-icon {
@@ -341,7 +326,7 @@
 
 .drive-workspace .drive-location-label {
   @apply flex min-w-0 items-center gap-1.5 text-sm;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
 }
 
 .drive-workspace .drive-location-label__icon {
@@ -472,7 +457,7 @@
 /* Semantic offline status — not themed via workspace accent remaps. */
 .drive-workspace .drive-offline-badge {
   --drive-offline-badge-available: var(--color-success);
-  --drive-offline-badge-pending: var(--color-warning);
+  --drive-offline-badge-pending: var(--color-sync-pending);
   @apply inline-block size-2 shrink-0 rounded-full;
   background-color: var(--drive-offline-badge-available);
 }

@@ -4,7 +4,6 @@ import calendarIcon from "@/assets/app-icons/calendar.svg?raw";
 import contactsIcon from "@/assets/app-icons/contacts.svg?raw";
 import docsIcon from "@/assets/app-icons/docs.svg?raw";
 import driveIcon from "@/assets/app-icons/drive.svg?raw";
-import mailIcon from "@/assets/app-icons/mail.svg?raw";
 import meetIcon from "@/assets/app-icons/meet.svg?raw";
 import notesIcon from "@/assets/app-icons/notes.svg?raw";
 import aiIcon from "@/assets/app-icons/ai.svg?raw";
@@ -21,7 +20,6 @@ export const WORKSPACE_APP_ICON_INLINE: Record<WorkspaceAppId, string> = {
   contacts: contactsIcon,
   docs: docsIcon,
   drive: driveIcon,
-  mail: mailIcon,
   meet: meetIcon,
   notes: notesIcon,
   settings: settingsIcon,

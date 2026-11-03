@@ -9,7 +9,7 @@ import "@/menu-item/src/menu-item.css";
 /** Semantic severity for destructive / warning menu rows (hover wash + fg). */
 export type MenuItemSeverity = "danger";
 
-export type MenuItemProps = {
+export type MenuItemProps = Omit<React.HTMLAttributes<HTMLElement>, "onClick"> & {
   label: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ReactNode;
@@ -50,6 +50,8 @@ export const MenuItem = React.forwardRef<
     onDragOver,
     onDragLeave,
     onDrop,
+    // Radix `asChild` (e.g. DropdownMenuItem) injects role, tabIndex and key handlers here.
+    ...rest
   },
   ref,
 ) {
@@ -103,6 +105,7 @@ export const MenuItem = React.forwardRef<
   if (to != null) {
     return (
       <Link
+        {...rest}
         ref={ref as React.ForwardedRef<HTMLAnchorElement>}
         to={to}
         className={sharedClass}
@@ -114,11 +117,16 @@ export const MenuItem = React.forwardRef<
   }
 
   if (!interactive) {
-    return <div className={sharedClass}>{row}</div>;
+    return (
+      <div {...rest} className={sharedClass}>
+        {row}
+      </div>
+    );
   }
 
   return (
     <button
+      {...rest}
       ref={ref as React.ForwardedRef<HTMLButtonElement>}
       type="button"
       disabled={disabled}

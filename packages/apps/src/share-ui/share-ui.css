@@ -117,6 +117,8 @@
 
 .share-dialog__principal-mark--labeled {
   @apply min-w-0 flex-1;
+  /* Names read as text, like the Drive access panel; the hue stays on the mark. */
+  --user-avatar-label-color: var(--workspace-foreground);
 }
 
 .share-dialog__permission-select {

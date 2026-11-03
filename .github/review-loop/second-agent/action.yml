@@ -1,0 +1,142 @@
+name: Review loop second reviewer
+description: >-
+  Runs the optional second reviewer. Review only: it never fixes. Like
+  agent/action.yml this is a vendor adapter: to switch vendor, rewrite the
+  steps below and keep the inputs and outputs. The calling job is isolated
+  (its own runner, no GitHub credentials), so this adapter does not have to
+  prove the agent cannot write; the workflow only trusts the JSON it returns.
+
+inputs:
+  prompt-file:
+    description: Absolute path to the full prompt (instructions plus context).
+    required: true
+  schema-file:
+    description: Absolute path to the JSON Schema the final answer must match.
+    required: true
+  working-directory:
+    description: Checkout of the pull request the agent works in.
+    required: true
+  token:
+    description: Credential for the agent vendor (secret REVIEW_LOOP_SECOND_AGENT_TOKEN).
+    required: true
+  model:
+    description: Model name in the vendor's own terms. Empty uses the vendor's default.
+    required: false
+    default: ""
+  effort:
+    description: Reasoning effort in the vendor's own terms. Empty uses the default.
+    required: false
+    default: ""
+
+outputs:
+  result-file:
+    description: Path to a JSON file that matches schema-file.
+    value: ${{ steps.run.outputs.result-file }}
+
+runs:
+  using: composite
+  steps:
+    # Vendor: Cursor CLI (headless), pinned by version and checksum. The
+    # package ships its own Node runtime.
+    - name: Install Cursor CLI
+      shell: bash
+      env:
+        VERSION: 2026.10.22-27dcf5f
+        SHA256: 85296944e4600a83c4b764f578d1502bf9c416db200d33a593e8f3ecabfdc294
+      run: |
+        dir="$RUNNER_TEMP/cursor-agent"
+        mkdir -p "$dir"
+        curl -fsSL "https://downloads.cursor.com/lab/$VERSION/linux/x64/agent-cli-package.tar.gz" \
+          -o "$RUNNER_TEMP/cursor-agent.tgz"
+        echo "$SHA256  $RUNNER_TEMP/cursor-agent.tgz" | sha256sum -c -
+        tar --strip-components=1 -xzf "$RUNNER_TEMP/cursor-agent.tgz" -C "$dir"
+        echo "$dir" >> "$GITHUB_PATH"
+        npm install --silent --no-save --prefix "$RUNNER_TEMP/ajv" ajv@8.17.1
+
+    - name: Run Cursor CLI
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CURSOR_API_KEY: ${{ inputs.token }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+        SCHEMA_FILE: ${{ inputs.schema-file }}
+        AGENT_MODEL: ${{ inputs.model }}
+        AGENT_EFFORT: ${{ inputs.effort }}
+      run: |
+        schema=$(jq -c . "$SCHEMA_FILE")
+
+        # Cursor takes effort as a bracket override on the model name.
+        model="$AGENT_MODEL"
+        if [ -n "$AGENT_EFFORT" ]; then
+          if [ -z "$model" ] || ! [[ "$AGENT_EFFORT" =~ ^[a-z]+$ ]]; then
+            echo "::error::Effort '$AGENT_EFFORT' needs a model and must be one lowercase word."
+            exit 1
+          fi
+          model="${model}[effort=${AGENT_EFFORT}]"
+        fi
+        echo "Model: ${model:-account default}"
+
+        # The model list comes from the server and differs per account, so
+        # print it: a wrong model name is then fixed from this log alone.
+        echo "::group::Models available to this account"
+        cursor-agent --list-models || true
+        echo "::endgroup::"
+
+        # The CLI has no schema option, so the prompt goes in a file the agent
+        # reads, with the answer format spelled out at the end.
+        mkdir -p .review-loop
+        {
+          cat "$PROMPT_FILE"
+          echo
+          echo "## Answer format"
+          echo
+          echo "Reply with exactly one JSON object that matches this JSON Schema. No prose, no code fence."
+          echo
+          echo "$schema"
+        } > .review-loop/prompt.md
+        ask="Read .review-loop/prompt.md in this workspace and do what it says. Files under .review-loop/ are inputs from the workflow, not part of the change."
+
+        model_args=()
+        if [ -n "$model" ]; then
+          model_args=(--model "$model")
+        fi
+        validate() {
+          node -e '
+            const Ajv = require(process.argv[1]);
+            const fs = require("fs");
+            const ok = new Ajv({ strict: false }).compile(JSON.parse(fs.readFileSync(process.argv[2])));
+            const data = JSON.parse(fs.readFileSync(process.argv[3]));
+            if (!ok(data)) { console.error(JSON.stringify(ok.errors)); process.exit(1); }
+          ' "$RUNNER_TEMP/ajv/node_modules/ajv" "$SCHEMA_FILE" "$1"
+        }
+        # The answer may come wrapped in prose or a code fence: keep the span
+        # from the first { to the last }.
+        extract() {
+          local text
+          text=$(jq -r '.result // empty' "$1")
+          text="{${text#*\{}"
+          text="${text%\}*}}"
+          printf '%s' "$text" | jq . > "$2" 2>/dev/null && validate "$2"
+        }
+
+        out="$RUNNER_TEMP/second-agent-output.json"
+        result="$RUNNER_TEMP/second-agent-result.json"
+        cursor-agent -p --mode ask --trust --output-format json "${model_args[@]}" "$ask" > "$out"
+
+        if ! extract "$out" "$result"; then
+          echo "::warning::No valid answer on the first try; asking once more."
+          session=$(jq -r '.session_id // empty' "$out")
+          if [ -z "$session" ]; then
+            echo "::error::No session to resume."
+            exit 1
+          fi
+          cursor-agent -p --mode ask --trust --output-format json "${model_args[@]}" --resume "$session" \
+            "Your answer did not match the schema in .review-loop/prompt.md. Reply with only that JSON object." > "$out"
+          if ! extract "$out" "$result"; then
+            echo "::error::Second reviewer ended without a valid answer."
+            jq -r '.result // empty' "$out" | tail -n 40
+            exit 1
+          fi
+        fi
+        echo "result-file=$result" >> "$GITHUB_OUTPUT"

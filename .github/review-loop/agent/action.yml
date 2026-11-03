@@ -1,0 +1,130 @@
+name: Review loop agent
+description: >-
+  Runs the coding agent for the review loop. This is the only vendor-specific
+  file in the loop: to switch AI vendor, rewrite the steps below and keep the
+  inputs and outputs. The agent never talks to GitHub; the workflows do that.
+
+inputs:
+  mode:
+    description: >-
+      review: read files and run read-only git commands.
+      fix: also edit files in the working tree and run the fast test commands.
+      The agent never commits, pushes, or calls the GitHub API in either mode.
+    required: true
+  prompt-file:
+    description: Absolute path to the full prompt (instructions plus context).
+    required: true
+  schema-file:
+    description: >-
+      Absolute path to the JSON Schema the final answer must match. Relative
+      paths would resolve against working-directory, not the workspace.
+    required: true
+  working-directory:
+    description: Checkout of the pull request the agent works in.
+    required: true
+  token:
+    description: Credential for the agent vendor (secret REVIEW_LOOP_AGENT_TOKEN).
+    required: true
+  max-turns:
+    description: Upper bound on agent turns.
+    required: false
+    default: "40"
+  model:
+    description: >-
+      Model name in the vendor's own terms. Empty uses the vendor's default.
+    required: false
+    default: ""
+  effort:
+    description: >-
+      Reasoning effort in the vendor's own terms (Claude Code: low, medium,
+      high, xhigh, max). Empty uses the vendor's default.
+    required: false
+    default: ""
+
+outputs:
+  result-file:
+    description: Path to a JSON file that matches schema-file.
+    value: ${{ steps.run.outputs.result-file }}
+
+runs:
+  using: composite
+  steps:
+    # Vendor: Claude Code (headless). Token from `claude setup-token`, so runs
+    # use the subscription. For API billing, export ANTHROPIC_API_KEY instead.
+    - name: Install Claude Code
+      shell: bash
+      run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+    - name: Run Claude Code
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.token }}
+        MODE: ${{ inputs.mode }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+        SCHEMA_FILE: ${{ inputs.schema-file }}
+        MAX_TURNS: ${{ inputs.max-turns }}
+        AGENT_MODEL: ${{ inputs.model }}
+        AGENT_EFFORT: ${{ inputs.effort }}
+        # A live Playwright spec boots the API and the app first, which takes
+        # longer than Claude Code's two-minute default for a command.
+        BASH_DEFAULT_TIMEOUT_MS: "600000"
+        BASH_MAX_TIMEOUT_MS: "900000"
+      run: |
+        read_only="Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
+        case "$MODE" in
+          review) tools="$read_only" ;;
+          fix) tools="$read_only,Edit,MultiEdit,Write,Bash(pnpm exec turbo run typecheck test:unit:*),Bash(pnpm --dir packages/apps exec vitest run:*),Bash(pnpm --dir packages/apps exec prettier:*),Bash(pnpm --dir packages/apps exec eslint:*),Bash(pnpm --dir packages/apps exec playwright test:*)" ;;
+          *) echo "::error::Unknown mode '$MODE'."; exit 1 ;;
+        esac
+
+        # A plain assignment, so a missing or invalid schema stops the step
+        # here. Inside the claude arguments the failure would go unnoticed
+        # and the agent would run without a schema.
+        schema=$(jq -c . "$SCHEMA_FILE")
+
+        tuning_args=()
+        if [ -n "$AGENT_MODEL" ]; then
+          tuning_args+=(--model "$AGENT_MODEL")
+        fi
+        # Claude Code only warns on an unknown effort and uses its default,
+        # so a typo in the variable would go unnoticed. Fail instead.
+        case "$AGENT_EFFORT" in
+          "") ;;
+          low|medium|high|xhigh|max) tuning_args+=(--effort "$AGENT_EFFORT") ;;
+          *) echo "::error::Unknown effort '$AGENT_EFFORT' (low, medium, high, xhigh, max)."; exit 1 ;;
+        esac
+        echo "Model: ${AGENT_MODEL:-account default}, effort: ${AGENT_EFFORT:-default}"
+
+        out="$RUNNER_TEMP/agent-output.json"
+        result="$RUNNER_TEMP/agent-result.json"
+        claude -p \
+          "${tuning_args[@]}" \
+          --output-format json \
+          --json-schema "$schema" \
+          --allowedTools "$tools" \
+          --max-turns "$MAX_TURNS" \
+          < "$PROMPT_FILE" > "$out"
+
+        # A tool outside the allowed list is refused, and the agent carries
+        # on. Log the refusals, so a claim like "I ran the tests" can be
+        # checked against what it could actually do.
+        # Best effort: output that is not JSON is reported below. Each line
+        # gets a prefix, so a refused command cannot pass as a workflow
+        # command.
+        denied=$(jq -r '[.permission_denials[]?
+            | (.tool_name | tostring)
+              + (.tool_input.command // "" | tostring | if . == "" then "" else ": " + . end)]
+            | unique | .[]' "$out" 2>/dev/null) || denied=""
+        if [ -n "$denied" ]; then
+          echo "::notice::The agent tried tools it may not use; they were refused."
+          printf '%s\n' "$denied" | sed 's/^/denied: /'
+        fi
+
+        if ! jq -e '.structured_output' "$out" > "$result"; then
+          echo "::error::Agent ended without a structured answer ($(jq -r '.subtype // "unknown"' "$out"))."
+          jq -r '.result // empty' "$out" | tail -n 40
+          exit 1
+        fi
+        echo "result-file=$result" >> "$GITHUB_OUTPUT"

@@ -23,7 +23,9 @@ final class NoteCollaborativePutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'markdown' => ['required', 'string'],
+            // A title-only note saves an empty body (documentLen 0 per the
+            // contract). `required` treated "" as missing and answered 400.
+            'markdown' => ['present', 'string'],
             'title' => ['sometimes', 'string', 'max:1024'],
         ];
     }

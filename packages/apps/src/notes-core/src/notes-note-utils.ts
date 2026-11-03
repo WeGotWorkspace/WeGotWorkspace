@@ -4,10 +4,10 @@ import {
   noteBodyToMarkdown,
 } from "@/lib/models/note-body-markdown";
 import type { Note } from "@/lib/models/note";
-import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
+import { sortNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { normalizeTag } from "@/notes-core/src/note-tag";
 
@@ -20,81 +20,22 @@ export {
   tagDeltaOpts,
 } from "@/notes-core/src/note-tag";
 
-export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {
+export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void) {
   promise.catch((error) => {
-    if (onGone && isNotesPersistGone(error, noteId)) onGone();
+    if (onGone && isNotesPersistGone(error)) onGone();
   });
 }
 
 /** Delay after the last edit before flushing a debounced API save (ms). */
 export const AUTOSAVE_WRITE_DEBOUNCE_MS = 1200;
 
-type PersistFn = (note: Note) => void;
-
-/**
- * Per-note debounced save scheduler.
- *
- * Call `schedule(noteId, note, persist)` on each edit; the actual persist call
- * fires only after `delayMs` of inactivity for that note.
- * Call `flushAll(persist)` to immediately fire any pending saves (e.g. on unmount).
- */
-export function createNoteSaveDebouncer(delayMs: number) {
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
-  const pending = new Map<string, { note: Note; persist: PersistFn }>();
-
-  function arm(noteId: string, delay: number): void {
-    const existing = timers.get(noteId);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      const p = pending.get(noteId);
-      if (p) {
-        p.persist(p.note);
-        pending.delete(noteId);
-      }
-      timers.delete(noteId);
-    }, delay);
-    timers.set(noteId, timer);
-  }
-
-  function schedule(noteId: string, note: Note, persist: PersistFn): void {
-    pending.set(noteId, { note, persist });
-    arm(noteId, delayMs);
-  }
-
-  function flushAll(persist: PersistFn): void {
-    for (const timer of timers.values()) {
-      clearTimeout(timer);
-    }
-    for (const row of pending.values()) {
-      persist(row.note);
-    }
-    timers.clear();
-    pending.clear();
-  }
-
-  /** Move a pending save onto the remapped server id so title/metadata PATCH hits the UID. */
-  function remapId(fromId: string, toId: string): void {
-    if (fromId === toId) return;
-    const row = pending.get(fromId);
-    const timer = timers.get(fromId);
-    if (timer) {
-      clearTimeout(timer);
-      timers.delete(fromId);
-    }
-    if (!row) return;
-    pending.delete(fromId);
-    pending.set(toId, { note: { ...row.note, id: toId }, persist: row.persist });
-    arm(toId, delayMs);
-  }
-
-  return { schedule, flushAll, remapId };
-}
+export { createNoteSaveDebouncer } from "@/notes-core/src/notes-save-debouncer";
 
 export function plainTextFromBody(body: string[] | undefined): string {
   return markdownToPlainText(noteBodyToMarkdown(body ?? []));
 }
 
-/** Offline-created notes keep `local-*` ids until flush remaps to a VJOURNAL UID. */
+/** Temporary id an older app gave offline-created notes; it may still show as a label. */
 const LOCAL_NOTE_ID_RE = /^local-[0-9a-f-]+$/i;
 
 /**
@@ -120,16 +61,6 @@ export function usableNoteListPreview(text: string, noteId?: string): string {
 /** True when the note has plain-text body content suitable for list preview/title. */
 export function noteHasListableBody(note: Pick<Note, "body"> & { id?: string }): boolean {
   return usableNoteListPreview(plainTextFromBody(note.body), note.id).length > 0;
-}
-
-/**
- * Docs-style “untitled + empty body → delete” is off for Notes.
- * A created VJOURNAL stays, even with empty SUMMARY and DESCRIPTION.
- */
-export function shouldDiscardEmptyCreatedNote(
-  _note: Pick<Note, "title" | "body" | "excerpt">,
-): boolean {
-  return false;
 }
 
 export function computeWordCount(body: string[]): number {
@@ -178,7 +109,7 @@ type NoteShareAudienceFields = Pick<
 /**
  * Personal share recipient: Shared-with-me file grant, or a note under a
  * personally shared notebook (ACL dir grant from another user). Group notebooks
- * are not personal shares — members keep tags/stars.
+ * are not personal shares — members keep tags. Stars are per user and show for everyone.
  */
 export function isPersonalShareRecipient(note: NoteShareAudienceFields): boolean {
   if (note.sharedInbox) return true;
@@ -201,11 +132,6 @@ export function noteAllowsTagAssignment(
   mayEditContent: boolean,
 ): boolean {
   return noteShowsTags(note) && mayEditContent;
-}
-
-/** Star/unstar controls — same personal-share audience as hidden tags. */
-export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
-  return !isPersonalShareRecipient(note);
 }
 
 /**
@@ -266,9 +192,11 @@ export function noteTagsEqual(a: string[], b: string[]): boolean {
  * vanish until the delayed upsert / a later refresh.
  */
 function noteTitleForMerge(local: Note, saved: Note): string | undefined {
-  const localTitle = local.title?.trim();
-  const savedTitle = saved.title?.trim();
-  return localTitle || savedTitle || undefined;
+  // Trim only to test for content. The title field is controlled by this value,
+  // so returning a trimmed copy ate a space typed just before a save landed.
+  if (local.title?.trim()) return local.title;
+  if (saved.title?.trim()) return saved.title;
+  return undefined;
 }
 
 export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: Note): Note {
@@ -279,7 +207,7 @@ export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: No
   // which is often stale vs the collab preview. Keep any local listable body.
   const preserveBody = noteHasListableBody(local);
   const title = noteTitleForMerge(local, saved);
-  const titleDiffer = (title ?? "") !== (saved.title?.trim() ?? "");
+  const titleDiffer = (title?.trim() ?? "") !== (saved.title?.trim() ?? "");
   const notebook = local.notebook || saved.notebook;
   const preserveNotebook = !!local.notebook && local.notebook !== saved.notebook;
   // When keeping optimistic metadata, ensure display date is at least the
@@ -366,15 +294,12 @@ export function mergeBootstrapNotesPreservingOptimistic(
     });
   });
 
-  // Keep in-flight local-* creates a stale list payload has not seen yet. Dropping
+  // Keep notes made here that a stale list payload has not seen yet. Dropping
   // them cleared selection and made a just-titled note vanish from editor + list.
-  // Empty DESCRIPTION is not a discard reason (Notes persist created items).
+  // An empty note stays too: Notes keep a created VJOURNAL even when it is empty.
   const serverIds = new Set(serverNotes.map((note) => note.id));
   for (const local of localNotes) {
-    if (!serverIds.has(local.id) && LOCAL_NOTE_ID_RE.test(local.id)) {
-      if (shouldDiscardEmptyCreatedNote(local)) continue;
-      merged.push(enrichNote(local));
-    }
+    if (!serverIds.has(local.id) && local.createPending) merged.push(enrichNote(local));
   }
   return merged;
 }
@@ -562,7 +487,8 @@ export function filterVisibleNotes(
     if (view === "all") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && !isArchived;
     } else if (view === "starred") {
-      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !isArchived;
+      // A star is the caller's own, so Starred also lists notes shared with them.
+      inView = !!starred[note.id] && !isArchived;
     } else if (view === "archive") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && isArchived;
     } else if (view === "shared-with-me") {
@@ -597,11 +523,22 @@ export function filterVisibleNotes(
     if (!inView) return false;
     if (!q) return true;
     const liveName = notebookDisplayName(note, notebookCollections ?? []);
-    const haystack =
-      `${note.title ?? ""} ${note.excerpt} ${note.body.join(" ")} ${note.notebook} ${liveName} ${note.tags.join(" ")}`.toLowerCase();
-    return haystack.includes(q);
+    return noteSearchText(note, liveName).includes(q);
   });
-  return filtered.sort(compareNotesDesc);
+  return sortNotesDesc(filtered);
+}
+
+// Lowercased search text per note object. Notes are replaced, not mutated, so a
+// changed note gets a new entry and unchanged notes skip the join (#1714).
+const noteSearchTextCache = new WeakMap<Note, { liveName: string; text: string }>();
+
+function noteSearchText(note: Note, liveName: string): string {
+  const cached = noteSearchTextCache.get(note);
+  if (cached?.liveName === liveName) return cached.text;
+  const text =
+    `${note.title ?? ""} ${note.excerpt} ${note.body.join(" ")} ${note.notebook} ${liveName} ${note.tags.join(" ")}`.toLowerCase();
+  noteSearchTextCache.set(note, { liveName, text });
+  return text;
 }
 
 /**
@@ -777,4 +714,9 @@ export function noteListLocationLabel(
   }
   const notebook = notebookDisplayName(note, collections).trim();
   return notebook || null;
+}
+
+/** Saves a star change. The cached copy already holds the new star, so the field is named. */
+export async function saveNoteStar(operations: NotesAPIOperations, note: Note): Promise<void> {
+  await operations.upsertNote(note, { fields: ["starred"] });
 }

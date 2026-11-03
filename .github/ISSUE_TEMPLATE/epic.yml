@@ -1,5 +1,5 @@
 name: "[Maintainers only] Epic"
-description: Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report.
+description: "Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report."
 type: Task
 labels:
   - type:epic
@@ -16,11 +16,26 @@ body:
         Do not put epics on the Product roadmap Project.
 
   - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: >
+        For the product lead, in plain English (B1), no code or file names.
+        Three short lines: what changes, who notices, and what happens if we wait.
+        See .agents/skills/developer/plain-language.md.
+      value: |
+        **What:**
+        **Who notices:**
+        **If we wait:**
+    validations:
+      required: true
+
+  - type: textarea
     id: parent_goal
     attributes:
       label: Parent goal
-      description: Link to the `type:goal` issue this epic delivers.
-      placeholder: "#123 — Share Docs and Drive files with guests via a link"
+      description: Link to the Goal in WeGotWorkspace/Product this epic delivers. Also add this epic to that Goal as a sub-issue.
+      placeholder: "WeGotWorkspace/Product#123 — Share Docs and Drive files with guests via a link"
     validations:
       required: true
 
@@ -28,7 +43,7 @@ body:
     id: scope
     attributes:
       label: Scope
-      description: What this epic covers in eng terms (packages, surfaces, protocols OK here).
+      description: What this epic covers in eng terms (packages, surfaces, protocols OK here). Technical design moved out of the parent Goal lives here too, in a section that says where it came from.
     validations:
       required: true
 

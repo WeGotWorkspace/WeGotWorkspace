@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Input } from "@/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,8 @@ export type RenameFilenameFieldProps = {
    */
   focusKey?: string | number | null;
   placeholder?: string;
+  /** Accessible name; defaults to `placeholder`, which alone is not a label. */
+  ariaLabel?: string;
   className?: string;
   onEnter?: () => void;
 };
@@ -29,9 +31,11 @@ export function RenameFilenameField({
   autoFocus = false,
   focusKey = null,
   placeholder,
+  ariaLabel = placeholder,
   className,
   onEnter,
 }: RenameFilenameFieldProps) {
+  const extensionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const showExtension = Boolean(extension);
 
@@ -54,6 +58,7 @@ export function RenameFilenameField({
         className={className}
         size="sm"
         placeholder={placeholder}
+        aria-label={ariaLabel}
         value={baseName}
         disabled={disabled}
         onChange={(event) => onBaseNameChange(event.target.value)}
@@ -75,9 +80,10 @@ export function RenameFilenameField({
         className="rename-filename-field__input"
         size="sm"
         placeholder={placeholder}
+        aria-label={ariaLabel}
         value={baseName}
         disabled={disabled}
-        aria-describedby="rename-filename-extension"
+        aria-describedby={extensionId}
         onChange={(event) => onBaseNameChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -86,7 +92,7 @@ export function RenameFilenameField({
           }
         }}
       />
-      <span id="rename-filename-extension" className="rename-filename-field__extension" aria-hidden>
+      <span id={extensionId} className="rename-filename-field__extension" aria-hidden>
         {extension}
       </span>
     </div>

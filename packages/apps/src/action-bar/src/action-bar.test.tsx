@@ -219,14 +219,14 @@ describe("ActionBar", () => {
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);
     const menu = screen.getByRole("menu", { name: "More actions" });
-    const downloadItem = within(menu).getByRole("button", { name: "Download" });
-    const deleteItem = within(menu).getByRole("button", { name: "Delete" });
+    const downloadItem = within(menu).getByRole("menuitem", { name: "Download" });
+    const deleteItem = within(menu).getByRole("menuitem", { name: "Delete" });
     expect(deleteItem.className).toContain("menu-item--severity-danger");
     fireEvent.click(downloadItem);
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);
     fireEvent.click(
-      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("menuitem", {
         name: "Delete",
       }),
     );
@@ -287,6 +287,6 @@ describe("ActionBar", () => {
 
 function menuItemNames(menu: HTMLElement): string[] {
   return within(menu)
-    .getAllByRole("button")
+    .getAllByRole("menuitem")
     .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "");
 }

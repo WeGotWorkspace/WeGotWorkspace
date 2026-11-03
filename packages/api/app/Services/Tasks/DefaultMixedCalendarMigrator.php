@@ -115,9 +115,16 @@ final class DefaultMixedCalendarMigrator
                 $movedObjects++;
             });
 
+        // Only VTODO goes. A VJOURNAL left in the set is how a later
+        // migration finds the notes a CalDAV client stored here and moves
+        // them to the notebook; dropping it too stranded them (#1076).
+        $kept = array_values(array_filter(
+            array_map('trim', explode(',', (string) $defaultInstance->calendar->components)),
+            static fn (string $component): bool => $component !== '' && $component !== 'VTODO',
+        ));
         Calendar::query()
             ->whereKey((int) $defaultInstance->calendarid)
-            ->update(['components' => 'VEVENT']);
+            ->update(['components' => implode(',', $kept)]);
 
         return ['migrated' => true, 'movedObjects' => $movedObjects];
     }

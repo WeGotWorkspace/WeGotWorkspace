@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))"/>
-<path fill="var(--app-icon-layer-foreground, var(--color-we-got-red-tint, #f9b193))" d="M0 0h60v13.032L34.832 26.783a10 10 0 0 1-9.664 0L0 13.032z"/>
-</svg>

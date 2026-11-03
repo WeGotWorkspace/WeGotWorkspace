@@ -8,9 +8,10 @@
 .calendar-rsvp-select--accept.calendar-rsvp-select--selected,
 .calendar-invitees-status-mark--organizer {
   /* Host/organizer shares the accepted green wash (not calendar-accent purple). */
-  --tag-fg: var(--color-success);
+  /* Ink mixed toward the foreground so labels clear AA on the green wash. */
+  --tag-fg: color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
-  --user-chip-fg: var(--color-success);
+  --user-chip-fg: color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground));
   --user-chip-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
   --user-chip-border: color-mix(in oklab, var(--color-success) 42%, transparent);
 }
@@ -29,9 +30,9 @@
 .calendar-rsvp-status--declined,
 .calendar-invitees-rsvp-tag--declined,
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
-  --tag-fg: var(--color-error);
+  --tag-fg: color-mix(in oklab, var(--color-error) 75%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
-  --user-chip-fg: var(--color-error);
+  --user-chip-fg: color-mix(in oklab, var(--color-error) 75%, var(--workspace-foreground));
   --user-chip-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
   --user-chip-border: color-mix(in oklab, var(--color-error) 42%, transparent);
 }

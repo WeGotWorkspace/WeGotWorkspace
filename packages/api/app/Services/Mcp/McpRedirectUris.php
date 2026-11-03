@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Mcp;
 
+use Laravel\Passport\Bridge\Client;
+use Laravel\Passport\Bridge\Scope;
+use Laravel\Passport\Bridge\User;
+use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
+use League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
+
 final class McpRedirectUris
 {
     public static function isAllowed(string $uri): bool
@@ -111,6 +117,35 @@ final class McpRedirectUris
         $text = inet_ntop($ipv4);
 
         return $text === false ? null : $text;
+    }
+
+    /**
+     * Where Passport sends the browser after Allow / Deny: the redirect_uri it
+     * validated for this request, or the client's first registered URI when the
+     * request omitted it (league/oauth2-server does the same).
+     */
+    public static function consentRedirectUri(mixed $client, mixed $serializedAuthRequest): ?string
+    {
+        if (is_string($serializedAuthRequest) && $serializedAuthRequest !== '') {
+            $authRequest = unserialize($serializedAuthRequest, ['allowed_classes' => [
+                AuthorizationRequest::class,
+                Client::class,
+                Scope::class,
+                User::class,
+            ]]);
+            if ($authRequest instanceof AuthorizationRequestInterface) {
+                $uri = $authRequest->getRedirectUri();
+                if (is_string($uri) && $uri !== '') {
+                    return $uri;
+                }
+            }
+        }
+        $registered = is_object($client) ? ($client->redirect_uris ?? null) : null;
+        if (is_array($registered) && isset($registered[0]) && is_string($registered[0]) && $registered[0] !== '') {
+            return $registered[0];
+        }
+
+        return null;
     }
 
     public static function originOf(string $url): string

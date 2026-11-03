@@ -5,7 +5,6 @@ import {
   Contact,
   HardDrive,
   Info,
-  Mail as MailIcon,
   Palette,
   StickyNote,
   User,
@@ -21,7 +20,6 @@ import {
   SettingsNotesPane,
   SettingsTasksPane,
 } from "@/settings-core/src/settings-default-collection-pane";
-import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
 import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
@@ -75,15 +73,6 @@ export function registerBuiltinSettings(): void {
     group: "account",
     reachable: (ctx) => ctx.mcpEnabled === true,
     needsSettingsApi: true,
-  });
-  registerPanel({
-    id: "mail",
-    label: "Mail",
-    description: "IMAP & SMTP credentials",
-    icon: <MailIcon className="size-3.5" />,
-    group: "apps",
-    appId: "mail",
-    showInNav: false,
   });
   registerPanel({
     id: "calendar",
@@ -157,11 +146,6 @@ export function registerBuiltinSettings(): void {
     id: "assistants",
     panelIds: ["assistants"],
     render: (props) => <SettingsAssistantsPane assistants={props.assistants} />,
-  });
-  registerSlice({
-    id: "mail-accounts",
-    panelIds: ["mail"],
-    render: () => <SettingsMailPane />,
   });
   registerSlice({
     id: "calendar-display",

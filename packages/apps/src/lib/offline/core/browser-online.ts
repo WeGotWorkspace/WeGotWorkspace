@@ -3,6 +3,14 @@ export function readBrowserOnline(): boolean {
   return typeof navigator !== "undefined" ? navigator.onLine : true;
 }
 
+/** TypeError texts for a fetch that never reached a server (Chrome, Firefox, React Native, Safari). */
+const NETWORK_FAILURE_TEXTS = [
+  "failed to fetch",
+  "networkerror",
+  "network request failed",
+  "load failed",
+];
+
 /** True when a fetch failed because the device/network is unreachable (not HTTP 4xx/5xx). */
 export function isFetchNetworkError(error: unknown): boolean {
   if (error instanceof DOMException) {
@@ -11,12 +19,8 @@ export function isFetchNetworkError(error: unknown): boolean {
   }
   if (error instanceof TypeError) {
     const message = error.message.toLowerCase();
-    return (
-      message.includes("failed to fetch") ||
-      message.includes("networkerror") ||
-      message.includes("network request failed") ||
-      message.includes("load failed")
-    );
+    // eslint-disable-next-line no-restricted-syntax -- reviewed exception (#1642): no server, no status
+    return NETWORK_FAILURE_TEXTS.some((text) => message.includes(text));
   }
   return false;
 }

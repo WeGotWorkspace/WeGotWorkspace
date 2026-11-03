@@ -15,7 +15,10 @@ final class BearerAuthenticationService
     ) {}
 
     /**
-     * @return array{username: string, role: 'guest'|'user'|'admin'}|null
+     * `sid` is the refresh-token family (sign-in session) when the token
+     * carries one; tokens minted before the claim existed have none.
+     *
+     * @return array{username: string, role: 'guest'|'user'|'admin', sid?: string}|null
      */
     public function authenticate(?string $authorizationHeader): ?array
     {
@@ -58,10 +61,15 @@ final class BearerAuthenticationService
             $role = 'user';
         }
 
-        return [
+        $principal = [
             'username' => $claims['sub'],
             'role' => $role,
         ];
+        if (isset($claims['sid'])) {
+            $principal['sid'] = $claims['sid'];
+        }
+
+        return $principal;
     }
 
     public function extractBearerToken(?string $authorizationHeader): ?string

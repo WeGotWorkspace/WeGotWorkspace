@@ -18,7 +18,9 @@ import { JmapClient, MockJmapServer, type JmapCalendar } from "@/lib/jmap-client
 import {
   createHybridCalendarOperations,
   loadCalendarBootstrapHybrid,
+  loadCalendarRangeHybrid,
 } from "@/lib/offline/calendars-hybrid-operations";
+import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
 import {
   calendarSharePrincipalsFromDirectory,
@@ -34,6 +36,8 @@ export type CalendarApiSource = {
   createOperations: (bootstrap?: CalendarAppBootstrap) => CalendarAPIOperations | undefined;
   /** Inbound JMAP client (undefined = no live `/changes` poll). */
   createJmapClient?: () => JmapClient;
+  /** Load a period outside the bootstrap window into the cache (undefined = bootstrap only). */
+  loadEventsInRange?: (username: string, range: CalendarUtcRange) => Promise<boolean>;
 };
 
 const MOCK_SHARE_INVITEES: CalendarInvitee[] = [
@@ -125,6 +129,7 @@ export function createHybridCalendarApiSource(): CalendarApiSource {
     // The adapter gets its own client — see createCalendarJmapClient's note
     // on JmapClient sync-state tracking.
     createJmapClient: createCalendarJmapClient,
+    loadEventsInRange: loadCalendarRangeHybrid,
   };
 }
 

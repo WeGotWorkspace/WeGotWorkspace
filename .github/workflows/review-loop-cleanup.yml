@@ -1,0 +1,36 @@
+name: Review loop - cleanup
+
+# Removes the review loop's hand-over labels when a PR is merged or closed,
+# so ready-for-human and needs-human list only open work.
+#
+# pull_request_target runs this file from main, also on PRs whose test merge
+# lags or conflicts. It checks out no code, so the write token never meets
+# code from the PR. Removing a label with GITHUB_TOKEN starts no workflows.
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  labels:
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'ready-for-human') ||
+      contains(github.event.pull_request.labels.*.name, 'needs-human')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove the hand-over labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          # Only the labels the PR carries, so a failure is a real one.
+          remove=$(jq -r '[.[] | select(. == "ready-for-human" or . == "needs-human")] | join(",")' <<< "$LABELS")
+          echo "Removing $remove from #$PR."
+          gh pr edit "$PR" --remove-label "$remove"

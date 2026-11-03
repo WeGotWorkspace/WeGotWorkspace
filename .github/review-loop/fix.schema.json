@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["commit_message", "summary"],
+  "properties": {
+    "commit_message": {
+      "type": "string",
+      "description": "Conventional Commits message for all changes in the working tree: subject line, blank line, body. The body names any blocking item left unfixed and why."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences for the PR thread: what changed, and what was left and why."
+    }
+  }
+}

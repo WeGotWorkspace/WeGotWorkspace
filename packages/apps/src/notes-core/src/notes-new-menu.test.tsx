@@ -28,7 +28,7 @@ describe("NotesNewMenu", () => {
     const chevron = screen.getByRole("button", { name: L.newNoteMenu });
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.addNotebook }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledOnce();
   });
 

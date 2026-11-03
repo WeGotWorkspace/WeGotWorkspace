@@ -34,8 +34,6 @@ function renderTagRename(notes: Note[], view = "all") {
   const selectView = vi.fn();
   const setNotes = vi.fn();
   const persistOptimisticNote = vi.fn().mockResolvedValue(undefined);
-  const resolveNoteId = vi.fn((id: string) => id);
-  const waitForInFlightCreate = vi.fn(async () => undefined);
   const dropGoneNote = vi.fn();
   const showMutationError = vi.fn();
   const viewState = { current: view };
@@ -63,8 +61,6 @@ function renderTagRename(notes: Note[], view = "all") {
       shell,
       queueMutation,
       persistOptimisticNote,
-      resolveNoteId,
-      waitForInFlightCreate,
       dropGoneNote,
     });
   });

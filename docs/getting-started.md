@@ -2,6 +2,18 @@
 
 WeGotWorkspace is a self-hosted office platform (files, mail, notes, contacts, tasks, meet, and more). Pick the install path that matches how you want to run it.
 
+## Requirement: https
+
+Serve WeGotWorkspace over `https://`. Browsers only turn on some features on a secure page (a *secure context*): an `https://` address, or `localhost` while you try it out on your own machine. On a plain `http://` address these do not work:
+
+- **Live editing of documents together.** Docs needs the browser's crypto API (`crypto.subtle`) for its collaboration keys.
+- **Push notifications** and **offline use / installing the app** (PWA). Both need a service worker.
+- **Uploading large files.** Large uploads are sent in parts, each with a checksum from `crypto.subtle`.
+
+The installer warns you when it is opened over `http://` and asks you to confirm before setup goes on, so a first look on a LAN address still works. After setup, Administration keeps a notice up until the site is served over `https://`.
+
+**How to get a certificate:** most hosts offer a free one, usually from [Let's Encrypt](https://letsencrypt.org/), with one switch in the control panel (cPanel: *SSL/TLS Status* or *AutoSSL*; Plesk: *SSL/TLS Certificates*). On a VPS or homelab, put a reverse proxy that requests certificates for you (Caddy, Traefik, or nginx with certbot) in front of WeGotWorkspace — see [install-docker.md § TLS (HTTPS)](install-docker.md#tls-https). Redirecting `http://` to `https://` is a host or proxy setting; WeGotWorkspace does not do it for you.
+
 ## Choose your path
 
 | I want to… | Start here |
@@ -33,7 +45,7 @@ Day-to-day development runs Vite HMR from `packages/apps` and a host or Docker P
 ## Updates
 
 - **ZIP installs:** Replace files in place per [INSTALL.md](../INSTALL.md); `.env`, `wgw-content/`, and user data are preserved. Use **Admin → Updates** in the web UI. Upgrades migrate legacy install config into `packages/api/.env` automatically (backup kept).
-  - **Recovery:** If the database connection fails after upgrading from a pre–env-first release, run `php packages/api/artisan wgw:config-migrate` from the install root. If `.env` still has example `WGW_DB_*` placeholders, remove those keys and run the command again; legacy values are read from `wgw-config.php` or `wgw-config.php.bak.*`.
+  - **Recovery:** If the database connection fails after upgrading from a pre–env-first release, run `php packages/api/artisan wgw:config-migrate` from the install root. If `.env` still has example `WGW_DB_*` placeholders, remove those keys and run the command again; legacy values are read from `wgw-config.php` or the newest `wgw-config.php.bak.*` backup. Backups are kept in the data directory under `config-backups/` (or in `packages/api/` when the data directory is not writable); older ones next to the install root are moved there on the next request.
 - **Docker installs:** Run `bash setup.sh check`, then `bash setup.sh upgrade` (latest from manifest) or `bash setup.sh upgrade X.Y.Z` (explicit tag). Non-interactive: `--yes`; preview: `--dry-run`. Or `curl .../install | sh -s -- --upgrade`. A one-shot **migrator** runs `wgw:schema-migrate` before web starts. **Do not** use Admin → Updates on Docker — that panel is read-only on the docker channel. See [install-docker.md](install-docker.md#updates-and-backups) and [install-docker-ops.md](install-docker-ops.md).
 
 ## Need help?

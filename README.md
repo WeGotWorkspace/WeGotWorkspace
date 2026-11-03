@@ -105,7 +105,7 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) in all community spaces.
 
 ## 🤝 Contributing
 
-Bug reports and Discussions are very welcome. While we land the beta, we're not accepting external code pull requests yet. See [CONTRIBUTING.md](CONTRIBUTING.md) for how we work and what's planned in [ROADMAP.md](ROADMAP.md).
+Bug reports, Discussions, and pull requests are very welcome. For larger changes, start a Discussion first. See [CONTRIBUTING.md](CONTRIBUTING.md) for how we work and what's planned in [ROADMAP.md](ROADMAP.md).
 
 <details>
 <summary><b>For maintainers</b></summary>

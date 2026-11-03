@@ -610,6 +610,8 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('status', 'CANCELLED')
             ->assertJsonPath('body', 'Body');
+        // An archived note does not move (#1535): restore it outside the app first.
+        $this->rewriteViaCalDav($note['id'], ['status' => 'FINAL']);
 
         $dest = (string) $this->asUser('bob')->postJson('/api/v1/notes/notebooks', ['name' => 'Moved'])
             ->assertCreated()

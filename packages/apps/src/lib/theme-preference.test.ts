@@ -22,6 +22,7 @@ afterEach(() => {
   localStorage.clear();
   vi.unstubAllGlobals();
   delete document.documentElement.dataset.theme;
+  document.head.querySelector('meta[name="theme-color"]')?.remove();
 });
 
 describe("theme preference", () => {
@@ -55,5 +56,15 @@ describe("theme preference", () => {
     dispose();
     writeThemePreference("light");
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("paints the theme-color meta with the resolved scheme surface", () => {
+    stubSystemDark(false);
+    const dispose = syncDocumentTheme();
+    const meta = () => document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    expect(meta()?.content).toBe("#fff5e9");
+    writeThemePreference("dark");
+    expect(meta()?.content).toBe("#1c1c1c");
+    dispose();
   });
 });

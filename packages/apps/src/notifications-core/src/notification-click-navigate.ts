@@ -4,7 +4,7 @@ export const WGW_NOTIFICATION_NAVIGATE_MESSAGE = "wgw-notification-navigate";
 
 export const WEB_PUSH_DECLARATIVE_VERSION = 8030;
 
-/** Same-origin path for inbox, Notification API, and SW data.navigate. */
+/** Same-origin path for inbox rows and service-worker push `data.navigate`. */
 export function sanitizeNotificationNavigate(raw: unknown): string {
   if (typeof raw !== "string") return "/";
   const trimmed = raw.trim();

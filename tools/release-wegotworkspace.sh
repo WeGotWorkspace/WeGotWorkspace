@@ -4,6 +4,7 @@
 #   pnpm release                          # build + package (loads repo-root .env)
 #   pnpm release:publish patch            # bump apps/wegotworkspace/VERSION, tag, push → CI
 #   pnpm release:publish 1.2.3 --yes      # explicit version, no prompt
+#   pnpm release:publish 1.3.0-beta.1     # prerelease → beta channel only
 #
 set -euo pipefail
 
@@ -15,7 +16,7 @@ usage() {
   cat <<'EOF'
 usage:
   tools/release-wegotworkspace.sh package [--skip-build]
-  tools/release-wegotworkspace.sh publish <patch|minor|major|X.Y.Z> [--yes] [--no-push] [--verify] [--no-sync-main]
+  tools/release-wegotworkspace.sh publish <patch|minor|major|X.Y.Z|X.Y.Z-beta.N|X.Y.Z-rc.N> [--yes] [--no-push] [--verify] [--no-sync-main]
 
 package   Run pnpm build (unless --skip-build), then write dist/releases/* using
           WGW_RELEASE_SIGNING_PRIVATE_KEY from the environment (repo-root .env via pnpm).
@@ -23,6 +24,9 @@ package   Run pnpm build (unless --skip-build), then write dist/releases/* using
 publish   Bump apps/wegotworkspace/VERSION (SSOT on main), commit on main, create a signed
           annotated tag vX.Y.Z on that commit, and push main + tag. GitHub Actions reads
           the version from the tag when building release assets.
+          X.Y.Z-beta.N and X.Y.Z-rc.N tags are GitHub prereleases: they reach
+          the beta update channel only, never stable. After a prerelease,
+          "patch" releases its X.Y.Z.
 
 options:
   --yes           Skip confirmation prompts (publish only).
@@ -48,7 +52,8 @@ read_version_from_file() {
 
 read_latest_tag_version() {
   local tag
-  tag="$(git -C "$ROOT" tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
+  # versionsort.suffix=- sorts v1.0.0-beta.1 below v1.0.0.
+  tag="$(git -C "$ROOT" -c versionsort.suffix=- tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
   [[ -n "$tag" ]] || return 0
   echo "${tag#v}"
 }
@@ -99,20 +104,22 @@ bump_version() {
   node -e '
 const bump = process.argv[1];
 const current = process.argv[2].replace(/^v/, "");
-const explicit = /^\d+\.\d+\.\d+$/;
+const explicit = /^\d+\.\d+\.\d+(-(beta|rc)\.\d+)?$/;
 if (explicit.test(bump)) {
   console.log(bump);
   process.exit(0);
 }
-const parts = current.split(".").map((n) => Number.parseInt(n, 10));
-if (parts.length !== 3 || parts.some(Number.isNaN)) {
-  console.error("error: VERSION must be semver (X.Y.Z)");
+const [core, pre] = current.split("-");
+const parts = core.split(".").map((n) => Number(n));
+if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n))) {
+  console.error("error: VERSION must be semver (X.Y.Z or X.Y.Z-beta.N)");
   process.exit(1);
 }
 let [major, minor, patch] = parts;
 switch (bump) {
   case "patch":
-    patch += 1;
+    // After 1.3.0-beta.2, "patch" releases 1.3.0 itself.
+    if (pre === undefined) patch += 1;
     break;
   case "minor":
     minor += 1;
@@ -124,7 +131,7 @@ switch (bump) {
     patch = 0;
     break;
   default:
-    console.error("error: bump must be patch, minor, major, or X.Y.Z");
+    console.error("error: bump must be patch, minor, major, X.Y.Z, X.Y.Z-beta.N, or X.Y.Z-rc.N");
     process.exit(1);
 }
 console.log(`${major}.${minor}.${patch}`);
@@ -261,7 +268,7 @@ cmd_publish() {
     exit 1
   fi
 
-  if [[ "$current" == "$new" && "$bump" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ "$current" == "$new" && "$bump" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(beta|rc)\.[0-9]+)?$ ]]; then
     echo "error: latest version is already ${new}" >&2
     exit 1
   fi

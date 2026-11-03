@@ -15,6 +15,8 @@ type UseDriveSelectionBarArgs = {
   activeId: string | null;
   inTrashView: boolean;
   operations?: DriveAPIOperations;
+  /** False for guests: no Move or Delete (#1712). */
+  structureEnabled?: boolean;
   exitSelection: () => void;
   batchStar: () => void;
   requestDeleteSelected: () => void;
@@ -29,6 +31,7 @@ export function useDriveSelectionBar({
   activeId,
   inTrashView,
   operations,
+  structureEnabled = true,
   exitSelection,
   batchStar,
   requestDeleteSelected,
@@ -43,17 +46,25 @@ export function useDriveSelectionBar({
         : undefined;
     const canDownload = !!downloadable && (!operations || !!downloadable.apiPath);
 
+    const moveButton: WorkspaceActionButton = {
+      label: labels.selectionMove,
+      icon: <FolderInput className="size-4" />,
+      onClick: requestMoveSelected,
+    };
+    const deleteButton: WorkspaceActionButton = {
+      label: inTrashView ? labels.selectionDeletePermanently : labels.selectionMoveToTrash,
+      icon: <Trash2 className="size-4" />,
+      onClick: requestDeleteSelected,
+      severity: "danger",
+    };
+
     return [
       {
         label: labels.selectionStar,
         icon: <Star className="size-4" />,
         onClick: batchStar,
       },
-      {
-        label: labels.selectionMove,
-        icon: <FolderInput className="size-4" />,
-        onClick: requestMoveSelected,
-      },
+      ...(structureEnabled ? [moveButton] : []),
       ...(canDownload
         ? [
             {
@@ -71,12 +82,7 @@ export function useDriveSelectionBar({
             },
           ]
         : []),
-      {
-        label: inTrashView ? labels.selectionDeletePermanently : labels.selectionMoveToTrash,
-        icon: <Trash2 className="size-4" />,
-        onClick: requestDeleteSelected,
-        severity: "danger",
-      },
+      ...(structureEnabled ? [deleteButton] : []),
     ];
   }, [
     batchStar,
@@ -93,6 +99,7 @@ export function useDriveSelectionBar({
     selectedIds,
     show,
     showError,
+    structureEnabled,
   ]);
 
   return useWorkspaceSelectionPresentation({

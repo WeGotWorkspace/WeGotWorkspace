@@ -21,14 +21,12 @@ import {
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
   noteHasListableBody,
-  shouldDiscardEmptyCreatedNote,
   noteListExcerpt,
   noteListTitle,
   usableNoteListPreview,
   noteListLocationLabel,
   notebookDisplayName,
   notesWithRenamedNotebook,
-  noteShowsStarControls,
   noteShowsTags,
   noteShowsSharedBadge,
   noteShowsViewOnlyBadge,
@@ -89,6 +87,23 @@ describe("notes-note-utils", () => {
     expect(noteTagsAfterToggle(["focus"], "plan,ning")).toBeNull();
     expect(noteTagsAfterToggle(["focus"], "Plan-ning")).toEqual(["focus", "plan-ning"]);
     expect(noteTagsAfterToggle(["focus"], "v2")).toBeNull();
+  });
+
+  it("lists a starred note shared with the caller under Starred", () => {
+    const shared: Note = {
+      ...sampleNote,
+      id: "shared-star",
+      sharedInbox: true,
+      sharedBy: "bob",
+      apiPath: "/users/bob/.notes/TeamPad/shared-star.md",
+    };
+    const visible = filterVisibleNotes([shared, { ...sampleNote, id: "own" }], {
+      view: "starred",
+      archived: {},
+      starred: { "shared-star": true },
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["shared-star"]);
   });
 
   it("matches a tag view when the stored tag differs only in case", () => {
@@ -191,16 +206,13 @@ describe("notes-note-utils", () => {
     };
 
     expect(noteShowsTags(owned)).toBe(true);
-    expect(noteShowsStarControls(owned)).toBe(true);
     expect(noteAllowsTagAssignment(owned, true)).toBe(true);
     expect(noteAllowsTagAssignment(owned, false)).toBe(false);
 
     expect(noteShowsTags(sharedInbox)).toBe(false);
-    expect(noteShowsStarControls(sharedInbox)).toBe(false);
     expect(noteAllowsTagAssignment(sharedInbox, true)).toBe(false);
 
     expect(noteShowsTags(groupNote)).toBe(true);
-    expect(noteShowsStarControls(groupNote)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, true)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, false)).toBe(false);
   });
@@ -441,6 +453,18 @@ describe("notes-note-utils", () => {
     expect(noteListTitle(merged)).toBe("Meeting notes");
   });
 
+  it("keeps the title exactly as typed, including a trailing space", () => {
+    // A save that lands while the user is mid-word must not trim the field:
+    // the next keystroke would glue onto the previous word.
+    const local: Note = { ...sampleNote, id: "n-server", title: "Groceries for " };
+    const saved: Note = { ...sampleNote, id: "n-server", title: "Groceries for " };
+    expect(mergeCreatedNotePreservingLocalOptimistic(saved, local).title).toBe("Groceries for ");
+    const fromServer: Note = { ...sampleNote, id: "n-server", title: "Groceries for" };
+    expect(mergeCreatedNotePreservingLocalOptimistic(fromServer, local).title).toBe(
+      "Groceries for ",
+    );
+  });
+
   it("keeps a local listable body when the metadata response still has the old DESCRIPTION", () => {
     const local: Note = {
       ...sampleNote,
@@ -496,40 +520,44 @@ describe("notes-note-utils", () => {
     expect(merged.notebookId).toBe("nb-ideas");
   });
 
-  it("never treats an empty created note as a disposable draft", () => {
-    expect(shouldDiscardEmptyCreatedNote({ title: undefined, body: [""], excerpt: "" })).toBe(
-      false,
-    );
-    expect(shouldDiscardEmptyCreatedNote({ title: "Event", body: [""], excerpt: "" })).toBe(false);
-  });
-
   it("keeps an empty untitled create when bootstrap omits the new note", () => {
     const created: Note = {
       ...sampleNote,
-      id: "local-abc0de",
+      id: "6e0c0de0-0000-4000-8000-000000000001",
       title: undefined,
       excerpt: "",
       body: [""],
       wordCount: 0,
       date: "2026-08-29T09:00:00.000Z",
+      createPending: true,
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
-    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc0de"]);
-    expect(merged.find((note) => note.id === "local-abc0de")?.body).toEqual([""]);
+    expect(merged.map((note) => note.id)).toEqual(["n-1", created.id]);
+    expect(merged.find((note) => note.id === created.id)?.body).toEqual([""]);
   });
 
   it("keeps an optimistic create (and its title) when bootstrap omits the new note", () => {
     const created: Note = {
       ...sampleNote,
-      id: "local-abc123",
+      id: "6e0c0de0-0000-4000-8000-000000000002",
       title: "Event",
       excerpt: "",
       body: [""],
       date: "2026-08-29T09:00:00.000Z",
+      createPending: true,
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
-    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc123"]);
-    expect(merged.find((note) => note.id === "local-abc123")?.title).toBe("Event");
+    expect(merged.map((note) => note.id)).toEqual(["n-1", created.id]);
+    expect(merged.find((note) => note.id === created.id)?.title).toBe("Event");
+  });
+
+  it("drops a note the server list no longer has once it was created", () => {
+    const deletedElsewhere: Note = { ...sampleNote, id: "6e0c0de0-0000-4000-8000-000000000003" };
+    const merged = mergeBootstrapNotesPreservingOptimistic(
+      [sampleNote],
+      [deletedElsewhere, sampleNote],
+    );
+    expect(merged.map((note) => note.id)).toEqual(["n-1"]);
   });
 
   it("keeps a typed title when bootstrap still has an empty SUMMARY", () => {
@@ -921,7 +949,7 @@ describe("createNoteSaveDebouncer", () => {
     schedule("n-1", sampleNote, persist);
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(sampleNote);
+    expect(persist).toHaveBeenCalledWith(sampleNote, { fields: [] });
   });
 
   it("resets the timer when schedule is called again before delay elapses", () => {
@@ -936,7 +964,7 @@ describe("createNoteSaveDebouncer", () => {
     expect(persist).not.toHaveBeenCalled();
     vi.advanceTimersByTime(200);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(updatedNote);
+    expect(persist).toHaveBeenCalledWith(updatedNote, { fields: [] });
   });
 
   it("persists the latest note value when rapid edits arrive", () => {
@@ -951,7 +979,7 @@ describe("createNoteSaveDebouncer", () => {
     schedule("n-1", v3, persist);
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(v3);
+    expect(persist).toHaveBeenCalledWith(v3, { fields: [] });
   });
 
   it("tracks different notes independently", () => {
@@ -985,16 +1013,16 @@ describe("createNoteSaveDebouncer", () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
-  it("remapId moves a pending save onto the server id", () => {
+  it("sends the union of the fields the debounced edits changed", () => {
     vi.useFakeTimers();
     const persist = vi.fn();
-    const { schedule, remapId } = createNoteSaveDebouncer(500);
-    const titled = { ...sampleNote, id: "local-temp", title: "Event" };
-    schedule("local-temp", titled, persist);
-    remapId("local-temp", "n-server");
+    const { schedule } = createNoteSaveDebouncer(500);
+    schedule("n-1", { ...sampleNote, tags: ["a"] }, persist, ["tags"]);
+    schedule("n-1", { ...sampleNote, tags: ["a"], title: "T" }, persist, ["title"]);
     vi.advanceTimersByTime(500);
-    expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith({ ...titled, id: "n-server" });
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ title: "T" }), {
+      fields: ["title", "tags"],
+    });
   });
 });
 

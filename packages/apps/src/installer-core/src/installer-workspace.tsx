@@ -1,27 +1,52 @@
+import { useState } from "react";
 import { useDocumentTitle } from "@/lib/document-title";
+import { isPageSecureContext } from "@/lib/secure-context";
 import { InstallerAccountPage } from "@/installer-core/src/installer-account-page";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
+import { InstallerNotSecurePage } from "@/installer-core/src/installer-not-secure-page";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
 import { useInstallerController } from "@/installer-core/src/use-installer-controller";
-import type { InstallerWorkspaceProps as InstallerWorkspaceBaseProps } from "@/installer-core/src/installer-workspace-props";
+import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
 
-export type InstallerWorkspaceProps = InstallerWorkspaceBaseProps & {
-  onOpenWorkspace?: () => void;
-};
+export type { InstallerWorkspaceProps };
 
 const SCREEN_TITLES = {
   welcome: "Installer",
-  database: "Your database",
+  database: "Your data",
   account: "Your account",
   ready: "You got workspace",
   interrupt: "Needs attention",
+  notSecure: "Not secure",
 } as const;
 
-export function InstallerWorkspace({ data, operations, onOpenWorkspace }: InstallerWorkspaceProps) {
-  const controller = useInstallerController({ data, operations });
-  useDocumentTitle(SCREEN_TITLES[controller.screen]);
+export function InstallerWorkspace({
+  data,
+  operations,
+  onOpenWorkspace,
+  onAdminSignedIn,
+  secureContext = isPageSecureContext(),
+}: InstallerWorkspaceProps) {
+  const controller = useInstallerController({
+    data,
+    operations,
+    onOpenWorkspace,
+    onAdminSignedIn,
+  });
+  // Over http, Get started first shows the warning; going on from there is the admin's confirm.
+  const [notSecureShown, setNotSecureShown] = useState(false);
+  const showNotSecure = notSecureShown && controller.screen === "welcome";
+  useDocumentTitle(SCREEN_TITLES[showNotSecure ? "notSecure" : controller.screen]);
+
+  if (showNotSecure) {
+    return (
+      <InstallerNotSecurePage
+        includeDatabaseStep={controller.includeDatabaseStep}
+        onContinue={() => void controller.startSetup()}
+      />
+    );
+  }
 
   if (controller.screen === "interrupt") {
     return (
@@ -48,7 +73,9 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
         }}
         dataDirPath={controller.installerState?.data_dir?.path}
         dataDirReason={controller.installerState?.data_dir?.reason}
+        dataDirInsideWebRoot={controller.installerState?.data_dir?.inside_web_root}
         connectionError={controller.databaseError}
+        connectionErrorCode={controller.databaseErrorCode}
         onContinue={(values) => void controller.continueDatabase(values)}
       />
     );
@@ -60,7 +87,6 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
         includeDatabaseStep={controller.includeDatabaseStep}
         initialUsername={controller.installerState?.admin_username}
         initialEmail={controller.installerState?.admin_email}
-        installBase={controller.installerState?.base_uri ?? "/"}
         usernameTaken={controller.usernameTaken}
         installing={controller.installing}
         onCreateWorkspace={(values) => void controller.createWorkspace(values)}
@@ -73,7 +99,7 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
       <InstallerReadyPage
         includeDatabaseStep={controller.includeDatabaseStep}
         opening={controller.openingWorkspace}
-        onOpenWorkspace={() => void controller.openWorkspace(onOpenWorkspace)}
+        onOpenWorkspace={() => void controller.openWorkspace()}
       />
     );
   }
@@ -81,7 +107,10 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
   return (
     <InstallerWelcomePage
       includeDatabaseStep={controller.includeDatabaseStep}
-      onGetStarted={() => void controller.startSetup()}
+      onGetStarted={() => {
+        if (secureContext) void controller.startSetup();
+        else setNotSecureShown(true);
+      }}
     />
   );
 }

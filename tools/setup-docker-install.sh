@@ -5,7 +5,9 @@ set -eu
 
 WGW_GITHUB_REPO="${WGW_GITHUB_REPO:-WeGotWorkspace/wegotworkspace}"
 WGW_RELEASE_BASE="https://github.com/${WGW_GITHUB_REPO}/releases"
-WGW_MANIFEST_URL="${WGW_MANIFEST_URL:-https://github.com/WeGotWorkspace/wegotworkspace/releases/latest/download/manifest.json}"
+# Empty: follow the update channel (see manifest_url).
+WGW_MANIFEST_URL="${WGW_MANIFEST_URL:-}"
+WGW_CHANNEL_FLAG=""
 WGW_INSTALL_DIR="${WGW_INSTALL_DIR:-./wegotworkspace}"
 WGW_VERSION="${WGW_VERSION:-latest}"
 WGW_HTTP_PORT="${WGW_HTTP_PORT:-}"
@@ -43,7 +45,7 @@ Commands (default: install):
   stop             docker compose down
   restart          docker compose restart
   status           Show install dir, image tag, health, compose profile
-  check            Compare installed tag to latest release (manifest.json)
+  check            Compare installed tag to the channel's latest release
   upgrade [ver]    Backup, update image tag, pull, up -d, health check
   backup           Archive volumes (+ MySQL dump when mysql profile)
   logs             docker compose logs -f
@@ -52,6 +54,9 @@ Commands (default: install):
 Options:
   --sqlite         SQLite-only stack (no MariaDB)
   --version VER    Pin release / image tag (default: latest)
+  --channel NAME   Update channel: stable (default), beta, or edge. Saved
+                   to .env as WGW_UPDATE_CHANNEL. Edge is built from main
+                   and is not for production data.
   --upgrade [VER]  Upgrade existing install (same as: upgrade [VER]; omit VER for latest)
   --yes            Skip upgrade confirmation prompt
   --dry-run        Show upgrade target without pulling or recreating
@@ -72,9 +77,11 @@ Examples:
   curl -fsSL .../install | sh -s -- --version 1.2.0
   curl -fsSL .../install | sh -s -- --upgrade 1.2.0
   curl -fsSL .../install | sh -s -- --upgrade --yes
+  curl -fsSL .../install | sh -s -- --channel beta
   cd wegotworkspace && bash setup.sh check
   cd wegotworkspace && bash setup.sh upgrade
   cd wegotworkspace && bash setup.sh upgrade 1.2.0
+  cd wegotworkspace && bash setup.sh upgrade --channel beta
 EOF
 }
 
@@ -174,6 +181,10 @@ download_url() {
   asset=$1
   if [ "$WGW_VERSION" = "latest" ]; then
     printf '%s/latest/download/%s' "$WGW_RELEASE_BASE" "$asset"
+  elif is_edge_version "$WGW_VERSION"; then
+    # Edge builds have no release of their own; the rolling channel-edge
+    # release holds the newest one.
+    printf '%s/download/channel-edge/%s' "$WGW_RELEASE_BASE" "$asset"
   else
     printf '%s/download/v%s/%s' "$WGW_RELEASE_BASE" "$WGW_VERSION" "$asset"
   fi
@@ -237,11 +248,63 @@ normalize_semver() {
   printf '%s' "$1" | sed 's/^v//'
 }
 
+is_edge_version() {
+  case "$1" in
+    *-edge.*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+validate_channel() {
+  case "$1" in
+    stable | beta | edge) return 0 ;;
+    *) die "Unknown update channel: $1 (expected stable, beta, or edge)" ;;
+  esac
+}
+
+# Channel from --channel, else WGW_UPDATE_CHANNEL in .env, else stable.
+# Sources .env: call it in a subshell, $(update_channel).
+update_channel() {
+  load_env
+  channel="${WGW_CHANNEL_FLAG:-${WGW_UPDATE_CHANNEL:-stable}}"
+  validate_channel "$channel"
+  printf '%s' "$channel"
+}
+
+# Stable is GitHub's latest release (prereleases excluded). Beta and edge are
+# rolling prereleases whose manifest.json is replaced on every publish.
+manifest_url() {
+  if [ -n "$WGW_MANIFEST_URL" ]; then
+    printf '%s' "$WGW_MANIFEST_URL"
+    return
+  fi
+  channel=$(update_channel)
+  if [ "$channel" = "stable" ]; then
+    printf '%s/latest/download/manifest.json' "$WGW_RELEASE_BASE"
+  else
+    printf '%s/download/channel-%s/manifest.json' "$WGW_RELEASE_BASE" "$channel"
+  fi
+}
+
+# Write WGW_UPDATE_CHANNEL to .env when --channel was passed.
+save_update_channel() {
+  env_path=$1
+  [ -n "$WGW_CHANNEL_FLAG" ] || return 0
+  channel=$(update_channel)
+  if grep -q '^WGW_UPDATE_CHANNEL=' "$env_path"; then
+    sed_inplace "s|^WGW_UPDATE_CHANNEL=.*|WGW_UPDATE_CHANNEL=${channel}|" "$env_path"
+  else
+    printf '\nWGW_UPDATE_CHANNEL=%s\n' "$channel" >>"$env_path"
+  fi
+  log "Update channel: ${channel}"
+}
+
 fetch_manifest() {
+  url=$(manifest_url)
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$WGW_MANIFEST_URL"
+    curl -fsSL "$url"
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "$WGW_MANIFEST_URL"
+    wget -qO- "$url"
   else
     die "curl or wget is required to fetch release manifest."
   fi
@@ -270,25 +333,72 @@ image_tag_from_env() {
   printf '%s' "${WGW_VERSION:-latest}"
 }
 
-# Compare two semver strings. Return 0 if equal, 1 if $1 > $2, 2 if $1 < $2.
+# Compare two semver strings, prereleases included (1.0.0-beta.2 <
+# 1.0.0-beta.10 < 1.0.0). Return 0 if equal, 1 if $1 > $2, 2 if $1 < $2.
 semver_cmp() {
   a=$(normalize_semver "$1")
   b=$(normalize_semver "$2")
+  a_core=${a%%-*}
+  b_core=${b%%-*}
+  a_pre=""
+  b_pre=""
+  case "$a" in *-*) a_pre=${a#*-} ;; esac
+  case "$b" in *-*) b_pre=${b#*-} ;; esac
 
-  a_major=$(printf '%s' "$a" | cut -d. -f1)
-  a_minor=$(printf '%s' "$a" | cut -d. -f2)
-  a_patch=$(printf '%s' "$a" | cut -d. -f3)
-  b_major=$(printf '%s' "$b" | cut -d. -f1)
-  b_minor=$(printf '%s' "$b" | cut -d. -f2)
-  b_patch=$(printf '%s' "$b" | cut -d. -f3)
+  i=1
+  while [ "$i" -le 3 ]; do
+    x=$(printf '%s' "$a_core" | cut -d. -f"$i")
+    y=$(printf '%s' "$b_core" | cut -d. -f"$i")
+    if [ "${x:-0}" -gt "${y:-0}" ]; then return 1; fi
+    if [ "${x:-0}" -lt "${y:-0}" ]; then return 2; fi
+    i=$((i + 1))
+  done
 
-  if [ "$a_major" -gt "$b_major" ]; then return 1; fi
-  if [ "$a_major" -lt "$b_major" ]; then return 2; fi
-  if [ "$a_minor" -gt "$b_minor" ]; then return 1; fi
-  if [ "$a_minor" -lt "$b_minor" ]; then return 2; fi
-  if [ "$a_patch" -gt "$b_patch" ]; then return 1; fi
-  if [ "$a_patch" -lt "$b_patch" ]; then return 2; fi
+  # A release outranks its own prereleases.
+  if [ -z "$a_pre" ] && [ -z "$b_pre" ]; then return 0; fi
+  if [ -z "$a_pre" ]; then return 1; fi
+  if [ -z "$b_pre" ]; then return 2; fi
+
+  while [ -n "$a_pre" ] || [ -n "$b_pre" ]; do
+    if [ -z "$a_pre" ]; then return 2; fi
+    if [ -z "$b_pre" ]; then return 1; fi
+    x=${a_pre%%.*}
+    y=${b_pre%%.*}
+    case "$a_pre" in *.*) a_pre=${a_pre#*.} ;; *) a_pre="" ;; esac
+    case "$b_pre" in *.*) b_pre=${b_pre#*.} ;; *) b_pre="" ;; esac
+    if [ "$x" = "$y" ]; then continue; fi
+    case "$x$y" in
+      *[!0-9]*)
+        # Numeric identifiers sort before alphanumeric ones.
+        case "$x" in *[!0-9]* | "") x_num=0 ;; *) x_num=1 ;; esac
+        case "$y" in *[!0-9]* | "") y_num=0 ;; *) y_num=1 ;; esac
+        if [ "$x_num" -eq 1 ]; then return 2; fi
+        if [ "$y_num" -eq 1 ]; then return 1; fi
+        if [ "$(printf '%s\n%s\n' "$x" "$y" | LC_ALL=C sort | head -1)" = "$x" ]; then return 2; fi
+        return 1
+        ;;
+      *)
+        if [ "$x" -gt "$y" ]; then return 1; fi
+        return 2
+        ;;
+    esac
+  done
   return 0
+}
+
+# An edge build and a beta or rc of the same X.Y.Z do not tell which is
+# newer: edge builds of X.Y.Z run before and after those tags. So an edge
+# install skips them and waits for a newer edge build or the X.Y.Z release.
+# Same rule as ReleaseVersion::isUpgrade in the API.
+edge_skips() {
+  skip_target=$(normalize_semver "$1")
+  skip_installed=$(normalize_semver "$2")
+  case "$skip_installed" in *-edge.*) ;; *) return 1 ;; esac
+  case "$skip_target" in
+    *-edge.*) return 1 ;;
+    *-*) [ "${skip_target%%-*}" = "${skip_installed%%-*}" ] ;;
+    *) return 1 ;;
+  esac
 }
 
 confirm_upgrade() {
@@ -440,10 +550,16 @@ cmd_install() {
 
   mkdir -p "$WGW_INSTALL_DIR"
 
+  if [ "$WGW_VERSION" = "latest" ] && [ "$(update_channel)" != "stable" ]; then
+    WGW_VERSION=$(resolve_latest_version)
+    log "Newest $(update_channel) release: ${WGW_VERSION}"
+  fi
+
   fetch_asset "docker-compose.yml" "${WGW_INSTALL_DIR}/${COMPOSE_FILE}"
   fetch_env_example "${WGW_INSTALL_DIR}/${ENV_FILE}.example"
 
   write_env_from_example "${WGW_INSTALL_DIR}/${ENV_FILE}" "${WGW_INSTALL_DIR}/${ENV_FILE}.example"
+  save_update_channel "${WGW_INSTALL_DIR}/${ENV_FILE}"
   apply_sqlite_profile "${WGW_INSTALL_DIR}/${ENV_FILE}"
   prompt_http_port
   apply_http_port "${WGW_INSTALL_DIR}/${ENV_FILE}"
@@ -557,6 +673,7 @@ cmd_check() {
 
   installed=$(image_tag_from_env)
   latest=$(resolve_latest_version)
+  log "Update channel: $(update_channel)"
 
   if [ "$installed" = "latest" ]; then
     log "Installed tag is :latest (unpinned). Latest release: ${latest}"
@@ -564,12 +681,12 @@ cmd_check() {
     return 0
   fi
 
-  semver_cmp "$installed" "$latest"
-  cmp=$?
+  cmp=0
+  semver_cmp "$installed" "$latest" || cmp=$?
   if [ "$cmp" -eq 0 ]; then
     log "Up to date (${installed})"
-  elif [ "$cmp" -eq 1 ]; then
-    log "Installed ${installed} is newer than published ${latest}"
+  elif [ "$cmp" -eq 1 ] || edge_skips "$latest" "$installed"; then
+    log "Installed ${installed} is not older than published ${latest}"
   else
     log "${latest} available (installed: ${installed})"
     log "Run: bash setup.sh upgrade"
@@ -588,8 +705,21 @@ cmd_upgrade() {
   target=$(normalize_semver "$target")
 
   installed=$(image_tag_from_env)
+  # A channel switch (edge -> stable) can resolve to an older release.
+  # Schema migrations only go forward, so never move back unasked.
+  if [ -z "${WGW_UPGRADE_VERSION:-}" ] && [ "$installed" != "latest" ]; then
+    cmp=0
+    semver_cmp "$target" "$installed" || cmp=$?
+    if [ "$cmp" -eq 2 ] || edge_skips "$target" "$installed"; then
+      log "Installed ${installed} is not older than the $(update_channel) channel's ${target}."
+      log "Staying on ${installed} until the channel catches up."
+      save_update_channel "${WGW_INSTALL_DIR}/${ENV_FILE}"
+      return 0
+    fi
+  fi
+
   if [ "$WGW_DRY_RUN" -eq 1 ]; then
-    log "Dry run: would upgrade ${installed} -> ${target}"
+    log "Dry run: would upgrade ${installed} -> ${target} ($(update_channel) channel)"
     log "  WGW_IMAGE=ghcr.io/wegotworkspace/wegotworkspace:${target}"
     log "  Steps: backup, pull, compose up -d, health check"
     return 0
@@ -604,6 +734,7 @@ cmd_upgrade() {
   cmd_backup
 
   env_path="${WGW_INSTALL_DIR}/${ENV_FILE}"
+  save_update_channel "$env_path"
   if grep -q '^WGW_IMAGE=' "$env_path"; then
     sed_inplace "s|^WGW_IMAGE=.*|WGW_IMAGE=ghcr.io/wegotworkspace/wegotworkspace:${target}|" "$env_path"
   else
@@ -663,6 +794,12 @@ parse_args() {
       --version)
         [ $# -ge 2 ] || die "--version requires a value"
         WGW_VERSION=$2
+        shift 2
+        ;;
+      --channel)
+        [ $# -ge 2 ] || die "--channel requires a value"
+        validate_channel "$2"
+        WGW_CHANNEL_FLAG=$2
         shift 2
         ;;
       --upgrade)

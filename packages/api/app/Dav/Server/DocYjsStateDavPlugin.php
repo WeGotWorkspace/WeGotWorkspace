@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
-use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Collab\DocYjsStateStore;
 use App\Storage\StoragePaths;
 use Sabre\DAV\Server;
@@ -39,13 +38,10 @@ final class DocYjsStateDavPlugin extends ServerPlugin
             return;
         }
         $key = substr($path, strlen('files/'));
-        if ($key === '' || CollabSidecarPaths::isSidecarName(basename($key))) {
+        if ($key === '') {
             return;
         }
 
-        $this->sidecarLinks->recordBeforeExternalWrite(
-            $this->paths->virtualToStorageKey('/'.$key),
-            $this->paths->virtualToStorageKey(CollabSidecarPaths::sidecarVirtualPath($this->paths, $key)),
-        );
+        $this->sidecarLinks->recordBeforeExternalWrite($this->paths->virtualToStorageKey('/'.$key));
     }
 }

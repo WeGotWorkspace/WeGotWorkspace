@@ -63,7 +63,6 @@ final class CapabilitiesService
             'settings' => 'user',
             'drive' => 'user',
             'notes' => 'user',
-            'plugins' => 'user',
             'meet' => 'guest',
             'installer' => 'guest',
             'home' => 'guest',

@@ -7,11 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import {
-  ackLocalNotification,
-  ackNotification,
-  listNotifications,
-} from "@/lib/api/wgw/notifications";
+import { ackNotification, listNotifications } from "@/lib/api/wgw/notifications";
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
 import {
@@ -22,15 +18,18 @@ import {
   NotificationsInboxValueProvider,
   type NotificationsInboxValue,
 } from "@/notifications-core/src/notifications-inbox-context";
-import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
 import {
   playInboxNotificationSound,
   readNotificationSoundMuted,
   shouldPlayInboxNotificationSound,
   writeNotificationSoundMuted,
 } from "@/notifications-core/src/notification-inbox-sound";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
-import { shouldShowOsNotification } from "@/notifications-core/src/should-show-os-notification";
+import type {
+  NotificationInboxItem,
+  NotificationInboxList,
+} from "@/notifications-core/src/notifications-types";
+import { useNotificationsInboxPush } from "@/notifications-core/src/use-notifications-inbox-push";
+import { useNotificationsLocalAck } from "@/notifications-core/src/use-notifications-local-ack";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 
 export {
@@ -39,8 +38,17 @@ export {
   type NotificationsInboxValue,
 } from "@/notifications-core/src/notifications-inbox-context";
 
-/** Inbox poll interval. Shared-hosting floor for a single install; keep below the 20s local-ack grace. */
+/**
+ * Inbox poll interval while push is down. Shared-hosting floor for a single
+ * install; keep below the 20s local-ack grace.
+ */
 export const NOTIFICATIONS_INBOX_POLL_MS = 15_000;
+
+/**
+ * Fallback poll while the JMAP push stream is connected: a `Notification`
+ * push fetches the inbox at once, so the poll only catches a lost push.
+ */
+export const NOTIFICATIONS_INBOX_PUSH_POLL_MS = 60_000;
 
 /**
  * After a mesh notify-hint, re-GET again shortly in case the first response raced
@@ -59,33 +67,6 @@ function goToNotificationNavigate(path: string): void {
   });
 }
 
-/**
- * Live JS (any window, including Meet and an installed PWA) local-acks so VAPID
- * is reserved for fully quit clients. Closing one tab is not closed.
- * OS toasts stay hidden-tab only — a focused surface already has the inbox.
- */
-async function ackLiveInboxItem(item: NotificationInboxItem): Promise<void> {
-  const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
-  const permission = typeof Notification === "undefined" ? "denied" : Notification.permission;
-  if (shouldShowOsNotification(visibility, permission)) {
-    const copy = formatNotificationCopy(item);
-    const toast = new Notification(copy.title, {
-      body: copy.body ?? undefined,
-      tag: item.tag ?? item.id,
-      data: { navigate: item.navigate },
-    });
-    toast.onclick = () => {
-      window.focus();
-      goToNotificationNavigate(item.navigate);
-    };
-  }
-  try {
-    await ackLocalNotification(item.id);
-  } catch {
-    // Best-effort local ack so the VAPID sweep can skip.
-  }
-}
-
 function useNotificationsInboxController(): NotificationsInboxValue | null {
   const [items, setItems] = useState<NotificationInboxItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -99,32 +80,29 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const seededRef = useRef(false);
   const soundMutedRef = useRef(soundMuted);
   soundMutedRef.current = soundMuted;
-  /** Abort in-flight GETs so a slow poll cannot overwrite a newer hint refresh. */
+  /** Abort in-flight refreshes; a newer one replaces them. */
   const refreshAbortRef = useRef<AbortController | null>(null);
+  /**
+   * Every inbox GET gets a number; a response is shown only when no GET that
+   * started later was shown first, so a slow poll cannot overwrite newer rows.
+   */
+  const fetchSeqRef = useRef(0);
+  const shownSeqRef = useRef(0);
+  const shownRef = useRef<NotificationInboxList | null>(null);
   const hintRetryTimersRef = useRef<number[]>([]);
   const signedIn = signedInMember();
+  const trackUnreadForLocalAck = useNotificationsLocalAck();
 
-  const refresh = useCallback(async () => {
-    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) {
-      setItems([]);
-      setUnreadCount(0);
-      return;
-    }
-    refreshAbortRef.current?.abort();
-    const abort = new AbortController();
-    refreshAbortRef.current = abort;
-    try {
-      // Bell tray is unread-only; mark-as-read removes rows from the next list.
-      const payload = await listNotifications({ unread: true, signal: abort.signal });
-      if (abort.signal.aborted) return;
+  const applyPayload = useCallback(
+    (payload: NotificationInboxList) => {
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
+      trackUnreadForLocalAck(payload.list);
       let sawNewAfterSeed = false;
       for (const item of payload.list) {
         if (seenRef.current.has(item.id)) continue;
         const afterSeed = seededRef.current;
         seenRef.current.add(item.id);
-        void ackLiveInboxItem(item);
         if (afterSeed) sawNewAfterSeed = true;
       }
       seededRef.current = true;
@@ -135,12 +113,70 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
           playInboxNotificationSound();
         }
       }
-    } catch (error) {
-      if (abort.signal.aborted) return;
-      if (error instanceof DOMException && error.name === "AbortError") return;
+    },
+    [trackUnreadForLocalAck],
+  );
+
+  const show = useCallback(
+    (seq: number, payload: NotificationInboxList) => {
+      if (seq <= shownSeqRef.current) return;
+      shownSeqRef.current = seq;
+      shownRef.current = payload;
+      applyPayload(payload);
+    },
+    [applyPayload],
+  );
+
+  /** Poll, hint and visibility refetch: fetch and show the unread inbox. */
+  const refresh = useCallback(async (): Promise<void> => {
+    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) {
+      setItems([]);
+      setUnreadCount(0);
+      return;
+    }
+    refreshAbortRef.current?.abort();
+    const abort = new AbortController();
+    refreshAbortRef.current = abort;
+    const seq = ++fetchSeqRef.current;
+    try {
+      // Bell tray is unread-only; mark-as-read removes rows from the next list.
+      const payload = await listNotifications({ unread: true, signal: abort.signal });
+      if (!abort.signal.aborted) show(seq, payload);
+    } catch {
       // Stay silent — tray is best-effort.
     }
-  }, []);
+  }, [show]);
+
+  /**
+   * The fetch for a pushed state. Not aborted by a refresh that starts
+   * meanwhile. Resolves the newest rows shown after it (its own, or those of
+   * a GET that started later), or null when it failed.
+   */
+  const fetchForPush = useCallback(async (): Promise<NotificationInboxList | null> => {
+    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) return null;
+    const seq = ++fetchSeqRef.current;
+    try {
+      const payload = await listNotifications({ unread: true });
+      show(seq, payload);
+      return shownRef.current ?? payload;
+    } catch {
+      return null;
+    }
+  }, [show]);
+
+  /** Rows the stream tab fetched on push: newer than any GET still in flight here. */
+  const applyShared = useCallback(
+    (payload: NotificationInboxList) => {
+      refreshAbortRef.current?.abort();
+      shownSeqRef.current = fetchSeqRef.current;
+      shownRef.current = payload;
+      applyPayload(payload);
+    },
+    [applyPayload],
+  );
+
+  const pushConnected = useNotificationsInboxPush({ signedIn, fetchForPush, apply: applyShared });
+  const pollMs = pushConnected ? NOTIFICATIONS_INBOX_PUSH_POLL_MS : NOTIFICATIONS_INBOX_POLL_MS;
 
   const refreshFromNotifyHint = useCallback(() => {
     for (const timer of hintRetryTimersRef.current) {
@@ -156,12 +192,22 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   }, [refresh]);
 
   useEffect(() => {
-    void refresh();
     const timer = window.setInterval(() => {
       void refresh();
-    }, NOTIFICATIONS_INBOX_POLL_MS);
+    }, pollMs);
+    return () => window.clearInterval(timer);
+  }, [refresh, pollMs]);
+
+  useEffect(() => {
+    void refresh();
+    // Hidden tabs poll late (timer throttling). On becoming visible, re-fetch so
+    // rows that arrived meanwhile are acked within the local-ack grace.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
-      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       refreshAbortRef.current?.abort();
       for (const retry of hintRetryTimersRef.current) {
         window.clearTimeout(retry);
@@ -283,7 +329,10 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 }
 
 /**
- * Polls the inbox, local-acks, and handles SW / OS clicks. The bell UI lives in
+ * Keeps the inbox current (on push, with a slower poll as fallback; see
+ * {@link useNotificationsInboxPush}), local-acks from a visible window or a Meet call, and handles
+ * service-worker notification clicks. Hidden windows show no OS toast of their
+ * own: the service-worker push is the only OS notification path. The bell UI lives in
  * AppSidebar — not a viewport overlay — so Meet (which shares that sidebar)
  * gets the same safe slot.
  */

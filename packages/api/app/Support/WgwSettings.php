@@ -8,12 +8,6 @@ use App\Models\AppSetting;
 
 final class WgwSettings
 {
-    public const MAIL_IMAP_HOST = 'mail_imap_host';
-
-    public const MAIL_IMAP_PORT = 'mail_imap_port';
-
-    public const MAIL_IMAP_SECURITY = 'mail_imap_security';
-
     public const MAIL_SMTP_HOST = 'mail_smtp_host';
 
     public const MAIL_SMTP_PORT = 'mail_smtp_port';
@@ -66,9 +60,6 @@ final class WgwSettings
             self::AUTH_REALM => 'SabreDAV',
             self::BROWSER_PLUGIN => false,
             self::TIMEZONE => 'UTC',
-            self::MAIL_IMAP_HOST => '',
-            self::MAIL_IMAP_PORT => 993,
-            self::MAIL_IMAP_SECURITY => 'ssl',
             self::MAIL_SMTP_HOST => '',
             self::MAIL_SMTP_PORT => 465,
             self::MAIL_SMTP_SECURITY => 'ssl',
@@ -87,7 +78,7 @@ final class WgwSettings
                 continue;
             }
             $out[$key] = match ($key) {
-                self::MAIL_IMAP_PORT, self::MAIL_SMTP_PORT => (int) $db[$key],
+                self::MAIL_SMTP_PORT => (int) $db[$key],
                 self::FILES_ENABLED, self::CALENDAR_ENABLED, self::CONTACTS_ENABLED, self::TASKS_ENABLED, self::NOTES_ENABLED, self::BROWSER_PLUGIN => (bool) $db[$key],
                 self::TIMEZONE => TimezoneNormalizer::normalize($db[$key]),
                 self::BASE_URI => self::normalizeBaseUri((string) $db[$key]),

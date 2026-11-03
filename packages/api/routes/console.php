@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -11,18 +12,20 @@ use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\DevNoteCatalog;
 use App\Services\Installer\DevNoteSeeder;
+use App\Services\Installer\DevSeedGuard;
 use App\Services\Installer\DevSeedRunner;
 use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\InstallerVapidKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
-use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
-use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
+use App\Services\Jmap\Blobs\JmapBlobMaintenance;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
 use App\Services\Notify\AlertDueScheduler;
+use App\Services\Notify\PushFailureTally;
 use App\Services\Notify\VapidPushService;
 use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
@@ -32,6 +35,7 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -52,6 +56,43 @@ Artisan::command('wgw:schema-migrate', function (WgwSchemaMigrator $migrator): i
 
     return Command::SUCCESS;
 })->purpose('Apply pending database/migrations/wgw migrations on the wgw connection');
+
+Artisan::command('wgw:ensure-app-key', function (): int {
+    // Docker entrypoints run this on every start. Generate APP_KEY only when
+    // the key Laravel loaded is empty (first boot from .env.example); never
+    // replace a key Laravel loads, or everything Crypt sealed under it is lost
+    // (refresh tokens, share links, collab ticket key). config('app.key') is
+    // what dotenv actually loaded, so duplicate lines, CRLF and quotes need no
+    // parsing here. Never print the key.
+    if ((string) config('app.key') !== '') {
+        // Doing nothing is safe wherever the value came from.
+        return Command::SUCCESS;
+    }
+
+    // The empty check above only holds while config('app.key') comes from the
+    // .env just loaded. A cached config (config:cache / optimize) could hold an
+    // empty key while .env has a working one, so never write then.
+    if ($this->laravel->configurationIsCached()) {
+        $this->error('Config is cached; not touching APP_KEY. Run config:clear, or set APP_KEY by hand.');
+
+        return Command::FAILURE;
+    }
+
+    // No --force on purpose: key:generate only asks for confirmation when a
+    // key is already set, and here it is empty. --force is what replaced the
+    // key on every start.
+    $this->callSilently('key:generate', ['--no-interaction' => true]);
+    // key:generate sets the loaded config when it wrote the key. A separate
+    // lookup on purpose: PHPStan would otherwise reuse the first result.
+    if ((string) $this->laravel->make('config')->get('app.key') === '') {
+        $this->error('Could not write APP_KEY to '.$this->laravel->environmentFilePath().'. Check that it has an APP_KEY= line.');
+
+        return Command::FAILURE;
+    }
+    $this->info('Generated APP_KEY.');
+
+    return Command::SUCCESS;
+})->purpose('Generate APP_KEY when it is empty; never replaces a key Laravel loads');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();
@@ -186,12 +227,13 @@ Artisan::command('wgw:contacts:provision-address-books', function (AddressBookPr
     return Command::SUCCESS;
 })->purpose('Provision one address book per user and group principal (idempotent)');
 
-Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
-    $result = $migrator->migrate();
+Artisan::command('wgw:notes:migrate-files {--discard-yjs : Delete .md.yjs collaborative-edit sidecars (kept by default)}', function (NotesFileMigrator $migrator): int {
+    $result = $migrator->migrate(discardYjs: (bool) $this->option('discard-yjs'));
     $this->info(sprintf(
-        'Mapped %d path(s); imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
+        'Mapped %d path(s); imported %d; already imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
         $result['mapped'],
         $result['imported'],
+        $result['alreadyImported'],
         $result['starred'],
         $result['skipped'],
         $result['discardedYjs'],
@@ -202,7 +244,7 @@ Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrato
     }
 
     return Command::SUCCESS;
-})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks');
+})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks (idempotent; the update runs it too)');
 
 Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJournalStripper $stripper): int {
     $result = $stripper->stripAll();
@@ -212,6 +254,13 @@ Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJourna
         $result['stripped'],
         $result['movedObjects'],
         $result['skipped'],
+    ));
+    $repair = $stripper->repairStranded();
+    $this->info(sprintf(
+        'Moved %d stranded journal object(s) from %d calendar(s) without VJOURNAL; left %d in place (uid already in the notebook).',
+        $repair['movedObjects'],
+        $repair['repaired'],
+        $repair['collisions'],
     ));
 
     return Command::SUCCESS;
@@ -331,6 +380,27 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
     return Command::SUCCESS;
 })->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
 
+Artisan::command('wgw:e2e-reset-api-budget {usernames*}', function (DevSeedGuard $guard): int {
+    try {
+        $guard->assertAllowed('an API budget reset');
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $used = [];
+    foreach ((array) $this->argument('usernames') as $raw) {
+        $username = strtolower(trim((string) $raw));
+        if ($username !== '') {
+            $used[$username] = WgwApiRateLimiters::resetAccountBudget($username);
+        }
+    }
+    $this->line((string) json_encode(['limit' => WgwApiRateLimiters::API_REQUESTS_PER_MINUTE, 'used' => $used]));
+
+    return Command::SUCCESS;
+})->purpose('Local e2e only: print and clear the wgw-api request budget of the named accounts (refused outside a local checkout)');
+
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
     $rawName = $this->option('username');
     if (! is_string($rawName) || $rawName === '') {
@@ -381,8 +451,8 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
     return Command::SUCCESS;
 })->purpose('Shared local-dev seeder: calendars, notes, and contacts (pass app names to limit; --force recreates)');
 
-Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
-    $result = $index->reindexAll();
+Artisan::command('wgw:jmap:filenodes-reindex', function (FileNodeReindexer $reindexer): int {
+    $result = $reindexer->reindexAll();
     $this->info(sprintf(
         'Indexed %d new node(s); tombstoned %d vanished node(s); pruned %d stale tombstone(s).',
         $result['indexed'],
@@ -411,16 +481,20 @@ Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping
     return Command::SUCCESS;
 })->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
 
-Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
-    $result = $collector->collect();
+Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance): int {
+    $result = $maintenance->runFull();
     $this->info(sprintf(
-        'Deleted %d expired blob(s); retained %d referenced blob(s).',
-        $result['deleted'],
-        $result['retained'],
+        'Deleted %d expired blob(s); retained %d referenced blob(s); expired %d assembl(ies) and %d staged copy(ies); swept %d temp file(s); stored %d pending content hash(es).',
+        $result['blobsDeleted'],
+        $result['blobsRetained'],
+        $result['assembliesExpired'],
+        $result['stagingExpired'],
+        $result['tempFilesDeleted'],
+        $result['hashesStored'],
     ));
 
     return Command::SUCCESS;
-})->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
+})->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk (domain references are never collected)');
 
 Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
     $fired = $scheduler->scan();
@@ -429,9 +503,16 @@ Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler
     return Command::SUCCESS;
 })->purpose('Scan VALARM display alarms that are due and fire WorkspaceEvents (idempotent)');
 
-Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): int {
+Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push, PushFailureTally $failures): int {
+    $failures->reset();
     $sent = $push->sweepDue();
     $this->info(sprintf('Swept VAPID fallback; sent %d payload(s).', $sent));
+
+    if ($failures->hasFailures()) {
+        $summary = $failures->summary();
+        Log::warning('vapid_sweep_failures', ['sent' => $sent] + $summary);
+        $this->warn(sprintf('%d push send(s) failed; see vapid_sweep_failures in the log.', $summary['failed']));
+    }
 
     return Command::SUCCESS;
 })->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');

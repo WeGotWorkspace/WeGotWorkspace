@@ -6,6 +6,14 @@
   border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
 }
 
+.collection-list-body {
+  @apply flex min-h-0 flex-1 flex-col;
+}
+
+.collection-list-drop-zone {
+  @apply relative;
+}
+
 .collection-header {
   border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
 }

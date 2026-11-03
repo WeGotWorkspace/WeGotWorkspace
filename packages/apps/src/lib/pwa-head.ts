@@ -1,7 +1,6 @@
 type PwaHeadConfig = {
   title: string;
   description: string;
-  themeColor: string;
   appTitle: string;
   manifest: string;
   /**
@@ -20,7 +19,6 @@ export function createPwaHead(config: PwaHeadConfig) {
     meta: [
       { title: config.title },
       { name: "description", content: config.description },
-      { name: "theme-color", content: config.themeColor },
       { name: "apple-mobile-web-app-title", content: config.appTitle },
     ],
     links: [

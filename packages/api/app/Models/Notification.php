@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
+use App\Services\Notify\NotificationInboxMarkers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -61,6 +62,21 @@ final class Notification extends Model
         'read_at' => 'datetime',
         'created_at' => 'datetime',
     ];
+
+    /**
+     * Create, supersede, read and clear all move the principal's inbox marker
+     * (the `Notification` push state, #1660). Mass `query()->update()` and
+     * `query()->delete()` skip model events; inbox writers save per row.
+     */
+    protected static function booted(): void
+    {
+        $bump = static function (self $row): void {
+            app(NotificationInboxMarkers::class)->bump((string) $row->principal);
+        };
+        self::created($bump);
+        self::updated($bump);
+        self::deleted($bump);
+    }
 
     /** @return HasMany<NotificationDelivery, $this> */
     public function deliveries(): HasMany

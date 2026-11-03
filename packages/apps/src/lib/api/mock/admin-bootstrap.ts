@@ -44,9 +44,6 @@ const DEFAULT_DATA: AdminUIData = {
     },
   ],
   mail: {
-    imapHost: "imap.example.test",
-    imapPort: 993,
-    imapSecurity: "ssl",
     smtpHost: "smtp.example.test",
     smtpPort: 465,
     smtpSecurity: "ssl",
@@ -102,6 +99,7 @@ const DEFAULT_DATA: AdminUIData = {
   },
   updates: {
     installChannel: null,
+    updateChannel: "stable",
     installedVersion: "0.0.0",
     schemaVersion: 0,
     latest: null,

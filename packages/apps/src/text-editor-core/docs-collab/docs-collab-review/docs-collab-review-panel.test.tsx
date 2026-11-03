@@ -43,8 +43,9 @@ const resolvedThread: DocsCommentThread = {
 
 const suggestion: DocsSuggestionWithThread = {
   changeId: "change-1",
+  authorId: "u-1",
   authorName: "Alex",
-  authorColor: "#336699",
+  authorColor: "teal",
   timestamp: "2026-01-01T00:00:00.000Z",
   from: 2,
   to: 4,

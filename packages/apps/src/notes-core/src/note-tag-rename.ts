@@ -27,7 +27,8 @@ export function planNoteTagRename(
   if (to === from) return "unchanged";
   const carrying = notes.filter((note) => note.tags.some((tag) => normalizeTag(tag) === from));
   if (carrying.length === 0) return "nothing-to-rename";
-  const writable = carrying.filter((note) => noteAllowsTagAssignment(note, true));
+  // An archived note does not change until it is restored (#1535).
+  const writable = carrying.filter((note) => !note.archived && noteAllowsTagAssignment(note, true));
   if (writable.length === 0) return "nothing-to-rename";
   return {
     from,

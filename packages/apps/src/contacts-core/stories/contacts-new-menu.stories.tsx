@@ -37,14 +37,14 @@ export const Default: Story = {
     await expect(args.onCreateContact).toHaveBeenCalledOnce();
 
     await userEvent.click(menuTrigger());
-    await userEvent.click(screen.getByRole("button", { name: defaultContactsLabels.newGroup }));
+    await userEvent.click(screen.getByRole("menuitem", { name: defaultContactsLabels.newGroup }));
     await expect(args.onCreateGroup).toHaveBeenCalledOnce();
     await waitFor(() => {
       expect(menuTrigger()).toBeEnabled();
     });
 
     await userEvent.click(menuTrigger());
-    await userEvent.click(screen.getByRole("button", { name: defaultContactsLabels.importVcf }));
+    await userEvent.click(screen.getByRole("menuitem", { name: defaultContactsLabels.importVcf }));
     await expect(args.onImportVcf).toHaveBeenCalledOnce();
   },
 };

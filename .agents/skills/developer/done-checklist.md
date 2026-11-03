@@ -54,7 +54,8 @@ pnpm dev:storybook                       # Storybook — mock-tier stories for c
 - [ ] Slice handlers / mock `operations` — no `@/lib/api/wgw/http` in panes ([apps-ui/components.md](../apps-ui/components.md))
 - [ ] Storybook a11y panel on new/changed stories ([storybook/a11y-testing.md](../storybook/a11y-testing.md))
 - [ ] Vitest for new/changed hooks, parsers, RTC/session logic ([testing/ui-architecture.md](../testing/ui-architecture.md))
-- [ ] New/changed hook files: [clean-code/smells.md](../clean-code/smells.md) React hooks section — split if over limits, or link a refactor issue with explicit user approval; collab hooks follow [collab-hooks.md](../workspace/collab-hooks.md)
+- [ ] Hook size: An exported `use*` hook in `packages/apps/src` with a body over 200 lines or more than 4 `useEffect` or `useLayoutEffect` calls is a merge block unless it is on the hook-size baseline. A baselined hook is a merge block when either number grows, or when it shrinks and the baseline was not lowered. Run `pnpm check:hook-size`; after a split or shrink, `pnpm hook-ratchet:update`.
+- [ ] New/changed hook files: more than 2 unrelated concerns and state + ref duplication are review prompts, not merge blockers ([clean-code/smells.md](../clean-code/smells.md) React hooks section) — split, or explain in the PR; collab hooks follow [collab-hooks.md](../workspace/collab-hooks.md)
 - [ ] Counted source files: A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. Run `pnpm check:file-size` after a shrink (`pnpm ratchet:update`).
 - [ ] New top-level route in `wegotworkspace-routes.tsx`: also update API `UiStaticServer` allowlist (apps done gate does **not** cover this — Architecture + FrontRouting on API side)
 

@@ -1,0 +1,244 @@
+name: Review loop - fix (job)
+
+# The fixer's logic, called by review-loop-fix.yml. Callers pin this file at
+# @main, so the workflow, the adapter, and the prompt always come from the same
+# commit on main, whatever the PR's test merge contains.
+# Design notes: review-loop-fix.yml and .github/review-loop/README.md.
+
+on:
+  workflow_call:
+
+env:
+  GH_REPO: ${{ github.repository }}
+  PR: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  HEAD_REF: ${{ github.event.pull_request.head.ref }}
+  MAX_ROUNDS: ${{ vars.REVIEW_LOOP_MAX_ROUNDS || 3 }}
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    # Room for live Playwright specs, each of which boots the API and the app.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: bot
+        with:
+          client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
+
+      # Decides the round: a change request from the loop bot is a fix round,
+      # its approval with the polish marker is a polish round (the post job
+      # sends that at most once per cycle), anything else is not for the loop.
+      - name: Count rounds
+        id: rounds
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          BOT: ${{ steps.bot.outputs.app-slug }}[bot]
+          REVIEWER: ${{ github.event.review.user.login }}
+          STATE: ${{ github.event.review.state }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          kind=none
+          if [ "$REVIEWER" = "$BOT" ]; then
+            case "$STATE" in
+              changes_requested) kind=fix ;;
+              approved) [[ "$REVIEW_BODY" == *"<!-- review-loop:polish -->"* ]] && kind=polish ;;
+            esac
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          # The live e2e tier costs a few minutes to prepare, so only when the
+          # review asks for a Playwright spec (the review prompt names it so).
+          if [ "$kind" = fix ] && grep -qi 'playwright' <<< "$REVIEW_BODY"; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$kind" = none ]; then
+            echo "A $STATE review by $REVIEWER; nothing for the loop to do."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$kind" = polish ]; then
+            echo "Polish round; it does not count toward the round cap."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
+            | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+          round=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+            | jq --arg bot "$BOT" --arg since "$since" \
+              '[add[] | select(.user.login == $bot and .state == "CHANGES_REQUESTED" and .submitted_at > $since)] | length')
+          echo "Change request $round of $MAX_ROUNDS this cycle."
+          if [ "$round" -gt "$MAX_ROUNDS" ]; then
+            echo "stop=Review loop stopped after $MAX_ROUNDS fix rounds. The open items above need a human call. Mark the PR draft and then ready to start a new cycle." >> "$GITHUB_OUTPUT"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.rounds.outputs.run == 'true'
+        with:
+          ref: main
+          path: loop
+          sparse-checkout: .github/review-loop
+          persist-credentials: false
+
+      - uses: ./loop/.github/review-loop/prepare
+        id: prepare
+        if: steps.rounds.outputs.run == 'true'
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          php-vendor: "true"
+          e2e: ${{ steps.rounds.outputs.e2e || 'false' }}
+
+      - name: Build prompt
+        if: steps.rounds.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+          KIND: ${{ steps.rounds.outputs.kind }}
+          E2E: ${{ steps.rounds.outputs.e2e }}
+          E2E_READY: ${{ steps.prepare.outputs.e2e-ready }}
+        run: |
+          {
+            cat loop/.github/review-loop/fix-prompt.md
+            echo
+            echo "## Context"
+            echo
+            echo "- Repository: $GH_REPO"
+            echo "- PR: $PR (branch $HEAD_REF, reviewed at $HEAD_SHA)"
+            if [ "$KIND" = polish ]; then
+              echo "- Round: polish. The review approved; apply its Polish items only."
+            else
+              echo "- Round: fix. Resolve the review's blocking items."
+            fi
+            if [ "$E2E_READY" = true ]; then
+              echo "- Live e2e: ready. See Live e2e specs above for how to run a spec."
+            elif [ "$E2E" = true ]; then
+              echo "- Live e2e: preparing the tier failed on this runner; you cannot run live specs."
+            fi
+            echo
+            echo "### Review"
+            echo
+            echo "$REVIEW_BODY"
+            echo
+            echo "### Inline comments"
+            echo
+            gh api "repos/$GH_REPO/pulls/$PR/reviews/$REVIEW_ID/comments" --paginate --slurp \
+              | jq -r 'add | if length == 0 then "None."
+                  else map("- `\(.path):\(.line // .original_line)` \(.body)") | join("\n") end'
+          } > "$RUNNER_TEMP/prompt.md"
+
+      - name: Fix
+        id: agent
+        if: steps.rounds.outputs.run == 'true'
+        uses: ./loop/.github/review-loop/agent
+        # No live-tier env here: VITE_WGW_USE_LIVE_API would reach the fast
+        # suite too. playwright.live.config.mjs sets it on the servers only.
+        with:
+          mode: fix
+          prompt-file: ${{ runner.temp }}/prompt.md
+          schema-file: ${{ github.workspace }}/loop/.github/review-loop/fix.schema.json
+          working-directory: pr
+          token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
+          max-turns: "60"
+          model: ${{ vars.REVIEW_LOOP_FIX_MODEL }}
+          effort: ${{ vars.REVIEW_LOOP_FIX_EFFORT }}
+
+      # createCommitOnBranch makes a commit GitHub signs, authored by the bot.
+      # expectedHeadOid fails the commit if anyone pushed since the review.
+      - name: Commit
+        id: commit
+        if: steps.rounds.outputs.run == 'true'
+        working-directory: pr
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          RESULT: ${{ steps.agent.outputs.result-file }}
+        run: |
+          stop() {
+            delim="EOF_$(openssl rand -hex 8)"
+            { echo "stop<<$delim"; printf '%s\n' "$@"; echo "$delim"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # -z throughout: without it git quotes unusual paths, which would
+          # slip past the protected-path check and reach the API quoted.
+          git add --all
+          changed=$(git diff --cached --name-only --no-renames -z | tr '\0' '\n')
+          if [ -z "$changed" ]; then
+            stop "The fixer made no changes:" "" "$(jq -r .summary "$RESULT")"
+          fi
+          protected=$(grep -E '^(\.github/|\.agents/|\.claude/|AGENTS\.md$|CLAUDE\.md$)' <<< "$changed" || true)
+          if [ -n "$protected" ]; then
+            stop "The fixer changed files the loop may not commit, so nothing was committed:" "" "$protected"
+          fi
+
+          git diff --cached --name-only --no-renames --diff-filter=d -z \
+            | while IFS= read -r -d '' path; do
+                base64 -w0 "$path" > "$RUNNER_TEMP/blob"
+                jq -n --arg path "$path" --rawfile contents "$RUNNER_TEMP/blob" '{$path, $contents}'
+              done | jq -s . > "$RUNNER_TEMP/additions.json"
+          git diff --cached --name-only --no-renames --diff-filter=D -z \
+            | jq -Rs 'split("\u0000") | map(select(. != "") | {path: .})' > "$RUNNER_TEMP/deletions.json"
+
+          # shellcheck disable=SC2016 # $input is a GraphQL variable
+          jq -n \
+            --arg query 'mutation($input: CreateCommitOnBranchInput!) {
+              createCommitOnBranch(input: $input) { commit { url } } }' \
+            --arg repo "$GH_REPO" --arg branch "$HEAD_REF" --arg oid "$HEAD_SHA" \
+            --slurpfile result "$RESULT" \
+            --slurpfile additions "$RUNNER_TEMP/additions.json" \
+            --slurpfile deletions "$RUNNER_TEMP/deletions.json" \
+            '{query: $query, variables: {input: {
+                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                expectedHeadOid: $oid,
+                message: ($result[0].commit_message | split("\n")
+                  | {headline: .[0], body: (.[1:] | join("\n") | ltrimstr("\n"))}),
+                fileChanges: {additions: $additions[0], deletions: $deletions[0]}
+              }}}' > "$RUNNER_TEMP/commit.json"
+
+          url=$(gh api graphql --input "$RUNNER_TEMP/commit.json" \
+            --jq '.data.createCommitOnBranch.commit.url // empty')
+          if [ -z "$url" ]; then
+            echo "::error::Commit failed."
+            exit 1
+          fi
+          echo "Committed $url"
+
+      # Any stop, and any failure, hands the PR to a human. Without this the
+      # loop would stall silently: no push means no new review. A polish
+      # round that ends without a commit leaves the approval standing, so it
+      # hands over as ready-for-human instead.
+      - name: Hand over to a human
+        if: always() && (steps.rounds.outputs.stop || steps.commit.outputs.stop || failure())
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          KIND: ${{ steps.rounds.outputs.kind }}
+          MESSAGE: ${{ steps.rounds.outputs.stop || steps.commit.outputs.stop }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$KIND" = polish ]; then
+            # The approval only stands for the commit it reviewed. If the
+            # branch moved (a human push), the gate already dropped it.
+            head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+            if [ "$head" != "$HEAD_SHA" ]; then
+              gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
+
+          The branch moved after the approval, so it no longer applies. Mark the PR draft and then ready to review again."
+              exit 0
+            fi
+            gh label create ready-for-human --color 0e8a16 \
+              --description "Review loop approved; ready for human review" 2>/dev/null || true
+            gh pr edit "$PR" --add-label ready-for-human
+            gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
+
+          The approval stands; the polish items in it are left for a human."
+            exit 0
+          fi
+          gh label create needs-human --color d93f0b \
+            --description "Review loop stopped; needs a human call" 2>/dev/null || true
+          gh pr edit "$PR" --add-label needs-human
+          gh pr comment "$PR" --body "${MESSAGE:-The fix round failed: $RUN_URL}"

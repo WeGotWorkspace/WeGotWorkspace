@@ -18,6 +18,9 @@ final class DataDirInstallCoordinator
      * abandoned claim does not take the only outside directory away from a
      * later install under the same parent.
      *
+     * The path is absolute so the admin sees where the data lands. The stored
+     * choice keeps a relative fallback, so a moved install still finds it.
+     *
      * @param  array<string, mixed>  $state
      * @return array{path: string, reason: string, inside_web_root: bool}
      */
@@ -27,11 +30,19 @@ final class DataDirInstallCoordinator
         if (is_array($stored)) {
             $choice = DataDirChoice::fromState($stored);
             if ($choice !== null) {
-                return $choice->toState();
+                return $this->forDisplay($choice);
             }
         }
 
-        return $this->resolver->propose($this->resolver->serverDocumentRoot())->toState();
+        return $this->forDisplay($this->resolver->propose($this->resolver->serverDocumentRoot()));
+    }
+
+    /**
+     * @return array{path: string, reason: string, inside_web_root: bool}
+     */
+    private function forDisplay(DataDirChoice $choice): array
+    {
+        return ['path' => $this->resolver->absolutePath($choice->path)] + $choice->toState();
     }
 
     /**

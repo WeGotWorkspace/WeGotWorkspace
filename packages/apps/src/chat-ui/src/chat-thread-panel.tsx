@@ -37,6 +37,8 @@ export type ChatThreadPanelProps = {
   parentEditComposer?: ReactNode;
   className?: string;
   onCaughtUpChange?: (caughtUp: boolean) => void;
+  /** False when a host panel (e.g. a workspace rail) already is the labelled landmark. */
+  landmark?: boolean;
 };
 
 export function ChatThreadPanel({
@@ -59,14 +61,20 @@ export function ChatThreadPanel({
   parentEditComposer,
   className,
   onCaughtUpChange,
+  landmark = true,
 }: ChatThreadPanelProps) {
   const replyLabel =
     replies.length === 0
       ? (emptyLabel ?? chatThreadReplyCountLabel(0))
       : chatThreadReplyCountLabel(replies.length);
 
+  const Root = landmark ? "aside" : "div";
+
   return (
-    <aside className={cn("chat-ui chat-thread-panel", className)} aria-label={title}>
+    <Root
+      className={cn("chat-ui chat-thread-panel", className)}
+      aria-label={landmark ? title : undefined}
+    >
       <header className="chat-thread-panel__header">
         <h2 className="chat-thread-panel__title">{title}</h2>
         {onClose ? (
@@ -125,6 +133,6 @@ export function ChatThreadPanel({
           />
         </div>
       ) : null}
-    </aside>
+    </Root>
   );
 }

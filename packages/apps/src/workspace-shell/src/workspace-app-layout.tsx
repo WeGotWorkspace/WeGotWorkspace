@@ -1,8 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
@@ -29,6 +32,11 @@ export type WorkspaceAppLayoutSplitProps = WorkspaceAppLayoutBaseProps & {
   mainHeader?: React.ReactNode;
   /** Optional right-hand panel (e.g. docs comments sidebar). */
   panel?: React.ReactNode;
+  /**
+   * Main pads the status bar and home indicator itself (full-bleed Meet guest
+   * lobby and call stage). Every other main gets the shared safe-area padding.
+   */
+  mainOwnsSafeArea?: boolean;
   children?: undefined;
 };
 
@@ -57,6 +65,8 @@ type WorkspaceUserFooterProps = {
   /** Optional second line (e.g. email) under the display name. */
   detailLine?: string;
   onLogoutClick?: () => void;
+  /** Force connectivity state (Storybook/tests). When omitted, uses {@link useConnectivity}. */
+  online?: boolean;
 };
 
 type WorkspaceSidebarToggleProps = {
@@ -71,7 +81,10 @@ export function WorkspaceAppLayout(props: WorkspaceAppLayoutProps) {
       {isSplitLayout(props) ? (
         <>
           {props.sidebar}
-          <section className="workspace-app-layout__main">
+          <section
+            className="workspace-app-layout__main"
+            data-owns-safe-area={props.mainOwnsSafeArea ? "" : undefined}
+          >
             {props.mainHeader != null ? (
               <header className="workspace-app-layout__main-header">{props.mainHeader}</header>
             ) : null}
@@ -130,7 +143,11 @@ export function WorkspaceUserFooter({
   initials,
   detailLine,
   onLogoutClick,
+  online: onlineOverride,
 }: WorkspaceUserFooterProps) {
+  const { online: hookOnline } = useConnectivity();
+  const online = onlineOverride ?? hookOnline;
+  const connectivityAnnouncement = useConnectivityAnnouncement(online);
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
   const trimmedInitials = initials.trim();
@@ -138,13 +155,31 @@ export function WorkspaceUserFooter({
   if (!hasIdentity) return null;
   const avatarName = trimmedName || trimmedInitials;
   const handleLogout = () => onLogoutClick?.();
+  const connectivityLabel = online ? "online" : "offline";
   return (
     <div className="workspace-app-layout__user-footer">
-      <UserAvatar
-        displayName={avatarName}
-        subtitle={trimmedDetailLine || undefined}
-        className="flex-1 min-w-0"
-      />
+      {/* Green = online; amber = the signed-in user is offline (pending syncs are blue). */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="workspace-app-layout__user-identity"
+            data-connectivity={connectivityLabel}
+          >
+            <UserAvatar
+              displayName={avatarName}
+              subtitle={
+                online ? trimmedDetailLine || undefined : <span className="italic">Offline</span>
+              }
+              presence={online ? "online" : "away"}
+              ariaLabel={`${avatarName} avatar, ${connectivityLabel}`}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>{online ? "Online" : "Offline"}</TooltipContent>
+      </Tooltip>
+      <span role="status" className="sr-only">
+        {connectivityAnnouncement}
+      </span>
       <IconButton
         label="Log out"
         icon={<LogOut />}
@@ -154,6 +189,20 @@ export function WorkspaceUserFooter({
       />
     </div>
   );
+}
+
+/** Announces connectivity flips after mount (not the initial state). */
+function useConnectivityAnnouncement(online: boolean): string {
+  const [announcement, setAnnouncement] = useState("");
+  const previousOnline = useRef(online);
+
+  useEffect(() => {
+    if (previousOnline.current === online) return;
+    previousOnline.current = online;
+    setAnnouncement(online ? "Back online" : "Offline");
+  }, [online]);
+
+  return announcement;
 }
 
 export type WorkspaceSidebarSettingsItem = {

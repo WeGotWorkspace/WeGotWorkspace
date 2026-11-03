@@ -44,5 +44,5 @@
 .chat-composer__hint {
   @apply mt-1.5 min-w-0 max-w-full break-words text-center text-[11px];
   overflow-wrap: anywhere;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 48%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 72%, transparent));
 }

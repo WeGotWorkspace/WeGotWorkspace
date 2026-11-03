@@ -45,16 +45,16 @@ describe("settings-section", () => {
 
   it("reads the section from the path; bare /settings is Profile", () => {
     expect(settingsSectionFromLocation("/settings")).toBe("profile");
-    expect(settingsSectionFromLocation("/settings/mail")).toBe("mail");
+    expect(settingsSectionFromLocation("/settings/calendar")).toBe("calendar");
     expect(settingsSectionFromLocation("/settings/offline")).toBe("offline");
     expect(settingsSectionFromLocation("/admin")).toBe("profile");
   });
 
   it("builds TanStack navigate targets with $section params", () => {
     expect(settingsNavigateTarget("profile")).toEqual({ to: "/settings", params: {} });
-    expect(settingsNavigateTarget("mail")).toEqual({
+    expect(settingsNavigateTarget("calendar")).toEqual({
       to: "/settings/$section",
-      params: { section: "mail" },
+      params: { section: "calendar" },
     });
     expect(settingsNavigateTarget("assistants")).toEqual({
       to: "/settings/$section",

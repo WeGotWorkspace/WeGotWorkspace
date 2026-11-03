@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Support\CspFormActions;
 use App\Support\CspNonce;
 use App\Support\SecurityHeaderPolicy;
 use Closure;
@@ -12,7 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class WgwSecurityHeaders
 {
-    public function __construct(private CspNonce $nonce) {}
+    public function __construct(
+        private CspNonce $nonce,
+        private CspFormActions $formActions,
+    ) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -27,7 +31,10 @@ final class WgwSecurityHeaders
         if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
             $response->headers->set(
                 'Content-Security-Policy',
-                SecurityHeaderPolicy::policy($this->nonce->issued() ? $this->nonce->value() : null),
+                SecurityHeaderPolicy::policy(
+                    $this->nonce->issued() ? $this->nonce->value() : null,
+                    $this->formActions->sources(),
+                ),
             );
         }
         if ($request->isSecure()) {

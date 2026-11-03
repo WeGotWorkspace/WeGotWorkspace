@@ -25,7 +25,7 @@
   );
   --segmented-control-severity-success-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground))
+    color-mix(in oklab, var(--color-success) 45%, var(--workspace-foreground))
   );
   --segmented-control-severity-success-hover-bg: var(
     --button-severity-success-hover-background,

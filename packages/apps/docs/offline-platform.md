@@ -12,20 +12,20 @@ Docs now uses the collaboration stack for editable text files:
 
 ## What the core gives you
 
-| Concern                                                                   | Module                                                                                                                             |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Dexie factory + version/migration registry                                | [`core/offline-db.ts`](../src/lib/offline/core/offline-db.ts)                                                                      |
-| Enforced per-domain Dexie version blocks                                  | [`core/offline-version-allocation.ts`](../src/lib/offline/core/offline-version-allocation.ts)                                      |
-| Generic outbox CRUD (`enqueue`/`list`/`remove`/`markError`/`isRetryable`) | [`core/outbox-store.ts`](../src/lib/offline/core/outbox-store.ts)                                                                  |
-| Coalesce pending update rows for the same entity                          | [`core/outbox-coalescing.ts`](../src/lib/offline/core/outbox-coalescing.ts)                                                        |
-| Key/value meta + sync tokens                                              | [`core/meta-store.ts`](../src/lib/offline/core/meta-store.ts)                                                                      |
-| Online/offline detection + snapshots                                      | [`core/browser-online.ts`](../src/lib/offline/core/browser-online.ts) (via [`use-connectivity`](../src/hooks/use-connectivity.ts)) |
-| Serialized flush runner + per-account registry                            | [`core/connectivity-sync-runner.ts`](../src/lib/offline/core/connectivity-sync-runner.ts)                                          |
-| Cache-then-network bootstrap                                              | [`core/use-hybrid-bootstrap.ts`](../src/lib/offline/core/use-hybrid-bootstrap.ts)                                                  |
-| Per-domain account session (`wgw.offline.<domain>.username`)              | [`core/offline-account.ts`](../src/lib/offline/core/offline-account.ts)                                                            |
-| Generic conflict channel `createSyncConflictChannel<TId>()`               | [`core/sync-conflicts.ts`](../src/lib/offline/core/sync-conflicts.ts)                                                              |
-| Shell "Offline" pill                                                      | [`core/offline-status-indicator.tsx`](../src/lib/offline/core/offline-status-indicator.tsx)                                        |
-| Shared type contracts                                                     | [`core/types.ts`](../src/lib/offline/core/types.ts)                                                                                |
+| Concern                                                                             | Module                                                                                                                             |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Dexie factory + version/migration registry                                          | [`core/offline-db.ts`](../src/lib/offline/core/offline-db.ts)                                                                      |
+| Enforced per-domain Dexie version blocks                                            | [`core/offline-version-allocation.ts`](../src/lib/offline/core/offline-version-allocation.ts)                                      |
+| Generic outbox CRUD (`enqueue`/`list`/`remove`/`markError`/`isRetryable`)           | [`core/outbox-store.ts`](../src/lib/offline/core/outbox-store.ts)                                                                  |
+| Coalesce pending update rows for the same entity                                    | [`core/outbox-coalescing.ts`](../src/lib/offline/core/outbox-coalescing.ts)                                                        |
+| Key/value meta + sync tokens                                                        | [`core/meta-store.ts`](../src/lib/offline/core/meta-store.ts)                                                                      |
+| Online/offline detection + snapshots                                                | [`core/browser-online.ts`](../src/lib/offline/core/browser-online.ts) (via [`use-connectivity`](../src/hooks/use-connectivity.ts)) |
+| Serialized flush runner + per-account registry                                      | [`core/connectivity-sync-runner.ts`](../src/lib/offline/core/connectivity-sync-runner.ts)                                          |
+| Cache-then-network bootstrap                                                        | [`core/use-hybrid-bootstrap.ts`](../src/lib/offline/core/use-hybrid-bootstrap.ts)                                                  |
+| Per-domain account session (`wgw.offline.<domain>.username`)                        | [`core/offline-account.ts`](../src/lib/offline/core/offline-account.ts)                                                            |
+| Generic conflict channel `createSyncConflictChannel<TId>()`                         | [`core/sync-conflicts.ts`](../src/lib/offline/core/sync-conflicts.ts)                                                              |
+| Sidebar connectivity pip (green online; amber + italic "Offline" line when offline) | [`workspace-app-layout.tsx`](../src/workspace-shell/src/workspace-app-layout.tsx) (`WorkspaceUserFooter`)                          |
+| Shared type contracts                                                               | [`core/types.ts`](../src/lib/offline/core/types.ts)                                                                                |
 
 The core defines Dexie **version 1** = `{ meta, outbox }`. Each domain owns a **non-overlapping version block** enforced at registration time (see [Version allocation](#version-allocation)). Contacts uses **2–9**, Notes **10–19**.
 
@@ -243,13 +243,13 @@ function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> 
 - **Reconnect flush:** use [`useOnReconnect`](../src/hooks/use-connectivity.ts) to flush and re-read the cache; bump a `syncRevision` counter so pending/failed hooks refresh (Notes and Docs pattern).
 - **Sync toast:** show a "Changes synced" toast when reconnect flush completes via [`use-offline-sync-toast.ts`](../src/lib/offline/use-offline-sync-toast.ts) (`useOfflineSyncToast` / `useOfflinePendingToast`). Notes: [`notes-app.tsx`](../src/notes-core/src/notes-app.tsx); Docs collab pending: [`docs-app.tsx`](../src/docs-core/src/docs-app.tsx).
 - **Conflicts:** create one `createSyncConflictChannel<string>()` instance; report from flush/save, set the listener from your screen, and resolve in a modal. Docs collab save failures after CRDT re-merge attempt use [`docs-sync-conflicts.ts`](../src/lib/offline/docs/docs-sync-conflicts.ts) and [`docs-conflict-dialog.tsx`](../src/text-editor-core/docs-collab/docs-conflict-dialog.tsx) (Keep mine / Use server).
-- **Pending badge:** poll your "pending" selector and render a dot. Docs home shows amber badges on drive rows only while body auto-sync or collab/outbox flush is pending — not a green "available offline" dot when synced (`drive-browser` optional props).
+- **Pending badge:** poll your "pending" selector and render a dot in `--color-sync-pending` (blue; amber stays reserved for offline and warnings). Docs home shows these badges on drive rows only while body auto-sync or collab/outbox flush is pending — not a green "available offline" dot when synced (`drive-browser` optional props).
 - **Retry callout:** Docs collab wires [`useDocsCollabFailedSync`](../src/text-editor-core/docs-collab/use-docs-collab-failed-sync.ts) in [`docs-collab-workspace.tsx`](../src/text-editor-core/docs-collab/docs-collab-workspace.tsx) with `saveNow` retry.
 - **Body auto-sync:** Docs runs progressive home-list hydration (`docs-body-sync.ts`) and uses Dexie `docs_availability` (v21) as the auto-sync index.
 
 ### 6. Mount nothing extra for the shell indicator
 
-The shell already renders [`OfflineStatusIndicator`](../src/lib/offline/core/offline-status-indicator.tsx). It reads `useConnectivity()` and shows automatically when offline — no per-app wiring needed.
+The sidebar account footer ([`WorkspaceUserFooter`](../src/workspace-shell/src/workspace-app-layout.tsx)) reads `useConnectivity()` and shows a green presence pip on the user avatar while online; while offline the pip turns amber and the username line reads _Offline_ — no per-app wiring needed. There is deliberately no other offline indicator.
 
 ## Outbox coalescing
 
@@ -308,9 +308,9 @@ A change to what sign-out clears, or to where offline content is stored, starts 
 
 [`wgwLogout`](../src/lib/api/wgw/http.ts) clears the stores above on a user-initiated member sign-out. [`/logout`](../src/wegotworkspace/src/wegotworkspace-logout.tsx) counts outbox rows plus collab rooms that still hold `pendingServerSave` on the databases the wipe will delete, and asks before discarding them. The total is device-wide when `indexedDB.databases()` can list every account. When that count cannot be read, the dialog still appears. [`countDiscardedUnsyncedChanges`](../src/lib/offline/core/offline-wipe.ts) opens a collab database only when that listing already contains it, because opening a missing name creates one.
 
-The same sign-out deletes the server push row, then unsubscribes in the browser. A failed step is recorded on the session debug ring and the rest of sign-out continues.
+The same sign-out deletes the server push row, then unsubscribes in the browser. When the delete fails, for example offline, the browser still unsubscribes; the server prunes the row once the push service rejects that endpoint. A failed step is recorded on the session debug ring and the rest of sign-out continues.
 
-A guest-share sign-out revokes the guest token and leaves the member's databases, collab rooms, and push subscription in place. Refresh failure and refresh expiry clear the session and leave the offline stores in place.
+A guest-share sign-out revokes the guest token and leaves the member's databases, collab rooms, and push subscription in place. Refresh failure and refresh expiry clear the session and leave the offline stores and the push subscription in place. The browser records which account last posted its push subscription (`wgw.push.subscriber`, kept by the wipe). When a different account signs in next, [`ensurePushPermissionAndSubscribe`](../src/notifications-core/src/ensure-push-subscription.ts) unsubscribes that subscription and subscribes again, so the new account gets its own endpoint. After that replacement the old endpoint is dead, and the server prunes the previous account's row once the push service rejects it. A subscription with no record is posted as-is: re-subscribing outside a user gesture can fail in Safari and leave the browser without push. If a previous account's row already points at that endpoint, it stays live and keeps delivering that account's pushes to this browser until the subscription changes or that account signs out.
 
 When `indexedDB.databases()` is missing or rejects, the wipe reaches only accounts whose usernames are still in `wgw.offline.*.username`. Collab rooms then come from the notes and docs tables in those databases, so a `:v2` room with no row there survives. On that path the count still opens the derived room names. `deleteDatabase` of a name that does not exist does nothing, so the wipe passes the full derived list.
 

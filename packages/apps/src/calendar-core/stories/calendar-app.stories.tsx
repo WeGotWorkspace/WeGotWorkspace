@@ -235,6 +235,28 @@ export const Seeded: Story = {
   },
 };
 
+/** An event with unsynced local writes: blue pending-sync dot on its calendar's sidebar row. */
+export const PendingSync: Story = {
+  name: "Pending sync",
+  tags: ["vitest-ci"],
+  args: {
+    ...bootstrap,
+    surface: staticSurface,
+    initialAnchor: MOCK_CALENDAR_ANCHOR,
+    initialView: "month",
+    pendingEventIds: new Set(["standup"]),
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector(
+          `.calendar-sidebar-row__pending-sync[aria-label="${defaultCalendarLabels.pendingSync}"]`,
+        ),
+      ).toBeTruthy(),
+    );
+  },
+};
+
 export const ListPresentation: Story = {
   args: {
     ...bootstrap,

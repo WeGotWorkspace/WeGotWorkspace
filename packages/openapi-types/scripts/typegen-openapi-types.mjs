@@ -10,7 +10,6 @@ const packageRoot = path.resolve(scriptDir, "..");
 const generatedDir = path.resolve(packageRoot, "generated");
 const builtDocPath = path.resolve(generatedDir, "openapi.built.json");
 const openApiTypesPath = path.resolve(generatedDir, "openapi-types.ts");
-const mailTypesPath = path.resolve(generatedDir, "mail-types.ts");
 const notesTypesPath = path.resolve(generatedDir, "notes-types.ts");
 const settingsTypesPath = path.resolve(generatedDir, "settings-types.ts");
 const adminTypesPath = path.resolve(generatedDir, "admin-types.ts");
@@ -70,12 +69,6 @@ export async function generateOpenApiDomainTypes() {
     stdio: "inherit",
   });
 
-  buildDomainTypesModule({
-    domainName: "Mail",
-    domainPrefix: "Mail",
-    pathPrefix: "mail",
-    outputPath: mailTypesPath,
-  });
   buildDomainTypesModule({
     domainName: "Notes",
     domainPrefix: "Note",
@@ -150,7 +143,6 @@ if (import.meta.url === new URL(process.argv[1], "file://").href) {
   await generateOpenApiDomainTypes();
   process.stdout.write(`Wrote ${builtDocPath}\n`);
   process.stdout.write(`Wrote ${openApiTypesPath}\n`);
-  process.stdout.write(`Wrote ${mailTypesPath}\n`);
   process.stdout.write(`Wrote ${notesTypesPath}\n`);
   process.stdout.write(`Wrote ${settingsTypesPath}\n`);
   process.stdout.write(`Wrote ${adminTypesPath}\n`);

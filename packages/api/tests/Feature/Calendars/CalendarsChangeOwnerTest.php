@@ -83,15 +83,15 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $this->assertContains($calendarId, array_column($aliceList, 'id'));
     }
 
-    public function test_owner_can_move_group_calendar_to_personal(): void
+    public function test_admin_can_move_group_calendar_to_personal(): void
     {
         $calendarId = $this->createGroupCalendar('bob', 'Roadmap', 'roadmap');
 
-        $response = $this->jmapAs('bob', [
-            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
+        $response = $this->jmapAs('alice', [
+            ['Calendar/set', ['accountId' => 'alice', 'update' => [$calendarId => [
                 'groupSlug' => null,
             ]]], 'c0'],
-            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+            ['Calendar/get', ['accountId' => 'alice', 'ids' => [$calendarId]], 'c1'],
         ])->assertOk();
 
         $this->assertNull($response->json('methodResponses.0.1.notUpdated.'.$calendarId));
@@ -99,10 +99,49 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $this->assertSame('personal', $calendar['scope']);
         $this->assertNull($calendar['groupSlug']);
 
-        $aliceIds = array_column($this->jmapAs('alice', [
-            ['Calendar/get', ['accountId' => 'alice', 'ids' => null], 'c0'],
+        $bobIds = array_column($this->jmapAs('bob', [
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
         ])->assertOk()->json('methodResponses.0.1.list'), 'id');
-        $this->assertNotContains($calendarId, $aliceIds);
+        $this->assertNotContains($calendarId, $bobIds);
+    }
+
+    public function test_member_cannot_move_group_calendar_out_of_its_group(): void
+    {
+        $other = $this->seedWgwGroup('principals/groups/alumni', 'Alumni');
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($other, $bob);
+        $calendarId = $this->createGroupCalendar('bob', 'Roadmap', 'roadmap');
+
+        foreach ([null, 'alumni'] as $target) {
+            $args = $this->jmapAs('bob', [
+                ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
+                    'groupSlug' => $target,
+                ]]], 'c0'],
+            ])->assertOk()->json('methodResponses.0.1');
+
+            $this->assertSame('forbidden', $args['notUpdated'][$calendarId]['type'] ?? null);
+            $this->assertSame(
+                'Only an instance admin can move a group collection out of its group.',
+                $args['notUpdated'][$calendarId]['description'] ?? null,
+            );
+        }
+
+        $renamed = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => [$calendarId => [
+                'name' => 'Roadmap 2', 'groupSlug' => self::TEAM,
+            ]]], 'c0'],
+            ['Calendar/get', ['accountId' => 'bob', 'ids' => [$calendarId]], 'c1'],
+        ])->assertOk();
+        $this->assertNull($renamed->json('methodResponses.0.1.notUpdated.'.$calendarId));
+        $this->assertSame('Roadmap 2', $renamed->json('methodResponses.1.1.list.0.name'));
+        $this->assertSame(self::TEAM, $renamed->json('methodResponses.1.1.list.0.groupSlug'));
+        $this->assertTrue(
+            CalendarInstance::query()
+                ->where('uri', $calendarId)
+                ->where('principaluri', 'principals/groups/'.self::TEAM)
+                ->exists(),
+        );
     }
 
     public function test_transfer_keeps_events_and_share_with(): void

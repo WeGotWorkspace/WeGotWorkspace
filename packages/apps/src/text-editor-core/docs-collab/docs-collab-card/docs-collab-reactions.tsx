@@ -81,7 +81,7 @@ export function DocsCollabReactions({
             className="docs-collab-reactions__reaction"
             data-reacted={reacted ? "true" : "false"}
             aria-pressed={reacted}
-            aria-label={`${emoji} ${nameList}`}
+            aria-label={`${emoji} ${count} ${nameList}`}
             disabled={!canMutate}
             onClick={(event) => {
               event.stopPropagation();

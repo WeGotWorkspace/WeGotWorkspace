@@ -112,6 +112,8 @@ function DocsFilePreviewEditor({
     <div
       className={cn("docs-file-preview", isTile && "docs-file-preview--tile", className)}
       data-variant={variant}
+      // The read-only preview scrolls; keyboard users need to reach it (tiles are clipped).
+      {...(isTile ? {} : { role: "region", "aria-label": fileName, tabIndex: 0 })}
     >
       {isTile ? <DocsFilePreviewTileScale>{editor}</DocsFilePreviewTileScale> : editor}
     </div>

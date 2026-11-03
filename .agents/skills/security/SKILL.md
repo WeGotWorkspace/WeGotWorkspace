@@ -11,7 +11,7 @@ Required before implementing any of these:
 - an upload or a parser of caller-supplied input
 - a cache key or limiter key derived from caller-supplied input
 
-[#546](https://github.com/WeGotWorkspace/wegotworkspace/issues/546) (guest comments, anonymous write path) is the first application already in the pipeline.
+[Product#44](https://github.com/WeGotWorkspace/Product/issues/44) (guest comments, anonymous write path) is the first application already in the pipeline.
 
 Read the [SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) before a caller-chosen URL is fetched. It covers shared address space and embedded addresses, which a hostname allowlist misses. Read the [Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/) for authentication and rate limiting. The list below is only the repo-specific remainder, including pre-auth middleware order.
 

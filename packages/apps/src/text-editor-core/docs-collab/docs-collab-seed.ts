@@ -12,9 +12,13 @@ export const SEED_FORMAT_VERSION = "1";
  * Seeding writes into a throwaway Y.Doc whose clientID is derived from the
  * content, so every client that seeds the same markdown produces byte-identical
  * items. Merging those is then a no-op instead of a second copy.
+ *
+ * `base` names the state a rebuild replaces. Without it, outside text equal to
+ * an earlier seed maps onto items the document already holds, possibly deleted.
  */
-export function seedClientId(documentFormat: string, markdown: string): number {
-  return hash32(`${SEED_FORMAT_VERSION}\u0000${documentFormat}\u0000${markdown}`);
+export function seedClientId(documentFormat: string, markdown: string, base?: string): number {
+  const key = `${SEED_FORMAT_VERSION}\u0000${documentFormat}\u0000${markdown}`;
+  return hash32(base === undefined ? key : `${key}\u0000${base}`);
 }
 
 export type SeedMeshContext = {

@@ -37,6 +37,8 @@ export const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
       replies={replies}
       currentUserId={currentUserId}
       title={meetLabels.threadTitle}
+      // The workspace rail is already the "Thread" landmark.
+      landmark={false}
       closeLabel={meetLabels.threadClose}
       mentionPrincipals={mentionPrincipals}
       authorPresence={authorPresence}

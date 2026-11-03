@@ -330,33 +330,6 @@ describe("coverage-ratchet", () => {
     assert.equal(baseline["packages/api/app/Services/Drive"], 84.0);
   });
 
-  it("excludes mail-core and Services/Mail exactly", () => {
-    setBaseline({});
-    setAppsCoverage({
-      "packages/apps/src/mail-core/src/mail.tsx": {
-        lines: { covered: 50, total: 100 },
-      },
-    });
-    setApiCoverage(`<?xml version="1.0"?>
-<coverage>
-  <project>
-    <file name="/workspace/packages/api/app/Services/Mail/MailService.php">
-      <metrics statements="100" coveredstatements="80"/>
-    </file>
-    <file name="/workspace/packages/api/app/Services/MailDelivery/PasswordResetMailFactory.php">
-      <metrics statements="50" coveredstatements="45"/>
-    </file>
-  </project>
-</coverage>`);
-
-    runUpdate();
-
-    const baseline = getBaseline();
-    assert.equal(baseline["packages/apps/src/mail-core"], undefined);
-    assert.equal(baseline["packages/api/app/Services/Mail"], undefined);
-    assert.equal(baseline["packages/api/app/Services/MailDelivery"], 90.0);
-  });
-
   it("handles absolute file paths in coverage-summary.json", () => {
     setBaseline({});
     setAppsCoverage({

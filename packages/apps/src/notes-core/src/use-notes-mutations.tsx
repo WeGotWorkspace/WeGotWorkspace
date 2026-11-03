@@ -14,10 +14,8 @@ import {
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
-import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
-  createNoteSaveDebouncer,
   filterVisibleNotes,
   mapNotesWithBodyMarkdown,
   isValidNewTag,
@@ -29,10 +27,12 @@ import {
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
-  noteShowsStarControls,
   persistBestEffort,
+  saveNoteStar,
 } from "./notes-note-utils";
 import { resolveNotesCreateTarget } from "./notes-create-target";
+import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
+import type { NoteMetadataField } from "./notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
@@ -87,32 +87,13 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   } = list;
 
   const debouncerRef = useRef(createNoteSaveDebouncer(AUTOSAVE_WRITE_DEBOUNCE_MS));
-  /** local-* → server id after online create resolves (tag upserts may still be queued). */
-  const noteIdRemapRef = useRef(new Map<string, string>());
-  const createInFlightRef = useRef(new Map<string, Promise<unknown>>());
   const { online } = useConnectivity();
   const wasOnlineRef = useRef(online);
 
-  const resolveNoteId = useCallback((id: string) => noteIdRemapRef.current.get(id) ?? id, []);
-
-  const waitForInFlightCreate = useCallback(async (id: string) => {
-    const pending = createInFlightRef.current.get(id);
-    if (pending) await pending.catch(() => undefined);
+  const persistOptimisticNote = useCallback((note: Note, pendingSync = true) => {
+    const username = readOfflineNotesUsername();
+    if (username) persistBestEffort(upsertNoteInCache(username, note, pendingSync));
   }, []);
-
-  const persistOptimisticNote = useCallback(
-    (note: Note, pendingSync = true): Promise<void> => {
-      const username = readOfflineNotesUsername();
-      if (!username) return Promise.resolve();
-      const write = (async () => {
-        if (isLocalTempNoteId(note.id) && resolveNoteId(note.id) !== note.id) return;
-        await upsertNoteInCache(username, note, pendingSync);
-      })();
-      persistBestEffort(write);
-      return write;
-    },
-    [resolveNoteId],
-  );
 
   const dropGoneNote = useCallback(
     (noteId: string) => {
@@ -133,14 +114,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     const debouncer = debouncerRef.current;
     return () => {
       if (operations) {
-        debouncer.flushAll((note) => persistBestEffort(operations.upsertNote(note)));
+        debouncer.flushAll((note, save) => persistBestEffort(operations.upsertNote(note, save)));
       }
     };
   }, [operations]);
 
   useEffect(() => {
     if (wasOnlineRef.current && !online && operations) {
-      debouncerRef.current.flushAll((note) => persistBestEffort(operations.upsertNote(note)));
+      const debouncer = debouncerRef.current;
+      debouncer.flushAll((note, save) => persistBestEffort(operations.upsertNote(note, save)));
     }
     wasOnlineRef.current = online;
   }, [online, operations]);
@@ -161,10 +143,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const updateAndPersistNote = useCallback(
     (noteId: string, updater: (note: Note) => Note, options?: { autoSaveToast?: boolean }) => {
       let updated: Note | undefined;
+      let fields: NoteMetadataField[] = [];
       setNotes((prev) =>
         prev.map((note) => {
           if (note.id !== noteId) return note;
           updated = updater(note);
+          fields = changedNoteMetadataFields(note, updated);
           return updated;
         }),
       );
@@ -175,60 +159,35 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         persistOptimisticNote(updated, true);
         if (operations) {
           const ops = operations;
-          const persist = (note: Note) => {
+          const persist = (note: Note, save: { fields: NoteMetadataField[] }) => {
             persistBestEffort(
-              waitForInFlightCreate(note.id).then(() => {
-                const persistId = resolveNoteId(note.id);
-                return ops.upsertNote({ ...note, id: persistId }).then((saved) => {
-                  setNotes((prev) =>
-                    prev.map((row) =>
-                      row.id === persistId || row.id === note.id
-                        ? mergeCreatedNotePreservingLocalOptimistic(saved, {
-                            ...row,
-                            id: saved.id,
-                          })
-                        : row,
-                    ),
-                  );
-                  if (saved.id !== persistId) {
-                    noteIdRemapRef.current.set(persistId, saved.id);
-                    setActiveId((current) => (current === persistId ? saved.id : current));
-                    setSelectedIds((current) =>
-                      current.map((rowId) => (rowId === persistId ? saved.id : rowId)),
-                    );
-                  }
-                });
+              ops.upsertNote(note, save).then((saved) => {
+                setNotes((prev) =>
+                  prev.map((row) =>
+                    row.id === note.id
+                      ? mergeCreatedNotePreservingLocalOptimistic(saved, row)
+                      : row,
+                  ),
+                );
               }),
-              () => dropGoneNote(resolveNoteId(note.id)),
-              resolveNoteId(note.id),
+              () => dropGoneNote(note.id),
             );
           };
           if (online) {
-            debouncerRef.current.schedule(noteId, updated, persist);
+            debouncerRef.current.schedule(noteId, updated, persist, fields);
           } else {
-            persist(updated);
+            persist(updated, { fields });
           }
         }
       }
     },
-    [
-      dropGoneNote,
-      online,
-      operations,
-      persistOptimisticNote,
-      queueAutoSaveToast,
-      resolveNoteId,
-      waitForInFlightCreate,
-      setActiveId,
-      setNotes,
-      setSelectedIds,
-    ],
+    [dropGoneNote, online, operations, persistOptimisticNote, queueAutoSaveToast, setNotes],
   );
 
   const toggleStar = useCallback(
     (id: string) => {
       const current = notes.find((note) => note.id === id);
-      if (!current || !noteShowsStarControls(current)) return;
+      if (!current) return;
       const beforeStarred = !!starred[id];
       const nowStarred = applyStarToggle(id);
       const starredNote = { ...current, starred: nowStarred };
@@ -244,14 +203,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         show(nowStarred ? "Starred" : "Unstarred", { icon: toastIcon });
         return;
       }
-      const updated = { ...current, starred: nowStarred };
       queueMutation({
         key: `notes:star:${id}`,
         toastMessage: nowStarred ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async () => {
-          await persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id));
-        },
+        execute: () =>
+          persistNoteOrDropGone(saveNoteStar(operations, starredNote), () => dropGoneNote(id)),
         undo: () => {
           applyStarToggle(id);
           setNotes((prev) =>
@@ -380,7 +337,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   );
 
   const moveToNotebook = useCallback(
-    (ids: string[], notebook: string) => {
+    (requestedIds: string[], notebook: string) => {
+      // An archived note does not move until it is restored (#1535).
+      const ids = requestedIds.filter((id) => !archived[id]);
+      if (ids.length === 0) return;
       const dest = notebookCollections.find((item) => item.id === notebook) ??
         notebookCollections.find((item) => item.name === notebook) ?? {
           id: notebook,
@@ -423,7 +383,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         execute: () =>
           Promise.all(
             updatedRows.map((row) =>
-              persistNoteOrDropGone(operations.upsertNote(row), () => dropGoneNote(row.id)),
+              persistNoteOrDropGone(operations.upsertNote(row, { fields: ["notebook"] }), () =>
+                dropGoneNote(row.id),
+              ),
             ),
           ).then(() => {}),
         undo: rollback,
@@ -477,7 +439,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (!isValidNewTag(tag)) return;
       const assignableIds = ids.filter((id) => {
         const note = notes.find((row) => row.id === id);
-        return note ? noteAllowsTagAssignment(note, true) : false;
+        return note && !note.archived ? noteAllowsTagAssignment(note, true) : false;
       });
       if (assignableIds.length === 0) return;
       const before = notes.filter((note) => assignableIds.includes(note.id));
@@ -505,15 +467,13 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         toastMessage: `Tagged ${assignableIds.length} item${assignableIds.length === 1 ? "" : "s"} with ${tag}`,
         execute: () =>
           Promise.all(
-            updatedRows.map(async (row) => {
-              await waitForInFlightCreate(row.id);
-              const persistId = resolveNoteId(row.id);
-              return persistNoteKeepingSyncRace(
-                operations.upsertNote({ ...row, id: persistId }, { tagsAdd: [tag] }),
+            updatedRows.map((row) =>
+              persistNoteKeepingSyncRace(
+                operations.upsertNote(row, { tagsAdd: [tag] }),
                 () => dropGoneNote(row.id),
-                persistId,
-              );
-            }),
+                row.id,
+              ),
+            ),
           ).then(() => {}),
         undo: () => {
           setNotes((prev) =>
@@ -534,17 +494,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: "Tag assignment undone.",
       });
     },
-    [
-      dropGoneNote,
-      notes,
-      operations,
-      persistOptimisticNote,
-      queueMutation,
-      resolveNoteId,
-      setNotes,
-      show,
-      waitForInFlightCreate,
-    ],
+    [dropGoneNote, notes, operations, persistOptimisticNote, queueMutation, setNotes, show],
   );
 
   const renameNotebook = useCallback(
@@ -583,12 +533,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         icon: <Tag className="size-4" />,
         execute: async (signal) => {
           if (operations) {
-            await waitForInFlightCreate(noteId);
-            const persistId = resolveNoteId(noteId);
             await persistNoteKeepingSyncRace(
-              operations.upsertNote({ ...updated, id: persistId }, tagDeltaOpts(signal, toggled)),
+              operations.upsertNote(updated, tagDeltaOpts(signal, toggled)),
               () => dropGoneNote(noteId),
-              persistId,
+              noteId,
             );
           }
         },
@@ -597,23 +545,14 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         undoToastMessage: toggled.added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },
-    [
-      dropGoneNote,
-      notes,
-      operations,
-      persistOptimisticNote,
-      queueMutation,
-      resolveNoteId,
-      setNotes,
-      waitForInFlightCreate,
-    ],
+    [dropGoneNote, notes, operations, persistOptimisticNote, queueMutation, setNotes],
   );
   const addNoteTag = useCallback(
     (noteId: string, rawTag: string) => toggleNoteTag(noteId, rawTag, "add"),
     [toggleNoteTag],
   );
   const updateNote = useCallback(
-    (id: string, patch: Partial<Note>) => {
+    (id: string, patch: Partial<Note>, options?: { autoSaveToast?: boolean }) => {
       // Metadata only (title/tags/notebook/starred). Body is owned by the collab
       // document and never travels through the Notes upsert path.
       updateAndPersistNote(
@@ -623,7 +562,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           ...patch,
           ...(patch.title !== undefined ? { date: new Date().toISOString() } : {}),
         }),
-        { autoSaveToast: true },
+        { autoSaveToast: options?.autoSaveToast ?? true },
       );
     },
     [updateAndPersistNote],
@@ -639,22 +578,16 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
    */
   const applyLocalBodyMarkdown = useCallback(
     (id: string, markdown: string, options?: { bumpDate?: boolean }) => {
-      const persistId = resolveNoteId(id);
       setNotes((prev) => {
-        const lookupId = prev.some((note) => note.id === persistId) ? persistId : id;
-        const result = mapNotesWithBodyMarkdown(prev, lookupId, markdown, options);
+        const result = mapNotesWithBodyMarkdown(prev, id, markdown, options);
         if (!result.updated) return prev;
         // Persist inside the updater so a deferred setState cannot skip Dexie.
         const username = readOfflineNotesUsername();
-        if (username) {
-          persistBestEffort(
-            upsertNoteBodyPreviewInCache(username, { ...result.updated, id: persistId }),
-          );
-        }
+        if (username) persistBestEffort(upsertNoteBodyPreviewInCache(username, result.updated));
         return result.notes;
       });
     },
-    [resolveNoteId, setNotes],
+    [setNotes],
   );
 
   const createNote = useCallback(() => {
@@ -662,7 +595,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     const createView = notesViewForCreate(view);
     const target = resolveNotesCreateTarget(createView, notebooks, notebookCollections);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
-    const id = createTempNoteId();
+    // The app picks the final UID, so the note keeps this id from the first
+    // keystroke: no temporary id, no remap when the server has it.
+    const id = crypto.randomUUID();
     const date = new Date().toISOString();
     const note: Note = {
       id,
@@ -675,6 +610,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       ...(target.notebookId ? { notebookId: target.notebookId } : {}),
       tags: targetTag ? [normalizeTag(targetTag)] : [],
       wordCount: 0,
+      createPending: true,
       ...(target.scope === "group" && target.groupSlug
         ? { scope: "group" as const, groupSlug: target.groupSlug }
         : {}),
@@ -686,57 +622,23 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setActiveId(id);
     selectSingle(id);
     openMobileDetail();
-    // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
-    if (operations) {
-      void persistOptimisticNote(note, true);
-      const persist = operations.upsertNote(note).then((saved) => {
-        if (saved.id !== id) {
-          noteIdRemapRef.current.set(id, saved.id);
-          debouncerRef.current.remapId(id, saved.id);
-          setNotes((prev) =>
-            prev.map((row) =>
-              row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
-            ),
-          );
-          setActiveId((current) => (current === id ? saved.id : current));
-          setSelectedIds((current) =>
-            current.some((rowId) => rowId === id)
-              ? current.map((rowId) => (rowId === id ? saved.id : rowId))
-              : current,
-          );
-        }
-        if (isLocalTempNoteId(saved.id)) {
-          showMutationError(L.createNoteFailedMessage(target.notebook));
-          return saved;
-        }
-        persistOptimisticNote(saved, false);
-        return saved;
-      });
-      createInFlightRef.current.set(id, persist);
-      void persist
-        .catch(() => {
-          showMutationError(L.syncFailedMessage);
-        })
-        .finally(() => {
-          createInFlightRef.current.delete(id);
-        });
-    }
+    // The outbox caches the row and queues the create in one step, then sends it
+    // right away when online. A failed send stays queued and shows in the outbox notice.
+    if (operations)
+      void operations.upsertNote(note).catch(() => showMutationError(L.syncFailedMessage));
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [
     L.newNoteCategory,
-    L.createNoteFailedMessage,
     L.syncFailedMessage,
     L.toastNewNote,
     canCreateNote,
     notebookCollections,
     notebooks,
     operations,
-    persistOptimisticNote,
     openMobileDetail,
     selectSingle,
     setActiveId,
     setNotes,
-    setSelectedIds,
     setView,
     show,
     showMutationError,
@@ -774,14 +676,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     () => notes.filter((note) => selectedIds.includes(note.id)),
     [notes, selectedIds],
   );
-  const starableSelected = useMemo(
-    () => selectedRows.filter((note) => noteShowsStarControls(note)),
-    [selectedRows],
-  );
   const allSelectedStarred =
-    starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
+    selectedRows.length > 0 && selectedRows.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
+  const someSelectedArchived = selectedRows.some((note) => !!archived[note.id]);
   const allSelectedAllowStructure =
     selectedRows.length > 0 && selectedRows.every((note) => noteAllowsStructureManage(note));
   const showSelectionArchive = allSelectedAllowStructure;
@@ -789,7 +688,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   const selectionActionButtons = useMemo(
     () => [
-      ...(starableSelected.length > 0
+      ...(selectedRows.length > 0
         ? [
             {
               label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
@@ -814,11 +713,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             },
           ]
         : []),
-      {
-        label: L.selectionMoveToNotebook,
-        icon: <Notebook className="size-4" />,
-        onClick: () => setMoveDialog({ ids: selectedIds }),
-      },
+      ...(someSelectedArchived
+        ? []
+        : [
+            {
+              label: L.selectionMoveToNotebook,
+              icon: <Notebook className="size-4" />,
+              onClick: () => setMoveDialog({ ids: selectedIds }),
+            },
+          ]),
       ...(showSelectionDelete
         ? [
             {
@@ -838,8 +741,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       requestDeleteSelected,
       selectedIds,
       showSelectionArchive,
+      someSelectedArchived,
       showSelectionDelete,
-      starableSelected.length,
+      selectedRows.length,
       L.swipeUnstar,
       L.selectionStar,
       L.swipeUnarchive,

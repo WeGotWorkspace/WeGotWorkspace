@@ -1,3 +1,8 @@
+import {
+  isRateLimitedError,
+  retryAfterMsFromError,
+  type BackgroundSyncPacer,
+} from "@/lib/offline/core/background-sync-pacer";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 
 export type ProgressiveSyncProgress = {
@@ -50,7 +55,15 @@ export type RunProgressiveSyncOptions<T> = {
   syncOne: (item: T) => Promise<void>;
   concurrency?: number;
   signal?: AbortSignal;
+  /**
+   * Told about 429s so every paced request backs off. A rate-limited item is
+   * retried (up to {@link MAX_RATE_LIMITED_ATTEMPTS}) instead of counted failed.
+   */
+  pacer?: Pick<BackgroundSyncPacer, "reportRateLimited" | "reportSuccess">;
 };
+
+/** Attempts per item while the server keeps answering 429. */
+export const MAX_RATE_LIMITED_ATTEMPTS = 5;
 
 /** Progressive bounded-concurrency sync with Dexie meta progress tracking. */
 export async function runProgressiveSync<T>({
@@ -60,6 +73,7 @@ export async function runProgressiveSync<T>({
   syncOne,
   concurrency = 4,
   signal,
+  pacer,
 }: RunProgressiveSyncOptions<T>): Promise<ProgressiveSyncProgress> {
   const progress: ProgressiveSyncProgress = {
     running: true,
@@ -77,17 +91,28 @@ export async function runProgressiveSync<T>({
     return item;
   };
 
+  const syncWithBackoff = async (item: T): Promise<boolean> => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await syncOne(item);
+        pacer?.reportSuccess();
+        return true;
+      } catch (error) {
+        if (!pacer || !isRateLimitedError(error)) return false;
+        pacer.reportRateLimited(retryAfterMsFromError(error));
+        if (attempt >= MAX_RATE_LIMITED_ATTEMPTS || signal?.aborted) return false;
+      }
+    }
+  };
+
   const worker = async () => {
     while (true) {
       if (signal?.aborted) return;
       const item = next();
       if (item === undefined) return;
-      try {
-        await syncOne(item);
-        progress.synced += 1;
-      } catch {
-        progress.failed += 1;
-      }
+      if (await syncWithBackoff(item)) progress.synced += 1;
+      else if (signal?.aborted) return;
+      else progress.failed += 1;
       progress.updatedAt = Date.now();
       await writeProgressiveSyncProgress(username, metaKey, progress);
     }

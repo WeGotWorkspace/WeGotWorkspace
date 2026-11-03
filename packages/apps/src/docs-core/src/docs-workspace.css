@@ -185,11 +185,11 @@
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy {
-  --tag-fg: var(--color-warning);
+  --tag-fg: var(--color-sync-pending);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy .loading-spinner {
-  color: var(--color-warning);
+  color: var(--color-sync-pending);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {
@@ -236,6 +236,20 @@
   @apply flex min-h-0 flex-1 flex-col overflow-hidden;
 }
 
+/* Guest view (#1713): sits where the format bar would, so the sheet does not jump. */
+.docs-workspace__read-only-notice {
+  @apply m-0 flex shrink-0 items-center gap-2 text-sm;
+  box-sizing: border-box;
+  padding-block: var(--docs-format-chrome-padding-y);
+  padding-inline: var(--docs-format-chrome-padding-x);
+  border-bottom: 1px solid var(--docs-border);
+  color: var(--docs-muted);
+}
+
+.docs-workspace__read-only-notice-icon {
+  @apply size-4 shrink-0;
+}
+
 .docs-workspace .docs-comments-floating-layer {
   --workspace-accent: var(--scheme-ink);
 }
@@ -244,6 +258,11 @@
   @apply min-h-0 flex-1;
   --text-editor-comment: var(--workspace-accent);
   --text-editor-shadow-sheet: var(--sheet-shadow);
+}
+
+/* Dark theme: keep the letter, drop its shadow — it does not read on the near-black canvas. */
+:root[data-theme="dark"] .docs-workspace .text-editor {
+  --text-editor-shadow-sheet: none;
 }
 
 .docs-workspace__editor .text-editor-format-bar {

@@ -31,8 +31,8 @@ export type NotesUILabels = {
   addTag: string;
   /** Shown when a newly typed tag is outside a-z and hyphen. */
   tagCharsetHint: string;
-  /** Pencil action on a sidebar tag row. */
-  renameTagActionFor: (tag: string) => string;
+  /** Header pencil on a tag view: opens the rename tag dialog. */
+  editTag: string;
   renameTagTitle: string;
   renameTagDescription: string;
   renameTagNameLabel: string;
@@ -107,6 +107,8 @@ export type NotesUILabels = {
   editedLabel: string;
   accessLostTitle: string;
   accessLostMessage: string;
+  noteDeletedElsewhere: (title: string) => string;
+  noteArchivedElsewhere: (title: string) => string;
   shareNotebookTitle: string;
   shareNotebookHint: string;
   shareNotebookPlaceholder: string;
@@ -164,7 +166,7 @@ export const defaultNotesLabels: NotesUILabels = {
   addNotebook: "Create notebook",
   addTag: "New tag",
   tagCharsetHint: "Use letters a–z and -",
-  renameTagActionFor: (tag) => `Rename tag ${tag}`,
+  editTag: "Edit tag",
   renameTagTitle: "Rename tag",
   renameTagDescription: "Every note with this tag gets the new name.",
   renameTagNameLabel: "Tag name",
@@ -234,6 +236,10 @@ export const defaultNotesLabels: NotesUILabels = {
   editedLabel: "Last edited",
   accessLostTitle: "Access lost",
   accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
+  noteDeletedElsewhere: (title: string) =>
+    `“${title}” was deleted elsewhere. Your offline changes to it were not kept.`,
+  noteArchivedElsewhere: (title: string) =>
+    `“${title}” was archived elsewhere. Your changes to it were not saved.`,
   shareNotebookTitle: "Share notebook",
   shareNotebookHint: "People you add can open this notebook in Notes.",
   shareNotebookPlaceholder: "Add people or groups",

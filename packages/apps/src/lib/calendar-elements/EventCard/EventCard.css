@@ -151,7 +151,7 @@
 /* Past events fade instead of strikethrough; interaction states (set via
    --_lc-event-card-past-opacity from EventBase) restore emphasis. */
 :host([past]) .event-card-shell {
-  opacity: var(--_lc-event-card-past-opacity, 0.55);
+  opacity: var(--_lc-event-card-past-opacity, 0.75);
   transition-property: transform, opacity;
 }
 

@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, CircleX, type LucideIcon } from "lucide-react";
+import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
 
 /** Browser origin plus the install base path, for the APP_URL warning button. */
 export function appUrlFromBrowserLocation(origin: string, baseUri: string): string {
@@ -6,6 +7,25 @@ export function appUrlFromBrowserLocation(origin: string, baseUri: string): stri
   const base = baseUri.trim();
   if (base === "" || base === "/") return trimmedOrigin;
   return `${trimmedOrigin}/${base.replace(/^\/+|\/+$/g, "")}`;
+}
+
+/**
+ * Same hosts the API treats as an unset APP_URL (PublicAppUrl::LOOPBACK_HOSTS).
+ * URL.hostname keeps IPv6 brackets; the API strips them before comparing.
+ */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** The API's APP_URL warnings: unset, or a local address. */
+export function isAppUrlWarning(warning: AdminSecurityWarning): boolean {
+  return warning.code === "app_url_unset" || warning.code === "app_url_local";
+}
+
+export function isLoopbackOrigin(origin: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
 }
 
 export type UpdateLogRow = { id: string; date: string | null; level: string; message: string };

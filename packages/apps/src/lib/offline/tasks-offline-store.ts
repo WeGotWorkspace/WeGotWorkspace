@@ -2,6 +2,7 @@ import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { rememberOfflineTasksUsername } from "@/lib/offline/offline-session";
 import type { Task, TaskList, TaskPatch } from "@/tasks-core/src/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import {
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
@@ -25,6 +26,8 @@ export {
 
 const META_SESSION = "tasks:session";
 const META_GROUPS = "tasks:groups";
+/** `GET tasks/tasklists/changes` state that the cached lists and tasks reflect. */
+const META_CHANGES_STATE = "tasks:changes-state";
 
 function taskRow(task: Task, pendingSync: boolean): OfflineTaskRow {
   return {
@@ -99,6 +102,12 @@ export async function upsertTaskInCache(
   await tasksItemsTable(db).put(taskRow(task, pendingSync));
 }
 
+export async function getTaskFromCache(username: string, taskId: string): Promise<Task | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await tasksItemsTable(db).get(taskId);
+  return row ? (JSON.parse(row.data) as Task) : null;
+}
+
 export async function removeTaskFromCache(username: string, taskId: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await tasksItemsTable(db).delete(taskId);
@@ -115,6 +124,28 @@ export async function upsertTaskListInCache(username: string, list: TaskList): P
 export async function removeTaskListFromCache(username: string, listId: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await tasksListsTable(db).delete(listId);
+}
+
+export async function listCachedTasksForList(username: string, listId: string): Promise<Task[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await tasksItemsTable(db).where("taskListId").equals(listId).toArray();
+  return rows.map((row) => JSON.parse(row.data) as Task);
+}
+
+export function readTasksChangesState(username: string): Promise<string | null> {
+  return readMeta(username, META_CHANGES_STATE);
+}
+
+export async function writeTasksChangesState(
+  username: string,
+  state: string | null,
+): Promise<void> {
+  if (state === null) {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.meta.delete(META_CHANGES_STATE);
+    return;
+  }
+  await writeMeta(username, META_CHANGES_STATE, state);
 }
 
 export async function listFailedTaskOutbox(username: string): Promise<OfflineOutboxRow[]> {

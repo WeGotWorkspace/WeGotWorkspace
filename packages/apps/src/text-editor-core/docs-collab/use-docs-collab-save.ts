@@ -3,6 +3,7 @@ import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
+import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
@@ -17,12 +18,18 @@ import {
 import {
   DOC_STATUS_ACCESS_LOST,
   DOC_STATUS_DOCUMENT_GONE,
+  DOC_STATUS_NOTE_ARCHIVED,
   DOC_STATUS_NOTE_TOO_LARGE,
 } from "./docs-collab-status";
-import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
+import type {
+  DocsCollabSaveTerminalKind,
+  DocsCollabSessionRefs,
+  DocsCollabUrls,
+} from "./docs-collab-types";
 import {
   collabErrorStatus,
   docSignature,
+  isArchivedRefusal,
   isCollabDocumentGoneError,
   isCollabPayloadTooLarge,
   isExternalWriteRefusal,
@@ -56,6 +63,7 @@ export function useDocsCollabSave({
       setPendingSync(pending);
       setFailedSync(pending && failed && getConnectivitySnapshot());
       refs.pendingServerSaveRef.current = pending;
+      setCollabRoomPendingServerSave(room, pending);
       setDocsCollabSyncState(room, {
         pendingServerSave: pending,
         failedSync: pending && failed && getConnectivitySnapshot(),
@@ -92,7 +100,12 @@ export function useDocsCollabSave({
   const persistToServer = useCallback(async (): Promise<void> => {
     // First, before the offline pending mark. persistCollabSave checks it too.
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
-    if (urls.roomNotPersistent) return;
+    // Not on the server yet: keep the edit marked unsaved so it uploads once the
+    // room is persistent (the note's create landed).
+    if (urls.roomNotPersistent) {
+      await markPendingWhenUnsaved();
+      return;
+    }
     if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
     if (!getConnectivitySnapshot()) {
@@ -162,8 +175,12 @@ export function useDocsCollabSave({
         refs.saveTerminalKindRef.current = terminal;
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
-        await updatePendingState(true, true);
-        if (terminal === "gone") {
+        // Archive wins (#1535): nothing stays pending for a later retry.
+        await updatePendingState(terminal !== "archived", terminal !== "archived");
+        if (terminal === "archived") {
+          urls.onPersistArchived?.();
+          setDocStatus(DOC_STATUS_NOTE_ARCHIVED);
+        } else if (terminal === "gone") {
           urls.onDocumentGone?.();
           setDocStatus(DOC_STATUS_DOCUMENT_GONE);
         } else if (terminal === "forbidden") {
@@ -189,14 +206,17 @@ export function useDocsCollabSave({
     }
   }, [markPendingWhenUnsaved, refs, room, setDocStatus, setLastSavedAt, updatePendingState, urls]);
 
-  const scheduleSave = useCallback(() => {
+  // A failed save re-arms itself with the backoff already set. Without this a
+  // transient 5xx left the body unsaved until the next keystroke or reload.
+  // Terminal failures set the next attempt to infinity, so they stop here.
+  const scheduleSave: () => void = useCallback(() => {
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (!refs.localDirtySinceLastSaveRef.current && !refs.pendingServerSaveRef.current) return;
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     const delayMs = computeSaveDelayMs(refs.nextSaveAttemptAtRef.current);
     refs.saveTimerRef.current = setTimeout(() => {
       refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => undefined);
+      void persistToServer().catch(() => scheduleSave());
     }, delayMs);
   }, [persistToServer, refs]);
 
@@ -205,9 +225,9 @@ export function useDocsCollabSave({
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     refs.saveTimerRef.current = setTimeout(() => {
       refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => undefined);
+      void persistToServer().catch(() => scheduleSave());
     }, 0);
-  }, [persistToServer, refs]);
+  }, [persistToServer, refs, scheduleSave]);
 
   const registerMarkdownGetter = useCallback(
     (getMarkdown: () => string) => {
@@ -228,7 +248,10 @@ export function useDocsCollabSave({
     (getMarkdown: () => string) => {
       refs.getMarkdownRef.current = getMarkdown;
       const nextMarkdown = getMarkdown();
-      if (nextMarkdown === refs.lastKnownMarkdownRef.current) return;
+      // The Y.Doc listener already marks a local edit dirty. An edit back to
+      // the last known text (a note opened offline and emptied) still saves.
+      const changed = nextMarkdown !== refs.lastKnownMarkdownRef.current;
+      if (!changed && !refs.localDirtySinceLastSaveRef.current) return;
       refs.lastKnownMarkdownRef.current = nextMarkdown;
       refs.localDirtySinceLastSaveRef.current = true;
       if (!getConnectivitySnapshot()) {
@@ -253,7 +276,8 @@ export function useDocsCollabSave({
 
 export { SAVE_DELAY_MS };
 
-function terminalSaveFailure(error: unknown): "gone" | "forbidden" | "too-large" | null {
+function terminalSaveFailure(error: unknown): DocsCollabSaveTerminalKind | null {
+  if (isArchivedRefusal(error)) return "archived";
   if (isCollabDocumentGoneError(error)) return "gone";
   if (collabErrorStatus(error) === 403) return "forbidden";
   if (isCollabPayloadTooLarge(error)) return "too-large";

@@ -1,12 +1,12 @@
 # Platform email delivery
 
-Instance outbound mail for recovery, invites, and other product sends. This is **not** the Mail app (user IMAP/SMTP). The Mail client is unshipped in v0.9; delivery is unchanged. Product consumers call `App\Services\MailDelivery\MailDeliveryService::send()` — the Admin test-send button uses that same method. See [mail/README.md](mail/README.md).
+Instance outbound mail for recovery, invites, and other product sends. It does not read a mailbox; the IMAP/SMTP mail client was removed (#1573). Product consumers call `App\Services\MailDelivery\MailDeliveryService::send()` — the Admin test-send button uses that same method. See [mail/README.md](mail/README.md).
 
 Authoritative HTTP contract: `openapi/openapi.json` (`GET /admin/state` `mailDelivery`, `PUT /admin/settings`, `POST /admin/mail-delivery/test`).
 
 ## Settings
 
-Stored as `mail_delivery_*` (separate from Mail-app `mail_smtp_*` / IMAP). SMTP password is AES-256-GCM; GET returns `smtpPasswordSet` only. Omitted or empty PUT password leaves the stored secret; `clearSmtpPassword: true` clears it.
+Stored as `mail_delivery_*`. The older `mail_smtp_*` keys only prefill the Admin form when no delivery host is set. SMTP password is AES-256-GCM; GET returns `smtpPasswordSet` only. Omitted or empty PUT password leaves the stored secret; `clearSmtpPassword: true` clears it.
 
 Default Laravel mailer in `config/mail.php` stays `log`. Runtime mailer name is `wgw`, built from these settings.
 
@@ -15,7 +15,7 @@ Default Laravel mailer in `config/mail.php` stays `log`. Runtime mailer name is 
 | Transport | When it is used | Notes |
 |-----------|-----------------|--------|
 | `auto` (default) | SMTP if smtp-eligible; otherwise PHP `mail()` if available; otherwise sendmail | No silent fallback in the same `send()` after SMTP is chosen and fails |
-| `smtp` | Forced SMTP | Host + (username **or** `MailSmtpTransportConfig::normalize()` `smtpAuth=false`) |
+| `smtp` | Forced SMTP | Host + (username **or** `MailDeliverySmtpTransport::normalize()` `smtpAuth=false`) |
 | `php` | PHP `mail()` | No extra socket timeout. Shared hosts often accept then drop or spam-folder at Gmail/Outlook |
 | `sendmail` | Local sendmail binary | 10s timeout |
 

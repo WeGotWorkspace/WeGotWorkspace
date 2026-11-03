@@ -76,6 +76,9 @@ vi.mock("@/lib/jmap-client", () => ({
   },
 }));
 
+const mockUploadBodies = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("./notes-pending-bodies", () => ({ uploadPendingNoteBodies: mockUploadBodies }));
+
 vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
   subscribeNotesBootstrapUpdated: vi.fn(() => () => undefined),
@@ -172,7 +175,70 @@ describe("useNotesAPI", () => {
     expect(mockShowError).toHaveBeenCalledWith(defaultNotesLabels.toastListRefreshFailed);
   });
 
-  it("flushes the outbox, then inbound /changes, on reconnect", async () => {
+  it("a message from another tab while offline re-reads the cache without a network call", async () => {
+    const { subscribeNotesBootstrapUpdated } = await import("@/lib/offline/notes-bootstrap-sync");
+    let fromOtherTab: () => void = () => undefined;
+    vi.mocked(subscribeNotesBootstrapUpdated).mockImplementation((_user, onUpdate) => {
+      fromOtherTab = onUpdate;
+      return () => undefined;
+    });
+    mockOnline = false;
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => fromOtherTab());
+
+    await waitFor(() => expect(result.current.bootstrapRevision).toBe(1));
+    expect(mockInbound).not.toHaveBeenCalled();
+  });
+
+  it("a message from another tab does not leave a failed refresh uncaught", async () => {
+    const { subscribeNotesBootstrapUpdated } = await import("@/lib/offline/notes-bootstrap-sync");
+    let fromOtherTab: () => void = () => undefined;
+    vi.mocked(subscribeNotesBootstrapUpdated).mockImplementation((_user, onUpdate) => {
+      fromOtherTab = onUpdate;
+      return () => undefined;
+    });
+    mockInbound.mockRejectedValue(new TypeError("Failed to fetch"));
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => fromOtherTab());
+
+    // The shared cache is still re-read; Vitest fails the run on an uncaught rejection.
+    await waitFor(() => expect(result.current.bootstrapRevision).toBe(1));
+  });
+
+  it("still re-reads the local cache when the server cannot be reached", async () => {
+    // Another tab archived a note into the shared cache. This tab is offline:
+    // the /changes call fails, but the list must still show the cached state.
+    mockInbound.mockRejectedValue(new TypeError("Failed to fetch"));
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => {
+      result.current.refreshList();
+    });
+
+    await waitFor(() => {
+      expect(result.current.listRefreshing).toBe(false);
+    });
+
+    expect(mockPatchBootstrap).toHaveBeenCalled();
+    expect(result.current.bootstrapRevision).toBe(1);
+  });
+
+  it("flushes the outbox, saves left note bodies, then inbound /changes, on reconnect", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -188,6 +254,7 @@ describe("useNotesAPI", () => {
 
     await waitFor(() => {
       expect(mockFlush).toHaveBeenCalledTimes(1);
+      expect(mockUploadBodies).toHaveBeenCalledWith("demo@example.com");
       expect(mockInbound).toHaveBeenCalled();
       expect(mockLoadBootstrap).not.toHaveBeenCalled();
       expect(notifyNotesBootstrapUpdated).toHaveBeenCalledWith("demo@example.com");

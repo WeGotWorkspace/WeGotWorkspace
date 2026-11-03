@@ -5,7 +5,7 @@
   --chat-text: var(--workspace-foreground);
   --chat-author: var(--workspace-foreground);
   --chat-body: color-mix(in oklab, var(--workspace-foreground) 88%, transparent);
-  --chat-muted: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+  --chat-muted: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
   --chat-replies: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
   --chat-surface: var(--workspace-surface);
   --chat-list-surface: var(--workspace-surface);

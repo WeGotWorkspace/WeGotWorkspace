@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Drive\DriveSharePrincipalDirectoryService;
 use App\Services\Drive\DriveShareService;
+use App\Services\Drive\DriveShareShareeCheck;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ final class DriveSharesController
     public function __construct(
         private DriveShareService $shares,
         private DriveSharePrincipalDirectoryService $principalDirectory,
+        private DriveShareShareeCheck $sharees,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -38,7 +40,7 @@ final class DriveSharesController
 
     public function show(Request $request, string $shareId): JsonResponse
     {
-        $principal = $this->principal($request);
+        $principal = $this->managingPrincipal($request, $shareId);
 
         return response()->json([
             'data' => $this->shares->getShareForOwner($principal['username'], $shareId),
@@ -47,7 +49,7 @@ final class DriveSharesController
 
     public function update(Request $request, string $shareId): JsonResponse
     {
-        $principal = $this->principal($request);
+        $principal = $this->managingPrincipal($request, $shareId);
 
         return response()->json([
             'data' => $this->shares->updateShare($principal['username'], $shareId, $this->body($request)),
@@ -56,7 +58,7 @@ final class DriveSharesController
 
     public function destroy(Request $request, string $shareId): JsonResponse
     {
-        $principal = $this->principal($request);
+        $principal = $this->managingPrincipal($request, $shareId);
         $this->shares->revokeShare($principal['username'], $shareId);
 
         return response()->json(['data' => 'Deleted']);
@@ -131,7 +133,7 @@ final class DriveSharesController
 
     public function storeInvite(Request $request, string $shareId): JsonResponse
     {
-        $principal = $this->principal($request);
+        $principal = $this->managingPrincipal($request, $shareId);
 
         return response()->json([
             'data' => $this->shares->createInvite($principal['username'], $shareId, $this->body($request)),
@@ -140,7 +142,7 @@ final class DriveSharesController
 
     public function destroyInvite(Request $request, string $shareId, string $inviteId): JsonResponse
     {
-        $principal = $this->principal($request);
+        $principal = $this->managingPrincipal($request, $shareId);
         $this->shares->revokeInvite($principal['username'], $shareId, $inviteId);
 
         return response()->json(['data' => 'Deleted']);
@@ -154,6 +156,22 @@ final class DriveSharesController
         $payload = $request->json()->all();
 
         return $payload;
+    }
+
+    /**
+     * Only the owner manages a share. A sharee of it is forbidden; anyone else gets the
+     * service's 404, the same as for an unknown share.
+     *
+     * @return array{username: string, role: string}
+     */
+    private function managingPrincipal(Request $request, string $shareId): array
+    {
+        $principal = $this->principal($request);
+        if ($this->sharees->isShareeOf($principal['username'], $shareId)) {
+            throw new ApiHttpException(403, 'Only the share owner can manage this share.', 'forbidden');
+        }
+
+        return $principal;
     }
 
     /**

@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import { GroupDialog, PasswordDialog, UserDialog } from "@/admin-core/src/admin-workspace-dialogs";
 import type { AdminUIData } from "@/admin-core/src/admin-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";

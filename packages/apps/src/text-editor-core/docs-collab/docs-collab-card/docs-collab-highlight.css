@@ -28,7 +28,7 @@
   );
   --docs-collab-highlight-fg: color-mix(
     in oklab,
-    var(--docs-text, var(--workspace-foreground)) 55%,
+    var(--docs-text, var(--workspace-foreground)) 90%,
     transparent
   );
   @apply line-through;

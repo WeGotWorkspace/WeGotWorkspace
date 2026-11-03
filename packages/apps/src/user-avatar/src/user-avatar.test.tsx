@@ -111,6 +111,16 @@ describe("UserAvatar", () => {
     expect(container.querySelector("[data-presence='away']")).toBeTruthy();
   });
 
+  it("renders a pending (syncing) pip, not the away pip", () => {
+    const { container } = render(
+      <UserAvatar displayName="Dorothy Vaughan" compact presence="pending" />,
+    );
+
+    expect(screen.getByRole("img", { name: "Dorothy Vaughan avatar, syncing" })).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--pending")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--away")).toBeNull();
+  });
+
   it("applies a hashed color class for a user id", () => {
     const color = avatarColorForUserId("ada.lovelace");
     const { container } = render(<UserAvatar displayName="Ada Lovelace" compact color={color} />);
@@ -134,11 +144,14 @@ describe("UserPresenceDot", () => {
     expect(dot?.className).toMatch(/user-avatar__presence--standalone/);
   });
 
-  it("applies away and offline modifiers", () => {
+  it("applies away, offline and pending modifiers", () => {
     const { container, rerender } = render(<UserPresenceDot presence="away" standalone />);
     expect(container.querySelector(".user-avatar__presence--away")).toBeTruthy();
 
     rerender(<UserPresenceDot presence="offline" standalone />);
     expect(container.querySelector(".user-avatar__presence--offline")).toBeTruthy();
+
+    rerender(<UserPresenceDot presence="pending" standalone />);
+    expect(container.querySelector(".user-avatar__presence--pending")).toBeTruthy();
   });
 });

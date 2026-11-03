@@ -97,3 +97,16 @@ export const DockerChannel: Story = {
     />
   ),
 };
+
+export const EdgeChannel: Story = {
+  render: () => (
+    <UpdatesPaneHarness
+      dataOverride={{
+        updates: {
+          updateChannel: "edge",
+          installedVersion: "0.1.122-edge.41",
+        },
+      }}
+    />
+  ),
+};

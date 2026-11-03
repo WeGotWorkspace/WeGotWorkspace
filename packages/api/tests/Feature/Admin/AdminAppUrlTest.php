@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use Dotenv\Dotenv;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -65,6 +67,35 @@ final class AdminAppUrlTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_admin_overwrites_an_export_app_url_line(): void
+    {
+        // dotenv loads the export line, so that is the one to replace.
+        file_put_contents($this->envDir.'/.env', "APP_URL=http://localhost\nexport APP_URL=https://old.example\n");
+
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/settings/app-url', ['url' => 'https://wgw.example'])
+            ->assertOk()
+            ->assertJsonPath('url', 'https://wgw.example');
+
+        $this->assertSame(
+            "APP_URL=https://wgw.example\nAPP_URL=https://wgw.example\n",
+            (string) file_get_contents($this->envDir.'/.env'),
+        );
+    }
+
+    public function test_admin_app_url_is_not_expanded_by_dotenv(): void
+    {
+        // Laravel expands ${...} at boot; a saved URL must load exactly as saved.
+        $url = 'https://a${APP_KEY}.example';
+
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/settings/app-url', ['url' => $url])
+            ->assertOk();
+
+        $loaded = Dotenv::parse("APP_KEY=secret\n".(string) file_get_contents($this->envDir.'/.env'));
+        $this->assertSame($url, $loaded['APP_URL']);
+    }
+
     public function test_admin_rejects_unsafe_app_urls(): void
     {
         $before = (string) file_get_contents($this->envDir.'/.env');
@@ -83,15 +114,70 @@ final class AdminAppUrlTest extends WgwDatabaseTestCase
         $this->assertSame($before, (string) file_get_contents($this->envDir.'/.env'));
     }
 
-    public function test_admin_gets_409_when_the_env_file_is_not_writable(): void
+    public function test_a_read_only_env_file_is_left_alone_and_gets_the_line_to_set_by_hand(): void
     {
+        // The writer could replace it through its folder, but read-only is the
+        // operator's choice, and a replace would hand the file to the web user.
+        $this->skipWhenRoot();
         chmod($this->envDir.'/.env', 0444);
 
-        $this->withBearer($this->adminBearerToken())
-            ->putJson('/api/v1/admin/settings/app-url', ['url' => 'https://wgw.example'])
-            ->assertStatus(409);
+        $this->putAppUrl('https://wgw.example')
+            ->assertStatus(409)
+            ->assertJsonPath('error', 'packages/api/.env is read-only, so it is left alone. Add this line there by hand: APP_URL=https://wgw.example');
 
         $this->assertStringContainsString('APP_URL=http://localhost', (string) file_get_contents($this->envDir.'/.env'));
+    }
+
+    public function test_the_line_to_set_by_hand_is_quoted_like_a_written_line(): void
+    {
+        // Pasted as-is, the suggested line must not let Laravel expand ${...}.
+        $this->skipWhenRoot();
+        chmod($this->envDir.'/.env', 0444);
+        $url = 'https://a${APP_KEY}.example';
+        $line = 'APP_URL="https://a\\${APP_KEY}.example"';
+
+        $error = (string) $this->putAppUrl($url)->assertStatus(409)->json('error');
+
+        $this->assertStringEndsWith(' '.$line, $error);
+        $this->assertSame($url, Dotenv::parse("APP_KEY=secret\n".$line)['APP_URL']);
+    }
+
+    public function test_a_read_only_env_folder_gets_the_line_to_set_by_hand(): void
+    {
+        // The file is replaced with a lock file and a rename, both in its folder.
+        $this->skipWhenRoot();
+        chmod($this->envDir, 0555);
+        try {
+            $response = $this->putAppUrl('https://wgw.example');
+        } finally {
+            chmod($this->envDir, 0775);
+        }
+
+        $response->assertStatus(409)
+            ->assertJsonPath('error', 'The web server cannot replace packages/api/.env: it needs write access to the folder that holds it. Add this line there by hand: APP_URL=https://wgw.example');
+        $this->assertSame("APP_URL=http://localhost\n", (string) file_get_contents($this->envDir.'/.env'));
+    }
+
+    public function test_a_missing_env_file_gets_the_line_to_set_by_hand(): void
+    {
+        unlink($this->envDir.'/.env');
+
+        $this->putAppUrl('https://wgw.example')
+            ->assertStatus(409)
+            ->assertJsonPath('error', 'packages/api/.env does not exist. Create it from packages/api/.env.example and add this line: APP_URL=https://wgw.example');
+
+        $this->assertFileDoesNotExist($this->envDir.'/.env');
+    }
+
+    public function test_a_cached_config_is_not_written_behind_its_back(): void
+    {
+        // Laravel ignores .env while config is cached, so a write would not apply.
+        $this->app->instance('config_loaded_from_cache', true);
+        $response = $this->putAppUrl('https://wgw.example');
+
+        $response->assertStatus(409)
+            ->assertJsonPath('error', 'The configuration is cached, so packages/api/.env is not read. Add this line there, then run php artisan config:clear: APP_URL=https://wgw.example');
+        $this->assertSame("APP_URL=http://localhost\n", (string) file_get_contents($this->envDir.'/.env'));
     }
 
     public function test_production_health_rejects_an_untrusted_host(): void
@@ -100,5 +186,19 @@ final class AdminAppUrlTest extends WgwDatabaseTestCase
         config(['app.url' => 'https://wgw.example']);
 
         $this->getJson('http://attacker.example/api/v1/health')->assertStatus(400);
+    }
+
+    /** Root writes through any mode, so the read-only cases cannot happen. */
+    private function skipWhenRoot(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('Runs as root: file modes do not stop writes.');
+        }
+    }
+
+    private function putAppUrl(string $url): TestResponse
+    {
+        return $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/settings/app-url', ['url' => $url]);
     }
 }

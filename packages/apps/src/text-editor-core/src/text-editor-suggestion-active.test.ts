@@ -6,10 +6,7 @@ import * as Y from "yjs";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
-import {
-  getDocsTrackChangeGroups,
-  trackChangesAuthorIdFromName,
-} from "@/text-editor-core/src/text-editor-track-changes";
+import { getDocsTrackChangeGroups } from "@/text-editor-core/src/text-editor-track-changes";
 import { setSuggestionActiveId } from "@/text-editor-core/src/text-editor-suggestion-active";
 
 beforeEach(() => {
@@ -42,7 +39,6 @@ function createReplaceEditor(seed = "Hello world") {
   const awareness = new Awareness(ydoc);
   applyContentSeedToYDoc(ydoc, seed, "markdown");
   const user = {
-    id: trackChangesAuthorIdFromName("Admin"),
     name: "Admin",
     color: "#2563eb",
   };
@@ -53,6 +49,7 @@ function createReplaceEditor(seed = "Hello world") {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),
@@ -63,7 +60,7 @@ function createReplaceEditor(seed = "Hello world") {
 }
 
 function markAttrsSnapshot(editor: Editor) {
-  const marks: Array<{ type: string; changeId: string | null; authorName: string | null }> = [];
+  const marks: Array<{ type: string; changeId: string | null; authorId: string | null }> = [];
   editor.state.doc.descendants((node) => {
     if (!node.isText) return;
     for (const mark of node.marks) {
@@ -71,7 +68,7 @@ function markAttrsSnapshot(editor: Editor) {
         marks.push({
           type: mark.type.name,
           changeId: (mark.attrs.changeId as string | null) ?? null,
-          authorName: (mark.attrs.authorName as string | null) ?? null,
+          authorId: (mark.attrs.authorId as string | null) ?? null,
         });
       }
     }
@@ -82,7 +79,6 @@ function markAttrsSnapshot(editor: Editor) {
 function groupedSnapshot(editor: Editor) {
   const group = getDocsTrackChangeGroups(editor)[0];
   return {
-    authorName: group?.authorName,
     types: group?.parts.map((part) => part.type),
     summary: group?.summary,
   };
@@ -120,7 +116,7 @@ describe("text editor suggestion active", () => {
     composer.focus();
 
     expect(markAttrsSnapshot(editor)).toEqual(beforeMarks);
-    expect(groupedSnapshot(editor).authorName).toBe("Admin");
+    expect(groupedSnapshot(editor).summary).toContain("Replace");
     expect(groupedSnapshot(editor).types).toContain("deletion");
 
     composer.remove();

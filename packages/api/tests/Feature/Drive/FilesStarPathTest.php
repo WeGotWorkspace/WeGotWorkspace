@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
-use App\Dav\Server\DriveStarPathPlugin;
+use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\DriveStarredItem;
 use App\Services\Drive\DriveService;
 use App\Services\Drive\DriveStarService;
@@ -277,14 +277,14 @@ final class FilesStarPathTest extends WgwDatabaseTestCase
 
     public function test_webdav_move_and_delete_rewrite_star_rows(): void
     {
-        $plugin = app(DriveStarPathPlugin::class);
+        $plugin = app(FileNodeIndexPlugin::class);
         $this->insertStar('bob', '/users/bob/folder', 3);
         $this->insertStar('bob', '/users/bob/folder/a.txt', 4);
         $this->insertStar('carol', '/users/bob/folder/a.txt', 5);
         $this->insertStar('bob', '/users/bob/other.txt', 6);
         $this->insertStar('bob', '/users/bob/folder-extra.txt', 7);
 
-        $plugin->afterMove(
+        $plugin->afterWriteMethod(
             new SabreRequest('MOVE', '/files/users/bob/folder', ['Destination' => '/files/users/bob/renamed']),
             new SabreResponse(201),
         );
@@ -298,20 +298,20 @@ final class FilesStarPathTest extends WgwDatabaseTestCase
         $this->assertSame(['/users/bob/folder-extra.txt'], $this->storedPaths('bob', '/users/bob/folder-extra.txt'));
         $this->assertSame(5, $this->starCreatedAt('carol', '/users/bob/renamed/a.txt'));
 
-        $plugin->afterMove(
+        $plugin->afterWriteMethod(
             new SabreRequest('MOVE', '/calendars/users/bob/home', ['Destination' => '/calendars/users/bob/away']),
             new SabreResponse(201),
         );
         $this->assertSame(['/users/bob/other.txt'], $this->storedPaths('bob', '/users/bob/other.txt'));
 
-        $plugin->afterDelete(
+        $plugin->afterWriteMethod(
             new SabreRequest('DELETE', '/files/users/bob/renamed'),
             new SabreResponse(204),
         );
         $this->assertSame(['/users/bob/folder-extra.txt', '/users/bob/other.txt'], $this->storedPaths('bob'));
         $this->assertSame([], $this->storedPaths('carol'));
 
-        $plugin->afterDelete(
+        $plugin->afterWriteMethod(
             new SabreRequest('DELETE', '/files/users/bob/other.txt'),
             new SabreResponse(500),
         );
