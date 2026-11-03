@@ -79,8 +79,21 @@ services:
         condition: service_healthy
         required: false
     entrypoint: ["/bin/sh", "-c"]
+    # Touch a heartbeat after each schedule:run that exits 0. The image
+    # HEALTHCHECK curls Apache on port 80, which this container does not run.
     command:
-      - "while true; do php /var/www/html/packages/api/artisan schedule:run --no-interaction; sleep 60; done"
+      - "while true; do php /var/www/html/packages/api/artisan schedule:run --no-interaction && touch /tmp/wgw-scheduler-heartbeat; sleep 60; done"
+    # Healthy while schedule:run completed in the last 3 minutes.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -n \"$$(find /tmp/wgw-scheduler-heartbeat -mmin -3 2>/dev/null)\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
 
   db:
     profiles: ["mysql"]
