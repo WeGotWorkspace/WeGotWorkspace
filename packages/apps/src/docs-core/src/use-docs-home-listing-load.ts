@@ -24,9 +24,7 @@ import {
   useDocsListingCacheRefresh,
   useDocsListingReconnectRefresh,
 } from "@/docs-core/src/use-docs-listing-cache-refresh";
-
-/** Waits before each automatic reload after a failed live listing. */
-const DOCS_LISTING_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_000] as const;
+import { retryFailedListing } from "@/docs-core/src/docs-listing-retry";
 
 export type DocsHomeFetcher = (
   params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
@@ -224,7 +222,6 @@ export function useDocsHomeListingLoad({
 
     const controller = new AbortController();
     let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const hadRows = shownKeyRef.current === filtersKey && resultsRef.current.length > 0;
     if (!hadRows) {
@@ -266,14 +263,8 @@ export function useDocsHomeListingLoad({
       const liveLoaded = await fetchLiveListing(controller.signal);
       if (cancelled) return;
 
-      if (liveLoaded) failedReloadsRef.current = 0;
+      retryFailedListing(failedReloadsRef, liveLoaded, setReloadToken, controller.signal);
       if (!liveLoaded) {
-        // A push already told us the list changed; load again rather than keep stale rows.
-        const delay = DOCS_LISTING_RETRY_DELAYS_MS[failedReloadsRef.current];
-        failedReloadsRef.current += 1;
-        if (delay !== undefined && getConnectivitySnapshot()) {
-          retryTimer = setTimeout(() => setReloadToken((token) => token + 1), delay);
-        }
         if (hasRows) {
           setIsOfflineListing(true);
         } else {
@@ -289,7 +280,6 @@ export function useDocsHomeListingLoad({
     return () => {
       cancelled = true;
       controller.abort();
-      clearTimeout(retryTimer);
     };
   }, [applyCachedListing, enabled, fetchLiveListing, filtersKey, reloadToken]);
 
