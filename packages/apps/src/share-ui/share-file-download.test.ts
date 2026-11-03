@@ -81,4 +81,16 @@ describe("downloadSharedDriveFile", () => {
     );
     expect(stub.clicked).toEqual([]);
   });
+
+  it.each([429, 500, 503])(
+    "asks to try again, not that the link is dead, when the ticket request answers %i",
+    async (status) => {
+      wgwFetch.mockResolvedValue(ticketResponse(status));
+
+      await expect(downloadSharedDriveFile("/users/alice/report.pdf")).rejects.toThrow(
+        shareLabels.publicLinkDownloadError,
+      );
+      expect(stub.clicked).toEqual([]);
+    },
+  );
 });

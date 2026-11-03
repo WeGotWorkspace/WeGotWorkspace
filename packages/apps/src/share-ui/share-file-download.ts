@@ -21,6 +21,12 @@ export async function downloadSharedDriveFile(
     await downloadGuestFileWithTicket(apiPath, signal);
   } catch (cause) {
     if (!(cause instanceof DriveTransportError)) throw cause;
-    throw new Error(cause.status === 401 ? SHARE_SESSION_EXPIRED : shareLabels.publicLinkOpenError);
+    if (cause.status === 401) throw new Error(SHARE_SESSION_EXPIRED);
+    // Only a refusal means the link is dead; a rate limit or server error is worth a retry.
+    throw new Error(
+      cause.status === 403 || cause.status === 404
+        ? shareLabels.publicLinkOpenError
+        : shareLabels.publicLinkDownloadError,
+    );
   }
 }
