@@ -27,7 +27,6 @@ import {
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
-  noteShowsStarControls,
   persistBestEffort,
 } from "./notes-note-utils";
 import { resolveNotesCreateTarget } from "./notes-create-target";
@@ -193,7 +192,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const toggleStar = useCallback(
     (id: string) => {
       const current = notes.find((note) => note.id === id);
-      if (!current || !noteShowsStarControls(current)) return;
+      if (!current) return;
       const beforeStarred = !!starred[id];
       const nowStarred = applyStarToggle(id);
       const starredNote = { ...current, starred: nowStarred };
@@ -669,12 +668,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     () => notes.filter((note) => selectedIds.includes(note.id)),
     [notes, selectedIds],
   );
-  const starableSelected = useMemo(
-    () => selectedRows.filter((note) => noteShowsStarControls(note)),
-    [selectedRows],
-  );
   const allSelectedStarred =
-    starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
+    selectedRows.length > 0 && selectedRows.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
   const someSelectedArchived = selectedRows.some((note) => !!archived[note.id]);
@@ -685,7 +680,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   const selectionActionButtons = useMemo(
     () => [
-      ...(starableSelected.length > 0
+      ...(selectedRows.length > 0
         ? [
             {
               label: allSelectedStarred ? L.swipeUnstar : L.selectionStar,
@@ -740,7 +735,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       showSelectionArchive,
       someSelectedArchived,
       showSelectionDelete,
-      starableSelected.length,
+      selectedRows.length,
       L.swipeUnstar,
       L.selectionStar,
       L.swipeUnarchive,

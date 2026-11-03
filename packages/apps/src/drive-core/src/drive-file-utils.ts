@@ -44,6 +44,19 @@ export function formatBytesCompact(bytes: number): string {
   return `${value.toFixed(precision)} ${units[unit]}`;
 }
 
+/** Bytes from a listed size such as "1.5 MB"; `null` for folders or an unreadable size. */
+export function parseFileSizeBytes(file: Pick<DriveFile, "kind" | "size">): number | null {
+  if (file.kind === "folder") return null;
+  const raw = file.size?.replace(/[^\d.]/g, "");
+  if (!raw) return 0;
+  const kb = Number.parseFloat(raw);
+  if (Number.isNaN(kb)) return null;
+  if (file.size?.includes("MB")) return Math.round(kb * 1024 * 1024);
+  if (file.size?.includes("GB")) return Math.round(kb * 1024 * 1024 * 1024);
+  if (file.size?.includes("KB")) return Math.round(kb * 1024);
+  return Math.round(kb);
+}
+
 type DriveShareListingFlags = {
   hasShares?: boolean;
   hasPublicShare?: boolean;

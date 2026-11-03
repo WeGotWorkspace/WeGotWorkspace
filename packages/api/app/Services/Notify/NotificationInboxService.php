@@ -74,8 +74,36 @@ final class NotificationInboxService
         if ($row === null) {
             throw new ApiHttpException(404, 'Notification not found.', 'not_found');
         }
+        $this->markLocalDeliveriesAcked([(string) $row->id]);
+    }
+
+    /**
+     * {@see ackLocalDelivery} for many rows in one request. Ids that are not
+     * this user's rows are skipped, so the reply says nothing about them.
+     *
+     * @param  list<string>  $ids
+     */
+    public function ackLocalDeliveries(string $username, array $ids): void
+    {
+        $owned = Notification::query()
+            ->where('principal', strtolower($username))
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+        $this->markLocalDeliveriesAcked(array_values($owned));
+    }
+
+    /**
+     * @param  list<string>  $notificationIds
+     */
+    private function markLocalDeliveriesAcked(array $notificationIds): void
+    {
+        if ($notificationIds === []) {
+            return;
+        }
         NotificationDelivery::query()
-            ->where('notification_id', $row->id)
+            ->whereIn('notification_id', $notificationIds)
             ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
             ->whereNull('acked_at')
             ->update(['acked_at' => Carbon::now()]);

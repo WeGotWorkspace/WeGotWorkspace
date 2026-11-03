@@ -4,10 +4,6 @@ import { Check } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { createNotesJmapClient } from "@/lib/api/wgw/notes-jmap";
-import { noteFromVjournal, type NotesVjournalNote } from "@/lib/api/wgw/notes-vjournal";
-import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { JmapNotesAdapter, type JmapNote, type JmapNotebook } from "@/lib/jmap-client";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridNotesOperations,
@@ -17,18 +13,8 @@ import {
   notifyNotesBootstrapUpdated,
   subscribeNotesBootstrapUpdated,
 } from "@/lib/offline/notes-bootstrap-sync";
-import {
-  ingestRemoteNote,
-  ingestRemoteNoteDestroyed,
-  ingestRemoteNotebook,
-  ingestRemoteNotebookDestroyed,
-  reconcileNotesSnapshot,
-} from "@/lib/offline/notes-jmap-inbound";
 import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
-import {
-  listNoteIdsBlockingSyncToken,
-  readNotesBootstrapFromCache,
-} from "@/lib/offline/notes-offline-store";
+import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
@@ -37,46 +23,17 @@ import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
+import {
+  NOTES_CHANGES_POLL_MS,
+  useNotesLiveInbound,
+} from "@/notes-core/src/use-notes-live-inbound";
+import type { NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 import { uploadPendingNoteBodies } from "./notes-pending-bodies";
-
-/** Live JMAP inbound poll (REST `/changes` is reconnect / mock-tier fallback). */
-const ONLINE_CHANGES_POLL_MS = 10_000;
 
 export type UseNotesAPIOptions = {
   onSyncConflict?: (noteIds: string[]) => void;
 };
-
-function jmapNotebookToCollection(notebook: JmapNotebook): NotesNotebookCollection {
-  return {
-    id: notebook.id,
-    name: notebook.name,
-    color: notebook.color,
-    isDefault: notebook.isDefault,
-    isSharee: notebook.isSharee,
-    role: notebook.role,
-    groupSlug: notebook.groupSlug,
-    scope: notebook.scope,
-    myRights: notebook.myRights ?? null,
-    shareWith: (notebook.shareWith ?? null) as NotesNotebookCollection["shareWith"],
-  };
-}
-
-function jmapNoteToVjournal(note: JmapNote): NotesVjournalNote {
-  return {
-    id: note.id,
-    notebookId: note.notebookId,
-    title: note.title ?? null,
-    body: note.body ?? "",
-    categories: note.categories ?? [],
-    status: note.status ?? null,
-    etag: note.etag ?? "",
-    starred: note.starred,
-    updatedAt: note.updatedAt,
-    contentUpdatedAt: note.contentUpdatedAt,
-  };
-}
 
 export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOptions) {
   const { online } = useConnectivity();
@@ -198,76 +155,12 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
-  const [livePollRunning, setLivePollRunning] = useState(false);
-
-  useEffect(() => {
-    if (!offlineUsername || !online || phase !== "ready") return;
-    if (typeof window === "undefined") return;
-    if (!wgwLiveApiEnabled()) return;
-
-    const username = offlineUsername;
-    const mapNote = (note: JmapNote) =>
-      noteFromVjournal(jmapNoteToVjournal(note), notebookCollectionsRef.current);
-    const adapter = new JmapNotesAdapter({
-      client: createNotesJmapClient(),
-      onRemoteNote: (note) => {
-        void ingestRemoteNote(username, mapNote(note)).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRemoteNoteDestroyed: (noteId) =>
-        ingestRemoteNoteDestroyed(username, noteId).then(async (result) => {
-          void patchFromCache();
-          if (result !== "skipped-pending") return;
-          const blocking = await listNoteIdsBlockingSyncToken(username);
-          if (blocking.has(noteId)) return "skipped-pending" as const;
-        }),
-      onRemoteNotebook: (notebook: JmapNotebook) => {
-        void ingestRemoteNotebook(username, jmapNotebookToCollection(notebook)).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRemoteNotebookDestroyed: (notebookId) => {
-        void ingestRemoteNotebookDestroyed(username, notebookId).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRefetchAll: ({ notebooks, notes }) => {
-        void reconcileNotesSnapshot(
-          username,
-          notes.map(mapNote),
-          notebooks.map(jmapNotebookToCollection),
-        ).then(() => {
-          void patchFromCache();
-        });
-      },
-      onSyncError: (error: unknown) => {
-        console.warn("[notes] live inbound poll failed", error);
-      },
-    });
-
-    let cancelled = false;
-    void adapter
-      .initialize()
-      .then(() => {
-        if (cancelled) return;
-        adapter.startPolling(ONLINE_CHANGES_POLL_MS);
-        setLivePollRunning(true);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        // No notes JMAP capability, or the session failed. Live updates are off;
-        // the REST `/changes` interval below takes over (#1351).
-        console.warn("[notes] live inbound poll unavailable", error);
-        setLivePollRunning(false);
-      });
-
-    return () => {
-      cancelled = true;
-      adapter.stopPolling();
-      setLivePollRunning(false);
-    };
-  }, [offlineUsername, online, patchFromCache, phase]);
+  const livePollRunning = useNotesLiveInbound({
+    username: offlineUsername,
+    enabled: online && phase === "ready",
+    notebooks: notebookCollectionsRef,
+    patchFromCache,
+  });
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
@@ -289,7 +182,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     const intervalId = window.setInterval(() => {
       if (document.hidden) return;
       runSilentRefresh();
-    }, ONLINE_CHANGES_POLL_MS);
+    }, NOTES_CHANGES_POLL_MS);
 
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();

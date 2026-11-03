@@ -7,11 +7,11 @@ import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
+  dueEditSendsShowWithoutTime,
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
   taskAlertsEqual,
-  taskDueIsDateOnly,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -55,7 +55,7 @@ function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): Tas
     patch.description = next.description;
   }
   if (next.due !== (task.due ?? null)) patch.due = next.due;
-  if (next.due && next.showWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime)) {
+  if (dueEditSendsShowWithoutTime(task, next.due, next.showWithoutTime)) {
     patch.showWithoutTime = next.showWithoutTime;
   }
   if (next.due && next.timeZone !== (task.timeZone ?? null)) patch.timeZone = next.timeZone;

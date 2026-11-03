@@ -17,6 +17,8 @@ use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\FileNodes\FileNodeContentHasher;
 use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
+use App\Services\Jmap\Guest\GuestJmapAccounts;
+use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
@@ -69,6 +71,28 @@ final class WgwServiceProvider extends ServiceProvider
                 $app->make(JmapMethodDispatcher::class),
                 array_map($app->make(...), JmapCapabilitySet::PROVIDERS),
             ),
+        );
+        // Guest uploads (#1715): their own method list and capability set,
+        // and a registry the gate fills for the authenticated guest only.
+        $this->app->scoped(GuestJmapAccounts::class);
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(GuestJmapAccounts::class)) {
+                $app->make(GuestJmapAccounts::class)->forget();
+            }
+        });
+        $this->app->singleton(
+            GuestJmapGateway::class,
+            function ($app): GuestJmapGateway {
+                $dispatcher = new JmapMethodDispatcher(
+                    array_map($app->make(...), GuestJmapGateway::METHODS),
+                    $app->make(JmapRequestContext::class),
+                );
+
+                return new GuestJmapGateway(
+                    $dispatcher,
+                    new JmapCapabilitySet($dispatcher, array_map($app->make(...), GuestJmapGateway::PROVIDERS)),
+                );
+            },
         );
         $this->app->singleton(
             JmapBlobReferenceGuard::class,

@@ -25,6 +25,11 @@ import {
   docsHomeStorySession,
   mapStoryDocsHomeResults,
 } from "@/docs-core/stories/docs-home-story-shared";
+import {
+  STATUS_BAR_INSET_PX,
+  offsetFromStoryTop,
+  withStatusBarInset,
+} from "@/workspace-shell/stories/status-bar-inset-story-shared";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
@@ -404,3 +409,26 @@ function DocsHomePaneHarness({ initialViewMode = "list" }: { initialViewMode?: V
     </div>
   );
 }
+
+/** #1851: in the installed iPhone app the list header and menu toggle stay below the status bar. */
+export const UnderStatusBar: Story = {
+  name: "Under the iPhone status bar",
+  tags: ["vitest-ci"],
+  decorators: [withStatusBarInset],
+  globals: {
+    viewport: { value: "mobile1", isRotated: false },
+  },
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
+    const main = canvasElement.querySelector<HTMLElement>(".workspace-app-layout__main");
+    await expect(main).toBeTruthy();
+    const toggle = within(main!).getAllByRole("button", { name: /sidebar/i })[0];
+    await expect(offsetFromStoryTop(canvasElement, toggle)).toBeGreaterThanOrEqual(
+      STATUS_BAR_INSET_PX,
+    );
+  },
+};

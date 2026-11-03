@@ -12,6 +12,10 @@ import {
 } from "@/lib/jmap-client";
 import { normalizeApiVirtualPath as normalizePath, parentAndName } from "@/lib/files/api-path";
 import {
+  DRIVE_READ_BLOB_MAX_BYTES,
+  DriveFileTooLargeToOpenError,
+} from "@/lib/files/read-blob-limit";
+import {
   readDriveUploadCapabilities,
   rememberDriveSessionCapabilities,
   type DriveUploadCapabilities,
@@ -26,6 +30,8 @@ import type {
   DriveUIData,
   DriveUploadProgress,
 } from "@/drive-core/src/drive-types";
+
+export { DRIVE_READ_BLOB_MAX_BYTES, DriveFileTooLargeToOpenError };
 
 export const JMAP_MAX_SIZE_UPLOAD_DEFAULT = 25_000_000;
 
@@ -424,20 +430,6 @@ export async function resolveDownloadableFileNode(
   return node as JmapFileNode & { blobId: string };
 }
 
-/** Largest file `readFileBlob` fetches into memory (previews, opening a file). */
-export const DRIVE_READ_BLOB_MAX_BYTES = 100 * 1024 * 1024;
-
-/** A file too large to open in the browser; download it instead. */
-export class DriveFileTooLargeToOpenError extends Error {
-  constructor(
-    readonly fileName: string,
-    readonly size: number,
-  ) {
-    super(`"${fileName}" is too large to open in the browser. Download it instead.`);
-    this.name = "DriveFileTooLargeToOpenError";
-  }
-}
-
 /**
  * Reads a file into memory, for previews and opening a file. Above
  * {@link DRIVE_READ_BLOB_MAX_BYTES} it refuses before fetching: a download
@@ -674,7 +666,30 @@ export async function listFileNodeEntriesByPaths(
       }
     }),
   );
+  const missing = normalized.filter((path) => !entriesByPath.has(path));
+  if (missing.length > 0) await addSharedRootEntries(session, missing, entriesByPath, opts?.signal);
   return normalized
     .map((path) => entriesByPath.get(path))
     .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
+}
+
+/**
+ * An item shared with the caller sits in the owner's folder, which the caller
+ * cannot list. Resolve such a path from the shared-with-me roots instead.
+ */
+async function addSharedRootEntries(
+  session: DriveJmapSession,
+  paths: readonly string[],
+  into: Map<string, WgwDriveDirectoryEntry>,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    await loadSharedRoots(session, signal);
+  } catch {
+    return;
+  }
+  for (const path of paths) {
+    const node = session.sharedRootPaths.has(path) ? session.cache.nodeAtPath(path) : undefined;
+    if (node) into.set(path, fileNodeToDirectoryEntry(path, node));
+  }
 }

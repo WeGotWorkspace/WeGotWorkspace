@@ -88,6 +88,8 @@ type UseDriveBatchActionsArgs = {
   reloadStarredFromServer: () => void;
   view: ViewKey;
   viewType: ViewKey["type"];
+  /** Finds a row in any view, including Shared with me and Starred. */
+  fileById: (id: string) => DriveFile | null;
 };
 
 export function useDriveBatchActions({
@@ -110,6 +112,7 @@ export function useDriveBatchActions({
   reloadStarredFromServer,
   view,
   viewType,
+  fileById,
 }: UseDriveBatchActionsArgs) {
   const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
@@ -295,7 +298,7 @@ export function useDriveBatchActions({
 
   const batchStar = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const rows = files.filter((file) => selectedIds.includes(file.id));
+    const rows = selectedIds.flatMap((id) => fileById(id) ?? []);
     if (rows.length === 0) return;
 
     const nextValue = !selectedIds.every((id) => starred[id]);
@@ -338,7 +341,7 @@ export function useDriveBatchActions({
             ),
           ),
         );
-        if (viewType === "starred") reloadStarredFromServer();
+        reloadStarredFromServer(); // Starred spans folders: refresh from any view.
       },
       revert: async () => {
         if (!operations) return;
@@ -353,7 +356,7 @@ export function useDriveBatchActions({
     });
   }, [
     currentUsername,
-    files,
+    fileById,
     groupRootNames,
     operations,
     queueMutation,

@@ -12,6 +12,7 @@ import {
   resolveDocsCollabDatabase,
 } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
+import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
@@ -157,7 +158,6 @@ export function useDocsCollabJoin({
     if (awareness) {
       awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
     }
-    if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
@@ -166,9 +166,8 @@ export function useDocsCollabJoin({
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
     if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
-    const persistence = refs.persistenceRef.current;
+    leaveCollabRoom(refs.persistenceRef.current, refs.saveTimerRef, { room, urls });
     refs.persistenceRef.current = null;
-    void persistence?.destroy();
     refs.ydocRef.current = null;
     loadedStateRef.current = null;
     refs.awarenessRef.current = null;
@@ -201,7 +200,7 @@ export function useDocsCollabJoin({
     setLastSavedAt(null);
     setPendingSync(false);
     setFailedSync(false);
-  }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
+  }, [refs, room, urls, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
 
   useEffect(() => {
     // pagehide also runs when the page enters the back/forward cache. Keep the
@@ -536,6 +535,7 @@ export function useDocsCollabJoin({
     }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
+    rememberCollabRoomJoin(persistence, { room, urls });
 
     const authTokenPromise = allowServerRequests
       ? refs.wireRef.current

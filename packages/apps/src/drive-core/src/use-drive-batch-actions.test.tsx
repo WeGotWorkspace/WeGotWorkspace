@@ -117,6 +117,8 @@ function renderActions(options?: {
   starred?: Record<string, boolean>;
   selectedIds?: string[];
   files?: DriveFile[];
+  /** Rows a view lists outside the open folder, like Shared with me. */
+  otherRows?: DriveFile[];
   liveQueue?: boolean;
 }) {
   const viewType = options?.viewType ?? "folder";
@@ -163,6 +165,8 @@ function renderActions(options?: {
       reloadStarredFromServer,
       view,
       viewType,
+      fileById: (id) =>
+        [...files, ...(options?.otherRows ?? [])].find((file) => file.id === id) ?? null,
     });
     return { files, selectedIds, selectionMode, starred, undoLatest: live.undoLatest, ...actions };
   });
@@ -817,7 +821,8 @@ describe("useDriveBatchActions", () => {
       { path: "/users/alice/notes.md", starred: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    expect(reloadStarredFromServer).not.toHaveBeenCalled();
+    // Starred also lists items outside the open folder, so it refreshes from any view.
+    expect(reloadStarredFromServer).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await undoQueued();
@@ -829,6 +834,27 @@ describe("useDriveBatchActions", () => {
       path: "/users/alice/notes.md",
       starred: false,
     });
+  });
+
+  it("stars a selected row that is not in the open folder", async () => {
+    const operations = createOperations();
+    const { result } = renderActions({
+      operations,
+      viewType: "shared",
+      files: [],
+      otherRows: [driveFile()],
+    });
+
+    act(() => result.current.batchStar());
+
+    expect(result.current.starred[NOTES_ID]).toBe(true);
+    await act(async () => {
+      await executeQueued();
+    });
+    expect(operations.setStar).toHaveBeenCalledWith(
+      { path: "/users/alice/notes.md", starred: true },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("unstars a fully starred selection and reloads the starred view", async () => {
