@@ -13,11 +13,14 @@ import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/co
 import {
   countDiscardedQueuedUploads,
   countDiscardedUnsyncedChanges,
+  releasePushOnLogout,
   runLogoutStep,
 } from "@/lib/offline/core/offline-wipe";
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import { readPushScopes, rememberPushScope } from "@/notifications-core/src/push-scope";
+import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
@@ -98,6 +101,32 @@ function installPushSubscription(endpoint: string): {
   return { unsubscribe };
 }
 
+/** Exclusive Web Locks, queued per name, with the `signal` abort that `withCrossTabLock` uses. */
+function installQueuedLocks(): void {
+  const tails = new Map<string, Promise<unknown>>();
+  const request = (name: string, options: LockOptions, task: () => Promise<unknown>) => {
+    const before = tails.get(name) ?? Promise.resolve();
+    const run = new Promise((resolve, reject) => {
+      let started = false;
+      options.signal?.addEventListener("abort", () => {
+        if (!started) reject(new DOMException("Lock request aborted", "AbortError"));
+      });
+      void before.then(() => {
+        if (options.signal?.aborted) return;
+        started = true;
+        Promise.resolve().then(task).then(resolve, reject);
+      });
+    });
+    run.catch(() => undefined);
+    tails.set(
+      name,
+      before.then(() => run).catch(() => undefined),
+    );
+    return run;
+  };
+  Object.defineProperty(navigator, "locks", { configurable: true, value: { request } });
+}
+
 type FetchCall = { url: string; method: string; override: string | null; body: string };
 
 function fetchCalls(fetchMock: ReturnType<typeof vi.fn>): FetchCall[] {
@@ -140,6 +169,7 @@ afterEach(async () => {
   resetWgwSessionStateForTests();
   window.localStorage.clear();
   Reflect.deleteProperty(navigator, "serviceWorker");
+  Reflect.deleteProperty(navigator, "locks");
   resetOfflineDatabaseCache();
   const names = await indexedDbNames();
   await Promise.all(names.map((name) => Dexie.delete(name)));
@@ -207,6 +237,16 @@ describe("user-initiated logout", () => {
     expect(revokeAt).toBeGreaterThan(pushAt);
     expect(window.localStorage.getItem("wgw.offline.chat.username")).toBeNull();
     expect(await indexedDbNames()).not.toContain("wgw-offline-alice");
+  });
+
+  it("forgets the remembered push scopes, so the next account does not inherit them", async () => {
+    installPushSubscription("https://push.example.test/subscription/alice");
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await rememberPushScope("/docs");
+
+    await wgwLogout();
+
+    await expect(readPushScopes()).resolves.toEqual([]);
   });
 
   it("still wipes when the service worker cannot be read", async () => {
@@ -479,6 +519,81 @@ describe("user-initiated logout", () => {
       Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
       Object.defineProperty(indexedDB, "open", { configurable: true, value: open });
     }
+  });
+
+  it("still deletes the server push row when the push scope store never opens", async () => {
+    vi.useFakeTimers();
+    const open = indexedDB.open.bind(indexedDB);
+    const unsubscribe = vi.fn(async () => true);
+    const subscription = { endpoint: "https://push.example/e1", unsubscribe };
+    const serviceWorker = {
+      getRegistration: async () => ({ pushManager: { getSubscription: async () => subscription } }),
+    };
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: serviceWorker });
+    Object.defineProperty(indexedDB, "open", {
+      configurable: true,
+      value: () => ({ result: null, error: null, onsuccess: null, onerror: null }),
+    });
+    const authorizedFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    try {
+      const pending = releasePushOnLogout(authorizedFetch);
+      await vi.advanceTimersByTimeAsync(2_500);
+      await pending;
+      expect(authorizedFetch).toHaveBeenCalledWith(
+        "/notifications/push/subscriptions",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+      expect(unsubscribe).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(indexedDB, "open", { configurable: true, value: open });
+      delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    }
+  });
+
+  it("waits for a running subscribe, so its post cannot land after the delete", async () => {
+    installQueuedLocks();
+    const { unsubscribe } = installPushSubscription("https://push.example/e1");
+    let finishSubscribe = () => {};
+    const subscribeRun = navigator.locks.request(
+      PUSH_SUBSCRIBE_LOCK,
+      {},
+      () => new Promise<void>((resolve) => (finishSubscribe = resolve)),
+    );
+    const authorizedFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+
+    const pending = releasePushOnLogout(authorizedFetch);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(authorizedFetch).not.toHaveBeenCalled();
+
+    finishSubscribe();
+    await subscribeRun;
+    await pending;
+    expect(authorizedFetch).toHaveBeenCalledWith(
+      "/notifications/push/subscriptions",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it("still releases push when a hung subscribe keeps the lock", async () => {
+    installQueuedLocks();
+    installPushSubscription("https://push.example/e1");
+    void navigator.locks.request(PUSH_SUBSCRIBE_LOCK, {}, () => new Promise<void>(() => {}));
+    const authorizedFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const pending = releasePushOnLogout(authorizedFetch);
+      await vi.advanceTimersByTimeAsync(5_000);
+      vi.useRealTimers();
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(authorizedFetch).toHaveBeenCalledWith(
+      "/notifications/push/subscriptions",
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 
   it("marks the session logged out before revoke finishes", async () => {

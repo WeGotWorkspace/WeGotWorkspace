@@ -39,7 +39,12 @@ type Routes = Partial<Record<string, (init: RequestInit) => Response | Promise<R
 
 function setup(
   routes: Routes = {},
-  opts: { locks?: boolean; timeoutMs?: number; refreshGraceMs?: number } = {},
+  opts: {
+    locks?: boolean;
+    timeoutMs?: number;
+    refreshGraceMs?: number;
+    readScopes?: () => Promise<string[]>;
+  } = {},
 ) {
   const calls: Call[] = [];
   const defaults: Routes = {
@@ -89,6 +94,7 @@ function setup(
     locks: opts.locks === false ? null : locks,
     timeoutMs: opts.timeoutMs,
     refreshGraceMs: opts.refreshGraceMs,
+    readScopes: opts.readScopes ?? (async () => []),
   };
   return { deps, calls, pushManager, created, lockNames, lockState };
 }
@@ -125,6 +131,77 @@ describe("handlePushSubscriptionChange", () => {
     expect(calls[3]?.headers.get("X-HTTP-Method-Override")).toBe("DELETE");
     expect(calls[3]?.body).toEqual({ endpoint: "https://push.example/old" });
     expect(pushManager.subscribe).not.toHaveBeenCalled();
+  });
+
+  it("posts the new endpoint once for every app scope the pages remembered", async () => {
+    const { deps, calls } = setup({}, { readScopes: async () => ["/calendar", "/docs"] });
+    const oldSub = fakeSubscription("https://push.example/old", [1, 2, 3]);
+    const newSub = fakeSubscription("https://push.example/new", [1, 2, 3]);
+
+    await expect(
+      handlePushSubscriptionChange({ oldSubscription: oldSub, newSubscription: newSub }, deps),
+    ).resolves.toBe("resubscribed");
+
+    expect(callKeys(calls)).toEqual([
+      "POST /api/v1/auth/refresh",
+      "GET /api/v1/notifications/push/vapid-public-key",
+      "POST /api/v1/notifications/push/subscriptions",
+      "POST /api/v1/notifications/push/subscriptions",
+      "DELETE /api/v1/notifications/push/subscriptions",
+    ]);
+    expect(calls[2]?.body).toMatchObject({
+      endpoint: "https://push.example/new",
+      scope: "/calendar",
+    });
+    expect(calls[3]?.body).toMatchObject({ endpoint: "https://push.example/new", scope: "/docs" });
+  });
+
+  it("posts without a scope when no page remembered one, so the server keeps it unknown", async () => {
+    const { deps, calls } = setup(
+      {},
+      {
+        readScopes: async () => {
+          throw new Error("IndexedDB unavailable");
+        },
+      },
+    );
+
+    await expect(
+      handlePushSubscriptionChange(
+        {
+          oldSubscription: null,
+          newSubscription: fakeSubscription("https://push.example/new", [1, 2, 3]),
+        },
+        deps,
+      ),
+    ).resolves.toBe("resubscribed");
+
+    expect(calls[2]?.body).not.toHaveProperty("scope");
+  });
+
+  it("keeps the old row when posting one of the scopes fails", async () => {
+    let posts = 0;
+    const { deps, calls } = setup(
+      {
+        "POST /api/v1/notifications/push/subscriptions": () => {
+          posts += 1;
+          return posts === 1 ? json(201, {}) : json(500, {});
+        },
+      },
+      { readScopes: async () => ["/calendar", "/docs"] },
+    );
+
+    await expect(
+      handlePushSubscriptionChange(
+        {
+          oldSubscription: fakeSubscription("https://push.example/old", [1, 2, 3]),
+          newSubscription: fakeSubscription("https://push.example/new", [1, 2, 3]),
+        },
+        deps,
+      ),
+    ).resolves.toBe("failed");
+
+    expect(callKeys(calls)).not.toContain("DELETE /api/v1/notifications/push/subscriptions");
   });
 
   it("subscribes with the current server key when the browser gave no new subscription", async () => {

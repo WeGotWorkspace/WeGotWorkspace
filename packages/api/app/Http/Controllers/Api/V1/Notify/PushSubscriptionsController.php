@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Notify;
 
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\PushSubscriptionRequest;
+use App\Services\Notify\PushScopes;
 use App\Services\Notify\VapidPushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ final class PushSubscriptionsController
         return response()->json([
             'id' => $row->id,
             'endpoint' => $row->endpoint,
+            'scopes' => $row->scopeList() ?? [PushScopes::ROOT],
         ], 201);
     }
 
