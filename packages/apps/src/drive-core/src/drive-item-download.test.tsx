@@ -126,25 +126,63 @@ function renderRowMenu(file: DriveFile, foldersDownloadable: boolean, inTrash = 
 }
 
 describe("row menu", () => {
-  it("offers Download as zip on a folder when folders can be downloaded", () => {
+  it("offers Download on a folder when folders can be downloaded", () => {
     const onDownload = renderRowMenu(FOLDER, true);
 
-    fireEvent.click(screen.getByRole("menuitem", { name: driveLabels.detailDownloadFolder }));
+    fireEvent.click(screen.getByRole("menuitem", { name: driveLabels.detailDownload }));
     expect(onDownload).toHaveBeenCalledWith(FOLDER);
   });
 
   it("offers no download on a folder without folder downloads or in trash", () => {
     renderRowMenu(FOLDER, false);
-    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownloadFolder })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownload })).toBeNull();
     cleanup();
 
     renderRowMenu(FOLDER, true, true);
-    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownloadFolder })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: driveLabels.detailDownload })).toBeNull();
   });
 
   it("keeps Download on a file", () => {
     renderRowMenu(FILE, true);
     expect(screen.getByRole("menuitem", { name: driveLabels.detailDownload })).toBeTruthy();
+  });
+
+  it("puts Open first, Delete last and the rest in alphabetical order between dividers", () => {
+    render(
+      <DriveFolderDownloadContext.Provider value>
+        <DriveFileItemActions
+          labels={driveLabels}
+          file={FOLDER}
+          isStarred={false}
+          inTrash={false}
+          canShare
+          onOpen={vi.fn()}
+          onDownload={vi.fn()}
+          onStar={vi.fn()}
+          onRename={vi.fn()}
+          onMove={vi.fn()}
+          onShare={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </DriveFolderDownloadContext.Provider>,
+    );
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    const entries = Array.from(
+      document.querySelectorAll('[role="menuitem"], [role="separator"]'),
+    ).map((entry) => (entry.getAttribute("role") === "separator" ? "---" : entry.textContent));
+    expect(entries).toEqual([
+      driveLabels.detailOpen,
+      "---",
+      driveLabels.detailDownload,
+      driveLabels.detailMove,
+      driveLabels.detailRename,
+      driveLabels.detailShare,
+      driveLabels.detailStar,
+      "---",
+      driveLabels.detailDelete,
+    ]);
   });
 });
 
@@ -176,22 +214,22 @@ function selectionLabels(
 }
 
 describe("selection bar", () => {
-  it("offers Download as zip for one selected folder and starts the folder download", () => {
+  it("offers Download for one selected folder and starts the folder download", () => {
     const ops = operations(true);
     const bar = selectionLabels(FOLDER, ops);
 
-    expect(bar.labels).toContain(driveLabels.selectionDownloadFolder);
-    bar.click(driveLabels.selectionDownloadFolder);
+    expect(bar.labels).toContain(driveLabels.selectionDownload);
+    bar.click(driveLabels.selectionDownload);
     expect(ops.downloadFolder).toHaveBeenCalledWith("/users/alice/Projects");
     expect(ops.downloadFile).not.toHaveBeenCalled();
   });
 
   it("offers no folder download without downloadFolder or in trash", () => {
     expect(selectionLabels(FOLDER, operations(false)).labels).not.toContain(
-      driveLabels.selectionDownloadFolder,
+      driveLabels.selectionDownload,
     );
     expect(selectionLabels(FOLDER, operations(true), true).labels).not.toContain(
-      driveLabels.selectionDownloadFolder,
+      driveLabels.selectionDownload,
     );
   });
 

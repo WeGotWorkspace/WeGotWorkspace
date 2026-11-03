@@ -67,7 +67,7 @@ Names come from storage and are not caller input, but they are still made safe f
 
 ### Client
 
-`issueFolderDownloadTicket(session, nodeId)` posts the node id; `downloadFolderAsZipWithTicket(session, path, username)` resolves the folder's node id from the path and calls `startNativeDownload(url, name)`. The client never builds the zip or a `Blob`. Drive operations get `downloadFolder(path)`; guest sessions have no folder download. The row menu, the detail panel and the selection bar (one folder selected) show *Download as zip* for folders.
+`issueFolderDownloadTicket(session, nodeId)` posts the node id; `downloadFolderAsZipWithTicket(session, path, username)` resolves the folder's node id from the path and calls `startNativeDownload(url, name)`. The client never builds the zip or a `Blob`. Drive operations get `downloadFolder(path)`; guest sessions have no folder download. The row menu, the detail panel and the selection bar (one folder selected) show *Download* for folders too; it saves one zip. The row menu has three groups: *Open* first, *Delete* last, the other actions in alphabetical order between them.
 
 ## Edge cases
 

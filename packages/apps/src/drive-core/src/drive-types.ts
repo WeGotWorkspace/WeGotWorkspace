@@ -145,7 +145,7 @@ export type DriveAPIOperations = {
   ) => Promise<DriveUIData>;
   deleteItems: (paths: string[], opts?: DriveMutationOpts) => Promise<DriveUIData>;
   downloadFile: (path: string, opts?: { signal?: AbortSignal }) => Promise<void>;
-  /** *Download as zip* on a folder (#1621). Absent where folders cannot be downloaded (guests). */
+  /** *Download* on a folder (one zip) (#1621). Absent where folders cannot be downloaded (guests). */
   downloadFolder?: (path: string, opts?: { signal?: AbortSignal }) => Promise<void>;
   readFileBlob: (path: string, opts?: { signal?: AbortSignal }) => Promise<Blob>;
   checkUploadReady: (opts?: { signal?: AbortSignal }) => Promise<void>;

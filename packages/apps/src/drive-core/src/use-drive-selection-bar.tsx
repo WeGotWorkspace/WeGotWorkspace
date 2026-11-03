@@ -75,10 +75,7 @@ export function useDriveSelectionBar({
       ...(canDownload
         ? [
             {
-              label:
-                downloadable.kind === "folder"
-                  ? labels.selectionDownloadFolder
-                  : labels.selectionDownload,
+              label: labels.selectionDownload,
               icon: <Download className="size-4" />,
               onClick: () => {
                 startDriveItemDownload(operations, downloadable, showError, () =>
@@ -96,7 +93,6 @@ export function useDriveSelectionBar({
     inTrashView,
     labels.selectionDeletePermanently,
     labels.selectionDownload,
-    labels.selectionDownloadFolder,
     labels.selectionMove,
     labels.selectionMoveToTrash,
     labels.selectionStar,

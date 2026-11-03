@@ -9,7 +9,7 @@ import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
  */
 export const DriveFolderDownloadContext = createContext(false);
 
-/** Whether *Download* (or *Download as zip* on a folder) is offered for this item. */
+/** Whether *Download* (a folder downloads as one zip) is offered for this item. */
 export function canDownloadDriveItem(
   file: DriveFile,
   options: { foldersDownloadable: boolean; inTrash: boolean },
