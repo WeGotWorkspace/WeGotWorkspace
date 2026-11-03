@@ -671,6 +671,7 @@ export function useDocsCollabJoin({
     urls.authToken,
     urls.authTokenUrl,
     urls.authUser,
+    urls.nodeId,
     urls.roomNotPersistent,
     userName,
   ]);

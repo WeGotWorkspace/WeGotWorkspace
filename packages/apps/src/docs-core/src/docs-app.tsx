@@ -16,7 +16,7 @@ import {
   wgwIsGuestSession,
   wgwLiveApiEnabled,
 } from "@/lib/api/wgw/http";
-import { buildDocsCollabUrls } from "@/docs-core/src/docs-collab-urls";
+import { buildDocsEditorUrls } from "@/docs-core/src/docs-collab-urls";
 import type { DocsAppProps } from "@/docs-core/src/docs-app-props";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -196,16 +196,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
 
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
-    const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
-      buildDocsCollabUrls(filePath, fileNodeId);
     return {
-      signalUrl,
-      collabApiBaseUrl,
-      collabRtcUrl,
+      ...buildDocsEditorUrls(filePath, fileNodeId),
       authToken: collabAuthToken,
-      documentUrl,
-      yjsUrl,
-      room,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },

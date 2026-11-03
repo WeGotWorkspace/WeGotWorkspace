@@ -21,6 +21,13 @@ export type DocsCollabUrls = {
  * `nodeId` is the FileNode the editor opened. Saves name it, so a save to the
  * old path after a rename elsewhere is refused instead of making a copy (#1751).
  */
+/** The urls the editor joins with; carries the route's node id so the database matches the saved file. */
+export function buildDocsEditorUrls(filePath: string, nodeId?: string) {
+  const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
+    buildDocsCollabUrls(filePath, nodeId);
+  return { room, nodeId, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl };
+}
+
 export function buildDocsCollabUrls(filePath: string, nodeId?: string): DocsCollabUrls {
   const baseUrl = wgwApiBaseUrl();
   const room = filePath.replace(/^\/+/, "");
