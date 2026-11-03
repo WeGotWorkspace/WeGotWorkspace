@@ -102,6 +102,7 @@ import {
   editPatchRevert,
   MOVE_STEPS,
   occurrenceOverridesRevert,
+  revertCreate,
   revertEventMove,
   revertSeriesSplit,
   SPLIT_STEPS,
@@ -593,23 +594,7 @@ export function useCalendarController({
             );
             createdId = created.id;
           },
-          revert: async () => {
-            if (!createdId) return;
-            // The card stays in the surface's working set until a sync: hide it now.
-            const id = createdId;
-            setPendingDeletedEventIds((current) => new Set(current).add(id));
-            try {
-              await operations.deleteEvent(id);
-            } catch (error) {
-              // The event is still on the server: show it again.
-              setPendingDeletedEventIds((current) => {
-                const next = new Set(current);
-                next.delete(id);
-                return next;
-              });
-              throw error;
-            }
-          },
+          revert: () => revertCreate(operations, setPendingDeletedEventIds, createdId),
           rollback: () => setHeldCreateIntent(null),
         });
         return;

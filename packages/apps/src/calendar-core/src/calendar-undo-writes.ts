@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type Dispatch, type SetStateAction } from "react";
 import { Check } from "lucide-react";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CompletedWriteKeys, ReversibleWriteArgs } from "@/hooks/use-queued-mutation";
@@ -96,6 +96,30 @@ export function occurrenceOverridesRevert(
 }
 
 /** Steps of a this-and-future split: truncate the master, then create the fork. */
+/**
+ * Undo of a create: hides the card at once, since it stays in the surface's working set
+ * until a sync, then deletes the event. When the delete fails the event is still on the
+ * server, so the card shows again. No id: the create never landed, so there is nothing to do.
+ */
+export async function revertCreate(
+  operations: Pick<EventWrites, "deleteEvent">,
+  setHiddenIds: Dispatch<SetStateAction<ReadonlySet<string>>>,
+  id: string | null | undefined,
+): Promise<void> {
+  if (!id) return;
+  setHiddenIds((current) => new Set(current).add(id));
+  try {
+    await operations.deleteEvent(id);
+  } catch (error) {
+    setHiddenIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+    throw error;
+  }
+}
+
 export const SPLIT_STEPS = { truncate: "truncate", fork: "fork" } as const;
 
 /**

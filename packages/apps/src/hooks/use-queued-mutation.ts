@@ -225,7 +225,8 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
     (args) => {
       const existing = pendingByKeyRef.current.get(args.key);
       if (existing) {
-        // A newer write on the same item takes over the toast; the older one keeps its course.
+        // A newer write on the same item takes over the toast. An older reversible write keeps
+        // its course; an older irreversible write that has not started is dropped.
         clearPendingTimers(existing);
         dismiss(existing.toastId);
         removePending(existing);

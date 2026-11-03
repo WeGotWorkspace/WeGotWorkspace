@@ -3,6 +3,7 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   editPatchRevert,
   occurrenceOverridesRevert,
+  revertCreate,
   revertSeriesSplit,
 } from "@/calendar-core/src/calendar-undo-writes";
 
@@ -68,5 +69,42 @@ describe("revertSeriesSplit", () => {
       recurrenceRules: null,
       recurrenceOverrides: { dropped: { title: "D" } },
     });
+  });
+});
+
+describe("revertCreate", () => {
+  function hiddenIds() {
+    let ids: ReadonlySet<string> = new Set();
+    const set = (
+      next: ReadonlySet<string> | ((current: ReadonlySet<string>) => ReadonlySet<string>),
+    ) => {
+      ids = typeof next === "function" ? next(ids) : next;
+    };
+    return { set, current: () => ids };
+  }
+
+  it("hides the card and deletes the event", async () => {
+    const hidden = hiddenIds();
+    const deleteEvent = vi.fn(async () => undefined);
+    await revertCreate({ deleteEvent }, hidden.set, "ev-new");
+    expect(deleteEvent).toHaveBeenCalledWith("ev-new");
+    expect([...hidden.current()]).toEqual(["ev-new"]);
+  });
+
+  it("shows the card again when the delete fails", async () => {
+    const hidden = hiddenIds();
+    const deleteEvent = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    await expect(revertCreate({ deleteEvent }, hidden.set, "ev-new")).rejects.toThrow("offline");
+    expect([...hidden.current()]).toEqual([]);
+  });
+
+  it("does nothing when the create never landed", async () => {
+    const hidden = hiddenIds();
+    const deleteEvent = vi.fn(async () => undefined);
+    await revertCreate({ deleteEvent }, hidden.set, undefined);
+    expect(deleteEvent).not.toHaveBeenCalled();
+    expect(hidden.current().size).toBe(0);
   });
 });
