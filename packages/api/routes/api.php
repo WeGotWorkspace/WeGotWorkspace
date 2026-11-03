@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DocsThreadsController;
+use App\Http\Controllers\Api\V1\Files\DriveDownloadTicketController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
 use App\Http\Controllers\Api\V1\Files\FilesController;
@@ -345,6 +346,8 @@ Route::middleware(['wgw.auth', 'throttle:'.JmapPushRateLimiters::PUSH, 'wgw.role
 });
 
 Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
+    // Download tickets by path (#1622), reachable by share-link guests.
+    Route::post('files/download-tickets', [DriveDownloadTicketController::class, 'store']);
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
