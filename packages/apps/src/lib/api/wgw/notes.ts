@@ -370,6 +370,13 @@ export async function updateNoteItem(
     (body.notebookId ? notebooks.find((item) => item.id === body.notebookId) : undefined) ??
     notebooks.find((item) => item.name === body.notebook);
   const firstPatch = noteMetadataPatch(body, notebook?.id);
+  if (Object.keys(firstPatch).length === 0 && body.starred !== undefined) {
+    // A star is the caller's own and never writes the note, so a view-only
+    // share can star too. An empty PATCH would only bump the version.
+    await (body.starred ? starNote(id, opts) : unstarNote(id, opts));
+    const current = await getNote(id, opts);
+    return noteFromVjournal({ ...current, starred: body.starred }, notebooks);
+  }
   const apply = async (ifMatch: string | undefined, patch: NoteMetadataPatch) =>
     patchNote(id, patch, { ...opts, ifMatch });
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
