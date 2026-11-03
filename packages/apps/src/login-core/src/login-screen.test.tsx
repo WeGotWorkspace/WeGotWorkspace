@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LoginScreen, returnTarget } from "@/login-core/src/login-screen";
+import { LoginScreen } from "@/login-core/src/login-screen";
 import { wgwEstablishMcpWebSession, wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
 const mockNavigate = vi.fn();
@@ -48,7 +48,16 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/docs" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/docs" });
+    });
+  });
+
+  it("keeps the query of the return path in the href (#1522)", async () => {
+    render(<LoginScreen returnPath="/drive?view=uploads" />);
+    submitCredentials();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/drive?view=uploads" });
     });
   });
 
@@ -59,7 +68,7 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/notes" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/notes" });
     });
   });
 
@@ -83,7 +92,7 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/" });
     });
   });
 
@@ -196,15 +205,5 @@ describe("LoginScreen", () => {
       expect(assign).toHaveBeenCalledWith(returnPath);
     });
     expect(mockNavigate).not.toHaveBeenCalled();
-  });
-});
-
-describe("returnTarget (#1522)", () => {
-  it("passes the query of a return path as search, not inside `to`", () => {
-    expect(returnTarget("/drive?view=uploads")).toEqual({
-      to: "/drive",
-      search: { view: "uploads" },
-    });
-    expect(returnTarget("/docs")).toEqual({ to: "/docs" });
   });
 });

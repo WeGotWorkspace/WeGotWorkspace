@@ -53,8 +53,6 @@ async function probeReachableWithin(timeoutMs = REACHABILITY_TIMEOUT_MS): Promis
   }
 }
 
-/** Where *Wait* goes: the Drive Uploads view, where the queue keeps running. */
-
 function queuedUploadsWarning(count: number): string {
   const files = count === 1 ? "1 file is" : `${count} files are`;
   return `${files} still waiting to upload. Signing out removes ${
