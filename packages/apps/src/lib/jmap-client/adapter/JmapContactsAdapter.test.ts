@@ -6,6 +6,7 @@ import { CONTACTS_CAPABILITY } from "../core/types.js";
 
 const getAddressBooks = vi.fn();
 const getContactCards = vi.fn();
+const getAllContactCards = vi.fn();
 const getContactCardsByQuery = vi.fn();
 const addressBookChanges = vi.fn();
 const contactCardChanges = vi.fn();
@@ -14,6 +15,7 @@ vi.mock("../contacts/JmapContactsClient.js", () => ({
   JmapContactsClient: class {
     getAddressBooks = getAddressBooks;
     getContactCards = getContactCards;
+    getAllContactCards = getAllContactCards;
     getContactCardsByQuery = getContactCardsByQuery;
     addressBookChanges = addressBookChanges;
     contactCardChanges = contactCardChanges;
@@ -41,6 +43,7 @@ describe("JmapContactsAdapter", () => {
   beforeEach(() => {
     getAddressBooks.mockReset();
     getContactCards.mockReset();
+    getAllContactCards.mockReset();
     getContactCardsByQuery.mockReset();
     addressBookChanges.mockReset();
     contactCardChanges.mockReset();
@@ -49,6 +52,10 @@ describe("JmapContactsAdapter", () => {
       state: "ab-1",
     });
     getContactCards.mockResolvedValue({
+      list: [{ id: "c-1", addressBookIds: { default: true } }],
+      state: "c-1",
+    });
+    getAllContactCards.mockResolvedValue({
       list: [{ id: "c-1", addressBookIds: { default: true } }],
       state: "c-1",
     });
@@ -156,7 +163,7 @@ describe("JmapContactsAdapter", () => {
     );
     await adapter.sync();
     expect(getAddressBooks).toHaveBeenCalled();
-    expect(getContactCards).toHaveBeenCalled();
+    expect(getAllContactCards).toHaveBeenCalledWith("bob");
   });
 
   it("does not destroy a card that is also created or updated in the same delta", async () => {
@@ -241,7 +248,7 @@ describe("JmapContactsAdapter", () => {
         new JmapMethodError("ContactCard/changes", "c0", { type: "cannotCalculateChanges" }),
       );
       await expect(adapter.syncIfStale({ ContactCard: "fresh" })).resolves.toBe(true);
-      expect(getContactCards).toHaveBeenCalledWith("bob");
+      expect(getAllContactCards).toHaveBeenCalledWith("bob");
     });
   });
 });

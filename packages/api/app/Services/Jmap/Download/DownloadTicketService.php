@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Models\JmapDownloadTicket;
 use App\Services\Auth\RefreshTokenRepository;
 use App\Services\Auth\UserEnabledGuard;
+use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Jmap\Blobs\BlobContent;
 use App\Services\Jmap\Blobs\JmapDownloadBlobResolver;
 use Illuminate\Support\Carbon;
@@ -30,6 +31,12 @@ use Illuminate\Support\Carbon;
  *    resolvers as the authenticated route (including FileNode `mayRead`), so
  *    a withdrawn share or a disabled account stops the next request.
  *
+ * Guest share sessions (#1622) get tickets too: the row's username is the
+ * guest subject (`share:{sessionKey}`) and its session family is
+ * `share-session:{sessionId}`. Each request then checks that share session
+ * and its share instead of a refresh-token family, and resolves only drive
+ * files, with the guest's own rights.
+ *
  * Because a real blobId carries the content hash, a ticket never serves
  * other bytes than it was issued for. Documented exception: a hash-pending
  * node's id carries a provisional size/mtime version, so an out-of-band
@@ -42,10 +49,15 @@ final class DownloadTicketService
 
     public const SECRET_PATTERN = '[A-Za-z0-9_-]{43}';
 
+    private const GUEST_PREFIX = 'share:';
+
+    private const GUEST_FAMILY_PREFIX = 'share-session:';
+
     public function __construct(
         private readonly JmapDownloadBlobResolver $blobs,
         private readonly RefreshTokenRepository $refreshTokens,
         private readonly UserEnabledGuard $enabled,
+        private readonly DriveShareAuthorizer $shares,
     ) {}
 
     /**
@@ -63,10 +75,34 @@ final class DownloadTicketService
             );
         }
         $username = $principal['username'];
-        if ($this->blobs->resolve($username, $blobId) === null) {
+        if (str_starts_with($username, self::GUEST_PREFIX) || $this->blobs->resolve($username, $blobId) === null) {
             throw new ApiHttpException(404, 'Blob not found.', 'not_found');
         }
 
+        return $this->create($username, $sid, $blobId, $name, $type);
+    }
+
+    /**
+     * A ticket for a guest share session (#1622). The caller already checked
+     * that the guest may read the file and found its current blobId.
+     *
+     * @return array{url: string, idleExpires: string, absoluteExpires: string}
+     */
+    public function issueForGuest(string $guestUsername, string $blobId, string $name, ?string $type): array
+    {
+        $session = $this->shares->liveGuestSession($guestUsername);
+        if ($session === null || $this->blobs->resolveForGuest($this->guestPrincipal($guestUsername), $blobId) === null) {
+            throw new ApiHttpException(404, 'File not found.', 'not_found');
+        }
+
+        return $this->create($guestUsername, self::GUEST_FAMILY_PREFIX.$session->id, $blobId, $name, $type);
+    }
+
+    /**
+     * @return array{url: string, idleExpires: string, absoluteExpires: string}
+     */
+    private function create(string $username, string $sessionFamily, string $blobId, string $name, ?string $type): array
+    {
         $this->pruneExpired();
 
         $secret = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
@@ -77,7 +113,7 @@ final class DownloadTicketService
             'blob_id' => $blobId,
             'file_name' => $name,
             'media_type' => $type,
-            'session_family' => $sid,
+            'session_family' => $sessionFamily,
             'issued_at' => $now,
             'last_seen_at' => $now,
             'absolute_expires_at' => $now->copy()->addHours($this->lifetimeHours()),
@@ -112,13 +148,14 @@ final class DownloadTicketService
             return null;
         }
         $username = (string) $ticket->username;
-        if (! $this->refreshTokens->isFamilyLive($username, (string) $ticket->session_family)
-            || ! $this->enabled->isEnabled($username)) {
+        if (! $this->sessionIsLive($ticket)) {
             $ticket->delete();
 
             return null;
         }
-        $blob = $this->blobs->resolve($username, (string) $ticket->blob_id);
+        $blob = str_starts_with($username, self::GUEST_PREFIX)
+            ? $this->blobs->resolveForGuest($this->guestPrincipal($username), (string) $ticket->blob_id)
+            : $this->blobs->resolve($username, (string) $ticket->blob_id);
         if ($blob === null) {
             return null;
         }
@@ -170,6 +207,31 @@ final class DownloadTicketService
     public static function hashSecret(string $secret): string
     {
         return hash('sha256', $secret);
+    }
+
+    /**
+     * Signed-in tickets need their refresh-token family and an enabled
+     * account; guest tickets need the very share session that issued them.
+     */
+    private function sessionIsLive(JmapDownloadTicket $ticket): bool
+    {
+        $username = (string) $ticket->username;
+        $family = (string) $ticket->session_family;
+        if (str_starts_with($username, self::GUEST_PREFIX)) {
+            $session = $this->shares->liveGuestSession($username);
+
+            return $session !== null && hash_equals(self::GUEST_FAMILY_PREFIX.$session->id, $family);
+        }
+
+        return $this->refreshTokens->isFamilyLive($username, $family) && $this->enabled->isEnabled($username);
+    }
+
+    /**
+     * @return array{username: string, role: string}
+     */
+    private function guestPrincipal(string $username): array
+    {
+        return ['username' => $username, 'role' => 'guest'];
     }
 
     private function touch(JmapDownloadTicket $ticket): void

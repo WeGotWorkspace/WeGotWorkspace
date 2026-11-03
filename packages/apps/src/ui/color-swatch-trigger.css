@@ -2,19 +2,17 @@
 
 .color-swatch-trigger {
   /* Focus ring / radius / font come from `.control-surface` + `--size-*`
-   * (same path as LocaleDatePicker / SelectTrigger). Compact px for swatch+chevron. */
-  @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
+   * (same path as LocaleDatePicker / SelectTrigger). */
+  @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 shadow-none;
   min-width: 3.25rem;
 }
 
-/* Beat `.control-surface--size-*` horizontal padding; height/font stay on the size class. */
-.control-surface.color-swatch-trigger {
-  @apply px-2;
-}
-
-/* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with
+/* Icon-only swatch (dot + chevron): compact px, beating `.control-surface--size-*`
+   padding; height/font stay on the size class.
+   `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with
    higher specificity so unlabeled swatches stay intrinsic next to a flexing title. */
 .control-surface.color-swatch-trigger:not(.color-swatch-trigger--labeled) {
+  @apply px-2;
   width: auto;
 }
 
@@ -22,8 +20,11 @@
   @apply w-full justify-between;
 }
 
+/* Labelled swatch is a full-width form control: size padding like Input /
+   SelectTrigger, so its text lines up with the fields above and below it. */
 .control-surface.color-swatch-trigger--labeled {
   width: 100%;
+  padding-inline: var(--input-padding-x, 0.75rem);
 }
 
 .color-swatch-trigger__dot {

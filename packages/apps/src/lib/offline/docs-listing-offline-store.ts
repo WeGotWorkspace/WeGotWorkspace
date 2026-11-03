@@ -7,7 +7,7 @@ import {
 import { sortDocsHomeResults } from "@/docs-core/src/use-docs-home-list";
 import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
+import { readMeta } from "@/lib/offline/core/meta-store";
 import {
   docsListingCacheKey,
   type DocsListingBrowseFilters,
@@ -48,11 +48,12 @@ export async function readDocsListingFromCache(
   const cacheKey = docsListingCacheKey(filters);
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const rows = await docsListingRowsTable(db).where("cacheKey").equals(cacheKey).toArray();
-  if (rows.length === 0) return null;
+  const syncedAtRaw = await readMeta(username, metaSyncedAtKey(cacheKey));
+  // No rows but a sync time: the view is empty (its last Doc went), not uncached.
+  if (rows.length === 0 && !syncedAtRaw) return null;
 
   const ordered = rows.sort((a, b) => a.sortIndex - b.sortIndex);
   const results = ordered.map((row) => deserializeResult(row.data));
-  const syncedAtRaw = await readMeta(username, metaSyncedAtKey(cacheKey));
   const syncedAt = syncedAtRaw ? Number.parseInt(syncedAtRaw, 10) : 0;
   const hasMoreRaw = await readMeta(username, metaHasMoreKey(cacheKey));
 
@@ -72,10 +73,26 @@ export async function writeDocsListingToCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = docsListingRowsTable(db);
   const syncedAt = Date.now();
-  const sorted = sortDocsHomeResults(snapshot.results);
+  const rows = docsListingRows(cacheKey, snapshot.results);
+  // One transaction, so an inbound patch from another tab never lands between
+  // the delete and the put.
+  await db.transaction("rw", table, db.meta, async () => {
+    await table.where("cacheKey").equals(cacheKey).delete();
+    if (rows.length > 0) {
+      await table.bulkPut(rows);
+    }
+    await db.meta.put({ key: metaSyncedAtKey(cacheKey), value: String(syncedAt) });
+    await db.meta.put({ key: metaHasMoreKey(cacheKey), value: snapshot.hasMore ? "1" : "0" });
+  });
+  rememberOfflineDocsUsername(username);
+}
 
-  await table.where("cacheKey").equals(cacheKey).delete();
-  const rows: OfflineDocsListingRow[] = sorted.map((result, sortIndex) => ({
+/** Cache rows for one view, in display order. */
+export function docsListingRows(
+  cacheKey: string,
+  results: readonly WgwUnifiedSearchResult[],
+): OfflineDocsListingRow[] {
+  return sortDocsHomeResults(results).map((result, sortIndex) => ({
     id: rowId(cacheKey, result.sourceKey),
     cacheKey,
     sourceKey: result.sourceKey,
@@ -83,12 +100,6 @@ export async function writeDocsListingToCache(
     modifiedAt: result.modifiedAt ?? 0,
     sortIndex,
   }));
-  if (rows.length > 0) {
-    await table.bulkPut(rows);
-  }
-  await writeMeta(username, metaSyncedAtKey(cacheKey), String(syncedAt));
-  await writeMeta(username, metaHasMoreKey(cacheKey), snapshot.hasMore ? "1" : "0");
-  rememberOfflineDocsUsername(username);
 }
 
 /** Browse filter sets that should include a file at `apiPath` on Docs home. */

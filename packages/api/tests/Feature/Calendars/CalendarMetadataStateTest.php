@@ -92,6 +92,56 @@ final class CalendarMetadataStateTest extends WgwDatabaseTestCase
         $this->assertSame('#0000ff', $seen['color']);
     }
 
+    public function test_owner_rename_and_recolour_reach_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedCalendar('Planning', 'planning');
+
+        $this->updateCalendar('bob', $ownerId, ['name' => 'Planning 2027', 'color' => '#ff0000']);
+
+        $seen = $this->calendar('alice', $shareeId);
+        $this->assertSame('Planning 2027', $seen['name']);
+        $this->assertSame('#ff0000', $seen['color']);
+
+        $this->updateCalendar('bob', $ownerId, ['color' => '#00ff00']);
+        $this->assertSame('#00ff00', $this->calendar('alice', $shareeId)['color']);
+    }
+
+    public function test_owner_dav_rename_reaches_the_sharee(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedCalendar('Rota', 'rota');
+
+        $this->davProppatch('bob', '/calendars/bob/'.$ownerId, [
+            '{DAV:}displayname' => 'Rota 2027',
+            self::APPLE_CALENDAR_COLOR => '#00ff00',
+        ]);
+
+        $seen = $this->calendar('alice', $shareeId);
+        $this->assertSame('Rota 2027', $seen['name']);
+        $this->assertSame('#00ff00', $seen['color']);
+    }
+
+    public function test_a_sharees_own_name_and_colour_survive_the_owners_change(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedCalendar('Planning', 'planning');
+        $this->updateCalendar('alice', $shareeId, ['name' => 'Bob planning', 'color' => '#0000ff']);
+
+        $this->updateCalendar('bob', $ownerId, ['name' => 'Planning 2027', 'color' => '#ff0000']);
+
+        $this->assertSame('Planning 2027', $this->calendar('bob', $ownerId)['name']);
+        $seen = $this->calendar('alice', $shareeId);
+        $this->assertSame('Bob planning', $seen['name']);
+        $this->assertSame('#0000ff', $seen['color']);
+    }
+
+    public function test_a_sharees_rename_stays_their_own(): void
+    {
+        [$ownerId, $shareeId] = $this->sharedCalendar('Planning', 'planning');
+
+        $this->updateCalendar('alice', $shareeId, ['name' => 'Bob planning']);
+
+        $this->assertSame('Planning', $this->calendar('bob', $ownerId)['name']);
+    }
+
     public function test_group_calendar_rename_reaches_every_member(): void
     {
         $created = $this->jmapAs('bob', [
@@ -138,6 +188,15 @@ final class CalendarMetadataStateTest extends WgwDatabaseTestCase
         $this->assertIsArray($shared, 'alice must see calendar '.$name);
 
         return [$ownerId, (string) $shared['id']];
+    }
+
+    /** @param array<string, mixed> $patch */
+    private function updateCalendar(string $username, string $id, array $patch): void
+    {
+        $set = $this->jmapAs($username, [
+            ['Calendar/set', ['accountId' => $username, 'update' => [$id => $patch]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertArrayHasKey($id, $set['updated'] ?? [], $username.' must update calendar '.$id);
     }
 
     /** @return array{bob: string, alice: string} */

@@ -8,7 +8,7 @@ const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
  */
 export async function putDriveFile(
   apiPath: string,
-  content: string,
+  content: string | Uint8Array,
   contentType: string,
 ): Promise<void> {
   const encoded = apiPath

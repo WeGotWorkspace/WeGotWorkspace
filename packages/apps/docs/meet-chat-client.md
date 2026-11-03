@@ -104,6 +104,10 @@ server-side clarifications marked **[chunk D]** inline:
    get/changes only — there are no `/set` methods; a `ChatChannel/set` call
    returns the standard `unknownMethod` error. (Deviation from the original
    spec note that `/set` would ship anyway; nothing consumes it.)
+   `ChatMessage/query` (filter `inChannel`, `position`/`limit`) lists message
+   ids without bodies; the full re-list after `cannotCalculateChanges` pages
+   it and fetches explicit-id `/get` chunks of at most `maxObjectsInGet`
+   (#1792), because a get-all above that cap is `requestTooLarge`.
 3. **Object shapes:** JMAP `ChatChannel` and `ChatMessage` objects use the
    **same field names and value encodings as the REST OpenAPI schemas**
    (`openapi/schemas/chat/` → `ChatChannel`, `ChatMessage`): notably `id`

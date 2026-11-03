@@ -119,6 +119,7 @@ export function TasksWorkspace({
   initialView,
   initialTaskId,
   onViewChange,
+  headerActions,
 }: TasksWorkspaceProps) {
   const composerRef = useRef<TasksMainViewHandle>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -318,6 +319,7 @@ export function TasksWorkspace({
                     </TooltipContent>
                   </Tooltip>
                 ) : null}
+                {headerActions}
                 {onRefreshList ? (
                   <IconButton
                     label={L.refreshList}

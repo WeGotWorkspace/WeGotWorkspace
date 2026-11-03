@@ -16,7 +16,7 @@ Per-app push scope for installed apps ([#1606](https://github.com/WeGotWorkspace
 
 ## How delivery works, in one paragraph
 
-Every inbox row gets one `local` delivery in `notification_deliveries`, due 20 s after it is created. Any window of that user that is visible, or in a Meet call, calls `POST /api/v1/notifications/{id}/local-ack` on its next inbox poll (about every 15 s, sooner after a chat `notify-hint`). That sets `acked_at`, and the sweep then skips push on **every** device. When nothing acks within the 20 s, `wgw:notify:vapid-sweep` (cron, once a minute) sends Web Push to every `push_subscriptions` row of that user and sets `sent_at`. So push lands about 20–80 s after the event.
+Every inbox row gets one `local` delivery in `notification_deliveries`, due 20 s after it is created. Any window of that user that is visible, or in a Meet call, calls `POST /api/v1/notifications/local-ack` with the ids it has not acked yet on its next inbox poll (about every 15 s, sooner after a chat `notify-hint`). That sets `acked_at`, and the sweep then skips push on **every** device. When nothing acks within the 20 s, `wgw:notify:vapid-sweep` (cron, once a minute) sends Web Push to every `push_subscriptions` row of that user and sets `sent_at`. So push lands about 20–80 s after the event.
 
 ## Prerequisites
 
