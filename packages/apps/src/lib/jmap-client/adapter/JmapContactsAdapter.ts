@@ -106,7 +106,7 @@ export class JmapContactsAdapter extends JmapInboundAdapter {
 
   protected async refetchAll(): Promise<void> {
     const books = await this.#contacts.getAddressBooks(this.accountId);
-    const cards = await this.#contacts.getContactCards(this.accountId);
+    const cards = await this.#contacts.getAllContactCards(this.accountId);
     if (this.#options.onRefetchAll) {
       this.#options.onRefetchAll({ books: books.list, cards: cards.list });
       return;

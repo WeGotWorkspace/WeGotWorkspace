@@ -6,6 +6,7 @@ const channelChanges = vi.fn();
 const messageChanges = vi.fn();
 const getChannels = vi.fn();
 const getMessages = vi.fn();
+const getAllMessages = vi.fn();
 
 vi.mock("../chat/JmapChatClient.js", () => ({
   JmapChatClient: class {
@@ -13,6 +14,7 @@ vi.mock("../chat/JmapChatClient.js", () => ({
     messageChanges = messageChanges;
     getChannels = getChannels;
     getMessages = getMessages;
+    getAllMessages = getAllMessages;
   },
 }));
 
@@ -34,7 +36,8 @@ const none = (newState: string) => ({
 
 describe("JmapChatAdapter.syncIfStale", () => {
   beforeEach(() => {
-    for (const mock of [channelChanges, messageChanges, getChannels, getMessages]) mock.mockReset();
+    for (const mock of [channelChanges, messageChanges, getChannels, getMessages, getAllMessages])
+      mock.mockReset();
   });
 
   it("skips /changes when the pushed states equal its own", async () => {
