@@ -1,114 +1,134 @@
-// Drive: a share-link guest downloads a large file natively through a download
-// ticket (#1622), and resumes it with Range/If-Range after a dropped connection.
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "./helpers/live-test";
+import { putDriveFile } from "./helpers/drive-seed";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
-const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
-const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
-// The PHP dev server caps a PUT body at post_max_size (8M), so seed under that.
-const SIZE = 6 * 1024 * 1024;
+// #1622: a share-link guest downloads a large file natively through a
+// download ticket, and can resume it with Range after a dropped connection.
 
-function sha256(...parts: Buffer[]): string {
-  const hash = createHash("sha256");
-  for (const part of parts) hash.update(part);
-  return hash.digest("hex");
+const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
+const V1 = `${API}/api/v1`;
+/** Large enough to stream in many chunks; the dev PHP server takes bodies up to 32M. */
+const SIZE = 24 * 1024 * 1024;
+/** Bytes read before the connection is dropped. */
+const DROP_AFTER = 5 * 1024 * 1024;
+
+const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+async function ownerToken(): Promise<string> {
+  const response = await fetch(`${V1}/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: E2E_USERNAME, password: E2E_PASSWORD }),
+  });
+  expect(response.ok).toBe(true);
+  return ((await response.json()) as { access_token: string }).access_token;
 }
 
+async function createPublicShare(token: string, path: string) {
+  const response = await fetch(`${V1}/files/shares`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ path, kind: "public", defaultAccess: "view" }),
+  });
+  expect(response.status).toBeLessThan(300);
+  const { data } = (await response.json()) as { data: { id: string; publicToken: string } };
+  return data;
+}
+
+/** Removes the seeded folder over WebDAV, as the e2e user. */
+async function deleteDriveFolder(folder: string): Promise<void> {
+  const basic = Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString("base64");
+  await fetch(`${API}/files/users/${E2E_USERNAME}/${encodeURIComponent(folder)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Basic ${basic}` },
+  });
+}
+
+async function deleteShare(token: string, id: string): Promise<void> {
+  await fetch(`${V1}/files/shares/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// A guest has no sign-in: no saved session from the live setup.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test.describe("Drive guest large download (live app)", () => {
-  test.describe.configure({ timeout: 180_000 });
+test("a share-link guest downloads a large file natively and resumes it", async ({ page }) => {
+  test.setTimeout(180_000);
+  const folder = `e2e-guest-dl-${Date.now()}`;
+  const name = "report.bin";
+  const bytes = randomBytes(SIZE);
+  // WebDAV writes hash the file, so the ticket carries a strong ETag to resume on.
+  await putDriveFile(`users/${E2E_USERNAME}/${folder}/${name}`, bytes, "application/octet-stream");
 
-  test("a guest downloads a large shared file natively and resumes it after a drop", async ({
-    browser,
-  }) => {
-    const name = `e2e-guest-large-${Date.now()}.bin`;
-    const apiPath = `/users/${E2E_USERNAME}/${name}`;
-    const bytes = randomBytes(SIZE);
-    const expected = sha256(bytes);
-
-    const basic = `Basic ${Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString("base64")}`;
-    const put = await fetch(`${API}/files${apiPath}`, {
-      method: "PUT",
-      headers: { Authorization: basic, "Content-Type": "application/octet-stream" },
-      body: bytes,
-    });
-    expect(put.ok, `seed failed (${put.status})`).toBeTruthy();
-
-    const tokenResponse = await fetch(`${API}/api/v1/auth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: E2E_USERNAME, password: E2E_PASSWORD }),
-    });
-    expect(tokenResponse.ok).toBeTruthy();
-    const access = ((await tokenResponse.json()) as { access_token: string }).access_token;
-    const ownerHeaders = { Authorization: `Bearer ${access}`, "Content-Type": "application/json" };
-    const created = await fetch(`${API}/api/v1/files/shares`, {
-      method: "POST",
-      headers: ownerHeaders,
-      body: JSON.stringify({ path: apiPath, kind: "public", defaultAccess: "view" }),
-    });
-    expect(created.ok, await created.clone().text()).toBeTruthy();
-    const share = ((await created.json()) as { data: { id: string; publicToken: string } }).data;
-    expect(share.publicToken).toBeTruthy();
-
-    const guest = await browser.newContext({
-      baseURL: APP,
-      storageState: { cookies: [], origins: [] },
-    });
-    try {
-      const page = await guest.newPage();
-      const downloadEvent = page.waitForEvent("download", { timeout: 90_000 });
-      await page.goto(`/share/${share.publicToken}`);
-      const download = await downloadEvent;
-
-      // A native download of the ticket URL, never a blob: URL.
-      const ticketUrl = download.url();
-      expect(ticketUrl).toContain("/jmap/download-ticket/");
-      expect(ticketUrl.startsWith("blob:")).toBe(false);
-      const saved = await download.path();
-      expect(saved).toBeTruthy();
-      expect(sha256(await readFile(saved!))).toBe(expected);
-
-      // Resume: the connection drops after part of the body, then Range + If-Range.
-      const controller = new AbortController();
-      const first = await fetch(ticketUrl, { signal: controller.signal });
-      expect(first.status).toBe(200);
-      const etag = first.headers.get("etag");
-      expect(etag).toBeTruthy();
-      const received: Buffer[] = [];
-      let receivedBytes = 0;
-      const reader = first.body!.getReader();
-      while (receivedBytes < 1024 * 1024) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        received.push(Buffer.from(value));
-        receivedBytes += value.byteLength;
+  const owner = await ownerToken();
+  const share = await createPublicShare(owner, `/users/${E2E_USERNAME}/${folder}/${name}`);
+  try {
+    const ticketRequests: string[] = [];
+    const contentGets: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (request.method() === "POST" && /\/files\/download-tickets$/.test(url)) {
+        ticketRequests.push(url);
       }
-      controller.abort();
-      await reader.cancel().catch(() => undefined);
-      expect(receivedBytes).toBeGreaterThan(0);
-      expect(receivedBytes).toBeLessThan(SIZE);
+      if (request.method() === "GET" && /\/files\/content\?/.test(url)) contentGets.push(url);
+    });
 
-      const rest = await guest.request.get(ticketUrl, {
-        headers: { Range: `bytes=${receivedBytes}-`, "If-Range": etag! },
-      });
-      expect(rest.status()).toBe(206);
-      const joined = Buffer.concat([...received, await rest.body()]);
-      expect(joined.length).toBe(SIZE);
-      expect(sha256(joined)).toBe(expected);
-    } finally {
-      await guest.close();
-      await fetch(`${API}/api/v1/files/shares/${share.id}`, {
-        method: "DELETE",
-        headers: ownerHeaders,
-      });
-      await fetch(`${API}/files${apiPath}`, {
-        method: "DELETE",
-        headers: { Authorization: basic },
-      });
+    // The share page of a file that has no browser preview downloads it on open.
+    const downloadEvent = page.waitForEvent("download", { timeout: 60_000 });
+    await page.goto(`/share/${share.publicToken}`);
+    const download = await downloadEvent;
+
+    // A native download from the ticket URL, not a blob: URL built from fetched bytes.
+    const ticketUrl = download.url();
+    expect(ticketUrl).toMatch(/\/jmap\/download-ticket\/[^/]+\/report\.bin$/);
+    expect(ticketRequests).toHaveLength(1);
+    expect(contentGets).toEqual([]);
+    const saved = await readFile((await download.path())!);
+    expect(saved.length).toBe(SIZE);
+    expect(sha256(saved)).toBe(sha256(bytes));
+    await expect(page.getByText("Download started")).toBeVisible();
+
+    // The ticket URL needs no Authorization header. Drop the connection part-way…
+    const abort = new AbortController();
+    const first = await fetch(ticketUrl, { signal: abort.signal });
+    expect(first.status).toBe(200);
+    expect(first.headers.get("accept-ranges")).toBe("bytes");
+    expect(first.headers.get("content-disposition") ?? "").toMatch(/attachment/);
+    const etag = first.headers.get("etag");
+    expect(etag).toBeTruthy();
+    const reader = first.body!.getReader();
+    const parts: Uint8Array[] = [];
+    let received = 0;
+    while (received < DROP_AFTER) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      received += value.length;
     }
-  });
+    abort.abort();
+    expect(received).toBeLessThan(SIZE);
+
+    // …then resume from where it stopped.
+    const rest = await fetch(ticketUrl, {
+      headers: { Range: `bytes=${received}-`, "If-Range": etag! },
+    });
+    expect(rest.status).toBe(206);
+    expect(rest.headers.get("content-range")).toBe(`bytes ${received}-${SIZE - 1}/${SIZE}`);
+    const tail = new Uint8Array(await rest.arrayBuffer());
+    const whole = Buffer.concat([...parts, tail]);
+    expect(whole.length).toBe(SIZE);
+    expect(sha256(whole)).toBe(sha256(bytes));
+
+    // Revoking the link stops the ticket at its next request.
+    await deleteShare(owner, share.id);
+    const afterRevoke = await fetch(ticketUrl, { headers: { Range: "bytes=0-9" } });
+    expect(afterRevoke.status).toBe(404);
+  } finally {
+    await deleteShare(owner, share.id);
+    await deleteDriveFolder(folder);
+  }
 });
