@@ -37,10 +37,10 @@ async function createPublicShare(token: string, path: string) {
   return data;
 }
 
-/** Removes the seeded folder over WebDAV, as the e2e user. */
-async function deleteDriveFolder(folder: string): Promise<void> {
+/** Removes the seeded file over WebDAV, as the e2e user. */
+async function deleteDriveFile(name: string): Promise<void> {
   const basic = Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString("base64");
-  await fetch(`${API}/files/users/${E2E_USERNAME}/${encodeURIComponent(folder)}`, {
+  await fetch(`${API}/files/users/${E2E_USERNAME}/${encodeURIComponent(name)}`, {
     method: "DELETE",
     headers: { Authorization: `Basic ${basic}` },
   });
@@ -58,14 +58,13 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test("a share-link guest downloads a large file natively and resumes it", async ({ page }) => {
   test.setTimeout(180_000);
-  const folder = `e2e-guest-dl-${Date.now()}`;
-  const name = "report.bin";
+  const name = `e2e-guest-dl-${Date.now()}.bin`;
   const bytes = randomBytes(SIZE);
   // WebDAV writes hash the file, so the ticket carries a strong ETag to resume on.
-  await putDriveFile(`users/${E2E_USERNAME}/${folder}/${name}`, bytes, "application/octet-stream");
+  await putDriveFile(`users/${E2E_USERNAME}/${name}`, bytes, "application/octet-stream");
 
   const owner = await ownerToken();
-  const share = await createPublicShare(owner, `/users/${E2E_USERNAME}/${folder}/${name}`);
+  const share = await createPublicShare(owner, `/users/${E2E_USERNAME}/${name}`);
   try {
     const ticketRequests: string[] = [];
     const contentGets: string[] = [];
@@ -84,7 +83,7 @@ test("a share-link guest downloads a large file natively and resumes it", async 
 
     // A native download from the ticket URL, not a blob: URL built from fetched bytes.
     const ticketUrl = download.url();
-    expect(ticketUrl).toMatch(/\/jmap\/download-ticket\/[^/]+\/report\.bin$/);
+    expect(ticketUrl).toMatch(/\/jmap\/download-ticket\/[^/]+\/e2e-guest-dl-\d+\.bin$/);
     expect(ticketRequests).toHaveLength(1);
     expect(contentGets).toEqual([]);
     const saved = await readFile((await download.path())!);
@@ -129,6 +128,6 @@ test("a share-link guest downloads a large file natively and resumes it", async 
     expect(afterRevoke.status).toBe(404);
   } finally {
     await deleteShare(owner, share.id);
-    await deleteDriveFolder(folder);
+    await deleteDriveFile(name);
   }
 });
