@@ -80,4 +80,29 @@ describe("tableRowPositions", () => {
     expect(positions).toHaveLength(2);
     expect(positions.map((pos) => doc.nodeAt(pos)?.type.name)).toEqual(["tableRow", "tableRow"]);
   });
+
+  it("finds the rows of a table in a list item or a quote, not of a table in a cell", () => {
+    const schema = getSchema(createTextEditorExtensions({ format: "markdown" }));
+    type Node = ReturnType<typeof schema.text>;
+    const paragraph = (text: string) => schema.nodes.paragraph.create(null, schema.text(text));
+    const cell = (...content: Node[]) => schema.nodes.tableCell.create(null, content);
+    const row = (...cells: Node[]) => schema.nodes.tableRow.create(null, cells);
+    const table = (...rows: Node[]) => schema.nodes.table.create(null, rows);
+    const inner = table(row(cell(paragraph("inner"))));
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.bulletList.create(
+        null,
+        schema.nodes.listItem.create(null, [
+          paragraph("Item"),
+          table(row(cell(paragraph("in list")))),
+        ]),
+      ),
+      schema.nodes.blockquote.create(null, table(row(cell(paragraph("in quote"), inner)))),
+    ]);
+    const positions = tableRowPositions(doc);
+    expect(positions.map((pos) => doc.nodeAt(pos)?.textContent)).toEqual([
+      "in list",
+      "in quoteinner",
+    ]);
+  });
 });

@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { documentTables } from "./text-editor-page-columns";
 
 /**
  * With pages on, every table row is its own box, so a row moves to the next page whole.
@@ -21,13 +22,15 @@ export type PageRowsOptions = {
   contentHeight: () => number;
 };
 
-/** Positions of the rows of top-level tables. */
+/**
+ * Positions of the rows of every table the page view lays out, including tables in a list
+ * or quote: the same tables that get column widths. A table inside a cell is skipped.
+ */
 export function tableRowPositions(doc: ProseMirrorNode): number[] {
   const positions: number[] = [];
-  doc.forEach((child, offset) => {
-    if (child.type.name !== "table") return;
-    child.forEach((_row, rowOffset) => positions.push(offset + 1 + rowOffset));
-  });
+  for (const { pos, node } of documentTables(doc)) {
+    node.forEach((_row, rowOffset) => positions.push(pos + 1 + rowOffset));
+  }
   return positions;
 }
 
@@ -86,9 +89,9 @@ export function createPageRowsPlugin(options: PageRowsOptions): Plugin<Decoratio
         view.dispatch(view.state.tr.setMeta(pageRowsKey, next).setMeta("addToHistory", false));
       };
       return {
-        update(updatedView) {
+        // Row heights are read in the next frame, not on every keystroke.
+        update() {
           if (frame != null || typeof requestAnimationFrame !== "function") return;
-          if (sameRows(oversizeRows(updatedView, options), stackedRows(updatedView))) return;
           frame = requestAnimationFrame(sync);
         },
         destroy() {
