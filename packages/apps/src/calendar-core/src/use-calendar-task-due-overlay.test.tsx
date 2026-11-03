@@ -8,11 +8,11 @@ const mockReadCache = vi.fn();
 const mockReadUsername = vi.fn(() => "demo");
 const mockOnReconnect = vi.fn();
 
-vi.mock("@/lib/offline/tasks-hybrid-operations", () => ({
+vi.mock("@/lib/offline/tasks/tasks-hybrid-operations", () => ({
   loadTasksBootstrapHybrid: () => mockLoadHybrid(),
 }));
 
-vi.mock("@/lib/offline/tasks-offline-store", () => ({
+vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
   readTasksBootstrapFromCache: (...args: unknown[]) => mockReadCache(...args),
 }));
 

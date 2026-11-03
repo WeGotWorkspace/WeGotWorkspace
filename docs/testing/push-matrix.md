@@ -62,7 +62,7 @@ Run each step **20 s or more after the event**, from `packages/api`.
    ORDER BY created_at;
    ```
 
-   Hosts: Chrome and Android Chrome `fcm.googleapis.com`, Edge `*.notify.windows.com`, Firefox `updates.push.services.mozilla.com`, Safari and iOS `web.push.apple.com`.
+   Hosts: Chrome Stable and Android Chrome Stable `fcm.googleapis.com`. Chrome Beta, Dev, Canary and unbranded Chromium `jmt17.google.com` (#1891). Edge `*.notify.windows.com`, Firefox `updates.push.services.mozilla.com`, Safari and iOS `web.push.apple.com`. The server only stores endpoints on these hosts; any other host answers 400 and leaves no row.
 
 4. **Log** (`storage/logs/laravel.log`): look for `vapid_send_rejected` (one per refused send; 404/410 at info, others at warning), `vapid_send_failed` (no response) and `vapid_sweep_failures` (one summary per sweep run with `sent`, `failed`, `by_status`, `by_host`).
 
@@ -97,7 +97,7 @@ How to read the delivery row:
 
 | ID | Platform | Install | Notes |
 | -- | -------- | ------- | ----- |
-| D1 | Chrome desktop, tab | — | Shares one subscription with D2 in the same profile |
+| D1 | Chrome desktop, tab | — | Shares one subscription with D2 in the same profile. Stable uses `fcm.googleapis.com`; Beta, Dev and Canary use `jmt17.google.com` |
 | D2 | Chrome desktop, installed | Install from the address bar | "Hidden" = minimized or behind another app. Closing the app while a D1 tab is still open is P2, not P3 |
 | D3 | Edge desktop, tab | — | Push host `*.notify.windows.com` |
 | D4 | Edge desktop, installed | Apps → Install this site as an app | As D2 |

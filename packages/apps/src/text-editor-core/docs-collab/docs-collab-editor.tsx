@@ -21,6 +21,11 @@ import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
+import type { TextEditorPageSetup } from "@/lib/page-format";
+import {
+  useTextEditorPageSetup,
+  textEditorPaginated,
+} from "@/text-editor-core/src/use-text-editor-page-setup";
 import { DocsCollabCommentControl } from "./docs-collab-comment-control";
 
 import "@/text-editor-core/src/text-editor.css";
@@ -74,6 +79,8 @@ export type DocsCollabEditorProps = {
   /** Opens the Docs Drive image picker from slash + toolbar. */
   onInsertImage?: () => void;
   fetchImageContent?: DocsImageContentFetcher;
+  /** Docs only: the person's page setup. Turns on pages and the Page break slash item. */
+  pageSetup?: TextEditorPageSetup;
 };
 
 export function DocsCollabEditor({
@@ -104,6 +111,7 @@ export function DocsCollabEditor({
   suggestionsOverlay,
   onInsertImage,
   fetchImageContent,
+  pageSetup,
 }: DocsCollabEditorProps) {
   const effectiveOnContentChange = onContentChange ?? onMarkdownChange;
   const onContentChangeRef = useRef(effectiveOnContentChange);
@@ -135,6 +143,9 @@ export function DocsCollabEditor({
     [editable, ariaLabel],
   );
 
+  const paginated = textEditorPaginated(pageSetup, viewSource);
+  const hasPages = pageSetup != null;
+
   const resolvedAutofocus = autofocus ?? (editable ? "end" : false);
   // Capture mount intent only — do not re-focus when the parent later drops
   // `autofocus={false}` (e.g. new-note title handoff).
@@ -156,6 +167,7 @@ export function DocsCollabEditor({
         user,
         trackChangesUserKey,
         fetchImageContent,
+        pagination: pageSetup ? { setup: pageSetup, enabled: paginated } : undefined,
       }),
       editorProps,
       onUpdate: ({ transaction, editor: ed }) => {
@@ -166,8 +178,10 @@ export function DocsCollabEditor({
         ed.commands.updateUser(user);
       },
     },
-    [ydoc, awareness, format, user.color, user.name, trackChangesUserKey],
+    [ydoc, awareness, format, user.color, user.name, trackChangesUserKey, hasPages],
   );
+
+  useTextEditorPageSetup(editor, pageSetup, paginated);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -244,6 +258,8 @@ export function DocsCollabEditor({
       fill={sheetFill}
       slashMenu={format !== "text" && editable}
       onInsertImage={onInsertImage}
+      pageBreak={hasPages}
+      paginated={paginated}
       overlay={
         commentsOverlay || suggestionsOverlay ? (
           <>

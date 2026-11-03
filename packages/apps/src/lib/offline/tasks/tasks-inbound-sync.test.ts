@@ -9,13 +9,13 @@ import {
   readTasksBootstrapFromCache,
   readTasksChangesState,
   writeTasksChangesState,
-} from "@/lib/offline/tasks-offline-store";
-import { setTasksSyncConflictListener } from "@/lib/offline/tasks-sync-conflicts";
+} from "@/lib/offline/tasks/tasks-offline-store";
+import { setTasksSyncConflictListener } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import {
   createHybridTasksOperations,
   fetchTasksHybridBootstrap,
-} from "@/lib/offline/tasks-hybrid-operations";
-import { syncTasksInbound } from "@/lib/offline/tasks-inbound-sync";
+} from "@/lib/offline/tasks/tasks-hybrid-operations";
+import { syncTasksInbound } from "@/lib/offline/tasks/tasks-inbound-sync";
 
 /**
  * In-memory Tasks server. `changes` follows TaskListRepository::changes: the

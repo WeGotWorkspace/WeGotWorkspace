@@ -10,10 +10,10 @@ import {
   readTasksBootstrapFromCache,
   upsertTaskInCache,
   writeTasksBootstrapToCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
-import { flushTasksOutbox } from "@/lib/offline/tasks-outbox-flush";
+import { flushTasksOutbox } from "@/lib/offline/tasks/tasks-outbox-flush";
 import {
   subscribeTaskWriteRefused,
   type TaskWriteRefused,

@@ -76,11 +76,13 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
           from: payload.from,
           to: payload.to,
         });
+        // Page setup moved when the rename or trash was queued.
         await applyDriveSidecarPathMigration(
           username,
           payload.from,
           payload.destination,
           payload.to,
+          { movePageSetup: false },
         );
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });

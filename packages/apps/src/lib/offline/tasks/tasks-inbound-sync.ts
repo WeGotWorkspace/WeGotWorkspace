@@ -14,8 +14,11 @@ import {
   readTasksPendingWrites,
   reconcileTaskListResync,
   reconcileTasksSnapshot,
-} from "@/lib/offline/tasks-inbound";
-import { readTasksChangesState, writeTasksChangesState } from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-inbound";
+import {
+  readTasksChangesState,
+  writeTasksChangesState,
+} from "@/lib/offline/tasks/tasks-offline-store";
 
 /** Same cadence as the Contacts inbound poll. */
 export const TASKS_INBOUND_POLL_MS = 10_000;
