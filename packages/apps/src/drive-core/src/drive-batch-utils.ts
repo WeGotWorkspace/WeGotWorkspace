@@ -50,6 +50,27 @@ export function mergeDriveFolderListing(
   return [...serverFiles, ...staged];
 }
 
+/**
+ * A folder fetched again because another user changed it (#1663). Rows the
+ * server no longer lists are gone, so they drop, unlike in
+ * {@link mergeDriveFolderListing}. Rows the server never listed stay: a new
+ * folder still on its way (no `apiPath` yet), and with `keepStaged` every
+ * row of the folder, for writes that wait in the outbox.
+ */
+export function refreshDriveFolderListing(
+  previousFiles: DriveFile[],
+  nextData: DriveUIData,
+  username: string,
+  keepStaged: boolean,
+): DriveFile[] {
+  if (keepStaged) return mergeDriveFolderListing(previousFiles, nextData, username);
+  return mergeDriveFolderListing(
+    previousFiles.filter((file) => !file.apiPath),
+    nextData,
+    username,
+  );
+}
+
 export async function reloadDriveFolderListing(
   operations: DriveAPIOperations,
   folderPath: string,
