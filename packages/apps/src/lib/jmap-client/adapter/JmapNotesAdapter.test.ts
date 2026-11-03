@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { JmapNotesAdapter } from "./JmapNotesAdapter";
+import { JmapNotesAdapter, NOTE_METADATA_PROPERTIES } from "./JmapNotesAdapter";
 import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { NOTES_CAPABILITY } from "../core/types.js";
@@ -98,6 +98,41 @@ describe("JmapNotesAdapter", () => {
     expect(getNotes).toHaveBeenCalledWith("bob", ["n-2"]);
     expect(onRemoteNote).toHaveBeenCalledWith({ id: "n-2", title: "New" });
     expect(onRemoteNoteDestroyed).toHaveBeenCalledWith("n-gone");
+  });
+
+  it("fetches a note whose body a live room holds without its body", async () => {
+    const onRemoteNote = vi.fn();
+    const adapter = new JmapNotesAdapter({
+      client: clientStub({ Notebook: "nb-1", Note: "n-1" }),
+      onRemoteNote,
+      bodyInRoom: (id) => id === "n-open",
+    });
+    notebookChanges.mockResolvedValue({
+      created: [],
+      updated: [],
+      destroyed: [],
+      newState: "nb-1",
+    });
+    noteChanges.mockResolvedValue({
+      created: [],
+      updated: ["n-open", "n-other"],
+      destroyed: [],
+      newState: "n-2",
+    });
+    getNotes.mockImplementation(async (_account: string, ids: string[], properties?: unknown) => ({
+      list: ids.map((id) =>
+        properties ? { id, title: "Meta" } : { id, title: "Full", body: "b" },
+      ),
+      state: "n-2",
+    }));
+
+    await adapter.sync();
+
+    expect(getNotes).toHaveBeenCalledWith("bob", ["n-open"], NOTE_METADATA_PROPERTIES);
+    expect(getNotes).toHaveBeenCalledWith("bob", ["n-other"]);
+    expect(NOTE_METADATA_PROPERTIES).not.toContain("body");
+    expect(onRemoteNote).toHaveBeenCalledWith({ id: "n-open", title: "Meta" });
+    expect(onRemoteNote).toHaveBeenCalledWith({ id: "n-other", title: "Full", body: "b" });
   });
 
   it("re-primes on cannotCalculateChanges", async () => {
