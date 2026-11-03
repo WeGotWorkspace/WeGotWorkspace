@@ -6,6 +6,7 @@ import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-ty
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { canDownloadDriveItem, startDriveItemDownload } from "@/drive-core/src/drive-item-download";
 
 type UseDriveSelectionBarArgs = {
   labels: DriveUILabels;
@@ -40,9 +41,15 @@ export function useDriveSelectionBar({
   const { show, showError } = useAppToast();
 
   const selectionActionButtons = useMemo<WorkspaceActionButton[]>(() => {
+    const selected =
+      selectedIds.length === 1 ? files.find((file) => file.id === selectedIds[0]) : undefined;
     const downloadable =
-      selectedIds.length === 1
-        ? files.find((file) => file.id === selectedIds[0] && file.kind !== "folder")
+      selected &&
+      canDownloadDriveItem(selected, {
+        foldersDownloadable: !!operations?.downloadFolder,
+        inTrash: inTrashView,
+      })
+        ? selected
         : undefined;
     const canDownload = !!downloadable && (!operations || !!downloadable.apiPath);
 
@@ -68,15 +75,13 @@ export function useDriveSelectionBar({
       ...(canDownload
         ? [
             {
-              label: labels.selectionDownload,
+              label:
+                downloadable.kind === "folder"
+                  ? labels.selectionDownloadFolder
+                  : labels.selectionDownload,
               icon: <Download className="size-4" />,
               onClick: () => {
-                if (operations && downloadable.apiPath) {
-                  void operations.downloadFile(downloadable.apiPath).catch((error: unknown) => {
-                    const message = error instanceof Error ? error.message : String(error);
-                    showError(message);
-                  });
-                }
+                startDriveItemDownload(operations, downloadable, showError);
                 show("Download started", { icon: <Download className="size-4" /> });
               },
             },
@@ -90,6 +95,7 @@ export function useDriveSelectionBar({
     inTrashView,
     labels.selectionDeletePermanently,
     labels.selectionDownload,
+    labels.selectionDownloadFolder,
     labels.selectionMove,
     labels.selectionMoveToTrash,
     labels.selectionStar,

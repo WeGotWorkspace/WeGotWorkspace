@@ -21,6 +21,10 @@ import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { DriveDetailPanel } from "@/drive-core/src/drive-detail-panel";
+import {
+  DriveFolderDownloadContext,
+  startDriveItemDownload,
+} from "@/drive-core/src/drive-item-download";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
@@ -271,14 +275,7 @@ export function DriveWorkspace({
         isStarred={!!starred[active.id]}
         inTrash={inTrashView}
         onClose={handleDetailClose}
-        onDownload={() => {
-          if (operations && active.apiPath && active.kind !== "folder") {
-            void operations.downloadFile(active.apiPath).catch((error: unknown) => {
-              const message = error instanceof Error ? error.message : String(error);
-              showError(message);
-            });
-          }
-        }}
+        onDownload={() => startDriveItemDownload(operations, active, showError)}
         onStar={() => toggleStar(active.id)}
         onRename={() => requestRenameItem(active)}
         onMove={() => requestMoveItem(active)}
@@ -331,90 +328,92 @@ export function DriveWorkspace({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <DriveUploadQueueProvider value={uploadModel}>
-        <WorkspaceAppLayout
-          className={cn(
-            "drive-workspace",
-            detailPanelOpen && "drive-workspace--panel-open",
-            className,
-          )}
-          sidebar={
-            <DriveSidebar
-              controller={controller}
-              session={session}
-              onLogout={onLogout}
-              onOpenDocsFile={onOpenDocsFile}
-              primarySidebarItems={primarySidebarItems}
-              groupSidebarItems={groupSidebarItems}
-            />
-          }
-          mainHeader={
-            <DriveMainHeader
-              controller={controller}
-              unifiedSearchEnabled={Boolean(operations)}
-              searchEnabled={searchEnabled}
-            />
-          }
-          main={
-            <DriveMainPane
-              controller={controller}
-              operations={operations}
-              openFile={guardedOpenFile}
-              offlineEnabled={offlineEnabled}
-              offlineAvailableIds={rowOfflineAvailableIds}
-              offlinePendingSyncIds={rowOfflinePendingSyncIds}
-              onMakeOfflineAvailable={handleMakeOfflineAvailable}
-              pinLoadingId={pinLoadingId}
-              extraFileActions={fileExtraActions}
-              shareEnabled={shareEnabled}
-              onOpenShare={handleOpenShareForFile}
-              activeMayShare={activeMayShare}
-              activeMayManageStructure={activeMayManageStructure}
-            />
-          }
-          panel={
-            useDetailDrawer ? undefined : (
-              <div
-                className="workspace-app-layout__panel drive-workspace__detail-panel"
-                data-open={detailPanelOpen ? "true" : "false"}
-                aria-hidden={!detailPanelOpen}
-                inert={!detailPanelOpen || undefined}
-              >
-                {detailPanel}
-              </div>
-            )
-          }
-        />
-        {useDetailDrawer ? (
-          <SideDrawer
-            open={detailPanelOpen}
-            onClose={handleDetailClose}
-            title={labels.detailSidebarTitle}
-            className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} drive-detail-panel-drawer`}
-          >
-            {detailPanel}
-          </SideDrawer>
-        ) : null}
-        <DriveWorkspaceModals
-          controller={controller}
-          shareOperations={shareOperations}
-          shareDialog={shareDialog}
-        />
-        {controller.uploadEnabled ? (
-          <input
-            ref={controller.fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            aria-label={labels.uploadFiles}
-            onChange={(e) => {
-              controller.handleUpload(e.target.files);
-              e.target.value = "";
-            }}
+      <DriveFolderDownloadContext.Provider value={Boolean(operations?.downloadFolder)}>
+        <DriveUploadQueueProvider value={uploadModel}>
+          <WorkspaceAppLayout
+            className={cn(
+              "drive-workspace",
+              detailPanelOpen && "drive-workspace--panel-open",
+              className,
+            )}
+            sidebar={
+              <DriveSidebar
+                controller={controller}
+                session={session}
+                onLogout={onLogout}
+                onOpenDocsFile={onOpenDocsFile}
+                primarySidebarItems={primarySidebarItems}
+                groupSidebarItems={groupSidebarItems}
+              />
+            }
+            mainHeader={
+              <DriveMainHeader
+                controller={controller}
+                unifiedSearchEnabled={Boolean(operations)}
+                searchEnabled={searchEnabled}
+              />
+            }
+            main={
+              <DriveMainPane
+                controller={controller}
+                operations={operations}
+                openFile={guardedOpenFile}
+                offlineEnabled={offlineEnabled}
+                offlineAvailableIds={rowOfflineAvailableIds}
+                offlinePendingSyncIds={rowOfflinePendingSyncIds}
+                onMakeOfflineAvailable={handleMakeOfflineAvailable}
+                pinLoadingId={pinLoadingId}
+                extraFileActions={fileExtraActions}
+                shareEnabled={shareEnabled}
+                onOpenShare={handleOpenShareForFile}
+                activeMayShare={activeMayShare}
+                activeMayManageStructure={activeMayManageStructure}
+              />
+            }
+            panel={
+              useDetailDrawer ? undefined : (
+                <div
+                  className="workspace-app-layout__panel drive-workspace__detail-panel"
+                  data-open={detailPanelOpen ? "true" : "false"}
+                  aria-hidden={!detailPanelOpen}
+                  inert={!detailPanelOpen || undefined}
+                >
+                  {detailPanel}
+                </div>
+              )
+            }
           />
-        ) : null}
-        <DriveUploadAnnouncer snapshot={uploadQueue} />
-      </DriveUploadQueueProvider>
+          {useDetailDrawer ? (
+            <SideDrawer
+              open={detailPanelOpen}
+              onClose={handleDetailClose}
+              title={labels.detailSidebarTitle}
+              className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} drive-detail-panel-drawer`}
+            >
+              {detailPanel}
+            </SideDrawer>
+          ) : null}
+          <DriveWorkspaceModals
+            controller={controller}
+            shareOperations={shareOperations}
+            shareDialog={shareDialog}
+          />
+          {controller.uploadEnabled ? (
+            <input
+              ref={controller.fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              aria-label={labels.uploadFiles}
+              onChange={(e) => {
+                controller.handleUpload(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          ) : null}
+          <DriveUploadAnnouncer snapshot={uploadQueue} />
+        </DriveUploadQueueProvider>
+      </DriveFolderDownloadContext.Provider>
     </TooltipProvider>
   );
 }

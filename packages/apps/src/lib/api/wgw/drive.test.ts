@@ -237,6 +237,17 @@ function mockSignedInFetch() {
         201,
       );
     }
+    if (path === "/jmap/folder-download-tickets/bob" && init?.method === "POST") {
+      return jsonResponse(
+        {
+          url: "https://drive.example.test/api/v1/jmap/folder-download-ticket/secret/Docs.zip",
+          name: "Docs.zip",
+          idleExpires: "2099-01-01T00:30:00Z",
+          absoluteExpires: "2099-01-02T00:00:00Z",
+        },
+        201,
+      );
+    }
     if (path.startsWith("/jmap/download/")) {
       return new Response(downloadStatus === 200 ? "hello" : "nope", { status: downloadStatus });
     }
@@ -381,6 +392,45 @@ describe("createWgwDriveOperations FileNode cutover", () => {
       {
         href: "https://drive.example.test/api/v1/jmap/download-ticket/secret/readme.md",
         download: "readme.md",
+      },
+    ]);
+  });
+
+  it("downloads a folder as a zip through a folder ticket, never building a Blob", async () => {
+    const clicked: Array<{ href: string; download: string }> = [];
+    vi.stubGlobal("document", {
+      createElement: () => {
+        const anchor = {
+          href: "",
+          download: "",
+          rel: "",
+          style: {} as Record<string, string>,
+          click: () => clicked.push({ href: anchor.href, download: anchor.download }),
+          remove: () => undefined,
+        };
+        return anchor;
+      },
+      body: { append: () => undefined },
+    });
+    try {
+      const ops = createWgwDriveOperations("/users/bob");
+      expect(ops.downloadFolder).toBeTypeOf("function");
+      await ops.downloadFolder?.("/users/bob/Docs");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const ticketCall = wgwFetch.mock.calls.find(
+      (call) => String(call[0]) === "/jmap/folder-download-tickets/bob",
+    );
+    expect((ticketCall?.[1] as RequestInit).method).toBe("POST");
+    expect(JSON.parse(String((ticketCall?.[1] as RequestInit).body))).toEqual({ nodeId: DOCS_ID });
+    const paths = wgwFetch.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith("/jmap/download"))).toBe(false);
+    expect(clicked).toEqual([
+      {
+        href: "https://drive.example.test/api/v1/jmap/folder-download-ticket/secret/Docs.zip",
+        download: "Docs.zip",
       },
     ]);
   });

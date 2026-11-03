@@ -292,6 +292,13 @@ export function createHybridDriveOperations(
       }
       await downloadOfflineDriveFile(username, normalized);
     },
+    downloadFolder: async (path, opts) => {
+      // The server writes the zip: there is no offline copy of a folder to save.
+      if (!readBrowserOnline() || !live.downloadFolder) {
+        throw new Error("Downloading a folder as a zip needs a connection.");
+      }
+      await live.downloadFolder(normalizeApiVirtualPath(path), opts);
+    },
     readFileBlob: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);
       if (readBrowserOnline()) {

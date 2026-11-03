@@ -2,6 +2,7 @@ import { parentAndName } from "@/lib/files/api-path";
 import {
   DriveTransportError,
   resolveDownloadableFileNode,
+  resolveFileNodeId,
   type DriveJmapSession,
 } from "@/lib/api/wgw/drive-jmap";
 import { wgwFetch } from "@/lib/api/wgw/http";
@@ -73,4 +74,56 @@ export async function downloadFileNodeWithTicket(
     signal,
   );
   startNativeDownload(ticket.url, name);
+}
+
+/** `POST /jmap/folder-download-tickets/{accountId}` answer (#1621). */
+export type DriveFolderDownloadTicket = DriveDownloadTicket & {
+  /** `<folder name>.zip`. */
+  name: string;
+};
+
+/** Asks the server for a ticket that streams one folder as a zip. */
+export async function issueFolderDownloadTicket(
+  session: DriveJmapSession,
+  nodeId: string,
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  const res = await wgwFetch(
+    `/jmap/folder-download-tickets/${encodeURIComponent(session.accountId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ nodeId }),
+      signal,
+    },
+  );
+  if (!res.ok) {
+    throw new DriveTransportError(
+      `POST /jmap/folder-download-tickets failed (${res.status})`,
+      res.status,
+    );
+  }
+  const ticket = (await res.json()) as Partial<DriveFolderDownloadTicket>;
+  if (!ticket.url) throw new Error("The download ticket has no URL.");
+  return {
+    url: ticket.url,
+    name: ticket.name || "download.zip",
+    idleExpires: ticket.idleExpires ?? "",
+    absoluteExpires: ticket.absoluteExpires ?? "",
+  };
+}
+
+/**
+ * *Download as zip* on a folder (#1621): the server writes the zip while the
+ * browser saves it natively; the client never builds the zip or a `Blob`.
+ */
+export async function downloadFolderAsZipWithTicket(
+  session: DriveJmapSession,
+  path: string,
+  username: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const nodeId = await resolveFileNodeId(session, path, username, signal);
+  const ticket = await issueFolderDownloadTicket(session, nodeId, signal);
+  startNativeDownload(ticket.url, ticket.name);
 }
