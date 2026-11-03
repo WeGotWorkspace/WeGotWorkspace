@@ -5,7 +5,9 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
+import { taskToFormValue } from "@/tasks-core/src/tasks-task-form";
 import type { Task } from "@/tasks-core/src/tasks-types";
+import { rebaseTaskForm } from "@/tasks-core/src/use-task-edit-form";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
 import "@/tasks-core/src/tasks-workspace.css";
@@ -215,6 +217,36 @@ describe("TasksEditDialog", () => {
       rerender({ task: { ...task }, readOnly: true });
 
       expect(fieldValue(defaultTasksLabels.addTaskName)).toBe(task.title);
+    });
+  });
+});
+
+describe("rebaseTaskForm", () => {
+  const task = bootstrap.data.tasks[0] as Task;
+  const base = taskToFormValue(task, task.taskListId);
+
+  it("moves due, all-day and time zone as one group", () => {
+    const current = { ...base, due: "2030-01-02T09:00:00", showWithoutTime: false };
+    const next = {
+      ...base,
+      due: "2030-05-05",
+      showWithoutTime: true,
+      timeZone: "Europe/Amsterdam",
+    };
+
+    const merged = rebaseTaskForm(current, base, next);
+
+    expect(merged.due).toBe("2030-01-02T09:00:00");
+    expect(merged.showWithoutTime).toBe(false);
+    expect(merged.timeZone).toBe(base.timeZone);
+  });
+
+  it("takes a list move made elsewhere when the list was not edited", () => {
+    const next = { ...base, listId: "elsewhere" };
+
+    expect(rebaseTaskForm({ ...base, title: "Edited" }, base, next)).toEqual({
+      ...next,
+      title: "Edited",
     });
   });
 });
