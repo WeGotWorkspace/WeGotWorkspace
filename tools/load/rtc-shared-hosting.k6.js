@@ -61,12 +61,25 @@ const urgentEnabled =
 const urgentOnly = __ENV.URGENT_ONLY === "1";
 const urgentSubscriptions = Number(__ENV.URGENT_SUBSCRIPTIONS || 20);
 const urgentIterations = Number(__ENV.URGENT_ITERATIONS || 10);
-// One valid P-256 key and auth secret, so the server can encrypt every payload.
-const urgentKeys = {
-  p256dh:
-    "BKlxOjMJeVRMYr7PjmDBWhLy-kme91PLZeu-ZtTvrVFzaff4iIm2LobEAbn945_xM_JuaLTt1WwvBxUzdDuLGYU",
-  auth: "n-zOpWQrURlsxRc6pTu2Wg",
-};
+/**
+ * A fresh P-256 key and auth secret, so the server can encrypt every payload.
+ * Made per run: nothing secret-looking lives in the repo.
+ */
+async function urgentSubscriptionKeys() {
+  const pair = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"],
+  );
+  const raw = await crypto.subtle.exportKey("raw", pair.publicKey);
+  return {
+    p256dh: encoding.b64encode(raw, "rawurl"),
+    auth: encoding.b64encode(
+      crypto.getRandomValues(new Uint8Array(16)).buffer,
+      "rawurl",
+    ),
+  };
+}
 
 const pushRequest = new Trend("push_request_ms", true);
 const pushStateBySource = {};
@@ -260,12 +273,13 @@ function probeBaseline() {
   return samples[2];
 }
 
-export function setup() {
+export async function setup() {
   const urgent = urgentEnabled
     ? {
         actorToken: login(urgentUser, urgentPassword),
         recipientToken: login(urgentRecipient, urgentRecipientPassword),
         probeBaselineMs: probeBaseline(),
+        keys: await urgentSubscriptionKeys(),
       }
     : null;
   if (!pushEnabled) {
@@ -291,13 +305,13 @@ export function setup() {
  * Only the join that starts the meeting and the probe right after it count.
  */
 export function urgent(data) {
-  const { actorToken, recipientToken, probeBaselineMs } = data.urgent;
+  const { actorToken, recipientToken, probeBaselineMs, keys } = data.urgent;
   for (let i = 0; i < urgentSubscriptions; i += 1) {
     const sub = http.post(
       `${base}/api/v1/notifications/push/subscriptions`,
       JSON.stringify({
         endpoint: `https://fcm.googleapis.com/fcm/send/wgw-load-test-${i}`,
-        keys: urgentKeys,
+        keys,
       }),
       bearer(recipientToken),
     );
