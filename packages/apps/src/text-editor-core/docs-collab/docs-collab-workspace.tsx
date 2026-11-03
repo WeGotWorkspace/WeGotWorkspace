@@ -610,14 +610,13 @@ function DocsCollabWorkspaceInner({
                 />
               }
             >
-              {showMarkdownOutline ? (
-                <DocsOutlineSidebar
-                  labels={labels}
-                  items={outline}
-                  activeIndex={activeOutlineIndex}
-                  onSelect={handleOutlineSelect}
-                />
-              ) : null}
+              <DocsOutlineSidebar
+                labels={labels}
+                items={outline}
+                activeIndex={activeOutlineIndex}
+                onSelect={handleOutlineSelect}
+                showOutline={showMarkdownOutline}
+              />
             </AppSidebar>
           }
           mainHeader={

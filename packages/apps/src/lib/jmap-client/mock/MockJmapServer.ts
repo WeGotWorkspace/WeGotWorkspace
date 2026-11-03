@@ -5,15 +5,58 @@ import type {
   JmapCalendarEventFilterCondition,
 } from "../calendars/types.js";
 import type { JmapFetch } from "../core/JmapClient.js";
-import type { JmapInvocation, JmapResponse, JmapSession, JmapSetError } from "../core/types.js";
+import {
+  CALENDARS_CAPABILITY,
+  CHAT_CAPABILITY,
+  CONTACTS_CAPABILITY,
+  CORE_CAPABILITY,
+  NOTES_CAPABILITY,
+  type JmapInvocation,
+  type JmapResponse,
+  type JmapSession,
+  type JmapSetError,
+} from "../core/types.js";
 
 const SESSION_URL = "https://mock.example/jmap/session";
 const API_URL = "https://mock.example/jmap/api";
 const ACCOUNT_ID = "account1";
+/** What the WGW server advertises and enforces, get-all included. */
+const MAX_OBJECTS_IN_GET = 500;
+
+const MOCK_RECORD_TYPES = [
+  "Notebook",
+  "Note",
+  "ChatChannel",
+  "ChatMessage",
+  "AddressBook",
+  "ContactCard",
+] as const;
+
+/** Inbound-only types the mock serves from {@link MockJmapServer.records}. */
+export type MockRecordType = (typeof MOCK_RECORD_TYPES)[number];
+
+function isMockRecordType(type: string): type is MockRecordType {
+  return (MOCK_RECORD_TYPES as readonly string[]).includes(type);
+}
+
+type QueryFilter = { name: string; matches: (record: MockRecord, value: unknown) => boolean };
+
+/** The one `/query` filter condition per queryable type, named as on the WGW server. */
+const QUERY_FILTERS: Partial<Record<MockRecordType, QueryFilter>> = {
+  Note: { name: "inNotebook", matches: (record, value) => record.notebookId === value },
+  ChatMessage: { name: "inChannel", matches: (record, value) => record.channelId === value },
+  ContactCard: {
+    name: "inAddressBook",
+    matches: (record, value) =>
+      Boolean((record.addressBookIds as Record<string, boolean> | undefined)?.[String(value)]),
+  },
+};
+
+type MockRecord = { id: string; [key: string]: unknown };
 
 type ChangeLogEntry = {
   state: number;
-  type: "Calendar" | "CalendarEvent";
+  type: "Calendar" | "CalendarEvent" | MockRecordType;
   kind: "created" | "updated" | "destroyed";
   id: string;
 };
@@ -62,6 +105,8 @@ export class MockJmapServer {
 
   calendars = new Map<string, JmapCalendar>();
   events = new Map<string, JmapCalendarEvent>();
+  /** Notes, chat and contacts records, served by get/changes/query. */
+  readonly records = new Map<MockRecordType, Map<string, MockRecord>>();
 
   #stateCounter = 1;
   #changeLog: ChangeLogEntry[] = [];
@@ -72,6 +117,10 @@ export class MockJmapServer {
   requestCount = 0;
   /** When set, the next CalendarEvent/set update/create is rejected with this SetError. */
   failNextSetWith: JmapSetError | null = null;
+  /** Every method call received, in order. */
+  readonly methodCalls: JmapInvocation[] = [];
+  /** Runs before each POST is handled, e.g. to simulate a remote change mid-sync. */
+  beforeRequest: ((methodCalls: JmapInvocation[]) => void) | null = null;
 
   get state(): string {
     return String(this.#stateCounter);
@@ -123,6 +172,31 @@ export class MockJmapServer {
     this.#bumpState("Calendar", "destroyed", id);
   }
 
+  #store(type: MockRecordType): Map<string, MockRecord> {
+    let store = this.records.get(type);
+    if (!store) {
+      store = new Map();
+      this.records.set(type, store);
+    }
+    return store;
+  }
+
+  /** Seeds a record without recording a change-log entry (initial data). */
+  seedRecord(type: MockRecordType, record: MockRecord): void {
+    this.#store(type).set(record.id, record);
+  }
+
+  remoteUpsertRecord(type: MockRecordType, record: MockRecord): void {
+    const store = this.#store(type);
+    const kind = store.has(record.id) ? "updated" : "created";
+    store.set(record.id, record);
+    this.#bumpState(type, kind, record.id);
+  }
+
+  remoteDestroyRecord(type: MockRecordType, id: string): void {
+    if (this.#store(type).delete(id)) this.#bumpState(type, "destroyed", id);
+  }
+
   nextId(prefix: string): string {
     this.#idCounter += 1;
     return `${prefix}-${this.#idCounter}`;
@@ -131,18 +205,26 @@ export class MockJmapServer {
   session(): JmapSession {
     return {
       capabilities: {
-        "urn:ietf:params:jmap:core": {},
-        "urn:ietf:params:jmap:calendars": {},
+        [CORE_CAPABILITY]: { maxObjectsInGet: MAX_OBJECTS_IN_GET },
+        [CALENDARS_CAPABILITY]: {},
+        [CONTACTS_CAPABILITY]: {},
+        [NOTES_CAPABILITY]: {},
+        [CHAT_CAPABILITY]: {},
       },
       accounts: {
         [ACCOUNT_ID]: {
           name: "user@example.com",
           isPersonal: true,
           isReadOnly: false,
-          accountCapabilities: { "urn:ietf:params:jmap:calendars": {} },
+          accountCapabilities: { [CALENDARS_CAPABILITY]: {} },
         },
       },
-      primaryAccounts: { "urn:ietf:params:jmap:calendars": ACCOUNT_ID },
+      primaryAccounts: {
+        [CALENDARS_CAPABILITY]: ACCOUNT_ID,
+        [CONTACTS_CAPABILITY]: ACCOUNT_ID,
+        [NOTES_CAPABILITY]: ACCOUNT_ID,
+        [CHAT_CAPABILITY]: ACCOUNT_ID,
+      },
       username: "user@example.com",
       apiUrl: API_URL,
       downloadUrl: `${API_URL}/download`,
@@ -159,6 +241,8 @@ export class MockJmapServer {
       if (input === API_URL && init?.method === "POST") {
         this.requestCount += 1;
         const request = JSON.parse(String(init.body)) as { methodCalls: JmapInvocation[] };
+        this.methodCalls.push(...request.methodCalls);
+        this.beforeRequest?.(request.methodCalls);
         return json(this.#handleRequest(request.methodCalls));
       }
       return json({ type: "urn:ietf:params:jmap:error:notFound" }, 404);
@@ -201,6 +285,13 @@ export class MockJmapServer {
   }
 
   #dispatch(name: string, args: Record<string, unknown>): Record<string, unknown> {
+    const [type, method] = name.split("/");
+    if (isMockRecordType(type)) {
+      if (method === "get") return this.#get(this.#store(type), args);
+      if (method === "changes") return this.#changes(type, args);
+      const queryFilter = QUERY_FILTERS[type];
+      if (method === "query" && queryFilter) return this.#recordQuery(type, queryFilter, args);
+    }
     switch (name) {
       case "Calendar/get":
         return this.#get(this.calendars, args);
@@ -227,6 +318,8 @@ export class MockJmapServer {
     const ids = (args.ids as string[] | null | undefined) ?? null;
     const list: unknown[] = [];
     const notFound: string[] = [];
+    // Like HandlesGetArguments: explicit ids and the get-all share the cap.
+    if ((ids?.length ?? store.size) > MAX_OBJECTS_IN_GET) throw new MethodError("requestTooLarge");
     if (ids === null) {
       list.push(...store.values());
     } else {
@@ -329,6 +422,33 @@ export class MockJmapServer {
     if (Object.keys(notCreated).length) response.notCreated = notCreated;
     if (Object.keys(notUpdated).length) response.notUpdated = notUpdated;
     return response;
+  }
+
+  /** Ids in insertion order, windowed like the WGW Note/ChatMessage/ContactCard queries. */
+  #recordQuery(
+    type: MockRecordType,
+    { name: filterName, matches }: QueryFilter,
+    args: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const filter = (args.filter ?? {}) as Record<string, unknown>;
+    if (Object.keys(filter).some((key) => key !== filterName)) {
+      throw new MethodError("unsupportedFilter");
+    }
+    if (Array.isArray(args.sort) && args.sort.length > 0) throw new MethodError("unsupportedSort");
+    const position = (args.position as number | undefined) ?? 0;
+    const limit = args.limit as number | undefined;
+    const ids = [...this.#store(type).values()]
+      .filter((record) => !(filterName in filter) || matches(record, filter[filterName]))
+      .map((record) => record.id);
+    return {
+      accountId: ACCOUNT_ID,
+      queryState: this.state,
+      canCalculateChanges: false,
+      position,
+      ids: ids.slice(position, limit === undefined ? undefined : position + limit),
+      total: ids.length,
+      ...(limit === undefined ? {} : { limit }),
+    };
   }
 
   #query(args: Record<string, unknown>): Record<string, unknown> {

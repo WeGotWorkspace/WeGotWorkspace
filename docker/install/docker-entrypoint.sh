@@ -35,27 +35,9 @@ if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
   fi
 fi
 
-DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"
-case "$DATA_DIR" in
-  /*) ;;
-  *) DATA_DIR="${INSTALL_ROOT}/${DATA_DIR#./}" ;;
-esac
-STORAGE_DIR="${WGW_STORAGE_PATH:-${API_ROOT}/storage}"
-
-mkdir -p \
-  "$DATA_DIR" \
-  "${STORAGE_DIR}/framework/cache/data" \
-  "${STORAGE_DIR}/framework/sessions" \
-  "${STORAGE_DIR}/framework/views" \
-  "${STORAGE_DIR}/logs" \
-  "${API_ROOT}/bootstrap/cache"
+/usr/local/bin/wgw-install-prepare-dirs.sh
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R www-data:www-data \
-    "$DATA_DIR" \
-    "$STORAGE_DIR" \
-    "${API_ROOT}/bootstrap/cache"
-
   for path in \
     "${API_ROOT}/.env" \
     "${INSTALL_ROOT}/.htaccess"; do
@@ -63,10 +45,6 @@ if [ "$(id -u)" = "0" ]; then
       chown -h www-data:www-data "$path" 2>/dev/null || chown www-data:www-data "$path"
     fi
   done
-
-  if [ -d "$CONFIG_VOL" ]; then
-    chown -R www-data:www-data "$CONFIG_VOL"
-  fi
 
   # Non-recursive: lets www-data create .env / .htaccess when bootstrap runs before entrypoint re-runs.
   chown www-data:www-data "${INSTALL_ROOT}" "${API_ROOT}"

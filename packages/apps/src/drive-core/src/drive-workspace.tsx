@@ -33,10 +33,7 @@ import {
 } from "@/drive-core/src/drive-upload-queue";
 import { DriveUploadAnnouncer } from "@/drive-core/src/drive-upload-announcer";
 import { useDriveUploadChooseFolder } from "@/drive-core/src/drive-upload-choose-folder";
-import {
-  useDriveUploadLeaveWarning,
-  useDriveUploadRetryAfterSignIn,
-} from "@/drive-core/src/use-drive-upload-recovery";
+import { useDriveUploadRetryAfterSignIn } from "@/drive-core/src/use-drive-upload-recovery";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
@@ -148,7 +145,6 @@ export function DriveWorkspace({
     chooseUploadFolder.choose,
   );
   useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
-  useDriveUploadLeaveWarning(uploadQueue?.state, offlineUsername);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
   const fileExtraActions = useCallback(
     (file: DriveFile) =>

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LoginScreen } from "@/login-core/src/login-screen";
+import { LoginScreen, returnTarget } from "@/login-core/src/login-screen";
 import { wgwEstablishMcpWebSession, wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
 const mockNavigate = vi.fn();
@@ -196,5 +196,15 @@ describe("LoginScreen", () => {
       expect(assign).toHaveBeenCalledWith(returnPath);
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe("returnTarget (#1522)", () => {
+  it("passes the query of a return path as search, not inside `to`", () => {
+    expect(returnTarget("/drive?view=uploads")).toEqual({
+      to: "/drive",
+      search: { view: "uploads" },
+    });
+    expect(returnTarget("/docs")).toEqual({ to: "/docs" });
   });
 });

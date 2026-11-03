@@ -1,4 +1,10 @@
 export const SAVE_DELAY_MS = 2000;
+/**
+ * Longest a save waits after the first unsaved edit. Each edit pushes the save
+ * back by SAVE_DELAY_MS, so without a cap nothing reached the server while
+ * someone kept typing, and other people's lists stayed on the old text (#1533).
+ */
+export const SAVE_MAX_WAIT_MS = 3000;
 export const SAVE_RETRY_MAX_MS = 30000;
 
 export type SaveQueueState = {
@@ -39,13 +45,19 @@ export function computeNextRetryMs(currentRetryMs: number): number {
   return Math.min(Math.max(currentRetryMs || SAVE_DELAY_MS, SAVE_DELAY_MS) * 2, SAVE_RETRY_MAX_MS);
 }
 
+/** `firstEditAt`: when the first edit since the last save was scheduled; caps the wait. */
 export function computeSaveDelayMs(
   nextSaveAttemptAt: number,
   now = Date.now(),
   saveDelayMs = SAVE_DELAY_MS,
+  firstEditAt: number | null = null,
 ): number {
   const retryDelayMs = Math.max(nextSaveAttemptAt - now, 0);
-  return Math.max(saveDelayMs, retryDelayMs);
+  const idleDelayMs =
+    firstEditAt === null
+      ? saveDelayMs
+      : Math.min(saveDelayMs, Math.max(firstEditAt + SAVE_MAX_WAIT_MS - now, 0));
+  return Math.max(idleDelayMs, retryDelayMs);
 }
 
 export function shouldMarkPendingWhenUnsaved(

@@ -19,6 +19,17 @@ export type LoginScreenProps = {
   passwordRecoveryEnabled?: boolean;
 };
 
+/**
+ * The return path as router input. `navigate({ to })` does not split a `?`
+ * off a path, so a return like `/drive?view=uploads` (#1522) passes its
+ * query as `search`.
+ */
+export function returnTarget(path: string): { to: string; search?: Record<string, string> } {
+  const url = new URL(path, "http://wgw.invalid");
+  const search = Object.fromEntries(url.searchParams);
+  return Object.keys(search).length > 0 ? { to: url.pathname, search } : { to: url.pathname };
+}
+
 export function LoginScreen({
   returnPath,
   error = "",
@@ -83,7 +94,7 @@ export function LoginScreen({
         return;
       }
       await wgwLoginWithCredentials(normalizedUsername, password);
-      await navigate({ to: resolvedReturnPath });
+      await navigate(returnTarget(resolvedReturnPath));
     } catch (cause) {
       const message = cause instanceof Error ? cause.message.trim() : "Could not sign in.";
       const normalized = message.toLowerCase();

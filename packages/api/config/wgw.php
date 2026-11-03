@@ -38,6 +38,9 @@ return [
         'maintenance_share' => (float) env('WGW_JMAP_MAINTENANCE_SHARE', 0.05),
         'download_ticket_idle_minutes' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_IDLE_MINUTES', 30),
         'download_ticket_lifetime_hours' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_LIFETIME_HOURS', 24),
+        // Octets the guests of one share link may send in 24 hours (#1715),
+        // charged from Content-Length before a part is read. 0 = no budget.
+        'guest_upload_bytes_per_day' => (int) env('WGW_GUEST_UPLOAD_BYTES_PER_DAY', 10 * 1024 * 1024 * 1024),
     ],
     /**
      * JMAP event source (RFC 8620 §7.3, #1660), short-burst only: every

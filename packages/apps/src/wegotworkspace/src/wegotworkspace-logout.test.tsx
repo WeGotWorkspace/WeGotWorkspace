@@ -278,7 +278,7 @@ describe("WeGotWorkspaceLogout", () => {
         ),
       ).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: "Wait" }));
-      expect(navigate).toHaveBeenCalledWith({ href: "/drive?view=uploads" });
+      expect(navigate).toHaveBeenCalledWith({ to: "/drive", search: { view: "uploads" } });
       expect(completeLogout).not.toHaveBeenCalled();
     });
 

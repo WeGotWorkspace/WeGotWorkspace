@@ -29,6 +29,17 @@ final class FileNodeBlobResolver
 
     public function retrieve(string $username, string $blobId): ?BlobContent
     {
+        return $this->retrieveAs($this->accounts->principalFor($username), $blobId);
+    }
+
+    /**
+     * Same as {@see retrieve()}, with the rights check run for an explicit
+     * principal — a guest share session (#1622) is not an account.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function retrieveAs(array $principal, string $blobId): ?BlobContent
+    {
         if (preg_match(self::BLOB_ID_PATTERN, $blobId, $matches) !== 1) {
             return null;
         }
@@ -38,7 +49,6 @@ final class FileNodeBlobResolver
             return null;
         }
 
-        $principal = $this->accounts->principalFor($username);
         if (! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayRead']) {
             return null;
         }

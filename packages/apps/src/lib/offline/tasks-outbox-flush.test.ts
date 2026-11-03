@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
@@ -14,6 +14,11 @@ import {
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import { flushTasksOutbox } from "@/lib/offline/tasks-outbox-flush";
+import {
+  subscribeTaskWriteRefused,
+  type TaskWriteRefused,
+} from "@/lib/offline/tasks/tasks-refused-write";
+import { listParkedWrites } from "@/lib/offline/core/parked-writes";
 
 const username = "alice";
 const bootstrap = createTasksAppBootstrap({
@@ -24,9 +29,11 @@ const bootstrap = createTasksAppBootstrap({
 });
 const task = bootstrap.data.tasks[0]!;
 
-const { createTask, deleteTaskList, patchTask, putTask } = vi.hoisted(() => ({
+const { createTask, deleteTask, deleteTaskList, getTask, patchTask, putTask } = vi.hoisted(() => ({
   createTask: vi.fn(),
+  deleteTask: vi.fn(),
   deleteTaskList: vi.fn(),
+  getTask: vi.fn(),
   patchTask: vi.fn(),
   putTask: vi.fn(),
 }));
@@ -37,6 +44,8 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
     ...actual,
     createTask,
     patchTask,
+    getTask,
+    deleteTask,
     putTask,
     deleteTaskList,
     TasksRequestError: actual.TasksRequestError,
@@ -47,6 +56,8 @@ describe("flushTasksOutbox", () => {
   beforeEach(async () => {
     createTask.mockReset();
     patchTask.mockReset();
+    getTask.mockReset();
+    deleteTask.mockReset();
     putTask.mockReset();
     deleteTaskList.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
@@ -57,32 +68,207 @@ describe("flushTasksOutbox", () => {
     await writeTasksBootstrapToCache(username, bootstrap);
   });
 
-  it("marks a queued task write as failed when the server returns 403 after revoke", async () => {
+  async function queueRename(id: string, title: string) {
+    await upsertTaskInCache(username, { ...task, title }, true);
     await enqueueOutboxMutation(username, {
-      id: "queued-complete",
+      id,
       domain: TASKS_DOMAIN,
       op: "update",
-      payload: JSON.stringify({
-        taskId: task.id,
-        patch: { workflowStatus: "completed" },
-      }),
+      payload: JSON.stringify({ taskId: task.id, patch: { title } }),
     });
+  }
 
+  async function cachedTask() {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await tasksItemsTable(db).get(task.id);
+    return row ? (JSON.parse(row.data) as typeof task) : undefined;
+  }
+
+  function watchRefusals(): TaskWriteRefused[] {
+    const seen: TaskWriteRefused[] = [];
+    const stop = subscribeTaskWriteRefused((event) => seen.push(event));
+    onTestFinished(stop);
+    return seen;
+  }
+
+  /** What waits in the rescue dialog: [task id, kind, reason, list, title]. */
+  async function parked() {
+    return (await listParkedWrites<typeof task>(username, TASKS_DOMAIN)).map((write) => [
+      write.entityId,
+      write.kind,
+      write.reason,
+      write.containerId,
+      write.item.title,
+    ]);
+  }
+
+  it("parks a write refused as read-only and shows the server copy again (#1825)", async () => {
+    const refusals = watchRefusals();
+    await queueRename("queued-rename", "Mine");
     patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (403)", 403));
+    getTask.mockResolvedValue(task);
 
     const result = await flushTasksOutbox(username);
 
     expect(result.etagMismatches).toEqual([]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+    expect((await cachedTask())?.title).toBe(task.title);
+    expect(refusals).toEqual([
+      { username, taskId: task.id, title: task.title, reason: "readOnly", parked: true },
+    ]);
+    expect(await parked()).toEqual([[task.id, "edit", "readOnly", task.taskListId, "Mine"]]);
+  });
+
+  it("parks a write to a task that is gone, and drops its later writes (#1825)", async () => {
+    const refusals = watchRefusals();
+    await queueRename("queued-rename", "Mine");
+    await enqueueOutboxMutation(username, {
+      id: "queued-delete",
+      domain: TASKS_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({ taskId: task.id }),
+    });
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    expect(await listOutboxMutations(username)).toEqual([]);
+    expect(await cachedTask()).toBeUndefined();
+    expect(deleteTask).not.toHaveBeenCalled();
+    expect(refusals).toEqual([
+      { username, taskId: task.id, title: "Mine", reason: "gone", parked: true },
+    ]);
+    expect(await parked()).toEqual([[task.id, "edit", "gone", task.taskListId, "Mine"]]);
+  });
+
+  it("drops a queued delete of a task that is gone without a notice", async () => {
+    const refusals = watchRefusals();
+    await enqueueOutboxMutation(username, {
+      id: "queued-delete",
+      domain: TASKS_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({ taskId: task.id }),
+    });
+    deleteTask.mockRejectedValue(new TasksRequestError("DELETE /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    expect(await listOutboxMutations(username)).toEqual([]);
+    expect(await cachedTask()).toBeUndefined();
+    expect(refusals).toEqual([]);
+    expect(await parked()).toEqual([]);
+  });
+
+  it("keeps a refused write queued while the server copy cannot be read", async () => {
+    const refusals = watchRefusals();
+    await queueRename("queued-rename", "Mine");
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (403)", 403));
+    getTask.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await flushTasksOutbox(username);
+
     const outbox = await listOutboxMutations(username);
     expect(outbox).toHaveLength(1);
-    expect(outbox[0]?.lastError).toContain("403");
     expect(outbox[0]?.lastStatus).toBe(403);
-    expect(outbox[0]?.retries).toBe(1);
-    expect(patchTask).toHaveBeenCalledWith(
-      task.id,
-      { workflowStatus: "completed" },
-      { ifMatch: undefined },
-    );
+    expect((await cachedTask())?.title).toBe("Mine");
+    expect(refusals).toEqual([]);
+  });
+
+  it("leaves an offline-created task and its edit queued when the edit gets a 404", async () => {
+    const refusals = watchRefusals();
+    const tempId = `local-${"ab12".repeat(8)}`;
+    await upsertTaskInCache(username, { ...task, id: tempId, title: "New" }, true);
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        tempTaskId: tempId,
+        body: { title: "New", taskListId: task.taskListId },
+      }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "queued-edit",
+      domain: TASKS_DOMAIN,
+      op: "update",
+      payload: JSON.stringify({ taskId: tempId, patch: { title: "Newer" } }),
+    });
+    createTask.mockRejectedValue(new TasksRequestError("POST /tasks/items failed (500)", 500));
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    const ids = (await listOutboxMutations(username)).map((row) => row.id).sort();
+    expect(ids).toEqual(["queued-create", "queued-edit"]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await tasksItemsTable(db).get(tempId)).toBeDefined();
+    expect(refusals).toEqual([]);
+  });
+
+  it.each([
+    [403, "readOnly"],
+    [404, "gone"],
+  ] as const)(
+    "parks a task added offline, with its edit, when the create gets a %i",
+    async (status, reason) => {
+      const refusals = watchRefusals();
+      const tempId = `local-${"cd34".repeat(8)}`;
+      await upsertTaskInCache(username, { ...task, id: tempId, title: "New" }, true);
+      await enqueueOutboxMutation(username, {
+        id: "queued-create",
+        domain: TASKS_DOMAIN,
+        op: "create",
+        payload: JSON.stringify({
+          tempTaskId: tempId,
+          body: { title: "New", taskListId: task.taskListId },
+        }),
+      });
+      await enqueueOutboxMutation(username, {
+        id: "queued-edit",
+        domain: TASKS_DOMAIN,
+        op: "update",
+        payload: JSON.stringify({ taskId: tempId, patch: { title: "Newer" } }),
+      });
+      createTask.mockRejectedValue(
+        new TasksRequestError(`POST /tasks/items failed (${status})`, status),
+      );
+
+      await flushTasksOutbox(username);
+
+      expect(await listOutboxMutations(username)).toEqual([]);
+      const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+      expect(await tasksItemsTable(db).get(tempId)).toBeUndefined();
+      expect(getTask).not.toHaveBeenCalled();
+      expect(patchTask).not.toHaveBeenCalled();
+      expect(refusals).toEqual([{ username, taskId: tempId, title: "New", reason, parked: true }]);
+      expect(await parked()).toEqual([[tempId, "create", reason, task.taskListId, "New"]]);
+    },
+  );
+
+  it("drops a write to a server task whose id starts with local- (#1825)", async () => {
+    const refusals = watchRefusals();
+    const serverId = "local-1a2b3c4d";
+    await upsertTaskInCache(username, { ...task, id: serverId, title: "Local" }, false);
+    await enqueueOutboxMutation(username, {
+      id: "queued-edit",
+      domain: TASKS_DOMAIN,
+      op: "update",
+      payload: JSON.stringify({ taskId: serverId, patch: { title: "Local 2" } }),
+    });
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    expect(await listOutboxMutations(username)).toEqual([]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await tasksItemsTable(db).get(serverId)).toBeUndefined();
+    expect(refusals).toEqual([
+      { username, taskId: serverId, title: "Local", reason: "gone", parked: true },
+    ]);
   });
 
   it("sends a patch merged in while the first one was on its way (#1711)", async () => {
