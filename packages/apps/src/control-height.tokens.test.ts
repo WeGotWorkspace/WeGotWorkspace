@@ -48,3 +48,33 @@ describe("control height tokens", () => {
     expect(root?.[1]).toMatch(/--control-height-md:\s*2\.25rem;/);
   });
 });
+
+describe("form control type and inset", () => {
+  const swatchCss = readFileSync(join(here, "ui/color-swatch-trigger.css"), "utf8");
+  const ruleBody = (css: string, selector: RegExp) => css.match(selector)?.[1] ?? "";
+
+  it("lifts SelectTrigger and control-surface onto the text-field steps on phones", () => {
+    const phone = styles.slice(styles.indexOf("@media (max-width: 767px)"));
+    const body = ruleBody(phone, /\.select-trigger,\s*\.control-surface\s*\{([^}]*)\}/);
+    expect(body).toMatch(/--input-font-size-xs:\s*1rem;/);
+    expect(body).toMatch(/--input-font-size-sm:\s*1rem;/);
+    expect(body).toMatch(/--input-font-size-md:\s*1rem;/);
+    // Tokens only: a control that pins its own font-size or height keeps it.
+    expect(body).not.toMatch(/(?:^|[\s;])(?:font-size|height|min-height):/);
+  });
+
+  it("gives the labelled swatch the size padding and keeps the icon-only swatch compact", () => {
+    const labeled = ruleBody(
+      swatchCss,
+      /\.control-surface\.color-swatch-trigger--labeled\s*\{([^}]*)\}/,
+    );
+    expect(labeled).toMatch(/padding-inline:\s*var\(--input-padding-x/);
+
+    const iconOnly = ruleBody(
+      swatchCss,
+      /\.control-surface\.color-swatch-trigger:not\(\.color-swatch-trigger--labeled\)\s*\{([^}]*)\}/,
+    );
+    expect(iconOnly).toMatch(/@apply px-2;/);
+    expect(swatchCss).not.toMatch(/\.control-surface\.color-swatch-trigger\s*\{/);
+  });
+});
