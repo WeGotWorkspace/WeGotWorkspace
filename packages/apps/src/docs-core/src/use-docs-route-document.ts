@@ -141,9 +141,20 @@ export function useDocsRouteDocument({
       return;
     }
     const controller = new AbortController();
-    void locateDocsByPath(filePath, locator, controller.signal)
+    // A queued write may own the path although nothing holds the lookup yet (a
+    // fresh load): ask the queue first, and stay off the network if it cannot answer.
+    void locator
+      .ownedByQueuedWrite(filePath)
+      .then((owned) => {
+        if (controller.signal.aborted) return undefined;
+        if (owned) {
+          setPathOnly(filePath);
+          return undefined;
+        }
+        return locateDocsByPath(filePath, locator, controller.signal);
+      })
       .then((result) => {
-        if (controller.signal.aborted) return;
+        if (!result || controller.signal.aborted) return;
         if (result.kind !== "found") {
           setPathOnly(filePath);
           return;

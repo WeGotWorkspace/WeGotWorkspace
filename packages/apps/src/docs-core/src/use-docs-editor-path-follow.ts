@@ -18,20 +18,21 @@ type UseDocsEditorPathFollowArgs = {
   onFollow: (apiPath: string) => void;
 };
 
-/** Whether a queued create or rename still owns `filePath`; re-read when Docs caches change. */
+/**
+ * Whether a queued create or rename still owns `filePath`; re-read when Docs
+ * caches change. `undefined` until the read answers (or when it fails).
+ */
 function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: string | null) {
-  const [owned, setOwned] = useState(false);
+  const [answer, setAnswer] = useState<{ path: string; owned: boolean } | null>(null);
   useEffect(() => {
-    if (!username || !filePath) {
-      setOwned(false);
-      return;
-    }
+    if (!username || !filePath) return;
     let cancelled = false;
     const key = docsSourceKey(filePath);
     const check = () => {
       void readDocsPendingWrites(username)
         .then((pending) => {
-          if (!cancelled) setOwned(docsRowOwnedByQueuedWrite(pending, key));
+          if (!cancelled)
+            setAnswer({ path: filePath, owned: docsRowOwnedByQueuedWrite(pending, key) });
         })
         .catch(() => undefined);
     };
@@ -42,7 +43,7 @@ function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: s
       unsubscribe();
     };
   }, [filePath, username]);
-  return owned;
+  return answer?.path === filePath ? answer.owned : undefined;
 }
 
 /**
@@ -103,6 +104,7 @@ export function useDocsEditorPathFollow({
   const ownedByQueuedWrite = useQueuedWriteOwnsPath(editorUsername, filePath);
   return {
     holdServerSave:
-      Boolean(editorUsername) && (ownedByQueuedWrite || awaitingPathCheck || followPending),
+      Boolean(editorUsername) &&
+      (ownedByQueuedWrite !== false || awaitingPathCheck || followPending),
   };
 }

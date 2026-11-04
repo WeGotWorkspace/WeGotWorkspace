@@ -31,6 +31,7 @@ function deps(overrides: Partial<DocsLocatorDeps> = {}): DocsLocatorDeps {
     readCachedNodeId: vi.fn(async () => undefined),
     recordLocation: vi.fn(async () => undefined),
     isOnline: () => true,
+    ownedByQueuedWrite: vi.fn(async () => false),
     ...overrides,
   };
 }
@@ -74,6 +75,28 @@ describe("useDocsRouteDocument", () => {
       expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
     );
     expect(locator.fetchLocation).toHaveBeenCalledWith({ path: PATH }, expect.anything());
+  });
+
+  it("opens by path, without asking the server, when a queued write owns the path", async () => {
+    const locator = deps({ ownedByQueuedWrite: vi.fn(async () => true) });
+    const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
+
+    await waitFor(() => expect(result.current.document).toEqual({ status: "ready", path: PATH }));
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("stays unresolved and offline when the queue cannot be read", async () => {
+    const ownedByQueuedWrite = vi.fn(async () => {
+      throw new Error("idb");
+    });
+    const locator = deps({ ownedByQueuedWrite });
+    const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
+
+    await waitFor(() => expect(ownedByQueuedWrite).toHaveBeenCalled());
+    await act(async () => {});
+    expect(result.current.document).toEqual({ status: "resolving" });
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
   });
 
   it("opens the swapped-in id without a loading state", async () => {
