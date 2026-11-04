@@ -65,4 +65,19 @@ describe("DriveNewMenu", () => {
     expect(screen.getByRole("button", { name: L.newFolder })).toBeTruthy();
     expect(screen.getByRole("button", { name: L.newButtonMenu })).toBeTruthy();
   });
+
+  it("offers only Upload files to a guest who may add files (#1715)", () => {
+    const onUploadFiles = vi.fn();
+    render(<DriveNewMenu labels={L} onUploadFiles={onUploadFiles} />);
+
+    fireEvent.click(screen.getByRole("button", { name: L.uploadFiles }));
+    expect(onUploadFiles).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: L.newFolder })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.newButtonMenu })).toBeNull();
+  });
+
+  it("renders nothing for a guest who can neither create nor upload", () => {
+    const { container } = render(<DriveNewMenu labels={L} />);
+    expect(container.innerHTML).toBe("");
+  });
 });

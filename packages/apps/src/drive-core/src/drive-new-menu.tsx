@@ -8,8 +8,9 @@ export type DriveNewMenuProps = {
     DriveUILabels,
     "newFolder" | "newButtonMenu" | "uploadFiles" | "uploadFolder" | "newMarkdown"
   >;
-  onCreateFolder: () => void;
-  /** Omitted when the session cannot upload (guests). */
+  /** Omitted for a share-link guest, who cannot create folders (#1712). */
+  onCreateFolder?: () => void;
+  /** Omitted when the session cannot upload (a guest on a view link). */
   onUploadFiles?: () => void;
   /** Omitted without the upload queue: folders upload through it only (#1620). */
   onUploadFolder?: () => void;
@@ -23,6 +24,17 @@ export function DriveNewMenu({
   onUploadFolder,
   onCreateMarkdown,
 }: DriveNewMenuProps) {
+  if (!onCreateFolder) {
+    // A guest on a link that allows uploads: uploading is the only action.
+    return onUploadFiles ? (
+      <SidebarSegmentedNewMenu
+        mainLabel={labels.uploadFiles}
+        menuLabel={labels.newButtonMenu}
+        onMainAction={onUploadFiles}
+        icon={<Upload aria-hidden />}
+      />
+    ) : null;
+  }
   const items: DropdownMenuItemProps[] = [];
   if (onUploadFiles) {
     items.push({

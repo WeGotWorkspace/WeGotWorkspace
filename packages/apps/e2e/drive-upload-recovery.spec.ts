@@ -236,11 +236,25 @@ test.describe("Drive upload recovery (live app)", () => {
         contentType: "application/problem+json",
         body: JSON.stringify({ status: 401, title: "Unauthorized" }),
       });
-    await page.context().route("**/jmap/upload**", unauthorized);
+    // Hold the upload until Uploads is open: once the refresh fails, the next
+    // route change goes to sign in, so the order must not depend on timing.
+    let held = 0;
+    let release: (() => void) | null = null;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.context().route("**/jmap/upload**", async (route) => {
+      held += 1;
+      await gate;
+      await unauthorized(route);
+    });
     await page.context().route("**/auth/refresh**", unauthorized);
     await pickFile(page, file);
 
+    await expect.poll(() => held, { timeout: 60_000 }).toBeGreaterThan(0);
     await openUploads(page);
+    await expect(uploadRow(page, file)).toBeVisible();
+    release?.();
     await expect(uploadRow(page, file)).toContainText("Sign in again to upload", {
       timeout: 60_000,
     });
