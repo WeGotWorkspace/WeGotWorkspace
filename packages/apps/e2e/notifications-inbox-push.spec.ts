@@ -5,6 +5,9 @@ import { expect, test, type BrowserContext, type Page, type Request } from "./he
  * browser, with one inbox GET and one local-ack for the whole browser. Then
  * the tab that held the stream reloads, and the same holds again.
  *
+ * #1834: when the tab that held the stream closes, the other tab takes it
+ * over and acks only the new row, not the unread rows the first tab acked.
+ *
  * Bound: 8 s, well inside the 15 s poll. While push is connected the fallback
  * poll runs every 60 s, and the whole spec runs well within 60 s of push
  * connecting, so a pass proves the push path. The member writes over REST, so
@@ -51,7 +54,7 @@ test("a new notification reaches the bell of both tabs on push, fetched and acke
     await tabB.goto("/notes");
     await Promise.all([openBell(tabA), openBell(tabB)]);
 
-    const first = await notifyAdmin(context, memberToken, channelId, counter, [tabA, tabB]);
+    const first = await sendDm(context, memberToken, channelId, counter, [tabA, tabB]);
     test.info().annotations.push({ type: "latency", description: `first: ${first.latency} ms` });
     expect(first.latency).toBeLessThan(PUSH_BOUND_MS);
 
@@ -68,8 +71,7 @@ test("a new notification reaches the bell of both tabs on push, fetched and acke
     await leader.waitForTimeout(3_000);
     expect(counter.acks(), "local-acks after reload").toHaveLength(0);
 
-    const second = (await notifyAdmin(context, memberToken, channelId, counter, [tabA, tabB]))
-      .latency;
+    const second = (await sendDm(context, memberToken, channelId, counter, [tabA, tabB])).latency;
     test.info().annotations.push({ type: "latency", description: `after reload: ${second} ms` });
     expect(second).toBeLessThan(PUSH_BOUND_MS);
     console.log(
@@ -80,29 +82,86 @@ test("a new notification reaches the bell of both tabs on push, fetched and acke
   }
 });
 
+test("a tab that takes over the stream acks only the new row, not the rows the closed tab acked", async ({
+  browser,
+}) => {
+  const adminToken = await tokenFor("admin");
+  const memberToken = await tokenFor("member");
+  const context = await browser.newContext({
+    baseURL: APP,
+    storageState: { cookies: [], origins: [] },
+  });
+  await context.addInitScript(
+    ({ access }) => {
+      localStorage.setItem("wgw.api.access_token", access);
+      localStorage.setItem("wgw.api.session_kind", "member");
+    },
+    { access: memberToken },
+  );
+
+  try {
+    const dm = await context.request.post(`${API}/api/v1/chat/dms`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: { principal: "member" },
+    });
+    expect(dm.ok(), await dm.text()).toBeTruthy();
+    const channelId = ((await dm.json()) as { id: string }).id;
+    // Unread rows the member already has before any tab opens.
+    for (let i = 0; i < 3; i++)
+      await postDm(context, adminToken, channelId, `unread ${i} ${Date.now()}`);
+
+    const tabA = await context.newPage();
+    const tabB = await context.newPage();
+    const counter = countInboxRequests([tabA, tabB]);
+    const streamTab = trackStreamTab([tabA, tabB]);
+    await Promise.all([pushConnected(context), tabA.goto("/notes")]);
+    await tabB.goto("/notes");
+    await Promise.all([openBell(tabA), openBell(tabB)]);
+    // The first load acks every unread row in one request.
+    await expect.poll(() => counter.acks().length, { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
+    const ackedOnLoad = counter.acks().flat();
+    expect(ackedOnLoad.length, "unread rows acked on load").toBeGreaterThanOrEqual(3);
+
+    const first = await sendDm(context, adminToken, channelId, counter, [tabA, tabB]);
+    const acked = new Set([...ackedOnLoad, ...first.ackedIds]);
+
+    // Close the tab that holds the stream; the other tab takes it over.
+    const leader = streamTab();
+    if (!leader) throw new Error("No tab sent a push request.");
+    const survivor = leader === tabA ? tabB : tabA;
+    counter.reset();
+    await Promise.all([pushConnected(context), leader.close()]);
+    await survivor.waitForTimeout(3_000);
+    expect(counter.acks(), "local-acks when the stream moves").toHaveLength(0);
+
+    const second = await sendDm(context, adminToken, channelId, counter, [survivor]);
+    expect(second.ackedIds, "ids the new stream tab acked").toEqual([second.rowId]);
+    expect(acked.has(second.rowId)).toBe(false);
+    console.log(
+      `[inbox-push] takeover: ${acked.size} rows acked before, then 1 local-ack with ${second.ackedIds.length} id`,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
 /**
- * The member sends the admin a DM. Waits until both bells show the row, then
- * checks one inbox GET and one local-ack for it across the tabs. Returns the
- * time from sending to the row showing in both tabs.
+ * `senderToken` posts a DM. Waits until every bell in `tabs` shows the row,
+ * then checks one inbox GET and one local-ack for it across the tabs. Returns
+ * the time from sending to the row showing everywhere, the row's id, and the
+ * ids that local-ack sent.
  */
-async function notifyAdmin(
+async function sendDm(
   context: BrowserContext,
-  memberToken: string,
+  senderToken: string,
   channelId: string,
   counter: ReturnType<typeof countInboxRequests>,
   tabs: Page[],
-): Promise<{ latency: number; text: string }> {
+): Promise<{ latency: number; text: string; rowId: string; ackedIds: string[] }> {
   const text = `inbox push ${Date.now()}`;
   counter.reset();
   const sentAt = Date.now();
-  const posted = await context.request.post(
-    `${API}/api/v1/chat/channels/${encodeURIComponent(channelId)}/messages`,
-    {
-      headers: { Authorization: `Bearer ${memberToken}` },
-      data: { id: ulid(), body: text },
-    },
-  );
-  expect(posted.ok(), await posted.text()).toBeTruthy();
+  await postDm(context, senderToken, channelId, text);
   await Promise.all(
     tabs.map((tab) =>
       expect(
@@ -115,31 +174,65 @@ async function notifyAdmin(
   await expect.poll(() => counter.acks().length, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
   // A stray second fetch would come with the next stream request (3 s retry).
   await tabs[0]!.waitForTimeout(3_000);
-  expect(counter.gets(), "inbox GETs across both tabs").toHaveLength(1);
-  expect(counter.acks(), "local-acks across both tabs").toHaveLength(1);
-  return { latency, text };
+  expect(counter.gets(), "inbox GETs across the tabs").toHaveLength(1);
+  expect(counter.acks(), "local-acks across the tabs").toHaveLength(1);
+  const row = counter.listed().find((item) => item.body?.includes(text));
+  if (!row) throw new Error(`No inbox GET listed the row for "${text}".`);
+  return { latency, text, rowId: row.id, ackedIds: counter.acks()[0]! };
 }
 
+async function postDm(
+  context: BrowserContext,
+  senderToken: string,
+  channelId: string,
+  text: string,
+): Promise<void> {
+  const posted = await context.request.post(
+    `${API}/api/v1/chat/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      headers: { Authorization: `Bearer ${senderToken}` },
+      data: { id: ulid(), body: text },
+    },
+  );
+  expect(posted.ok(), await posted.text()).toBeTruthy();
+}
+
+type ListedRow = { id: string; body?: string | null };
+
+/** Inbox GETs, the ids each local-ack sent, and the rows the GETs listed. */
 function countInboxRequests(pages: Page[]) {
   let gets: string[] = [];
-  let acks: string[] = [];
-  const onRequest = (request: Request) => {
-    const url = new URL(request.url());
-    if (request.method() === "GET" && /\/api\/v1\/notifications$/.test(url.pathname)) {
-      if (url.searchParams.has("unread")) gets.push(url.href);
-    }
-    if (request.method() === "POST" && /\/notifications\/local-ack$/.test(url.pathname)) {
-      acks.push(url.pathname);
-    }
-  };
-  for (const page of pages) page.on("request", onRequest);
+  let acks: string[][] = [];
+  let listed: ListedRow[] = [];
+  const isInboxGet = (request: Request) =>
+    request.method() === "GET" &&
+    /\/api\/v1\/notifications$/.test(new URL(request.url()).pathname) &&
+    new URL(request.url()).searchParams.has("unread");
+  for (const page of pages) {
+    page.on("request", (request) => {
+      if (isInboxGet(request)) gets.push(request.url());
+      if (request.method() === "POST" && /\/notifications\/local-ack$/.test(request.url())) {
+        const body = request.postDataJSON() as { ids?: string[] } | null;
+        acks.push(body?.ids ?? []);
+      }
+    });
+    page.on("response", (response) => {
+      if (!isInboxGet(response.request()) || !response.ok()) return;
+      void response
+        .json()
+        .then((payload: { list?: ListedRow[] }) => listed.push(...(payload.list ?? [])))
+        .catch(() => undefined);
+    });
+  }
   return {
     reset() {
       gets = [];
       acks = [];
+      listed = [];
     },
     gets: () => gets,
     acks: () => acks,
+    listed: () => listed,
   };
 }
 
