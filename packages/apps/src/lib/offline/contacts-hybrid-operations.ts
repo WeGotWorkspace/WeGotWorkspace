@@ -33,6 +33,7 @@ import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   createTempContactId,
+  dropQueuedContactCreate,
   enqueueCoalescedContactUpdate,
   discardContactsColdDownload,
   enqueueOutboxMutation,
@@ -257,6 +258,7 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
       }
     },
     deleteCard: async (cardId, opts) => {
+      if (await dropQueuedContactCreate(username, cardId)) return;
       const cached = await readContactsBootstrapFromCache(username);
       const existing = cached?.data.cards.find((c) => c.id === cardId);
       const token = existing ? concurrencyToken(existing, opts) : opts?.ifInState;

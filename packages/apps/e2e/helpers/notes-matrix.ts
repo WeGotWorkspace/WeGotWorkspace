@@ -32,6 +32,8 @@ export type ServerNote = {
   tags: string[];
   notebook: string;
   archived: boolean;
+  /** For the user who asked: a star is per person. */
+  starred: boolean;
 };
 
 /** Notebook key both sides agree on: "general", "e2e-notes-team", ... */
@@ -51,6 +53,7 @@ export async function serverNote(user: string, uid: string): Promise<ServerNote 
     categories?: string[];
     notebookId?: string;
     status?: string | null;
+    starred?: boolean;
   };
   return {
     id: note.id,
@@ -59,6 +62,7 @@ export async function serverNote(user: string, uid: string): Promise<ServerNote 
     tags: [...(note.categories ?? [])].sort(),
     notebook: notebookKey(note.notebookId),
     archived: note.status === "CANCELLED",
+    starred: note.starred === true,
   };
 }
 

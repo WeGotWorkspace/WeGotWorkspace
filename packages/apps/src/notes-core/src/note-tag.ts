@@ -55,10 +55,10 @@ export function noteTagToggle(
 }
 
 /** Wire shape for one tag edit: add or remove, never a full replacement. */
-export function tagDeltaOpts(
-  signal: AbortSignal,
-  toggled: { added: boolean; label: string },
-): { signal: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] } {
+export function noteTagDelta(toggled: { added: boolean; label: string }): {
+  tagsAdd?: string[];
+  tagsRemove?: string[];
+} {
   const tag = normalizeTag(toggled.label);
-  return toggled.added ? { signal, tagsAdd: [tag] } : { signal, tagsRemove: [tag] };
+  return toggled.added ? { tagsAdd: [tag] } : { tagsRemove: [tag] };
 }

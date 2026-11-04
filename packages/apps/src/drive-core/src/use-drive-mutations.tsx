@@ -13,6 +13,7 @@ import {
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
+import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
 import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortcut";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
@@ -166,11 +167,11 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         await operations.setStar({ path: apiPath, starred: nextValue }, { signal });
         reloadStarredFromServer(); // Starred spans folders: refresh from any view.
       },
-      undo: () => {
-        setStarred((s) => ({ ...s, [id]: beforeStarred }));
-        if (view.type === "starred") reloadStarredFromServer();
+      revert: async () => {
+        await restoreDriveStars(operations, [{ path: apiPath, before: beforeStarred }]);
+        reloadStarredFromServer();
       },
-      onError: () => {
+      undo: () => {
         setStarred((s) => ({ ...s, [id]: beforeStarred }));
         if (view.type === "starred") reloadStarredFromServer();
       },

@@ -19,6 +19,11 @@ import {
   tasksMoveToastMessage,
 } from "@/tasks-core/src/tasks-toast-messages";
 import type { TasksCreateInput } from "@/tasks-core/src/tasks-task-form";
+import {
+  moveTasksBack,
+  moveTasksToList,
+  revertTaskStatus,
+} from "@/tasks-core/src/tasks-undo-writes";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
@@ -211,10 +216,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         execute: async (signal) => {
           await patchTask(taskId, { workflowStatus: nextStatus }, { signal });
         },
+        revert: () => revertTaskStatus(operations, setTasks, taskId, beforeStatus),
         undo: rollback,
-        onError: rollback,
         undoToastMessage: L.toastCompleteUndone,
-        executeImmediately: true,
       });
     },
     [
@@ -326,13 +330,14 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         key: `tasks:delete:${ids.slice().sort().join(",")}`,
         toastMessage: L.toastDeleted,
         icon: <Trash2 className="size-4" />,
+        // A delete cannot be taken back on the server: it waits, and Undo cancels it.
+        irreversible: true,
         execute: async (signal) => {
           for (const taskId of ids) {
             await operations.deleteTask(taskId, { signal });
           }
         },
         undo: rollback,
-        onError: rollback,
         undoToastMessage: L.toastDeleteUndone,
       });
     },
@@ -391,13 +396,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       queueMutation({
         key: `tasks:move:${listId}:${ids.slice().sort().join(",")}`,
         toastMessage,
-        execute: async (signal) => {
-          for (const taskId of ids) {
-            await operations.moveTaskToList(taskId, listId, { signal });
-          }
-        },
+        execute: (signal, mark) => moveTasksToList(operations, before, listId, signal, mark),
+        revert: (completed) => moveTasksBack(operations, setTasks, before, completed),
         undo: rollback,
-        onError: rollback,
         undoToastMessage: L.toastMoveUndone,
       });
     },

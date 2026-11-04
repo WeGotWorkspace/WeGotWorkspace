@@ -1,7 +1,7 @@
-// A list write queued behind its Undo toast survives a reload or leaving the list (live app, #1794).
+// A list write survives a reload or leaving the list right after it (live app, #1794).
 //
-// Unstarring a file or deleting a task waits 2.5 s behind an Undo toast. A reload or
-// leaving the app inside that window must still reach the server.
+// Unstarring a file is sent at once since #1854; a hard delete still waits 2.5 s behind its
+// Undo toast. Either way, a reload or leaving the app inside the Undo window must not lose it.
 import { expect, test, type Page } from "./helpers/live-test";
 import { putDriveFile } from "./helpers/drive-seed";
 import { E2E_USERNAME } from "./helpers/notes-live";
@@ -9,7 +9,7 @@ import { E2E_USERNAME } from "./helpers/notes-live";
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const RUN = Date.now().toString(36);
 
-/** The 2.5 s undo delay. */
+/** The 2.5 s grace period of an irreversible write; an unstar is long sent by then. */
 const UNDO_DELAY_MS = 2_500;
 
 async function seedAndStar(page: Page, name: string): Promise<void> {

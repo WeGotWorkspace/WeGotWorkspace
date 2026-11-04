@@ -149,7 +149,15 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
         const task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
           ifMatch: row.ifInState,
         });
-        await followLandedTaskWrite(username, row.id, taskId, task);
+        // Undo may have pointed the row back while it was sent: then send it again.
+        const settlement = await settleSentOutboxMutation(username, row, {
+          rebase: (current) => rowFollowingTask(current, task),
+          cacheTables: (db) => [tasksItemsTable(db)],
+          onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
+          onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
+        });
+        sendChangedRowAgain(rows, resends, settlement);
+        continue;
       } else if (row.op === "delete") {
         const taskId = String(payload.taskId ?? "");
         await deleteTask(taskId, { ifMatch: row.ifInState });

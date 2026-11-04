@@ -2,7 +2,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppToastShowOptions } from "@/hooks/use-app-toast";
-import { useQueuedMutation, type DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import {
+  useQueuedMutation,
+  type IrreversibleWriteArgs,
+  type ReversibleWriteArgs,
+} from "@/hooks/use-queued-mutation";
 import { resetWgwSessionStateForTests, wgwFetch } from "@/lib/api/wgw/http";
 
 const toast = vi.hoisted(() => ({
@@ -21,10 +25,12 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const DELAY_MS = 2500;
 
-function queueArgs(overrides: Partial<DeferredApiWriteArgs> = {}): DeferredApiWriteArgs {
+/** An irreversible (deferred) write, like a hard delete. */
+function queueArgs(overrides: Partial<IrreversibleWriteArgs> = {}): IrreversibleWriteArgs {
   return {
-    key: "drive:star:file-1",
-    toastMessage: "Unstarred",
+    key: "drive:delete:file-1",
+    toastMessage: "Deleted",
+    irreversible: true,
     execute: vi.fn(async () => undefined),
     undo: vi.fn(),
     undoToastMessage: "Star change undone.",
@@ -93,7 +99,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("useQueuedMutation when the page is left", () => {
+describe("useQueuedMutation irreversible write when the page is left", () => {
   it("sends a pending write right away when the page is hidden", () => {
     const { result } = renderQueue();
     const args = queueArgs();
@@ -209,7 +215,7 @@ describe("useQueuedMutation when the page is left", () => {
   });
 });
 
-describe("useQueuedMutation when the list unmounts", () => {
+describe("useQueuedMutation irreversible write when the list unmounts", () => {
   it("keeps the pending write and sends it after the delay", () => {
     const { result, unmount } = renderQueue();
     const args = queueArgs();
@@ -299,5 +305,199 @@ describe("useQueuedMutation keepalive budget", () => {
       expect(fetchMock.mock.calls[0]?.[1]?.keepalive).toBeFalsy();
       expect(fetchMock.mock.calls[1]?.[1]?.keepalive).toBe(true);
     });
+  });
+});
+
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function reversibleArgs(overrides: Partial<ReversibleWriteArgs> = {}): ReversibleWriteArgs {
+  return {
+    key: "notes:star:note-1",
+    toastMessage: "Starred",
+    execute: vi.fn(async () => undefined),
+    revert: vi.fn(async () => undefined),
+    undo: vi.fn(),
+    undoToastMessage: "Star change undone.",
+    ...overrides,
+  };
+}
+
+async function settle() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+}
+
+describe("useQueuedMutation reversible write", () => {
+  it("sends the write right away, without waiting for the grace period", () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+
+    expect(args.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the revert on Undo after the write landed", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    act(() => lastToastUndo()());
+    await settle();
+
+    expect(args.undo).toHaveBeenCalledTimes(1);
+    expect(args.revert).toHaveBeenCalledWith(null);
+  });
+
+  it("waits for the write to settle before reverting", async () => {
+    const { result } = renderQueue();
+    const write = deferred();
+    let signal: AbortSignal | null = null;
+    const args = reversibleArgs({
+      execute: vi.fn((received: AbortSignal) => {
+        signal = received;
+        return write.promise;
+      }),
+    });
+
+    act(() => result.current.queueMutation(args));
+    act(() => lastToastUndo()());
+    await settle();
+
+    expect(args.undo).toHaveBeenCalledTimes(1);
+    expect(args.revert).not.toHaveBeenCalled();
+    // A request already sent is not aborted: it may land on the server anyway.
+    expect(signal!.aborted).toBe(false);
+
+    write.resolve();
+    await settle();
+
+    expect(args.revert).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not revert a single write that failed", async () => {
+    const onMutationError = vi.fn();
+    const { result } = renderHook(() => useQueuedMutation({ delayMs: DELAY_MS, onMutationError }));
+    const onError = vi.fn();
+    const args = reversibleArgs({
+      execute: vi.fn(async () => {
+        throw new Error("500");
+      }),
+      onError,
+    });
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    act(() => lastToastUndo()());
+    await settle();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onMutationError).toHaveBeenCalledTimes(1);
+    expect(args.revert).not.toHaveBeenCalled();
+    expect(args.undo).not.toHaveBeenCalled();
+  });
+
+  it("reverts the items a failed batch already applied", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs({
+      execute: vi.fn(async (_signal: AbortSignal, markCompleted: (key: string) => void) => {
+        markCompleted("a");
+        throw new Error("500 on b");
+      }),
+    });
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+
+    expect(args.revert).toHaveBeenCalledWith(new Set(["a"]));
+  });
+
+  it("reverts only the marked items of a batch on Undo", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs({
+      execute: vi.fn(async (_signal: AbortSignal, markCompleted: (key: string) => void) => {
+        markCompleted("a");
+        markCompleted("b");
+      }),
+    });
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    act(() => lastToastUndo()());
+    await settle();
+
+    expect(args.revert).toHaveBeenCalledWith(new Set(["a", "b"]));
+  });
+
+  it("reverts once when Undo is pressed twice", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    const undo = lastToastUndo();
+    act(() => undo());
+    act(() => undo());
+    await settle();
+
+    expect(args.revert).toHaveBeenCalledTimes(1);
+    expect(args.undo).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps Undo for the whole window after the write landed", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS + 3000);
+    });
+    let undone = false;
+    act(() => {
+      undone = result.current.undoLatest();
+    });
+    await settle();
+
+    expect(undone).toBe(true);
+    expect(args.revert).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the window after it ran out", async () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+    await settle();
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS + 3600);
+    });
+    let undone = true;
+    act(() => {
+      undone = result.current.undoLatest();
+    });
+
+    expect(undone).toBe(false);
+    expect(args.revert).not.toHaveBeenCalled();
+  });
+
+  it("does not register a page-exit flush: there is nothing waiting", () => {
+    const { result } = renderQueue();
+    const args = reversibleArgs();
+
+    act(() => result.current.queueMutation(args));
+    firePageExit("pagehide");
+
+    expect(args.execute).toHaveBeenCalledTimes(1);
   });
 });
