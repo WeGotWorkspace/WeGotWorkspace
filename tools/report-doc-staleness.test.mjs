@@ -9,6 +9,7 @@ import {
   docStatus,
   formatMarkdown,
   linkedIssue,
+  livePlanReferences,
   movedPath,
   newestDateUnder,
   parseArgs,
@@ -155,7 +156,7 @@ test("a candidate that code mentions is held back and not moved", () => {
   ]);
   const markdown = formatMarkdown(report, repo);
   assert.match(markdown, /- Archive now: 1/);
-  assert.match(markdown, /- Archive candidates held back \(a non-markdown file mentions them\): 1/);
+  assert.match(markdown, /- Archive candidates held back \(code or a live plan\.md mentions them\): 1/);
   assert.match(markdown, /`src\/a\.php`/);
 });
 
@@ -222,4 +223,17 @@ test("arguments are parsed and a bad date is refused", () => {
   });
   assert.throws(() => parseArgs(["--now=yesterday"]), /YYYY-MM-DD/);
   assert.throws(() => parseArgs(["--fail"]), /unknown argument/);
+});
+
+test("a live plan that would need a rewrite holds the candidate back", () => {
+  const candidates = [
+    { path: ".agents/specs/10-old", name: "10-old", lastCommit: "2025-08-01" },
+    { path: ".agents/specs/11-also-old", name: "11-also-old", lastCommit: "2025-08-01" },
+  ];
+  const livePlans = new Map([
+    [".agents/specs/20-live/plan.md", "Phase 2 lives in `.agents/specs/10-old/`.\n"],
+    [".agents/specs/21-live/plan.md", "Nothing to see.\n"],
+    [".agents/specs/11-also-old/plan.md", "See [old](../10-old/plan.md).\n"],
+  ]);
+  assert.deepEqual([...livePlanReferences(candidates, livePlans)], [["10-old", [".agents/specs/20-live/plan.md"]]]);
 });
