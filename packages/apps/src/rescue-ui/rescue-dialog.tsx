@@ -265,27 +265,3 @@ function RescueContainerStep<T, C extends RescueContainer>({
     </>
   );
 }
-
-/** The way back to the dialog while writes wait for a container, in the view header. */
-export function RescueEntry<C extends RescueContainer>({
-  containers,
-  view,
-  onOpen,
-}: {
-  /** How many containers have writes waiting. */
-  containers: number;
-  view: Pick<RescueView<C>, "labels" | "entryIcon">;
-  onOpen: () => void;
-}) {
-  if (containers === 0) return null;
-  return (
-    <Button
-      className="rescue-entry"
-      variant="outline"
-      size="md"
-      icon={view.entryIcon}
-      label={view.labels.entry(containers)}
-      onClick={onOpen}
-    />
-  );
-}
