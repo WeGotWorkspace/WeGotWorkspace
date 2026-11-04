@@ -650,9 +650,8 @@ export function useDocsCollabJoin({
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
       if (!authToken) {
-        // Token may still be hydrating (docs-app race). Do not GET/PUT
-        // unauthenticated or skip mesh forever — finishAuthenticatedJoin
-        // runs when urls.authToken arrives.
+        // Token may still be hydrating (docs-app race): never GET/PUT unauthenticated;
+        // finishAuthenticatedJoin runs when urls.authToken arrives.
         return;
       }
       await finishAuthenticatedJoin(generation, name, authToken);
