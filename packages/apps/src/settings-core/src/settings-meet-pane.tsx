@@ -1,37 +1,26 @@
-import { useEffect, useState } from "react";
+import { meetLowDataLabels } from "@/lib/meet-low-data";
+import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
+import { useSettingsMeetForm } from "@/settings-core/src/use-settings-meet-form";
+import { FormField } from "@/ui/form";
 import { Label } from "@/ui/label";
 import { Switch } from "@/ui/switch";
-import {
-  readMeetLowData,
-  subscribeMeetLowData,
-  writeMeetLowData,
-} from "@/meet-core/src/meet-low-data";
-import { meetLabels } from "@/meet-core/src/meet-labels";
-import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 
 /** Device setting for Meet. Stored on this browser, not on the account. */
 export function SettingsMeetPane() {
-  const [lowData, setLowData] = useState(false);
-
-  useEffect(() => {
-    const apply = () => setLowData(readMeetLowData());
-    apply();
-    return subscribeMeetLowData(apply);
-  }, []);
-
+  const controller = useSettingsMeetForm();
   return (
-    <SettingsPaneCard>
-      <div className="settings-meet-pane max-w-lg space-y-4">
-        <p className="text-sm text-muted-foreground">{meetLabels.lowDataModeHint}</p>
-        <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="meet-low-data">{meetLabels.lowDataMode}</Label>
-          <Switch
-            id="meet-low-data"
-            checked={lowData}
-            onCheckedChange={(checked) => writeMeetLowData(checked)}
-          />
-        </div>
-      </div>
-    </SettingsPaneCard>
+    <SettingsPrefsFormPane controller={controller}>
+      <p className="text-sm text-muted-foreground">{meetLowDataLabels.hint}</p>
+      <FormField
+        control={controller.form.control}
+        name="lowData"
+        render={({ field }) => (
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="meet-low-data">{meetLowDataLabels.mode}</Label>
+            <Switch id="meet-low-data" checked={field.value} onCheckedChange={field.onChange} />
+          </div>
+        )}
+      />
+    </SettingsPrefsFormPane>
   );
 }

@@ -5,15 +5,15 @@ import {
   resolveTaskConflictFieldMerge,
   resolveTaskConflictKeepLocal,
   resolveTaskConflictUseServer,
-} from "@/lib/offline/tasks-conflict-resolution";
+} from "@/lib/offline/tasks/tasks-conflict-resolution";
 import {
   buildTaskConflictFieldRows,
   defaultTaskConflictFieldChoices,
   type TaskConflictFieldChoices,
   type TaskConflictFieldRow,
-} from "@/lib/offline/tasks-conflict-merge";
+} from "@/lib/offline/tasks/tasks-conflict-merge";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
-import { tasksOutboxTaskId } from "@/lib/offline/tasks-offline-store";
+import { tasksOutboxTaskId } from "@/lib/offline/tasks/tasks-offline-store";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
@@ -21,7 +21,6 @@ import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-resc
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { useTasksAPI } from "@/tasks-core/src/use-tasks-api";
-import { groupParkedTasks } from "@/tasks-core/src/tasks-rescue-groups";
 import { useTasksRescue } from "@/tasks-core/src/use-tasks-rescue";
 import { useTasksRouteSync } from "@/tasks-core/src/use-tasks-route-sync";
 
@@ -245,7 +244,7 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
               onViewChange={handleViewChange}
               headerActions={
                 <TasksRescueEntry
-                  lists={groupParkedTasks(rescue.writes).length}
+                  lists={rescue.waitingContainers}
                   labels={defaultTasksLabels}
                   onOpen={rescue.openFromEntry}
                 />

@@ -52,16 +52,16 @@ vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
   resolveTasksOfflineUsername: () => "ada",
 }));
 
-vi.mock("@/lib/offline/tasks-hybrid-operations", () => ({
+vi.mock("@/lib/offline/tasks/tasks-hybrid-operations", () => ({
   createHybridTasksOperations: () => ({}),
   getTasksSyncRunner: () => ({ flush }),
 }));
 
-vi.mock("@/lib/offline/tasks-offline-store", () => ({
+vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
   readTasksBootstrapFromCache: () => readCache(),
 }));
 
-vi.mock("@/lib/offline/tasks-inbound-sync", () => ({
+vi.mock("@/lib/offline/tasks/tasks-inbound-sync", () => ({
   TASKS_INBOUND_POLL_MS: 10_000,
   syncTasksInbound: (...args: unknown[]) => syncTasksInbound(...args),
 }));

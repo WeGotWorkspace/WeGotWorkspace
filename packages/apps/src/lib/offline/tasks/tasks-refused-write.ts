@@ -13,7 +13,7 @@ import {
   removeTaskFromCache,
   tasksOutboxTaskId,
   upsertTaskInCache,
-} from "@/lib/offline/tasks-offline-store";
+} from "@/lib/offline/tasks/tasks-offline-store";
 
 /**
  * The server refused a queued task write for good (#1825): the task or its

@@ -60,7 +60,7 @@ describe("settings-registry", () => {
     expect(panelsForNav({ mcpEnabled: true }).map((panel) => panel.id)).toContain("assistants");
   });
 
-  it("keeps Calendar, Tasks, Contacts, Notes, and Meet under Apps with no Mail and no production Notifications panel", () => {
+  it("keeps Calendar, Tasks, Contacts, Notes, Docs, and Meet under Apps with no Mail and no production Notifications panel", () => {
     registerBuiltinSettings();
     const nav = panelsForNav({});
     expect(nav.filter((panel) => panel.group === "apps").map((panel) => panel.id)).toEqual([
@@ -68,6 +68,7 @@ describe("settings-registry", () => {
       "tasks",
       "contacts",
       "notes",
+      "docs",
       "meet",
     ]);
     expect(nav.map((panel) => panel.id)).not.toContain("mail");
