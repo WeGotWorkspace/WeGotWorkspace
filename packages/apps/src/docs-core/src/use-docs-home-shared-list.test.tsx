@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import { useDocsHomeSharedList } from "@/docs-core/src/use-docs-home-shared-list";
 
+const connectivity = vi.hoisted(() => ({ online: true }));
+vi.mock("@/hooks/use-connectivity", () => ({
+  useConnectivity: () => ({ online: connectivity.online }),
+}));
+
 describe("useDocsHomeSharedList", () => {
   it("maps and filters shared entries when enabled", async () => {
     const listSharedWithMe = vi.fn().mockResolvedValue([
@@ -150,5 +155,32 @@ describe("useDocsHomeSharedList", () => {
 
     rerender({ query: "beta" });
     expect(result.current.files.map((file) => file.title)).toEqual(["Beta.txt"]);
+  });
+
+  it("says Shared is not available offline instead of the fetch error (#1563)", async () => {
+    connectivity.online = false;
+    const listSharedWithMe = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    const { result } = renderHook(() =>
+      useDocsHomeSharedList({ username: "alice", shareOperations: { listSharedWithMe } }),
+    );
+
+    await waitFor(() =>
+      expect(result.current.error).toBe("Shared documents are not available offline."),
+    );
+    connectivity.online = true;
+  });
+
+  it("says it too when the list loaded and the tab then went offline (#1563)", async () => {
+    const listSharedWithMe = vi.fn().mockResolvedValue([]);
+    const { result, rerender } = renderHook(() =>
+      useDocsHomeSharedList({ username: "alice", shareOperations: { listSharedWithMe } }),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
+
+    connectivity.online = false;
+    rerender();
+    expect(result.current.error).toBe("Shared documents are not available offline.");
+    connectivity.online = true;
   });
 });

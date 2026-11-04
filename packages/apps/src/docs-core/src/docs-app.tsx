@@ -32,6 +32,7 @@ import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock"
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
+import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
@@ -60,6 +61,8 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const isGuestSession = wgwIsGuestSession();
   const offlineUsername = resolveDocsOfflineUsername(session.user.username);
   const [editorInboundKey, setEditorInboundKey] = useState(0);
+  // Mirrors `holdServerSave` below: while saves are held, a `?file=` link is not swapped for an id.
+  const [holdPathLookup, setHoldPathLookup] = useState(false);
   const {
     document: routeDocument,
     followPath,
@@ -70,6 +73,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     canResolve: wgwLiveApiEnabled() && !isGuestSession,
     username: offlineUsername,
     refreshKey: editorInboundKey,
+    holdPathLookup,
   });
   const filePath = routeDocument.status === "ready" ? routeDocument.path : null;
   const fileNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
@@ -81,6 +85,20 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       setEditorInboundKey((key) => key + 1);
     }, [onDocumentRoute]),
   );
+  const followMovedFile = useCallback(
+    (apiPath: string) => {
+      // Opened by id: the id stays, only its path changes. By path: open the new path.
+      if (fileNodeId) void followPath(apiPath);
+      else void navigate({ to: "/docs", search: docsSearchFromApiPath(apiPath), replace: true });
+    },
+    [fileNodeId, followPath, navigate],
+  );
+  const { holdServerSave } = useDocsEditorPathFollow({
+    username: offlineUsername,
+    filePath,
+    onFollow: followMovedFile,
+  });
+  useEffect(() => setHoldPathLookup(holdServerSave), [holdServerSave]);
 
   useNotificationsMarkReadOnConsume({
     docsApiPath: filePath,
@@ -199,17 +217,27 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     return {
       ...buildDocsEditorUrls(filePath, fileNodeId),
       authToken: collabAuthToken,
+      // Held on this device while the server does not have this path yet, or may have moved it.
+      roomNotPersistent: holdServerSave,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
       // A save to the old path after a rename elsewhere: look up where the id lives now.
       onDocumentGone: relocateRouteDocument,
     };
-  }, [collabAuthToken, fileNodeId, filePath, relocateRouteDocument, showCollab, showError]);
+  }, [
+    collabAuthToken,
+    fileNodeId,
+    filePath,
+    holdServerSave,
+    relocateRouteDocument,
+    showCollab,
+    showError,
+  ]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 
-  useOfflinePendingToast(pendingCollabSync, docsLabels.toastSynced, showCollab);
+  useOfflinePendingToast(pendingCollabSync, docsLabels.toastSynced, showCollab, collabUrls?.room);
 
   const collabUserName = session.user.displayName || session.user.username || "User";
   const collabDocumentTitle = useMemo(() => {

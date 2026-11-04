@@ -94,7 +94,7 @@ vi.mock("@/lib/api/wgw/contacts-sync", () => ({
   syncAllContactBooks,
 }));
 
-import { patchCardWithState } from "@/lib/api/wgw/contacts-mutations";
+import { deleteCardWithState, patchCardWithState } from "@/lib/api/wgw/contacts-mutations";
 import { fetchContactsLiveBootstrap } from "@/lib/api/wgw/contacts-bootstrap";
 import { readBrowserOnline } from "@/lib/offline/browser-online";
 import {
@@ -141,6 +141,40 @@ describe("createHybridContactsOperations", () => {
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.op).toBe("update");
     expect(outbox[0]?.ifInState).toBe("state-1");
+  });
+
+  it("drops a create still queued offline instead of queueing a delete for it", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridContactsOperations(username);
+    const created = await operations.createCard({
+      addressBookIds: { default: true },
+      kind: "individual",
+      name: { "@type": "Name", isOrdered: false, full: "Pat" },
+    } as never);
+    await operations.patchCard(created.id, {
+      name: { "@type": "Name", isOrdered: false, full: "Pat Doe" },
+    });
+    expect((await listOutboxMutations(username)).map((row) => row.op)).toEqual([
+      "create",
+      "update",
+    ]);
+
+    await operations.deleteCard(created.id);
+
+    expect(await listOutboxMutations(username)).toEqual([]);
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.cards.some((row) => row.id === created.id)).toBe(false);
+    expect(deleteCardWithState).not.toHaveBeenCalled();
+  });
+
+  it("still queues a delete offline for a card that is on the server", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridContactsOperations(username);
+
+    await operations.deleteCard("jane-doe");
+
+    const outbox = await listOutboxMutations(username);
+    expect(outbox.map((row) => row.op)).toEqual(["delete"]);
   });
 
   it("queues patch when live API fails with a network error", async () => {

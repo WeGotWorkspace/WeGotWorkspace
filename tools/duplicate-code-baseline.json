@@ -8,8 +8,8 @@
       "duplicatedLines": 2771
     },
     "packages/apps/src": {
-      "clones": 89,
-      "duplicatedLines": 1422
+      "clones": 83,
+      "duplicatedLines": 1338
     }
   }
 }

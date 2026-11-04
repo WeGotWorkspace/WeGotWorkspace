@@ -59,6 +59,20 @@ describe("useDriveFileNodeInbound", () => {
     warn.mockRestore();
   });
 
+  it("reports each pull as settled, failed ones too", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const onSettled = vi.fn();
+    const { rerender } = renderHook(({ key }) => useDriveFileNodeInbound("ada", key, onSettled), {
+      initialProps: { key: 3 },
+    });
+    await waitFor(() => expect(onSettled).toHaveBeenCalledWith(3));
+
+    syncDriveInboundFromFileNodes.mockRejectedValueOnce(new Error("offline"));
+    rerender({ key: 4 });
+    await waitFor(() => expect(onSettled).toHaveBeenCalledWith(4));
+    warn.mockRestore();
+  });
+
   it("never syncs for a share-link guest, whose shell username is the owner's", async () => {
     guestSession.value = true;
     renderHook(() => useDriveFileNodeInbound("owner", 0));

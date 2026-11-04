@@ -5,6 +5,8 @@ import {
 } from "@/lib/api/wgw/drive-node-locate";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
+import { docsRowOwnedByQueuedWrite, docsSourceKey } from "@/lib/offline/docs/docs-inbound-plan";
+import { readDocsPendingWrites } from "@/lib/offline/docs/docs-inbound-sync";
 import {
   readDocsNodeIdForPath,
   readDocsPathForNodeId,
@@ -32,6 +34,8 @@ export type DocsLocatorDeps = {
   readCachedNodeId: (path: string) => Promise<string | undefined>;
   recordLocation: (nodeId: string, path: string) => Promise<void>;
   isOnline: () => boolean;
+  /** A queued offline create or rename owns this API path (#1563). */
+  ownedByQueuedWrite: (path: string) => Promise<boolean>;
 };
 
 /** `missing`: the server says no such readable file. `unknown`: no server and no cache row. */
@@ -55,6 +59,10 @@ export function createDocsLocatorDeps(username: string | null | undefined): Docs
     recordLocation: (nodeId, path) =>
       username ? recordDocsNodePath(username, nodeId, path) : Promise.resolve(),
     isOnline: getConnectivitySnapshot,
+    ownedByQueuedWrite: async (path) =>
+      username
+        ? docsRowOwnedByQueuedWrite(await readDocsPendingWrites(username), docsSourceKey(path))
+        : false,
   };
 }
 

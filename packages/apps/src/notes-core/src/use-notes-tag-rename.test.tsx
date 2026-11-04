@@ -181,28 +181,44 @@ describe("useNotesTagRename", () => {
     );
   });
 
-  it("does not send an inverse patch when undo happens before the write starts", async () => {
+  it("sends the rename right away and reverts only after it settled", async () => {
     vi.useFakeTimers();
     try {
       const { result, upsertNote, persistOptimisticNote, selectView } = renderTagRename(
         [note({ id: "plain", tags: ["a", "keep"] })],
         "tag:a",
       );
+      let land!: () => void;
+      upsertNote.mockImplementationOnce(
+        (row: Note) => new Promise((resolve) => (land = () => resolve(row))),
+      );
       act(() => {
         result.current.renameTag("a", "b");
       });
-      expect(selectView).toHaveBeenCalledWith("tag:b");
+      // No grace period: the delta is on its way before any timer runs.
+      expect(upsertNote).toHaveBeenCalledTimes(1);
       const onUndo = toastApi.show.mock.calls[0]?.[1]?.onUndo as (() => void) | undefined;
       act(() => {
         onUndo?.();
       });
-      await flushQueue();
-      expect(upsertNote).not.toHaveBeenCalled();
       expect(persistOptimisticNote).toHaveBeenCalledWith(
         expect.objectContaining({ id: "plain", tags: ["a", "keep"] }),
         true,
       );
       expect(selectView).toHaveBeenCalledWith("tag:a");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(upsertNote).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        land();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(upsertNote).toHaveBeenCalledTimes(2);
+      expect(upsertNote.mock.calls[1]?.[1]).toEqual(
+        expect.objectContaining({ tagsAdd: ["a"], tagsRemove: ["b"] }),
+      );
       expect(
         toastApi.show.mock.calls.filter((call) => call[0] === "Tag rename undone."),
       ).toHaveLength(1);
@@ -211,36 +227,27 @@ describe("useNotesTagRename", () => {
     }
   });
 
-  it("after the write starts, undo restores cache and adds the old tag back on a merge", async () => {
+  it("undo adds the old tag back, and keeps the new one on a note that already had it", async () => {
     vi.useFakeTimers();
     try {
-      const { result, upsertNote, persistOptimisticNote, selectView } = renderTagRename(
+      const { result, upsertNote } = renderTagRename(
         [note({ id: "plain", tags: ["a", "keep"] }), note({ id: "merged", tags: ["a", "b"] })],
         "tag:a",
       );
-      upsertNote.mockImplementation((row: Note) => new Promise(() => row));
       act(() => {
         result.current.renameTag("a", "b");
       });
-      await flushQueue();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
       expect(upsertNote).toHaveBeenCalledTimes(2);
       const onUndo = toastApi.show.mock.calls[0]?.[1]?.onUndo as (() => void) | undefined;
       act(() => {
         onUndo?.();
       });
-      expect(persistOptimisticNote).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "plain", tags: ["a", "keep"] }),
-        true,
-      );
-      expect(persistOptimisticNote).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "merged", tags: ["a", "b"] }),
-        true,
-      );
-      expect(selectView).toHaveBeenCalledWith("tag:a");
-      const messages = toastApi.show.mock.calls.map((call) => call[0]);
-      expect(messages.filter((message) => message === "Tag rename undone.")).toHaveLength(1);
-      expect(messages).toContain("Restored “a” on 2 notes");
-      await flushQueue();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
       const inverse = upsertNote.mock.calls.filter((call) => call[1]?.tagsAdd?.[0] === "a");
       expect(inverse).toHaveLength(2);
       expect(inverse.find((call) => call[0].id === "plain")?.[1]).toEqual(
@@ -249,18 +256,6 @@ describe("useNotesTagRename", () => {
       const merged = inverse.find((call) => call[0].id === "merged");
       expect(merged?.[1]).toEqual(expect.objectContaining({ tagsAdd: ["a"] }));
       expect(merged?.[1]?.tagsRemove).toBeUndefined();
-      const restored = toastApi.show.mock.calls.find(
-        (call) => call[0] === "Restored “a” on 2 notes",
-      );
-      const undoRestore = restored?.[1]?.onUndo as (() => void) | undefined;
-      act(() => {
-        undoRestore?.();
-      });
-      expect(selectView).toHaveBeenLastCalledWith("tag:b");
-      expect(persistOptimisticNote).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "plain", tags: ["b", "keep"] }),
-        true,
-      );
     } finally {
       vi.useRealTimers();
     }

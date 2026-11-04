@@ -173,6 +173,49 @@ describe("useNotificationsLocalAck", () => {
     expect(ackLocalNotifications).toHaveBeenCalledTimes(1);
   });
 
+  it("a tab that takes over after another tab acked rows 1–10 sends only row 11 (#1834)", async () => {
+    const locks = new FakeWebLocks();
+    const a = openTab(locks, "a");
+    // B is open but has not acked anything yet, as a tab that never held the stream.
+    const b = openTab(locks, "b");
+    const older = rows(10);
+    a.result.current(older);
+    await settle();
+    expect(sentIds()).toEqual([older.map((item) => item.id)]);
+    a.unmount();
+    vi.mocked(ackLocalNotifications).mockClear();
+
+    b.result.current([row("n11"), ...older]);
+    await settle();
+
+    expect(sentIds()).toEqual([["n11"]]);
+  });
+
+  it("a row no tab acked while every tab was hidden is acked by the next visible tab", async () => {
+    const locks = new FakeWebLocks();
+    const a = openTab(locks, "a");
+    const b = openTab(locks, "b");
+    const older = rows(10);
+    a.result.current(older);
+    await settle();
+    vi.mocked(ackLocalNotifications).mockClear();
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    a.result.current([row("n11"), ...older]);
+    b.result.current([row("n11"), ...older]);
+    await settle();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
+    a.unmount();
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await settle();
+
+    expect(sentIds()).toEqual([["n11"]]);
+  });
+
   it("a failed batch in one tab leaves the rows for the other tab", async () => {
     vi.mocked(ackLocalNotifications).mockRejectedValueOnce(new TypeError("Failed to fetch"));
     const locks = new FakeWebLocks();

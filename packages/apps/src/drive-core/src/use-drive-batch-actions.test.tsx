@@ -20,7 +20,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
-import { useQueuedMutation, type DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { useQueuedMutation, type QueuedMutationArgs } from "@/hooks/use-queued-mutation";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 
 const USER = "alice";
@@ -88,10 +88,27 @@ function createOperations(): DriveAPIOperations {
   };
 }
 
-function queued(): DeferredApiWriteArgs {
-  const args = queueMutation.mock.calls[0]?.[0] as DeferredApiWriteArgs | undefined;
+function queued(): QueuedMutationArgs {
+  const args = queueMutation.mock.calls[0]?.[0] as QueuedMutationArgs | undefined;
   if (!args) throw new Error("expected a queued drive batch");
   return args;
+}
+
+let completedKeys = new Set<string>();
+
+/** Runs the queued write as `useQueuedMutation` does, recording what the server applied. */
+async function executeQueued(signal = new AbortController().signal): Promise<void> {
+  const args = queued();
+  completedKeys = new Set();
+  if (args.irreversible) return args.execute(signal);
+  return args.execute(signal, (key) => completedKeys.add(key));
+}
+
+/** Undo as `useQueuedMutation` does it: the screen first, then the revert of what landed. */
+async function undoQueued(): Promise<void> {
+  const args = queued();
+  args.undo();
+  if (!args.irreversible) await args.revert(new Set(completedKeys));
 }
 
 function renderActions(options?: {
@@ -158,6 +175,7 @@ function renderActions(options?: {
 describe("useDriveBatchActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    completedKeys = new Set();
   });
 
   afterEach(() => {
@@ -179,8 +197,9 @@ describe("useDriveBatchActions", () => {
     });
 
     act(() => result.current.moveToTrash(["shared"]));
+    expect(queued()).toMatchObject({ irreversible: true });
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.deleteItems).toHaveBeenCalledWith(["/users/bob/workspace/plan.md"], {
@@ -190,14 +209,91 @@ describe("useDriveBatchActions", () => {
     expect(operations.renameItem).not.toHaveBeenCalled();
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).not.toHaveBeenCalled();
     expect(operations.deleteItems).toHaveBeenCalledTimes(1);
   });
 
-  it("moves the selection to Trash and restores it on undo before the server call", () => {
+  it("holds a batch with a shared item for the grace period, and Undo cancels all of it", async () => {
+    vi.useFakeTimers();
+    try {
+      const operations = createOperations();
+      const foreign = driveFile({
+        id: "shared",
+        title: "plan.md",
+        parent: "Users/bob/workspace",
+        apiPath: "/users/bob/workspace/plan.md",
+      });
+      const { result } = renderActions({
+        operations,
+        liveQueue: true,
+        files: [driveFile(), foreign],
+        selectedIds: [NOTES_ID, "shared"],
+      });
+
+      act(() => result.current.moveToTrash([NOTES_ID, "shared"]));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(operations.renameItem).not.toHaveBeenCalled();
+      expect(operations.deleteItems).not.toHaveBeenCalled();
+
+      act(() => {
+        result.current.undoLatest();
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(operations.renameItem).not.toHaveBeenCalled();
+      expect(operations.deleteItems).not.toHaveBeenCalled();
+      expect(result.current.files.map((file) => file.parent)).toEqual([
+        "My Drive",
+        "Users/bob/workspace",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sends a permanent delete only after the grace period", async () => {
+    vi.useFakeTimers();
+    try {
+      const operations = createOperations();
+      const { result } = renderActions({ operations, liveQueue: true });
+
+      act(() => result.current.reallyDelete([NOTES_ID]));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2400);
+      });
+      expect(operations.deleteItems).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(operations.deleteItems).toHaveBeenCalledWith(
+        ["/users/alice/notes.md"],
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("trashes own files at once, without waiting for a grace period", async () => {
+    const operations = createOperations();
+    const { result } = renderActions({ operations, liveQueue: true });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+
+    await vi.waitFor(() => {
+      expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("moves the selection to Trash and restores it on undo before the server call", async () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });
 
@@ -211,11 +307,13 @@ describe("useDriveBatchActions", () => {
       key: "drive:trash:notes",
       toastMessage: "Moved 1 to Trash",
       undoToastMessage: "Move to trash undone.",
-      executeImmediately: true,
+      revert: expect.any(Function),
     });
     expect(operations.renameItem).not.toHaveBeenCalled();
 
-    act(() => queued().undo());
+    await act(async () => {
+      await undoQueued();
+    });
 
     expect(result.current.files[0]?.parent).toBe("My Drive");
     expect(result.current.selectedIds).toEqual([NOTES_ID]);
@@ -328,7 +426,7 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.createFolder).toHaveBeenCalledWith(
@@ -349,7 +447,7 @@ describe("useDriveBatchActions", () => {
     );
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledTimes(2);
@@ -371,7 +469,7 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledWith(
@@ -384,7 +482,7 @@ describe("useDriveBatchActions", () => {
     );
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenLastCalledWith({
@@ -407,11 +505,11 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID, "other"]));
     await act(async () => {
-      await expect(queued().execute(new AbortController().signal)).rejects.toThrow("rename failed");
+      await expect(executeQueued()).rejects.toThrow("rename failed");
     });
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     const restores = vi
@@ -432,11 +530,11 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenLastCalledWith({
@@ -463,10 +561,10 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID, "other"]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(showToast).toHaveBeenCalledTimes(1);
@@ -493,12 +591,12 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID, "other"]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     const refreshesBeforeUndo = vi.mocked(operations.changeDir).mock.calls.length;
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenLastCalledWith({
@@ -520,7 +618,7 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledTimes(1);
@@ -551,11 +649,11 @@ describe("useDriveBatchActions", () => {
       key: "drive:move:My Drive/Projects:notes",
       toastMessage: "Moved 1 to Projects",
       undoToastMessage: "Move undone.",
-      executeImmediately: true,
+      revert: expect.any(Function),
     });
 
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledWith(
@@ -568,7 +666,7 @@ describe("useDriveBatchActions", () => {
     );
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledTimes(2);
@@ -593,11 +691,11 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToFolder([NOTES_ID, "other"], "My Drive/Projects"));
     await act(async () => {
-      await expect(queued().execute(new AbortController().signal)).rejects.toThrow("rename failed");
+      await expect(executeQueued()).rejects.toThrow("rename failed");
     });
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     const restores = vi
@@ -624,11 +722,11 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     await act(async () => {
-      queued().undo();
+      await undoQueued();
     });
 
     expect(operations.renameItem).toHaveBeenLastCalledWith({
@@ -647,7 +745,7 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledTimes(1);
@@ -660,11 +758,13 @@ describe("useDriveBatchActions", () => {
 
     act(() => result.current.moveToTrash([NOTES_ID]));
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(result.current.files[0]?.parent).toBe("Trash");
-    act(() => queued().undo());
+    await act(async () => {
+      await undoQueued();
+    });
     expect(result.current.files[0]?.parent).toBe("My Drive");
   });
 
@@ -679,25 +779,27 @@ describe("useDriveBatchActions", () => {
       key: "drive:delete:notes",
       toastMessage: "Deleted 1 file",
       undoToastMessage: "Deletion undone.",
-      executeImmediately: true,
+      irreversible: true,
     });
 
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.deleteItems).toHaveBeenCalledWith(
       ["/users/alice/notes.md"],
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
 
-    act(() => queued().undo());
+    await act(async () => {
+      await undoQueued();
+    });
 
     expect(result.current.files.map((file) => file.id)).toEqual([NOTES_ID]);
     expect(result.current.selectedIds).toEqual([NOTES_ID]);
     expect(operations.deleteItems).toHaveBeenCalledTimes(1);
   });
 
-  it("stars the selection through the deferred queue and restores the previous stars on undo", async () => {
+  it("stars the selection at once and sends the previous stars back on undo", async () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });
 
@@ -708,12 +810,12 @@ describe("useDriveBatchActions", () => {
       key: "drive:batch-star:notes",
       toastMessage: "Starred 1",
       undoToastMessage: "Star changes undone.",
-      executeImmediately: false,
+      revert: expect.any(Function),
     });
     expect(operations.setStar).not.toHaveBeenCalled();
 
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.setStar).toHaveBeenCalledWith(
       { path: "/users/alice/notes.md", starred: true },
@@ -722,10 +824,16 @@ describe("useDriveBatchActions", () => {
     // Starred also lists items outside the open folder, so it refreshes from any view.
     expect(reloadStarredFromServer).toHaveBeenCalledTimes(1);
 
-    act(() => queued().undo());
+    await act(async () => {
+      await undoQueued();
+    });
 
     expect(result.current.starred).toEqual({});
-    expect(operations.setStar).toHaveBeenCalledTimes(1);
+    expect(operations.setStar).toHaveBeenCalledTimes(2);
+    expect(operations.setStar).toHaveBeenLastCalledWith({
+      path: "/users/alice/notes.md",
+      starred: false,
+    });
   });
 
   it("stars a selected row that is not in the open folder", async () => {
@@ -741,7 +849,7 @@ describe("useDriveBatchActions", () => {
 
     expect(result.current.starred[NOTES_ID]).toBe(true);
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.setStar).toHaveBeenCalledWith(
       { path: "/users/alice/notes.md", starred: true },
@@ -763,7 +871,7 @@ describe("useDriveBatchActions", () => {
     expect(queued().toastMessage).toBe("Unstarred 1");
 
     await act(async () => {
-      await queued().execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.setStar).toHaveBeenCalledWith(
       { path: "/users/alice/notes.md", starred: false },
@@ -771,10 +879,16 @@ describe("useDriveBatchActions", () => {
     );
     expect(reloadStarredFromServer).toHaveBeenCalledTimes(1);
 
-    act(() => queued().undo());
+    await act(async () => {
+      await undoQueued();
+    });
 
     expect(result.current.starred[NOTES_ID]).toBe(true);
-    expect(reloadStarredFromServer).toHaveBeenCalledTimes(2);
+    expect(operations.setStar).toHaveBeenLastCalledWith({
+      path: "/users/alice/notes.md",
+      starred: true,
+    });
+    expect(reloadStarredFromServer).toHaveBeenCalledTimes(3);
   });
 
   it("ignores empty trash and delete requests", () => {

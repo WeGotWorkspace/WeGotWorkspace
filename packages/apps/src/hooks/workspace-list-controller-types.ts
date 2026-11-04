@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import type { ButtonSeverity, ButtonVariant } from "@/button/src/button.shared";
 import type { IdentifiableItem } from "@/hooks/collection-controller-utils";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import type { QueueMutation } from "@/hooks/use-queued-mutation";
 
 export type ItemDragHandlers = {
   onDragStart: (e: React.DragEvent) => void;
@@ -57,7 +57,7 @@ export type WorkspaceListControllerResult<TItem> = {
     affectedItems: TItem[];
     rollback: () => void;
   };
-  queueMutation: (args: DeferredApiWriteArgs) => void;
+  queueMutation: QueueMutation;
   undoLatest: () => boolean;
   navigateListByKeyboard: (direction: -1 | 1, extendSelection: boolean) => void;
 };

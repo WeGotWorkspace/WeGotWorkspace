@@ -175,6 +175,14 @@ export async function createUtcCalendarEventViaApi(title: string, start: string)
   if (!result?.created?.e1) throw new Error(`E2E event not created: ${JSON.stringify(result)}`);
 }
 
+/** How many events on the server have this exact title. */
+export async function countCalendarEventsByTitleViaApi(title: string): Promise<number> {
+  const query = await e2eJmap([
+    ["CalendarEvent/query", { accountId: E2E_USERNAME, filter: { title } }, "q"],
+  ]);
+  return ((query.methodResponses[0]?.[1]?.ids as string[] | undefined) ?? []).length;
+}
+
 /** Test cleanup through the API: delete every event with this exact title. */
 export async function deleteCalendarEventsByTitleViaApi(title: string): Promise<number> {
   const query = await e2eJmap([

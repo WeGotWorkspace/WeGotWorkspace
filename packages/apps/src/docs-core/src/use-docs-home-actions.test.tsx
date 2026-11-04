@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
-import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   captureOfflineDocsTrashSnapshot,
+  DOCS_DELETE_NEEDS_CONNECTION,
   undoOfflineDocsTrash,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
+import type { QueuedMutationArgs } from "@/hooks/use-queued-mutation";
 
 const queueMutation = vi.fn();
 const undoLatest = vi.fn(() => false);
@@ -18,7 +20,8 @@ const { showToast, showErrorToast } = vi.hoisted(() => ({
   showErrorToast: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-queued-mutation", () => ({
+vi.mock("@/hooks/use-queued-mutation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/use-queued-mutation")>()),
   useQueuedMutation: () => ({ queueMutation, undoLatest }),
 }));
 
@@ -36,6 +39,7 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
   return {
     ...actual,
     readBrowserOnline: vi.fn(() => true),
+    getConnectivitySnapshot: vi.fn(() => true),
   };
 });
 
@@ -147,10 +151,41 @@ function renderActions(
   );
 }
 
+let completedKeys = new Set<string>();
+
+function queuedWrite(): QueuedMutationArgs {
+  const args = queueMutation.mock.calls[0]?.[0] as QueuedMutationArgs | undefined;
+  if (!args) throw new Error("expected a queued docs write");
+  return args;
+}
+
+/** Runs the queued write as `useQueuedMutation` does, recording what the server applied. */
+async function executeQueued(): Promise<void> {
+  const args = queuedWrite();
+  completedKeys = new Set();
+  if (args.irreversible) return args.execute(new AbortController().signal);
+  return args.execute(new AbortController().signal, (key) => completedKeys.add(key));
+}
+
+/** Undo as `useQueuedMutation` does it: the screen first, then the revert of what landed. */
+async function undoQueued(): Promise<void> {
+  const args = queuedWrite();
+  args.undo();
+  if (!args.irreversible) await args.revert(new Set(completedKeys));
+}
+
+/** A failed write as `useQueuedMutation` handles it: roll the screen back, revert what landed. */
+async function failQueued(): Promise<void> {
+  const args = queuedWrite();
+  (args.onError ?? args.undo)();
+  if (!args.irreversible && completedKeys.size > 0) await args.revert(new Set(completedKeys));
+}
+
 describe("useDocsHomeActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(true);
   });
 
   it("derives the starred map from listStars keyed by file id", async () => {
@@ -159,6 +194,30 @@ describe("useDocsHomeActions", () => {
 
     await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
     expect(result.current.starred["search:file:users/alice/B.md"]).toBeUndefined();
+  });
+
+  it("reads the stars again when the refresh key changes (#1563)", async () => {
+    const operations = createMockOperations();
+    // The read when the connection came back predates the queued star.
+    operations.listStars.mockResolvedValueOnce([]).mockResolvedValue(["/users/alice/A.md"]);
+    const { result, rerender } = renderHook(
+      ({ key }) =>
+        useDocsHomeActions({
+          operations,
+          files: FILES,
+          username: "alice",
+          groupRoots: [],
+          reload: vi.fn(),
+          starsRefreshKey: key,
+        }),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.starsReady).toBe(true));
+    expect(result.current.starred["search:file:users/alice/A.md"]).toBeUndefined();
+
+    rerender({ key: 1 });
+    await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
+    expect(operations.listStars).toHaveBeenCalledTimes(2);
   });
 
   it("toggles a star optimistically and persists via setStar", async () => {
@@ -175,12 +234,8 @@ describe("useDocsHomeActions", () => {
       toastMessage: "Unstarred",
       undoToastMessage: "Star change undone.",
     });
-
-    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
-      signal: AbortSignal,
-    ) => Promise<void>;
     await act(async () => {
-      await execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.setStar).toHaveBeenCalledWith(
       { path: "/users/alice/A.md", starred: false },
@@ -248,24 +303,17 @@ describe("useDocsHomeActions", () => {
     expect(queueMutation.mock.calls[0]?.[0]).toMatchObject({
       key: "docs:trash:search:file:users/alice/B.md",
       undoToastMessage: "Move to trash undone.",
-      executeImmediately: true,
+      revert: expect.any(Function),
     });
-
-    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
-      signal: AbortSignal,
-    ) => Promise<void>;
     await act(async () => {
-      await execute(new AbortController().signal);
+      await executeQueued();
     });
 
-    expect(operations.renameItem).toHaveBeenCalledWith(
-      {
-        destination: "/users/alice/.Trash",
-        from: "/users/alice/B.md",
-        to: "B.md",
-      },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(operations.renameItem).toHaveBeenCalledWith({
+      destination: "/users/alice/.Trash",
+      from: "/users/alice/B.md",
+      to: "B.md",
+    });
     expect(operations.createFolder).toHaveBeenCalledWith(
       { cwd: "/users/alice", name: ".Trash" },
       expect.objectContaining({ signal: expect.any(AbortSignal), refreshState: false }),
@@ -283,22 +331,15 @@ describe("useDocsHomeActions", () => {
 
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
-
-    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
-      signal: AbortSignal,
-    ) => Promise<void>;
     await act(async () => {
-      await execute(new AbortController().signal);
+      await executeQueued();
     });
 
-    expect(operations.renameItem).toHaveBeenCalledWith(
-      {
-        destination: "/users/alice/.Trash",
-        from: "/users/alice/B.md",
-        to: "B.md",
-      },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(operations.renameItem).toHaveBeenCalledWith({
+      destination: "/users/alice/.Trash",
+      from: "/users/alice/B.md",
+      to: "B.md",
+    });
     expect(reload).toHaveBeenCalled();
   });
 
@@ -318,12 +359,8 @@ describe("useDocsHomeActions", () => {
       undoToastMessage: "Star changes undone.",
     });
     expect(operations.setStar).not.toHaveBeenCalled();
-
-    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
-      signal: AbortSignal,
-    ) => Promise<void>;
     await act(async () => {
-      await execute(new AbortController().signal);
+      await executeQueued();
     });
     expect(operations.setStar).toHaveBeenCalledTimes(2);
     expect(operations.setStar).toHaveBeenCalledWith(
@@ -334,6 +371,44 @@ describe("useDocsHomeActions", () => {
       { path: "/users/alice/B.md", starred: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it("sends only the stars that changed back on undo", async () => {
+    const operations = createMockOperations(["/users/alice/A.md"]);
+    const { result } = renderActions(operations);
+    await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
+
+    act(() => result.current.batchStar(FILES.map((file) => file.id)));
+    await act(async () => {
+      await executeQueued();
+      await undoQueued();
+    });
+
+    expect(operations.setStar).toHaveBeenCalledTimes(3);
+    expect(operations.setStar).toHaveBeenLastCalledWith({
+      path: "/users/alice/B.md",
+      starred: false,
+    });
+    expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true);
+    expect(result.current.starred["search:file:users/alice/B.md"]).toBeUndefined();
+  });
+
+  it("sends the old star back on undo of a single star", async () => {
+    const operations = createMockOperations(["/users/alice/A.md"]);
+    const { result } = renderActions(operations);
+    await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
+
+    act(() => result.current.onStar("search:file:users/alice/A.md"));
+    await act(async () => {
+      await executeQueued();
+      await undoQueued();
+    });
+
+    expect(operations.setStar).toHaveBeenLastCalledWith({
+      path: "/users/alice/A.md",
+      starred: true,
+    });
+    expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true);
   });
 
   it("moves all selected files and refreshes once", async () => {
@@ -357,11 +432,8 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.confirmTrash());
 
     expect(queueMutation).toHaveBeenCalledTimes(1);
-    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
-      signal: AbortSignal,
-    ) => Promise<void>;
     await act(async () => {
-      await execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.renameItem).toHaveBeenCalledTimes(2);
@@ -382,15 +454,14 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(captureOfflineDocsTrashSnapshot).toHaveBeenCalledWith("alice", "/users/alice/B.md");
 
-    act(() => {
-      queued?.undo();
+    await act(async () => {
+      await undoQueued();
     });
     await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalled());
 
@@ -419,13 +490,12 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
-    act(() => {
-      queued?.undo();
+    await act(async () => {
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -452,22 +522,18 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
-    expect(operations.renameItem).toHaveBeenCalledWith(
-      {
-        destination: "/users/alice/.Trash",
-        from: "/users/alice/B.md",
-        to: "B 2.md",
-      },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(operations.renameItem).toHaveBeenCalledWith({
+      destination: "/users/alice/.Trash",
+      from: "/users/alice/B.md",
+      to: "B 2.md",
+    });
 
-    act(() => {
-      queued?.undo();
+    await act(async () => {
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -493,11 +559,11 @@ describe("useDocsHomeActions", () => {
 
     const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await expect(queued?.execute(new AbortController().signal)).rejects.toThrow("rename failed");
+      await expect(executeQueued()).rejects.toThrow("rename failed");
     });
 
     await act(async () => {
-      queued?.onError?.();
+      await failQueued();
     });
 
     await waitFor(() =>
@@ -514,7 +580,7 @@ describe("useDocsHomeActions", () => {
     ]);
 
     await act(async () => {
-      queued?.undo();
+      queued?.undo(); // a second Undo after the failure sends nothing more
     });
     expect(restores()).toEqual([
       [{ destination: "/users/alice", from: "/users/alice/.Trash/A.md", to: "A.md" }],
@@ -533,12 +599,11 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await expect(queued?.execute(new AbortController().signal)).rejects.toThrow("rename failed");
+      await expect(executeQueued()).rejects.toThrow("rename failed");
     });
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
@@ -560,12 +625,11 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -590,12 +654,11 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -625,13 +688,12 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -667,12 +729,11 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
@@ -700,12 +761,11 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
@@ -733,14 +793,13 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
     const reloadsBeforeUndo = reload.mock.calls.length;
 
     await act(async () => {
-      queued?.undo();
+      await undoQueued();
     });
 
     await waitFor(() =>
@@ -769,15 +828,14 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(FILES[1]!));
     act(() => result.current.confirmTrash());
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
     const trashCalls = operations.renameItem.mock.calls.length;
 
-    act(() => {
-      queued?.undo();
+    await act(async () => {
+      await undoQueued();
     });
     await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalled());
 
@@ -813,13 +871,12 @@ describe("useDocsHomeActions", () => {
       expect.objectContaining({
         key: "docs:delete:search:file:users/alice/.Trash/B.md",
         toastMessage: "Deleted “B.md”",
-        executeImmediately: true,
+        irreversible: true,
       }),
     );
 
-    const queued = queueMutation.mock.calls[0]?.[0];
     await act(async () => {
-      await queued?.execute(new AbortController().signal);
+      await executeQueued();
     });
 
     expect(operations.deleteItems).toHaveBeenCalledWith(
@@ -828,5 +885,48 @@ describe("useDocsHomeActions", () => {
     );
     expect(operations.renameItem).not.toHaveBeenCalled();
     expect(reload).toHaveBeenCalled();
+  });
+
+  it("says deleting permanently needs a connection offline, and keeps the row (#1563)", () => {
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(false);
+    const operations = createMockOperations();
+    const trashFile = file({
+      id: "search:file:users/alice/.Trash/B.md",
+      title: "B.md",
+      apiPath: "/users/alice/.Trash/B.md",
+      parent: "Trash",
+    });
+    const { result } = renderActions(operations, vi.fn(), {
+      inTrashView: true,
+      files: [trashFile],
+      offlineUsername: "alice",
+    });
+
+    act(() => result.current.onTrash(trashFile));
+    act(() => result.current.confirmTrash());
+
+    expect(showErrorToast).toHaveBeenCalledWith(DOCS_DELETE_NEEDS_CONNECTION);
+    expect(queueMutation).not.toHaveBeenCalled();
+    expect(result.current.hiddenFileIds.size).toBe(0);
+  });
+
+  it("shows a Doc again once it is moved back out of Trash (#1563)", async () => {
+    const operations = createMockOperations();
+    const trashFile = file({
+      id: "search:file:users/alice/.Trash/A.md",
+      title: "A.md",
+      apiPath: "/users/alice/.Trash/A.md",
+      parent: "Trash",
+    });
+    const { result } = renderActions(operations, vi.fn(), { files: [FILES[0]!, trashFile] });
+
+    act(() => result.current.onTrash(FILES[0]!));
+    act(() => result.current.confirmTrash());
+    expect(result.current.hiddenFileIds.has(FILES[0]!.id)).toBe(true);
+
+    act(() => result.current.onMove(trashFile));
+    act(() => result.current.confirmMove("My Drive"));
+
+    await waitFor(() => expect(result.current.hiddenFileIds.has(FILES[0]!.id)).toBe(false));
   });
 });
