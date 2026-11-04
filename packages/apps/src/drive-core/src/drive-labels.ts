@@ -117,8 +117,6 @@ export const driveLabels = {
   selectionDeletePermanently: "Delete permanently",
   detailOpen: "Open",
   detailDownload: "Download",
-  /** Download action for a folder: saves one zip. */
-  detailDownloadFolder: "Download as zip",
   detailStar: "Star",
   detailUnstar: "Unstar",
   detailRename: "Rename",
