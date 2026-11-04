@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Docs;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
+use App\Services\Calendars\CalDavCollections;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
 use App\Services\Drive\DrivePathBookkeeping;
 use App\Storage\StoragePaths;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 /**
  * Keeps Docs threads on their document when its Drive path changes.
@@ -26,6 +27,8 @@ use Sabre\CalDAV\Backend\PDO as CalPDO;
 final class DocsThreadPathSync
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly DocsThreadJournalConverter $converter,
         private readonly DocsThreadPoolProvisioner $pools,
         private readonly StoragePaths $paths,
@@ -72,11 +75,11 @@ final class DocsThreadPathSync
             if ($source !== null && $object !== null) {
                 $ics = $this->converter->applyDocPath($this->rawIcs($object), $newPath);
                 if ((int) $target->calendarid === (int) $source->calendarid) {
-                    $this->calBackend()->updateCalendarObject($this->ids($source), (string) $object->uri, $ics);
+                    $this->backends->calBackend()->updateCalendarObject($this->collections->backendId($source), (string) $object->uri, $ics);
                 } else {
                     // Delete first: a thread UID is unique across all VJOURNAL pools.
-                    $this->calBackend()->deleteCalendarObject($this->ids($source), (string) $object->uri);
-                    $this->calBackend()->createCalendarObject($this->ids($target), (string) $object->uri, $ics);
+                    $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($source), (string) $object->uri);
+                    $this->backends->calBackend()->createCalendarObject($this->collections->backendId($target), (string) $object->uri, $ics);
                 }
             }
             $row->doc_path = $newPath;
@@ -91,7 +94,7 @@ final class DocsThreadPathSync
             $source = $this->poolFor((int) $row->calendarid);
             $object = $this->findObject((int) $row->calendarid, (string) $row->uid);
             if ($source !== null && $object !== null) {
-                $this->calBackend()->deleteCalendarObject($this->ids($source), (string) $object->uri);
+                $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($source), (string) $object->uri);
             }
             $row->delete();
         });
@@ -149,21 +152,8 @@ final class DocsThreadPathSync
             ->first();
     }
 
-    /**
-     * @return array{0: int, 1: int}
-     */
-    private function ids(CalendarInstance $instance): array
-    {
-        return [(int) $instance->calendarid, (int) $instance->id];
-    }
-
     private function rawIcs(CalendarObject $object): string
     {
         return is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

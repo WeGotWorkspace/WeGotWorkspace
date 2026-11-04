@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Docs;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
 use App\Models\Principal;
+use App\Services\Calendars\CalDavCollections;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notify\DocsThreadActivityNotify;
@@ -18,7 +20,6 @@ use DateTimeZone;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PDOException;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 /**
  * Docs comment + suggestion threads as VJOURNAL objects in a hidden owner pool.
@@ -31,6 +32,8 @@ final class DocsThreadRepository
     public const CHANGES_PAGE_SIZE = 200;
 
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
+        private readonly CalDavCollections $collections,
         private readonly DocsThreadJournalConverter $converter,
         private readonly DocsThreadPoolProvisioner $pools,
         private readonly DocsThreadEventEmitter $events,
@@ -204,8 +207,8 @@ final class DocsThreadRepository
             $message = $this->converter->fromObject($locked);
             $reactions = $this->toggleReactionSet($message['reactions'] ?? [], $emoji, $principal['username']);
             $ics = $this->converter->applyReactions($this->rawIcs($locked), $reactions);
-            $this->calBackend()->updateCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
+            $this->backends->calBackend()->updateCalendarObject(
+                $this->collections->backendId($instance),
                 (string) $locked->uri,
                 $ics,
             );
@@ -259,8 +262,8 @@ final class DocsThreadRepository
                 'anchorTo' => is_int($payload['anchorTo'] ?? null) ? $payload['anchorTo'] : null,
             ]);
         }
-        $this->calBackend()->updateCalendarObject(
-            [(int) $instance->calendarid, (int) $instance->id],
+        $this->backends->calBackend()->updateCalendarObject(
+            $this->collections->backendId($instance),
             (string) $object->uri,
             $ics,
         );
@@ -320,8 +323,8 @@ final class DocsThreadRepository
         }
 
         $syncToken = $this->normalizeSyncToken($since);
-        $changes = $this->calBackend()->getChangesForCalendar(
-            [(int) $instance->calendarid, (int) $instance->id],
+        $changes = $this->backends->calBackend()->getChangesForCalendar(
+            $this->collections->backendId($instance),
             $syncToken === null ? '0' : (string) $syncToken, // falsy token = Sabre initial sync
             1,
             self::CHANGES_PAGE_SIZE,
@@ -650,7 +653,7 @@ final class DocsThreadRepository
                 if ($existing !== null) {
                     return $existing;
                 }
-                $this->calBackend()->createCalendarObject([$calendarId, (int) $instance->id], $uid.'.ics', $ics);
+                $this->backends->calBackend()->createCalendarObject($this->collections->backendId($instance), $uid.'.ics', $ics);
                 DocsThreadIndex::query()->create(['calendarid' => $calendarId, 'uid' => $uid, ...$index]);
 
                 return null;
@@ -748,10 +751,5 @@ final class DocsThreadRepository
     private function rawIcs(CalendarObject $object): string
     {
         return is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

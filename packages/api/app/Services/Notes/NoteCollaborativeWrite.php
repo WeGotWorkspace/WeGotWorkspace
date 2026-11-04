@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
@@ -15,7 +16,6 @@ use App\Services\Notes\Conversion\NoteJournalConverter;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PDOException;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 /**
  * Collaborative note save. Same request the Docs save already sends:
@@ -24,6 +24,7 @@ use Sabre\CalDAV\Backend\PDO as CalPDO;
 final class NoteCollaborativeWrite
 {
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly NoteRepository $notes,
         private readonly NoteJournalConverter $converter,
         private readonly CalendarCollectionAccess $collectionAccess,
@@ -84,7 +85,7 @@ final class NoteCollaborativeWrite
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $ics = $this->converter->mergeIntoIcs($raw, $patch);
             try {
-                $this->calBackend()->updateCalendarObject(
+                $this->backends->calBackend()->updateCalendarObject(
                     [(int) $instance->calendarid, (int) $instance->id],
                     (string) $object->uri,
                     $ics,
@@ -161,11 +162,6 @@ final class NoteCollaborativeWrite
         if ($ifMatch !== '' && ! OptimisticConcurrency::ifMatchSatisfied($ifMatch, $storedEtag)) {
             throw new ApiHttpException(412, 'Yjs state etag does not match If-Match.', 'precondition_failed');
         }
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 
     private function binaryString(mixed $value): string
