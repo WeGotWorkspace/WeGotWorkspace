@@ -63,16 +63,19 @@ test("the owner's contact changes in a shared book reach the teammate's open tab
     await expect(name(tab, `${id} delete`)).toHaveCount(0, { timeout: left(sentAt) });
     const jmapMs = Date.now() - sentAt;
 
-    // CardDAV: create, edit, then delete in a second round.
+    // CardDAV: create, edit and delete, each a round of its own.
     sentAt = Date.now();
     await dav("PUT", davUid, vcard(davUid, `${id} dav`));
     await expect(name(tab, `${id} dav`)).toBeVisible({ timeout: left(sentAt) });
+    const davMs = [Date.now() - sentAt];
+    sentAt = Date.now();
     await dav("PUT", davUid, vcard(davUid, `${id} dav edited`));
     await expect(name(tab, `${id} dav edited`)).toBeVisible({ timeout: left(sentAt) });
-    const davMs = Date.now() - sentAt;
+    davMs.push(Date.now() - sentAt);
     sentAt = Date.now();
     await dav("DELETE", davUid);
     await expect(name(tab, `${id} dav edited`)).toHaveCount(0, { timeout: left(sentAt) });
+    davMs.push(Date.now() - sentAt);
 
     // After a reload the stream must connect again and carry the next change.
     const reconnected = pushConnected(context);
@@ -88,13 +91,13 @@ test("the owner's contact changes in a shared book reach the teammate's open tab
 
     for (const [label, ms] of [
       ["jmap", jmapMs],
-      ["carddav", davMs],
+      ["carddav", davMs.join("/")],
       ["after reload", reloadMs],
     ] as const) {
       test.info().annotations.push({ type: "latency", description: `${label}: ${ms} ms` });
     }
     console.log(
-      `[contacts-push] owner edits → teammate tab: jmap ${jmapMs} ms, carddav ${davMs} ms, after reload ${reloadMs} ms`,
+      `[contacts-push] owner edits → teammate tab: jmap ${jmapMs} ms, carddav ${davMs.join("/")} ms, after reload ${reloadMs} ms`,
     );
   } finally {
     await context?.close();
