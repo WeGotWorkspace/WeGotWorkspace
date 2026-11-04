@@ -422,6 +422,39 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     ]);
   });
 
+  it("downloads several selected items as one zip through a selection ticket", async () => {
+    const clicked: Array<{ href: string; download: string }> = [];
+    vi.stubGlobal("document", {
+      createElement: () => {
+        const anchor = {
+          href: "",
+          download: "",
+          rel: "",
+          style: {} as Record<string, string>,
+          click: () => clicked.push({ href: anchor.href, download: anchor.download }),
+          remove: () => undefined,
+        };
+        return anchor;
+      },
+      body: { append: () => undefined },
+    });
+    try {
+      const ops = createWgwDriveOperations("/users/bob");
+      await ops.downloadSelection?.(["/users/bob/Docs", "/users/bob/readme.md"], "Personal");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const ticketCall = wgwFetch.mock.calls.find(
+      (call) => String(call[0]) === "/jmap/folder-download-tickets/bob",
+    );
+    expect(JSON.parse(String((ticketCall?.[1] as RequestInit).body))).toEqual({
+      nodeIds: [DOCS_ID, FILE_ID],
+      name: "Personal",
+    });
+    expect(clicked).toHaveLength(1);
+  });
+
   it("refuses to read a file above the in-memory limit, and says it is too large to open", async () => {
     readmeSize = DRIVE_READ_BLOB_MAX_BYTES + 1;
     const ops = createWgwDriveOperations("/users/bob");

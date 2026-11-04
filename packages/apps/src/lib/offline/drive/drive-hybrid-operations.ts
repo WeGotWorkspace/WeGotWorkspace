@@ -65,6 +65,9 @@ import {
   readOfflineDriveUsername,
 } from "@/lib/offline/offline-session";
 
+/** The server writes every zip: offline there is nothing to save (#1621, #1905). */
+const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -301,9 +304,16 @@ export function createHybridDriveOperations(
     downloadFolder: async (path, opts) => {
       // The server writes the zip: there is no offline copy of a folder to save.
       if (!readBrowserOnline() || !live.downloadFolder) {
-        throw new Error("Downloading a folder as a zip needs a connection.");
+        throw new Error(ZIP_NEEDS_CONNECTION);
       }
       await live.downloadFolder(normalizeApiVirtualPath(path), opts);
+    },
+    downloadSelection: async (paths, name, opts) => {
+      // The server writes the zip, as for a folder.
+      if (!readBrowserOnline() || !live.downloadSelection) {
+        throw new Error(ZIP_NEEDS_CONNECTION);
+      }
+      await live.downloadSelection(paths.map(normalizeApiVirtualPath), name, opts);
     },
     readFileBlob: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);

@@ -1,6 +1,7 @@
 import {
   downloadFileNodeWithTicket,
   downloadFolderAsZipWithTicket,
+  downloadSelectionAsZipWithTicket,
   downloadGuestFileWithTicket,
 } from "@/lib/api/wgw/drive-download-ticket";
 import {
@@ -432,6 +433,18 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
       await downloadFolderAsZipWithTicket(
         session,
         normalizePath(path),
+        user.username,
+        opts?.signal,
+      );
+    },
+    async downloadSelection(paths, name, opts) {
+      // Several selected items: one zip the server streams, saved natively.
+      const session = await driveJmapSession();
+      const user = await driveUser();
+      await downloadSelectionAsZipWithTicket(
+        session,
+        paths.map((path) => normalizePath(path)),
+        name,
         user.username,
         opts?.signal,
       );

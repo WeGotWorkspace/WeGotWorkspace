@@ -102,6 +102,15 @@ export function DocsHomeWorkspace({
     return createHybridDocsDriveOperations(offlineUsername);
   }, [offlineUsername, operations]);
   const listingOperations = driveOperations ?? operations;
+  // The selection bar zips on the server, so it needs the hybrid's offline error;
+  // single-item downloads stay as the pane received them.
+  const paneOperations = useMemo(
+    () =>
+      operations && driveOperations?.downloadSelection
+        ? { ...operations, downloadSelection: driveOperations.downloadSelection }
+        : operations,
+    [operations, driveOperations],
+  );
 
   const { online } = useConnectivity();
   const searchEnabled = !offlineUsername || online;
@@ -410,7 +419,7 @@ export function DocsHomeWorkspace({
             onMove={actions.onMove}
             onTrash={actions.onTrash}
             inTrashView={isTrashView}
-            operations={operations}
+            operations={paneOperations}
             batchStar={actions.batchStar}
             requestMoveSelected={actions.requestMoveSelected}
             requestDeleteSelected={actions.requestDeleteSelected}

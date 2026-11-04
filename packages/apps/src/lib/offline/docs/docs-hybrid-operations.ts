@@ -173,6 +173,8 @@ async function applyOnlineRenameSideEffects(
   await applyDriveSidecarPathMigration(username, from, destination, to);
 }
 
+const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
+
 export function createHybridDocsDriveOperations(username: string): DriveAPIOperations {
   const live = createWgwDriveOperations("/");
   // A guest has no write path yet (#1713): writes go to the server and fail
@@ -181,6 +183,13 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
 
   return {
     ...live,
+    downloadSelection: async (paths, name, opts) => {
+      // The server writes the zip: there is no offline copy to save.
+      if (!readBrowserOnline() || !live.downloadSelection) {
+        throw new Error(ZIP_NEEDS_CONNECTION);
+      }
+      await live.downloadSelection(paths.map(normalizeApiVirtualPath), name, opts);
+    },
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);
       const isTrash = isDriveTrashApiPath(destination, username);

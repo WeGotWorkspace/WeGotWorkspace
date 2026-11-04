@@ -11,13 +11,11 @@ use App\Services\Auth\RefreshCookie;
 use App\Services\Drive\FolderZip\FolderZipReadCheck;
 use App\Services\Drive\FolderZip\FolderZipStreamer;
 use App\Services\Jmap\Download\DownloadTicketService;
-use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeMapper;
-use App\Storage\WgwStorage;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Carbon;
 use Tests\Support\DriveTestFixtures;
+use Tests\Support\FolderZipTicketHelpers;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\ZipArchiveInspector;
 
@@ -28,8 +26,7 @@ use Tests\Support\ZipArchiveInspector;
 final class JmapFolderDownloadTicketTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
-
-    private string $zipPath = '';
+    use FolderZipTicketHelpers;
 
     protected function setUp(): void
     {
@@ -397,71 +394,6 @@ final class JmapFolderDownloadTicketTest extends WgwDatabaseTestCase
             ->json();
 
         return $issued;
-    }
-
-    /**
-     * @param  array{url: string}  $issued
-     */
-    private function path(array $issued): string
-    {
-        return (string) parse_url($issued['url'], PHP_URL_PATH);
-    }
-
-    private function save(string $bytes): string
-    {
-        $this->zipPath = (string) tempnam(sys_get_temp_dir(), 'wgw-folder-zip-');
-        file_put_contents($this->zipPath, $bytes);
-
-        return $bytes;
-    }
-
-    private function share(string $token, string $path): string
-    {
-        $this->flushHeaders();
-
-        return (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
-            'path' => $path,
-            'kind' => 'member',
-            'defaultAccess' => 'view',
-            'shareWith' => ['carol' => ['access' => 'view']],
-        ])->assertOk()->json('data.id');
-    }
-
-    /** Indexes every ancestor of `$key` and returns its node id. */
-    private function nodeId(string $key): string
-    {
-        app(FileNodeAccountSupport::class)->ensureAccountIndexed('bob');
-        $parts = explode('/', $key);
-        for ($i = 2; $i < count($parts); $i++) {
-            $this->reconcile(implode('/', array_slice($parts, 0, $i)));
-        }
-        $node = app(FileNodeIndexService::class)->liveByKey($key);
-        $this->assertNotNull($node, 'No index row for '.$key);
-
-        return (string) $node->node_id;
-    }
-
-    private function reconcile(string $dirKey): void
-    {
-        app(FileNodeIndexService::class)->reconcileDirectory($dirKey);
-    }
-
-    private function reconcileTree(string $dirKey): void
-    {
-        $this->reconcile($dirKey);
-        foreach ($this->disk()->directories($dirKey) as $child) {
-            $this->reconcileTree($child);
-        }
-    }
-
-    private function writeDriveFile(string $key, string $content): void
-    {
-        $this->disk()->put($key, $content);
-    }
-
-    private function disk(): Filesystem
-    {
-        return app(WgwStorage::class)->files();
     }
 
     /**

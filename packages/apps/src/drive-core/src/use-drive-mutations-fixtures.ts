@@ -51,6 +51,7 @@ export function buildShell(overrides: Partial<DriveShellState> = {}): DriveShell
     reloadStarredFromServer: vi.fn(),
     inTrashView: false,
     isUnderTrash: vi.fn(() => false),
+    searchQuery: "",
     ...overrides,
   } as DriveShellState;
 }

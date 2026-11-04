@@ -30,6 +30,7 @@ function buildShell(
     reloadStarredFromServer: vi.fn(),
     inTrashView: false,
     isUnderTrash: vi.fn(() => false),
+    searchQuery: "",
   } as unknown as DriveShellState;
 }
 

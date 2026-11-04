@@ -52,3 +52,41 @@ export function startDriveItemDownload(
     },
   );
 }
+
+/**
+ * Whether *Download* (one zip, #1905) is offered for several selected items:
+ * two or more, outside trash, where the operations can zip a selection, each
+ * with an API path.
+ */
+export function canDownloadDriveSelection(
+  selected: readonly (DriveFile | undefined)[],
+  options: { selectionDownloadable: boolean; inTrash: boolean },
+): selected is readonly DriveFile[] {
+  return (
+    selected.length >= 2 &&
+    options.selectionDownloadable &&
+    !options.inTrash &&
+    selected.every((file) => !!file?.apiPath)
+  );
+}
+
+/**
+ * Starts the download of several selected items as one zip named after
+ * `zipName`. Like a folder, `onStarted` runs once the browser has the zip, so
+ * an offline refusal shows only its error.
+ */
+export function startDriveSelectionDownload(
+  operations: DriveAPIOperations | undefined,
+  files: readonly DriveFile[],
+  zipName: string,
+  onError: (message: string) => void,
+  onStarted?: () => void,
+): void {
+  const paths = files.flatMap((file) => (file.apiPath ? [file.apiPath] : []));
+  void operations?.downloadSelection?.(paths, zipName).then(
+    () => onStarted?.(),
+    (error: unknown) => {
+      onError(error instanceof Error ? error.message : String(error));
+    },
+  );
+}
