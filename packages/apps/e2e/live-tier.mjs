@@ -16,6 +16,7 @@ export const liveTierSpecs = [
   "contacts-first-download",
   "contacts-first-open-count",
   "contacts-offline-read-only",
+  "contacts-push",
   "docs-collab-access-revoked",
   "docs-collab-external-write",
   "docs-collab-solo-read",
