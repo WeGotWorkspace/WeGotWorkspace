@@ -1,0 +1,45 @@
+name: Doc staleness report
+
+# Monthly report of plans and specs that may be out of date (#1645): each spec
+# folder under .agents/specs/ and each doc under docs/ and .agents/plans/, with
+# its last commit date and, for specs, the state of the linked issue. The
+# report is the job summary of the run. It never fails on age: age alone is
+# not an error. Archive rule and how to apply it: .agents/specs/README.md.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  schedule:
+    # 06:00 UTC on the first day of every month.
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: doc-staleness
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Last commit dates need the full history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Report stale plans and specs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/report-doc-staleness.mjs >> "$GITHUB_STEP_SUMMARY"
