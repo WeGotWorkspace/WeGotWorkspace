@@ -15,9 +15,11 @@
  * and whose directory has no commit in the last 60 days moves to
  * .agents/specs/archive/<year of its last commit>/. `--archive` applies the
  * rule: it runs `git mv` for each candidate and rewrites the markdown links
- * and repo paths that point into a moved directory. A candidate that a
- * non-markdown file mentions by name is held back and listed, so code
- * comments never point at a path that moved.
+ * and repo paths that point into a moved directory. A candidate is held back
+ * and listed when a non-markdown file mentions it by name (code comments must
+ * not point at a moved path) or when the plan.md of a spec that stays would
+ * need a rewrite (check-plan-structure would then hold that older plan to
+ * today's rules).
  *
  * Usage:
  *   node tools/report-doc-staleness.mjs [--json] [--offline] [--now=YYYY-MM-DD]
@@ -225,6 +227,29 @@ export function archiveMoves(report) {
     }));
 }
 
+/**
+ * Live plan.md files (of specs that stay in place) that a move would
+ * rewrite. Editing such a plan puts it through check-plan-structure, which
+ * an older plan may not pass, so the candidate is held back instead.
+ *
+ * @param {{ path: string, name: string, lastCommit: string | null }[]} candidates
+ * @param {Map<string, string>} livePlans repo path of plan.md → text
+ * @returns {Map<string, string[]>}
+ */
+export function livePlanReferences(candidates, livePlans) {
+  /** @type {Map<string, string[]>} */
+  const references = new Map();
+  for (const candidate of candidates) {
+    const move = [{ from: candidate.path, to: `${SPECS_ARCHIVE_DIR}/0000/${candidate.name}` }];
+    for (const [file, text] of livePlans) {
+      if (candidates.some((other) => file.startsWith(`${other.path}/`))) continue;
+      if (rewriteMarkdown(text, file, file, move) === text) continue;
+      references.set(candidate.name, [...(references.get(candidate.name) ?? []), file]);
+    }
+  }
+  return references;
+}
+
 /** @param {string} filePath @param {{ from: string, to: string }[]} moves */
 export function movedPath(filePath, moves) {
   for (const move of moves) {
@@ -309,7 +334,7 @@ export function formatMarkdown(report, defaultRepo = DEFAULT_REPO) {
   out.push("## Summary", "");
   out.push(`- Specs: ${live.length} in place, ${count("archived")} archived`);
   out.push(`- Archive now: ${ready.length}`);
-  out.push(`- Archive candidates held back (a non-markdown file mentions them): ${held.length}`);
+  out.push(`- Archive candidates held back (code or a live plan.md mentions them): ${held.length}`);
   out.push(`- Closed issue, touched in the last ${report.archiveAfterDays} days: ${count("closed-recent")}`);
   out.push(`- Open issue: ${count("open")}`);
   out.push(`- Number does not resolve to an issue or PR: ${count("missing")}`);
@@ -536,13 +561,23 @@ function main() {
     now,
     defaultRepo,
   });
-  const candidates = draft.specs.filter((spec) => spec.status === "archive").map((spec) => spec.name);
+  const candidates = draft.specs.filter((spec) => spec.status === "archive");
+  /** @type {Map<string, string>} */
+  const livePlans = new Map();
+  for (const file of trackedFiles) {
+    if (!/^\.agents\/specs\/[^/]+\/plan\.md$/.test(file) || file.startsWith(`${SPECS_ARCHIVE_DIR}/`)) continue;
+    livePlans.set(file, readFileSync(path.join(repoRoot, file), "utf8"));
+  }
+  const references = findCodeReferences(candidates.map((spec) => spec.name));
+  for (const [name, files] of livePlanReferences(candidates, livePlans)) {
+    references.set(name, [...(references.get(name) ?? []), ...files]);
+  }
   const report = buildReport({
     trackedFiles,
     dates,
     specTexts,
     issueStates,
-    codeReferences: findCodeReferences(candidates),
+    codeReferences: references,
     now,
     defaultRepo,
   });

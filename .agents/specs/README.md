@@ -113,7 +113,7 @@ A spec folder moves to `.agents/specs/archive/<year>/<N>-<slug>/` when **both** 
 Specs stay in place when the rule cannot be applied safely:
 
 - **Ad-hoc specs** (`Source: ad-hoc`) have no issue to close. Re-home them to an issue number, or leave them.
-- **Held back:** a non-markdown file (a code comment, a script) mentions the folder name. Fix the mention first, then archive.
+- **Held back:** a non-markdown file (a code comment, a script) mentions the folder name, or the `plan.md` of a spec that stays in place does. Rewriting that plan would put it through `check-plan-structure`, which an older plan may not pass. Fix the mention first, or archive both specs together.
 - **Number does not resolve:** fix the `Source:` line first (for a Goal transferred to [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), write `Source: WeGotWorkspace/Product#M`).
 
 **Cadence:** [`doc-staleness.yml`](../../.github/workflows/doc-staleness.yml) runs on the first day of every month and posts the report as the job summary. Whoever picks up the report applies the rule in a `chore/` PR:
