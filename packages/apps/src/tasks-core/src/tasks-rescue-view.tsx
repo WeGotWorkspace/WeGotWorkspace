@@ -37,7 +37,7 @@ export function tasksRescueView(L: TasksUILabels): RescueView<TaskList> {
       labels: tasksRescueLabels(L),
       surfaceClassName: "tasks-dialog-surface",
       containerIcon: (list) => <TaskListIcon list={list} />,
-      noticeIcon: <ListPlus aria-hidden />,
+      noticeIcon: <ListPlus className="callout__icon" aria-hidden />,
     };
     views.set(L, view);
   }

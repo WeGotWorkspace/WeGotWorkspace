@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 
 const POLL_INTERVAL_MS = 4000;
@@ -16,14 +16,18 @@ export function useFailedOutboxCount(
 ): { count: number; refresh: () => Promise<void> } {
   const [count, setCount] = useState(0);
   const { online } = useConnectivity();
+  const latestRead = useRef(0);
 
   const refresh = useCallback(async () => {
+    // A read that started before a later one must not overwrite its result.
+    const read = ++latestRead.current;
     if (!username) {
       setCount(0);
       return;
     }
     try {
-      setCount((await listFailed(username)).length);
+      const failed = (await listFailed(username)).length;
+      if (read === latestRead.current) setCount(failed);
     } catch {
       // Keep the last known state if the offline store read fails.
     }

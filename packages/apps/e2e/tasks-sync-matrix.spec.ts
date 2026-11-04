@@ -1708,3 +1708,59 @@ test.describe("inbound", () => {
     }
   });
 });
+
+// --- the "could not sync" notice bar row (#1894) -----------------------------------------------
+
+/** The notice bar row for queued changes that fail to sync, under the header. */
+function syncNotice(tab: Tab) {
+  return tab
+    .getByRole("region", { name: "Needs your attention" })
+    .locator(".notice-bar__notice")
+    .filter({ hasText: "Some changes could not sync. They are saved on this device." });
+}
+
+test("sync notice · a held edit shows Retry in every tab and clears once it lands", async ({
+  browser,
+}) => {
+  const id = caseId();
+  let session: Session | null = null;
+  try {
+    const c = await inboundCase(browser, id, 1);
+    session = c.session;
+    const a = c.tab;
+    const title = `T1 ${id}`;
+    const release = await holdRequests(a, "PATCH", `/tasks/items/${c.tasks[0]}`);
+    await editTask(a, title, { title: `${title} v2` });
+    // The reconnect flush hits the held request and marks the queued row failed.
+    await reconnect(a);
+
+    const poll = { timeout: 2 * POLL_MS + 10_000 };
+    await expect(syncNotice(a), "the failed write shows the row").toBeVisible(poll);
+    await expect(syncNotice(a).getByRole("button", { name: "Retry" })).toBeEnabled();
+    await expect(rescueEntry(a), "it is not a refused write").toHaveCount(0);
+
+    await hardRefresh([a]);
+    await expect(syncNotice(a), "the failed row survives a reload").toBeVisible(poll);
+
+    const b = await openTasksTab(session.contexts[0]!, "A2", session.events);
+    session.tabs.push(b);
+    await expect(syncNotice(b), "another tab reads the same outbox").toBeVisible(poll);
+
+    await release();
+    await syncNotice(a).getByRole("button", { name: "Retry" }).click();
+    await expect(syncNotice(a)).toHaveCount(0, poll);
+    await expect(syncNotice(b)).toHaveCount(0, poll);
+    expect((await serverTask(c.tasks[0]!))?.title, "the server has the new title").toBe(
+      `${title} v2`,
+    );
+
+    await hardRefresh([a, b]);
+    for (const tab of [a, b]) {
+      await expect(row(tab, `${title} v2`)).toBeVisible({ timeout: 15_000 });
+      await expect(tab.getByRole("region", { name: "Needs your attention" })).toHaveCount(0);
+    }
+  } finally {
+    await closeTabs(session);
+    await cleanUpCase(id);
+  }
+});

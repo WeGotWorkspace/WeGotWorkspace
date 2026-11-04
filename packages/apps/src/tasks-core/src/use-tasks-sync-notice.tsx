@@ -16,8 +16,9 @@ type UseTasksSyncNoticeArgs = {
 /**
  * The notice bar row while queued task changes fail to sync (#1894). Retry
  * flushes the outbox again, then rereads the cache for this and other tabs.
- * Refused writes (403/404) are parked for the rescue notice instead, so they
- * leave the outbox and do not count here.
+ * Refused task writes (403/404) are parked for the rescue notice instead, so
+ * they leave the outbox and do not count here. A refused list write stays
+ * queued as a permanent failure and counts.
  */
 export function useTasksSyncNotice({
   username,
@@ -34,10 +35,13 @@ export function useTasksSyncNotice({
       .flush()
       .catch(() => undefined)
       .finally(async () => {
-        await reloadFromCache().catch(() => undefined);
-        notifyTasksBootstrapUpdated(username);
-        await refresh();
-        setRetrying(false);
+        try {
+          await reloadFromCache().catch(() => undefined);
+          notifyTasksBootstrapUpdated(username);
+          await refresh();
+        } finally {
+          setRetrying(false);
+        }
       });
   }, [refresh, reloadFromCache, username]);
 
@@ -52,7 +56,7 @@ export function tasksSyncNotice(L: TasksUILabels, onRetry: () => void, retrying 
   return {
     id: "sync:tasks",
     tone: "error",
-    icon: <CloudOff aria-hidden />,
+    icon: <CloudOff className="callout__icon" aria-hidden />,
     title: L.syncFailedNotice,
     actionLabel: L.retrySync,
     onAction: onRetry,

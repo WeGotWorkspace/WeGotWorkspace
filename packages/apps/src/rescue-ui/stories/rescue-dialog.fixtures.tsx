@@ -66,7 +66,7 @@ export const notebookRescueView: RescueView<StoryNotebook> = {
       aria-hidden
     />
   ),
-  noticeIcon: <FilePlus aria-hidden />,
+  noticeIcon: <FilePlus className="callout__icon" aria-hidden />,
 };
 
 let order = 0;
