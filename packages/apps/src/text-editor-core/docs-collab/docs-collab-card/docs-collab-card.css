@@ -103,3 +103,35 @@
 .docs-collab-card__actions {
   @apply flex shrink-0 items-center gap-1;
 }
+
+/* Spike: raised card, quiet edge; active = brighter edge + lift, not an accent outline. */
+.docs-collab-card {
+  border-radius: 1rem;
+  background-color: color-mix(
+    in oklch,
+    var(--workspace-foreground) 2.5%,
+    var(--docs-surface, var(--workspace-surface))
+  );
+}
+
+.docs-collab-card[data-active="true"] {
+  border-color: color-mix(in oklch, var(--workspace-foreground) 14%, transparent);
+  box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.6);
+}
+
+.docs-collab-card__avatar .user-avatar__mark {
+  @apply size-9 rounded-full text-xs;
+}
+
+/* Name and time share one row. */
+.docs-collab-card__meta {
+  @apply flex-row items-baseline justify-between gap-3;
+}
+
+.docs-collab-card__author {
+  @apply text-[0.9375rem] font-medium;
+}
+
+.docs-collab-card__time {
+  @apply shrink-0 text-xs;
+}

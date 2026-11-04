@@ -278,11 +278,22 @@
 }
 
 :where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
-  --scheme-surface: #141414;
-  --scheme-sidebar-surface: #1c1c1c;
-  --scheme-ink: var(--color-we-got-soft);
-  --scheme-on-ink: #111111;
-  --scheme-letter: #222222;
+  /*
+   * Spike: cool blue-black (Docs polish reference). Written as `oklch(from #hex ...)`:
+   * Chrome mixes bare hex in oklch to `hue: none` with chroma left over, which
+   * paints every derived wash red-brown.
+   */
+  --scheme-surface: oklch(from #0e1216 l c h);
+  --scheme-sidebar-surface: oklch(from #10161b l c h);
+  --scheme-ink: oklch(from #eef1f5 l c h);
+  --scheme-on-ink: oklch(from #0e1216 l c h);
+  --scheme-letter: oklch(from #0e1216 l c h);
+  /* Spike: track-change chips (editor marks + review-card previews). */
+  --track-ins-fg: oklch(0.9 0.09 155);
+  --track-ins-bg: oklch(0.72 0.19 150 / 0.16);
+  --track-ins-edge: oklch(0.72 0.19 150 / 0.55);
+  --track-del-fg: oklch(0.8 0.1 15);
+  --track-del-bg: oklch(0.65 0.2 20 / 0.14);
 }
 
 @layer base {

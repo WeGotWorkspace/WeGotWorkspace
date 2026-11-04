@@ -93,11 +93,19 @@
 /* Selected = outline icon-button--active wash/fg (parents publish --button-outline-*). */
 .sidebar-section .menu-item--surface-selected {
   @apply font-medium;
-  background-color: var(
-    --button-outline-active-background,
-    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+  /* `background` (not -color) so parents may publish a gradient wash. */
+  background: var(
+    --sidebar-item-selected-background,
+    var(
+      --button-outline-active-background,
+      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+    )
   );
-  color: var(--button-active-color, var(--workspace-foreground));
+  box-shadow: var(--sidebar-item-selected-shadow, none);
+  color: var(
+    --sidebar-item-selected-color,
+    var(--button-active-color, var(--workspace-foreground))
+  );
 }
 
 .menu-item--surface-drop {

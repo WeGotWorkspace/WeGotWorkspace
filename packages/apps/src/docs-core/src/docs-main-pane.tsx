@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Eye } from "lucide-react";
 import { TextEditor, TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src";
@@ -19,6 +20,8 @@ export type DocsMainPaneProps = {
   /** The person's page setup: pages on screen and the print paper size. */
   pageSetup?: TextEditorPageSetup;
   onEditorReady: (editor: Editor | null) => void;
+  /** Document tools pinned to the footer start (page size, source view). */
+  footerStart?: ReactNode;
 };
 
 export function DocsMainPane({
@@ -28,6 +31,7 @@ export function DocsMainPane({
   readOnlyNotice,
   pageSetup,
   onEditorReady,
+  footerStart,
 }: DocsMainPaneProps) {
   if (controller.loading) {
     return <p className="docs-workspace__loading">Loading…</p>;
@@ -79,6 +83,7 @@ export function DocsMainPane({
       />
       <WorkspaceDetailFooter
         className="docs-workspace__stats-footer"
+        start={footerStart}
         tags={
           <>
             <DocsStatsTags

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import { DropdownMenu, type DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
 import {
   DocsPageSetupIcon,
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 export type DocsHeaderAction = ActionBarAction & {
   className?: string;
+  /** Wide screens: icon + visible label (Share) instead of icon-only. */
+  showLabel?: boolean;
   "data-count"?: number;
 };
 
@@ -56,6 +58,20 @@ function pageSetupMenuEntries({ disabled, ...props }: DocsPageSetupMenuProps): D
 }
 
 function renderActionButton(action: DocsHeaderAction) {
+  if (action.showLabel) {
+    return (
+      <Button
+        key={action.id ?? action.label}
+        label={action.label}
+        icon={action.icon}
+        onClick={action.onClick}
+        disabled={action.disabled}
+        size="md"
+        variant="outline"
+        className={action.className}
+      />
+    );
+  }
   return (
     <IconButton
       key={action.id ?? action.label}

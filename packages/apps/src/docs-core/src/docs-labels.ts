@@ -138,6 +138,7 @@ export const docsLabels = {
   /** Suggest-mode header toggle (Tasks “Show completed” state-button pattern). */
   editMode: "Edit",
   suggestMode: "Suggest",
+  suggestModeActive: "Suggesting",
   editingModeAria: "Editing mode",
   toastSwitchedToEditMode: "Switched to Edit mode",
   toastSwitchedToSuggestMode: "Switched to Suggest mode",
@@ -173,6 +174,8 @@ export const docsLabels = {
   suggestionsToggleHide: "Hide suggestions",
   suggestionsAccept: "Accept suggestion",
   suggestionsReject: "Reject suggestion",
+  suggestionsAcceptShort: "Accept",
+  suggestionsRejectShort: "Reject",
   /**
    * The single real-time indicator. Deliberately free of transport vocabulary —
    * no "mesh", "signaling", "ICE", "peer" or "TURN" may appear here.

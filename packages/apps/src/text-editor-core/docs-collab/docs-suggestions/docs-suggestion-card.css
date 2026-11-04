@@ -67,3 +67,39 @@
 .docs-suggestion-card__composer-post:not(:disabled):hover {
   opacity: 0.85;
 }
+
+/* Spike: decision row under the change — labelled, full width (Accept solid green). */
+.docs-suggestion-card__decision {
+  @apply mt-4 grid grid-cols-2 gap-2.5;
+}
+
+.docs-suggestion-card__accept {
+  --workspace-accent: var(--docs-accept-bg, oklch(0.72 0.19 150));
+  --workspace-accent-foreground: var(--docs-accept-fg, oklch(0.99 0 0));
+  font-weight: 600;
+}
+
+.docs-suggestion-card__reject {
+  --button-outline-border-color: transparent;
+  background-color: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
+}
+
+.docs-suggestion-card .docs-suggestion-card__composer {
+  @apply mt-3 rounded-[0.625rem] py-2;
+  border-color: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-foreground) 5%, transparent);
+}
+
+.docs-suggestion-card__decision .button {
+  height: var(--control-height-lg);
+  border-radius: 0.625rem;
+}
+
+.docs-suggestion-card__accept {
+  box-shadow: 0 6px 20px -8px color-mix(in oklch, var(--workspace-accent) 70%, transparent);
+}
+
+/* Post appears once there is something to post. */
+.docs-suggestion-card__composer-post:disabled {
+  visibility: hidden;
+}

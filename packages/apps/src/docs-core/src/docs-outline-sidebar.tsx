@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { formatOutlineNumbers, type DocsOutlineItem } from "@/docs-core/src/docs-outline";
+import type { DocsOutlineItem } from "@/docs-core/src/docs-outline";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import { cn } from "@/lib/utils";
 
 import "@/docs-core/src/docs-outline-sidebar.css";
 
@@ -45,18 +46,33 @@ export function DocsOutlineSidebar({
       return [{ label: labels.outlineEmpty }];
     }
 
-    const numbers = formatOutlineNumbers(items);
-    return items.map((item, index) => ({
-      label: item.text,
-      icon: <span className="docs-outline-sidebar__number">{numbers[index]}</span>,
-      selected: activeIndex === index,
-      onClick: () => onSelect(index),
-    }));
+    // Tree look: depth from the shallowest heading; top rows get a fold chevron or a dot.
+    const minLevel = Math.min(...items.map((item) => item.level));
+    return items.map((item, index) => {
+      const depth = Math.min(item.level - minLevel, 3);
+      const next = items[index + 1];
+      const hasChildren = next != null && next.level > item.level;
+      const icon =
+        depth > 0 ? undefined : hasChildren ? (
+          <ChevronDown className="docs-outline-sidebar__chevron" aria-hidden />
+        ) : (
+          <span className="docs-outline-sidebar__dot" aria-hidden />
+        );
+      return {
+        label: item.text,
+        icon,
+        selected: activeIndex === index,
+        className: cn("docs-outline-sidebar__item", `docs-outline-sidebar__item--depth-${depth}`),
+        onClick: () => onSelect(index),
+      };
+    });
   }, [activeIndex, items, labels.outlineEmpty, onSelect]);
 
   return (
     <>
-      {showBackToHome ? <SidebarSection items={homeItems} /> : null}
+      {showBackToHome ? (
+        <SidebarSection className="docs-outline-sidebar__back" items={homeItems} />
+      ) : null}
       {showOutline ? <SidebarSection title={labels.sidebarOutline} items={menuItems} /> : null}
     </>
   );

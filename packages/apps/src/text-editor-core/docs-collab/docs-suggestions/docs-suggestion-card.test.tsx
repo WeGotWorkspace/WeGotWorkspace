@@ -217,7 +217,7 @@ describe("DocsSuggestionCard", () => {
     expect(onAddReply).toHaveBeenCalledWith("Follow-up note");
   });
 
-  it("reviews with separate accept and reject IconButtons", () => {
+  it("reviews with a labelled accept / reject row", () => {
     renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
@@ -236,12 +236,12 @@ describe("DocsSuggestionCard", () => {
     const reject = screen.getByRole("button", { name: docsLabels.suggestionsReject });
     expect(accept.closest(".segmented-control")).toBeNull();
     expect(reject.closest(".segmented-control")).toBeNull();
-    expect(accept.className).toContain("icon-button--size-md");
-    expect(accept.className).toContain("button--severity-success");
-    expect(reject.className).toContain("icon-button--size-md");
-    expect(reject.className).toContain("button--severity-danger");
-    expect(screen.queryByText("Accept")).toBeNull();
-    expect(screen.queryByText("Reject")).toBeNull();
+    // Labelled decision row under the change: Accept solid, Reject quiet.
+    expect(accept.closest(".docs-suggestion-card__decision")).not.toBeNull();
+    expect(accept.className).toContain("button--variant-primary");
+    expect(reject.className).toContain("button--variant-outline");
+    expect(screen.getByText(docsLabels.suggestionsAcceptShort)).toBeTruthy();
+    expect(screen.getByText(docsLabels.suggestionsRejectShort)).toBeTruthy();
   });
 
   it("hides accept, reject, and composer when the suggestion is archived", () => {

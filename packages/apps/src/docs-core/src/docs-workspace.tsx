@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer, Share } from "lucide-react";
+import { Code2, Pencil, Printer, Users } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
@@ -16,6 +16,8 @@ import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-se
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { DocsPageSetupMenu } from "@/docs-core/src/docs-page-setup-menu";
+import { IconButton } from "@/button/src/button";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -174,8 +176,6 @@ function DocsWorkspaceShell({
             mayShare={mayShare}
             shareDialog={shareDialog}
             guestView={guestView}
-            pageSetup={pageSetup}
-            onToggleViewSource={() => setViewSource((on) => !on)}
           />
         </>
       }
@@ -187,6 +187,16 @@ function DocsWorkspaceShell({
           readOnlyNotice={guestView ? controller.labels.guestReadOnlyNotice : undefined}
           pageSetup={pageSetup.pageSetup}
           onEditorReady={setEditor}
+          footerStart={
+            <DocsFooterTools
+              controller={controller}
+              editor={editor}
+              viewSource={viewSource}
+              guestView={guestView}
+              pageSetup={pageSetup}
+              onToggleViewSource={() => setViewSource((on) => !on)}
+            />
+          }
         />
       }
     />
@@ -242,8 +252,6 @@ function DocsMainHeader({
   mayShare,
   shareDialog,
   guestView,
-  pageSetup,
-  onToggleViewSource,
 }: {
   controller: DocsController;
   editor: Editor | null;
@@ -252,14 +260,9 @@ function DocsMainHeader({
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
   guestView: boolean;
-  pageSetup: DocsPageSetupState;
-  onToggleViewSource: () => void;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
   const showShare = Boolean(apiPath.trim() && mayShare === true);
-  const showSourceLabel = guestView
-    ? controller.labels.viewSourceReadOnly
-    : controller.labels.viewSource;
 
   return (
     <ViewHeader
@@ -269,7 +272,6 @@ function DocsMainHeader({
       actions={
         controller.hasFile ? (
           <DocsHeaderActions
-            pageSetup={{ ...pageSetup, labels: controller.labels }}
             actions={[
               {
                 id: "print",
@@ -283,7 +285,8 @@ function DocsMainHeader({
                     {
                       id: "share",
                       label: controller.labels.share,
-                      icon: <Share />,
+                      icon: <Users />,
+                      showLabel: true,
                       className: "docs-workspace__share-button",
                       onClick: () => shareDialog.openShareDialog(apiPath, title),
                     },
@@ -301,19 +304,48 @@ function DocsMainHeader({
                       onClick: controller.openRenameDialog,
                     },
                   ]),
-              {
-                id: "view-source",
-                label: viewSource ? controller.labels.hideSource : showSourceLabel,
-                icon: <Code2 />,
-                active: viewSource,
-                disabled: !editor,
-                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
-                onClick: onToggleViewSource,
-              },
             ]}
           />
         ) : null
       }
     />
+  );
+}
+
+/** Footer start: page size and source view sit with the document, not the title row. */
+function DocsFooterTools({
+  controller,
+  editor,
+  viewSource,
+  guestView,
+  pageSetup,
+  onToggleViewSource,
+}: {
+  controller: DocsController;
+  editor: Editor | null;
+  viewSource: boolean;
+  guestView: boolean;
+  pageSetup: DocsPageSetupState;
+  onToggleViewSource: () => void;
+}) {
+  if (!controller.hasFile) return null;
+  const showSourceLabel = guestView
+    ? controller.labels.viewSourceReadOnly
+    : controller.labels.viewSource;
+  return (
+    <div className="docs-workspace__footer-tools">
+      <DocsPageSetupMenu {...pageSetup} labels={controller.labels} />
+      <IconButton
+        label={viewSource ? controller.labels.hideSource : showSourceLabel}
+        icon={<Code2 />}
+        size="md"
+        variant="outline"
+        active={viewSource}
+        disabled={!editor}
+        aria-pressed={viewSource}
+        className={viewSource ? "docs-workspace__source-toggle--active" : undefined}
+        onClick={onToggleViewSource}
+      />
+    </div>
   );
 }

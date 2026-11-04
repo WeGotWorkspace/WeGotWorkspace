@@ -55,6 +55,10 @@ export const InDoc: Story = {
   render: () => (
     <DocsWorkspace
       {...bootstrap}
+      session={{
+        ...bootstrap.session,
+        user: { displayName: "Wouter Chrome", initials: "WC", username: "wouter" },
+      }}
       filePath={mockDocument.apiPath}
       operations={mockOperations}
       shareOperations={mockShareOperations}

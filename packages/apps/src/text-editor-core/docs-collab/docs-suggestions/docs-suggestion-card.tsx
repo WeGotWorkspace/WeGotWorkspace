@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCommentAuthor } from "../docs-comments-types";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
@@ -84,34 +84,7 @@ export function DocsSuggestionCard({
         authorName={suggestion.authorName || labels.suggestionsUnknownAuthor}
         authorColor={suggestion.authorColor}
         createdAt={suggestion.timestamp || undefined}
-        actions={
-          canMutate ? (
-            <>
-              <IconButton
-                label={labels.suggestionsAccept}
-                icon={<Check />}
-                size="md"
-                variant="outline"
-                severity="success"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  runExitAnimation(onAccept);
-                }}
-              />
-              <IconButton
-                label={labels.suggestionsReject}
-                icon={<X />}
-                size="md"
-                variant="outline"
-                severity="danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  runExitAnimation(onReject);
-                }}
-              />
-            </>
-          ) : null
-        }
+        actions={null}
       />
 
       {suggestion.parts.length > 0 ? (
@@ -132,7 +105,36 @@ export function DocsSuggestionCard({
         </p>
       ) : null}
 
-      {canMutate || (suggestion.reactions?.length ?? 0) > 0 ? (
+      {canMutate ? (
+        <div className="docs-suggestion-card__decision">
+          <Button
+            label={labels.suggestionsAcceptShort}
+            aria-label={labels.suggestionsAccept}
+            icon={<Check />}
+            size="md"
+            variant="primary"
+            className="docs-suggestion-card__accept"
+            onClick={(event) => {
+              event.stopPropagation();
+              runExitAnimation(onAccept);
+            }}
+          />
+          <Button
+            label={labels.suggestionsRejectShort}
+            aria-label={labels.suggestionsReject}
+            icon={<X />}
+            size="md"
+            variant="outline"
+            className="docs-suggestion-card__reject"
+            onClick={(event) => {
+              event.stopPropagation();
+              runExitAnimation(onReject);
+            }}
+          />
+        </div>
+      ) : null}
+
+      {(suggestion.reactions?.length ?? 0) > 0 ? (
         <DocsCollabReactions
           className="docs-suggestion-card__reactions"
           reactions={suggestion.reactions}

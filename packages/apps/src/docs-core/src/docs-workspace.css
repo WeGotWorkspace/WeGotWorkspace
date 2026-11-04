@@ -422,3 +422,192 @@
   @apply flex flex-1 items-center justify-center text-sm;
   color: var(--docs-muted);
 }
+
+/* ------------------------------------------------------------------ */
+/* Spike: Docs polish (dark reference). Tokens first, then surfaces.    */
+/* ------------------------------------------------------------------ */
+
+.docs-workspace {
+  --docs-chip-bg: color-mix(in oklch, var(--workspace-foreground) 7%, var(--docs-surface));
+  --docs-chip-radius: 0.625rem;
+  --docs-toolbar-bg: color-mix(in oklch, var(--workspace-foreground) 2.5%, var(--docs-surface));
+  --docs-toolbar-border: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
+  --docs-toolbar-radius: 0.875rem;
+  --docs-outline-dot-active: var(--workspace-foreground);
+}
+
+:root[data-theme="dark"] .docs-workspace {
+  /* Sky accent for selection in the outline (reference: #3a9fe1 edge, #183061 wash). */
+  --docs-sky: oklch(0.68 0.13 240);
+  --docs-outline-dot-active: oklch(0.75 0.15 230);
+  --docs-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+}
+
+:root[data-theme="dark"] .docs-workspace .app-sidebar {
+  --sidebar-item-selected-background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-we-got-blue) 34%, var(--workspace-sidebar-surface)),
+    color-mix(in oklch, var(--color-we-got-blue) 16%, var(--workspace-sidebar-surface))
+  );
+  --sidebar-item-selected-shadow:
+    inset 2px 0 0 var(--docs-sky),
+    inset 0 0 0 1px color-mix(in oklch, var(--docs-sky) 22%, transparent);
+  --sidebar-item-selected-color: var(--workspace-foreground);
+}
+
+.docs-workspace .app-sidebar .sidebar-section .menu-item {
+  border-radius: var(--docs-chip-radius);
+}
+
+/* Header: hairline under the title row, like the format chrome below it. */
+.docs-workspace .workspace-app-layout__main-header {
+  border-bottom: 1px solid var(--docs-border);
+}
+
+/* Format bar: floating pill centred over the canvas, not a full-width strip. */
+.docs-workspace__editor .text-editor-format-bar {
+  align-self: center;
+  width: auto;
+  max-width: calc(100% - 2rem);
+  margin-block-start: 0.875rem;
+  margin-block-end: -1.75rem;
+  top: 0.875rem;
+  padding: 0.3125rem 0.375rem;
+  border: 1px solid var(--docs-toolbar-border);
+  border-radius: var(--docs-toolbar-radius);
+  background: var(--docs-toolbar-bg);
+  box-shadow:
+    0 1px 0 color-mix(in oklch, white 4%, transparent) inset,
+    0 12px 32px -16px rgb(0 0 0 / 0.55);
+}
+
+.docs-workspace__editor .text-editor-format-bar__heading-trigger {
+  background-color: var(--docs-chip-bg);
+  border-radius: 0.5rem;
+  min-width: 5rem;
+}
+
+.docs-workspace__editor .text-editor-format-bar__sep {
+  height: 1rem;
+  margin-inline: 0.375rem;
+  background: var(--docs-toolbar-border);
+}
+
+/* Canvas: top inset clears the floating bar so the sheet starts under it. */
+.docs-workspace {
+  --docs-sheet-canvas-padding-block-start: 3.25rem;
+}
+
+:root[data-theme="dark"] .docs-workspace .text-editor {
+  --text-editor-page-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+}
+
+/* Footer stats: plain text with hairline separators instead of chips. */
+.docs-workspace__stats-footer .tag {
+  background-color: transparent !important;
+  padding-inline: 0;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  color: color-mix(in oklch, var(--workspace-foreground) 82%, transparent);
+}
+
+.docs-workspace__stats-footer
+  .workspace-detail-footer__meta-tag
+  + .workspace-detail-footer__meta-tag {
+  border-inline-start: 1px solid var(--docs-border);
+  padding-inline-start: 1rem;
+  margin-inline-start: 0.25rem;
+}
+
+/* Sidebar account footer: a raised card. */
+.docs-workspace .workspace-sidebar-account-footer {
+  padding-block-end: 0.75rem;
+}
+
+.docs-workspace .workspace-sidebar-account-footer .workspace-app-layout__user-footer {
+  margin-block-start: 0.5rem;
+  padding: 0.625rem 0.625rem 0.625rem 0.75rem;
+  border: 1px solid var(--docs-border);
+  border-radius: 0.75rem;
+  background-color: color-mix(
+    in oklch,
+    var(--workspace-foreground) 2.5%,
+    var(--workspace-sidebar-surface)
+  );
+  --workspace-user-footer-text-color: var(--workspace-foreground);
+}
+
+.docs-workspace__footer-tools {
+  @apply flex items-center gap-2;
+}
+
+/* Header + footer chrome: ghost buttons (no hairline); wash on hover only. */
+.docs-workspace .workspace-app-layout__main-header,
+.docs-workspace__stats-footer {
+  --button-outline-border-color: transparent;
+  --button-outline-hover-background: var(--docs-chip-bg);
+}
+
+.docs-workspace__footer-tools .button {
+  background-color: var(--docs-chip-bg);
+}
+
+.docs-workspace__stats-footer .workspace-chrome-footer__group--end {
+  @apply gap-0;
+}
+
+.docs-workspace__stats-footer .workspace-chrome-footer__group--end > * + * {
+  border-inline-start: 1px solid var(--docs-border);
+  margin-inline-start: 1rem;
+  padding-inline-start: 1rem;
+}
+
+/* Saved / synced: a green status dot ahead of the copy. */
+.docs-workspace__doc-status {
+  @apply inline-flex items-center gap-2;
+}
+
+.docs-workspace__doc-status::before {
+  content: "";
+  @apply inline-block size-2 shrink-0 rounded-full;
+  background-color: var(--docs-status-dot, var(--color-success, oklch(0.72 0.19 150)));
+}
+
+/* Toolbar: roomier clusters like the reference. */
+.docs-workspace__editor .text-editor-format-bar__controls {
+  gap: 0.25rem;
+}
+
+.docs-workspace__doc-status[data-doc-status-kind="idle"]::before {
+  display: none;
+}
+
+.docs-workspace__doc-status:is(
+  [data-doc-status-kind="saving"],
+  [data-doc-status-kind="connecting"]
+) {
+  --docs-status-dot: var(--color-sync-pending);
+}
+
+.docs-workspace__doc-status:is(
+  [data-doc-status-kind="offline"],
+  [data-doc-status-kind="saveOnly"]
+) {
+  --docs-status-dot: var(--color-warning);
+}
+
+/* Suggesting: amber outline + soft glow so the mode reads from across the screen. */
+.docs-collab-suggest-controls.button[aria-pressed="true"] {
+  --docs-suggest-amber: oklch(0.76 0.17 62);
+  color: oklch(0.92 0.08 80);
+  border-color: var(--docs-suggest-amber);
+  background-color: color-mix(in oklch, var(--docs-suggest-amber) 22%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--docs-suggest-amber) 35%, transparent),
+    0 0 22px -2px color-mix(in oklch, var(--docs-suggest-amber) 70%, transparent);
+}
+
+.docs-collab-suggest-controls.button[aria-pressed="true"] .button__icon {
+  color: var(--docs-suggest-amber);
+}
