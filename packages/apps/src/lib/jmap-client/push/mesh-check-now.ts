@@ -54,8 +54,8 @@ export function subscribeMeshCheckNow(listener: () => void): () => void {
 
 /**
  * Wake-only push transport: a peer's `check-now` makes the leader's event
- * source reconnect now. The event source keeps at least 2 s between requests
- * (`wakeGapMs`), so a storm of nudges costs at most one request per 2 s.
+ * source reconnect now. Two early reconnects start at least 2 s apart
+ * (`wakeGapMs`), so a storm of nudges costs at most one extra request per 2 s.
  */
 export class MeshCheckNowTransport implements PushTransport {
   start(sink: PushSink): () => void {
