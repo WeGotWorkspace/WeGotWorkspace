@@ -99,7 +99,8 @@ final class FolderDownloadTicketService
             return self::DEFAULT_SELECTION_NAME;
         }
 
-        return trim(mb_substr(FolderZipWalker::safeName($name), 0, self::MAX_NAME_LENGTH));
+        // Cut first: safeName trims and maps '', '.' and '..' to '_', which a cut could bring back.
+        return FolderZipWalker::safeName(mb_substr($name, 0, self::MAX_NAME_LENGTH));
     }
 
     /**

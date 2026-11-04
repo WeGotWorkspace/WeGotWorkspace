@@ -110,6 +110,15 @@ final class JmapSelectionDownloadTicketTest extends WgwDatabaseTestCase
         $this->assertSame('Download.zip', $this->issueSelection($token, $ids, '   ')['name']);
         $this->assertSame('a_b.zip', $this->issueSelection($token, $ids, 'a/b')['name']);
         $this->assertSame(str_repeat('x', 120).'.zip', $this->issueSelection($token, $ids, str_repeat('x', 300))['name']);
+        $this->assertSame('_.zip', $this->issueSelection($token, $ids, '..')['name']);
+        $this->assertSame('_.zip', $this->issueSelection($token, $ids, '.')['name']);
+        $this->assertSame('_.zip', $this->issueSelection($token, $ids, '..'.str_repeat(' ', 118).'x')['name']);
+        $this->assertSame('_.zip', $this->issueSelection($token, $ids, '.'.str_repeat(' ', 119).'x')['name']);
+        $this->assertSame([
+            '_/' => null,
+            '_/Notes (2).txt' => 'from B',
+            '_/notes.txt' => 'from A',
+        ], $this->downloadSelection($token, $ids, '..'.str_repeat(' ', 118).'x'));
     }
 
     public function test_hidden_trashed_unknown_and_unreadable_items_refuse_the_whole_ticket(): void
