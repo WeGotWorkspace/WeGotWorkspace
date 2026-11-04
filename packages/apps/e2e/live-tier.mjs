@@ -13,6 +13,7 @@
 export const liveTierSpecs = [
   "calendar-far-week-event",
   "calendar-offline-week-event",
+  "calendar-push",
   "contacts-first-download",
   "contacts-first-open-count",
   "contacts-offline-read-only",
@@ -40,6 +41,7 @@ export const liveTierSpecs = [
   "drive-upload-queue",
   "drive-upload-recovery",
   "meet-adhoc-two-users",
+  "meet-chat-push",
   "meet-guest-chat",
   "meet-guest-video-mirror",
   "notes-collab-access-lost",
