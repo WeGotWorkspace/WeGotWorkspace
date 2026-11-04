@@ -8,7 +8,6 @@ use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\DAV\Xml\Element\Sharee;
 
