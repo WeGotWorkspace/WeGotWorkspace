@@ -360,6 +360,41 @@ describe("flushTasksOutbox", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
   });
 
+  it("sends a move again when undo pointed it back while it was on its way", async () => {
+    await upsertTaskInCache(username, { ...task, taskListId: "work", etag: "e0" }, true);
+    await enqueueOutboxMutation(username, {
+      id: "queued-move",
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId: task.id, taskListId: "work" }),
+      ifInState: "e0",
+    });
+    let answerFirst!: (value: unknown) => void;
+    putTask.mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)));
+    putTask.mockResolvedValueOnce({ ...task, etag: "e2" });
+
+    const flushing = flushTasksOutbox(username);
+    await vi.waitFor(() => expect(putTask).toHaveBeenCalledOnce());
+    // Undo offline rewrites the queued row in place (see queueOfflineMove).
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await db.outbox.get("queued-move");
+    await db.outbox.put({
+      ...row!,
+      payload: JSON.stringify({ taskId: task.id, taskListId: task.taskListId }),
+    });
+    await upsertTaskInCache(username, { ...task, etag: "e0" }, true);
+    answerFirst({ ...task, taskListId: "work", etag: "e1" });
+    await flushing;
+
+    expect(putTask).toHaveBeenCalledTimes(2);
+    expect(putTask.mock.calls[1]).toEqual([
+      task.id,
+      expect.objectContaining({ taskListIds: { [task.taskListId]: true } }),
+      { ifMatch: "e1" },
+    ]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+  });
+
   it("keeps the local copy while a later write for the task is still owed", async () => {
     await upsertTaskInCache(
       username,

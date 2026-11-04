@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
-
-type QueueMutation = (args: DeferredApiWriteArgs) => void;
+import type { QueueMutation } from "@/hooks/use-queued-mutation";
 
 export type ImmediateDriveBatchArgs = {
   key: string;
@@ -11,70 +9,38 @@ export type ImmediateDriveBatchArgs = {
   undoToastMessage: string;
   rollback: () => void;
   /**
-   * Rename files one at a time. A rename that has been sent must settle, and `markCompleted`
-   * must be called for every rename the server applied, so undo can revert those files when a
-   * later rename throws.
+   * Rename files one at a time, and call `markCompleted` for every rename the server applied,
+   * so undo can revert those files when a later rename throws. `stop` is aborted on Undo: check
+   * it between files so no new rename starts. Never pass it to a rename itself: a cancelled
+   * request may still land, and then nothing would rename the file back.
    */
-  execute: (signal: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
-  /**
-   * Undo server renames for `completedKeys` only. Runs after `execute` resolves, or when it
-   * throws after at least one `markCompleted` call. If undo aborts an in-flight execute, the
-   * revert waits until that execute settles so a rename that resolves after abort is included.
-   */
-  revert?: (completedKeys: ReadonlySet<string>) => Promise<void>;
+  execute: (stop: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
+  /** Undo server renames for `completedKeys` only. Runs once `execute` has settled. */
+  revert: (completedKeys: ReadonlySet<string>) => Promise<void>;
   queueMutation: QueueMutation;
 };
 
-/** Queues a drive batch that runs immediately and reverts files the server already renamed. */
+/**
+ * Queues a reversible drive batch: it runs at once, and Undo (or a failure halfway)
+ * renames back the files the server already moved. See `ReversibleWriteArgs`.
+ */
 export function runImmediateDriveBatch({
-  key,
-  toastMessage,
-  icon,
-  undoToastMessage,
   rollback,
   execute,
   revert,
-  queueMutation,
+  ...toast
 }: ImmediateDriveBatchArgs): void {
-  const completedKeys = new Set<string>();
-  let undone = false;
-  let executeSettled = false;
-  let revertStarted = false;
-  const revertCompleted = () => {
-    if (revertStarted || !revert || completedKeys.size === 0) return;
-    revertStarted = true;
-    void revert(new Set(completedKeys)).catch((error: unknown) => {
-      console.error("Drive batch revert failed", error);
-    });
-  };
-  const undo = () => {
-    // onError already reverts completed files. The Undo button stays up for the
-    // undo window and would call this again.
-    if (undone) return;
-    undone = true;
-    rollback();
-    // Revert after execute settles; execute never aborts a rename it has already
-    // sent, so every rename the server applied is marked.
-    if (executeSettled) revertCompleted();
-  };
-
+  const stop = new AbortController();
   runQueuedBatchAction({
-    queueMutation,
-    key,
-    toastMessage,
-    icon,
-    undoToastMessage,
-    execute: async (signal) => {
-      try {
-        await execute(signal, (itemKey) => {
-          completedKeys.add(itemKey);
-        });
-      } finally {
-        executeSettled = true;
-        if (undone) revertCompleted();
-      }
+    ...toast,
+    rollback: () => {
+      stop.abort();
+      rollback();
     },
-    rollback: undo,
-    executeImmediately: true,
+    execute: (_signal, markCompleted) => execute(stop.signal, markCompleted),
+    // Every rename the server applied is marked, so "no keys" means nothing landed.
+    revert: async (completed) => {
+      if (completed && completed.size > 0) await revert(completed);
+    },
   });
 }

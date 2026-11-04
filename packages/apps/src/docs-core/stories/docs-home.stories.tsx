@@ -200,7 +200,6 @@ export const MoveToTrash: StoryObj<typeof DocsTrashConfirmHarness> = {
     await waitFor(() =>
       expect(args.renameItem).toHaveBeenCalledWith(
         expect.objectContaining({ from, destination, to }),
-        expect.anything(),
       ),
     );
   },

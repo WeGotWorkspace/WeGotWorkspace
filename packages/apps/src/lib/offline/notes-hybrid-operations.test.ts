@@ -342,6 +342,23 @@ describe("createHybridNotesOperations", () => {
     expect(row?.ifInState).toBe('"v7"');
   });
 
+  it("turns a queued archive around in place when it is undone offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertNoteInCache(username, { ...note, etag: '"v7"' }, false);
+    const operations = createHybridNotesOperations(username);
+
+    await operations.archiveNote(note.id);
+    const [archived] = await listOutboxMutations(username);
+    await operations.restoreNote(note.id);
+
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe(archived?.id);
+    expect(rows[0]?.op).toBe("restore");
+    expect(rows[0]?.ifInState).toBe('"v7"');
+    expect((await getNoteFromCache(username, note.id))?.archived).toBe(false);
+  });
+
   it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
     vi.mocked(archiveNoteItem).mockResolvedValue({ ...note, archived: true });
 

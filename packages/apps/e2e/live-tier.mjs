@@ -52,11 +52,13 @@ export const liveTierSpecs = [
   "notes-relist-many-notes",
   "notes-save-in-flight",
   "notes-sharee-star",
+  "notes-undo-two-users",
   "notifications-inbox-push",
   "presence-offline-start",
   "queued-write-reload",
   "tasks-inbound-sync",
   "tasks-push",
+  "undo-offline",
 ];
 
 export const liveTierSpecPattern = new RegExp(`(?:${liveTierSpecs.join("|")})\\.spec\\.ts`);

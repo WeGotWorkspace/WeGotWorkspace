@@ -48,6 +48,7 @@ import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
   createTempCalendarEventId,
   createTempCalendarId,
+  discardUnsentCalendarEvent,
   enqueueCoalescedCalendarEventUpdate,
   enqueueOutboxMutation,
   mergeCalendarRangeIntoCache,
@@ -214,6 +215,10 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       return result;
     },
     deleteEvent: async (eventId) => {
+      // Not sent yet (Undo of an offline create): drop its queued rows instead.
+      if (eventId.startsWith("local-") && (await discardUnsentCalendarEvent(username, eventId))) {
+        return;
+      }
       const queueOffline = async () => {
         await removeCalendarEventFromCache(username, eventId);
         await enqueueOutboxMutation(username, {

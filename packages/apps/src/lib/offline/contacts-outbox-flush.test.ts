@@ -6,7 +6,9 @@ import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   enqueueCoalescedContactUpdate,
   enqueueOutboxMutation,
+  dropQueuedContactCreate,
   listOutboxMutations,
+  readContactsBootstrapFromCache,
   removeOutboxMutation,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
@@ -306,6 +308,44 @@ describe("flushContactsOutbox", () => {
     expect(contactCardSet.mock.calls[1]?.[0]).toEqual({
       update: { "jane-doe": { ...named("Jane B"), ifInState: "state-2" } },
     });
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+  it("takes back a create that was undone while it was sent (#1854)", async () => {
+    const setAnswer = {
+      created: {},
+      updated: {},
+      destroyed: [],
+      notCreated: {},
+      notUpdated: {},
+      notDestroyed: {},
+    };
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CONTACTS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: "local-9",
+        tempCardId: "local-9",
+        body: {
+          addressBookIds: { default: true },
+          kind: "individual",
+          name: { "@type": "Name", isOrdered: false, full: "Pat" },
+        },
+      }),
+    });
+    contactCardSet.mockImplementation(async (request: { create?: unknown }) => {
+      if (!request.create) return setAnswer;
+      // Undo of the offline create lands while the request is on its way.
+      await dropQueuedContactCreate(username, "local-9");
+      return { ...setAnswer, created: { "local-9": "card-undone" } };
+    });
+
+    await flushContactsOutbox(username);
+
+    expect(contactCardSet).toHaveBeenLastCalledWith({ destroy: ["card-undone"] });
+    expect(getCard).not.toHaveBeenCalled();
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.cards.some((card) => card.id === "card-undone")).toBe(false);
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
 });
