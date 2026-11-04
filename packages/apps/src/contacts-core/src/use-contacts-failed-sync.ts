@@ -1,41 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { useConnectivity } from "@/hooks/use-connectivity";
 import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
-
-const POLL_INTERVAL_MS = 4000;
+import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
 
 /**
  * Count of outbox rows that failed to sync for a transient (non-conflict)
- * reason. Drives the inline retry callout. Refreshes on connectivity changes,
- * when `refreshKey` changes, and on a light poll so the banner clears once a
- * retry succeeds.
+ * reason. Drives the retry notice. Refreshes on connectivity changes, when
+ * `refreshKey` changes, and on a light poll so the notice clears once a retry
+ * succeeds.
  */
 export function useContactsFailedSync(
   username: string | null | undefined,
   refreshKey?: number,
 ): number {
-  const [failedCount, setFailedCount] = useState(0);
-  const { online } = useConnectivity();
-
-  const refresh = useCallback(async () => {
-    if (!username) {
-      setFailedCount(0);
-      return;
-    }
-    try {
-      const rows = await listFailedContactOutbox(username);
-      setFailedCount(rows.length);
-    } catch {
-      // Keep the last known state if the offline store read fails.
-    }
-  }, [username]);
-
-  useEffect(() => {
-    void refresh();
-    if (typeof window === "undefined") return;
-    const intervalId = window.setInterval(() => void refresh(), POLL_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [refresh, online, refreshKey]);
-
-  return failedCount;
+  return useFailedOutboxCount(username, listFailedContactOutbox, refreshKey).count;
 }

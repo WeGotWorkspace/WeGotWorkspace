@@ -137,6 +137,7 @@ final class OwnershipRegistry
             'POST /calendar/rsvp/{token}' => 'RSVP capability token; PublicAccessOwnershipTest covers scope rsvp.',
             'POST /files/share-sessions' => 'Public link token exchange; PublicAccessOwnershipTest covers the link-* scopes.',
             'GET /jmap/download-ticket/{secret}/{name}' => 'Download ticket secret; DriveOwnershipTest covers who may mint a ticket for which blob or path.',
+            'GET /jmap/folder-download-ticket/{secret}/{name}' => 'Folder download ticket secret; DriveOwnershipTest covers who may mint one for which folder.',
         ];
         foreach ($publicToken as $operation => $why) {
             $exempt[$operation] = ['reason' => ExemptionReason::PublicToken, 'why' => $why];

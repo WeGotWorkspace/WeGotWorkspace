@@ -147,7 +147,12 @@ export type TasksUILabels = {
   rescueMove: (count: number) => string;
   rescueDiscard: (count: number) => string;
   rescueLater: string;
-  rescueEntry: (lists: number) => string;
+  rescueNotice: (count: number, listNames: string[]) => string;
+  rescueReview: string;
+  /** Accessible name of the notice bar under the header. */
+  noticeBarLabel: string;
+  syncFailedNotice: string;
+  retrySync: string;
   rescueMoved: (count: number, listName: string) => string;
   rescueDiscarded: (count: number) => string;
   rescueFailed: string;
@@ -319,8 +324,20 @@ export const defaultTasksLabels: TasksUILabels = {
   rescueMove: (count) => (count === 1 ? "Move task" : `Move ${count} tasks`),
   rescueDiscard: (count) => (count === 1 ? "Discard task" : `Discard ${count} tasks`),
   rescueLater: "Decide later",
-  rescueEntry: (lists) =>
-    lists === 1 ? "Tasks need a new list" : `Tasks from ${lists} lists need a new list`,
+  rescueNotice: (count, listNames) => {
+    if (listNames.length > 1) {
+      const tasks = count === 1 ? "1 task" : `${count} tasks`;
+      return `${tasks} from ${listNames.length} lists need a new list`;
+    }
+    const list = listNames[0] ? `“${listNames[0]}”` : "a list";
+    return count === 1
+      ? `A task from ${list} needs a new list`
+      : `${count} tasks from ${list} need a new list`;
+  },
+  rescueReview: "Review",
+  noticeBarLabel: "Needs your attention",
+  syncFailedNotice: "Some changes could not sync. They are saved on this device.",
+  retrySync: "Retry",
   rescueMoved: (count, listName) =>
     count === 1 ? `Moved 1 task to “${listName}”` : `Moved ${count} tasks to “${listName}”`,
   rescueDiscarded: (count) => (count === 1 ? "Discarded 1 task" : `Discarded ${count} tasks`),
