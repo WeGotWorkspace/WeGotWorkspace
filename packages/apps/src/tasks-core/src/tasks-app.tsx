@@ -14,6 +14,7 @@ import {
 } from "@/lib/offline/tasks/tasks-conflict-merge";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
 import { tasksOutboxTaskId } from "@/lib/offline/tasks/tasks-offline-store";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
@@ -22,9 +23,8 @@ import type { Task } from "@/tasks-core/src/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { useTasksAPI } from "@/tasks-core/src/use-tasks-api";
 import { useTasksRescue } from "@/tasks-core/src/use-tasks-rescue";
-import { useTasksSyncNotice } from "@/tasks-core/src/use-tasks-sync-notice";
-import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useTasksRouteSync } from "@/tasks-core/src/use-tasks-route-sync";
+import { useTasksSyncNotice } from "@/tasks-core/src/use-tasks-sync-notice";
 
 export type TasksAppProps = {
   apiSource?: TasksApiSource;
