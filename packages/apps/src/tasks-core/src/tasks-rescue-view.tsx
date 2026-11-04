@@ -18,7 +18,8 @@ export function tasksRescueLabels(L: TasksUILabels): RescueLabels {
     move: L.rescueMove,
     discard: L.rescueDiscard,
     later: L.rescueLater,
-    entry: L.rescueEntry,
+    notice: L.rescueNotice,
+    review: L.rescueReview,
     moved: L.rescueMoved,
     discarded: L.rescueDiscarded,
     failed: L.rescueFailed,
@@ -36,7 +37,7 @@ export function tasksRescueView(L: TasksUILabels): RescueView<TaskList> {
       labels: tasksRescueLabels(L),
       surfaceClassName: "tasks-dialog-surface",
       containerIcon: (list) => <TaskListIcon list={list} />,
-      entryIcon: <ListPlus aria-hidden />,
+      noticeIcon: <ListPlus className="callout__icon" aria-hidden />,
     };
     views.set(L, view);
   }

@@ -179,3 +179,25 @@
   grid-area: actions;
   @apply flex items-center justify-end gap-1.5;
 }
+
+/* Batch notices float above the listing until the user presses OK. */
+.drive-upload-notices {
+  @apply fixed inset-x-4 mx-auto flex max-w-md flex-col gap-2;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 36;
+}
+
+.drive-main-pane:has(.drive-selection-bar) .drive-upload-notices {
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.75rem);
+}
+
+.drive-upload-notices__notice {
+  background-color: var(--workspace-surface);
+  box-shadow:
+    0 4px 24px color-mix(in oklch, var(--workspace-foreground) 16%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+}
+
+.drive-upload-notices__list {
+  @apply m-0 flex list-none flex-col gap-1 p-0;
+}

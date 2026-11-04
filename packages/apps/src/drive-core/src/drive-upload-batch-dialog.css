@@ -1,0 +1,47 @@
+@import "../../styles.css" reference;
+
+.drive-upload-batch-dialog.drive-dialog-surface {
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.drive-upload-batch-dialog__names {
+  @apply m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0;
+}
+
+.drive-upload-batch-dialog__name {
+  @apply truncate font-medium;
+}
+
+.drive-upload-batch-dialog__more,
+.drive-upload-batch-dialog__stale {
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
+}
+
+.drive-upload-batch-dialog__choice {
+  @apply m-0 flex flex-col gap-2 border-0 p-0;
+}
+
+.drive-upload-batch-dialog__legend {
+  @apply mb-2 p-0 font-medium;
+}
+
+.drive-upload-batch-dialog__options {
+  @apply gap-2;
+}
+
+.drive-upload-batch-dialog__option {
+  @apply flex items-start gap-2 rounded-md border p-3;
+  border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+}
+
+.drive-upload-batch-dialog__option-label {
+  @apply flex min-w-0 flex-1 cursor-pointer flex-col gap-1 font-normal leading-snug;
+}
+
+.drive-upload-batch-dialog__option-heading {
+  @apply font-medium;
+}
+
+.drive-upload-batch-dialog__option-detail {
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
+}

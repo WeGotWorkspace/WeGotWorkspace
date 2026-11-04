@@ -101,7 +101,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   // upload, no drop target and no new Markdown file (Docs saves guest files
   // through upload).
   const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
-  const { handleUpload, uploadProgress } = useDriveUploadAction(shell, uploadEnabled);
+  const upload = useDriveUploadAction(shell, uploadEnabled);
   const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -448,7 +448,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     submitCreateMarkdown,
     dropUploadActive,
     setDropUploadActive,
-    uploadProgress,
+    ...upload,
     uploadEnabled,
     structureEnabled,
     fileInputRef,
@@ -468,7 +468,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     requestRenameItem,
     submitRenameItem,
     reallyDelete,
-    handleUpload,
+    uploadAction: upload,
     createFolder,
     submitCreateFolder,
     createMarkdown,

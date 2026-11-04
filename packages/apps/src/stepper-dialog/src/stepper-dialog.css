@@ -1,0 +1,24 @@
+@import "../../styles.css" reference;
+
+.stepper-dialog .stepper-dialog__dots {
+  @apply mb-3;
+}
+
+/* The heading takes focus on every step; the dialog shows the ring instead. */
+.stepper-dialog .stepper-dialog__title:focus {
+  @apply outline-none;
+}
+
+.stepper-dialog .stepper-dialog__title:focus-visible {
+  outline: 2px solid var(--workspace-accent, currentColor);
+  outline-offset: 2px;
+}
+
+.stepper-dialog__step {
+  @apply flex flex-col gap-3 text-sm;
+}
+
+/* Cancel sits apart from Back / Next. */
+.stepper-dialog__footer > :first-child {
+  @apply me-auto;
+}

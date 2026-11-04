@@ -1,6 +1,6 @@
 import type { RescueTarget } from "@/lib/offline/core/rescue-parked-writes";
 import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
-import { RescueDialog, RescueEntry } from "@/rescue-ui/rescue-dialog";
+import { RescueDialog } from "@/rescue-ui/rescue-dialog";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 import type { TaskList } from "@/tasks-core/src/tasks-types";
@@ -21,18 +21,4 @@ export type TasksRescueDialogProps = {
 /** The shared rescue dialog (#1825) for tasks, one list at a time. */
 export function TasksRescueDialog({ lists, labels, ...props }: TasksRescueDialogProps) {
   return <RescueDialog {...props} containers={lists} view={tasksRescueView(labels)} />;
-}
-
-/** The way back to the dialog while tasks wait for a list, in the view header. */
-export function TasksRescueEntry({
-  lists,
-  labels,
-  onOpen,
-}: {
-  /** How many lists have tasks waiting. */
-  lists: number;
-  labels: TasksUILabels;
-  onOpen: () => void;
-}) {
-  return <RescueEntry containers={lists} view={tasksRescueView(labels)} onOpen={onOpen} />;
 }
