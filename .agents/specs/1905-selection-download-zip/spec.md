@@ -61,7 +61,7 @@ There is no same-parent rule. The selection bar can span folders in *Recent*, *S
 
 - **Name.** The download is `<name>.zip`, and the zip has one top folder `<name>/`.
   - The name comes from the request's `name`: the place the user is looking at, such as the current folder, *Personal*, or *Recent*.
-  - It goes through `FolderZipWalker::safeName` and is cut to 120 characters.
+  - It is cut to 120 characters first and then goes through `FolderZipWalker::safeName`, so a cut can never leave `.` or `..`.
   - Without a name, it is `Download`.
 - **Order and collisions.** The selected items go straight into the top folder, in request order. Names that collide case-insensitively get ` (2)`, ` (3)`, … (`FolderZipWalker::uniqueName`, as inside a folder).
 - **Selected folders** keep their subtree, with the #1621 walker rules:
