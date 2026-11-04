@@ -613,6 +613,19 @@ describe("JmapPushHub", () => {
       expect(await front(a, c)).toEqual(["a", "a"]);
     });
 
+    it("a tab that joins later learns the others' focus at once", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+      c.focus.focus(200);
+      await settle();
+      // "a" opens in the background: it never had focus, and "c" publishes nothing new.
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(await front(a, c)).toEqual(["c", "c"]);
+    });
+
     it("never elects a hidden tab, and elects none when every tab is hidden", async () => {
       const b = browser();
       const a = b.tab("a");

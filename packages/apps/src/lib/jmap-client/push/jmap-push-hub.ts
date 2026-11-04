@@ -309,10 +309,17 @@ export class JmapPushHub {
       case "tab":
         this.#confirmations.setTab(message.tabId, message);
         if (message.tabId !== this.#options.tabId) {
+          const firstHeard = !this.#activity.has(message.tabId);
           this.#activity.set(message.tabId, {
             focusedAt: message.focusedAt ?? 0,
             route: message.route ?? null,
           });
+          // A tab that just joined does not know this tab's focus yet; answer it,
+          // so every tab elects the same front tab.
+          if (firstHeard) {
+            this.#published = "";
+            this.#publishTab();
+          }
         }
         // A tab that just joined has not heard the status the leader sent before it.
         if (this.#eventSource && message.tabId !== this.#options.tabId) {
