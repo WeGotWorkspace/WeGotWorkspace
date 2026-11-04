@@ -166,7 +166,7 @@ test("gap 1: an offline create whose name was taken on the server keeps both", a
   expect(errors).toEqual([]);
 });
 
-test("gap 1, reloaded: a queued create keeps its own text after a reload online", async ({
+test("gap 1: a reload while the offline create is still queued keeps both", async ({
   page,
   context,
 }) => {

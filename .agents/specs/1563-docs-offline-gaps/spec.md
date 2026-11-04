@@ -77,7 +77,7 @@ The owner was asleep; each open point is decided here.
 
 ## Tests
 
-- Live: `packages/apps/e2e/docs-offline-gaps.spec.ts`, one case per gap (gap 2 has two: another tab, another device). Registered in `packages/apps/e2e/live-tier.mjs`.
+- Live: `packages/apps/e2e/docs-offline-gaps.spec.ts`, one case per gap (gap 1 also reloads while the create is still queued; gap 2 has two: another tab, another device). Registered in `packages/apps/e2e/live-tier.mjs`.
 - Unit:
   - `src/lib/offline/docs/docs-offline-gaps.test.ts`: path moves, text migration, re-aimed queued writes, offline Trash and Starred entries.
   - `src/lib/api/wgw/drive-create-keep-both.test.ts`: keep-both create, lost answer.
