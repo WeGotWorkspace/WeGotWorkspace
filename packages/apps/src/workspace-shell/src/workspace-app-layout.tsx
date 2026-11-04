@@ -23,6 +23,7 @@ export type WorkspaceAppLayoutFlatProps = WorkspaceAppLayoutBaseProps & {
   sidebar?: undefined;
   main?: undefined;
   mainHeader?: undefined;
+  mainNotice?: undefined;
 };
 
 /** Sidebar + main column with optional header and a scrollable body (settings, admin). */
@@ -30,6 +31,8 @@ export type WorkspaceAppLayoutSplitProps = WorkspaceAppLayoutBaseProps & {
   sidebar: React.ReactNode;
   main: React.ReactNode;
   mainHeader?: React.ReactNode;
+  /** Between the header and the scroll area, so it stays in view (e.g. `NoticeBar`). */
+  mainNotice?: React.ReactNode;
   /** Optional right-hand panel (e.g. docs comments sidebar). */
   panel?: React.ReactNode;
   /**
@@ -88,6 +91,7 @@ export function WorkspaceAppLayout(props: WorkspaceAppLayoutProps) {
             {props.mainHeader != null ? (
               <header className="workspace-app-layout__main-header">{props.mainHeader}</header>
             ) : null}
+            {props.mainNotice ?? null}
             <div className="workspace-app-layout__main-scroll">
               <div className="workspace-app-layout__main-content">{props.main}</div>
             </div>

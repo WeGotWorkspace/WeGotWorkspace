@@ -9197,6 +9197,182 @@
         }
       }
     },
+    "/jmap/folder-download-tickets/{accountId}": {
+      "post": {
+        "tags": [
+          "JMAP"
+        ],
+        "summary": "Issue a download ticket for a Drive folder as a zip",
+        "description": "WGW extension (#1621). The folder version of POST /jmap/download-tickets/{accountId}: the ticket is bound to one directory FileNode instead of a blobId, with the same secret, account and sign-in session binding, sliding idle expiry (30 min) and absolute lifetime (24 h). The returned URL streams the folder as a zip; the client hands it to the browser as a native download. An access token minted before session binding existed gets 403 `session_required`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nodeId"
+                ],
+                "properties": {
+                  "nodeId": {
+                    "type": "string",
+                    "pattern": "^fn-[0-9a-f]{32}$",
+                    "description": "Id of a directory FileNode the account may read. Folders in trash, notes and Doc attachments are refused."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "name",
+                    "idleExpires",
+                    "absoluteExpires"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "description": "Absolute ticket URL (GET /jmap/folder-download-ticket/{secret}/{name}); the secret is shown once and stored hashed."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Download file name: the folder's name plus `.zip`."
+                    },
+                    "idleExpires": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "absoluteExpires": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "description": "`session_required`: the access token carries no session binding; or the caller lacks the role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a live directory the account can read, or accountId does not match the principal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jmap/folder-download-ticket/{secret}/{name}": {
+      "get": {
+        "tags": [
+          "JMAP"
+        ],
+        "summary": "Download a Drive folder as a zip through a ticket",
+        "description": "WGW extension (#1621). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this folder's zip. Each request re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the folder, so a withdrawn share stops the next request. The zip is written while it streams: entries are stored (not compressed), names are UTF-8 with the UTF-8 flag, times come from the files, ZIP64 is used past 4 GB or 65,535 entries. It holds the folder (as the top folder), its subfolders including empty ones, and its files; names starting with `.` (trash, notes, Doc attachments, collab sidecars), deleted items and nodes the account cannot read are left out. A file that changes while it is read is stored as read; one that disappears first is left out. No `Range`: a dropped download starts again. Rate-limited. Unknown, expired, or revoked tickets are 404.",
+        "x-wgw-access": "guest",
+        "parameters": [
+          {
+            "name": "secret",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Display only; Content-Disposition uses the name the ticket was issued with."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The zip as an attachment (`filename` plus `filename*=UTF-8''…`, `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). No `Content-Length`: sizes are known only as files are read.",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "none"
+                  ]
+                }
+              },
+              "X-Accel-Buffering": {
+                "description": "`no`: proxies pass the stream on as it is written.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired, or revoked ticket, or the folder is gone or no longer readable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jmap/upload/{accountId}": {
       "post": {
         "tags": [

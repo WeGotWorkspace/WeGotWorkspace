@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ownership;
 
+use App\Models\DriveFolderDownloadTicket;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\JmapBlob;
@@ -71,6 +72,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'GET /jmap/download/{accountId}/{blobId}/{name}',
         'POST /files/download-tickets',
         'POST /jmap/download-tickets/{accountId}',
+        'POST /jmap/folder-download-tickets/{accountId}',
         'JMAP FileNode/get',
         'JMAP FileNode/changes',
         'JMAP FileNode/query',
@@ -143,6 +145,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'POST /jmap/upload/{accountId}',
         'POST /files/download-tickets',
         'POST /jmap/download-tickets/{accountId}',
+        'POST /jmap/folder-download-tickets/{accountId}',
     ];
 
     private const TICKET_OPS = ['POST /files/download-tickets', 'POST /jmap/download-tickets/{accountId}'];
@@ -242,6 +245,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             $cases[] = OwnershipCase::of('GET /jmap/download/{accountId}/{blobId}/{name}', $actor, Scope::OtherUser, Outcome::NotFound)->variant('envelope-blob');
             $cases[] = OwnershipCase::of('POST /jmap/download-tickets/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound)->variant('foreign-account');
             $cases[] = OwnershipCase::of('POST /jmap/download-tickets/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound)->variant('envelope-blob');
+            $cases[] = OwnershipCase::of('POST /jmap/folder-download-tickets/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound)->variant('foreign-account');
             $cases = [...$cases, ...self::blobCases($actor)];
 
             foreach (['JMAP FileNode/get', 'JMAP FileNode/changes', 'JMAP FileNode/query', 'JMAP FileNode/set', 'JMAP FileNode/queryChanges'] as $op) {
@@ -319,6 +323,8 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         $cases[] = OwnershipCase::of('POST /files/download-tickets', $member, Scope::GrantRevoked, Outcome::NotFound)->variant('after-issue');
         $cases[] = OwnershipCase::of('POST /files/download-tickets', $member, Scope::FormerGroup, Outcome::NotFound)->variant('after-issue');
         $cases[] = OwnershipCase::of('POST /jmap/download-tickets/{accountId}', $member, Scope::GrantRevoked, Outcome::NotFound)->variant('after-issue');
+        $cases[] = OwnershipCase::of('POST /jmap/folder-download-tickets/{accountId}', $member, Scope::GrantRevoked, Outcome::NotFound)->variant('after-issue');
+        $cases[] = OwnershipCase::of('POST /jmap/folder-download-tickets/{accountId}', $member, Scope::FormerGroup, Outcome::NotFound)->variant('after-issue');
         // A ticket serves only the blob it was minted for, whatever name the URL carries.
         $cases[] = OwnershipCase::of('POST /jmap/download-tickets/{accountId}', $member, Scope::OwnUser, Outcome::Allowed)->variant('other-name');
 
@@ -518,6 +524,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
         match ($case->operation) {
             'POST /files/download-tickets', 'POST /jmap/download-tickets/{accountId}' => $this->runTicket($case),
+            'POST /jmap/folder-download-tickets/{accountId}' => $this->runFolderTicket($case),
             'JMAP Blob/get', 'JMAP Blob/upload' => $this->runBlob($case),
             'JMAP BlobAssembly/set', 'JMAP BlobAssembly/get', 'JMAP BlobAssembly/append', 'JMAP BlobAssembly/finish' => $this->runAssembly($case),
             'GET /files/shares/principals' => $this->runPrincipals($case),
@@ -1660,6 +1667,47 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         }
 
         $response = $this->assertUnchanged(fn (): int => JmapDownloadTicket::query()->count(), $send, $case->key());
+        $this->assertNull($response->json('url'), $case->key().': denied response carries a ticket URL.');
+        $this->assertStringNotContainsString($expected, (string) $response->getContent(), $case->key());
+        $this->assertTargetHidden($response, $target, $case);
+        $this->assertRestOutcome($response, $case);
+    }
+
+    /**
+     * A folder ticket names the folder by node id; its zip is stored, so the
+     * document's bytes appear in it as they are.
+     */
+    private function runFolderTicket(OwnershipCase $case): void
+    {
+        $token = $this->sessionTokenFor($case->actor);
+        $target = $this->seedTarget($case);
+        $expected = $target['body'];
+        $account = $case->variant === 'foreign-account' ? OwnershipPrincipals::CAROL : $this->usernameFor($case->actor);
+        $payload = ['nodeId' => $this->nodesOf($target)['folderId']];
+        $send = fn (): TestResponse => $this->json('POST', '/api/v1/jmap/folder-download-tickets/'.$account, $payload, $this->bearerHeaders($token));
+
+        if ($case->variant === 'after-issue') {
+            $path = $this->ticketPath($send()->assertCreated());
+            $this->assertStringContainsString($expected, $this->bodyOf($this->call('GET', $path)->assertOk()), $case->key().': ticket did not serve before.');
+            $this->endScopeAccess($case, $target);
+            $redeemed = $this->call('GET', $path);
+            $this->assertSame(404, $redeemed->getStatusCode(), $case->key().': ticket still serves after access ended.');
+            $this->assertStringNotContainsString($expected, $this->bodyOf($redeemed), $case->key());
+
+            return;
+        }
+
+        if ($case->outcome === Outcome::Allowed) {
+            $response = $send();
+            $this->assertRestOutcome($response, $case);
+            $download = $this->call('GET', $this->ticketPath($response));
+            $download->assertOk();
+            $this->assertStringContainsString($expected, $this->bodyOf($download), $case->key());
+
+            return;
+        }
+
+        $response = $this->assertUnchanged(fn (): int => DriveFolderDownloadTicket::query()->count(), $send, $case->key());
         $this->assertNull($response->json('url'), $case->key().': denied response carries a ticket URL.');
         $this->assertStringNotContainsString($expected, (string) $response->getContent(), $case->key());
         $this->assertTargetHidden($response, $target, $case);

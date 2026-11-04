@@ -8297,6 +8297,137 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jmap/folder-download-tickets/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for a Drive folder as a zip
+         * @description WGW extension (#1621). The folder version of POST /jmap/download-tickets/{accountId}: the ticket is bound to one directory FileNode instead of a blobId, with the same secret, account and sign-in session binding, sliding idle expiry (30 min) and absolute lifetime (24 h). The returned URL streams the folder as a zip; the client hands it to the browser as a native download. An access token minted before session binding existed gets 403 `session_required`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Id of a directory FileNode the account may read. Folders in trash, notes and Doc attachments are refused. */
+                        nodeId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/folder-download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** @description Download file name: the folder's name plus `.zip`. */
+                            name: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                /** @description `session_required`: the access token carries no session binding; or the caller lacks the role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Not a live directory the account can read, or accountId does not match the principal. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/folder-download-ticket/{secret}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a Drive folder as a zip through a ticket
+         * @description WGW extension (#1621). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this folder's zip. Each request re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the folder, so a withdrawn share stops the next request. The zip is written while it streams: entries are stored (not compressed), names are UTF-8 with the UTF-8 flag, times come from the files, ZIP64 is used past 4 GB or 65,535 entries. It holds the folder (as the top folder), its subfolders including empty ones, and its files; names starting with `.` (trash, notes, Doc attachments, collab sidecars), deleted items and nodes the account cannot read are left out. A file that changes while it is read is stored as read; one that disappears first is left out. No `Range`: a dropped download starts again. Rate-limited. Unknown, expired, or revoked tickets are 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    secret: string;
+                    /** @description Display only; Content-Disposition uses the name the ticket was issued with. */
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The zip as an attachment (`filename` plus `filename*=UTF-8''…`, `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). No `Content-Length`: sizes are known only as files are read. */
+                200: {
+                    headers: {
+                        "Accept-Ranges"?: "none";
+                        /** @description `no`: proxies pass the stream on as it is written. */
+                        "X-Accel-Buffering"?: "no";
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/zip": string;
+                    };
+                };
+                /** @description Unknown, expired, or revoked ticket, or the folder is gone or no longer readable. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/node": {
         parameters: {
             query?: never;

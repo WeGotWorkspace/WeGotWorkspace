@@ -3,7 +3,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-rescue-dialog";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { rescueNotice } from "@/rescue-ui/rescue-notice";
+import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
+import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 import { TasksStoryScope } from "@/tasks-core/stories/tasks-story-scope";
 
 const bootstrap = createTasksAppBootstrap();
@@ -68,13 +71,13 @@ function Interactive(props: { writes: ParkedTask[] }) {
   const [open, setOpen] = useState(true);
   const drop = (ids: string[]) =>
     setWrites((all) => all.filter((write) => !ids.includes(write.id)));
-  const waitingLists = new Set(writes.map((write) => write.containerId)).size;
   return (
     <>
-      <TasksRescueEntry
-        lists={open ? 0 : waitingLists}
-        labels={defaultTasksLabels}
-        onOpen={() => setOpen(true)}
+      <NoticeBar
+        label={defaultTasksLabels.noticeBarLabel}
+        notices={[
+          rescueNotice("tasks", tasksRescueView(defaultTasksLabels), writes, () => setOpen(true)),
+        ]}
       />
       <TasksRescueDialog
         open={open && writes.length > 0}
@@ -158,7 +161,19 @@ export const Busy: StoryObj<typeof TasksRescueDialog> = {
   ),
 };
 
-/** The header button that reopens the dialog after "Decide later". */
-export const EntryButton: StoryObj<typeof TasksRescueEntry> = {
-  render: () => <TasksRescueEntry lists={2} labels={defaultTasksLabels} onOpen={() => undefined} />,
+/** The notice bar row that reopens the dialog after "Decide later" (#1894). */
+export const Notice: StoryObj = {
+  render: () => (
+    <NoticeBar
+      label={defaultTasksLabels.noticeBarLabel}
+      notices={[
+        rescueNotice(
+          "tasks",
+          tasksRescueView(defaultTasksLabels),
+          [parked("Call the dentist", "Groceries"), parked("Fix the bike light", "Repairs")],
+          () => undefined,
+        ),
+      ]}
+    />
+  ),
 };

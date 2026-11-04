@@ -1,0 +1,38 @@
+@import "../../styles.css" reference;
+
+/*
+ * Shared notice bar (#1894). Severity colours come from Callout (`--callout-*`);
+ * this file only reshapes the Callout card into a full-width bar. The host
+ * layout places it between the main header and the scroll area, so it never
+ * scrolls away.
+ */
+.notice-bar {
+  @apply min-w-0;
+}
+
+.notice-bar .notice-bar__callout {
+  @apply rounded-none border-0 px-4 py-2.5 md:px-6;
+  /* The wash sits on the notice row, mixed over the surface so it is opaque. */
+  background-color: transparent;
+}
+
+.notice-bar__notice {
+  @apply min-w-0;
+  border-bottom: 1px solid var(--notice-bar-border);
+  background-color: var(--notice-bar-bg);
+}
+
+.notice-bar__notice:has(.callout--warning) {
+  --notice-bar-border: color-mix(in oklab, var(--color-warning) 35%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--color-warning) 14%, var(--workspace-surface));
+}
+
+.notice-bar__notice:has(.callout--error) {
+  --notice-bar-border: color-mix(in oklab, var(--color-error) 35%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--color-error) 14%, var(--workspace-surface));
+}
+
+.notice-bar__notice:has(.callout--info) {
+  --notice-bar-border: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
+  --notice-bar-bg: color-mix(in oklab, var(--workspace-foreground) 5%, var(--workspace-surface));
+}
