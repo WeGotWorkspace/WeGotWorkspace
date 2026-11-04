@@ -1,5 +1,7 @@
 # Agent skills multitask restructure
 
+> **Archived 2026-11-04.** The `.agents/skills/` stack this plan describes is on main since 2026-06. The plan is kept for history and is not a current plan.
+
 Archived plan from branch `chore/agent-skills-multitask` (2026). Use as a reference when planning similar doc/skill work.
 
 ## Goal
@@ -77,4 +79,4 @@ Replace prefixed agent skills with a tool-agnostic `.agents/skills/` stack that 
 ## Doc updates
 
 - `AGENTS.md`, `.agents/README.md`, `.agents/POLICY.md`
-- `docs/plans/agent-skills-multitask.md` (this file)
+- `docs/archive/agent-skills-multitask.md` (this file)

@@ -6,7 +6,7 @@
 
 | Surface | Examples |
 |---------|---------|
-| **Plans and specs** | `.agents/specs/**` (`spec.md`, `plan.md`, `tasks.md`), `.agents/plans/**`, `docs/plans/**` |
+| **Plans and specs** | `.agents/specs/**` (`spec.md`, `plan.md`, `tasks.md`), `.agents/plans/**`, `docs/archive/**` |
 | **Documentation** | `docs/**`, `packages/*/docs/**`, READMEs, `AGENTS.md`, skills, Cursor rules |
 | **GitHub** | Issue titles and bodies (Goals, Epics, Tasks, Chores, Bugs), issue comments, PR titles/bodies, review comments, anything posted via `gh` or the GitHub API |
 | **Commit messages** | Conventional Commits subject and body |

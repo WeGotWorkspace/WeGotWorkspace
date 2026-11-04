@@ -30,7 +30,7 @@ Reserve principal-owned Meet rooms, persist CalDAV-compatible conference fields,
 - **id:** `setup`
 - **Skill:** developer, plan-feature, git-workflow
 - **Inputs:** Goal #525; Cursor plan `calendar_meet_link_1ea5c23c`
-- **Done when:** `docs/v0.9-sprint-plan.md` records the 2026-08-26 reopen; architecture note locks clocks / GC / hook / origin-equality / `createdBy`; Task #640 filed under #525 (`type:task`, `area:calendar` + `area:meet`, milestone `v0.9`, not on Product Project); `feat/calendar-meet-link` from `origin/main`; spec/plan/tasks with `Source: #640 (body-hash: 9b540e34)`
+- **Done when:** `docs/archive/v0.9-sprint-plan.md` records the 2026-08-26 reopen; architecture note locks clocks / GC / hook / origin-equality / `createdBy`; Task #640 filed under #525 (`type:task`, `area:calendar` + `area:meet`, milestone `v0.9`, not on Product Project); `feat/calendar-meet-link` from `origin/main`; spec/plan/tasks with `Source: #640 (body-hash: 9b540e34)`
 - **Verify with:** `gh issue view 640`; parent is #525; projectItems empty; spec header body-hash
 - **Parallel with:** none
 
@@ -97,7 +97,7 @@ Reserve principal-owned Meet rooms, persist CalDAV-compatible conference fields,
 
 ## Doc updates
 
-- [`docs/v0.9-sprint-plan.md`](../../../../../docs/v0.9-sprint-plan.md) — reopen #525 (Chunk 0)
+- [`docs/archive/v0.9-sprint-plan.md`](../../../../../docs/archive/v0.9-sprint-plan.md) — reopen #525 (Chunk 0)
 - [`docs/architecture/meet-reserved-rooms.md`](../../../../../docs/architecture/meet-reserved-rooms.md) — Chunk M / A lock (Chunk 0)
 - [`packages/api/docs/calendars/ics-jmap-conversion-matrix.md`](../../../../../packages/api/docs/calendars/ics-jmap-conversion-matrix.md) — write-set vs Microsoft read-only (Chunk A)
 - [`packages/api/docs/meet-signaling.md`](../../../../../packages/api/docs/meet-signaling.md) — reserved rooms (Chunk M)

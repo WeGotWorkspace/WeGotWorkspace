@@ -9,7 +9,7 @@ Source plan: [plan.md](./plan.md)
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `setup` | setup | developer | `docs/v0.9-sprint-plan.md`, `docs/architecture/meet-reserved-rooms.md`, `.agents/specs/archive/2026/640-calendar-meet-link/` | Task #640 parented under #525; not on Product Project; spec header `body-hash: 9b540e34` | done |
+| `setup` | setup | developer | `docs/archive/v0.9-sprint-plan.md`, `docs/architecture/meet-reserved-rooms.md`, `.agents/specs/archive/2026/640-calendar-meet-link/` | Task #640 parented under #525; not on Product Project; spec header `body-hash: 9b540e34` | done |
 | `meet-reserve-owner` | builder | meet, api | `packages/api/app/Http/Controllers/Api/V1/Meetings/MeetingsController.php`, `MeetSignalingService.php`, `packages/apps/src/meet-core/src/meet-lobby-pane.tsx` | Meet PHPUnit + lobby Vitest, then `pnpm test:api-done-gate` | pending |
 | `api-event-links` | builder | api | `LocationConversionSupport.php`, `CalendarEventRepository.php`, `SabreServerFactory.php`, `calendar-event.json`, `ics-jmap-conversion-matrix.md` | targeted PHPUnit + `pnpm test:api-done-gate` | pending |
 | `calendar-meet-ui` | builder | workspace, apps-ui, storybook | `calendar-editor-model.ts`, `calendar-event-dialog.tsx`, `calendar-wire.ts`, popover + inbox card | targeted Vitest then `pnpm test:apps-done-gate` | done |
