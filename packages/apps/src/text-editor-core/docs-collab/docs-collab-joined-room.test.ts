@@ -24,7 +24,7 @@ describe("leaveCollabRoom", () => {
     const persistence = store();
     rememberCollabRoomJoin(persistence, { room: "a", urls: urlsFor("a") });
     leaveCollabRoom(persistence, { current: null }, { room: "a", urls: urlsFor("a") });
-    expect(closeCollabRoomStore).toHaveBeenCalledWith(persistence, null);
+    expect(closeCollabRoomStore).toHaveBeenCalledWith(persistence, null, { upload: true });
   });
 
   it("saves to the room the store joined, not the room the render now carries", () => {
@@ -33,18 +33,23 @@ describe("leaveCollabRoom", () => {
     rememberCollabRoomJoin(persistence, { room: "a", urls: urlsFor("a") });
     leaveCollabRoom(persistence, timer, { room: "b", urls: urlsFor("b") });
     expect(timer.current).toBeNull();
-    expect(closeCollabRoomStore).toHaveBeenCalledWith(persistence, {
-      room: "a",
-      urls: urlsFor("a"),
-    });
+    expect(closeCollabRoomStore).toHaveBeenCalledWith(
+      persistence,
+      { room: "a", urls: urlsFor("a") },
+      { upload: true },
+    );
   });
 
-  it("skips the save for a room that is not stored on the server", () => {
+  it("marks a held room unsaved without saving it to the server", () => {
     const persistence = store();
     const urls = urlsFor("a", { roomNotPersistent: true });
     rememberCollabRoomJoin(persistence, { room: "a", urls });
     leaveCollabRoom(persistence, armed(), { room: "a", urls });
-    expect(closeCollabRoomStore).toHaveBeenCalledWith(persistence, null);
+    expect(closeCollabRoomStore).toHaveBeenCalledWith(
+      persistence,
+      { room: "a", urls },
+      { upload: false },
+    );
   });
 
   it("still cancels the save when there is no store", () => {

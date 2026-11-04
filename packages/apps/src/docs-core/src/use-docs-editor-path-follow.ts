@@ -21,18 +21,24 @@ type UseDocsEditorPathFollowArgs = {
 /**
  * Whether a queued create or rename still owns `filePath`; re-read when Docs
  * caches change. `undefined` until the read answers (or when it fails).
+ * `learn(path)` answers for a path before the editor opens it, so a followed
+ * move does not start the new path unknown (and its room local-only).
  */
 function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: string | null) {
   const [answer, setAnswer] = useState<{ path: string; owned: boolean } | null>(null);
+  /** The path `learn` answered for, until the editor is on it. */
+  const learnedPathRef = useRef<string | null>(null);
   useEffect(() => {
+    if (learnedPathRef.current === filePath) learnedPathRef.current = null;
     if (!username || !filePath) return;
     let cancelled = false;
     const key = docsSourceKey(filePath);
     const check = () => {
       void readDocsPendingWrites(username)
         .then((pending) => {
-          if (!cancelled)
-            setAnswer({ path: filePath, owned: docsRowOwnedByQueuedWrite(pending, key) });
+          // A later answer for the path the editor is about to open wins.
+          if (cancelled || learnedPathRef.current) return;
+          setAnswer({ path: filePath, owned: docsRowOwnedByQueuedWrite(pending, key) });
         })
         .catch(() => undefined);
     };
@@ -43,7 +49,16 @@ function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: s
       unsubscribe();
     };
   }, [filePath, username]);
-  return answer?.path === filePath ? answer.owned : undefined;
+  const learn = useCallback(
+    async (path: string) => {
+      if (!username) return;
+      const pending = await readDocsPendingWrites(username);
+      learnedPathRef.current = path;
+      setAnswer({ path, owned: docsRowOwnedByQueuedWrite(pending, docsSourceKey(path)) });
+    },
+    [username],
+  );
+  return { owned: answer?.path === filePath ? answer.owned : undefined, learn };
 }
 
 /**
@@ -89,19 +104,27 @@ export function useDocsEditorPathFollow({
     }, []),
   );
 
+  const { owned: ownedByQueuedWrite, learn: learnQueuedOwner } = useQueuedWriteOwnsPath(
+    editorUsername,
+    filePath,
+  );
+
   useEffect(() => {
     if (!editorUsername || !filePath) return;
     return subscribeDocsPathMoved(editorUsername, (from, to) => {
       const next = docsPathAfterMove(filePath, from, to);
       if (!next) return;
       setFollowPending(true);
-      onFollow(`/${next}`);
+      const target = `/${next}`;
+      // A failed read follows anyway; the new path then holds until a read answers.
+      void learnQueuedOwner(target)
+        .catch(() => undefined)
+        .finally(() => onFollow(target));
     });
-  }, [editorUsername, filePath, onFollow]);
+  }, [editorUsername, filePath, learnQueuedOwner, onFollow]);
 
   useEffect(() => setFollowPending(false), [filePath]);
 
-  const ownedByQueuedWrite = useQueuedWriteOwnsPath(editorUsername, filePath);
   return {
     holdServerSave:
       Boolean(editorUsername) &&

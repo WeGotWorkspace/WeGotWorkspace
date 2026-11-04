@@ -148,6 +148,26 @@ describe("useDocsEditorPathFollow", () => {
     expect(result.current.holdServerSave).toBe(true);
   });
 
+  it("knows on the first render of a followed path whether a queued write owns it", async () => {
+    for (const owned of [false, true]) {
+      state.owned = owned ? new Set(["users/alice/New.md"]) : new Set();
+      let path = "/users/alice/Plan.md";
+      const onFollow = vi.fn((next: string) => {
+        path = next;
+      });
+      const { result, rerender } = renderHook(() =>
+        useDocsEditorPathFollow({ username: "alice", filePath: path, onFollow }),
+      );
+      await settleQueueRead();
+
+      act(() => publishDocsPathMoved("alice", "/users/alice/Plan.md", "/users/alice/New.md"));
+      await waitFor(() => expect(onFollow).toHaveBeenCalledWith("/users/alice/New.md"));
+      // The first render on the new path, before its own queue read has run.
+      rerender();
+      expect(result.current.holdServerSave).toBe(owned);
+    }
+  });
+
   it("holds nothing on the Docs home", () => {
     state.online = false;
     const { result } = render(null);
