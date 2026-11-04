@@ -268,7 +268,10 @@ test.describe("Docs offline sync (live app)", () => {
       timeout: 30_000,
     });
     await expect(page.getByRole("button", { name: "Keep mine" })).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(encodeURIComponent(apiPath.replace(/^\/+/, ""))));
+    // Same document: still the path link, or its id link once back online (#1751).
+    await expect(page).toHaveURL(
+      new RegExp(`(${encodeURIComponent(apiPath.replace(/^\/+/, ""))}|[?&]id=fn-[0-9a-f]{32})`),
+    );
   });
 
   test("stale navigator.onLine: blocked API/probe then restore triggers sync", async ({ page }) => {

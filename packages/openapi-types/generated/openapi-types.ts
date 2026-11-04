@@ -2419,6 +2419,8 @@ export interface paths {
             parameters: {
                 query: {
                     path: string;
+                    /** @description FileNode id of the document the client opened (#1751). When that file is no longer at `path` (renamed or moved elsewhere, or another file took the path) the save is refused with 404 and nothing is written. Without it a save may create the file. */
+                    node?: string;
                 };
                 header?: {
                     /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. A yjs write that sends neither this header nor `If-None-Match` is refused with 428 when a sidecar already exists. */
@@ -2442,6 +2444,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Malformed body or `node` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description The caller can read the document but may not edit it, or is a share-link guest */
                 403: {
                     headers: {
@@ -2451,7 +2462,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
+                /** @description Unknown path, a path the caller may not read (the answer is the same for both), or the file named by `node` is no longer at `path` */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -8422,6 +8433,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Locate a file by FileNode id or path
+         * @description Returns the FileNode id and current path of a file the caller may read. Pass `id` (FileNode id `fn-` + 32 hex) to find where a file lives now, or `path` to learn its stable id. `id` wins when both are set. A directory, a file in product trash, or a missing file is 404. Signed-in users only; public share guests keep using paths.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    id?: string;
+                    path?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File location */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriveFileNodeLocationDataResponse"];
+                    };
+                };
+                /** @description Missing or malformed id or path */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description A share-link guest */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No such file, a file the caller may not read, a directory, or a file in trash. The answer is the same for all of them. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12289,6 +12363,15 @@ export interface components {
          * @enum {string}
          */
         PushScope: "/" | "/admin" | "/calendar" | "/contacts" | "/docs" | "/drive" | "/meet" | "/notes" | "/settings" | "/tasks";
+        DriveFileNodeLocation: {
+            /** @description FileNode id (`fn-` + 32 hex). Stable across rename and move. */
+            id: string;
+            /** @description Current virtual drive path, with a leading slash. */
+            path: string;
+        };
+        DriveFileNodeLocationDataResponse: {
+            data: components["schemas"]["DriveFileNodeLocation"];
+        };
     };
     responses: {
         /** @description Invalid request */

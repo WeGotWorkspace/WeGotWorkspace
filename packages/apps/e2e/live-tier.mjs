@@ -23,6 +23,7 @@ export const liveTierSpecs = [
   "docs-home-browse",
   "docs-inbound-sync",
   "docs-offline-sync",
+  "docs-open-by-id",
   "docs-page-break-two-tabs",
   "drive-file-node-push",
   "drive-first-sync",

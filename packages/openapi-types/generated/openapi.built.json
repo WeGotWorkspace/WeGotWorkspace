@@ -11664,6 +11664,36 @@
                     "/tasks"
                 ],
                 "description": "Web manifest id of a WeGotWorkspace app. A notification maps to the app whose scope holds its navigate path; one that opens / maps by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet."
+            },
+            "DriveFileNodeLocation": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "path"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "FileNode id (`fn-` + 32 hex). Stable across rename and move."
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Current virtual drive path, with a leading slash."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "DriveFileNodeLocationDataResponse": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/DriveFileNodeLocation"
+                    }
+                },
+                "additionalProperties": false
             }
         },
         "responses": {
@@ -13681,6 +13711,16 @@
                         }
                     },
                     {
+                        "name": "node",
+                        "in": "query",
+                        "required": false,
+                        "description": "FileNode id of the document the client opened (#1751). When that file is no longer at `path` (renamed or moved elsewhere, or another file took the path) the save is refused with 404 and nothing is written. Without it a save may create the file.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^fn-[0-9a-f]{32}$"
+                        }
+                    },
+                    {
                         "name": "If-None-Match",
                         "in": "header",
                         "required": false,
@@ -13711,6 +13751,16 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Malformed body or `node`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "403": {
                         "description": "The caller can read the document but may not edit it, or is a share-link guest",
                         "content": {
@@ -13722,7 +13772,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+                        "description": "Unknown path, a path the caller may not read (the answer is the same for both), or the file named by `node` is no longer at `path`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20840,6 +20890,61 @@
                         }
                     }
                 }
+            }
+        },
+        "/files/node": {
+            "get": {
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Locate a file by FileNode id or path",
+                "description": "Returns the FileNode id and current path of a file the caller may read. Pass `id` (FileNode id `fn-` + 32 hex) to find where a file lives now, or `path` to learn its stable id. `id` wins when both are set. A directory, a file in product trash, or a missing file is 404. Signed-in users only; public share guests keep using paths.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^fn-[0-9a-f]{32}$"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File location",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DriveFileNodeLocationDataResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or malformed id or path"
+                    },
+                    "403": {
+                        "description": "A share-link guest"
+                    },
+                    "404": {
+                        "description": "No such file, a file the caller may not read, a directory, or a file in trash. The answer is the same for all of them."
+                    }
+                },
+                "x-wgw-access": "user"
             }
         }
     }

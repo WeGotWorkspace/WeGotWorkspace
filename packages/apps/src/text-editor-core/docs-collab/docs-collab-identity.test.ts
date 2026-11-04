@@ -8,6 +8,7 @@ import {
   readCachedDriveNodeId,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { recordDocsNodePath } from "@/lib/offline/docs/docs-node-paths";
 import { createHybridDocsDriveOperations } from "@/lib/offline/docs/docs-hybrid-operations";
 import { rememberOfflineDriveUsername } from "@/lib/offline/offline-session";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
@@ -260,6 +261,19 @@ describe("docs collab identity database", () => {
     expect(docsCollabIndexedDbKey(room)).toBe("note-uid-unchanged:v2");
     expect(docsCollabIndexedDbKey(room, "v2")).toBe("note-uid-unchanged:v2");
     expect(migrateCollabPersistence).toBeTypeOf("function");
+  });
+
+  it("prefers Docs' own id record over a stale Drive row, and a route id over both", async () => {
+    const path = "/users/ada/replaced.md";
+    await upsertDriveEntry(username, entry(path, "fn-old"));
+    await recordDocsNodePath(username, "fn-new", path);
+
+    const byPath = await resolveDocsCollabDatabase(path);
+    expect(byPath.name).toBe(docsCollabIndexedDbKey("fn-new", "v3"));
+
+    const byRoute = await resolveDocsCollabDatabase(path, "fn-route");
+    expect(byRoute.name).toBe(docsCollabIndexedDbKey("fn-route", "v3"));
+    expect(byRoute.nodeId).toBe("fn-route");
   });
 
   it("falls back to the path key when the id is unknown and stays editable", async () => {

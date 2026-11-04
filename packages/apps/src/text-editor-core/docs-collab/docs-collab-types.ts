@@ -51,6 +51,8 @@ export type DocsCollabUrls = {
   documentUrl: string;
   yjsUrl: string;
   room?: string;
+  /** The FileNode the route opened; it picks the local database over any path lookup. */
+  nodeId?: string;
   authToken?: string;
   authTokenUrl?: string;
   authUser?: string;
@@ -69,8 +71,10 @@ export type DocsCollabUrls = {
   /**
    * The server answered 404: the document was deleted, or this account lost read
    * access. Retrying the save stops. The local copy stays.
+   * A host that resolves `true` found the document elsewhere and moves the
+   * editor there, so no "document gone" notice is shown.
    */
-  onDocumentGone?: () => void;
+  onDocumentGone?: () => void | Promise<boolean>;
   /**
    * The server answered 409 `note_archived` (#1535). Retrying stops and the
    * save is no longer pending: archive wins over the unsaved edit.

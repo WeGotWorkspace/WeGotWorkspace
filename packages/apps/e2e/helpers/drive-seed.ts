@@ -28,3 +28,26 @@ export async function putDriveFile(
     throw new Error(`Seed ${apiPath} failed (${response.status}): ${await response.text()}`);
   }
 }
+
+/** Rename or move a drive file over WebDAV `MOVE`, as another client would. */
+export async function moveDriveFile(fromApiPath: string, toApiPath: string): Promise<void> {
+  const davUrl = (apiPath: string) =>
+    `${API}/files/${apiPath
+      .replace(/^\/+/, "")
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/")}`;
+  const response = await fetch(davUrl(fromApiPath), {
+    method: "MOVE",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString("base64")}`,
+      Destination: davUrl(toApiPath),
+      Overwrite: "F",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Move ${fromApiPath} → ${toApiPath} failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { saveDocument } from "@/text-editor-core/docs-collab/docs-collab-server-io";
-import { buildDocsCollabUrls } from "./docs-collab-urls";
+import { buildDocsCollabUrls, buildDocsEditorUrls } from "./docs-collab-urls";
 
 const LONG_NAME = "a".repeat(250 - "users/alice/docs/".length - ".md".length);
 
@@ -26,7 +26,30 @@ function decodeFileRoomId(roomId: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+describe("buildDocsEditorUrls", () => {
+  it("carries the route node id so the editor opens that id's database", () => {
+    const id = `fn-${"b".repeat(32)}`;
+    const urls = buildDocsEditorUrls("/users/alice/plan.md", id);
+    expect(urls.nodeId).toBe(id);
+    expect(urls.room).toBe("users/alice/plan.md");
+    expect(buildDocsEditorUrls("/users/alice/plan.md").nodeId).toBeUndefined();
+  });
+});
+
 describe("buildDocsCollabUrls", () => {
+  it("names the opened FileNode on the save URL only", () => {
+    const id = `fn-${"a".repeat(32)}`;
+    const urls = buildDocsCollabUrls("/users/alice/plan.md", id);
+    expect(new URL(urls.documentUrl, "http://localhost").searchParams.get("node")).toBe(id);
+    expect(new URL(urls.yjsUrl, "http://localhost").searchParams.get("node")).toBeNull();
+    expect(
+      new URL(
+        buildDocsCollabUrls("/users/alice/plan.md").documentUrl,
+        "http://localhost",
+      ).searchParams.has("node"),
+    ).toBe(false);
+  });
+
   it.each(PATHS)("strips the leading slash for %s", (_label, filePath, room) => {
     expect(buildDocsCollabUrls(filePath).room).toBe(room);
   });

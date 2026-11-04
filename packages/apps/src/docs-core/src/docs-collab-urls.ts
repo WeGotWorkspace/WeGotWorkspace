@@ -4,6 +4,7 @@ import { encodeFileRoomId } from "@/lib/rtc/room-id";
 export type DocsCollabUrls = {
   /** Canonical collab room: the drive path without its leading slash. */
   room: string;
+  nodeId?: string;
   roomId: string;
   signalUrl: string;
   collabApiBaseUrl: string;
@@ -16,19 +17,32 @@ export type DocsCollabUrls = {
  * Collab endpoints for a drive path. Accents, parentheses and `&` have to survive
  * both the `/rooms/{roomId}` segment (base64url of the UTF-8 path) and the
  * `?path=` query, so neither is interpolated raw.
+ *
+ * `nodeId` is the FileNode the editor opened. Saves name it, so a save to the
+ * old path after a rename elsewhere is refused instead of making a copy (#1751).
  */
-export function buildDocsCollabUrls(filePath: string): DocsCollabUrls {
+/** The urls the editor joins with; carries the route's node id so the database matches the saved file. */
+export function buildDocsEditorUrls(filePath: string, nodeId?: string) {
+  const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
+    buildDocsCollabUrls(filePath, nodeId);
+  return { room, nodeId, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl };
+}
+
+export function buildDocsCollabUrls(filePath: string, nodeId?: string): DocsCollabUrls {
   const baseUrl = wgwApiBaseUrl();
   const room = filePath.replace(/^\/+/, "");
   const roomId = encodeFileRoomId(room);
   const pathQuery = encodeURIComponent(room);
   return {
     room,
+    nodeId,
     roomId,
     signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,
     collabApiBaseUrl: `${baseUrl}/rooms`,
     collabRtcUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/configuration`,
-    documentUrl: `${baseUrl}/files/collaboration?path=${pathQuery}`,
+    documentUrl: `${baseUrl}/files/collaboration?path=${pathQuery}${
+      nodeId ? `&node=${encodeURIComponent(nodeId)}` : ""
+    }`,
     yjsUrl: `${baseUrl}/files/collaboration?path=${pathQuery}&format=yjs`,
   };
 }
