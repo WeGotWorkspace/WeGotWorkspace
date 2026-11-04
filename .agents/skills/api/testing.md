@@ -33,7 +33,7 @@ DB tests run on SQLite by default and on MySQL via `WGW_TEST_DRIVER=mysql`. CI s
 |------|---------|---------|-------|
 | SQLite full | every PR / push (`api-quality`) | `composer done-gate` | entire suite on SQLite |
 | MySQL parity subset | every PR / push (`api-mysql`) | `composer test:mysql:parity` | `MySQLParity` testsuite (~525 tests) on MySQL |
-| MySQL full | `main` push + nightly cron (`ci-mysql-full.yml`) | `composer test:mysql` | entire suite on MySQL |
+| MySQL full | `main` push + nightly cron (`ci-mysql-full.yml`) | `composer test:mysql:shard` (3 shards) | entire suite on MySQL |
 
 `MySQLParity` is a dedicated `<testsuite>` in its own config `phpunit-mysql-parity.xml` (class-level `#[Group]` does **not** propagate to `WgwDatabaseTestCase` subclasses in PHPUnit 11, so a testsuite — not a group — is the source of truth; a separate config keeps the overlapping selection out of the default `phpunit.xml` runs, which would otherwise emit "file already added to another suite" warnings). It captures every `WgwDatabaseTestCase` descendant plus `WgwSchemaParityTest` and the installer MySQL install test. New DB-backed feature tests under `tests/Feature` are included automatically; DB-backed tests added elsewhere (e.g. `tests/Unit`) must be added to the `MySQLParity` testsuite, and its `<php>` env block must mirror `phpunit.xml`. Never narrow the SQLite gate or drop full MySQL coverage on main/nightly.
 

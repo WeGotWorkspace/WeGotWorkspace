@@ -16,6 +16,7 @@ import {
 } from "@/ui/alert-dialog";
 import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
+import { ShareLinkLevelRow, shareLinkLevel } from "@/share-ui/share-link-level-row";
 import { shareLabels } from "@/share-ui/share-labels";
 import {
   buildPublicShareUrl,
@@ -32,6 +33,8 @@ type ShareLinkSectionProps = {
   atPath: DriveShareAtPath;
   mutations: ShareMutations;
   disabled?: boolean;
+  /** A folder link may let visitors add files (#1715); a file link stays view-only. */
+  isFolder?: boolean;
 };
 
 type ConfirmAction =
@@ -56,8 +59,15 @@ const confirmDialogCopy: Record<ConfirmAction, { title: string; description: str
   },
 };
 
-export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareLinkSectionProps) {
+export function ShareLinkSection({
+  atPath,
+  mutations,
+  disabled = false,
+  isFolder = false,
+}: ShareLinkSectionProps) {
   const directPublic = findDirectPublicShare(atPath);
+  const level = shareLinkLevel(directPublic?.defaultAccess);
+  const levelBusy = Boolean(mutations.busyKey?.startsWith("public-access-"));
   const enabled = Boolean(directPublic);
   const shareRecord = directPublic ? findShareRecord(atPath, directPublic.shareId) : undefined;
   const token = shareRecord?.publicToken ?? null;
@@ -153,7 +163,13 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
     <Card
       titleIcon={<Globe2 className="size-4" />}
       title={shareLabels.publicSectionTitle}
-      description={enabled ? shareLabels.publicEnabledHint : shareLabels.publicDisabledHint}
+      description={
+        !enabled
+          ? shareLabels.publicDisabledHint
+          : isFolder && level === "edit"
+            ? shareLabels.publicEnabledAddFilesHint
+            : shareLabels.publicEnabledHint
+      }
       action={
         <span className="share-dialog__switch-touch">
           <Switch
@@ -203,6 +219,14 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               onClick={() => setConfirmAction("regenerate-link")}
             />
           </div>
+
+          {isFolder ? (
+            <ShareLinkLevelRow
+              value={level}
+              disabled={disabled || levelBusy}
+              onChange={(next) => void mutations.updatePublicAccess(next)}
+            />
+          ) : null}
 
           <div className="share-dialog__password-row">
             <Lock className="share-dialog__password-icon" aria-hidden />

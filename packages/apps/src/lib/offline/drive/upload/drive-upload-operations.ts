@@ -53,10 +53,17 @@ async function describeConflicts(username: string, batchId: string) {
   return describeDriveUploadBatchConflicts(username, batchId, versionCheck);
 }
 
+/** How a queue's batch dialog asks. */
+type DriveUploadQueueOptions = {
+  /** False for a share-link guest: it has no offline Drive to keep a copy in (#1715). */
+  keepOfflineQuestion: boolean;
+};
+
 async function describeBatchQuestions(
   username: string,
   batchId: string,
   spaceCheck: DriveUploadSpaceCheck | undefined,
+  options: DriveUploadQueueOptions,
 ): Promise<DriveUploadBatchQuestions> {
   const conflicts = await describeConflicts(username, batchId).catch((error: unknown) => {
     console.warn("[drive-upload] conflict check failed", error);
@@ -65,12 +72,12 @@ async function describeBatchQuestions(
   return {
     space: spaceCheck && spaceCheck.status === "does_not_fit" ? spaceCheck : null,
     conflicts: conflicts && conflicts.conflicts.length > 0 ? conflicts : null,
-    keepOffline: await describeDriveUploadBatchKeepOffline(username, batchId).catch(
-      (error: unknown) => {
-        console.warn("[drive-upload] keep-offline check failed", error);
-        return null;
-      },
-    ),
+    keepOffline: options.keepOfflineQuestion
+      ? await describeDriveUploadBatchKeepOffline(username, batchId).catch((error: unknown) => {
+          console.warn("[drive-upload] keep-offline check failed", error);
+          return null;
+        })
+      : null,
   };
 }
 
@@ -79,7 +86,7 @@ async function describeBatchQuestions(
  * reloaded while its dialog was open). This tab takes them over and asks
  * again; a batch another open tab still asks about is left to that tab.
  */
-async function claimUnansweredBatches(username: string) {
+async function claimUnansweredBatches(username: string, options: DriveUploadQueueOptions) {
   const { batches, items } = await readDriveUploadQueueRows(username);
   const claimed: { batchId: string; itemIds: string[]; questions: DriveUploadBatchQuestions }[] =
     [];
@@ -90,7 +97,7 @@ async function claimUnansweredBatches(username: string) {
     claimed.push({
       batchId: batch.id,
       itemIds: items.filter((item) => item.batchId === batch.id).map((item) => item.id),
-      questions: await describeBatchQuestions(username, batch.id, batch.spaceCheck),
+      questions: await describeBatchQuestions(username, batch.id, batch.spaceCheck, options),
     });
   }
   return claimed;
@@ -127,10 +134,19 @@ async function enqueueWithSpaceCheck(username: string, input: { cwd: string; fil
  * questions. Only a batch with questions is shown as waiting for an answer;
  * one without is released by the caller right away, so it never flashes.
  */
-async function enqueueAndDescribe(username: string, input: { cwd: string; files: File[] }) {
+async function enqueueAndDescribe(
+  username: string,
+  input: { cwd: string; files: File[] },
+  options: DriveUploadQueueOptions,
+) {
   const stored = await enqueueWithSpaceCheck(username, input);
   startAskingUploadBatch(stored.batchId);
-  const questions = await describeBatchQuestions(username, stored.batchId, stored.spaceCheck);
+  const questions = await describeBatchQuestions(
+    username,
+    stored.batchId,
+    stored.spaceCheck,
+    options,
+  );
   if (hasDriveUploadBatchQuestions(questions)) notifyDriveUploadQueueChanged(username);
   return { ...stored, questions };
 }
@@ -139,15 +155,19 @@ async function enqueueAndDescribe(username: string, input: { cwd: string; files:
  * The upload queue operations of signed-in Drive (#1501, #1519, #1520), the
  * matching part of `DriveAPIOperations` (checked where they are spread in).
  */
-export function driveUploadQueueOperations(username: string) {
+export function driveUploadQueueOperations(
+  username: string,
+  options: DriveUploadQueueOptions = { keepOfflineQuestion: true },
+) {
   return {
-    enqueueUploads: (input: { cwd: string; files: File[] }) => enqueueAndDescribe(username, input),
+    enqueueUploads: (input: { cwd: string; files: File[] }) =>
+      enqueueAndDescribe(username, input, options),
     releaseUploadBatch: async (batchId: string, answers: DriveUploadBatchReleaseAnswers) => {
       stopAskingUploadBatch(batchId);
       await releaseDriveUploadBatch(username, batchId, answers);
     },
     describeUploadConflicts: (batchId: string) => describeConflicts(username, batchId),
-    claimUnansweredUploadBatches: () => claimUnansweredBatches(username),
+    claimUnansweredUploadBatches: () => claimUnansweredBatches(username, options),
     cancelUploadBatch: async (batchId: string) => {
       stopAskingUploadBatch(batchId);
       await cancelDriveUploadBatch(username, batchId);

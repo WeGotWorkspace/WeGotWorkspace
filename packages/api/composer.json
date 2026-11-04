@@ -49,6 +49,7 @@
         "format:check": "vendor/bin/pint --test",
         "test": "phpunit -c phpunit.xml",
         "test:mysql": "WGW_TEST_DRIVER=mysql phpunit -c phpunit.xml",
+        "test:mysql:shard": "WGW_TEST_DRIVER=mysql php scripts/phpunit-shard.php --config=phpunit.xml",
         "test:mysql:parity": "WGW_TEST_DRIVER=mysql phpunit -c phpunit-mysql-parity.xml",
         "test:mysql:parity:shard": "WGW_TEST_DRIVER=mysql php scripts/phpunit-shard.php --config=phpunit-mysql-parity.xml",
         "test:architecture": "phpunit -c phpunit.xml --testsuite Architecture",

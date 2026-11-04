@@ -14,7 +14,7 @@
     never touch the wgw connection are excluded.
 
     The FULL MySQL suite (all tests) still runs on main + nightly — see
-    .github/workflows/ci-mysql-full.yml (composer test:mysql).
+    .github/workflows/ci-mysql-full.yml (composer test:mysql:shard, 3 shards).
 
     The <php> block below MUST mirror phpunit.xml.
 -->
