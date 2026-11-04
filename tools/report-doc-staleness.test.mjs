@@ -237,3 +237,15 @@ test("a live plan that would need a rewrite holds the candidate back", () => {
   ]);
   assert.deepEqual([...livePlanReferences(candidates, livePlans)], [["10-old", [".agents/specs/20-live/plan.md"]]]);
 });
+
+test("a candidate held back by code keeps its plan live for the others", () => {
+  const candidates = [
+    { path: ".agents/specs/10-old", name: "10-old", lastCommit: "2025-08-01" },
+    { path: ".agents/specs/11-held", name: "11-held", lastCommit: "2025-08-01" },
+  ];
+  const livePlans = new Map([[".agents/specs/11-held/plan.md", "See [old](../10-old/plan.md).\n"]]);
+  assert.deepEqual(
+    [...livePlanReferences(candidates, livePlans, new Set(["11-held"]))],
+    [["10-old", [".agents/specs/11-held/plan.md"]]],
+  );
+});
