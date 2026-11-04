@@ -66,10 +66,13 @@ Copied from #1715: guest folder create, rename, move, and delete (#1712); guest 
 
 ### Client
 
-- `createGuestWgwDriveOperations` gains `uploadFiles`, `checkUploadReady`, and the upload queue operations when the share allows upload; otherwise they keep refusing with `GUEST_UPLOAD_UNAVAILABLE`.
-- The queue runs with the guest session's username (`share:{sessionKey}`) as its account. JMAP calls go through the guest Session (`apiUrl` / `uploadUrl` from the Session, as for members). The guest's shared root is resolved from `FileNode/query {isTopLevel: true}`, which returns only the share root.
-- The Drive upload gate (`uploadEnabled`, from PR #1707) changes from `role !== "guest"` to "member, or guest whose share allows upload" (the share root's `mayEditContent` from `/files/children`).
-- The share dialog's public link section gets a level choice for folders: "Can view" and "Can add files" (`edit`). File links show no choice.
+- A guest gets the upload queue only when the server opens its upload Session: `driveJmapSession()` succeeds (an edit link to a folder) and the account id has the guest shape. A view link answers 403, so the guest Drive keeps refusing uploads with `GUEST_UPLOAD_UNAVAILABLE`. Nothing is guessed from cached share state.
+- The queue runs under the guest's JMAP account id (`guest-…`), not under the username the guest Drive shell shows (that is the share owner's, and the owner may use the same browser). Queue rows, blobs, and placeholders live in that account's offline database. JMAP calls go through the guest Session (`apiUrl` / `uploadUrl`), as for members.
+- `driveJmapSession` remembers which sign-in its cached Session belongs to (member, or guest plus share path), so a tab that turns from member into guest never reuses the member Session. For a guest, the share root path (`wgwGuestSharePath`) maps to the account's only top-level node (`FileNode/query {isTopLevel: true}`); the shared-with-me list (members only) is never called.
+- `JmapClient.connect` accepts a Session that offers FileNode only.
+- The Drive inbound FileNode sync never runs for a guest: the guest shell's username is the owner's, whose offline data this device must not touch.
+- The Drive upload gate (`isDriveUploadEnabled`) is "member, or a guest whose Drive has the upload queue". A guest who may upload gets an "Upload files" sidebar button and the drop target, but no New folder and no new Markdown file (#1712). The sidebar footer says "Can view and add files" instead of "View only".
+- The share dialog's public link card gets a "People with the link" choice for folders: "Can view" and "Can add files" (`edit`), with a matching hint. File links (and every Docs share dialog) show no choice. A legacy `full` row shows as "Can add files".
 
 ## Relation to #1716
 

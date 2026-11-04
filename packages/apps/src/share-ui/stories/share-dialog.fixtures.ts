@@ -111,7 +111,9 @@ export function createShareStoryOperations(
           entry.share.id === shareId ? { ...entry, share: updated } : entry,
         ),
         publicShares: currentAtPath.publicShares.map((entry) =>
-          entry.shareId === shareId ? { ...entry, hasPassword: updated.hasPassword } : entry,
+          entry.shareId === shareId
+            ? { ...entry, hasPassword: updated.hasPassword, defaultAccess: updated.defaultAccess }
+            : entry,
         ),
       };
       return updated;

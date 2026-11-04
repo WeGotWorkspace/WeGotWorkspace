@@ -43,12 +43,23 @@ function mutationsStub(overrides: Partial<ShareMutations> = {}): ShareMutations 
   } as ShareMutations;
 }
 
-function renderLinkSection(atPath: DriveShareAtPath, mutations: ShareMutations = mutationsStub()) {
+function renderLinkSection(
+  atPath: DriveShareAtPath,
+  mutations: ShareMutations = mutationsStub(),
+  isFolder = false,
+) {
   return render(
     <TooltipProvider>
-      <ShareLinkSection atPath={atPath} mutations={mutations} />
+      <ShareLinkSection atPath={atPath} mutations={mutations} isFolder={isFolder} />
     </TooltipProvider>,
   );
+}
+
+function atPathWithLevel(defaultAccess: "view" | "edit" | "full"): DriveShareAtPath {
+  return {
+    ...mockDriveShareAtPath,
+    publicShares: mockDriveShareAtPath.publicShares.map((entry) => ({ ...entry, defaultAccess })),
+  };
 }
 
 function passwordInput(): HTMLInputElement {
@@ -120,5 +131,40 @@ describe("ShareLinkSection password show-once", () => {
     expect(updatePublicPassword).toHaveBeenCalledWith(true, "");
     expect(passwordInput().value).toBe("cloud-sage-918");
     expect(screen.getByRole("button", { name: shareLabels.copyPassword })).toBeTruthy();
+  });
+});
+
+describe("ShareLinkSection link level (#1715)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("offers Can view / Can add files on a folder link", () => {
+    renderLinkSection(atPathWithLevel("view"), mutationsStub(), true);
+
+    const level = screen.getByRole("combobox", { name: shareLabels.publicLevelLabel });
+    expect(level.textContent).toContain(shareLabels.publicLevelView);
+    expect(screen.getByText(shareLabels.publicEnabledHint)).toBeTruthy();
+  });
+
+  it("shows an edit link as Can add files and says so in the hint", () => {
+    renderLinkSection(atPathWithLevel("edit"), mutationsStub(), true);
+
+    const level = screen.getByRole("combobox", { name: shareLabels.publicLevelLabel });
+    expect(level.textContent).toContain(shareLabels.publicLevelAddFiles);
+    expect(screen.getByText(shareLabels.publicEnabledAddFilesHint)).toBeTruthy();
+  });
+
+  it("treats a legacy full link as Can add files", () => {
+    renderLinkSection(atPathWithLevel("full"), mutationsStub(), true);
+
+    const level = screen.getByRole("combobox", { name: shareLabels.publicLevelLabel });
+    expect(level.textContent).toContain(shareLabels.publicLevelAddFiles);
+  });
+
+  it("offers no level on a file link", () => {
+    renderLinkSection(atPathWithLevel("view"), mutationsStub(), false);
+
+    expect(screen.queryByRole("combobox", { name: shareLabels.publicLevelLabel })).toBeNull();
   });
 });

@@ -35,6 +35,23 @@ describe("JmapClient", () => {
     await expect(client.connect()).rejects.toThrow(JmapRequestError);
   });
 
+  it("accepts a FileNode-only session (a share-link guest's upload Session, #1715)", async () => {
+    const server = new MockJmapServer();
+    const fileNodeOnly: typeof server.fetch = async (input, init) => {
+      if (input === server.sessionUrl) {
+        const session = server.session();
+        session.capabilities = {
+          "urn:ietf:params:jmap:core": session.capabilities["urn:ietf:params:jmap:core"],
+          "urn:ietf:params:jmap:filenode": {},
+        };
+        return new Response(JSON.stringify(session), { status: 200 });
+      }
+      return server.fetch(input, init);
+    };
+    const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: fileNodeOnly });
+    await expect(client.connect()).resolves.toBeTruthy();
+  });
+
   it("throws typed method errors from error invocations", async () => {
     const server = new MockJmapServer();
     const client = makeClient(server);

@@ -3,6 +3,7 @@ import {
   CALENDARS_CAPABILITY,
   CONTACTS_CAPABILITY,
   CORE_CAPABILITY,
+  FILENODE_CAPABILITY,
   NOTES_CAPABILITY,
   type JmapId,
   type JmapInvocation,
@@ -49,7 +50,7 @@ export class JmapClient {
     this.#fetch = options.fetch ?? ((input, init) => fetch(input, init));
   }
 
-  /** Fetches (or re-fetches) the session resource and validates calendar capability. */
+  /** Fetches (or re-fetches) the session resource and checks it offers a data type this client speaks. */
   async connect(): Promise<JmapSession> {
     const response = await this.#fetch(this.#options.sessionUrl, {
       method: "GET",
@@ -67,9 +68,11 @@ export class JmapClient {
     const hasCalendars = CALENDARS_CAPABILITY in session.capabilities;
     const hasContacts = CONTACTS_CAPABILITY in session.capabilities;
     const hasNotes = NOTES_CAPABILITY in session.capabilities;
-    if (!hasCalendars && !hasContacts && !hasNotes) {
+    // A share-link guest's upload Session has FileNode only (#1715).
+    const hasFileNodes = FILENODE_CAPABILITY in session.capabilities;
+    if (!hasCalendars && !hasContacts && !hasNotes && !hasFileNodes) {
       throw new JmapRequestError(
-        `Server does not advertise ${CALENDARS_CAPABILITY}, ${CONTACTS_CAPABILITY}, or ${NOTES_CAPABILITY}`,
+        `Server does not advertise ${CALENDARS_CAPABILITY}, ${CONTACTS_CAPABILITY}, ${NOTES_CAPABILITY}, or ${FILENODE_CAPABILITY}`,
       );
     }
     this.#session = session;

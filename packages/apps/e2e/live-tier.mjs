@@ -28,6 +28,7 @@ export const liveTierSpecs = [
   "drive-first-sync",
   "drive-folder-download",
   "drive-guest-large-download",
+  "drive-guest-upload",
   "drive-inbound-many-files",
   "drive-upload-batch-dialog",
   "drive-upload-errors",
