@@ -36,6 +36,8 @@ import {
   useDriveUploadQueueModel,
 } from "@/drive-core/src/drive-upload-queue";
 import { DriveUploadAnnouncer } from "@/drive-core/src/drive-upload-announcer";
+import { useDriveUploadChooseFolder } from "@/drive-core/src/drive-upload-choose-folder";
+import { useDriveUploadRetryAfterSignIn } from "@/drive-core/src/use-drive-upload-recovery";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
@@ -144,7 +146,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const uploadModel = useDriveUploadQueueModel(uploadQueue, operations, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const uploadModel = useDriveUploadQueueModel(
+    uploadQueue,
+    operations,
+    showError,
+    chooseUploadFolder.choose,
+  );
+  useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
@@ -213,7 +222,11 @@ export function DriveWorkspace({
   const uploadCounts = useMemo(
     () =>
       uploadModel
-        ? { count: uploadModel.snapshot.items.length, failed: uploadModel.failedCount }
+        ? {
+            count: uploadModel.snapshot.items.length,
+            failed: uploadModel.failedCount,
+            paused: uploadModel.snapshot.state === "paused_server_full",
+          }
         : null,
     [uploadModel],
   );
@@ -421,6 +434,7 @@ export function DriveWorkspace({
               }}
             />
           ) : null}
+          {chooseUploadFolder.dialog}
           <DriveUploadAnnouncer snapshot={uploadQueue} />
         </DriveUploadQueueProvider>
       </DriveFolderDownloadContext.Provider>

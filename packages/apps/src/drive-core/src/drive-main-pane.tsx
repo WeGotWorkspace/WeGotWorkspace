@@ -7,7 +7,6 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
-import { UploadProgress } from "@/upload-progress/src/upload-progress";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { startDriveItemDownload } from "@/drive-core/src/drive-item-download";
@@ -96,7 +95,6 @@ export function DriveMainPane({
     active,
     selectionBar,
     searchQuery,
-    uploadProgress,
     folderListingPending,
     folderListingError,
     retryFolderListing,
@@ -304,17 +302,6 @@ export function DriveMainPane({
           )}
         </div>
       </div>
-
-      {uploadProgress ? (
-        <div className="drive-floating-upload">
-          <UploadProgress
-            label={uploadProgress.label}
-            percent={uploadProgress.percent}
-            detail={uploadProgress.detail}
-            done={uploadProgress.done}
-          />
-        </div>
-      ) : null}
 
       {uploadQueue && dismissUploadNotices ? (
         <DriveUploadNotices

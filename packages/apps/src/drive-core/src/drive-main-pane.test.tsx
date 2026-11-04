@@ -57,7 +57,6 @@ function renderPane({
     retryFolderListing,
     listLoading: false,
     uploadEnabled: false,
-    uploadProgress: null,
     selectionBar: null,
   } as unknown as Parameters<typeof DriveMainPane>[0]["controller"];
   render(<DriveMainPane controller={controller} />);

@@ -43,7 +43,6 @@ Chrome weight stays `font-semibold` (600). Do not add `font-ui`.
 | `meet-workspace.css`, chat, drive-detail, content-label, collab cards | `text-[11px]`                           | `text-xs`                                   |
 | `admin-panes.css`                                                     | `text-[10px]` uppercase                 | `text-xs` + caption role                    |
 | `mail-workspace.css` attachments label                                | `0.6875rem`                             | `text-xs`                                   |
-| `upload-progress.css`                                                 | `0.6875rem`                             | `text-xs`                                   |
 | `tag.css`                                                             | `--tag-font-size: 0.8125rem`            | `text-sm`                                   |
 | `path-breadcrumb.css`                                                 | `0.9375rem` / `1.0625rem` / `0.8125rem` | nearest `text-sm` / `text-base` / `text-xs` |
 | `contacts-workspace.css`                                              | `0.9375rem` / `1.75rem`                 | nearest steps                               |

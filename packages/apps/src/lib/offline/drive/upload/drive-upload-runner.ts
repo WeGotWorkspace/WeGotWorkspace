@@ -1,3 +1,4 @@
+import { startDriveUploadLeaveWarning } from "@/lib/offline/drive/upload/drive-upload-leave-warning";
 import {
   clearDriveUploadBytesSent,
   reportDriveUploadBytesSent,
@@ -387,6 +388,7 @@ function eitherSignal(a: AbortSignal, b: AbortSignal): AbortSignal {
 }
 
 const uploaders = new Map<string, DriveUploader>();
+const leaveWarnings = new Map<string, () => void>();
 
 /** Start (or wake) this tab's uploader for the account. Safe to call repeatedly. */
 export function startDriveUploader(
@@ -398,6 +400,7 @@ export function startDriveUploader(
   if (!uploader) {
     uploader = new DriveUploader(username, options);
     uploaders.set(key, uploader);
+    leaveWarnings.set(key, startDriveUploadLeaveWarning(username));
   }
   uploader.wake();
   return uploader;
@@ -406,5 +409,7 @@ export function startDriveUploader(
 export async function stopAllDriveUploaders(): Promise<void> {
   const stopping = [...uploaders.values()].map((uploader) => uploader.stop());
   uploaders.clear();
+  for (const stopWarning of leaveWarnings.values()) stopWarning();
+  leaveWarnings.clear();
   await Promise.all(stopping);
 }

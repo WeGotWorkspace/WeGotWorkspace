@@ -33,6 +33,7 @@ export const liveTierSpecs = [
   "drive-upload-batch-dialog",
   "drive-upload-errors",
   "drive-upload-queue",
+  "drive-upload-recovery",
   "meet-adhoc-two-users",
   "meet-guest-chat",
   "meet-guest-video-mirror",

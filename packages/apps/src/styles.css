@@ -245,6 +245,8 @@
   --scheme-sidebar-surface: var(--color-we-got-soft);
   --scheme-ink: var(--color-we-got-dark);
   --scheme-on-ink: #ffffff;
+  /* Text on the error red, both themes (dark on-ink #111 is only 3.4:1 there). */
+  --scheme-on-danger: #ffffff;
   /* Docs letter sheet. */
   --scheme-letter: oklch(1 0 0);
 }

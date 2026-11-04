@@ -78,12 +78,9 @@ export const driveLabels = {
     `Uploaded ${done} of ${fileCount(total)}. See Uploads for the rest.`,
   uploadFailedToast: (count: number) =>
     `${count === 1 ? "1 file" : `${count} files`} could not be uploaded. See Uploads.`,
-  /** Floating bar of a direct upload (no queue: mock, guest). */
+  /** Toast when a direct upload starts (no queue: mock, guest). */
   uploadingFile: (fileName: string) => `Uploading ${fileName}`,
   uploadingFiles: (count: number) => `Uploading ${fileCount(count)}`,
-  uploadComplete: "Upload complete",
-  uploadProgressDetail: (bytesDone: string, bytesTotal: string, done: number, total: number) =>
-    `${bytesDone} / ${bytesTotal} · ${done}/${fileCount(total)}`,
   /** Screen reader announcements (polite live region). */
   uploadAnnounceStarted: (fileName: string) => `Uploading ${fileName}`,
   uploadAnnounceProgress: (fileName: string, percent: number) =>

@@ -22,8 +22,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --upload-progress-active-fill: var(--workspace-accent);
-  --upload-progress-done-fill: var(--color-emerald);
   --file-drop-overlay-card-color: var(--workspace-accent);
   --drive-detail-tag-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --drive-detail-tag-fg: var(--workspace-accent);
@@ -62,50 +60,9 @@
   background-color: var(--workspace-surface);
 }
 
-.drive-workspace .drive-floating-upload {
-  position: fixed;
-  left: 1rem;
-  right: 1rem;
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  z-index: 36;
-  max-width: 28rem;
-  margin-inline: auto;
-}
-
-.drive-workspace .drive-main-pane:has(.drive-selection-bar) .drive-floating-upload {
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.75rem);
-}
-
-.drive-workspace .drive-floating-upload .upload-progress {
-  margin: 0;
-  border-bottom: none;
-  border-radius: var(--control-radius);
-  padding: 0.875rem 1rem;
-  background-color: var(--workspace-surface);
-  box-shadow:
-    0 4px 24px color-mix(in oklch, var(--workspace-foreground) 16%, transparent),
-    0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
-}
-
 @media (max-width: 767px) {
   .drive-workspace .drive-main-pane:has(.drive-selection-bar) .drive-main-pane__scroll {
     padding-bottom: 5.5rem;
-  }
-
-  .drive-workspace .drive-main-pane:has(.drive-floating-upload) .drive-main-pane__scroll {
-    padding-bottom: 6.5rem;
-  }
-
-  .drive-workspace
-    .drive-main-pane:has(.drive-floating-upload):has(.drive-selection-bar)
-    .drive-main-pane__scroll {
-    padding-bottom: 10.5rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .drive-workspace .drive-main-pane:has(.drive-floating-upload) .drive-main-pane__scroll {
-    padding-bottom: 6.5rem;
   }
 }
 
