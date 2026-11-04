@@ -16,11 +16,10 @@ import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-se
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
-import { DocsPageSetupMenu } from "@/docs-core/src/docs-page-setup-menu";
+import { DocsFooterTools } from "@/docs-core/src/docs-footer-tools";
 import { IconButton } from "@/button/src/button";
-import { Switch } from "@/ui/switch";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
-import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
+import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { DocsWorkspaceModals } from "@/docs-core/src/docs-workspace-modals";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -189,14 +188,22 @@ function DocsWorkspaceShell({
           pageSetup={pageSetup.pageSetup}
           onEditorReady={setEditor}
           footerStart={
-            <DocsFooterTools
-              controller={controller}
-              editor={editor}
-              viewSource={viewSource}
-              guestView={guestView}
-              pageSetup={pageSetup}
-              onToggleViewSource={() => setViewSource((on) => !on)}
-            />
+            controller.hasFile ? (
+              <DocsFooterTools
+                pageSetup={{ ...pageSetup, labels: controller.labels }}
+                source={{
+                  checked: viewSource,
+                  disabled: !editor,
+                  label: controller.labels.sourceSwitch,
+                  ariaLabel: viewSource
+                    ? controller.labels.hideSource
+                    : guestView
+                      ? controller.labels.viewSourceReadOnly
+                      : controller.labels.viewSource,
+                  onToggle: () => setViewSource((on) => !on),
+                }}
+              />
+            ) : null
           }
         />
       }
@@ -312,41 +319,5 @@ function DocsMainHeader({
         ) : null
       }
     />
-  );
-}
-
-/** Footer start: page size and source view sit with the document, not the title row. */
-function DocsFooterTools({
-  controller,
-  editor,
-  viewSource,
-  guestView,
-  pageSetup,
-  onToggleViewSource,
-}: {
-  controller: DocsController;
-  editor: Editor | null;
-  viewSource: boolean;
-  guestView: boolean;
-  pageSetup: DocsPageSetupState;
-  onToggleViewSource: () => void;
-}) {
-  if (!controller.hasFile) return null;
-  const showSourceLabel = guestView
-    ? controller.labels.viewSourceReadOnly
-    : controller.labels.viewSource;
-  return (
-    <div className="docs-workspace__footer-tools">
-      <DocsPageSetupMenu {...pageSetup} labels={controller.labels} />
-      <label className="docs-workspace__source-switch" title={showSourceLabel}>
-        <Switch
-          checked={viewSource}
-          onCheckedChange={onToggleViewSource}
-          disabled={!editor}
-          aria-label={viewSource ? controller.labels.hideSource : showSourceLabel}
-        />
-        <span>{controller.labels.sourceSwitch}</span>
-      </label>
-    </div>
   );
 }

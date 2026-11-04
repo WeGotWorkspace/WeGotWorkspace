@@ -22,6 +22,8 @@ export type DocsHeaderActionsProps = {
   actions: DocsHeaderAction[];
   menuLabel?: string;
   leading?: ReactNode;
+  /** Last in the row at every width (mode switch, e.g. Suggesting). */
+  trailing?: ReactNode;
   /** Page setup: first button in the wide-screen row, a submenu in the phone overflow menu. */
   pageSetup?: DocsPageSetupMenuProps;
   className?: string;
@@ -93,10 +95,11 @@ export function DocsHeaderActions({
   actions,
   menuLabel = "More actions",
   leading,
+  trailing,
   pageSetup,
   className,
 }: DocsHeaderActionsProps) {
-  if (actions.length === 0 && !leading) return null;
+  if (actions.length === 0 && !leading && !trailing) return null;
 
   return (
     <div className={cn("docs-workspace__header-actions", className)}>
@@ -129,6 +132,7 @@ export function DocsHeaderActions({
           </div>
         </>
       ) : null}
+      {trailing ? <div className="docs-workspace__header-actions-trailing">{trailing}</div> : null}
     </div>
   );
 }

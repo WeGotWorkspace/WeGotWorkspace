@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { MessageSquare } from "lucide-react";
-import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
@@ -58,7 +57,8 @@ import { notifyDocumentGone } from "./docs-collab-utils";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
-import { docsCollabHeaderActions } from "./docs-collab-header-actions";
+import { docsCollabHeaderActions, docsCollabSourceToggle } from "./docs-collab-header-actions";
+import { DocsFooterTools } from "@/docs-core/src/docs-footer-tools";
 import { mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 import { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
 import { DocsCollabStatusIndicator } from "./docs-collab-status-indicator";
@@ -589,6 +589,17 @@ function DocsCollabWorkspaceInner({
     editor.commands.setEditMode();
   }, [editor, viewSource]);
 
+  const headerActionsInput = {
+    labels,
+    editor,
+    viewSource,
+    onToggleViewSource: () => setViewSource((on) => !on),
+    sourceLockedByCollab,
+    reviewPanelOpen,
+    share:
+      showShare && onShare ? { label: shareLabel ?? labels.share, onClick: onShare } : undefined,
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <>
@@ -623,48 +634,43 @@ function DocsCollabWorkspaceInner({
               title={resolvedDocumentTitle}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
-              titleTrailing={
-                <IconButton
-                  label={
-                    viewSource
-                      ? "Review is disabled in source view"
-                      : reviewPanelOpen
-                        ? labels.reviewToggleHide
-                        : reviewItemCount > 0
-                          ? `${labels.reviewToggleShow} (${reviewItemCount})`
-                          : labels.reviewToggleShow
-                  }
-                  icon={<MessageSquare />}
-                  size="md"
-                  variant="outline"
-                  active={reviewPanelOpen}
-                  disabled={viewSource}
-                  className="docs-workspace__review-toggle"
-                  data-count={reviewItemCount > 0 ? reviewItemCount : undefined}
-                  aria-pressed={reviewPanelOpen}
-                  onClick={handleToggleReview}
-                />
-              }
               actions={
                 <DocsHeaderActions
-                  pageSetup={{ ...pageSetup, labels }}
                   leading={
+                    collabSession ? (
+                      <DocsCollabPresenceChrome
+                        className="docs-workspace__header-presence"
+                        localUser={{ displayName: collabSession.user.name }}
+                        peers={presencePeers}
+                        connectingPeers={connectingPeers}
+                        warningPeers={warningPeers}
+                      />
+                    ) : undefined
+                  }
+                  trailing={
                     permissions.editable ? (
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
                     ) : undefined
                   }
-                  actions={docsCollabHeaderActions({
-                    labels,
-                    editor,
-                    viewSource,
-                    onToggleViewSource: () => setViewSource((on) => !on),
-                    sourceLockedByCollab,
-                    reviewPanelOpen,
-                    share:
-                      showShare && onShare
-                        ? { label: shareLabel ?? labels.share, onClick: onShare }
-                        : undefined,
-                  })}
+                  actions={[
+                    ...docsCollabHeaderActions(headerActionsInput),
+                    {
+                      id: "review",
+                      label: viewSource
+                        ? "Review is disabled in source view"
+                        : reviewPanelOpen
+                          ? labels.reviewToggleHide
+                          : reviewItemCount > 0
+                            ? `${labels.reviewToggleShow} (${reviewItemCount})`
+                            : labels.reviewToggleShow,
+                      icon: <MessageSquare />,
+                      active: reviewPanelOpen,
+                      disabled: viewSource,
+                      className: "docs-workspace__review-toggle",
+                      "data-count": reviewItemCount > 0 ? reviewItemCount : undefined,
+                      onClick: handleToggleReview,
+                    },
+                  ]}
                 />
               }
             />
@@ -712,16 +718,10 @@ function DocsCollabWorkspaceInner({
               <WorkspaceDetailFooter
                 className="docs-workspace__stats-footer"
                 start={
-                  collabSession ? (
-                    <DocsCollabPresenceChrome
-                      localUser={{
-                        displayName: collabSession.user.name,
-                      }}
-                      peers={presencePeers}
-                      connectingPeers={connectingPeers}
-                      warningPeers={warningPeers}
-                    />
-                  ) : undefined
+                  <DocsFooterTools
+                    pageSetup={{ ...pageSetup, labels }}
+                    source={docsCollabSourceToggle(headerActionsInput)}
+                  />
                 }
                 tags={
                   <>
