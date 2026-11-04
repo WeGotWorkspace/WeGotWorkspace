@@ -2,7 +2,7 @@
 //
 // The row menu has three groups: Open first, Delete last, the other actions
 // in alphabetical order between them. A folder's download is labelled
-// Download like a file's; the browser saves one zip the server streams.
+// "Download as zip"; the browser saves one zip the server streams.
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
