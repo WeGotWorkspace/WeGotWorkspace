@@ -107,10 +107,10 @@ The service worker reads the engine from its user agent (`push-delivery.ts`): `C
 
 ## Active news on the client
 
-The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) while push is down. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`); the toast (steps 4–6) and `check-now` are not yet. In this design:
+While push is down, the inbox polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) and re-fetches on a mesh `check-now`. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`), and `check-now` too (#1662); the toast (steps 4–6) is not yet. In this design:
 
 1. The server exposes a per-user `Notification` state in the event source. The `notifications` table has no change marker today, and `supersede` rewrites rows in place. So it gets one: an `updated_at` (or a per-principal sequence) that create, supersede, clear and read all touch.
-2. When the `Notification` state changes, one tab fetches the inbox once and fans the new rows out to every tab. That tab is the one that holds the push stream (`hub.leading`), which is visible whenever any tab is, so a paused background tab never delays the bell. The others skip the fetch and show the rows it shares on a `crossTabTopic` (`inbox-fan-out.ts`), tagged with the pushed state they answer. A tab confirms the push only once it has those rows: the stream tab after its fetch, another tab after the share for that state arrives. A failed fetch is shared as failed and not confirmed, and a tab that hears nothing within 10 s (`INBOX_SHARE_WAIT_MS`: the stream tab closed mid-fetch) does not confirm either, so the server sends the change again. A poll or visibility refresh that starts meanwhile does not cancel the push fetch. `Notification` states are the server's per-user inbox counter, so a share for an older state that arrives late is ignored (the stream tab claims its state before it fetches, so this also holds while its GET runs), and rows for a newer state also answer a wait for an older one. `notify-hint` becomes a generic mesh "check now".
+2. When the `Notification` state changes, one tab fetches the inbox once and fans the new rows out to every tab. That tab is the one that holds the push stream (`hub.leading`), which is visible whenever any tab is, so a paused background tab never delays the bell. The others skip the fetch and show the rows it shares on a `crossTabTopic` (`inbox-fan-out.ts`), tagged with the pushed state they answer. A tab confirms the push only once it has those rows: the stream tab after its fetch, another tab after the share for that state arrives. A failed fetch is shared as failed and not confirmed, and a tab that hears nothing within 10 s (`INBOX_SHARE_WAIT_MS`: the stream tab closed mid-fetch) does not confirm either, so the server sends the change again. A poll or visibility refresh that starts meanwhile does not cancel the push fetch. `Notification` states are the server's per-user inbox counter, so a share for an older state that arrives late is ignored (the stream tab claims its state before it fetches, so this also holds while its GET runs), and rows for a newer state also answer a wait for an older one.
 3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely. A refresh sends every row not yet acked in one `POST /notifications/local-ack` (#1826), and the browser remembers the acked ids in `localStorage` (`wgw.offline.notifications.localAcked`, newest 500, wiped on sign-out; `local-acked-store.ts`), so a reload or another tab sends nothing for them, also a tab that takes over the event stream from the tab that acked them (#1834). Tabs flush one at a time under the Web Lock `wgw-notifications/local-ack` and re-read that list once they hold it, so two visible tabs never send the same rows. A failed batch is remembered for nothing and retried on the next refresh.
 4. **One tab shows the toast:** the most recently focused visible tab, elected through the hub. Every tab reports its focus, visibility and current route to the hub. If no tab is visible, no tab shows anything itself and nothing is acked: the Web Push service worker is the only OS notification path (#1605).
 5. The toast uses the existing toast primitive (`ui/sonner.tsx`, `AppToastCallout`) in a notification style. It names the app and the actor, acts on click through the item's `navigate`, and marks the row read on that click. It is `role="status"`, never takes focus, and follows reduced motion.
@@ -129,7 +129,14 @@ Time from a notifying write (a DM to the user, sent over REST) to the row in the
 
 Before #1668 the bell waited for its 15 s poll. Now the spread follows the stream's 3 s `retry`: the worst case is about one retry plus one request. The spec's numbers barely vary because it sends at the same point in that cycle. Each DM caused one inbox `GET` and one `local-ack` for the whole browser.
 
-**With `check-now`:** not measured. The mesh `check-now` (#1662) is not built yet; measure again when it lands.
+**With `check-now` (#1662):** `e2e/mesh-check-now.spec.ts`, two users in two browsers, the writer writing from their open tab at a random point in the retry cycle, four runs of three rounds, same local setup:
+
+| Write → shown to the other user | Mesh up | Mesh blocked (push alone) |
+|---------------------------------|---------|---------------------------|
+| DM → row in the bell | 0.12–0.23 s, median 0.14 s | 0.84–3.5 s, median 1.9 s |
+| Task on a shared list → in their open Tasks tab | 0.22–0.42 s, median 0.32 s | 0.21–2.9 s, median 1.4 s |
+
+With the mesh up, a change no longer waits for the next `retry`.
 
 **Local-ack grace:** stays at 20 s. While push is connected a visible tab acks within about 3 s, so 5–10 s would do. But while push is down (rate-limited, `501`, offline) the ack waits for the 15 s poll, and the server cannot tell which case a browser is in, so a shorter grace would send phone pushes for news already on screen. Revisit once push uptime is measured: either poll faster while push is down, or give a shorter grace only to a user whose browser made an event-source request in the last few seconds.
 
@@ -138,10 +145,9 @@ Before #1668 the bell waited for its 15 s poll. Now the spread follows the strea
 The principal presence mesh already carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`):
 
 - `channel-message`, `-patch`, `-destroy`, `channel-reaction`: the message itself, checked on arrival (sender is the author, sender is an ACL member), and confirmed by the server poll.
-- `channel-changed`: no content; the receiver re-fetches the channel from REST.
-- `notify-hint`: no content; the receiver re-fetches the inbox.
+- `check-now`: no content; the receiver's push hub asks the server now (#1662). It replaced `channel-changed` and `notify-hint`.
 
-This design generalises the content-free part:
+How `check-now` works:
 
 - After any successful write, the writer sends `{ "v": 1, "kind": "check-now" }` to a targeted set of users, never to the whole workspace:
   - **active news:** a mutation that notifies other users returns the notified usernames, and the writer sends to exactly them (taken over from #1607);
@@ -150,7 +156,8 @@ This design generalises the content-free part:
   When the writer does not know, it sends nothing; the event source catches the change within its retry. The message has no content, but it does reveal that this user just wrote, so it never goes to peers without a shared collection.
 - Writes that come from an active collab room (Yjs saves of a note or doc being edited together) send no check-now: the Yjs channel has delivered the content, and the event source catches the metadata within its retry.
 - The receiving hub reconnects its event source at once. It allows at most one early reconnect per 2 s, so even a storm of writes costs each browser at most 30 extra requests a minute.
-- `channel-changed` and `notify-hint` become `check-now`. The chat preview kinds stay as they are, under rule 9.
+- Built (#1662): the writer's audience comes from `X-Wgw-Notified` (active news: the server names the users this request notified) and from the cached `shareWith` user grants of the collection (silent news, `lib/offline/core/collection-check-now.ts`). Group grants, group collections and Drive have no member list on the client, so they nudge nobody. Meet chat keeps its own channel targets (`meet-mesh-sot.ts`).
+- The chat preview kinds stay as they are, under rule 9.
 
 ### Rule 9: when a transport may carry content
 

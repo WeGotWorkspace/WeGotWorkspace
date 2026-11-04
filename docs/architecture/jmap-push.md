@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; the notification inbox uses it since #1668; the other apps and the mesh `check-now` still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; the notification inbox uses it since #1668; the mesh `check-now` since #1662; the other apps still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 
@@ -178,7 +178,7 @@ Behaviour:
 
 - `types=*`, `closeafter=state`, `ping=0`. The URL comes from the session's `eventSourceUrl`; a guest share session has no push.
 - After the response ends, reconnect after the server's `retry` (visible), or after 30 s when every tab is hidden.
-- A wake reconnects early, but never sooner than 2 s after the previous request.
+- A wake reconnects at once, also right after a regular reconnect. Two early reconnects start at least 2 s apart (`wakeGapMs`).
 - Offline: stop. Online again: reconnect at once. The reconnect flush already syncs the apps.
 - `401`: refresh the token through the shared auth path, then reconnect.
 - `429` or repeated failures: wait `Retry-After` (or back off from `retry`, doubling up to 60 s), and report push as down so the app polls return to their normal interval. A single failure does not count as down; the second in a row does.
@@ -216,13 +216,13 @@ The existing polls stay as the fallback. They slow down while push is connected 
 
 ## Mesh "check now"
 
-After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` over the presence data channel, the same mesh that already carries chat acceleration and `notify-hint` (`meet-core/src/meet-mesh-sot.ts`). A peer's `MeshCheckNowTransport` calls `sink.wake()`, and the hub reconnects at once instead of waiting for `retry`. That brings in-suite changes to about 1 s on shared hosting. `channel-changed` and `notify-hint` become `check-now`. Targets, throttles and the preview rule are in [notifications.md](notifications.md#the-mesh-as-messenger).
+After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` over the presence data channel, the same mesh that carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`). A peer's `MeshCheckNowTransport` calls `sink.wake()`, and the hub reconnects at once instead of waiting for `retry`. That brings in-suite changes to about 1 s on shared hosting. It replaced `channel-changed` and `notify-hint`. Targets, throttles and the preview rule are in [notifications.md](notifications.md#the-mesh-as-messenger).
 
 - It goes only to a targeted set: for active news, the usernames the notifying mutation returns (from #1607); otherwise the peers who share at least one collection with the writer. When the writer does not know, it sends nothing; the event source catches the change within `retry`.
 - Writes that come from an active collab room (Yjs saves) send no check-now. The Yjs channel has delivered the content already, and the event source catches the metadata within its retry.
 - The writer throttles (about one per 2 s); the receiver allows at most one early reconnect per 2 s.
 - Without a mesh (WebRTC blocked, room full at 32 peers), nothing changes: the event source still delivers within `retry`.
-- It needs no server change and no app change.
+- The server names who a request notified in the `X-Wgw-Notified` response header (`NotifiedRecipients`); the client sends `check-now` to exactly them (`lib/api/wgw/notified-header.ts`). The app write paths add the cached `shareWith` users of the collection.
 
 ## Security
 
