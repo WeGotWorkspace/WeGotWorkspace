@@ -52,32 +52,32 @@ Later: per-event preferences (inbox on or off, push on or off), already designed
                                        every tab is hidden
 ```
 
-| | Silent | Active |
-|-|--------|--------|
-| What creates it | any write; the data's own change counter moves | a write or a schedule that `NotifyListener` allow-lists (`meet.started`, `docs.thread_activity`, `calendar.invite`, …) |
-| Stored as | nothing new: the per-user JMAP `state` is derived | a `notifications` row per recipient |
-| Who receives it | everyone whose state changes, i.e. who can read the collection | recipients chosen by the producer, never the actor |
-| Push type | `Note`, `Notebook`, `CalendarEvent`, `Calendar`, `ContactCard`, `AddressBook`, `FileNode`, `ChatMessage`, `ChatChannel`, `Task`, `TaskList` | `Notification` (new) |
-| Client action | the app runs its `/changes` sync if it shows that type | fetch the inbox, local-ack, popover, toast or OS notification |
+|                 | Silent                                                                                                                                      | Active                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| What creates it | any write; the data's own change counter moves                                                                                              | a write or a schedule that `NotifyListener` allow-lists (`meet.started`, `docs.thread_activity`, `calendar.invite`, …) |
+| Stored as       | nothing new: the per-user JMAP `state` is derived                                                                                           | a `notifications` row per recipient                                                                                    |
+| Who receives it | everyone whose state changes, i.e. who can read the collection                                                                              | recipients chosen by the producer, never the actor                                                                     |
+| Push type       | `Note`, `Notebook`, `CalendarEvent`, `Calendar`, `ContactCard`, `AddressBook`, `FileNode`, `ChatMessage`, `ChatChannel`, `Task`, `TaskList` | `Notification` (new)                                                                                                   |
+| Client action   | the app runs its `/changes` sync if it shows that type                                                                                      | fetch the inbox, local-ack, popover, toast or OS notification                                                          |
 
 Silent news needs no curation: every change to data the user can read moves their state. Active news is curated: only allow-listed `domain.action` pairs create inbox rows, as today.
 
 ## Delivery by situation
 
-| Situation | Silent | Active |
-|-----------|--------|--------|
-| A tab is visible | the app syncs | popover + in-app toast in one tab |
-| App running, every tab hidden | the app syncs (slower cadence) | popover; nothing is acked, so the OS notification arrives as Web Push (#1605) |
-| No tab and no PWA running | nothing; the app syncs when opened | Web Push (VAPID): urgent news at once, other news after the local-ack grace |
+| Situation                     | Silent                             | Active                                                                        |
+| ----------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
+| A tab is visible              | the app syncs                      | popover + in-app toast in one tab                                             |
+| App running, every tab hidden | the app syncs (slower cadence)     | popover; nothing is acked, so the OS notification arrives as Web Push (#1605) |
+| No tab and no PWA running     | nothing; the app syncs when opened | Web Push (VAPID): urgent news at once, other news after the local-ack grace   |
 
 Latency on shared hosting:
 
-| Path | Typical |
-|------|---------|
-| Writer is a WGW tab sharing a collection with you, mesh linked | about 1 s (mesh "check now" → event source → fetch) |
-| Writer is outside the mesh or outside the suite | within the event-source retry, about 3 s |
-| Web Push, urgent news (meeting started), app closed | a few seconds: sent right after the write's response |
-| Web Push, other active news, app closed | 20–80 s (20 s local-ack grace, then up to one 60 s cron tick) |
+| Path                                                           | Typical                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| Writer is a WGW tab sharing a collection with you, mesh linked | about 1 s (mesh "check now" → event source → fetch)           |
+| Writer is outside the mesh or outside the suite                | within the event-source retry, about 3 s                      |
+| Web Push, urgent news (meeting started), app closed            | a few seconds: sent right after the write's response          |
+| Web Push, other active news, app closed                        | 20–80 s (20 s local-ack grace, then up to one 60 s cron tick) |
 
 ### Urgent active news
 
@@ -96,36 +96,37 @@ That push reaches every device of the recipient, also one where the app is open.
 
 #### May the service worker skip the OS notification? (spike, #1670)
 
-| Browser | Skips with a visible window | Why (source) |
-|---------|-----------------------------|--------------|
-| Chromium (Chrome, Edge), desktop and Android | **Yes** | `PushMessagingNotificationManager::DidCountVisibleNotifications`: "Sites with a currently visible tab don't need to show notifications." It checks the active tab of every window (desktop, installed app windows included) or tab model (Android) for a visible page of the origin. Without one, a silent push spends site-engagement budget and Chrome eventually shows "This site has been updated in the background". |
-| Firefox desktop | **Yes** | `PushService._updateQuota` / `PushRecord.getLastVisit`: while a tab of the origin is open, every push resets the quota (16), so a silent push costs nothing. |
-| Firefox for Android | **No** | GeckoView reads the last visit from history instead of the open tabs, so each silent push uses up quota until the next visit; at zero Firefox drops the subscription. |
-| Safari and every iOS browser (WebKit) | **No** | No silent push. Since iOS 18.4 / macOS 15.5 the declarative payload (`web_push: 8030`) is shown as the fallback when the worker shows nothing; before that, a few pushes without a notification revoke the subscription. |
+| Browser                                      | Skips with a visible window | Why (source)                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chromium (Chrome, Edge), desktop and Android | **Yes**                     | `PushMessagingNotificationManager::DidCountVisibleNotifications`: "Sites with a currently visible tab don't need to show notifications." It checks the active tab of every window (desktop, installed app windows included) or tab model (Android) for a visible page of the origin. Without one, a silent push spends site-engagement budget and Chrome eventually shows "This site has been updated in the background". |
+| Firefox desktop                              | **Yes**                     | `PushService._updateQuota` / `PushRecord.getLastVisit`: while a tab of the origin is open, every push resets the quota (16), so a silent push costs nothing.                                                                                                                                                                                                                                                              |
+| Firefox for Android                          | **No**                      | GeckoView reads the last visit from history instead of the open tabs, so each silent push uses up quota until the next visit; at zero Firefox drops the subscription.                                                                                                                                                                                                                                                     |
+| Safari and every iOS browser (WebKit)        | **No**                      | No silent push. Since iOS 18.4 / macOS 15.5 the declarative payload (`web_push: 8030`) is shown as the fallback when the worker shows nothing; before that, a few pushes without a notification revoke the subscription.                                                                                                                                                                                                  |
 
 The service worker reads the engine from its user agent (`push-delivery.ts`): `Chrome/`, `Chromium/` or `Edg/` → Chromium; `Firefox/` without `Android` → Firefox desktop; anything else shows the notification. A visible window means `WindowClient.visibilityState === "visible"`, which is the same page visibility Chromium checks. Chromium does not handle the declarative payload; if it ever does, re-check this table. Still to confirm on real devices: an installed Android app window (WebAPK) counts as a visible tab (push matrix #1608).
 
 ## Active news on the client
 
-The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) while push is down. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`); the toast (steps 4–6) and `check-now` are not yet. In this design:
+The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) while push is down. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`), and so is the toast, steps 4–6 (#1669, `notifications-core/src/use-notification-toasts.ts`); `check-now` is not yet. In this design:
 
 1. The server exposes a per-user `Notification` state in the event source. The `notifications` table has no change marker today, and `supersede` rewrites rows in place. So it gets one: an `updated_at` (or a per-principal sequence) that create, supersede, clear and read all touch.
 2. When the `Notification` state changes, one tab fetches the inbox once and fans the new rows out to every tab. That tab is the one that holds the push stream (`hub.leading`), which is visible whenever any tab is, so a paused background tab never delays the bell. The others skip the fetch and show the rows it shares on a `crossTabTopic` (`inbox-fan-out.ts`), tagged with the pushed state they answer. A tab confirms the push only once it has those rows: the stream tab after its fetch, another tab after the share for that state arrives. A failed fetch is shared as failed and not confirmed, and a tab that hears nothing within 10 s (`INBOX_SHARE_WAIT_MS`: the stream tab closed mid-fetch) does not confirm either, so the server sends the change again. A poll or visibility refresh that starts meanwhile does not cancel the push fetch. `Notification` states are the server's per-user inbox counter, so a share for an older state that arrives late is ignored (the stream tab claims its state before it fetches, so this also holds while its GET runs), and rows for a newer state also answer a wait for an older one. `notify-hint` becomes a generic mesh "check now".
 3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely. A refresh sends every row not yet acked in one `POST /notifications/local-ack` (#1826), and the browser remembers the acked ids in `localStorage` (`wgw.offline.notifications.localAcked`, newest 500, wiped on sign-out; `local-acked-store.ts`), so a reload or another tab sends nothing for them, also a tab that takes over the event stream from the tab that acked them (#1834). Tabs flush one at a time under the Web Lock `wgw-notifications/local-ack` and re-read that list once they hold it, so two visible tabs never send the same rows. A failed batch is remembered for nothing and retried on the next refresh.
 4. **One tab shows the toast:** the most recently focused visible tab, elected through the hub. Every tab reports its focus, visibility and current route to the hub. If no tab is visible, no tab shows anything itself and nothing is acked: the Web Push service worker is the only OS notification path (#1605).
+   Each tab's `tab` message on the hub's `crossTabTopic` carries the time of its last window focus and its route (path plus query, reported by the shell on every navigation). `hub.frontTab()` takes the tabs that hold a visible lock (so a crashed tab never wins) and picks the one focused last; ties go to the lowest tab id, so every tab elects the same one. A tab that sees a new unread row asks the hub: if it is in front it toasts the row, if another tab is in front it leaves the row to that tab, and if no tab is visible the row gets no toast, then or later. The decision is kept per browser in `localStorage` (`wgw.offline.notifications.toastDecided`, newest 500), so a row toasts at most once, also when the front tab moves or a slower tab fetches the row later. Rows already unread when the app loads never toast.
 5. The toast uses the existing toast primitive (`ui/sonner.tsx`, `AppToastCallout`) in a notification style. It names the app and the actor, acts on click through the item's `navigate`, and marks the row read on that click. It is `role="status"`, never takes focus, and follows reduced motion.
-6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change.
+6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change. "Points at" means the same path (DM peers compared case-insensitively) and every query parameter of `navigate` present on the route with the same value; `/calendar` matches the Calendar start screen, not a week view under `/calendar/…`.
 7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace.
 
 ### Measured (#1668)
 
 Time from a notifying write (a DM to the user, sent over REST) to the row in the bell, push only, on a local dev install (Vite dev server, PHP built-in server, Chromium):
 
-| Setup | DM sent → row shown |
-|-------|---------------------|
-| Two tabs, by hand, nine DMs | 0.2–2.7 s, median 1.3 s |
-| `e2e/notifications-inbox-push.spec.ts`, two tabs, five runs | 2.4 s; 2.9 s after the stream tab reloads |
-| Same spec, one run by the review loop on a CI runner | 2.6–3.0 s, the other tab within 30 ms of the stream tab |
+| Setup                                                       | DM sent → row shown                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| Two tabs, by hand, nine DMs                                 | 0.2–2.7 s, median 1.3 s                                 |
+| `e2e/notifications-inbox-push.spec.ts`, two tabs, five runs | 2.4 s; 2.9 s after the stream tab reloads               |
+| Same spec, one run by the review loop on a CI runner        | 2.6–3.0 s, the other tab within 30 ms of the stream tab |
 
 Before #1668 the bell waited for its 15 s poll. Now the spread follows the stream's 3 s `retry`: the worst case is about one retry plus one request. The spec's numbers barely vary because it sends at the same point in that cycle. Each DM caused one inbox `GET` and one `local-ack` for the whole browser.
 
@@ -148,6 +149,7 @@ This design generalises the content-free part:
   - **silent news:** the users it knows share the collection (`shareWith`, group members, channel roster).
 
   When the writer does not know, it sends nothing; the event source catches the change within its retry. The message has no content, but it does reveal that this user just wrote, so it never goes to peers without a shared collection.
+
 - Writes that come from an active collab room (Yjs saves of a note or doc being edited together) send no check-now: the Yjs channel has delivered the content, and the event source catches the metadata within its retry.
 - The receiving hub reconnects its event source at once. It allows at most one early reconnect per 2 s, so even a storm of writes costs each browser at most 30 extra requests a minute.
 - `channel-changed` and `notify-hint` become `check-now`. The chat preview kinds stay as they are, under rule 9.
@@ -172,14 +174,14 @@ Today only Meet chat qualifies. A new preview needs a line in this section first
 
 ## What changes compared with today
 
-| Today | With this design |
-|-------|------------------|
-| Notes, Contacts, Calendar poll every 10 s | push; the poll stays as a slow fallback |
-| Drive and Tasks never refresh while open | push |
-| Chat polls every 4 s next to its mesh acceleration | push plus mesh; the preview stays; the poll slows down |
-| Inbox polls every 15 s, plus `notify-hint` | push (`Notification` type) plus mesh `check-now` |
-| Active news while the app is open: popover only (OS notification when hidden) | popover + in-app toast in the visible tab; Web Push when every tab is hidden (#1605) |
-| Web Push when every client is closed: 20–80 s | urgent news within seconds; other news unchanged |
+| Today                                                                         | With this design                                                                             |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Notes, Contacts, Calendar poll every 10 s                                     | push; the poll stays as a slow fallback                                                      |
+| Drive and Tasks never refresh while open                                      | push                                                                                         |
+| Chat polls every 4 s next to its mesh acceleration                            | push plus mesh; the preview stays; the poll slows down                                       |
+| Inbox polls every 15 s, plus `notify-hint`                                    | push (`Notification` type) plus mesh `check-now`                                             |
+| Active news while the app is open: popover only (OS notification when hidden) | popover + in-app toast in the visible tab (#1669); Web Push when every tab is hidden (#1605) |
+| Web Push when every client is closed: 20–80 s                                 | urgent news within seconds; other news unchanged                                             |
 
 ## Phasing
 
