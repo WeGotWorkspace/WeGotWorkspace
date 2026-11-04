@@ -66,7 +66,7 @@ export function DriveMainPane({
     view,
     dropUploadActive,
     setDropUploadActive,
-    handleUpload,
+    handleUploadDrop,
     uploadEnabled,
     structureEnabled,
     breadcrumbs,
@@ -250,7 +250,7 @@ export function DriveMainPane({
         event.preventDefault();
         if (!uploadEnabled) return;
         setDropUploadActive(false);
-        handleUpload(event.dataTransfer.files);
+        handleUploadDrop(event.dataTransfer);
       }}
     >
       {dropUploadActive ? (

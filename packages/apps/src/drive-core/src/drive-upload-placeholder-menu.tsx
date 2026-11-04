@@ -11,17 +11,28 @@ const noop = () => {};
  * Menu of an upload placeholder: its own actions (*Retry*, *Remove*) first,
  * then the actions that need the file on the server, disabled with a reason.
  * *Download* works when `onDownload` is given: it saves this device's copy.
+ * A folder placeholder (#1620) has no *Download*, and *Open* works when
+ * `onOpen` is given: it lists the files queued inside.
  */
 export function driveUploadPlaceholderMenu(
   labels: DriveUILabels,
   ownActions: readonly ActionBarAction[] = [],
   onDownload?: () => void,
+  folder?: { onOpen?: () => void },
 ): DriveFileMenuAction[] {
+  const onOpen = folder?.onOpen;
   const serverActions = buildDriveFileActions(
     labels,
-    { isStarred: false, inTrash: false, canOpen: true, canDownload: true, canShare: true },
     {
-      onOpen: noop,
+      isStarred: false,
+      inTrash: false,
+      isFolder: folder !== undefined,
+      canOpen: true,
+      canDownload: folder === undefined,
+      canShare: true,
+    },
+    {
+      onOpen: onOpen ?? noop,
       onDownload: onDownload ?? noop,
       onStar: noop,
       onRename: noop,
@@ -32,7 +43,7 @@ export function driveUploadPlaceholderMenu(
   )
     .filter((action) => action.id && NEEDS_SERVER.has(action.id))
     .map((action) =>
-      action.id === "download" && onDownload
+      (action.id === "download" && onDownload) || (action.id === "open" && onOpen)
         ? action
         : {
             ...action,

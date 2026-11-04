@@ -47,7 +47,7 @@ function snapshot(
   state: DriveUploadQueueSnapshot["state"],
   items: DriveUploadItemView[] = [item({})],
 ): DriveUploadQueueSnapshot {
-  return { state, items, batches: [], hasItems: items.length > 0, totalBytes: 1 };
+  return { state, items, folders: [], batches: [], hasItems: items.length > 0, totalBytes: 1 };
 }
 
 function beforeUnload(): BeforeUnloadEvent {

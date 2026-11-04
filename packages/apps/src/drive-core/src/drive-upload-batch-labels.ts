@@ -25,6 +25,24 @@ export const driveUploadBatchLabels = {
     `This is the free space the server reported on ${when}. It may be out of date.`,
   spaceAddAnyway: "Add anyway",
 
+  /** Folder upload (#1620): the top-level folder's name is taken. */
+  foldersDot: "Folder name",
+  foldersTitle: (count: number) =>
+    count === 1 ? "A folder with this name already exists" : "Some folder names already exist",
+  foldersLead: (count: number) =>
+    count === 1
+      ? "This folder already has a folder with this name:"
+      : `This folder already has folders with these ${count} names:`,
+  foldersChoice: "What should happen to your folder?",
+  foldersKeepBoth: "Keep both",
+  foldersKeepBothDetail: (count: number, keptAs: string) =>
+    count === 1
+      ? `Your folder is added as ${keptAs}.`
+      : `Your folders are added with a number, like ${keptAs}.`,
+  foldersMerge: "Merge",
+  foldersMergeDetail:
+    "Your files go into the existing folder. If a file name is taken there, you choose what happens next.",
+
   conflictsDot: "Name conflicts",
   conflictsTitle: (count: number) =>
     count === 1 ? "A file with this name already exists" : "Some names already exist",

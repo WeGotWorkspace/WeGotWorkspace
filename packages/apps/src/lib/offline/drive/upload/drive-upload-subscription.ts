@@ -6,7 +6,12 @@ import {
   readDriveUploadQueueRows,
   type DriveUploadQueueRows,
 } from "@/lib/offline/drive/upload/drive-upload-store";
+import {
+  driveUploadSubtreeIds,
+  isCreatedUploadFolder,
+} from "@/lib/offline/drive/upload/drive-upload-folder-rows";
 import type {
+  OfflineDriveUploadItemRow,
   DriveUploadBatchStatus,
   DriveUploadItemError,
   DriveUploadItemStatus,
@@ -45,6 +50,37 @@ export type DriveUploadItemView = {
   error?: DriveUploadItemError;
 };
 
+/**
+ * A folder of a folder upload (#1620). `waiting`: not created yet;
+ * `creating`: the create is in flight; `created`: it exists and its items
+ * upload into it; `failed`: it could not be created (its items failed with
+ * it). The totals were stored when it was queued; `bytesDone` and
+ * `filesDone` count what is no longer in the queue, plus parts already sent.
+ */
+export type DriveUploadFolderView = {
+  id: string;
+  batchId: string;
+  /** Planned name, or the final name once created. */
+  name: string;
+  /** The folder's own name on the device. */
+  sourceName: string;
+  status: "waiting" | "creating" | "created" | "failed";
+  targetFolder: DriveUploadTargetFolder;
+  /** The folder item it sits in; unset at the top of the upload. */
+  inFolder?: string;
+  /** Cache path of the folder it sits in, when known here. */
+  folderPath?: string;
+  nodeId?: string;
+  subtreeBytes: number;
+  subtreeFiles: number;
+  bytesDone: number;
+  filesDone: number;
+  /** Files below it that failed. */
+  failedFiles: number;
+  canRetry: boolean;
+  error?: DriveUploadItemError;
+};
+
 export type DriveUploadBatchView = {
   id: string;
   status: DriveUploadBatchStatus;
@@ -56,7 +92,9 @@ export type DriveUploadBatchView = {
 
 export type DriveUploadQueueSnapshot = {
   state: DriveUploadQueueState;
+  /** Files only; the folders of a folder upload are in `folders`. */
   items: DriveUploadItemView[];
+  folders: DriveUploadFolderView[];
   batches: DriveUploadBatchView[];
   /** For the sign-out and leave warnings. */
   hasItems: boolean;
@@ -65,7 +103,7 @@ export type DriveUploadQueueSnapshot = {
 };
 
 export function emptyDriveUploadQueueSnapshot(): DriveUploadQueueSnapshot {
-  return { state: "idle", items: [], batches: [], hasItems: false, totalBytes: 0 };
+  return { state: "idle", items: [], folders: [], batches: [], hasItems: false, totalBytes: 0 };
 }
 
 export function buildDriveUploadQueueSnapshot(
@@ -73,7 +111,10 @@ export function buildDriveUploadQueueSnapshot(
   online: boolean,
 ): DriveUploadQueueSnapshot {
   const released = new Set(rows.batches.filter((b) => b.status === "released").map((b) => b.id));
-  const waiting = rows.items.some((item) => item.status !== "failed" && released.has(item.batchId));
+  const waiting = rows.items.some(
+    (item) =>
+      item.status !== "failed" && released.has(item.batchId) && !isCreatedUploadFolder(item),
+  );
   const state: DriveUploadQueueState = isDriveUploadQueuePausedServerFull(rows.items)
     ? "paused_server_full"
     : !waiting
@@ -83,24 +124,29 @@ export function buildDriveUploadQueueSnapshot(
         : "paused_offline";
   return {
     state,
-    items: rows.items.map((item) => ({
-      id: item.id,
-      batchId: item.batchId,
-      name: item.name,
-      targetFolder: item.targetFolder,
-      status: item.status,
-      bytesDone: item.bytesDone,
-      bytesTotal: item.size,
-      localCopy: item.localCopy,
-      createdAt: item.createdAt,
-      ...(rows.folderPaths?.has(item.id) ? { folderPath: rows.folderPaths.get(item.id) } : {}),
-      ...(item.phase ? { phase: item.phase } : {}),
-      ...(item.phase && item.assembledBytes !== undefined
-        ? { assembledBytes: item.assembledBytes }
-        : {}),
-      canRetry: canRetryDriveUpload(item),
-      ...(item.error ? { error: item.error } : {}),
-    })),
+    items: rows.items
+      .filter((item) => item.kind !== "folder")
+      .map((item) => ({
+        id: item.id,
+        batchId: item.batchId,
+        name: item.name,
+        targetFolder: item.targetFolder,
+        status: item.status,
+        bytesDone: item.bytesDone,
+        bytesTotal: item.size,
+        localCopy: item.localCopy,
+        createdAt: item.createdAt,
+        ...(rows.folderPaths?.has(item.id) ? { folderPath: rows.folderPaths.get(item.id) } : {}),
+        ...(item.phase ? { phase: item.phase } : {}),
+        ...(item.phase && item.assembledBytes !== undefined
+          ? { assembledBytes: item.assembledBytes }
+          : {}),
+        canRetry: canRetryDriveUpload(item),
+        ...(item.error ? { error: item.error } : {}),
+      })),
+    folders: rows.items
+      .filter((item) => item.kind === "folder")
+      .map((folder) => buildDriveUploadFolderView(folder, rows)),
     batches: rows.batches.map((batch) => ({
       id: batch.id,
       status: batch.status,
@@ -110,6 +156,41 @@ export function buildDriveUploadQueueSnapshot(
     })),
     hasItems: rows.items.length > 0,
     totalBytes: rows.items.reduce((sum, item) => sum + item.size, 0),
+  };
+}
+
+function folderStatus(folder: OfflineDriveUploadItemRow): DriveUploadFolderView["status"] {
+  if (isCreatedUploadFolder(folder)) return "created";
+  if (folder.status === "failed") return "failed";
+  return folder.status === "uploading" ? "creating" : "waiting";
+}
+
+function buildDriveUploadFolderView(
+  folder: OfflineDriveUploadItemRow,
+  rows: DriveUploadQueueRows,
+): DriveUploadFolderView {
+  const below = driveUploadSubtreeIds(rows.items, folder.id);
+  const files = rows.items.filter((item) => below.has(item.id) && item.kind !== "folder");
+  const subtreeBytes = folder.subtreeBytes ?? 0;
+  const subtreeFiles = folder.subtreeFiles ?? 0;
+  const leftBytes = files.reduce((sum, item) => sum + item.size - item.bytesDone, 0);
+  return {
+    id: folder.id,
+    batchId: folder.batchId,
+    name: folder.name,
+    sourceName: folder.sourceName ?? folder.name,
+    status: folderStatus(folder),
+    targetFolder: folder.targetFolder,
+    ...(folder.inFolder ? { inFolder: folder.inFolder } : {}),
+    ...(rows.folderPaths?.has(folder.id) ? { folderPath: rows.folderPaths.get(folder.id) } : {}),
+    ...(folder.createdNodeId ? { nodeId: folder.createdNodeId } : {}),
+    subtreeBytes,
+    subtreeFiles,
+    bytesDone: Math.max(0, subtreeBytes - leftBytes),
+    filesDone: Math.max(0, subtreeFiles - files.length),
+    failedFiles: files.filter((item) => item.status === "failed").length,
+    canRetry: canRetryDriveUpload(folder),
+    ...(folder.error ? { error: folder.error } : {}),
   };
 }
 

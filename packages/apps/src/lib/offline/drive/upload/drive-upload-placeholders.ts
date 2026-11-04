@@ -78,6 +78,33 @@ function placeholderRow(
   };
 }
 
+/**
+ * A folder item's placeholder: a `dir` row at the folder's real path, so it
+ * can be opened while the folder waits to be created. The placeholders of its
+ * items sit under that path.
+ */
+export function buildUploadFolderPlaceholderRow(
+  folderPath: string,
+  item: OfflineDriveUploadItemRow,
+): OfflineDriveEntryRow {
+  const parentPath = normalizeOfflinePath(folderPath).replace(/\/+$/, "");
+  const id = parentPath ? `${parentPath}/${item.name}` : item.name;
+  const entry = placeholderEntry(id, item, item.status);
+  return {
+    id,
+    parentPath,
+    type: "dir",
+    modifiedAt: Math.floor(item.createdAt / 1000),
+    data: JSON.stringify({
+      ...entry,
+      type: "dir",
+      size: 0,
+      myRights: { ...entry.myRights, mayView: true },
+    }),
+    uploadId: item.id,
+  };
+}
+
 /** Placeholder rows to write next to their queue items. */
 export function buildUploadPlaceholderRows(
   folderPath: string,
@@ -140,14 +167,58 @@ export async function readUploadPlaceholderEntries(
   return rows.map((row) => JSON.parse(row.data) as WgwDriveDirectoryEntry);
 }
 
-/** Add the folder's placeholders to a listing the server returned. */
+/** The row without its upload marker: a plain listing row again. */
+export function plainDriveEntryRow(row: OfflineDriveEntryRow): OfflineDriveEntryRow {
+  const { upload: _marker, ...entry } = JSON.parse(row.data) as WgwDriveDirectoryEntry;
+  const { uploadId: _uploadId, ...plain } = row;
+  return { ...plain, data: JSON.stringify(entry) };
+}
+
+/**
+ * Inside a transaction over entries. The rows of a queue item go: a
+ * placeholder is deleted; a real folder (one the upload created or adds
+ * into) stays and only loses its upload marker.
+ */
+export async function dropUploadPlaceholderRows(username: string, itemId: string): Promise<void> {
+  const table = driveEntriesTable(accountDb(username));
+  for (const row of await table.where("uploadId").equals(itemId).toArray()) {
+    if (row.nodeId) await table.put(plainDriveEntryRow(row));
+    else await table.delete(row.id);
+  }
+}
+
+/** Upload markers of folders created by an upload whose contents are still in the queue, by node id. */
+async function createdUploadFolderMarkers(
+  username: string,
+): Promise<Map<string, WgwDriveUploadPlaceholder>> {
+  const folders = await driveUploadItemsTable(accountDb(username))
+    .filter((item) => item.kind === "folder" && Boolean(item.createdNodeId))
+    .toArray();
+  return new Map(
+    folders.map((item) => [
+      item.createdNodeId!,
+      { id: item.id, batchId: item.batchId, status: "uploading" },
+    ]),
+  );
+}
+
+/**
+ * Add the folder's placeholders to a listing the server returned. A listed
+ * folder that an upload created keeps its upload marker until its contents
+ * are done.
+ */
 export async function withUploadPlaceholders(
   username: string,
   data: DriveUIData,
 ): Promise<DriveUIData> {
   const placeholders = await readUploadPlaceholderEntries(username, data.cwd);
-  if (placeholders.length === 0) return data;
-  const listed = new Set(data.directory.files.map((entry) => normalizeOfflinePath(entry.path)));
+  const markers = await createdUploadFolderMarkers(username);
+  if (placeholders.length === 0 && markers.size === 0) return data;
+  const files = data.directory.files.map((entry) => {
+    const marker = entry.type === "dir" && entry.nodeId ? markers.get(entry.nodeId) : undefined;
+    return marker ? { ...entry, upload: marker } : entry;
+  });
+  const listed = new Set(files.map((entry) => normalizeOfflinePath(entry.path)));
   const extra = placeholders.filter((entry) => !listed.has(normalizeOfflinePath(entry.path)));
-  return { ...data, directory: { ...data.directory, files: [...data.directory.files, ...extra] } };
+  return { ...data, directory: { ...data.directory, files: [...files, ...extra] } };
 }

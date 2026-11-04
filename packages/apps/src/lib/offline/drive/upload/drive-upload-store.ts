@@ -12,7 +12,12 @@ import {
   uploadMemoryTabId,
 } from "@/lib/offline/drive/upload/drive-upload-memory";
 import {
+  finishDriveUploadFolders,
+  isCreatedUploadFolder,
+} from "@/lib/offline/drive/upload/drive-upload-folder-rows";
+import {
   buildUploadPlaceholderRows,
+  dropUploadPlaceholderRows,
   setUploadPlaceholderStatus,
 } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
@@ -83,14 +88,7 @@ export async function enqueueDriveUploadBatch(
   const localPlan = await planLocalCopies(input.files.map((file) => file.size));
   const { db, batches } = tables(username);
   const now = Date.now();
-  const batch: OfflineDriveUploadBatchRow = {
-    id: crypto.randomUUID(),
-    status: "awaiting_input",
-    keepOffline: "remove",
-    targetFolder: input.targetFolder,
-    createdAt: now,
-    notices: [],
-  };
+  const batch = newDriveUploadBatchRow(input.targetFolder, now);
   await batches.put(batch);
   const itemIds: string[] = [];
   for (const [index, file] of input.files.entries()) {
@@ -100,6 +98,21 @@ export async function enqueueDriveUploadBatch(
   }
   if (input.notify !== false) notifyDriveUploadQueueChanged(username);
   return { batchId: batch.id, itemIds };
+}
+
+/** A new batch waiting for the batch dialog's answers. */
+export function newDriveUploadBatchRow(
+  targetFolder: DriveUploadTargetFolder,
+  createdAt: number,
+): OfflineDriveUploadBatchRow {
+  return {
+    id: crypto.randomUUID(),
+    status: "awaiting_input",
+    keepOffline: "remove",
+    targetFolder,
+    createdAt,
+    notices: [],
+  };
 }
 
 /** A new `queued` item of `batch` for `file`. */
@@ -125,7 +138,8 @@ export function newDriveUploadItem(
   };
 }
 
-async function storeItem(
+/** Store a file item with its `Blob` and placeholder; fails it as `quota` when the device is full. */
+export async function storeItem(
   username: string,
   db: ReturnType<typeof accountDb>,
   folderPath: string,
@@ -196,7 +210,7 @@ export async function cancelDriveUploadBatch(username: string, batchId: string):
   await db.transaction("rw", batches, items, blobs, entries, async () => {
     await items.bulkDelete(itemIds);
     await blobs.bulkDelete(itemIds);
-    for (const itemId of itemIds) await entries.where("uploadId").equals(itemId).delete();
+    for (const itemId of itemIds) await dropUploadPlaceholderRows(username, itemId);
     await batches.delete(batchId);
   });
   for (const itemId of itemIds) forgetUploadInMemory(itemId);
@@ -291,7 +305,8 @@ export async function retryAllFailedDriveUploads(username: string): Promise<numb
   return requeueFailedItems(username, failedIds);
 }
 
-async function requeueFailedItems(
+/** Failed items back to the queue with a clean slate. Returns how many went back. */
+export async function requeueFailedItems(
   username: string,
   itemIds: readonly string[],
   options: { probe?: boolean } = {},
@@ -325,20 +340,23 @@ export async function dropItemRows(
   username: string,
   item: Pick<OfflineDriveUploadItemRow, "id" | "batchId">,
 ): Promise<void> {
-  const { batches, items, blobs, entries } = tables(username);
+  const { items, blobs } = tables(username);
   await items.delete(item.id);
   await blobs.delete(item.id);
-  await entries.where("uploadId").equals(item.id).delete();
-  await dropBatchIfDone(batches, items, item.batchId);
+  await dropUploadPlaceholderRows(username, item.id);
+  await dropDriveUploadBatchIfDone(username, item.batchId);
 }
 
-async function dropBatchIfDone(
-  batches: ReturnType<typeof tables>["batches"],
-  items: ReturnType<typeof tables>["items"],
-  batchId: string,
-): Promise<void> {
-  const remaining = await items.where("batchId").equals(batchId).count();
-  if (remaining > 0) return;
+/**
+ * Inside a transaction over batches, items, and entries. A batch is done when
+ * only created folders are left: they go too (see `finishDriveUploadFolders`),
+ * and so does the batch unless it has notices the user has not seen.
+ */
+export async function dropDriveUploadBatchIfDone(username: string, batchId: string): Promise<void> {
+  const { batches, items } = tables(username);
+  const remaining = await items.where("batchId").equals(batchId).toArray();
+  if (remaining.some((item) => !isCreatedUploadFolder(item))) return;
+  if (remaining.length > 0) await finishDriveUploadFolders(username, remaining);
   const batch = await batches.get(batchId);
   if (batch && batch.notices.length === 0) await batches.delete(batchId);
 }
@@ -362,12 +380,12 @@ export async function dismissDriveUploadBatchNotices(
   username: string,
   batchId: string,
 ): Promise<void> {
-  const { db, batches, items } = tables(username);
-  await db.transaction("rw", batches, items, async () => {
+  const { db, batches, items, entries } = tables(username);
+  await db.transaction("rw", batches, items, entries, async () => {
     const batch = await batches.get(batchId);
     if (!batch) return;
     await batches.put({ ...batch, notices: [] });
-    await dropBatchIfDone(batches, items, batchId);
+    await dropDriveUploadBatchIfDone(username, batchId);
   });
   notifyDriveUploadQueueChanged(username);
 }
@@ -412,7 +430,7 @@ export async function readDriveUploadBlob(username: string, itemId: string): Pro
  * Items the uploader may start, oldest first: `queued`, or `uploading` left
  * behind by a tab that closed mid-upload (only the lock holder uploads, so
  * any `uploading` item it finds is stale), in a released batch, with a server
- * target folder.
+ * target folder. A folder that is already created has nothing left to start.
  */
 export async function listStartableDriveUploads(
   username: string,
@@ -426,6 +444,7 @@ export async function listStartableDriveUploads(
       item.status !== "failed" &&
       released.has(item.batchId) &&
       item.targetFolder.kind === "server" &&
+      !isCreatedUploadFolder(item) &&
       !(item.retryAt && item.retryAt > now),
   );
 }
@@ -653,8 +672,11 @@ export async function retargetDriveUploadItem(
   const { db, items, entries } = tables(username);
   const moved = await db.transaction("rw", items, entries, async () => {
     const item = await items.get(itemId);
-    if (!item || item.status === "uploading" || item.createdNodeId) return false;
-    const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
+    if (!item || item.kind === "folder" || item.status === "uploading" || item.createdNodeId) {
+      return false;
+    }
+    // A file sent elsewhere leaves the uploaded folder it was in.
+    const { error: _error, retryAt: _retryAt, phase: _phase, inFolder: _inFolder, ...rest } = item;
     const next: OfflineDriveUploadItemRow = {
       ...rest,
       targetFolder: target.targetFolder,

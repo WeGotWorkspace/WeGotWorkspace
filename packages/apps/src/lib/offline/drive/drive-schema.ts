@@ -24,7 +24,8 @@ export type OfflineDriveEntryRow = {
   nodeId?: string;
   /**
    * Upload queue item id. Set only on upload placeholders, whose `id` is
-   * `<folder>/\u0000upload:<item id>` so it never collides with a real name.
+   * `<folder>/\u0000upload:<item id>` so it never collides with a real name,
+   * and on the row of a folder a folder upload creates or adds into (#1620).
    */
   uploadId?: string;
 };

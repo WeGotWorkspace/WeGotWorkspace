@@ -5,6 +5,7 @@ import {
   driveUploadNeedsSignIn,
   signInThenRetryDriveUploads,
 } from "@/drive-core/src/drive-upload-sign-in";
+import { driveUploadFolderRowState } from "@/drive-core/src/drive-upload-folder-row-state";
 import {
   driveUploadRowState,
   type DriveUploadRowState,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/offline/drive/upload/drive-upload-live-bytes";
 import type {
   DriveUploadBatchView,
+  DriveUploadFolderView,
   DriveUploadItemView,
   DriveUploadQueueSnapshot,
 } from "@/lib/offline/drive/upload/drive-upload-subscription";
@@ -45,6 +47,8 @@ export function useDriveUploadQueue(
 export type DriveUploadQueueModel = {
   snapshot: DriveUploadQueueSnapshot;
   itemById: ReadonlyMap<string, DriveUploadItemView>;
+  /** Folders of a folder upload (#1620), by their queue id. */
+  folderById: ReadonlyMap<string, DriveUploadFolderView>;
   batchById: ReadonlyMap<string, DriveUploadBatchView>;
   failedCount: number;
   retryableCount: number;
@@ -78,6 +82,7 @@ export function buildDriveUploadQueueModel(
   return {
     snapshot,
     itemById: new Map(snapshot.items.map((item) => [item.id, item])),
+    folderById: new Map((snapshot.folders ?? []).map((folder) => [folder.id, folder])),
     batchById: new Map(snapshot.batches.map((batch) => [batch.id, batch])),
     failedCount: failed.length,
     retryableCount: failed.filter((item) => item.canRetry).length,
@@ -166,6 +171,13 @@ export function driveUploadRowStateFor(
   model: DriveUploadQueueModel | null,
 ): DriveUploadRowState {
   if (!model) return driveUploadRowState(upload);
+  const folder = model.folderById.get(upload.id);
+  if (folder) {
+    return driveUploadFolderRowState(folder, {
+      batch: model.batchById.get(folder.batchId),
+      queueState: model.snapshot.state,
+    });
+  }
   const item = model.itemById.get(upload.id);
   return driveUploadRowState(upload, {
     ...(item ? { item, batch: model.batchById.get(item.batchId) } : {}),

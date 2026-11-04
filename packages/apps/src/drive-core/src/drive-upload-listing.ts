@@ -36,7 +36,7 @@ export function mergeDriveUploadPlaceholders(
  */
 export async function queueDriveUploadBatch(
   operations: Required<Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch">>,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   onStored?: (batch: DriveStoredUploadBatch) => void,
   ask?: (request: DriveUploadBatchRequest) => void,
 ): Promise<string> {
@@ -51,6 +51,9 @@ export async function queueDriveUploadBatch(
   return batchId;
 }
 
+/** Picked files, or a folder tree (#1620) with `files` empty. */
+export type DriveUploadInput = Parameters<NonNullable<DriveAPIOperations["enqueueUploads"]>>[0];
+
 export type DriveStoredUploadBatch = { batchId: string; itemIds: readonly string[] };
 
 /**
@@ -59,7 +62,7 @@ export type DriveStoredUploadBatch = { batchId: string; itemIds: readonly string
  */
 export function queuePickedDriveUploads(
   operations: Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch"> | undefined,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   showError: (message: string) => void,
   onStored?: (batch: DriveStoredUploadBatch) => void,
   ask?: (request: DriveUploadBatchRequest) => void,

@@ -149,6 +149,11 @@
   color: var(--workspace-foreground);
 }
 
+/* Name and, while it uploads (#1620), the folder's progress under it. */
+.drive-workspace .drive-folder-tile__text {
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
+}
+
 .drive-workspace .drive-folder-tile__star {
   @apply size-3.5 shrink-0;
   color: var(--color-emerald);

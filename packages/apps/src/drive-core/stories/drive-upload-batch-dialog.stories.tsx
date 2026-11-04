@@ -222,3 +222,67 @@ export const CancelDropsTheBatch: Story = {
     await expect(args.onUpload).not.toHaveBeenCalled();
   },
 };
+
+/** Folder upload (#1620): "Photos" is taken in the folder the user is in. */
+const FOLDERS: NonNullable<DriveUploadBatchQuestions["folders"]> = {
+  folders: [{ itemId: "folder-1", name: "Photos", keptAsName: "Photos (1)", canMerge: true }],
+  mergeConflicts: {
+    conflicts: [
+      {
+        itemId: "i-cover",
+        name: "cover.jpg",
+        existing: { nodeId: "n-cover", blobId: "b-cover", hashPending: false },
+      },
+    ],
+    choices: ["replace", "keep_both", "skip"],
+    replaceTargets: { "i-cover": { nodeId: "n-cover", blobId: "b-cover" } },
+  },
+};
+
+export const FolderNameTaken: Story = {
+  name: "Folder name taken: keep both",
+  args: { request: requestFor({ folders: FOLDERS }) },
+  play: async ({ args }) => {
+    const dialog = await dialogNamed("A folder with this name already exists");
+    await expect(within(dialog).getByRole("radio", { name: /Keep both/ })).toBeChecked();
+    await expect(
+      within(dialog).getByText("Your folder is added as Photos (1)."),
+    ).toBeInTheDocument();
+    // Keep both: nothing lands in the existing folder, so no file conflicts follow.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Upload" }));
+    await expect(args.onUpload).toHaveBeenCalledWith("story-batch", {
+      keepOffline: "remove",
+      folderConflict: "keep_both",
+    });
+  },
+};
+
+export const FolderMergeAsksAboutFiles: Story = {
+  name: "Folder name taken: merge, then file conflicts",
+  args: { request: requestFor({ folders: FOLDERS }) },
+  play: async ({ args }) => {
+    const folders = await dialogNamed("A folder with this name already exists");
+    await userEvent.click(within(folders).getByRole("radio", { name: /Merge/ }));
+    // Merge brings a second step: cover.jpg already exists in Photos.
+    await userEvent.click(await within(folders).findByRole("button", { name: "Next" }));
+    const files = await dialogNamed("A file with this name already exists");
+    await expect(within(files).getByText("cover.jpg")).toBeInTheDocument();
+    await userEvent.click(within(files).getByRole("radio", { name: /Replace/ }));
+    await userEvent.click(within(files).getByRole("button", { name: "Upload" }));
+    await expect(args.onUpload).toHaveBeenCalledWith("story-batch", {
+      keepOffline: "remove",
+      folderConflict: "merge",
+      conflict: "replace",
+      replaceTargets: { "i-cover": { nodeId: "n-cover", blobId: "b-cover" } },
+    });
+  },
+};
+
+export const FolderNameTakenDark: Story = {
+  name: "Folder name taken (dark)",
+  decorators: [withDarkTheme],
+  args: { request: requestFor({ folders: FOLDERS }) },
+  play: async () => {
+    await dialogNamed("A folder with this name already exists");
+  },
+};

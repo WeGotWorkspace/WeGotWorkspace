@@ -8,6 +8,12 @@ import { withCrossTabLock, type WithCrossTabLock } from "@/lib/cross-tab/cross-t
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import { classifyDriveUploadFailure } from "@/lib/offline/drive/upload/drive-upload-failure";
+import { createDriveUploadFolder } from "@/lib/offline/drive/upload/drive-upload-folder-create";
+import {
+  failDriveUploadFolderDescendants,
+  recordDriveUploadFolderPlacing,
+  resolveDriveUploadFolder,
+} from "@/lib/offline/drive/upload/drive-upload-folder-store";
 import { completeDriveUpload } from "@/lib/offline/drive/upload/drive-upload-handoff";
 import { driveUploaderLockName } from "@/lib/offline/drive/upload/drive-upload-lock-name";
 import {
@@ -267,6 +273,7 @@ export class DriveUploader {
     item: OfflineDriveUploadItemRow,
     signal: AbortSignal,
   ): Promise<UploadOutcome> {
+    if (item.kind === "folder") return this.createFolder(item, signal);
     const blob = item.localCopy
       ? await readDriveUploadBlob(this.username, item.id)
       : (uploadFromMemory(item.id) ?? null);
@@ -327,6 +334,39 @@ export class DriveUploader {
       return this.handleFailure(item, error, signal);
     } finally {
       clearDriveUploadBytesSent(item.id);
+    }
+  }
+
+  /**
+   * One folder of a folder upload, parents first: create it (or find the
+   * one an earlier attempt made), then point its items at it. A folder that
+   * fails takes everything below it along.
+   */
+  private async createFolder(
+    item: OfflineDriveUploadItemRow,
+    signal: AbortSignal,
+  ): Promise<UploadOutcome> {
+    if (!(await markDriveUploadStarted(this.username, item.id))) return "next";
+    try {
+      const session = await driveJmapSession();
+      const node = await createDriveUploadFolder(
+        session,
+        {
+          parentId: item.targetFolder.id,
+          name: item.name,
+          sourceName: item.sourceName ?? item.name,
+          onExisting: item.onExisting ?? "merge",
+          ...(item.placing ? { placing: item.placing } : {}),
+          onPlacing: (placing) => recordDriveUploadFolderPlacing(this.username, item.id, placing),
+        },
+        signal,
+      );
+      await resolveDriveUploadFolder(this.username, item.id, node);
+      return "next";
+    } catch (error) {
+      const outcome = await this.handleFailure(item, error, signal);
+      await failDriveUploadFolderDescendants(this.username, item.id);
+      return outcome;
     }
   }
 

@@ -132,7 +132,11 @@ export function DriveFileItemActions({
   );
   // A placeholder is not on the server yet: its own actions, the rest disabled.
   const merged = file.upload
-    ? driveUploadPlaceholderMenu(labels, extraActions, () => onDownload(file))
+    ? file.kind === "folder"
+      ? driveUploadPlaceholderMenu(labels, extraActions, undefined, {
+          onOpen: canOpen ? onOpen : undefined,
+        })
+      : driveUploadPlaceholderMenu(labels, extraActions, () => onDownload(file))
     : segmentDriveFileMenu([...actions, ...(extraActions ?? [])]);
   if (merged.length === 0) return null;
   return <DriveFileItemActionsMenu actions={merged} disabled={disabled} />;

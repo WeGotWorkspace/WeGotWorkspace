@@ -8,6 +8,7 @@ import {
   DRIVE_DOMAIN,
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
@@ -62,7 +63,31 @@ export async function upsertDriveEntry(
   entry: WgwDriveDirectoryEntry,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await driveEntriesTable(db).put(driveEntryRowFromEntry(entry));
+  const table = driveEntriesTable(db);
+  const row = driveEntryRowFromEntry(entry);
+  if (row.type !== "dir") {
+    await table.put(row);
+    return;
+  }
+  // Same tables the batch end locks, so a refresh sees the live item or the committed clear.
+  await db.transaction("rw", table, driveUploadItemsTable(db), async () => {
+    const existing = await table.get(row.id);
+    // A folder still taking an upload keeps its marker until the upload is done (#1620).
+    if (
+      existing?.uploadId &&
+      existing.type === "dir" &&
+      (await driveUploadItemsTable(db).get(existing.uploadId))
+    ) {
+      const { upload } = parseEntryRow(existing);
+      await table.put({
+        ...row,
+        uploadId: existing.uploadId,
+        data: JSON.stringify({ ...entry, upload }),
+      });
+      return;
+    }
+    await table.put(row);
+  });
 }
 
 /** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */

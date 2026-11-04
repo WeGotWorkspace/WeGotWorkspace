@@ -170,8 +170,9 @@ export function DriveWorkspace({
 
   const guardedOpenFile = useCallback(
     (file: DriveFile) => {
-      // A placeholder has nothing on the server to open yet.
-      if (file.upload) {
+      // A file placeholder has nothing on the server to open yet. A folder of
+      // a folder upload opens: it lists what is uploading into it (#1620).
+      if (file.upload && file.kind !== "folder") {
         show(driveLabels.uploadOpenUnavailable);
         return;
       }
@@ -434,6 +435,20 @@ export function DriveWorkspace({
               }}
             />
           ) : null}
+          {controller.canUploadFolders ? (
+            <input
+              ref={controller.folderInputRef}
+              type="file"
+              // A folder with all its subfolders (#1620); React has no prop for it.
+              {...{ webkitdirectory: "" }}
+              className="hidden"
+              aria-label={labels.uploadFolder}
+              onChange={(e) => {
+                controller.handleUploadFolder(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          ) : null}
           {chooseUploadFolder.dialog}
           <DriveUploadAnnouncer snapshot={uploadQueue} />
         </DriveUploadQueueProvider>
@@ -466,6 +481,8 @@ function DriveSidebar({
     createFolder,
     createMarkdown,
     fileInputRef,
+    folderInputRef,
+    canUploadFolders,
     uploadEnabled,
     structureEnabled,
   } = controller;
@@ -491,6 +508,7 @@ function DriveSidebar({
             labels={labels}
             onCreateFolder={structureEnabled ? createFolder : undefined}
             onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
+            onUploadFolder={canUploadFolders ? () => folderInputRef.current?.click() : undefined}
             onCreateMarkdown={
               structureEnabled && uploadEnabled && onOpenDocsFile ? createMarkdown : undefined
             }
