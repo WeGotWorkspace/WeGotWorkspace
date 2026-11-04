@@ -44,6 +44,57 @@ final class FolderZipWalker
         yield from $this->children($folder, $top, $principal);
     }
 
+    /**
+     * Several selected items under one top folder (#1905), in the given
+     * order: a file as itself, a folder with its subtree as `entries` walks
+     * it. Names that collide get ` (2)`, …; an item inside another selected
+     * folder is skipped, so its bytes are stored once. The top folder's key
+     * is empty: it has no storage of its own.
+     *
+     * @param  list<JmapFileNode>  $items
+     * @param  array{username: string, role: string}  $principal
+     * @return \Generator<int, array{directory: bool, path: string, key: string}>
+     */
+    public function selectionEntries(string $top, array $items, array $principal): \Generator
+    {
+        $top = self::safeName($top);
+        yield ['directory' => true, 'path' => $top, 'key' => ''];
+        $folderKeys = [];
+        foreach ($items as $item) {
+            if ($item->is_dir) {
+                $folderKeys[] = rtrim((string) $item->storage_key, '/').'/';
+            }
+        }
+        $used = [];
+        foreach ($items as $item) {
+            $key = (string) $item->storage_key;
+            if (self::insideAny($key, $folderKeys)) {
+                continue;
+            }
+            $path = $top.'/'.self::uniqueName(self::safeName((string) $item->name), (bool) $item->is_dir, $used);
+            if ($item->is_dir) {
+                yield ['directory' => true, 'path' => $path, 'key' => $key];
+                yield from $this->children($item, $path, $principal);
+            } else {
+                yield ['directory' => false, 'path' => $path, 'key' => $key];
+            }
+        }
+    }
+
+    /**
+     * @param  list<string>  $folderKeys  selected folders' keys, each ending in `/`
+     */
+    private static function insideAny(string $key, array $folderKeys): bool
+    {
+        foreach ($folderKeys as $folderKey) {
+            if (str_starts_with($key, $folderKey)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** The zip's top folder and download name stem: the folder's own name, made safe. */
     public static function safeName(string $name): string
     {

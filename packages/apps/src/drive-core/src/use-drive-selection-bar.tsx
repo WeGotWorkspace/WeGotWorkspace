@@ -6,7 +6,12 @@ import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-ty
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { canDownloadDriveItem, startDriveItemDownload } from "@/drive-core/src/drive-item-download";
+import {
+  canDownloadDriveItem,
+  canDownloadDriveSelection,
+  startDriveItemDownload,
+  startDriveSelectionDownload,
+} from "@/drive-core/src/drive-item-download";
 
 type UseDriveSelectionBarArgs = {
   labels: DriveUILabels;
@@ -18,6 +23,8 @@ type UseDriveSelectionBarArgs = {
   operations?: DriveAPIOperations;
   /** False for guests: no Move or Delete (#1712). */
   structureEnabled?: boolean;
+  /** Names the zip of several selected items: the place the user is looking at (#1905). */
+  zipName?: string;
   exitSelection: () => void;
   batchStar: () => void;
   requestDeleteSelected: () => void;
@@ -33,6 +40,7 @@ export function useDriveSelectionBar({
   inTrashView,
   operations,
   structureEnabled = true,
+  zipName,
   exitSelection,
   batchStar,
   requestDeleteSelected,
@@ -41,17 +49,24 @@ export function useDriveSelectionBar({
   const { show, showError } = useAppToast();
 
   const selectionActionButtons = useMemo<WorkspaceActionButton[]>(() => {
-    const selected =
-      selectedIds.length === 1 ? files.find((file) => file.id === selectedIds[0]) : undefined;
-    const downloadable =
-      selected &&
-      canDownloadDriveItem(selected, {
-        foldersDownloadable: !!operations?.downloadFolder,
+    const filesById = new Map(files.map((file) => [file.id, file]));
+    const selected = selectedIds.map((id) => filesById.get(id));
+    const started = () => show("Download started", { icon: <Download className="size-4" /> });
+    const download =
+      singleDownload(selected, operations, inTrashView, showError, started) ??
+      (canDownloadDriveSelection(selected, {
+        selectionDownloadable: !!operations?.downloadSelection,
         inTrash: inTrashView,
       })
-        ? selected
-        : undefined;
-    const canDownload = !!downloadable && (!operations || !!downloadable.apiPath);
+        ? () =>
+            startDriveSelectionDownload(
+              operations,
+              selected,
+              zipName?.trim() || "Download",
+              showError,
+              started,
+            )
+        : null);
 
     const moveButton: WorkspaceActionButton = {
       label: labels.selectionMove,
@@ -72,19 +87,12 @@ export function useDriveSelectionBar({
         onClick: batchStar,
       },
       ...(structureEnabled ? [moveButton] : []),
-      ...(canDownload
+      ...(download
         ? [
             {
-              label:
-                downloadable.kind === "folder"
-                  ? labels.detailDownloadFolder
-                  : labels.selectionDownload,
+              label: labels.selectionDownload,
               icon: <Download className="size-4" />,
-              onClick: () => {
-                startDriveItemDownload(operations, downloadable, showError, () =>
-                  show("Download started", { icon: <Download className="size-4" /> }),
-                );
-              },
+              onClick: download,
             },
           ]
         : []),
@@ -95,7 +103,6 @@ export function useDriveSelectionBar({
     files,
     inTrashView,
     labels.selectionDeletePermanently,
-    labels.detailDownloadFolder,
     labels.selectionDownload,
     labels.selectionMove,
     labels.selectionMoveToTrash,
@@ -107,6 +114,7 @@ export function useDriveSelectionBar({
     show,
     showError,
     structureEnabled,
+    zipName,
   ]);
 
   return useWorkspaceSelectionPresentation({
@@ -118,4 +126,26 @@ export function useDriveSelectionBar({
     doneLabel: labels.selectionDone,
     floatingClassName: "drive-selection-bar",
   });
+}
+
+/** *Download* for one selected item, as before #1905: a file, or a folder as a zip. */
+function singleDownload(
+  selected: (DriveFile | undefined)[],
+  operations: DriveAPIOperations | undefined,
+  inTrashView: boolean,
+  showError: (message: string) => void,
+  onStarted: () => void,
+): (() => void) | null {
+  const file = selected.length === 1 ? selected[0] : undefined;
+  if (
+    !file ||
+    !canDownloadDriveItem(file, {
+      foldersDownloadable: !!operations?.downloadFolder,
+      inTrash: inTrashView,
+    }) ||
+    (operations && !file.apiPath)
+  ) {
+    return null;
+  }
+  return () => startDriveItemDownload(operations, file, showError, onStarted);
 }

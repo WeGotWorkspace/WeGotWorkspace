@@ -18,9 +18,11 @@ import {
 function ShareDialogHarness({
   fixture = shareStoryAtPathPublicOn,
   title = SHARE_STORY_TITLE,
+  isFolder = false,
 }: {
   fixture?: typeof shareStoryAtPathPublicOn;
   title?: string;
+  isFolder?: boolean;
 }) {
   const [open, setOpen] = useState(true);
   const [shareOperations] = useState(() => createShareStoryOperations(fixture));
@@ -31,6 +33,7 @@ function ShareDialogHarness({
         open={open}
         path={SHARE_STORY_PATH}
         title={title}
+        isFolder={isFolder}
         shareOperations={shareOperations}
         onOpenChange={setOpen}
       />
@@ -69,6 +72,27 @@ export const PublicOff: Story = {
       ),
     );
     await body.findByRole("button", { name: shareLabels.copyLink });
+  },
+};
+
+/** A folder link may let visitors add files (#1715); a file link offers no level. */
+export const FolderLinkCanAddFiles: Story = {
+  tags: ["vitest-ci"],
+  render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicOn} isFolder />,
+  play: async () => {
+    const body = within(document.body);
+    const level = await body.findByRole("combobox", { name: shareLabels.publicLevelLabel });
+    expect(level).toHaveTextContent(shareLabels.publicLevelView);
+    await userEvent.click(level);
+    await userEvent.click(
+      await body.findByRole("option", { name: shareLabels.publicLevelAddFiles }),
+    );
+    await waitFor(() =>
+      expect(body.getByRole("combobox", { name: shareLabels.publicLevelLabel })).toHaveTextContent(
+        shareLabels.publicLevelAddFiles,
+      ),
+    );
+    expect(body.getByText(shareLabels.publicEnabledAddFilesHint)).toBeInTheDocument();
   },
 };
 

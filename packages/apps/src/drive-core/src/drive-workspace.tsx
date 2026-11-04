@@ -36,6 +36,8 @@ import {
   useDriveUploadQueueModel,
 } from "@/drive-core/src/drive-upload-queue";
 import { DriveUploadAnnouncer } from "@/drive-core/src/drive-upload-announcer";
+import { useDriveUploadChooseFolder } from "@/drive-core/src/drive-upload-choose-folder";
+import { useDriveUploadRetryAfterSignIn } from "@/drive-core/src/use-drive-upload-recovery";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
@@ -114,10 +116,15 @@ export function DriveWorkspace({
 
   const handleOpenShareForFile = useCallback(
     (apiPath: string, title: string) => {
-      shareDialog.openShareDialog(apiPath, title);
+      // The active item may be a file the listing does not show (opened from
+      // search, say). A path outside both is the open folder or one of its parents.
+      const entry =
+        controller.files.find((file) => file.apiPath === apiPath) ??
+        (controller.active?.apiPath === apiPath ? controller.active : undefined);
+      shareDialog.openShareDialog(apiPath, title, entry ? entry.kind === "folder" : true);
       onOpenShare?.(apiPath);
     },
-    [onOpenShare, shareDialog],
+    [controller.active, controller.files, onOpenShare, shareDialog],
   );
 
   const {
@@ -139,7 +146,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const uploadModel = useDriveUploadQueueModel(uploadQueue, operations, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const uploadModel = useDriveUploadQueueModel(
+    uploadQueue,
+    operations,
+    showError,
+    chooseUploadFolder.choose,
+  );
+  useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
@@ -156,8 +170,9 @@ export function DriveWorkspace({
 
   const guardedOpenFile = useCallback(
     (file: DriveFile) => {
-      // A placeholder has nothing on the server to open yet.
-      if (file.upload) {
+      // A file placeholder has nothing on the server to open yet. A folder of
+      // a folder upload opens: it lists what is uploading into it (#1620).
+      if (file.upload && file.kind !== "folder") {
         show(driveLabels.uploadOpenUnavailable);
         return;
       }
@@ -208,7 +223,11 @@ export function DriveWorkspace({
   const uploadCounts = useMemo(
     () =>
       uploadModel
-        ? { count: uploadModel.snapshot.items.length, failed: uploadModel.failedCount }
+        ? {
+            count: uploadModel.snapshot.items.length,
+            failed: uploadModel.failedCount,
+            paused: uploadModel.snapshot.state === "paused_server_full",
+          }
         : null,
     [uploadModel],
   );
@@ -416,6 +435,21 @@ export function DriveWorkspace({
               }}
             />
           ) : null}
+          {controller.canUploadFolders ? (
+            <input
+              ref={controller.folderInputRef}
+              type="file"
+              // A folder with all its subfolders (#1620); React has no prop for it.
+              {...{ webkitdirectory: "" }}
+              className="hidden"
+              aria-label={labels.uploadFolder}
+              onChange={(e) => {
+                controller.handleUploadFolder(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          ) : null}
+          {chooseUploadFolder.dialog}
           <DriveUploadAnnouncer snapshot={uploadQueue} />
         </DriveUploadQueueProvider>
       </DriveFolderDownloadContext.Provider>
@@ -447,6 +481,8 @@ function DriveSidebar({
     createFolder,
     createMarkdown,
     fileInputRef,
+    folderInputRef,
+    canUploadFolders,
     uploadEnabled,
     structureEnabled,
   } = controller;
@@ -460,18 +496,22 @@ function DriveSidebar({
         <WorkspaceAppSettingsFooter
           appId="drive"
           session={session}
-          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
+          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession(), uploadEnabled)}
           onLogout={onLogout}
         />
       }
       primaryButton={
-        // New folder is the menu's main action; guests cannot create anything yet (#1712).
-        structureEnabled ? (
+        // New folder is the menu's main action. Guests cannot create folders or
+        // files (#1712); a guest on a link that allows uploads gets Upload (#1715).
+        structureEnabled || uploadEnabled ? (
           <DriveNewMenu
             labels={labels}
-            onCreateFolder={createFolder}
+            onCreateFolder={structureEnabled ? createFolder : undefined}
             onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
-            onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
+            onUploadFolder={canUploadFolders ? () => folderInputRef.current?.click() : undefined}
+            onCreateMarkdown={
+              structureEnabled && uploadEnabled && onOpenDocsFile ? createMarkdown : undefined
+            }
           />
         ) : null
       }

@@ -16,7 +16,13 @@ import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-
 afterEach(cleanup);
 
 function renderPane(snapshot: DriveUploadQueueSnapshot) {
-  const actions = { retry: vi.fn(), remove: vi.fn(), retryAllFailed: vi.fn() };
+  const actions = {
+    retry: vi.fn(),
+    remove: vi.fn(),
+    retryAllFailed: vi.fn(),
+    resume: vi.fn(),
+    chooseFolder: vi.fn(),
+  };
   const onOpenFolder = vi.fn();
   const files = driveFilesFromUploadQueue(snapshot, "demo.user");
   const ui = (next: DriveUploadQueueSnapshot) => (
@@ -88,5 +94,50 @@ describe("DriveUploadsPane", () => {
   it("hides Retry all failed when no failed file can be retried", () => {
     renderPane(driveUploadStorySnapshot({ cases: ["waiting", "noLocalCopy"] }));
     expect(screen.queryByRole("button", { name: "Retry all failed" })).toBeNull();
+  });
+
+  describe("pause and error states (#1522)", () => {
+    it("says the server is full, mentions the trash, and resumes on Retry", () => {
+      const { resume } = renderPane(
+        driveUploadStorySnapshot({ cases: ["serverFull", "waiting"], state: "paused_server_full" }),
+      );
+      expect(screen.getByText("Uploads are paused: the server is full")).toBeTruthy();
+      expect(screen.getByText(/emptying the trash helps/)).toBeTruthy();
+      expect(screen.getByText("Waiting for space on the server")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(resume).toHaveBeenCalledOnce();
+    });
+
+    it("has no pause notice while the queue runs", () => {
+      renderPane(driveUploadStorySnapshot({ cases: ["waiting"] }));
+      expect(screen.queryByText("Uploads are paused: the server is full")).toBeNull();
+    });
+
+    it("offers Choose another folder on a file whose folder is gone or not writable", () => {
+      const { chooseFolder } = renderPane(
+        driveUploadStorySnapshot({ cases: ["targetMissing", "forbidden"], state: "idle" }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Choose another folder: Minutes.docx" }));
+      expect(chooseFolder).toHaveBeenCalledWith(driveUploadStoryItemId("targetMissing"));
+      expect(
+        screen.getByRole("button", { name: "Choose another folder: Floor plan.pdf" }),
+      ).toBeTruthy();
+      expect(screen.getByText(/Ask the owner to share the folder/)).toBeTruthy();
+    });
+
+    it("offers only Remove on a file that needs https, with the way to Admin", () => {
+      renderPane(driveUploadStorySnapshot({ cases: ["insecureContext"], state: "idle" }));
+      expect(screen.getByText("Large files need a secure connection (https)")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Retry Backup.tar" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Choose another folder/ })).toBeNull();
+      expect(screen.getByRole("button", { name: "Remove Backup.tar" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Open Admin" }).getAttribute("href")).toBe("/admin");
+    });
+
+    it("says Retry on a signed-out file goes through sign-in", () => {
+      renderPane(driveUploadStorySnapshot({ cases: ["auth"], state: "idle" }));
+      expect(screen.getByText(/Retry takes you to sign in/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry Logo.svg" })).toBeTruthy();
+    });
   });
 });

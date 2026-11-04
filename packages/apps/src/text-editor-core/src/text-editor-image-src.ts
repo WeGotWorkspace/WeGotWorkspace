@@ -1,12 +1,11 @@
+import { isFileNodeId } from "@/lib/files/file-node-id";
+
 /** Stable FileNode reference stored in Docs markdown / Yjs — never bytes or `fnb-` blob ids. */
 export const DRIVE_FN_SRC_PREFIX = "drive:";
 
-const FILE_NODE_ID_PATTERN = /^fn-[0-9a-f]{32}$/i;
 const DRIVE_FN_SRC_PATTERN = /^drive:(fn-[0-9a-f]{32})$/i;
 
-export function isFileNodeId(value: string): boolean {
-  return FILE_NODE_ID_PATTERN.test(value.trim());
-}
+export { isFileNodeId };
 
 export function toDriveFnSrc(nodeId: string): string {
   const trimmed = nodeId.trim();

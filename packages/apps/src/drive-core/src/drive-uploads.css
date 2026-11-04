@@ -177,7 +177,12 @@
 
 .drive-uploads__actions {
   grid-area: actions;
-  @apply flex items-center justify-end gap-1.5;
+  @apply flex flex-wrap items-center justify-end gap-1.5;
+}
+
+/* Administrators only: the way to the https notice in Admin. */
+.drive-uploads__admin {
+  @apply self-start px-0;
 }
 
 /* Batch notices float above the listing until the user presses OK. */

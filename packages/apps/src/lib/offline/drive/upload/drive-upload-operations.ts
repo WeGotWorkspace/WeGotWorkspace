@@ -27,21 +27,34 @@ import {
   readDriveUploadQueueRows,
   recordDriveUploadBatchSpaceCheck,
   releaseDriveUploadBatch,
-  removeDriveUploadItem,
   resumeDriveUploadQueue,
   retargetDriveUploadItem,
   retryAllFailedDriveUploads,
-  retryDriveUploadItem,
   type DriveUploadBatchReleaseAnswers,
 } from "@/lib/offline/drive/upload/drive-upload-store";
-import type { DriveUploadSpaceCheck } from "@/lib/offline/drive/upload/drive-upload-schema";
+import {
+  applyDriveUploadFolderChoice,
+  describeDriveUploadFolderConflicts,
+} from "@/lib/offline/drive/upload/drive-upload-folder-conflicts";
+import {
+  enqueueDriveUploadFolderBatch,
+  type DriveUploadTreeInput,
+} from "@/lib/offline/drive/upload/drive-upload-folder-enqueue";
+import {
+  removeDriveUploadTreeItem,
+  retryDriveUploadTreeItem,
+} from "@/lib/offline/drive/upload/drive-upload-folder-store";
+import type {
+  DriveUploadFolderOnExisting,
+  DriveUploadSpaceCheck,
+} from "@/lib/offline/drive/upload/drive-upload-schema";
 import { resolveDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target";
 import {
   hasDriveUploadBatchQuestions,
   type DriveUploadBatchQuestions,
 } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
 
-async function describeConflicts(username: string, batchId: string) {
+async function sessionVersionCheck(username: string) {
   // The live Session decides when there is one; offline, the last one this device saw.
   const live = readBrowserOnline()
     ? await driveJmapSession().then(
@@ -49,28 +62,49 @@ async function describeConflicts(username: string, batchId: string) {
         () => null,
       )
     : null;
-  const versionCheck = driveUploadSessionVersionCheck(username, live);
-  return describeDriveUploadBatchConflicts(username, batchId, versionCheck);
+  return driveUploadSessionVersionCheck(username, live);
 }
+
+async function describeConflicts(username: string, batchId: string) {
+  return describeDriveUploadBatchConflicts(username, batchId, await sessionVersionCheck(username));
+}
+
+/** How a queue's batch dialog asks. */
+type DriveUploadQueueOptions = {
+  /** False for a share-link guest: it has no offline Drive to keep a copy in (#1715). */
+  keepOfflineQuestion: boolean;
+};
 
 async function describeBatchQuestions(
   username: string,
   batchId: string,
   spaceCheck: DriveUploadSpaceCheck | undefined,
+  options: DriveUploadQueueOptions,
 ): Promise<DriveUploadBatchQuestions> {
-  const conflicts = await describeConflicts(username, batchId).catch((error: unknown) => {
-    console.warn("[drive-upload] conflict check failed", error);
-    return null;
-  });
+  const versionCheck = await sessionVersionCheck(username);
+  const conflicts = await describeDriveUploadBatchConflicts(username, batchId, versionCheck).catch(
+    (error: unknown) => {
+      console.warn("[drive-upload] conflict check failed", error);
+      return null;
+    },
+  );
+  const folders = await describeDriveUploadFolderConflicts(username, batchId, versionCheck).catch(
+    (error: unknown) => {
+      console.warn("[drive-upload] folder conflict check failed", error);
+      return null;
+    },
+  );
   return {
+    // Only a folder upload with a taken name has this step.
+    ...(folders ? { folders } : {}),
     space: spaceCheck && spaceCheck.status === "does_not_fit" ? spaceCheck : null,
     conflicts: conflicts && conflicts.conflicts.length > 0 ? conflicts : null,
-    keepOffline: await describeDriveUploadBatchKeepOffline(username, batchId).catch(
-      (error: unknown) => {
-        console.warn("[drive-upload] keep-offline check failed", error);
-        return null;
-      },
-    ),
+    keepOffline: options.keepOfflineQuestion
+      ? await describeDriveUploadBatchKeepOffline(username, batchId).catch((error: unknown) => {
+          console.warn("[drive-upload] keep-offline check failed", error);
+          return null;
+        })
+      : null,
   };
 }
 
@@ -79,7 +113,7 @@ async function describeBatchQuestions(
  * reloaded while its dialog was open). This tab takes them over and asks
  * again; a batch another open tab still asks about is left to that tab.
  */
-async function claimUnansweredBatches(username: string) {
+async function claimUnansweredBatches(username: string, options: DriveUploadQueueOptions) {
   const { batches, items } = await readDriveUploadQueueRows(username);
   const claimed: { batchId: string; itemIds: string[]; questions: DriveUploadBatchQuestions }[] =
     [];
@@ -89,27 +123,39 @@ async function claimUnansweredBatches(username: string) {
     startAskingUploadBatch(batch.id);
     claimed.push({
       batchId: batch.id,
-      itemIds: items.filter((item) => item.batchId === batch.id).map((item) => item.id),
-      questions: await describeBatchQuestions(username, batch.id, batch.spaceCheck),
+      itemIds: items
+        .filter((item) => item.batchId === batch.id && item.kind !== "folder")
+        .map((item) => item.id),
+      questions: await describeBatchQuestions(username, batch.id, batch.spaceCheck, options),
     });
   }
   return claimed;
 }
 
+/** A pick or drop: files, or a folder tree (#1620), which replaces `files` when set. */
+export type DriveUploadEnqueueInput = { cwd: string; files: File[]; tree?: DriveUploadTreeInput };
+
 /**
  * Store a pick or drop as one batch, then its space pre-check on it, so the
  * batch dialog (#1521) can read it before the batch is released.
  */
-async function enqueueWithSpaceCheck(username: string, input: { cwd: string; files: File[] }) {
+async function enqueueWithSpaceCheck(username: string, input: DriveUploadEnqueueInput) {
   const folderPath = normalizeApiVirtualPath(input.cwd);
   const targetFolder = await resolveDriveUploadTarget(username, folderPath);
-  const batch = await enqueueDriveUploadBatch(username, {
-    folderPath,
-    targetFolder,
-    files: input.files,
-    // The caller releases the batch next (see `queueDriveUploadBatch`).
-    notify: false,
-  });
+  // The caller releases the batch next (see `queueDriveUploadBatch`).
+  const batch: { batchId: string; itemIds: string[]; folderIds?: string[] } = input.tree
+    ? await enqueueDriveUploadFolderBatch(username, {
+        folderPath,
+        targetFolder,
+        tree: input.tree,
+        notify: false,
+      })
+    : await enqueueDriveUploadBatch(username, {
+        folderPath,
+        targetFolder,
+        files: input.files,
+        notify: false,
+      });
   const spaceCheck: DriveUploadSpaceCheck = await checkDriveUploadBatchSpace(
     username,
     batch.batchId,
@@ -119,7 +165,12 @@ async function enqueueWithSpaceCheck(username: string, input: { cwd: string; fil
   });
   await recordDriveUploadBatchSpaceCheck(username, batch.batchId, spaceCheck);
   startDriveUploader(username);
-  return { batchId: batch.batchId, itemIds: batch.itemIds, spaceCheck };
+  return {
+    batchId: batch.batchId,
+    itemIds: batch.itemIds,
+    ...(batch.folderIds ? { folderIds: batch.folderIds } : {}),
+    spaceCheck,
+  };
 }
 
 /**
@@ -127,10 +178,19 @@ async function enqueueWithSpaceCheck(username: string, input: { cwd: string; fil
  * questions. Only a batch with questions is shown as waiting for an answer;
  * one without is released by the caller right away, so it never flashes.
  */
-async function enqueueAndDescribe(username: string, input: { cwd: string; files: File[] }) {
+async function enqueueAndDescribe(
+  username: string,
+  input: DriveUploadEnqueueInput,
+  options: DriveUploadQueueOptions,
+) {
   const stored = await enqueueWithSpaceCheck(username, input);
   startAskingUploadBatch(stored.batchId);
-  const questions = await describeBatchQuestions(username, stored.batchId, stored.spaceCheck);
+  const questions = await describeBatchQuestions(
+    username,
+    stored.batchId,
+    stored.spaceCheck,
+    options,
+  );
   if (hasDriveUploadBatchQuestions(questions)) notifyDriveUploadQueueChanged(username);
   return { ...stored, questions };
 }
@@ -139,22 +199,33 @@ async function enqueueAndDescribe(username: string, input: { cwd: string; files:
  * The upload queue operations of signed-in Drive (#1501, #1519, #1520), the
  * matching part of `DriveAPIOperations` (checked where they are spread in).
  */
-export function driveUploadQueueOperations(username: string) {
+export function driveUploadQueueOperations(
+  username: string,
+  options: DriveUploadQueueOptions = { keepOfflineQuestion: true },
+) {
   return {
-    enqueueUploads: (input: { cwd: string; files: File[] }) => enqueueAndDescribe(username, input),
-    releaseUploadBatch: async (batchId: string, answers: DriveUploadBatchReleaseAnswers) => {
+    enqueueUploads: (input: DriveUploadEnqueueInput) =>
+      enqueueAndDescribe(username, input, options),
+    releaseUploadBatch: async (
+      batchId: string,
+      answers: DriveUploadBatchReleaseAnswers & { folderConflict?: DriveUploadFolderOnExisting },
+    ) => {
       stopAskingUploadBatch(batchId);
+      // Before the release, so the uploader never starts a folder under its old name.
+      if (answers.folderConflict) {
+        await applyDriveUploadFolderChoice(username, batchId, answers.folderConflict);
+      }
       await releaseDriveUploadBatch(username, batchId, answers);
     },
     describeUploadConflicts: (batchId: string) => describeConflicts(username, batchId),
-    claimUnansweredUploadBatches: () => claimUnansweredBatches(username),
+    claimUnansweredUploadBatches: () => claimUnansweredBatches(username, options),
     cancelUploadBatch: async (batchId: string) => {
       stopAskingUploadBatch(batchId);
       await cancelDriveUploadBatch(username, batchId);
     },
     dismissUploadNotices: (batchId: string) => dismissDriveUploadBatchNotices(username, batchId),
-    removeQueuedUpload: (itemId: string) => removeDriveUploadItem(username, itemId),
-    retryQueuedUpload: (itemId: string) => retryDriveUploadItem(username, itemId),
+    removeQueuedUpload: (itemId: string) => removeDriveUploadTreeItem(username, itemId),
+    retryQueuedUpload: (itemId: string) => retryDriveUploadTreeItem(username, itemId),
     retryAllFailedUploads: () => retryAllFailedDriveUploads(username),
     downloadQueuedUpload: (itemId: string) => downloadQueuedDriveUpload(username, itemId),
     retargetQueuedUpload: async (itemId: string, cwd: string) => {

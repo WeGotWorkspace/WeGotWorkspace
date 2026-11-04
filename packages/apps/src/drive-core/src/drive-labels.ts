@@ -32,6 +32,7 @@ export const driveLabels = {
   newButtonMenu: "More create options",
   newFolder: "New folder",
   uploadFiles: "Upload files",
+  uploadFolder: "Upload folder",
   /** Status of a file in the upload queue (placeholder row, ring, Uploads view). */
   uploadState: {
     waiting: "Waiting to upload",
@@ -72,18 +73,22 @@ export const driveLabels = {
   uploadOpenUnavailable: "This file is still uploading. You can open it once it is uploaded.",
   /** Toast when files are queued: nothing is on the server yet. */
   uploadAddedToast: (count: number) => `Added ${fileCount(count)} to uploads`,
+  /** Folder upload (#1620): a folder with no files in it, so no file count. */
+  uploadFolderAddedToast: "Added the folder to uploads",
+  /** Folder upload: names Drive leaves out (.DS_Store, Thumbs.db, hidden folders). */
+  uploadSkippedToast: (count: number) =>
+    `Left out ${count === 1 ? "1 hidden or system item" : `${count} hidden or system items`}, like .DS_Store`,
+  /** Folder row: files below it that failed. */
+  uploadFolderFailed: (count: number) => `${fileCount(count)} failed`,
   /** Toast once a batch has finished. */
   uploadDoneToast: (count: number) => `Uploaded ${fileCount(count)}`,
   uploadPartlyDoneToast: (done: number, total: number) =>
     `Uploaded ${done} of ${fileCount(total)}. See Uploads for the rest.`,
   uploadFailedToast: (count: number) =>
     `${count === 1 ? "1 file" : `${count} files`} could not be uploaded. See Uploads.`,
-  /** Floating bar of a direct upload (no queue: mock, guest). */
+  /** Toast when a direct upload starts (no queue: mock, guest). */
   uploadingFile: (fileName: string) => `Uploading ${fileName}`,
   uploadingFiles: (count: number) => `Uploading ${fileCount(count)}`,
-  uploadComplete: "Upload complete",
-  uploadProgressDetail: (bytesDone: string, bytesTotal: string, done: number, total: number) =>
-    `${bytesDone} / ${bytesTotal} · ${done}/${fileCount(total)}`,
   /** Screen reader announcements (polite live region). */
   uploadAnnounceStarted: (fileName: string) => `Uploading ${fileName}`,
   uploadAnnounceProgress: (fileName: string, percent: number) =>
@@ -117,8 +122,6 @@ export const driveLabels = {
   selectionDeletePermanently: "Delete permanently",
   detailOpen: "Open",
   detailDownload: "Download",
-  /** Download action for a folder: saves one zip. */
-  detailDownloadFolder: "Download as zip",
   detailStar: "Star",
   detailUnstar: "Unstar",
   detailRename: "Rename",

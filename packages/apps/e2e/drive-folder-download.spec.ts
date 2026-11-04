@@ -2,7 +2,7 @@
 //
 // The row menu has three groups: Open first, Delete last, the other actions
 // in alphabetical order between them. A folder's download is labelled
-// "Download as zip"; the browser saves one zip the server streams.
+// "Download", like a file's; the browser saves one zip the server streams.
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
@@ -73,7 +73,7 @@ test.describe("Drive folder download (live app)", () => {
     expect(entries).toEqual([
       "Open",
       "---",
-      "Download as zip",
+      "Download",
       "Move",
       "Rename",
       "Share",
@@ -84,7 +84,7 @@ test.describe("Drive folder download (live app)", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      menu.getByRole("menuitem", { name: "Download as zip" }).click(),
+      menu.getByRole("menuitem", { name: "Download", exact: true }).click(),
     ]);
     expect(download.suggestedFilename()).toBe(`${FOLDER}.zip`);
     const zip = readFileSync(await download.path());

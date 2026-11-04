@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
   apiPathFromUiPath,
   normalizeApiVirtualPath,
@@ -13,6 +14,7 @@ import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-crea
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
+import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortcut";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
@@ -28,8 +30,17 @@ function isDriveGuest(role: string, guestSession: boolean): boolean {
   return guestSession || role === "guest";
 }
 
-export function isDriveUploadEnabled(role: string, guestSession: boolean): boolean {
-  return !isDriveGuest(role, guestSession);
+/**
+ * Members upload; a share-link guest uploads only when its Drive has the
+ * upload queue, which it gets once the server opens the guest's upload
+ * Session (an edit link to a folder, #1715).
+ */
+export function isDriveUploadEnabled(
+  role: string,
+  guestSession: boolean,
+  operations?: Pick<DriveAPIOperations, "enqueueUploads">,
+): boolean {
+  return !isDriveGuest(role, guestSession) || typeof operations?.enqueueUploads === "function";
 }
 
 /** New folder, new file, rename, move and delete (guests have no write path yet, #1712). */
@@ -67,6 +78,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     reloadStarredFromServer,
     inTrashView,
     isUnderTrash,
+    viewLabel,
   } = shell;
 
   const {
@@ -97,12 +109,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
   const [dropUploadActive, setDropUploadActive] = useState(false);
-  // Guests get the upload queue later (Epic #1499); until then they see no
-  // upload, no drop target and no new Markdown file (Docs saves guest files
-  // through upload).
-  const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
-  const upload = useDriveUploadAction(shell, uploadEnabled);
+  // A guest uploads only through the queue, on a link that allows it (#1715).
+  const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession(), operations);
   const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
+  const upload = useDriveUploadAction(shell, uploadEnabled, structureEnabled);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetRenameDialog = useCallback(() => {
@@ -393,24 +403,12 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
 
   const markdownDialogDefaults = resolveCreateMarkdownDialogDefaults(view, files);
 
-  useEffect(() => {
-    const isMac =
-      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const inField =
-        !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-      if (inField || !structureEnabled) return;
-      const macDelete = isMac && (e.key === "Backspace" || (e.metaKey && e.key === "Backspace"));
-      const winDelete = !isMac && e.key === "Delete";
-      if ((macDelete || winDelete) && selectedIds.length > 0) {
-        e.preventDefault();
-        setConfirmDelete({ ids: selectedIds, permanent: inTrashView });
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [selectedIds, inTrashView, structureEnabled]);
+  useDriveDeleteShortcut({
+    selectedIds,
+    inTrashView,
+    structureEnabled,
+    requestDelete: setConfirmDelete,
+  });
 
   const { selectionBar } = useDriveSelectionBar({
     labels,
@@ -421,6 +419,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     inTrashView,
     operations,
     structureEnabled,
+    zipName: shell.searchQuery.trim() ? labels.searchViewTitle : viewLabel,
     exitSelection,
     batchStar,
     requestDeleteSelected,

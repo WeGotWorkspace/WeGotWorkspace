@@ -10,6 +10,9 @@ vi.mock("@/lib/offline/drive/drive-inbound-sync", () => ({
   syncDriveInboundFromFileNodes,
 }));
 
+const guestSession = vi.hoisted(() => ({ value: false }));
+vi.mock("@/lib/api/wgw/http", () => ({ wgwIsGuestSession: () => guestSession.value }));
+
 const syncDriveFileNodesIfStale = vi.hoisted(() => vi.fn());
 const useJmapStateChange = vi.hoisted(() => vi.fn());
 
@@ -24,6 +27,7 @@ import { useDriveFileNodeInbound } from "./use-drive-file-node-inbound";
 
 describe("useDriveFileNodeInbound", () => {
   beforeEach(() => {
+    guestSession.value = false;
     syncDriveInboundFromFileNodes.mockReset();
     show.mockReset();
     syncDriveFileNodesIfStale.mockReset().mockResolvedValue(true);
@@ -53,6 +57,16 @@ describe("useDriveFileNodeInbound", () => {
     expect(warn).toHaveBeenCalledWith("[drive-inbound] FileNode sync failed", failure);
     expect(show).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("never syncs for a share-link guest, whose shell username is the owner's", async () => {
+    guestSession.value = true;
+    renderHook(() => useDriveFileNodeInbound("owner", 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(syncDriveInboundFromFileNodes).not.toHaveBeenCalled();
+    // Nor does it listen for pushed FileNode states.
+    const [types] = useJmapStateChange.mock.calls.at(-1)!;
+    expect(types).toEqual([]);
   });
 
   it("runs a pushed FileNode state through the push sync (#1663)", async () => {

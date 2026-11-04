@@ -98,6 +98,26 @@ export function isCollabDocumentGoneError(error: unknown): boolean {
 }
 
 /**
+ * Tell the host first. A host that resolves `true` found the document elsewhere
+ * (Docs looks its id up again, #1751), so the "gone" notice stays hidden.
+ */
+export function notifyDocumentGone(
+  host: (() => void | Promise<boolean>) | undefined,
+  report: () => void,
+): void {
+  const answer = host?.();
+  if (!(answer instanceof Promise)) {
+    report();
+    return;
+  }
+  void answer
+    .catch(() => false)
+    .then((moved) => {
+      if (!moved) report();
+    });
+}
+
+/**
  * 409 `external_write` — the stored text changed outside the app and this
  * save did not name the text it saw. Reloading the state does not resolve
  * it; a person chooses.

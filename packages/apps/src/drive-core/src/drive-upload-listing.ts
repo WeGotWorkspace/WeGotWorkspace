@@ -1,14 +1,8 @@
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { formatBytesCompact } from "@/drive-core/src/drive-file-utils";
-import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveUploadBatchRequest } from "@/drive-core/src/drive-upload-batch-dialog";
 import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
-import type {
-  DriveAPIOperations,
-  DriveUIData,
-  DriveUploadProgress,
-} from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 
 /**
  * Bring the folder's upload placeholders in `previous` in line with the
@@ -42,7 +36,7 @@ export function mergeDriveUploadPlaceholders(
  */
 export async function queueDriveUploadBatch(
   operations: Required<Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch">>,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   onStored?: (batch: DriveStoredUploadBatch) => void,
   ask?: (request: DriveUploadBatchRequest) => void,
 ): Promise<string> {
@@ -57,6 +51,9 @@ export async function queueDriveUploadBatch(
   return batchId;
 }
 
+/** Picked files, or a folder tree (#1620) with `files` empty. */
+export type DriveUploadInput = Parameters<NonNullable<DriveAPIOperations["enqueueUploads"]>>[0];
+
 export type DriveStoredUploadBatch = { batchId: string; itemIds: readonly string[] };
 
 /**
@@ -65,7 +62,7 @@ export type DriveStoredUploadBatch = { batchId: string; itemIds: readonly string
  */
 export function queuePickedDriveUploads(
   operations: Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch"> | undefined,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   showError: (message: string) => void,
   onStored?: (batch: DriveStoredUploadBatch) => void,
   ask?: (request: DriveUploadBatchRequest) => void,
@@ -77,52 +74,4 @@ export function queuePickedDriveUploads(
     (error: unknown) => showError(error instanceof Error ? error.message : String(error)),
   );
   return true;
-}
-
-/** Progress bar state of a direct (not queued) upload. */
-export type DriveUploadProgressView = {
-  label: string;
-  percent: number;
-  detail: string;
-  done: boolean;
-};
-
-export function driveUploadProgressView(progress: DriveUploadProgress): DriveUploadProgressView {
-  const totalBytes = Math.max(1, progress.totalBytes);
-  const percent = Math.min(100, Math.round((progress.uploadedBytes / totalBytes) * 100));
-  const label =
-    progress.currentFileName.trim() !== ""
-      ? driveLabels.uploadingFile(progress.currentFileName)
-      : driveLabels.uploadingFiles(progress.filesTotal);
-  const detail = driveLabels.uploadProgressDetail(
-    formatBytesCompact(progress.uploadedBytes),
-    formatBytesCompact(progress.totalBytes),
-    progress.filesCompleted,
-    progress.filesTotal,
-  );
-  return { label, percent, detail, done: false };
-}
-
-/** First frame of a direct upload, before the first progress event. */
-export function driveUploadStartView(files: readonly File[]): DriveUploadProgressView {
-  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-  return {
-    label:
-      files.length === 1
-        ? driveLabels.uploadingFile(files[0]!.name)
-        : driveLabels.uploadingFiles(files.length),
-    percent: 0,
-    detail: `0 / ${formatBytesCompact(totalBytes)}`,
-    done: false,
-  };
-}
-
-/** Last frame of a direct upload. */
-export function driveUploadDoneView(count: number): DriveUploadProgressView {
-  return {
-    label: driveLabels.uploadDoneToast(count),
-    percent: 100,
-    detail: driveLabels.uploadComplete,
-    done: true,
-  };
 }

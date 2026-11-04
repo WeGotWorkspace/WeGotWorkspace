@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import {
   colorForName,
@@ -14,6 +14,7 @@ import {
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
+  notifyDocumentGone,
 } from "./docs-collab-utils";
 
 describe("docs-collab-utils", () => {
@@ -117,3 +118,27 @@ function contrast(a: string, b: string): number {
   const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (light! + 0.05) / (dark! + 0.05);
 }
+
+describe("notifyDocumentGone", () => {
+  it("reports at once when the host answers nothing", () => {
+    const report = vi.fn();
+    notifyDocumentGone(() => undefined, report);
+    notifyDocumentGone(undefined, report);
+    expect(report).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays quiet when the host found the document elsewhere", async () => {
+    const report = vi.fn();
+    notifyDocumentGone(async () => true, report);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("reports when the host did not find it, or failed", async () => {
+    const report = vi.fn();
+    notifyDocumentGone(async () => false, report);
+    notifyDocumentGone(() => Promise.reject(new Error("offline")), report);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(report).toHaveBeenCalledTimes(2);
+  });
+});

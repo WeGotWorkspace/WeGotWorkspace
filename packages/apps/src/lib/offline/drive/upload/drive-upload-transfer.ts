@@ -12,6 +12,7 @@ import type {
   DriveUploadPlacing,
   DriveUploadReplaceTarget,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
+import { childNames, existingByName } from "@/lib/offline/drive/upload/drive-upload-node-lookup";
 import { assertDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target-check";
 
 export { DriveUploadTooLargeError } from "@/lib/api/wgw/drive-upload-errors";
@@ -63,11 +64,16 @@ export type DriveUploadTransferResult =
 /**
  * `name (1).ext`, `name (2).ext`, … — the first one not in `taken`
  * (case-insensitive). A dot at the start is part of the name, not an extension.
+ * A folder has no extension: `My.Photos (1)`.
  */
-export function keepBothName(name: string, taken: ReadonlySet<string>): string {
+export function keepBothName(
+  name: string,
+  taken: ReadonlySet<string>,
+  kind: "file" | "folder" = "file",
+): string {
   const lowerTaken = new Set(Array.from(taken, (value) => value.toLowerCase()));
   if (!lowerTaken.has(name.toLowerCase())) return name;
-  const dot = name.lastIndexOf(".");
+  const dot = kind === "file" ? name.lastIndexOf(".") : -1;
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const extension = dot > 0 ? name.slice(dot) : "";
   for (let n = 1; ; n += 1) {
@@ -348,33 +354,4 @@ async function repeatWhileAttaching(
       if (!attaching || attempt >= ATTACH_IN_PROGRESS_REPEATS) throw error;
     }
   }
-}
-
-async function existingByName(
-  session: DriveJmapSession,
-  input: Pick<DriveUploadTransferInput, "folderId">,
-  name: string,
-  signal?: AbortSignal,
-): Promise<JmapFileNode | null> {
-  const got = await session.fileNodes.queryAndGetFileNodes(
-    session.accountId,
-    { parentId: input.folderId, name },
-    { signal },
-  );
-  return (
-    got.list.find((node) => node.name.toLowerCase() === name.toLowerCase()) ?? got.list[0] ?? null
-  );
-}
-
-async function childNames(
-  session: DriveJmapSession,
-  folderId: string,
-  signal?: AbortSignal,
-): Promise<Set<string>> {
-  const got = await session.fileNodes.queryAndGetFileNodes(
-    session.accountId,
-    { parentId: folderId },
-    { signal },
-  );
-  return new Set(got.list.map((node) => node.name));
 }

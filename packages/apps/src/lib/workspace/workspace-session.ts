@@ -27,11 +27,15 @@ export function workspaceUserInitials(user: WorkspaceUser): string {
 
 /** Sidebar footer subtitle for public share guest sessions. */
 export const WORKSPACE_GUEST_FOOTER_DETAIL = "View only";
+/** Footer subtitle for a guest on a folder link that allows adding files (#1715). */
+export const WORKSPACE_GUEST_UPLOAD_FOOTER_DETAIL = "Can view and add files";
 
 export function workspaceUserFooterDetailLine(
   session: WorkspaceSession,
   isGuest = false,
+  guestMayUpload = false,
 ): string | undefined {
-  if (isGuest) return WORKSPACE_GUEST_FOOTER_DETAIL;
+  if (isGuest)
+    return guestMayUpload ? WORKSPACE_GUEST_UPLOAD_FOOTER_DETAIL : WORKSPACE_GUEST_FOOTER_DETAIL;
   return session.user.username;
 }

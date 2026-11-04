@@ -6,6 +6,8 @@ import type {
   DriveUploadBatchQuestions,
   DriveUploadKnownSpaceCheck,
 } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
+import type { DriveUploadBatchConflicts } from "@/lib/offline/drive/upload/drive-upload-conflicts";
+import type { DriveUploadFolderQuestion } from "@/lib/offline/drive/upload/drive-upload-folder-conflicts";
 import type { DriveUploadConflictChoice } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type { DriveUploadKeepOfflineQuestion } from "@/lib/offline/drive/upload/drive-upload-keep-offline";
 import { StepperDialog, type StepperDialogStep } from "@/stepper-dialog/src/stepper-dialog";
@@ -16,32 +18,64 @@ import "@/drive-core/src/drive-upload-batch-dialog.css";
 /** Names shown in a step's list before "and N more". */
 const LISTED_NAMES = 5;
 
-export type DriveUploadBatchStepId = "space" | "conflicts" | "keepOffline";
+export type DriveUploadBatchStepId = "space" | "folders" | "conflicts" | "keepOffline";
 
-/** The steps that apply, in the fixed order: server space → name conflicts → keep offline. */
+type FolderConflict = NonNullable<DriveUploadBatchAnswers["folderConflict"]>;
+
+/** A folder upload asks about its folder name only when *Merge* is possible (#1620). */
+function foldersAsked(questions: DriveUploadBatchQuestions): boolean {
+  return Boolean(questions.folders?.folders.some((folder) => folder.canMerge));
+}
+
+/** The file name conflicts as they are with the folder answer: *Merge* has its own. */
+export function driveUploadBatchConflicts(
+  questions: DriveUploadBatchQuestions,
+  folderConflict: FolderConflict = "keep_both",
+): DriveUploadBatchConflicts | null {
+  if (folderConflict === "merge" && foldersAsked(questions)) {
+    return questions.folders?.mergeConflicts ?? null;
+  }
+  return questions.conflicts;
+}
+
+/**
+ * The steps that apply, in the fixed order: server space → folder name →
+ * name conflicts → keep offline. With *Merge*, the conflicts step follows
+ * the files that land in the existing folder.
+ */
 export function driveUploadBatchStepIds(
   questions: DriveUploadBatchQuestions,
+  folderConflict: FolderConflict = "keep_both",
 ): DriveUploadBatchStepId[] {
   const ids: DriveUploadBatchStepId[] = [];
   if (questions.space) ids.push("space");
-  if (questions.conflicts && questions.conflicts.choices.length > 0) ids.push("conflicts");
+  if (foldersAsked(questions)) ids.push("folders");
+  const conflicts = driveUploadBatchConflicts(questions, folderConflict);
+  if (conflicts && conflicts.choices.length > 0) ids.push("conflicts");
   if (questions.keepOffline && questions.keepOffline.files.length > 0) ids.push("keepOffline");
   return ids;
 }
 
-type DraftAnswers = { conflict: DriveUploadConflictChoice; keepOffline: "remove" | "keep" };
+type DraftAnswers = {
+  conflict: DriveUploadConflictChoice;
+  keepOffline: "remove" | "keep";
+  /** Asked only for a folder upload; *Keep both* when unset. */
+  folderConflict?: FolderConflict;
+};
 
 /** The release answers for the dialog's choices; only what was asked is answered. */
 export function driveUploadBatchAnswers(
   questions: DriveUploadBatchQuestions,
   draft: DraftAnswers,
 ): DriveUploadBatchAnswers {
-  const conflicts = questions.conflicts;
+  const folders = foldersAsked(questions);
+  const conflicts = driveUploadBatchConflicts(questions, draft.folderConflict);
   const asked = Boolean(conflicts && conflicts.choices.length > 0);
   const conflict =
     asked && conflicts!.choices.includes(draft.conflict) ? draft.conflict : undefined;
   return {
     keepOffline: questions.keepOffline ? draft.keepOffline : "remove",
+    ...(folders ? { folderConflict: draft.folderConflict ?? "keep_both" } : {}),
     ...(conflict ? { conflict } : {}),
     ...(conflict === "replace" ? { replaceTargets: conflicts!.replaceTargets } : {}),
   };
@@ -142,6 +176,38 @@ function keepOfflineLead(question: DriveUploadKeepOfflineQuestion): string {
     : L.keepOfflineOverLimit(count, formatBytesCompact(question.limitBytes));
 }
 
+function foldersStep(
+  question: DriveUploadFolderQuestion,
+  draft: DraftAnswers,
+  setDraft: (next: DraftAnswers) => void,
+): StepperDialogStep {
+  const clashes = question.folders.filter((folder) => folder.canMerge);
+  return {
+    id: "folders",
+    title: L.foldersTitle(clashes.length),
+    dotLabel: L.foldersDot,
+    content: (
+      <>
+        <p>{L.foldersLead(clashes.length)}</p>
+        <NameList names={clashes.map((folder) => folder.name)} />
+        <ChoiceGroup
+          legend={L.foldersChoice}
+          value={draft.folderConflict ?? "keep_both"}
+          options={[
+            {
+              value: "keep_both",
+              label: L.foldersKeepBoth,
+              detail: L.foldersKeepBothDetail(clashes.length, clashes[0]!.keptAsName),
+            },
+            { value: "merge", label: L.foldersMerge, detail: L.foldersMergeDetail },
+          ]}
+          onChange={(folderConflict) => setDraft({ ...draft, folderConflict })}
+        />
+      </>
+    ),
+  };
+}
+
 /** The dialog's steps for `questions`, wired to the draft answers. */
 function buildSteps(
   questions: DriveUploadBatchQuestions,
@@ -150,7 +216,7 @@ function buildSteps(
   setDraft: (next: DraftAnswers) => void,
 ): StepperDialogStep[] {
   const steps: StepperDialogStep[] = [];
-  for (const id of driveUploadBatchStepIds(questions)) {
+  for (const id of driveUploadBatchStepIds(questions, draft.folderConflict)) {
     if (id === "space" && questions.space) {
       steps.push({
         id,
@@ -159,8 +225,10 @@ function buildSteps(
         actionLabel: L.spaceAddAnyway,
         content: <SpaceStep space={questions.space} count={fileCount} />,
       });
-    } else if (id === "conflicts" && questions.conflicts) {
-      const { conflicts, choices } = questions.conflicts;
+    } else if (id === "folders" && questions.folders) {
+      steps.push(foldersStep(questions.folders, draft, setDraft));
+    } else if (id === "conflicts") {
+      const { conflicts, choices } = driveUploadBatchConflicts(questions, draft.folderConflict)!;
       const all = {
         replace: {
           value: "replace" as const,
@@ -232,7 +300,11 @@ export type DriveUploadBatchDialogProps = {
   dialogSurfaceClassName?: string;
 };
 
-const DEFAULT_DRAFT: DraftAnswers = { conflict: "keep_both", keepOffline: "remove" };
+const DEFAULT_DRAFT: DraftAnswers = {
+  conflict: "keep_both",
+  keepOffline: "remove",
+  folderConflict: "keep_both",
+};
 
 /**
  * The batch dialog: only the steps that apply, one answer for all files per

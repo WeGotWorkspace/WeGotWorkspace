@@ -83,7 +83,7 @@ export function LoginScreen({
         return;
       }
       await wgwLoginWithCredentials(normalizedUsername, password);
-      await navigate({ to: resolvedReturnPath });
+      await navigate({ href: resolvedReturnPath });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message.trim() : "Could not sign in.";
       const normalized = message.toLowerCase();

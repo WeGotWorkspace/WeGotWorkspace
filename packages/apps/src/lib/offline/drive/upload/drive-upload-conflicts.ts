@@ -58,13 +58,16 @@ export function driveUploadSessionVersionCheck(
 }
 
 /**
- * The batch's name conflicts against the cached listing of each item's
- * target folder, with the choices the dialog (#1521) may offer.
+ * The batch's name conflicts against the cached listing of each file's
+ * target folder, with the choices the dialog (#1521) may offer. Folders of
+ * a folder upload have their own question. `parentPathOf` reads a file's
+ * folder elsewhere (a folder upload merged into an existing folder).
  */
 export async function describeDriveUploadBatchConflicts(
   username: string,
   batchId: string,
   sessionVersionCheck: boolean | null,
+  options: { parentPathOf?: (parentPath: string) => string } = {},
 ): Promise<DriveUploadBatchConflicts> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const items = await driveUploadItemsTable(db)
@@ -74,14 +77,16 @@ export async function describeDriveUploadBatchConflicts(
   const listings = new Map<string, WgwDriveDirectoryEntry[]>();
   const conflicts: DriveUploadConflict[] = [];
   for (const item of items) {
+    if (item.kind === "folder") continue;
     const placeholder = await findUploadPlaceholder(username, item.id);
     if (!placeholder) continue;
-    let listing = listings.get(placeholder.parentPath);
+    const parentPath = options.parentPathOf?.(placeholder.parentPath) ?? placeholder.parentPath;
+    let listing = listings.get(parentPath);
     if (!listing) {
-      listing = (await readDirectoryEntriesFromCache(username, placeholder.parentPath)).filter(
+      listing = (await readDirectoryEntriesFromCache(username, parentPath)).filter(
         (entry) => !entry.upload,
       );
-      listings.set(placeholder.parentPath, listing);
+      listings.set(parentPath, listing);
     }
     const existing = listing.find(
       (entry) => entry.type !== "dir" && entry.name.toLowerCase() === item.name.toLowerCase(),

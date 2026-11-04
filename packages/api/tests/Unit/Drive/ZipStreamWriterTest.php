@@ -51,7 +51,23 @@ final class ZipStreamWriterTest extends TestCase
         }
         $this->assertSame(1_600_000_000, $records[2]['mtime']);
         $this->assertSame(1_650_000_001, $records[3]['mtime']);
-        $this->assertStringNotContainsString("PK\x06\x06", $bytes, 'no ZIP64 end record for a small archive');
+        $this->assertFalse(ZipArchiveInspector::hasZip64EndRecord($bytes), 'no ZIP64 end record for a small archive');
+    }
+
+    public function test_file_data_that_looks_like_a_central_record_does_not_confuse_the_reader(): void
+    {
+        // Stored file data can contain any bytes, including a central
+        // directory signature followed by huge length fields.
+        $tricky = 'before'."PK\x01\x02".str_repeat("\xff", 60).'after';
+        $bytes = $this->write(function (ZipStreamWriter $zip) use ($tricky): void {
+            $zip->addFile('Top/tricky.bin', $this->stream($tricky), 1_700_000_000, strlen($tricky));
+            $zip->addFile('Top/next.txt', $this->stream('next'), 1_700_000_001, 4);
+        });
+
+        $this->assertSame(['Top/tricky.bin' => $tricky, 'Top/next.txt' => 'next'], ZipArchiveInspector::contents($this->path));
+        $records = ZipArchiveInspector::centralRecords($bytes);
+        $this->assertSame(['Top/tricky.bin', 'Top/next.txt'], array_column($records, 'name'));
+        $this->assertSame(1_700_000_001, $records[1]['mtime']);
     }
 
     public function test_an_entry_of_four_gib_or_more_is_zip64_with_its_crc_in_the_local_header(): void

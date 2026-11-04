@@ -2,7 +2,9 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { buildDocsCollabUrls } from "@/docs-core/src/docs-collab-urls";
 import { listAllCachedDriveEntryPaths } from "@/lib/offline/drive/drive-directory-offline-store";
 import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-core/docs-collab";
+import { isFileNodeId } from "@/lib/files/file-node-id";
 import {
+  DOCS_COLLAB_IDENTITY_DB_VERSION,
   docsCollabReadNames,
   docsCollabRoomKey,
   listExistingIndexedDatabaseNames,
@@ -24,10 +26,18 @@ export async function uploadPendingDocBodies(username: string): Promise<void> {
       rooms.push({
         room,
         databaseName,
-        urls: () => buildDocsCollabUrls(path),
+        urls: () => buildDocsCollabUrls(path, nodeIdOfDatabase(databaseName)),
         format: collabDocumentFormat(room),
       });
     }
   }
   await uploadPendingCollabRooms(rooms);
+}
+
+/** An id-keyed database names its FileNode: the save is refused if it moved. */
+function nodeIdOfDatabase(databaseName: string): string | undefined {
+  const suffix = `:${DOCS_COLLAB_IDENTITY_DB_VERSION}`;
+  if (!databaseName.endsWith(suffix)) return undefined;
+  const id = databaseName.slice(0, -suffix.length);
+  return isFileNodeId(id) ? id : undefined;
 }

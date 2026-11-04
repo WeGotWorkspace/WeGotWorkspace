@@ -26,18 +26,19 @@ export type DriveUploadKeepOfflineQuestion = {
  * Same rule as the hand-off (`chooseDriveUploadHandOff`): a file the rule
  * keeps becomes an automatic offline copy without asking. Files without a
  * local copy (direct uploads), files that already failed, and Docs-editable
- * files (they keep their own offline path) are left out. Null when no file
+ * files (they keep their own offline path) are left out, and so are the
+ * folders of a folder upload. Null when no file
  * needs the question.
  */
 export function driveUploadKeepOfflineQuestion(
   items: readonly Pick<
     OfflineDriveUploadItemRow,
-    "id" | "name" | "size" | "localCopy" | "status"
+    "id" | "name" | "size" | "localCopy" | "status" | "kind"
   >[],
   settings: OfflineDeviceContentSettings,
 ): DriveUploadKeepOfflineQuestion | null {
   const files = items
-    .filter((item) => item.localCopy && item.status !== "failed")
+    .filter((item) => item.kind !== "folder" && item.localCopy && item.status !== "failed")
     // Asked only when the answer changes what happens to the file.
     .filter(
       (item) =>

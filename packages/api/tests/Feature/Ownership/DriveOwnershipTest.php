@@ -64,6 +64,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'GET /files',
         'GET /files/children',
         'GET /files/content',
+        'GET /files/node',
         'GET /files/collaboration',
         'POST /files/rooms',
         'POST /files/star',
@@ -121,6 +122,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'GET /files',
         'GET /files/children',
         'GET /files/content',
+        'GET /files/node',
         'GET /files/collaboration',
         'PUT /files/collaboration',
         'GET /files/shared-with-me',
@@ -311,7 +313,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         $cases[] = OwnershipCase::of('GET /files/children', $member, Scope::UserToActorRead, Outcome::NotFound)->variant('file-share');
 
         foreach ([Scope::OwnUser, Scope::OtherUser, Scope::UserToActorRead, Scope::GrantRevoked] as $scope) {
-            $cases[] = OwnershipCase::of('GET /files/content', $member, $scope, self::readOutcome(self::levelOf($scope, null)))->variant('node-id');
+            foreach (['GET /files/content', 'GET /files/node'] as $op) {
+                $cases[] = OwnershipCase::of($op, $member, $scope, self::readOutcome(self::levelOf($scope, null)))->variant('node-id');
+            }
         }
 
         // A ticket re-checks access on every request: one minted while the
@@ -545,6 +549,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'GET /files' => $this->runSearch($case, $target),
             'GET /files/children' => $this->runChildren($case, $target),
             'GET /files/content' => $this->runContent($case, $target),
+            'GET /files/node' => $this->runNodeLocate($case, $target),
             'GET /files/collaboration' => $this->runCollabRead($case, $target),
             'PUT /files/collaboration' => $this->runCollabWrite($case, $target),
             'POST /files/rooms' => $this->runRoom($case, $target),
@@ -1120,6 +1125,28 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         $this->assertRestOutcome($response, $case);
         if ($case->outcome === Outcome::Allowed) {
             $this->assertSame($target['body'], $this->bodyOf($response), $case->key());
+        }
+    }
+
+    /**
+     * Id ↔ path lookup (#1751): the same read check as the content, by path or by id.
+     *
+     * @param  array<string, mixed>  $target
+     */
+    private function runNodeLocate(OwnershipCase $case, array $target): void
+    {
+        $docId = $this->nodesOf($target)['docId'];
+        $uri = $case->variant === 'node-id'
+            ? '/files/node?id='.rawurlencode($docId)
+            : '/files/node?path='.rawurlencode($this->pathFor($case, $target, true));
+        $response = $this->requestAs($case->actor, 'GET', $uri);
+        if ($case->outcome !== Outcome::Allowed) {
+            $this->assertTargetHidden($response, $target, $case);
+        }
+        $this->assertRestOutcome($response, $case);
+        if ($case->outcome === Outcome::Allowed) {
+            $this->assertSame($docId, $response->json('data.id'), $case->key());
+            $this->assertNotSame('', (string) $response->json('data.path'), $case->key());
         }
     }
 

@@ -2,6 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
+import { readDocsNodeIdForPath } from "@/lib/offline/docs/docs-node-paths";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 import { readOfflineDocsUsername, readOfflineDriveUsername } from "@/lib/offline/offline-session";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
@@ -134,7 +135,11 @@ async function withRawIndexedDbPersistence<T>(
 async function cachedNodeIdForRoom(roomKey: string): Promise<string | undefined> {
   const username = readOfflineDriveUsername() ?? readOfflineDocsUsername();
   if (!username || !roomKey) return undefined;
-  return readCachedDriveNodeId(username, roomKey);
+  // Docs records the id it opened (#1751) straight from the server; the Drive crawl may be older.
+  return (
+    (await readDocsNodeIdForPath(username, roomKey)) ??
+    (await readCachedDriveNodeId(username, roomKey))
+  );
 }
 
 export type DocsCollabDatabaseChoice = {
@@ -145,13 +150,15 @@ export type DocsCollabDatabaseChoice = {
 
 /**
  * Resolve the FileNode id before IndexedDB opens.
+ * An id the route already names (`knownNodeId`) wins over any path lookup.
  * An unknown id (no crawl yet, or a deeplink) uses the path-keyed `:v2` database.
  */
 export async function resolveDocsCollabDatabase(
   apiPath: string,
+  knownNodeId?: string,
 ): Promise<DocsCollabDatabaseChoice> {
   const room = docsCollabRoomKey(apiPath);
-  const nodeId = await cachedNodeIdForRoom(room);
+  const nodeId = knownNodeId || (await cachedNodeIdForRoom(room));
   if (!nodeId) {
     console.warn("[docs-collab] nodeId unknown, opening path-keyed database", { room });
     return {

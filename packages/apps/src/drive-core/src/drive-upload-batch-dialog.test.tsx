@@ -97,6 +97,46 @@ describe("driveUploadBatchAnswers", () => {
   });
 });
 
+describe("folder name step (#1620)", () => {
+  const mergeConflicts: NonNullable<DriveUploadBatchQuestions["conflicts"]> = {
+    ...conflicts,
+    conflicts: [{ ...conflicts.conflicts[0]!, itemId: "in-photos", name: "cover.jpg" }],
+  };
+  const folders = (canMerge: boolean): NonNullable<DriveUploadBatchQuestions["folders"]> => ({
+    folders: [{ itemId: "f1", name: "Photos", keptAsName: "Photos (1)", canMerge }],
+    mergeConflicts,
+  });
+
+  it("asks only when Merge is possible, before the conflicts step", () => {
+    expect(driveUploadBatchStepIds({ ...none, space, folders: folders(true) })).toEqual([
+      "space",
+      "folders",
+    ]);
+    expect(driveUploadBatchStepIds({ ...none, folders: folders(false) })).toEqual([]);
+  });
+
+  it("follows the file conflicts of the chosen answer", () => {
+    const questions = { ...none, folders: folders(true) };
+    expect(driveUploadBatchStepIds(questions, "merge")).toEqual(["folders", "conflicts"]);
+    expect(
+      driveUploadBatchAnswers(questions, {
+        conflict: "replace",
+        keepOffline: "remove",
+        folderConflict: "merge",
+      }),
+    ).toEqual({
+      keepOffline: "remove",
+      folderConflict: "merge",
+      conflict: "replace",
+      replaceTargets: mergeConflicts.replaceTargets,
+    });
+    // Keep both: the files land in a new folder, so no conflict answer goes out.
+    expect(
+      driveUploadBatchAnswers(questions, { conflict: "replace", keepOffline: "remove" }),
+    ).toEqual({ keepOffline: "remove", folderConflict: "keep_both" });
+  });
+});
+
 describe("DriveUploadBatchDialog", () => {
   it("walks through every step with Back and Next, then uploads with the answers", async () => {
     const onUpload = vi.fn();

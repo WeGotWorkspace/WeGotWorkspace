@@ -19,7 +19,9 @@ use Illuminate\Support\Carbon;
 /**
  * Folder download tickets (#1621): #1500's download ticket, bound to a
  * folder's node id instead of a blobId, so the browser can save the zip
- * natively without our `Authorization` header.
+ * natively without our `Authorization` header. A selection ticket (#1905)
+ * is bound to a list of node ids (files and folders) and zips them under
+ * one top folder.
  *
  * Same rules as DownloadTicketService: a 256-bit secret stored as sha256;
  * bound to one account and the refresh-token family (sign-in session) that
@@ -27,10 +29,21 @@ use Illuminate\Support\Carbon;
  * config, touched at each request and about every 30 s while the zip
  * streams. Every request re-checks the session, that the account is
  * enabled, and that the folder is still a live, readable Drive folder, so a
- * withdrawn share stops the next request.
+ * withdrawn share stops the next request. For a selection, each item is
+ * re-checked; items no longer readable are left out, and a selection with
+ * none left is refused.
  */
 final class FolderDownloadTicketService
 {
+    /** Most node ids one selection ticket may hold. */
+    public const MAX_SELECTION = 1000;
+
+    /** Longest zip name stem for a selection, in characters. */
+    public const MAX_NAME_LENGTH = 120;
+
+    /** Zip name stem for a selection that names no place. */
+    public const DEFAULT_SELECTION_NAME = 'Download';
+
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FolderZipReadCheck $reads,
@@ -46,6 +59,55 @@ final class FolderDownloadTicketService
      */
     public function issue(array $principal, string $nodeId): array
     {
+        $sid = $this->sessionFamily($principal);
+        $username = $principal['username'];
+        $folder = $this->readableFolder($username, $nodeId);
+        if ($folder === null) {
+            throw new ApiHttpException(404, 'Folder not found.', 'not_found');
+        }
+
+        return $this->store($username, $sid, $nodeId, null, FolderZipWalker::safeName((string) $folder->name).'.zip');
+    }
+
+    /**
+     * A ticket for several items as one zip (#1905). Every item must be a
+     * live, visible Drive file or folder the account may read; otherwise the
+     * whole request is a 404, which does not say which id exists.
+     *
+     * @param  array{username: string, role: string, sid?: string}  $principal
+     * @param  non-empty-list<string>  $nodeIds  distinct FileNode ids
+     * @return array{url: string, name: string, idleExpires: string, absoluteExpires: string}
+     */
+    public function issueSelection(array $principal, array $nodeIds, ?string $name): array
+    {
+        $sid = $this->sessionFamily($principal);
+        $username = $principal['username'];
+        foreach ($nodeIds as $nodeId) {
+            if ($this->readableItem($username, $nodeId) === null) {
+                throw new ApiHttpException(404, 'Item not found.', 'not_found');
+            }
+        }
+
+        return $this->store($username, $sid, $nodeIds[0], $nodeIds, self::selectionName($name).'.zip');
+    }
+
+    /** The selection zip's top folder and name stem: the place the user named, made safe. */
+    public static function selectionName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return self::DEFAULT_SELECTION_NAME;
+        }
+
+        // Cut first: safeName trims and maps '', '.' and '..' to '_', which a cut could bring back.
+        return FolderZipWalker::safeName(mb_substr($name, 0, self::MAX_NAME_LENGTH));
+    }
+
+    /**
+     * @param  array{username: string, role: string, sid?: string}  $principal
+     */
+    private function sessionFamily(array $principal): string
+    {
         $sid = $principal['sid'] ?? null;
         if (! is_string($sid) || $sid === '') {
             throw new ApiHttpException(
@@ -54,21 +116,25 @@ final class FolderDownloadTicketService
                 'session_required',
             );
         }
-        $username = $principal['username'];
-        $folder = $this->readableFolder($username, $nodeId);
-        if ($folder === null) {
-            throw new ApiHttpException(404, 'Folder not found.', 'not_found');
-        }
 
+        return $sid;
+    }
+
+    /**
+     * @param  list<string>|null  $nodeIds
+     * @return array{url: string, name: string, idleExpires: string, absoluteExpires: string}
+     */
+    private function store(string $username, string $sid, string $nodeId, ?array $nodeIds, string $name): array
+    {
         $this->expiry->pruneExpired(DriveFolderDownloadTicket::query());
 
-        $name = FolderZipWalker::safeName((string) $folder->name).'.zip';
         $secret = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = Carbon::now();
         $ticket = DriveFolderDownloadTicket::query()->create([
             'secret_hash' => DownloadTicketService::hashSecret($secret),
             'username' => $username,
             'node_id' => $nodeId,
+            'node_ids' => $nodeIds,
             'zip_name' => $name,
             'session_family' => $sid,
             'issued_at' => $now,
@@ -85,11 +151,12 @@ final class FolderDownloadTicketService
     }
 
     /**
-     * The ticket and its folder, or null when the ticket is unknown, expired,
-     * its session ended, the account is disabled, or the folder is gone or no
-     * longer readable. Accepting moves lastSeen forward.
+     * The ticket with its folder, or with its selection's items, or null when
+     * the ticket is unknown, expired, its session ended, the account is
+     * disabled, or the folder (or every selected item) is gone or no longer
+     * readable. Accepting moves lastSeen forward.
      *
-     * @return array{ticket: DriveFolderDownloadTicket, folder: JmapFileNode, principal: array{username: string, role: string}}|null
+     * @return array{ticket: DriveFolderDownloadTicket, folder: JmapFileNode|null, items: list<JmapFileNode>|null, principal: array{username: string, role: string}}|null
      */
     public function redeem(string $secret): ?array
     {
@@ -110,14 +177,29 @@ final class FolderDownloadTicketService
 
             return null;
         }
-        $folder = $this->readableFolder($username, (string) $ticket->node_id);
-        if ($folder === null) {
-            return null;
+        $folder = null;
+        $items = null;
+        if (is_array($ticket->node_ids)) {
+            $items = [];
+            foreach ($ticket->node_ids as $nodeId) {
+                $item = $this->readableItem($username, $nodeId);
+                if ($item !== null) {
+                    $items[] = $item;
+                }
+            }
+            if ($items === []) {
+                return null;
+            }
+        } else {
+            $folder = $this->readableFolder($username, (string) $ticket->node_id);
+            if ($folder === null) {
+                return null;
+            }
         }
 
         $this->touch($ticket);
 
-        return ['ticket' => $ticket, 'folder' => $folder, 'principal' => $this->accounts->principalFor($username)];
+        return ['ticket' => $ticket, 'folder' => $folder, 'items' => $items, 'principal' => $this->accounts->principalFor($username)];
     }
 
     /**
@@ -138,6 +220,24 @@ final class FolderDownloadTicketService
             $last = $now;
             $this->touch($ticket);
         };
+    }
+
+    /**
+     * A live, visible Drive file or folder (not trash, notes, attachments, or
+     * a name starting with `.`) the account may read: a selection item.
+     */
+    private function readableItem(string $username, string $nodeId): ?JmapFileNode
+    {
+        $node = $this->index->liveByNodeId($nodeId);
+        if ($node === null || str_starts_with((string) $node->name, '.')) {
+            return null;
+        }
+        $key = (string) $node->storage_key;
+        if (StorageKeyClass::classify($key) !== StorageKeyClass::Regular) {
+            return null;
+        }
+
+        return $this->reads->mayRead($key, $this->accounts->principalFor($username)) ? $node : null;
     }
 
     /** A live Drive folder (not trash, notes, or attachments) the account may read. */
