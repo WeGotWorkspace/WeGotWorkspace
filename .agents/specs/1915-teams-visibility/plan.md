@@ -130,7 +130,7 @@ See spec.md, Non-goals.
 - **Upgrade migration that puts every existing user in one Team, or the rule staying off until the first Team exists:** rejected by the product owner, 2026-11-04. "No Team now is no Team later": after the update, a user who is in no Team sees no colleagues until an admin adds them.
 - **Milestone "Pioneer programme":** not set, by the product owner, 2026-11-04.
 - **Sync-token bump per affected collection on membership change:** rejected. The fan-out is unbounded, and it is not needed.
-- **A colleague-set fingerprint in every `/changes` state, plus a push on membership writes:** rejected after the second review. Push is pull-only, so there is nothing to push, and every state except FileNode is already a map keyed by the visible collections (What exists). Hiding a share changes that map on the next poll. Only FileNode needs extra state: a hash of the viewer's visible roots, because its sequence is global (chunk E2). A Team-set fingerprint would also have been wrong: when C joins A's Team, A's Team set does not change, but A's colleagues do.
+- **A colleague-set fingerprint in every `/changes` state, plus a push on membership writes:** rejected after the second review. Push is pull-only, so there is nothing to push, and every state except FileNode is already a map keyed by the visible collections (What exists). Hiding a share changes that map on the next poll. Only FileNode needs extra state: a hash of the viewer's visible grants and their access levels, because its sequence is global (chunk E2). A Team-set fingerprint would also have been wrong: when C joins A's Team, A's Team set does not change, but A's colleagues do.
 - **Admins who share the old "Administrators" Team see each other's presence and free/busy:** accepted by the product owner, 2026-11-04. It is a real Team. Fresh installs have no such Team.
 - **DAV invites to non-colleagues via a new DAV-to-iMIP route:** rejected by the product owner, 2026-11-04. A non-colleague invited from a native client gets exactly what an external address gets today. The missing DAV-to-iMIP route is Bug #1929, for every external address.
 - **Merge-back layer for every share write:** rejected after review. Calendar and Drive writes are already patches. Only the revoke-all paths matter, and there an explicit "share with nobody" also revokes hidden grants (least privilege: a later shared Team must not reopen something the owner closed).
@@ -141,7 +141,7 @@ See spec.md, Non-goals.
 - **Admins join every Team presence room:** rejected by the product owner, 2026-11-04. Presence rooms are a peer-to-peer mesh capped at 32 peers (`app/Services/Principal/PrincipalSignalingService.php:28`). Admins see presence in their own Teams only.
 
 - **The owner's open app or offline cache updates its `shareWith` list when a grantee stops being a colleague:** rejected, 2026-11-04 (third review). The owner's collection does not change, so neither its state nor a poll moves. A cached sharee row stays until the owner's next fetch of that collection, the same lag a native CalDAV client has. It shows a name the owner already knew, and every write path goes through the server gate (chunk D) and the patch rule. Accepted and documented in the spec next to the native-client rule; chunk V checks the owner side after a reload.
-- **FileNode `rootsHash` over root paths:** rejected, 2026-11-04 (third review). Two grants can share a root path (two owners sharing the same Team folder, or a re-share with another level), so one hidden grant can leave the path set unchanged. `rootsHash` hashes the sorted ids of the viewer's resolved, visible member grants. A changed level is a changed grant row and already moves the sequence.
+- **FileNode `rootsHash` over root paths:** rejected, 2026-11-04 (third review). Two grants can share a root path (two owners sharing the same Team folder, or a re-share with another level), so one hidden grant can leave the path set unchanged. `rootsHash` hashes the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants. The access level is in the hash because `DriveShareGrantWriter` updates `access` in place on the same row and does not touch `change_seq` (`path: app/Services/Drive/DriveShareGrantWriter.php:107`): with ids only, a grant going from `read` to `readwrite` would leave the grantee's cache on the old level. Including it also closes that existing gap.
 
 ## Affected packages
 
@@ -160,7 +160,7 @@ See spec.md, Non-goals.
 
 ## Open decisions
 
-None — every choice for this work is made. The former OD1–OD3, the review blockers BL1–BL5 and the third-review points (owner cache lag, `rootsHash` over grant ids) were settled on 2026-11-04; see Considered.
+None — every choice for this work is made. The former OD1–OD3, the review blockers BL1–BL5 and the third-review points (owner cache lag, `rootsHash` over grant ids and access levels) were settled on 2026-11-04; see Considered.
 
 ## Admin rule
 
@@ -309,7 +309,7 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Done when:**
   - A new filter in `DriveShareGrantResolver` drops member grants whose share owner is a non-colleague user. `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
   - Owner side: the owner's grant list and access panel omit non-colleague grantees. `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
-  - The FileNode state becomes `<seq>.<rootsHash>`, where `rootsHash` is a short hash of the sorted ids of the viewer's resolved, visible member grants (not their root paths; see Considered). A test hides one of two grants on the same root path and gets `cannotCalculateChanges`. `FileNodeChangesMethod` accepts that format and answers `cannotCalculateChanges` when the hash differs. A legacy all-digit state also answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy. The push state for `files` uses the same value.
+  - The FileNode state becomes `<seq>.<rootsHash>`, where `rootsHash` is a short hash of the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants (not their root paths; see Considered). Tests: hiding one of two grants on the same root path, and changing a grant from `read` to `readwrite`, each give `cannotCalculateChanges`. `FileNodeChangesMethod` accepts that format and answers `cannotCalculateChanges` when the hash differs. A legacy all-digit state also answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy. The push state for `files` uses the same value.
   - A hidden document answers its thread routes (`files/threads/*`) exactly as an unknown document. The thread state itself is unchanged.
   - A live Docs or Notes collab session is dropped on the next signaling check (`pnpm test:collab-api`).
   - Guest links and public links are unaffected.

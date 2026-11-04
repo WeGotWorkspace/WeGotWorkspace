@@ -1,4 +1,4 @@
-Source: #1915 (body-hash: 3ad8138d)
+Source: #1915 (body-hash: e92a6430)
 Goal: WeGotWorkspace/Product#114
 
 # Teams: rename Groups, and see only colleagues you share a Team with
@@ -94,7 +94,7 @@ Existing grants are not touched by these gates.
 - Hiding is **computed on read**. For the calendar family and address books, it sits next to the existing dismissal filter. Drive and Docs get a new filter in the grant resolver, because they have no dismissal mechanism. No grant row is deleted, revoked or rewritten.
 - A sharee instance or grant whose owner is a user principal that is not a colleague of the viewer is treated like a dismissed share. It is absent from listings, unreachable by id, absent from the CalDAV/CardDAV home and denied to collab joins. DMs are calendar-backed chat channels, so they follow the same filter.
 - Restoring a dismissed share does not bypass hiding. A hidden share becomes visible again only when the users share a Team again.
-- `/changes` must report a hidden collection as destroyed and a re-shown one as created, so the Dexie caches on other devices follow. JMAP push is pull-only, and every state except FileNode is already a map keyed by the viewer's visible collections, so hiding changes it on the next poll with no extra mechanism. FileNode uses one global sequence, so its state gains a hash of the viewer's visible roots; a changed hash, or a legacy all-digit state, answers `cannotCalculateChanges` and the client resyncs once.
+- `/changes` must report a hidden collection as destroyed and a re-shown one as created, so the Dexie caches on other devices follow. JMAP push is pull-only, and every state except FileNode is already a map keyed by the viewer's visible collections, so hiding changes it on the next poll with no extra mechanism. FileNode uses one global sequence, so its state gains a hash of the viewer's visible grants and their access levels; a changed hash, or a legacy all-digit state, answers `cannotCalculateChanges` and the client resyncs once.
 - Native CalDAV and CardDAV clients cannot tell hiding from deleting: they drop their local copy and sync it again when it comes back. Nothing is lost on the server. This is known and documented behaviour.
 - The owner's open app or offline cache can still list a hidden sharee until it next fetches that collection, because the owner's own collection did not change. After a reload the sharee is gone. Writes still follow the server rules. This is known and documented behaviour.
 - A live collab session (Docs, Notes) of a user who stops being a colleague of the document owner ends on the next signaling check, like a revoked share.
