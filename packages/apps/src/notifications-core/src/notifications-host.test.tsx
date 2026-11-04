@@ -153,7 +153,7 @@ describe("NotificationsHost", () => {
     });
   });
 
-  it("refreshes the inbox immediately on inbound notify-hint", async () => {
+  it("refreshes the inbox immediately on an inbound check-now while push is down", async () => {
     const session = new FakeSession();
     const store = createPresenceStore({
       createSession: () => session,
@@ -179,7 +179,7 @@ describe("NotificationsHost", () => {
     session.emit({
       type: "envelope",
       peerId: "bob-1",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
 
     // Immediate hint GET + scheduled retries at 300ms and 1200ms.
@@ -188,7 +188,7 @@ describe("NotificationsHost", () => {
     expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThanOrEqual(baseline + 3);
   });
 
-  it("does not let a slow in-flight GET overwrite a newer notify-hint refresh", async () => {
+  it("does not let a slow in-flight GET overwrite a newer check-now refresh", async () => {
     type InboxPayload = { list: (typeof unreadItem)[]; unreadCount: number };
     const slow = {
       resolve: null as null | ((value: InboxPayload) => void),
@@ -238,7 +238,7 @@ describe("NotificationsHost", () => {
     session.emit({
       type: "envelope",
       peerId: "bob-1",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
 
     await waitFor(() => {
@@ -342,7 +342,7 @@ describe("NotificationsHost", () => {
     session.emit({
       type: "envelope",
       peerId: "bob-1",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
 
     await waitFor(() => {
@@ -359,7 +359,7 @@ describe("NotificationsHost", () => {
     session.emit({
       type: "envelope",
       peerId: "bob-1",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
 
     await waitFor(() => {

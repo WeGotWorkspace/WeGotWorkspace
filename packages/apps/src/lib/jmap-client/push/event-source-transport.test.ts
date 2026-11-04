@@ -147,15 +147,20 @@ describe("EventSourceTransport", () => {
   });
 
   describe("wake", () => {
-    it("reconnects early, but not sooner than the wake gap after the last request", async () => {
+    it("reconnects at once after a regular request, and keeps early reconnects a wake gap apart", async () => {
       const { transport, fetch, sink } = setup();
       const stop = transport.start(sink);
       await vi.advanceTimersByTimeAsync(500);
       transport.reconnectNow("check-now");
-      await vi.advanceTimersByTimeAsync(1499);
-      expect(at(fetch)).toBe(1);
-      await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(0);
       expect(at(fetch)).toBe(2);
+      // A second wake 500 ms later waits for the gap after the first early reconnect.
+      await vi.advanceTimersByTimeAsync(500);
+      transport.reconnectNow("check-now");
+      await vi.advanceTimersByTimeAsync(1499);
+      expect(at(fetch)).toBe(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(3);
       stop();
     });
 
