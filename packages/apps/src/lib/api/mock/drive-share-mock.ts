@@ -116,6 +116,11 @@ function cloneAtPath(path: string): DriveShareAtPath {
   };
 }
 
+/** Public links are view, or edit on a folder (#1715); the server checks the folder. */
+function isPublicLinkAccess(access: string): boolean {
+  return access === "view" || access === "edit";
+}
+
 function syncPublicSummary(share: DriveShare): void {
   const entry = mockDriveShareAtPath.publicShares.find((item) => item.shareId === share.id);
   if (!entry) return;
@@ -158,8 +163,8 @@ export function createMockDriveShareOperations(): DriveShareOperations {
       }));
     },
     async createShare(body: DriveShareCreateRequest) {
-      if (body.kind === "public" && body.defaultAccess !== "view") {
-        throw new Error("Public shares only support view access.");
+      if (body.kind === "public" && !isPublicLinkAccess(body.defaultAccess)) {
+        throw new Error("Public links support view access, or edit access on a folder.");
       }
       const hasPassword =
         body.password !== null && body.password !== undefined && body.password.trim() !== "";
@@ -204,8 +209,8 @@ export function createMockDriveShareOperations(): DriveShareOperations {
       }
       const passwordProvided = Object.prototype.hasOwnProperty.call(body, "password");
       const nextAccess = body.defaultAccess ?? direct.defaultAccess;
-      if (direct.kind === "public" && nextAccess !== "view") {
-        throw new Error("Public shares only support view access.");
+      if (direct.kind === "public" && !isPublicLinkAccess(nextAccess)) {
+        throw new Error("Public links support view access, or edit access on a folder.");
       }
       const hasPassword = passwordProvided
         ? body.password !== null && body.password !== ""

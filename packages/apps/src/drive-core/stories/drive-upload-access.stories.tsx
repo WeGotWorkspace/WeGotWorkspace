@@ -2,14 +2,15 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { driveLabels as L } from "@/drive-core/src/drive-labels";
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 
 /**
- * Guests get the upload queue later (Epic #1499). Until then a guest in a
- * shared folder sees no upload control, no drop target and no new Markdown
- * file; signed-in users keep all three.
+ * Signed-in users upload, drop files and create Markdown files. A guest on a
+ * view link sees none of that. A guest on a folder link that allows adding
+ * files (#1715) gets Upload files and the drop target through the upload
+ * queue, but still no New folder and no new Markdown file (#1712).
  */
 const meta: Meta<typeof DriveWorkspace> = {
   title: "Features/Drive/UploadAccess",
@@ -88,5 +89,41 @@ export const GuestHasNoUpload: Story = {
     // The pane cancels the dragover (so the browser keeps the page) but shows no overlay.
     expect(dragFileOver(canvasElement)).toBe(false);
     expect(canvas.queryByText(L.dropUploadHint, { exact: false })).toBeNull();
+  },
+};
+
+/** The guest Drive with the upload queue: what a guest on an edit link gets. */
+const guestUploadOperations = {
+  refreshState: async () => guestData,
+  changeDir: async () => guestData,
+  listDirectory: async () => guestData,
+  enqueueUploads: async () => ({ batchId: "story-batch", itemIds: [] }),
+  releaseUploadBatch: async () => undefined,
+} as unknown as DriveAPIOperations;
+
+export const GuestOnAddFilesLinkCanUpload: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...signedIn,
+    data: guestData,
+    operations: guestUploadOperations,
+    onViewChange: STORY_NOOP,
+    onOpenDocsFile: STORY_NOOP,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+
+    // Upload is the only action: no New folder, no menu, no new Markdown file.
+    expect(await canvas.findByRole("button", { name: L.uploadFiles })).toBeInTheDocument();
+    expect(canvasElement.querySelector("input[type=file]")).not.toBeNull();
+    expect(canvas.queryByRole("button", { name: L.newFolder })).toBeNull();
+    expect(canvas.queryByRole("button", { name: L.newButtonMenu })).toBeNull();
+    expect(body.queryByRole("menuitem", { name: L.newMarkdown })).toBeNull();
+
+    expect(dragFileOver(canvasElement)).toBe(false);
+    await waitFor(() =>
+      expect(canvas.getByText(L.dropUploadHint, { exact: false })).toBeInTheDocument(),
+    );
   },
 };

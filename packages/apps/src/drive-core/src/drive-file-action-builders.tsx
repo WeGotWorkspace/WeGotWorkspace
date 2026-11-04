@@ -51,7 +51,7 @@ export function buildDriveFileActions(
   if (options.canDownload !== false) {
     actions.push({
       id: "download",
-      label: options.isFolder ? labels.detailDownloadFolder : labels.detailDownload,
+      label: labels.detailDownload,
       onClick: callbacks.onDownload,
       icon: <Download />,
     });

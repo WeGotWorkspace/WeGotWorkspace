@@ -24,6 +24,8 @@ export type ShareDialogProps = {
    * `drive` — full Drive share UX (default).
    */
   mode?: ShareDialogMode;
+  /** The item is a folder: its public link may let visitors add files (#1715). */
+  isFolder?: boolean;
 };
 
 export function ShareDialog({
@@ -34,6 +36,7 @@ export function ShareDialog({
   shareOperations,
   dialogSurfaceClassName = "drive-dialog-surface",
   mode = "drive",
+  isFolder = false,
 }: ShareDialogProps) {
   const { data, loading, error, refetch } = useShareAtPath({
     path,
@@ -77,7 +80,12 @@ export function ShareDialog({
           <>
             <div className="share-dialog__body">
               {isNotesMode ? null : (
-                <ShareLinkSection atPath={data} mutations={mutations} disabled={!canManage} />
+                <ShareLinkSection
+                  atPath={data}
+                  mutations={mutations}
+                  disabled={!canManage}
+                  isFolder={isFolder}
+                />
               )}
               <ShareTeamSection
                 atPath={data}

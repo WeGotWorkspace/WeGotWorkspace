@@ -4,11 +4,14 @@
  * A login shell drops setup-node and setup-php from PATH on GitHub runners.
  */
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { liveTierSpecPattern } from "../packages/apps/e2e/live-tier.mjs";
+import {
+  liveTierSpecPattern,
+  liveTierSpecs,
+} from "../packages/apps/e2e/live-tier.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -52,6 +55,55 @@ describe("live Playwright webServer", () => {
       fromPlaywright,
       [],
       "import from ./helpers/live-test instead",
+    );
+  });
+});
+
+describe("live-tier spec list", () => {
+  const e2eDir = path.join(repoRoot, "packages/apps/e2e");
+
+  it("is in alphabetical order with no duplicates", () => {
+    // Sorted, one name per line: two PRs that each add a spec touch
+    // different lines and merge without a conflict.
+    const sorted = [...new Set(liveTierSpecs)].sort();
+    assert.deepEqual(
+      liveTierSpecs,
+      sorted,
+      "keep liveTierSpecs in packages/apps/e2e/live-tier.mjs sorted, one name per line",
+    );
+  });
+
+  it("names an existing spec file for every entry", () => {
+    for (const name of liveTierSpecs) {
+      assert.match(
+        name,
+        /^[a-z0-9-]+$/,
+        `plain spec name, no .spec.ts: ${name}`,
+      );
+      assert.ok(
+        existsSync(path.join(e2eDir, `${name}.spec.ts`)),
+        `missing packages/apps/e2e/${name}.spec.ts`,
+      );
+    }
+  });
+
+  it("builds the pattern from that list", () => {
+    for (const name of liveTierSpecs) {
+      assert.ok(liveTierSpecPattern.test(`${name}.spec.ts`), name);
+    }
+    assert.equal(liveTierSpecPattern.test("notes-sync-matrix.spec.ts"), false);
+    assert.equal(liveTierSpecPattern.test("rtc-chaos.spec.ts"), false);
+  });
+
+  it("keeps one name per line in the source", () => {
+    const source = readFileSync(path.join(e2eDir, "live-tier.mjs"), "utf8");
+    const body = source.match(/export const liveTierSpecs = \[\n([^\]]*)\];/);
+    assert.ok(body, "liveTierSpecs array literal not found");
+    const lines = body[1].split("\n").filter((line) => line.trim() !== "");
+    assert.deepEqual(
+      lines,
+      liveTierSpecs.map((name) => `  "${name}",`),
+      'write each entry as `  "name",` on its own line',
     );
   });
 });
