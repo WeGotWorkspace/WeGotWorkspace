@@ -250,3 +250,13 @@
 .button--variant-link:hover {
   opacity: 0.9;
 }
+
+/* Trailing glyph (dropdown chevron): smaller and quieter than the leading icon. */
+.button__trailing-icon {
+  @apply -me-0.5 inline-flex shrink-0 items-center opacity-60;
+}
+
+.button__trailing-icon > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}

@@ -282,6 +282,7 @@ export function DocsCollabEditor({
         viewSource && "text-editor--view-source",
         className,
       )}
+      data-paper={pageSetup?.format}
     >
       {viewSource ? (
         <div className="text-editor__body min-h-0 flex-1">

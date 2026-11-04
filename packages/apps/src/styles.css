@@ -287,7 +287,7 @@
   --scheme-sidebar-surface: oklch(from #10161b l c h);
   --scheme-ink: oklch(from #eef1f5 l c h);
   --scheme-on-ink: oklch(from #0e1216 l c h);
-  --scheme-letter: oklch(from #0e1216 l c h);
+  --scheme-letter: oklch(from #13181e l c h);
   /* Spike: track-change chips (editor marks + review-card previews). */
   --track-ins-fg: oklch(0.9 0.09 155);
   --track-ins-bg: oklch(0.72 0.19 150 / 0.16);

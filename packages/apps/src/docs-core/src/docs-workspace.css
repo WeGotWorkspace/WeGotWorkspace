@@ -445,14 +445,14 @@
 }
 
 :root[data-theme="dark"] .docs-workspace .app-sidebar {
+  /* Sky wash fading right, one hairline that follows the radius (no side bar). */
   --sidebar-item-selected-background: linear-gradient(
     90deg,
-    color-mix(in oklch, var(--color-we-got-blue) 34%, var(--workspace-sidebar-surface)),
-    color-mix(in oklch, var(--color-we-got-blue) 16%, var(--workspace-sidebar-surface))
+    color-mix(in oklch, var(--docs-sky) 26%, var(--workspace-sidebar-surface)),
+    color-mix(in oklch, var(--docs-sky) 10%, var(--workspace-sidebar-surface))
   );
-  --sidebar-item-selected-shadow:
-    inset 2px 0 0 var(--docs-sky),
-    inset 0 0 0 1px color-mix(in oklch, var(--docs-sky) 22%, transparent);
+  --sidebar-item-selected-shadow: inset 0 0 0 1px
+    color-mix(in oklch, var(--docs-sky) 30%, transparent);
   --sidebar-item-selected-color: var(--workspace-foreground);
 }
 
@@ -465,21 +465,42 @@
   border-bottom: 1px solid var(--docs-border);
 }
 
-/* Format bar: floating pill centred over the canvas, not a full-width strip. */
+/* Format bar: ghost buttons at every width. */
 .docs-workspace__editor .text-editor-format-bar {
-  align-self: center;
-  width: auto;
-  max-width: calc(100% - 2rem);
-  margin-block-start: 0.875rem;
-  margin-block-end: -1.75rem;
-  top: 0.875rem;
-  padding: 0.3125rem 0.375rem;
-  border: 1px solid var(--docs-toolbar-border);
-  border-radius: var(--docs-toolbar-radius);
-  background: var(--docs-toolbar-bg);
-  box-shadow:
-    0 1px 0 color-mix(in oklch, white 4%, transparent) inset,
-    0 12px 32px -16px rgb(0 0 0 / 0.55);
+  --button-outline-border-color: transparent;
+  --button-outline-hover-background: var(--docs-chip-bg);
+}
+
+/*
+ * md+: a floating pill laid over the canvas. Absolute (not in flow) so the scrollport
+ * starts at the top of the editor and the sheet scrolls under the pill.
+ */
+@media (min-width: 768px) {
+  .docs-workspace__editor .text-editor:not(.text-editor--view-source) {
+    position: relative;
+  }
+
+  .docs-workspace__editor .text-editor:not(.text-editor--view-source) > .text-editor-format-bar {
+    position: absolute;
+    top: 0.875rem;
+    left: 50%;
+    translate: -50% 0;
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    padding: 0.3125rem 0.375rem;
+    border: 1px solid var(--docs-toolbar-border);
+    border-radius: var(--docs-toolbar-radius);
+    background: color-mix(in oklch, var(--docs-toolbar-bg) 88%, transparent);
+    backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow:
+      0 1px 0 color-mix(in oklch, white 4%, transparent) inset,
+      0 12px 32px -16px rgb(0 0 0 / 0.55);
+  }
+
+  /* Clear the pill (36px controls + pads) plus the usual desk gap. */
+  .docs-workspace {
+    --docs-sheet-canvas-padding-block-start: 4.75rem;
+  }
 }
 
 .docs-workspace__editor .text-editor-format-bar__heading-trigger {
@@ -492,11 +513,6 @@
   height: 1rem;
   margin-inline: 0.375rem;
   background: var(--docs-toolbar-border);
-}
-
-/* Canvas: top inset clears the floating bar so the sheet starts under it. */
-.docs-workspace {
-  --docs-sheet-canvas-padding-block-start: 3.25rem;
 }
 
 :root[data-theme="dark"] .docs-workspace .text-editor {
@@ -549,8 +565,15 @@
   --button-outline-hover-background: var(--docs-chip-bg);
 }
 
-.docs-workspace__footer-tools .button {
-  background-color: var(--docs-chip-bg);
+/* Source view: a labelled switch, not a mystery </> glyph. */
+.docs-workspace__source-switch {
+  @apply inline-flex cursor-pointer select-none items-center gap-2 text-sm font-medium;
+  padding-inline: 0.5rem;
+  color: color-mix(in oklch, var(--workspace-foreground) 82%, transparent);
+}
+
+.docs-workspace__source-switch:has(button:disabled) {
+  @apply cursor-not-allowed opacity-50;
 }
 
 .docs-workspace__stats-footer .workspace-chrome-footer__group--end {
@@ -610,4 +633,71 @@
 
 .docs-collab-suggest-controls.button[aria-pressed="true"] .button__icon {
   color: var(--docs-suggest-amber);
+}
+
+/* Page sheets: rounded. Pages mode draws page ends inside `.breaker`; give that the desk
+ * colour and round each page end, so every page reads as its own rounded card. */
+.docs-workspace {
+  --docs-page-radius: 0.75rem;
+}
+
+@media screen and (min-width: 768px) {
+  .docs-workspace__editor .text-editor-sheet--fill:not(.text-editor-sheet--paginated) .paper-sheet {
+    border-radius: var(--docs-page-radius);
+  }
+
+  .docs-workspace .text-editor-prose.rm-with-pagination {
+    border-radius: var(--docs-page-radius);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker {
+    width: calc(var(--rm-page-width) + 2px) !important;
+    margin-left: calc(-1 * var(--rm-margin-left) - 1px) !important;
+    background-color: var(--text-editor-page-gap);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > :is(.rm-page-footer, .rm-page-header) {
+    box-sizing: border-box;
+    width: var(--rm-page-width) !important;
+    margin-left: 1px !important;
+    border: 1px solid var(--text-editor-page-border);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > .rm-page-footer {
+    border-top: 0;
+    border-radius: 0 0 var(--docs-page-radius) var(--docs-page-radius);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > .rm-page-header {
+    border-bottom: 0;
+    border-radius: var(--docs-page-radius) var(--docs-page-radius) 0 0;
+  }
+}
+
+/* Paper: None — no sheet at all; text floats on the desk. */
+.docs-workspace .text-editor[data-paper="none"] .text-editor-sheet__surface {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Rename sits right after the file name. */
+.docs-workspace .docs-workspace__rename {
+  --button-outline-border-color: transparent;
+  opacity: 0.7;
+}
+
+.docs-workspace .docs-workspace__rename:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* Desktop sidebar: a panel with a rounded right edge, a light hairline and a soft shadow. */
+@media (min-width: 72.5rem) {
+  .docs-workspace .app-sidebar {
+    position: relative;
+    z-index: 31;
+    border-start-end-radius: 1rem;
+    border-end-end-radius: 1rem;
+    border-right-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+    box-shadow: 10px 0 28px -12px rgb(0 0 0 / 0.55);
+  }
 }

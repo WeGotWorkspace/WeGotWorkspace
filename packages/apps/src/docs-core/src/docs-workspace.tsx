@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer, Users } from "lucide-react";
+import { Pencil, Printer, Users } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
@@ -18,6 +18,7 @@ import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-right
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsPageSetupMenu } from "@/docs-core/src/docs-page-setup-menu";
 import { IconButton } from "@/button/src/button";
+import { Switch } from "@/ui/switch";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -269,6 +270,20 @@ function DocsMainHeader({
       title={title}
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((open) => !open)}
+      // Rename sits on the name it changes. Guests have no write route (#1713).
+      titleSuffix={
+        controller.hasFile && !guestView ? (
+          <IconButton
+            label={controller.labels.rename}
+            icon={<Pencil />}
+            size="sm"
+            variant="outline"
+            className="docs-workspace__rename"
+            disabled={!controller.canRename}
+            onClick={controller.openRenameDialog}
+          />
+        ) : undefined
+      }
       actions={
         controller.hasFile ? (
           <DocsHeaderActions
@@ -292,18 +307,6 @@ function DocsMainHeader({
                     },
                   ]
                 : []),
-              // Rename needs a write route guests do not have (#1713).
-              ...(guestView
-                ? []
-                : [
-                    {
-                      id: "rename",
-                      label: controller.labels.rename,
-                      icon: <Pencil />,
-                      disabled: !controller.canRename,
-                      onClick: controller.openRenameDialog,
-                    },
-                  ]),
             ]}
           />
         ) : null
@@ -335,17 +338,15 @@ function DocsFooterTools({
   return (
     <div className="docs-workspace__footer-tools">
       <DocsPageSetupMenu {...pageSetup} labels={controller.labels} />
-      <IconButton
-        label={viewSource ? controller.labels.hideSource : showSourceLabel}
-        icon={<Code2 />}
-        size="md"
-        variant="outline"
-        active={viewSource}
-        disabled={!editor}
-        aria-pressed={viewSource}
-        className={viewSource ? "docs-workspace__source-toggle--active" : undefined}
-        onClick={onToggleViewSource}
-      />
+      <label className="docs-workspace__source-switch" title={showSourceLabel}>
+        <Switch
+          checked={viewSource}
+          onCheckedChange={onToggleViewSource}
+          disabled={!editor}
+          aria-label={viewSource ? controller.labels.hideSource : showSourceLabel}
+        />
+        <span>{controller.labels.sourceSwitch}</span>
+      </label>
     </div>
   );
 }

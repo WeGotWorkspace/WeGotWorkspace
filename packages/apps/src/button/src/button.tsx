@@ -38,6 +38,8 @@ export type { IconButtonProps } from "@/button/src/icon-button";
 export type ButtonProps = Omit<React.ComponentPropsWithRef<"button">, "children"> & {
   label?: string;
   icon?: ReactNode;
+  /** After the label (dropdown chevron). Decorative; sized by the primitive. */
+  trailingIcon?: ReactNode;
   size?: ButtonSizeProp;
   pill?: boolean;
   variant?: ButtonVariantProp;
@@ -52,6 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     {
       label,
       icon,
+      trailingIcon,
       size = "md",
       pill = false,
       variant = "primary",
@@ -73,6 +76,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <>
             {icon ? <span className={BUTTON_ICON_SLOT_CLASSNAME}>{icon}</span> : null}
             {label ? <span className="button__label">{label}</span> : null}
+            {trailingIcon ? (
+              <span className="button__trailing-icon" aria-hidden>
+                {trailingIcon}
+              </span>
+            ) : null}
           </>
         ));
 
