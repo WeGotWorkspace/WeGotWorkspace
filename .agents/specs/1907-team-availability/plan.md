@@ -42,7 +42,7 @@ See spec.md, Non-goals.
 **CalDAV free/busy**
 
 - `DAVACL\Plugin` and `CalDAV\Schedule\Plugin` are registered. `path: app/Dav/SabreServerFactory.php:120`, `path: app/Dav/SabreServerFactory.php:127`
-- Sabre grants `read-free-busy` to `{DAV:}authenticated` on every calendar, and nothing in `app/` restricts it. `path: vendor/sabre/dav/lib/CalDAV/Calendar.php:272`; `cmd: git grep -n read-free-busy -- packages/api/app` finds nothing
+- Sabre grants `read-free-busy` to `{DAV:}authenticated` on every calendar in `Sabre\CalDAV\Calendar::getACL` ([sabre/dav 4.7.1, `lib/CalDAV/Calendar.php`](https://github.com/sabre-io/dav/blob/4.7.1/lib/CalDAV/Calendar.php#L272), the version in `composer.lock`), and nothing in `app/` restricts it (`cmd: git grep -n read-free-busy -- packages/api/app` finds nothing). So on main today any authenticated user can read any other user's free/busy through an outbox VFREEBUSY request, with no Team check. This is current behaviour, not something this Epic adds.
 
 **API surface**
 
@@ -106,7 +106,7 @@ See spec.md, Non-goals.
 
 1. Filed 2026-11-04: Epic #1907 under Product#43; Tasks #1908 (A), #1909 (B), #1910 (C), #1911 (D), #1912 (E), #1913 (F), #1927 (G); #1614 (H) moved under the Epic; follow-up #1914. Re-scoped the same day for the computed-on-request design.
 2. #1917 (`sharesTeamIgnoringAdminRole`) before B. If B is ready first, B adds that one method to the resolver from #1917's spec and #1917 adopts it.
-3. CalDAV free/busy: B extends #1923's `WgwSchedulePlugin` (or adds it, if B is first). E (#1912) does not merge before that holds, because its switch promises that nobody sees anything while it is off.
+3. CalDAV free/busy is open to every authenticated user on main today (What exists, CalDAV free/busy). #1923 closes that with the Team rule and should land ahead of this Epic, not ride along with it; that ordering belongs to the Teams visibility Epic. B then adds the switch to the same `WgwSchedulePlugin` (or adds the subclass, if B is first). E (#1912) does not merge before both hold, because its switch promises that nobody sees anything while it is off.
 4. A → B. B lands OpenAPI and the mock JMAP methods first; then C, D, E and H run in parallel against the mock tier. G has no dependency.
 5. F with or after B. The architecture doc names Epic #1907, so `check-architecture-spec` needs this spec on main first; the spec lands with A.
 6. #1914 after C (it uses the client and cache).
@@ -130,6 +130,7 @@ Decided:
 - Offline: "updated …" stamp plus a hint when a visible week was never fetched, shown as one notice in the shared notice bar. Invitee tags offline: nothing. 2026-11-04 (review round 2).
 - Projects (#810): a member joins a Project in the UI; joining is not access (Teams are) but it is the switch that makes that Project's calendar count toward their availability. Until Projects land, every Team event calendar counts by default. 2026-11-04 (review round 2).
 - One detail level per calendar for every Team, not per Team. 2026-11-04.
+- CalDAV free/busy follows the same switch. With the switch off by default, external CalDAV clients (Apple Calendar, Thunderbird) stop getting free/busy for a colleague when they add them as attendee, until that colleague opts in. Today they get an answer for everyone. Accepted as a deliberate change to interop for one privacy rule everywhere. Product owner, 2026-11-04 (PR review round 2).
 
 ## Invariants
 

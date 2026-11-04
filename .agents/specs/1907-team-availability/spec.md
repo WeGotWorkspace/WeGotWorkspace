@@ -1,4 +1,4 @@
-Source: #1907 (body-hash: 51d6adc3)
+Source: #1907 (body-hash: 7d22ccca)
 Goal: WeGotWorkspace/Product#43
 
 # Team availability
@@ -126,9 +126,10 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - At most 50 ids per call, at most 371 days, and at most 3710 person-days. Anything over, or `utcEnd <= utcStart`, is `invalidArguments`.
   - `excludeEventId` must be a `CalendarEvent` the caller may edit, or one where the caller is the organizer or an attendee. The server takes its UID and passes it as `excludeUid`. Any other id is `invalidArguments`. This rules out events the caller only reads on a read-only shared calendar, where comparing results with and without the exclusion would tell more than the caller already knows.
   - The period shape stays close to the standard `Principal/getAvailability` `BusyPeriod`, so a later move to the standard method is a rename.
-- **CalDAV free/busy.** Today Sabre grants `read-free-busy` to every authenticated user on every calendar (`Sabre\CalDAV\Calendar::getACL`), and `CalDAV\Schedule\Plugin` answers outbox VFREEBUSY requests from that. So the outbox report is live now and ignores the switch, the per-calendar include and the Team rule. Teams visibility (#1923) adds a `WgwSchedulePlugin` that overrides `getFreeBusyForEmail` and answers as for an unknown address when caller and target share no Team. This Epic extends that override:
+- **CalDAV free/busy.** Today Sabre grants `read-free-busy` to every authenticated user on every calendar (`Sabre\CalDAV\Calendar::getACL`), and `CalDAV\Schedule\Plugin` answers outbox VFREEBUSY requests from that. So the outbox report is live now and ignores the switch, the per-calendar include and the Team rule. This is current behaviour on main that this work helps close, not a new surface. Teams visibility (#1923) adds a `WgwSchedulePlugin` that overrides `getFreeBusyForEmail` and answers as for an unknown address when caller and target share no Team. This Epic extends that override:
   - target's switch off → the same answer as for an unknown address
   - switch on → busy periods from `AvailabilityCalculator`, time only (no titles over CalDAV)
+  - **Interop change, decided.** The switch is off by default, so external CalDAV clients (Apple Calendar, Thunderbird) stop getting free/busy for a colleague when adding them as attendee, until that colleague opts in. Today they get an answer for everyone. Product owner, 2026-11-04: one rule everywhere.
   - If #1909 is ready before #1923, #1909 adds the subclass with both checks and #1923 adopts it. Either way, #1912 (the settings UI that promises "off means nobody sees anything") does not ship before this holds.
 - **REST settings** (`x-wgw-access: user`), declared next to `calendars/subscriptions`, above the parameterised feed routes:
   ```
