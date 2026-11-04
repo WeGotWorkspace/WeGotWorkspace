@@ -184,7 +184,6 @@ export const docsLabels = {
    * last-edited tag, so neither becomes a sentence.
    */
   statusSaving: "Saving…",
-  statusAllSaved: "All changes saved",
   statusOffline: "Offline – changes are kept on this device",
   /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
   statusChangesSyncWhenSaved: "Changes sync when saved",

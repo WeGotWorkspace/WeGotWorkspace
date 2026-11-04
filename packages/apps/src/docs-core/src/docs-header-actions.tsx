@@ -16,6 +16,8 @@ export type DocsHeaderAction = ActionBarAction & {
   /** Wide screens: icon + visible label (Share) instead of icon-only. */
   showLabel?: boolean;
   "data-count"?: number;
+  /** Wide screens: render after `trailing` (review toggle after Suggest). Phones keep it in the menu. */
+  placement?: "end";
 };
 
 export type DocsHeaderActionsProps = {
@@ -100,6 +102,8 @@ export function DocsHeaderActions({
   className,
 }: DocsHeaderActionsProps) {
   if (actions.length === 0 && !leading && !trailing) return null;
+  const rowActions = actions.filter((action) => action.placement !== "end");
+  const endActions = actions.filter((action) => action.placement === "end");
 
   return (
     <div className={cn("docs-workspace__header-actions", className)}>
@@ -108,7 +112,7 @@ export function DocsHeaderActions({
         <>
           <div className="docs-workspace__header-actions-row">
             {pageSetup ? <DocsPageSetupMenu {...pageSetup} /> : null}
-            {actions.map(renderActionButton)}
+            {rowActions.map(renderActionButton)}
           </div>
           <div className="docs-workspace__header-actions-menu">
             <DropdownMenu
@@ -133,6 +137,11 @@ export function DocsHeaderActions({
         </>
       ) : null}
       {trailing ? <div className="docs-workspace__header-actions-trailing">{trailing}</div> : null}
+      {endActions.length > 0 ? (
+        <div className="docs-workspace__header-actions-row docs-workspace__header-actions-row--end">
+          {endActions.map(renderActionButton)}
+        </div>
+      ) : null}
     </div>
   );
 }

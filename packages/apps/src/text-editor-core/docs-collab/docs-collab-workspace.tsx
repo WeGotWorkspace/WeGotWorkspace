@@ -656,6 +656,7 @@ function DocsCollabWorkspaceInner({
                     ...docsCollabHeaderActions(headerActionsInput),
                     {
                       id: "review",
+                      placement: "end",
                       label: viewSource
                         ? "Review is disabled in source view"
                         : reviewPanelOpen
