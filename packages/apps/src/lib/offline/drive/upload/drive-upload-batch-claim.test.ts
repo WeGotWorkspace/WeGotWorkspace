@@ -61,6 +61,20 @@ describe("claimUnansweredUploadBatches", () => {
     expect(await operations.claimUnansweredUploadBatches()).toEqual([]);
   });
 
+  it("never asks a share-link guest to keep files offline (#1715)", async () => {
+    const big = "x".repeat(9 * 1024 * 1024);
+    const batch = await enqueueDriveUploadBatch(user, {
+      folderPath: folder,
+      targetFolder: target,
+      files: [testFile("a.pdf", big)],
+    });
+    const operations = driveUploadQueueOperations(user, { keepOfflineQuestion: false });
+
+    const [claimed] = await operations.claimUnansweredUploadBatches();
+    expect(claimed?.batchId).toBe(batch.batchId);
+    expect(claimed?.questions).toEqual({ space: null, conflicts: null, keepOffline: null });
+  });
+
   it("leaves released batches alone, and stops asking once a batch is answered", async () => {
     const released = await enqueueDriveUploadBatch(user, {
       folderPath: folder,

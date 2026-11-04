@@ -37,7 +37,8 @@ export function guestUploadQueueOperations(
   user: DriveUIData["user"],
 ): Partial<DriveAPIOperations> {
   return {
-    ...driveUploadQueueOperations(account),
+    // A guest has no offline Drive, so its batch dialog never asks to keep a copy.
+    ...driveUploadQueueOperations(account, { keepOfflineQuestion: false }),
     readCachedDirectory: async (at) => {
       const cwd = normalizeApiVirtualPath(at);
       const files = await readDirectoryEntriesFromCache(account, cwd);
