@@ -11,6 +11,12 @@
     }
   ],
   "components": {
+    "headers": {
+      "X-Wgw-Notified": {
+        "description": "Comma-separated usernames whose notification inbox this request's own writes changed (an inbox row created, updated or cleared). Only present when there are any; never names the caller. The writer's browser sends those users a content-free mesh check-now, so their open apps ask the server at once (#1662).",
+        "schema": { "type": "string", "example": "alice,carol" }
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
@@ -3937,6 +3943,9 @@
         },
         "responses": {
           "201": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Created thread",
             "content": {
               "application/json": {
@@ -4006,6 +4015,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated thread",
             "content": {
               "application/json": {
@@ -4772,6 +4784,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Share created",
             "content": {
               "application/json": {
@@ -5030,6 +5045,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated",
             "content": {
               "application/json": {
@@ -5162,6 +5180,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Invite created",
             "content": {
               "application/json": {
@@ -5993,6 +6014,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Roster",
             "content": {
               "application/json": {
@@ -6664,6 +6688,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated task list",
             "content": {
               "application/json": {
@@ -6963,6 +6990,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated task",
             "content": {
               "application/json": {
@@ -7026,6 +7056,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated task",
             "content": {
               "application/json": {
@@ -7287,6 +7320,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated notebook",
             "content": {
               "application/json": {
@@ -8356,6 +8392,9 @@
         },
         "responses": {
           "201": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Created message",
             "content": {
               "application/json": {
@@ -9963,6 +10002,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "Updated notification after REPLY",
             "content": {
               "application/json": {
@@ -10934,6 +10976,9 @@
         },
         "responses": {
           "200": {
+            "headers": {
+              "X-Wgw-Notified": { "$ref": "#/components/headers/X-Wgw-Notified" }
+            },
             "description": "JMAP response",
             "content": {
               "application/json": {
