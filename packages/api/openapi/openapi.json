@@ -9153,7 +9153,6 @@
                 "oneOf": [
                   {
                     "type": "object",
-                    "additionalProperties": false,
                     "required": [
                       "nodeId"
                     ],
@@ -9167,7 +9166,6 @@
                   },
                   {
                     "type": "object",
-                    "additionalProperties": false,
                     "required": [
                       "nodeIds"
                     ],

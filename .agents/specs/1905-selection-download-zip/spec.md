@@ -83,7 +83,7 @@ There is no same-parent rule. The selection bar can span folders in *Recent*, *S
   - With one item selected, it behaves as today.
   - With two or more, it shows *Download* (`labels.selectionDownload`) when all of these hold: the view is not trash, `downloadSelection` exists, and every selected item has an `apiPath`.
   - The button calls `downloadSelection` and shows "Download started" once the browser has the zip. A failure shows its message.
-- **Zip name source.** Drive passes the view's breadcrumb label (`viewLabel`). Docs home passes its header title.
+- **Zip name source.** Drive passes the header title: "Search" while search results are shown, otherwise the view's breadcrumb label (`viewLabel`). Docs home passes its header title.
 
 ## Verify
 

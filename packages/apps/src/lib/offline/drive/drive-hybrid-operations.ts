@@ -65,6 +65,9 @@ import {
   readOfflineDriveUsername,
 } from "@/lib/offline/offline-session";
 
+/** The server writes every zip: offline there is nothing to save (#1621, #1905). */
+const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -83,8 +86,6 @@ function runnerFor(username: string): ConnectivitySyncRunner<DriveOutboxFlushRes
   return syncRunnerRegistry.getOrCreate(username, async () => flushDriveOutboxTask(username));
 }
 
-/** The server writes every zip: offline there is nothing to save (#1621, #1905). */
-const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
 export function getDriveSyncRunner(
   username: string,
 ): ConnectivitySyncRunner<DriveOutboxFlushResult> {

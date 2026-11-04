@@ -57,6 +57,7 @@ final class FolderZipWalker
      */
     public function selectionEntries(string $top, array $items, array $principal): \Generator
     {
+        $top = self::safeName($top);
         yield ['directory' => true, 'path' => $top, 'key' => ''];
         $folderKeys = [];
         foreach ($items as $item) {

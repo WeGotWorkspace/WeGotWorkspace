@@ -418,7 +418,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     inTrashView,
     operations,
     structureEnabled,
-    zipName: viewLabel,
+    zipName: shell.searchQuery.trim() ? labels.searchViewTitle : viewLabel,
     exitSelection,
     batchStar,
     requestDeleteSelected,
