@@ -1,6 +1,6 @@
 # Team availability
 
-Derived from [spec.md](./spec.md). Line references are to `origin/main` at `83bd351dd` (2026-11-04); review round 2 was against `82bd51d`. API paths are relative to `packages/api/`, app paths to `packages/apps/src/`.
+Derived from [spec.md](./spec.md). Line references are to `origin/main` at `82bd51d` (2026-11-04), the same commit as spec.md. API paths are relative to `packages/api/`, app paths to `packages/apps/src/`.
 
 ## Goal
 
@@ -20,13 +20,13 @@ See spec.md, Non-goals.
 **Teams**
 
 - "Team" is a Sabre group principal; membership is `groupmembers`. `path: app/Services/Admin/AdminConstants.php:9`, `path: app/Services/Drive/DriveGroupResolver.php:14`, `path: app/Services/Settings/GroupMembershipResolver.php:14`
-- Group calendars reach members through `groupInstances()`. `path: app/Services/Calendars/CalendarCollectionAccess.php:315`
+- Personal and group instances come from two private helpers; `personalInstances` scopes on the user's principal and owner access (`SharingPlugin::ACCESS_SHAREDOWNER`). `path: app/Services/Calendars/CalendarCollectionAccess.php:301`, `path: app/Services/Calendars/CalendarCollectionAccess.php:315`, `path: app/Dav/Server/WgwCalendarBackend.php:167`
 - Teams visibility (#1915) adds `TeamColleagues::sharesTeamIgnoringAdminRole` in #1917, the one check for presence and free/busy. Its spec is not on main yet; see [#1917](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1917).
 
 **Calendar storage and reads**
 
 - Collection kinds live in `calendar_collection_meta`. `path: app/Services/Calendars/CollectionKind.php:16`
-- The event query narrows objects by Sabre's `firstoccurence` / `lastoccurence` in `candidateObjects`, which loads full rows with `->get()`. `path: app/Services/Calendars/CalendarEventQuerySupport.php:89`, `path: app/Services/Calendars/CalendarEventQuerySupport.php:101`
+- The event query narrows objects by Sabre's `firstoccurence` / `lastoccurence` in `candidateObjects`, which loads full rows with `->get()`. Its only caller is `CalendarEventRepository::query()`. `path: app/Services/Calendars/CalendarEventRepository.php:102`. `path: app/Services/Calendars/CalendarEventQuerySupport.php:89`, `path: app/Services/Calendars/CalendarEventQuerySupport.php:101`
 - The default cache store is `file`. `path: config/cache.php:20`
 - Recurrence expansion within a window, overrides included. `path: app/Services/Calendars/CalendarEventExpansionService.php:36`. Oversized recurrences are skipped on the query path. `path: app/Services/Calendars/CalendarEventRepository.php:54`
 - Size guard for stored ICS. `path: app/Services/VObject/VObjectPayloadGuard.php:22`
@@ -39,6 +39,11 @@ See spec.md, Non-goals.
 - Calendar push state is one part per accessible instance with its synctoken, so every extra shared calendar grows it and every write by its owner changes it. `path: app/Services/Calendars/CalendarRepository.php:545`
 - The scheduler is a `schedule:run` loop with `sleep 60`; there is no queue worker. `path: ../../docker/install/docker-compose.release.yml:85`
 
+**CalDAV free/busy**
+
+- `DAVACL\Plugin` and `CalDAV\Schedule\Plugin` are registered. `path: app/Dav/SabreServerFactory.php:120`, `path: app/Dav/SabreServerFactory.php:127`
+- Sabre grants `read-free-busy` to `{DAV:}authenticated` on every calendar, and nothing in `app/` restricts it. `path: vendor/sabre/dav/lib/CalDAV/Calendar.php:272`; `cmd: git grep -n read-free-busy -- packages/api/app` finds nothing
+
 **API surface**
 
 - Vendor JMAP capabilities exist (`urn:wgw:jmap:chat`). `path: app/Services/Jmap/JmapCapabilities.php:51`, `path: app/Services/Jmap/Capabilities/ChatCapabilityProvider.php:10`
@@ -49,7 +54,7 @@ See spec.md, Non-goals.
 - `loadRange` fetches events of every calendar for the visible range, ticked or not. `path: lib/jmap-client/adapter/JmapEventsAdapter.ts:91`
 - Background poll every 10 s. `path: calendar-core/src/calendar-refresh.ts:6`
 - Free/busy is Busy or Free only; anything else maps to Busy. `path: calendar-core/src/calendar-alerts.ts:50`. Every new event defaults to Busy. `path: calendar-core/src/calendar-alerts.ts:7`, `path: calendar-core/src/calendar-editor-model.ts:143`, `path: calendar-core/src/calendar-event-form-show-as.tsx:51`
-- Sidebar sections and partitioning. `path: calendar-core/src/calendar-workspace.tsx:885`, `path: calendar-core/src/calendar-sidebar-order.ts:64`. Rows: `path: collection-sidebar/src/collection-sidebar-row.tsx:4`. Hidden state: `path: collection-sidebar/src/collection-hidden-ids.ts:17`
+- Sidebar sections and partitioning. `path: calendar-core/src/calendar-workspace.tsx:885`, `path: calendar-core/src/calendar-sidebar-order.ts:64`. Rows: `path: collection-sidebar/src/collection-sidebar-row.tsx:94`. Hidden state: `path: collection-sidebar/src/collection-hidden-ids.ts:17`
 - Writes onto non-writable calendars are blocked. `path: calendar-core/src/calendar-events-api.ts:85`
 - The invitee list renders an RSVP tag per participant. `path: calendar-core/src/calendar-invitees-card.tsx:80`, `path: calendar-core/src/calendar-invitees-card.tsx:117`
 - Shared notice bar for things to settle, used by Tasks for writes parked after access changed; every notice has an action today. `path: notice-bar/src/notice-bar.tsx:8`, `path: rescue-ui/rescue-notice.ts:10`
@@ -101,10 +106,11 @@ See spec.md, Non-goals.
 
 1. Filed 2026-11-04: Epic #1907 under Product#43; Tasks #1908 (A), #1909 (B), #1910 (C), #1911 (D), #1912 (E), #1913 (F), #1927 (G); #1614 (H) moved under the Epic; follow-up #1914. Re-scoped the same day for the computed-on-request design.
 2. #1917 (`sharesTeamIgnoringAdminRole`) before B. If B is ready first, B adds that one method to the resolver from #1917's spec and #1917 adopts it.
-3. A → B. B lands OpenAPI and the mock JMAP methods first; then C, D, E and H run in parallel against the mock tier. G has no dependency.
-4. F with or after B. The architecture doc names Epic #1907, so `check-architecture-spec` needs this spec on main first; the spec lands with A.
-5. #1914 after C (it uses the client and cache).
-6. V last.
+3. CalDAV free/busy: B extends #1923's `WgwSchedulePlugin` (or adds it, if B is first). E (#1912) does not merge before that holds, because its switch promises that nobody sees anything while it is off.
+4. A → B. B lands OpenAPI and the mock JMAP methods first; then C, D, E and H run in parallel against the mock tier. G has no dependency.
+5. F with or after B. The architecture doc names Epic #1907, so `check-architecture-spec` needs this spec on main first; the spec lands with A.
+6. #1914 after C (it uses the client and cache).
+7. V last.
 
 ## Open decisions
 
@@ -128,6 +134,7 @@ Decided:
 ## Invariants
 
 - **Published feeds do not change.** This work does not touch the feed builder. Proof: `path: tests/Feature/Calendars/CalendarsIcsWebcalPublishTest.php` assertions `test_busy_mode_hides_every_event_and_ignores_a_query_mode`, `test_private_and_confidential_events_become_busy_placeholders`.
+- **`CalendarEvent/query` is unchanged** after `candidateObjects` gains its opt-in column list and lazy iteration (A). Proof: `path: tests/Feature/Jmap/JmapCalendarMethodsTest.php` assertions `test_calendar_event_query_time_range_title_sort_and_recurrence`, `test_calendar_event_query_multi_vevent_isolation_and_after_without_before`.
 - **Calendar push state keeps its shape.** No new collection joins the VEVENT set. Proof: `path: tests/Feature/Jmap/JmapEventSourceTest.php` assertion `test_first_request_sends_every_type_with_an_id_and_retry`.
 - **Read-only sharees still cannot write.** Proof: `path: tests/Feature/Calendars/CalendarsShareWithTest.php` assertion `test_sharee_cannot_change_owner_fields_on_a_shared_calendar`.
 - **Sidebar sections stay intact** (C). Virtual availability calendars never land in My calendars or Shared with me. Proof: `path: calendar-core/src/calendar-sidebar-order.test.ts` assertion `unifies owned, team, and subscription calendars A–Z and keeps ACL sharees out`.
@@ -147,12 +154,15 @@ Decided:
   - Owner addresses. `path: app/Services/Calendars/CalendarPrincipalAddresses.php:23`
   - Group calendars. `path: app/Services/Calendars/CalendarCollectionAccess.php:315`
   - Size guard. `path: app/Services/VObject/VObjectPayloadGuard.php:22`
+  - Range query and its only caller. `path: app/Services/Calendars/CalendarEventQuerySupport.php:89`, `path: app/Services/Calendars/CalendarEventRepository.php:102`
+  - Instance lists are private today; add one public accessor. `path: app/Services/Calendars/CalendarCollectionAccess.php:301`
 - **Builds:**
   - migrations for `calendar_availability_owners` and `calendar_availability_prefs` (keyed on `calendarid`), schema parity test updated, cleanup on calendar delete
   - `AvailabilitySettings` (read and write the switch and per-calendar prefs; list own personal and Team event calendars)
   - `AvailabilityCalculator::busyPeriods(owner, utcStart, utcEnd, excludeUid?)` per spec.md, Calculator: sources, filters, expansion, dedupe, period building, bounds, `complete`
-  - candidates through `candidateObjects` with a column list and chunked iteration
-  - fingerprint and a 5-minute cache of the unredacted internal list (UID as HMAC); exclusion, detail and field list applied after the read
+  - an opt-in column list and lazy iteration on `candidateObjects`; the current caller unchanged
+  - a public accessor on `CalendarCollectionAccess` for personal (`ACCESS_SHAREDOWNER` under `principals/{owner}`) and Team instances
+  - fingerprint (including an app-key identifier) and a 5-minute cache of the unredacted internal list (UID as HMAC, plus `complete`); exclusion, detail and field list applied after the read
   - slow-call log
 - **Done when:**
   - Feature tests prove:
@@ -166,9 +176,11 @@ Decided:
     - busy vs details fields; `CLASS:PRIVATE` time only; a URL location dropped; no UID or other field in the output
     - range over 371 days rejected; a cut at 2000 periods and a skipped oversized recurrence both give `complete: false`
     - two calls with different `excludeUid` share one cache entry; no raw UID is stored in the cache
+    - a cache hit after an incomplete first run still says `complete: false`; a changed app key misses the cache
+    - a Team calendar is never classified as personal (decline does not free, `details` never applies)
     - a write through plain `CalPDO` shows on the next call (fingerprint miss)
     - floating and all-day events keep wall-clock time
-  - The feed invariant stays green.
+  - The feed and `CalendarEvent/query` invariants stay green.
 - **Verify with:** `cmd: pnpm test:api-done-gate`
 - **Parallel with:** G
 
@@ -197,6 +209,7 @@ Decided:
     - `excludeEventId` of an event the caller only reads on a read-only shared calendar → `invalidArguments`; own, editable and attended events work
     - limits: 50 ids, 371 days, 3710 person-days
     - the settings route is declared next to `calendars/subscriptions`, above the feed routes
+    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address; with the switch on it returns the calculator's periods without titles
     - REST: defaults, round trip, 422 for details on a Team calendar and for foreign calendars, choices kept while off
   - OpenAPI contract test is green; `pnpm run check:api-types` is green.
 - **Verify with:** `cmd: pnpm test:api-done-gate`
@@ -237,7 +250,7 @@ Decided:
 - **Issue:** #1911
 - **Skill:** apps-ui, workspace
 - **Inputs:**
-  - Event card. `path: lib/calendar-elements/EventCard/EventCard.ts:43`
+  - Event card variant precedent: the reflected `rsvp` property (dashed and tinted for needs-action and tentative). `path: lib/calendar-elements/EventCard/EventCard.ts:72`
   - Write block. `path: calendar-core/src/calendar-events-api.ts:85`
 - **Builds:**
   - "Busy" label for periods without a title, in day, week, month and year views
@@ -256,7 +269,7 @@ Decided:
 - **Skill:** apps-ui, workspace, client-transport
 - **Inputs:**
   - Settings calendar pane. `path: settings-core/src/settings-calendar-form-schema.ts:22`
-  - Online-only pattern for share and publish. `path: lib/offline/calendars-hybrid-operations.ts:40`
+  - Online-only pattern for share changes. `path: lib/offline/calendars-hybrid-operations.ts:280`
 - **Builds:**
   - REST client for `/calendars/availability` with typed errors
   - Availability section in `settings-calendar-availability-section.tsx` per spec.md, Owner settings, including both hints and the footer line
@@ -314,7 +327,7 @@ Decided:
   - B jumps to a month next year; A's event there shows
   - A switches the calendar to details; B sees the title
   - B invites A to a new event at that time; the invitee list shows A as "Busy"; moved to a free slot it shows "Free"
-  - A switches details back to time only; B no longer sees A's titles, also in weeks B opened before
+  - A switches details back to time only; B no longer sees A's titles, also in weeks B opened before. **Do not drop this step** if the run is trimmed: it is the only end-to-end proof that a `version` change clears cached titles.
   - A is removed from the Team; A disappears for B on the next availability tick
 
 ## Test plan

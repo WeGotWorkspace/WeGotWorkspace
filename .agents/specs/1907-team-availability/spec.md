@@ -1,11 +1,11 @@
-Source: #1907 (body-hash: 6631c581)
+Source: #1907 (body-hash: 51d6adc3)
 Goal: WeGotWorkspace/Product#43
 
 # Team availability
 
 Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
 
-Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04). Revised twice on 2026-11-04 after external reviews: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation.
+Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised twice on 2026-11-04 after external reviews: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation.
 
 ## Goal
 
@@ -30,7 +30,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 - A day strip of busy blocks inside the event editor. The invitee list shows one Free/Busy status for the event's own time; the grid is the place to look around.
 - Warning after reconnect about events planned offline that now clash (#1914)
 - Sharing availability outside a shared Team, with external guests, or as a public URL
-- Availability over CalDAV (VFREEBUSY for teammates is gated in Teams visibility #1923; it does not use this calculator yet)
+- New availability surfaces over CalDAV. The existing CalDAV outbox free/busy report is brought under this Epic's rules (see API, CalDAV free/busy); nothing else is exposed over CalDAV.
 - Per-event privacy UI (Product#42). Events already marked `CLASS:PRIVATE` or `CONFIDENTIAL` are always time only.
 - A "Tentative" state. WGW stores Busy or Free only (`freeBusyStatusFromWire`); everything that counts is "Busy".
 - Merging overlapping busy blocks into one block
@@ -78,11 +78,13 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 `AvailabilityCalculator::busyPeriods(owner, utcStart, utcEnd, excludeUid?)`:
 
 - **Sources.**
-  - **Personal:** the owner's own instances (`access = 1`) of kind `EventCalendar`, without `subscriptionId`.
-  - **Team:** the group calendars (kind `EventCalendar`) of every Team the owner belongs to. When Projects land (#810), a Project calendar counts only for members who joined that Project; until then every Team event calendar counts by default.
+  - **Personal:** instances under the owner's own principal `principals/{owner}` with `access = SharingPlugin::ACCESS_SHAREDOWNER`, of kind `EventCalendar`, without `subscriptionId`. The access check is what drops calendars shared with the owner.
+  - **Team:** instances under `principals/groups/{slug}` (kind `EventCalendar`) for every Team the owner belongs to. When Projects land (#810), a Project calendar counts only for members who joined that Project; until then every Team event calendar counts by default.
   - **Never:** subscriptions, calendars shared with the owner, chat, docs threads, task lists, notebooks.
   - A source with `include = false` is skipped.
-- **Objects.** `calendarobjects` of type VEVENT in the sources, through the existing `candidateObjects` range query (no third range query), with an explicit column list and lazy, chunked iteration so one call never holds every candidate in memory. Objects over `VObjectPayloadGuard::MAX_ICS_BYTES`, or that fail to parse, are skipped and logged.
+  - The two lists come from `CalendarCollectionAccess`, through a new public accessor over its private `personalInstances` and `groupInstances`. The calculator does not copy those queries.
+  - The personal/Team classification decides two safety rules (a decline frees only on personal sources; titles show only from personal sources). A test pins that a Team calendar is never classified as personal.
+- **Objects.** `calendarobjects` of type VEVENT in the sources, through the existing `candidateObjects` range query (no third range query). `candidateObjects` gets an **opt-in** parameter for a column list and lazy, chunked iteration, so one call never holds every candidate in memory. Its current caller, `CalendarEventRepository::query()`, keeps today's behaviour: no column list, same return type. Objects over `VObjectPayloadGuard::MAX_ICS_BYTES`, or that fail to parse, are skipped and logged.
 - **Expansion.** Recurring events are expanded within the range with the existing `CalendarEventExpansionService`, including per-occurrence overrides. A recurrence over the instance limit is skipped and logged, as on the query path, and marks the result `complete: false`. Because the output is occurrences, overrides never become orphans.
 - **What counts as busy**, per occurrence:
   - skip `TRANSP:TRANSPARENT` ("Show as: Free")
@@ -104,7 +106,8 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 - **No side effects.** The calculator only reads.
 - **Cost and caching.**
   - A per-owner fingerprint (the source calendar ids with their `synctoken`, the prefs `updated_at`, the owner's display name) is one SQL query. Sabre bumps the synctoken on every write path, raw `CalPDO` included.
-  - The cache holds the **unredacted internal list** per `(owner, range, fingerprint)`: times, source kind, private flag, title, location and an HMAC of the UID (keyed with the app key), never the raw UID. `excludeUid`, the detail level and the output field list are applied after the read, so the invitee tag shares the sidebar's cache entries.
+  - The cache holds the **unredacted internal list** per `(owner, range, fingerprint)`: times, source kind, private flag, title, location, an HMAC of the UID (keyed with the app key), never the raw UID, and the `complete` flag of the computation, so a cache hit never reports a complete result for a range whose first run skipped something.
+  - The fingerprint includes an identifier of the app key (a short hash of it), so a key rotation is a cache miss, not an exclusion that silently matches nothing. `excludeUid`, the detail level and the output field list are applied after the read, so the invitee tag shares the sidebar's cache entries.
   - Entries live 5 minutes. A write changes the fingerprint, and the file cache only prunes on read, so a short TTL keeps dead entries from piling up.
   - The default cache store is `file` (plaintext in the instance data directory). The entries hold nothing the calendar tables in the same directory do not already hold, and no raw UIDs.
 - **Observability.** A call that takes more than 500 ms logs its duration and counts (sources, objects, periods), never content.
@@ -123,6 +126,10 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - At most 50 ids per call, at most 371 days, and at most 3710 person-days. Anything over, or `utcEnd <= utcStart`, is `invalidArguments`.
   - `excludeEventId` must be a `CalendarEvent` the caller may edit, or one where the caller is the organizer or an attendee. The server takes its UID and passes it as `excludeUid`. Any other id is `invalidArguments`. This rules out events the caller only reads on a read-only shared calendar, where comparing results with and without the exclusion would tell more than the caller already knows.
   - The period shape stays close to the standard `Principal/getAvailability` `BusyPeriod`, so a later move to the standard method is a rename.
+- **CalDAV free/busy.** Today Sabre grants `read-free-busy` to every authenticated user on every calendar (`Sabre\CalDAV\Calendar::getACL`), and `CalDAV\Schedule\Plugin` answers outbox VFREEBUSY requests from that. So the outbox report is live now and ignores the switch, the per-calendar include and the Team rule. Teams visibility (#1923) adds a `WgwSchedulePlugin` that overrides `getFreeBusyForEmail` and answers as for an unknown address when caller and target share no Team. This Epic extends that override:
+  - target's switch off → the same answer as for an unknown address
+  - switch on → busy periods from `AvailabilityCalculator`, time only (no titles over CalDAV)
+  - If #1909 is ready before #1923, #1909 adds the subclass with both checks and #1923 adopts it. Either way, #1912 (the settings UI that promises "off means nobody sees anything") does not ship before this holds.
 - **REST settings** (`x-wgw-access: user`), declared next to `calendars/subscriptions`, above the parameterised feed routes:
   ```
   GET /api/v1/calendars/availability
