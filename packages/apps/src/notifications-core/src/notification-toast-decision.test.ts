@@ -124,7 +124,9 @@ describe("pickRowsToToast", () => {
     const fresh = row("n2", "/calendar");
     fresh.createdAt = "2026-11-04T10:05:01Z";
     const front = tab(storage, { self: true, route: null }, "/drive", back);
-    expect(await pickRowsToToast([away, fresh], front)).toEqual([fresh]);
+    // Whole seconds: a row stamped in the second the tab showed still counts as new.
+    const sameSecond = { ...row("n3", "/drive/x"), createdAt: "2026-11-04T10:04:59Z" };
+    expect(await pickRowsToToast([away, fresh, sameSecond], front)).toEqual([fresh, sameSecond]);
     // Decided, so it does not toast later either.
     expect(await pickRowsToToast([away], tab(storage, { self: true, route: null }))).toEqual([]);
   });

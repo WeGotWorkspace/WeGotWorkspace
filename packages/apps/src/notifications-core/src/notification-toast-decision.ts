@@ -44,10 +44,16 @@ export function trackVisibleSince(
   return () => since;
 }
 
+/**
+ * `createdAt` has whole seconds, and the server clock may differ a little
+ * from this browser's: news from just before the tab showed still toasts.
+ */
+export const CREATED_AT_SLACK_MS = 2_000;
+
 function createdWhileVisible(row: NotificationInboxItem, visibleSince: number): boolean {
   if (visibleSince === 0 || !row.createdAt) return true;
   const created = Date.parse(row.createdAt);
-  return Number.isNaN(created) || created >= visibleSince;
+  return Number.isNaN(created) || created + CREATED_AT_SLACK_MS >= visibleSince;
 }
 
 export function browserToastDecidedStore(): IdListStore {
