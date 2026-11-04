@@ -1,0 +1,3 @@
+# Fingerprints (commit:file:rule:line) of findings that are not secrets.
+# A made-up Web Push subscription auth value for the k6 load test (#1670); the script now generates it per run.
+2eb6445fd96f30496aec33ce4792bafd91293ede:tools/load/rtc-shared-hosting.k6.js:generic-api-key:68

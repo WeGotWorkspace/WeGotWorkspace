@@ -9,6 +9,7 @@ import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { startDriveItemDownload } from "@/drive-core/src/drive-item-download";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
@@ -132,13 +133,9 @@ export function DriveMainPane({
         });
       return;
     }
-    if (operations && file.apiPath && file.kind !== "folder") {
-      void operations.downloadFile(file.apiPath).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        showError(message);
-      });
-    }
-    show("Download started", { icon: <Download className="size-4" /> });
+    startDriveItemDownload(operations, file, showError, () =>
+      show("Download started", { icon: <Download className="size-4" /> }),
+    );
   };
 
   const searchActive = Boolean(searchQuery.trim());

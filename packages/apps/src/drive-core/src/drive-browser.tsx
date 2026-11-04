@@ -2,11 +2,11 @@ import { Star } from "lucide-react";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import { cn } from "@/lib/utils";
 import {
-  DriveFileItemActions,
   DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
+import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
 import { DriveFolderTile } from "@/drive-core/src/drive-folder-tile";
 import { useLongPress } from "@/drive-core/src/use-drive-long-press";
 import {

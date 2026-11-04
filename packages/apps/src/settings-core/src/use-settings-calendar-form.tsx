@@ -1,8 +1,4 @@
-import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
 import { readCalendarDisplayPrefs, writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import {
   calendarDisplayFormToPrefs,
@@ -10,40 +6,21 @@ import {
   settingsCalendarFormSchema,
   type SettingsCalendarFormValues,
 } from "@/settings-core/src/settings-calendar-form-schema";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
-import { useRegisterSettingsDialogSave } from "@/settings-core/src/settings-dialog-pane-actions";
+import { useSettingsPrefsForm } from "@/settings-core/src/use-settings-prefs-form";
+
+const resolver = zodResolver(settingsCalendarFormSchema);
 
 export function useSettingsCalendarForm() {
-  const runWithAppToast = useRunWithAppToast();
-  const defaultValues = useMemo(() => calendarDisplayPrefsToForm(readCalendarDisplayPrefs()), []);
-  const form = useForm<SettingsCalendarFormValues>({
-    resolver: zodResolver(settingsCalendarFormSchema),
-    defaultValues,
-    mode: "onSubmit",
+  return useSettingsPrefsForm<SettingsCalendarFormValues>({
+    resolver,
+    read: () => calendarDisplayPrefsToForm(readCalendarDisplayPrefs()),
+    write: (values) => writeCalendarDisplayPrefs(calendarDisplayFormToPrefs(values)),
+    saved: { panelId: "calendar", sliceId: "calendar-display" },
+    messages: {
+      success: "Calendar settings saved",
+      error: "Could not save Calendar settings",
+    },
   });
-
-  const saveDisplay = form.handleSubmit(async (values) => {
-    await runWithAppToast(
-      async () => {
-        const prefs = calendarDisplayFormToPrefs(values);
-        if (!writeCalendarDisplayPrefs(prefs)) {
-          throw new Error("Could not save Calendar settings");
-        }
-        form.reset(calendarDisplayPrefsToForm(prefs));
-        notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" });
-      },
-      {
-        success: "Calendar settings saved",
-        successOptions: { icon: <Check className="size-4" /> },
-        mapError: (error) =>
-          error instanceof Error ? error.message : "Could not save Calendar settings",
-      },
-    );
-  });
-
-  useRegisterSettingsDialogSave(saveDisplay, !form.formState.isDirty);
-
-  return { form, saveDisplay };
 }
 
 export type SettingsCalendarFormController = ReturnType<typeof useSettingsCalendarForm>;

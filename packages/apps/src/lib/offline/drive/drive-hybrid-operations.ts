@@ -50,7 +50,11 @@ import {
   readOfflineDriveFileBlob,
 } from "@/lib/offline/drive/drive-offline-read";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
-import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
+import {
+  applyDriveSidecarPathMigration,
+  nextPathAfterRename,
+} from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isPendingUploadFolderPath } from "@/lib/offline/drive/upload/drive-upload-folder-placeholders";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
@@ -255,6 +259,7 @@ export function createHybridDriveOperations(
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
             await applyOfflineTrashSideEffects(username, input.from);
+            moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
           } else {
             await applyDriveSidecarPathMigration(username, input.from, input.destination, input.to);
           }
@@ -269,6 +274,7 @@ export function createHybridDriveOperations(
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
         to = resolveFreeName(input.to, trashNames);
         await applyOfflineTrashSideEffects(username, from);
+        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }
@@ -303,6 +309,13 @@ export function createHybridDriveOperations(
         }
       }
       await downloadOfflineDriveFile(username, normalized);
+    },
+    downloadFolder: async (path, opts) => {
+      // The server writes the zip: there is no offline copy of a folder to save.
+      if (!readBrowserOnline() || !live.downloadFolder) {
+        throw new Error("Downloading a folder as a zip needs a connection.");
+      }
+      await live.downloadFolder(normalizeApiVirtualPath(path), opts);
     },
     readFileBlob: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);

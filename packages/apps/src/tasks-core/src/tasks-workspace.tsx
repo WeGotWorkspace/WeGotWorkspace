@@ -119,7 +119,7 @@ export function TasksWorkspace({
   initialView,
   initialTaskId,
   onViewChange,
-  headerActions,
+  notice,
 }: TasksWorkspaceProps) {
   const composerRef = useRef<TasksMainViewHandle>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -224,6 +224,7 @@ export function TasksWorkspace({
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
         className={cn("tasks-workspace", className)}
+        mainNotice={notice}
         sidebar={
           <AppSidebar
             open={sidebarOpen}
@@ -319,7 +320,6 @@ export function TasksWorkspace({
                     </TooltipContent>
                   </Tooltip>
                 ) : null}
-                {headerActions}
                 {onRefreshList ? (
                   <IconButton
                     label={L.refreshList}

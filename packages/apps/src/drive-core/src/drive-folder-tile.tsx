@@ -3,8 +3,8 @@ import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { DriveShareIndicators } from "@/drive-core/src/drive-browser-indicators";
+import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
 import {
-  DriveFileItemActions,
   DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,

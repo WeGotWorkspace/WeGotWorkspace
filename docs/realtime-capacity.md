@@ -89,3 +89,26 @@ Caveats:
 - `php -S` does not report busy workers, so the FPM busy-children share is not measured. At about 40 ms average, 12 browsers polling every 3 seconds (240 a minute) keep about 0.16 of one child busy (Little's law), roughly 3% of a 5-child pool.
 
 **Still to do:** run the push scenario on a host with `pm.max_children = 5`, MySQL and a realistic data set, and record push p95, write p95 and busy children here.
+
+## Urgent Web Push (after-response send)
+
+A meeting start (`meet.started`, #1670) sends its Web Push right after the response, on the PHP worker that served the write: at most 20 subscriptions per event, all at once over curl multi, within 1.5 s ([architecture/notifications.md](architecture/notifications.md), "Urgent active news"). That worker serves nothing else until the send is done.
+
+### Scenario
+
+Set `URGENT_USER` / `URGENT_PASSWORD` (who starts the meetings) and `URGENT_RECIPIENT` / `URGENT_RECIPIENT_PASSWORD` to add the `urgent` scenario; `URGENT_ONLY=1` runs it alone. Each iteration gives the recipient `URGENT_SUBSCRIPTIONS` push subscriptions, creates a meeting channel shared with them, and joins it, which starts the meeting. Right after the join's response a probe (`GET /api/v1/health`) goes out. Run the API with **one** PHP worker (`pm.max_children = 1`, or the built-in server with `PHP_CLI_SERVER_WORKERS=1`): the probe then waits until the send is done, so `urgent_worker_busy_ms` (join start to probe end, minus an idle probe) is how long one meeting start holds a worker. The subscriptions point at FCM with made-up tokens, so every send is a real TLS round trip that FCM answers with 410; the server prunes them and the next iteration posts them again. `WGW_PUSH_URGENT_MAX_SUBSCRIPTIONS` raises the cap for a measurement only.
+
+### Measured cutoff (2026-11-03)
+
+PHP built-in server with one worker, SQLite, on a MacBook over a home connection to FCM. Ten meeting starts per row (five for the uncapped 40). Encryption and the push round trips are both inside the numbers.
+
+| Subscriptions of the recipient | Cap | Sent after the response | `urgent_worker_busy_ms` median | p95 | max |
+|---|---|---|---|---|---|
+| 0 | 20 | 0 | 16 ms | 37 ms | 45 ms |
+| 5 | 20 | 5 | 138 ms | 230 ms | 245 ms |
+| 10 | 20 | 10 | 144 ms | 215 ms | 230 ms |
+| 20 | 20 | 20 | 181 ms | 236 ms | 249 ms |
+| 40 | 20 | 20 (20 left for the sweep) | 179 ms | 243 ms | 266 ms |
+| 40 | 40 | 40 | 316 ms | 616 ms | 651 ms |
+
+Up to 20 the cost is one round trip plus a little encryption per subscription; above 20 the tail grows (one slow handshake holds the whole batch). **The cutoff stays at 20**: a meeting start holds a worker for about 0.2 s, well inside the 1.5 s deadline, and a recipient with more devices gets the rest on the next cron tick. Not measured yet: a shared host with `pm.max_children = 5` and a slower CPU, where encryption weighs more.
