@@ -5,6 +5,7 @@ import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
 import {
   browserToastDecidedStore,
   pickRowsToToast,
+  trackVisibleSince,
   type ToastDecisionDeps,
 } from "@/notifications-core/src/notification-toast-decision";
 import { NotificationToast } from "@/notifications-core/src/notification-toast";
@@ -42,6 +43,7 @@ export function defaultNotificationToastDeps(): NotificationToastDeps {
     },
     decided: browserToastDecidedStore(),
     currentRoute: () => window.location.pathname + window.location.search,
+    visibleSince: trackVisibleSince(),
     show: showNotificationToast,
   };
 }

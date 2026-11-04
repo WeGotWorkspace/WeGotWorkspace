@@ -3,6 +3,7 @@ import { createIdListStore } from "./id-list-store";
 import {
   pickRowsToToast,
   routeShowsNavigate,
+  trackVisibleSince,
   TOAST_DECIDED_STORAGE_KEY,
   type ToastDecisionDeps,
 } from "./notification-toast-decision";
@@ -35,11 +36,13 @@ function tab(
   storage: ReturnType<typeof memoryStorage>,
   front: Awaited<ReturnType<ToastDecisionDeps["frontTab"]>>,
   currentRoute = "/drive",
+  visibleSince = 0,
 ): ToastDecisionDeps {
   return {
     frontTab: async () => front,
     decided: createIdListStore(storage, TOAST_DECIDED_STORAGE_KEY, 500),
     currentRoute: () => currentRoute,
+    visibleSince: () => visibleSince,
   };
 }
 
@@ -114,9 +117,59 @@ describe("pickRowsToToast", () => {
     expect(await pickRowsToToast([dm], onDm)).toEqual([]);
   });
 
+  it("does not toast a row created while the tab was hidden, fetched after the user came back", async () => {
+    const storage = memoryStorage();
+    const back = Date.parse("2026-11-04T10:05:00Z");
+    const away = { ...dm, createdAt: "2026-11-04T10:04:00Z" };
+    const fresh = row("n2", "/calendar");
+    fresh.createdAt = "2026-11-04T10:05:01Z";
+    const front = tab(storage, { self: true, route: null }, "/drive", back);
+    expect(await pickRowsToToast([away, fresh], front)).toEqual([fresh]);
+    // Decided, so it does not toast later either.
+    expect(await pickRowsToToast([away], tab(storage, { self: true, route: null }))).toEqual([]);
+  });
+
   it("ignores rows that are already read", async () => {
     const storage = memoryStorage();
     const read = { ...dm, readAt: "2026-11-04T10:01:00Z" };
     expect(await pickRowsToToast([read], tab(storage, { self: true, route: null }))).toEqual([]);
+  });
+});
+
+describe("trackVisibleSince", () => {
+  function fakeDocument(state: DocumentVisibilityState) {
+    const listeners: Array<() => void> = [];
+    const doc = {
+      visibilityState: state,
+      addEventListener: (_type: string, listener: () => void) => void listeners.push(listener),
+    };
+    const set = (next: DocumentVisibilityState) => {
+      doc.visibilityState = next;
+      for (const listener of listeners) listener();
+    };
+    return { doc: doc as unknown as Document, set };
+  }
+
+  it("is 0 while visible since load, and the return time after a hidden spell", () => {
+    let now = 1_000;
+    const { doc, set } = fakeDocument("visible");
+    const since = trackVisibleSince(doc, () => now);
+    expect(since()).toBe(0);
+    set("hidden");
+    expect(since()).toBe(Number.POSITIVE_INFINITY);
+    now = 5_000;
+    set("visible");
+    expect(since()).toBe(5_000);
+    now = 9_000;
+    set("visible");
+    expect(since()).toBe(5_000);
+  });
+
+  it("starts at the first show for a tab that loaded hidden", () => {
+    const { doc, set } = fakeDocument("hidden");
+    const since = trackVisibleSince(doc, () => 7_000);
+    expect(since()).toBe(Number.POSITIVE_INFINITY);
+    set("visible");
+    expect(since()).toBe(7_000);
   });
 });

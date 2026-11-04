@@ -244,3 +244,41 @@ test("no toast while every tab is hidden, and none for that row later", async ({
     await setup.context.close();
   }
 });
+
+test("a DM that arrived while every tab was hidden does not toast when it loads on return", async ({
+  browser,
+}) => {
+  const setup = await member(browser);
+  try {
+    const [tabA, tabB] = await openTabs(setup, ["/notes", "/drive"]);
+    await focusTab(tabA);
+    await setHidden(tabB, true);
+    await setHidden(tabA, true);
+    // A throttled or frozen background tab: no inbox fetch reaches the server while away.
+    let away = true;
+    await setup.context.route(/\/api\/v1\/notifications\?/, (route) =>
+      away ? route.abort() : route.continue(),
+    );
+
+    const text = `while away ${Date.now()}`;
+    await postDm(setup.context, setup.adminToken, setup.channelId, text);
+    await tabA.waitForTimeout(QUIET_MS);
+    expect(setup.listed().some((row) => row.body?.includes(text))).toBe(false);
+
+    // The user comes back: the visibility refresh brings the row, it does not toast.
+    away = false;
+    await setHidden(tabA, false);
+    await focusTab(tabA);
+    await rowListed(setup, text);
+    await tabA.waitForTimeout(QUIET_MS);
+    expect(await seenToasts(tabA)).toEqual([]);
+    expect(await seenToasts(tabB)).toEqual([]);
+
+    // News that arrives now that the user is back still toasts.
+    const next = `back again ${Date.now()}`;
+    await postDm(setup.context, setup.adminToken, setup.channelId, next);
+    await expect(toastFor(tabA, next)).toBeVisible({ timeout: TOAST_BOUND_MS });
+  } finally {
+    await setup.context.close();
+  }
+});

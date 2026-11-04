@@ -20,7 +20,35 @@ export type ToastDecisionDeps = {
   decided: IdListStore;
   /** This tab's screen when the hub has no route for it yet. */
   currentRoute: () => string;
+  /**
+   * Epoch ms since this tab is visible without a break, or 0 when it has been
+   * since it loaded (the rows present at load never toast anyway).
+   */
+  visibleSince: () => number;
 };
+
+/**
+ * Tracks {@link ToastDecisionDeps.visibleSince} for `doc`. A row created
+ * while the tab was hidden is news the user was away for: Web Push alerted
+ * them, so it does not toast when the tab fetches it after they come back.
+ */
+export function trackVisibleSince(
+  doc: Pick<Document, "visibilityState" | "addEventListener"> = document,
+  now: () => number = Date.now,
+): () => number {
+  let since = doc.visibilityState === "visible" ? 0 : Number.POSITIVE_INFINITY;
+  doc.addEventListener("visibilitychange", () => {
+    if (doc.visibilityState !== "visible") since = Number.POSITIVE_INFINITY;
+    else if (since === Number.POSITIVE_INFINITY) since = now();
+  });
+  return () => since;
+}
+
+function createdWhileVisible(row: NotificationInboxItem, visibleSince: number): boolean {
+  if (visibleSince === 0 || !row.createdAt) return true;
+  const created = Date.parse(row.createdAt);
+  return Number.isNaN(created) || created >= visibleSince;
+}
 
 export function browserToastDecidedStore(): IdListStore {
   return createIdListStore(browserStorage(), TOAST_DECIDED_STORAGE_KEY, TOAST_DECIDED_MAX_IDS);
@@ -62,7 +90,8 @@ export function routeShowsNavigate(route: string, navigate: string): boolean {
  *   OS notification path (#1605);
  * - another tab is in front: that tab decides when it sees the row;
  * - this tab is in front: it toasts the row, unless the row's `navigate`
- *   points at the screen it shows (the row still goes to the popover).
+ *   points at the screen it shows, or the row was created while this tab was
+ *   hidden and is fetched only now (the row still goes to the popover).
  */
 export async function pickRowsToToast(
   fresh: readonly NotificationInboxItem[],
@@ -80,5 +109,8 @@ export async function pickRowsToToast(
   deps.decided.add(rows.map((row) => row.id));
   if (!front) return [];
   const route = front.route ?? deps.currentRoute();
-  return rows.filter((row) => !routeShowsNavigate(route, row.navigate));
+  const visibleSince = deps.visibleSince();
+  return rows.filter(
+    (row) => createdWhileVisible(row, visibleSince) && !routeShowsNavigate(route, row.navigate),
+  );
 }
