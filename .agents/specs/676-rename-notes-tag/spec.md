@@ -1,5 +1,5 @@
-Source: #676 (body-hash: 932755b2)
-Goal: #676
+Source: WeGotWorkspace/Product#92 (body-hash: 932755b2)
+Goal: WeGotWorkspace/Product#92 — filed in this repository as #676 and transferred to Product; `#676` below means that issue.
 
 # Rename a notes tag across every loaded note
 

@@ -1,5 +1,5 @@
-Source: #673 (body-hash: b38df3b1)
-Goal: #673
+Source: WeGotWorkspace/Product#89 (body-hash: b38df3b1)
+Goal: WeGotWorkspace/Product#89 — filed in this repository as #673 and transferred to Product; `#673` below means that issue.
 
 # Move notes when deleting a notebook
 
