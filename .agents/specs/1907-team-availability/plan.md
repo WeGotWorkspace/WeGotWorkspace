@@ -20,7 +20,7 @@ See spec.md, Non-goals.
 **Teams**
 
 - "Team" is a Sabre group principal; membership is `groupmembers`. `path: app/Services/Admin/AdminConstants.php:9`, `path: app/Services/Drive/DriveGroupResolver.php:14`, `path: app/Services/Settings/GroupMembershipResolver.php:14`
-- Personal and group instances come from two private helpers; `personalInstances` scopes on the user's principal and owner access (`SharingPlugin::ACCESS_SHAREDOWNER`). `path: app/Services/Calendars/CalendarCollectionAccess.php:301`, `path: app/Services/Calendars/CalendarCollectionAccess.php:315`, `path: app/Dav/Server/WgwCalendarBackend.php:167`
+- Personal and group instances come from two private helpers. `personalInstances` filters only principal and kind (no `access` filter); `groupInstances` calls `ensureForGroupPrincipal`, which inserts missing Team collections. Neither fits a read-only calculator as-is. The `ACCESS_SHAREDOWNER` constant is how the codebase names owner access elsewhere. `path: app/Services/Calendars/CalendarCollectionAccess.php:301`, `path: app/Services/Calendars/CalendarCollectionAccess.php:315`, `path: app/Dav/Server/WgwCalendarBackend.php:167`
 - Teams visibility (#1915) adds `TeamColleagues::sharesTeamIgnoringAdminRole` in #1917, the one check for presence and free/busy. Its spec is not on main yet; see [#1917](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1917).
 
 **Calendar storage and reads**
@@ -42,7 +42,7 @@ See spec.md, Non-goals.
 **CalDAV free/busy**
 
 - `DAVACL\Plugin` and `CalDAV\Schedule\Plugin` are registered. `path: app/Dav/SabreServerFactory.php:120`, `path: app/Dav/SabreServerFactory.php:127`
-- Sabre grants `read-free-busy` to `{DAV:}authenticated` on every calendar in `Sabre\CalDAV\Calendar::getACL` ([sabre/dav 4.7.1, `lib/CalDAV/Calendar.php`](https://github.com/sabre-io/dav/blob/4.7.1/lib/CalDAV/Calendar.php#L272), the version in `composer.lock`), and nothing in `app/` restricts it (`cmd: git grep -n read-free-busy -- packages/api/app` finds nothing). So on main today any authenticated user can read any other user's free/busy through an outbox VFREEBUSY request, with no Team check. This is current behaviour, not something this Epic adds.
+- The outbox free/busy path checks `schedule-query-freebusy` on the target's inbox ([`Schedule/Plugin.php`](https://github.com/sabre-io/dav/blob/4.7.1/lib/CalDAV/Schedule/Plugin.php#L873)), and `Inbox::getACL` grants `schedule-deliver`, which includes it, to `{DAV:}authenticated` ([`Schedule/Inbox.php`](https://github.com/sabre-io/dav/blob/4.7.1/lib/CalDAV/Schedule/Inbox.php#L157)). Sabre also grants `read-free-busy` on every calendar ([`Calendar.php`](https://github.com/sabre-io/dav/blob/4.7.1/lib/CalDAV/Calendar.php#L272)). All links are sabre/dav 4.7.1, the version in `composer.lock`. Nothing in `app/` restricts either (`cmd: git grep -n -e read-free-busy -e schedule-query-freebusy -- packages/api/app` finds nothing). So on main today any authenticated user can read any other user's free/busy through an outbox VFREEBUSY request, with no Team check. This is current behaviour, not something this Epic adds.
 
 **API surface**
 
@@ -87,7 +87,17 @@ See spec.md, Non-goals.
 - **New all-day events default to Free**: kept as decided, 2026-11-04, but as its own Task (#1927) with a hint for time off, instead of hidden in the rendering slice.
 - **Review round 2 (2026-11-04), technical choices:**
   - **Cache unredacted, redact after read.** Keying the cache on `excludeUid` would make every invitee-tag request miss; storing redacted output would make exclusion impossible. The cache keeps an internal list with an HMAC of the UID, never the raw UID, for 5 minutes.
-  - **Cap the product, not only each dimension.** `ids × days ≤ 3710` bounds the work; the 2000-period cap only bounds the output.
+  - **Cap the product, not only each dimension.** `ids × weeks ≤ 540` bounds the work; the period cap only bounds the output.
+- **Review loop on PR #1932 (2026-11-04):**
+  - **Whole UTC weeks only, one cache entry per owner per week.** Arbitrary ranges let a caller mint unlimited keys and full expansions, and a one-week invitee request never hit a multi-week sidebar entry. The cap is 54 weeks because a calendar year in whole UTC weeks is sometimes 54.
+  - **Include, dedupe, exclusion and detail after the read**, with the source calendar id cached per occurrence. Detail is per calendar, so the kind alone was not enough, and unchecking must show on the next fetch.
+  - **A settings stamp from `updated_at` on both tables** drives `version`; the fingerprint is only source synctokens and the app key.
+  - **Fingerprint read before and after the objects**; a changed fingerprint is not stored, so a mid-read write is never cached as free.
+  - **A dedicated cache store with an hourly prune**, because Laravel's file store deletes an expired file only when that key is read again.
+  - **A read-only accessor that never provisions**, because `groupInstances` inserts missing Team collections.
+  - **Every skipped object sets `complete: false`**, and CalDAV answers as for an unknown address when incomplete, never with a partial VFREEBUSY.
+  - **Switch off covers the owner's own preview.**
+  - **Ids are usernames** across the API, cache, virtual calendars and invitee matching.
   - **`complete: false` instead of a silent cut.** A skipped recurrence or a cut list must not read as free.
   - **Own `TeamMember/get` state with a per-person `version`.** #1917's Team-set fingerprint misses switch, detail and name changes; a detail downgrade must clear cached titles.
   - **Whole-week runs in one call per batch**, not one call per week and not arbitrary ranges, so cache keys stay canonical and a year view is a few calls.
@@ -160,10 +170,13 @@ Decided:
 - **Builds:**
   - migrations for `calendar_availability_owners` and `calendar_availability_prefs` (keyed on `calendarid`), schema parity test updated, cleanup on calendar delete
   - `AvailabilitySettings` (read and write the switch and per-calendar prefs; list own personal and Team event calendars)
-  - `AvailabilityCalculator::busyPeriods(owner, utcStart, utcEnd, excludeUid?)` per spec.md, Calculator: sources, filters, expansion, dedupe, period building, bounds, `complete`
+  - `updated_at` on `calendar_availability_prefs`, set on every include or detail write; the settings stamp
+  - `AvailabilityCalculator::busyPeriods(owner, weekStarts, excludeUid?)` per spec.md, Calculator: sources, filters, expansion, dedupe, period building, bounds, `complete` per week
   - an opt-in column list and lazy iteration on `candidateObjects`; the current caller unchanged
-  - a public accessor on `CalendarCollectionAccess` for personal (`ACCESS_SHAREDOWNER` under `principals/{owner}`) and Team instances
-  - fingerprint (including an app-key identifier) and a 5-minute cache of the unredacted internal list (UID as HMAC, plus `complete`); exclusion, detail and field list applied after the read
+  - a read-only public accessor on `CalendarCollectionAccess` that selects existing personal (`ACCESS_SHAREDOWNER` under `principals/{owner}`, no subscription) and Team instances, without any provisioner
+  - fingerprint (source synctokens and an app-key identifier), read before and after the objects
+  - a dedicated `availability` cache store: one 5-minute entry per `(owner, weekStart, fingerprint)` with the unredacted occurrences (source calendar id, kind, private flag, title, location, UID HMAC) and the week's `complete`; include, dedupe, exclusion, detail and field list applied after the merge
+  - `wgw:availability:prune-cache`, hourly, deleting expired files in that store
   - slow-call log
 - **Done when:**
   - Feature tests prove:
@@ -175,9 +188,14 @@ Decided:
     - the same UID in a personal and a Team source counts once, time only
     - `excludeUid` drops that event
     - busy vs details fields; `CLASS:PRIVATE` time only; a URL location dropped; no UID or other field in the output
-    - range over 371 days rejected; a cut at 2000 periods and a skipped oversized recurrence both give `complete: false`
-    - two calls with different `excludeUid` share one cache entry; no raw UID is stored in the cache
+    - a cut at 2000 periods, a skipped oversized recurrence, an object over the size limit and an unparseable object each give `complete: false`
+    - two calls with different `excludeUid` share one cache entry; a one-week call and a multi-week call share the week's entry; no raw UID is stored in the cache
     - a cache hit after an incomplete first run still says `complete: false`; a changed app key misses the cache
+    - two personal calendars, one `details` and one `busy`: only the first gives titles; the same UID on both gives the stricter copy
+    - unchecking a calendar removes its periods on the next call, without waiting for the TTL
+    - a write between the two fingerprint reads is returned but not cached
+    - a busy-period read inserts no `calendarinstances` rows (no provisioning)
+    - the prune command removes expired entries that are never read again and keeps live ones
     - a Team calendar is never classified as personal (decline does not free, `details` never applies)
     - a write through plain `CalPDO` shows on the next call (fingerprint miss)
     - floating and all-day events keep wall-clock time
@@ -197,7 +215,9 @@ Decided:
 - **Builds:**
   - OpenAPI first: capability `urn:wgw:jmap:availability`, `TeamMember/get`, `TeamMember/getAvailability`, `GET|PUT /calendars/availability`
   - the access rule per spec.md, Who may see whom, with one `notFound` for every refusal
-  - `excludeEventId` resolved only from events the caller can read
+  - `excludeEventId` resolved only from events the caller may edit, or where the caller is the organizer or an attendee; anything else is `invalidArguments`
+  - week-aligned ranges enforced before any read
+  - CalDAV: switch and completeness checks in `WgwSchedulePlugin::getFreeBusyForEmail`
   - REST settings controller with 422 validation
   - mock JMAP server methods and fixtures for the web app
 - **Done when:**
@@ -208,9 +228,10 @@ Decided:
     - removed from the Team → `notFound` on the next request
     - `TeamMember/get` state and the person's `version` change on a membership, switch, detail or name change
     - `excludeEventId` of an event the caller only reads on a read-only shared calendar → `invalidArguments`; own, editable and attended events work
-    - limits: 50 ids, 371 days, 3710 person-days
+    - limits: 50 ids, 54 weeks, 540 person-weeks; a `utcStart` that is not Monday 00:00 UTC, or a length that is not whole weeks, is `invalidArguments`
+    - the caller's own id with the switch off is in `notFound`; ids are usernames
     - the settings route is declared next to `calendars/subscriptions`, above the feed routes
-    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address; with the switch on it returns the calculator's periods without titles
+    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address (`3.7`); with the switch on it returns the calculator's periods without titles; an incomplete result or a window over 54 weeks also answers `3.7`
     - REST: defaults, round trip, 422 for details on a Team calendar and for foreign calendars, choices kept while off
   - OpenAPI contract test is green; `pnpm run check:api-types` is green.
 - **Verify with:** `cmd: pnpm test:api-done-gate`
@@ -230,16 +251,16 @@ Decided:
 - **Builds:**
   - `lib/jmap-client/availability/` client
   - `calendars_availability` cache (per person per UTC week, `fetchedAt`) and the cached teammates list, in a new schema version
-  - whole-UTC-week runs, one call per batch within 3710 person-days
+  - whole-UTC-week runs of at most 54 weeks, one call per batch within 540 person-weeks; a person's `complete: false` written to every week of the run
   - fetch at once on range change; a 60-second availability tick for the state check, the visible range and the prefetch (current week + 4 weeks); the 10-second calendar tick is untouched
   - drop a person's cached weeks when their `version` changes or they leave the list; evict weeks older than 30 days outside the prefetch window, at most 60 per person
-  - virtual read-only calendars `availability:{principalId}` feeding the grid
+  - virtual read-only calendars `availability:{username}` feeding the grid; cache keyed `[username+weekStart]`
   - **Team availability** section in `calendar-availability-sidebar.tsx`: own row first, avatar rows, hidden by default, collapsible, filter above 8 rows
   - Calendar hosts the shared `NoticeBar`; one `info` notice while offline with ticked teammates ("updated …" stamp, plus the uncached-weeks sentence when it applies); `Notice` action made optional with a test
   - row marker for `complete: false`
   - no growth of `calendar-workspace.tsx` or `use-calendar-controller.ts`
 - **Done when:**
-  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
+  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; a 54-week year is one run that the server accepts; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
   - Storybook mock-tier story with 3 and 12 teammates and an offline state; accessibility checks pass (checkbox labels "Show/Hide {name}'s availability").
   - Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`
@@ -325,10 +346,12 @@ Decided:
 - Read-only verifier subagent with the prompt from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md).
 - **Done when:** the verifier returns `PASS` or `PASS_WITH_NITS`, the parent ran [done-checklist](../../skills/developer/done-checklist.md), and an own browser e2e passes with two users in one Team:
   - A turns the switch on and creates an event; B ticks A and sees "Busy"
+  - **Reload:** B reloads the calendar; A is still ticked and the block is still shown
   - B jumps to a month next year; A's event there shows
   - A switches the calendar to details; B sees the title
   - B invites A to a new event at that time; the invitee list shows A as "Busy"; moved to a free slot it shows "Free"
-  - A switches details back to time only; B no longer sees A's titles, also in weeks B opened before. **Do not drop this step** if the run is trimmed: it is the only end-to-end proof that a `version` change clears cached titles.
+  - **Second tab, same account:** B has two calendar tabs open. A switches details back to time only. Both tabs drop A's titles on the next availability tick, also in weeks B opened before. **Do not drop this step** if the run is trimmed: it is the only end-to-end proof that a `version` change clears cached titles.
+  - **Offline:** B views A's next weeks and goes offline. A adds an event. B still sees the old blocks, and the notice shows the "updated …" stamp. Moving to a week never fetched adds "Some weeks in view are not available offline." Back online, the notice clears and B sees the new block within one availability tick.
   - A is removed from the Team; A disappears for B on the next availability tick
 
 ## Test plan
