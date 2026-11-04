@@ -3,9 +3,59 @@
  * `playwright.config.mjs` ignores these. `playwright.live.config.mjs` runs the
  * live tier. `playwright.chaos.config.mjs` runs the real-time chaos suite.
  * `playwright.relay.config.mjs` runs the local coturn relay tier.
+ *
+ * `liveTierSpecs` lists the live tier: one spec name per line (no
+ * `.spec.ts`), in alphabetical order, each with a trailing comma. To add a
+ * live spec, add one line in its sorted place. Two pull requests that each
+ * add a spec then merge without a conflict.
+ * `tools/live-e2e-webserver.test.mjs` checks the order.
  */
-export const liveTierSpecPattern =
-  /(?:notes-offline-sync|notes-relist-many-notes|notes-create-lost-response|notes-save-in-flight|notes-collab-steady-typing|notes-push-open-note|notes-new-tab-unsaved-text|notes-collab-missed-tail|tasks-inbound-sync|docs-offline-sync|docs-home-browse|docs-collab-solo-read|docs-collab-suggest-save|notes-collab-access-lost|docs-collab-external-write|docs-collab-access-revoked|calendar-offline-week-event|meet-adhoc-two-users|presence-offline-start|meet-guest-chat|meet-guest-video-mirror|drive-first-sync|queued-write-reload|contacts-first-open-count|contacts-first-download|drive-inbound-many-files|calendar-far-week-event|notifications-inbox-push|drive-upload-queue|drive-upload-errors|notes-sharee-star|tasks-push|drive-guest-large-download|docs-inbound-sync|notes-leave-within-save-delay|drive-file-node-push|contacts-offline-read-only|docs-page-break-two-tabs|drive-upload-batch-dialog|drive-folder-download|drive-guest-upload|drive-upload-recovery)\.spec\.ts/;
+export const liveTierSpecs = [
+  "calendar-far-week-event",
+  "calendar-offline-week-event",
+  "contacts-first-download",
+  "contacts-first-open-count",
+  "contacts-offline-read-only",
+  "docs-collab-access-revoked",
+  "docs-collab-external-write",
+  "docs-collab-solo-read",
+  "docs-collab-suggest-save",
+  "docs-home-browse",
+  "docs-inbound-sync",
+  "docs-offline-sync",
+  "docs-page-break-two-tabs",
+  "drive-file-node-push",
+  "drive-first-sync",
+  "drive-folder-download",
+  "drive-guest-large-download",
+  "drive-guest-upload",
+  "drive-inbound-many-files",
+  "drive-upload-batch-dialog",
+  "drive-upload-errors",
+  "drive-upload-queue",
+  "drive-upload-recovery",
+  "meet-adhoc-two-users",
+  "meet-guest-chat",
+  "meet-guest-video-mirror",
+  "notes-collab-access-lost",
+  "notes-collab-missed-tail",
+  "notes-collab-steady-typing",
+  "notes-create-lost-response",
+  "notes-leave-within-save-delay",
+  "notes-new-tab-unsaved-text",
+  "notes-offline-sync",
+  "notes-push-open-note",
+  "notes-relist-many-notes",
+  "notes-save-in-flight",
+  "notes-sharee-star",
+  "notifications-inbox-push",
+  "presence-offline-start",
+  "queued-write-reload",
+  "tasks-inbound-sync",
+  "tasks-push",
+];
+
+export const liveTierSpecPattern = new RegExp(`(?:${liveTierSpecs.join("|")})\\.spec\\.ts`);
 
 /**
  * Notes sync matrix: every action × tab setup × connectivity case (about 110

@@ -164,10 +164,10 @@ reviewer writes the scenario step by step.
 - When a change request mentions Playwright, the fix job prepares the live
   tier the nightly live job uses: the API on SQLite, the Vite app, and
   Chromium. That adds a few minutes, so other fix rounds skip it.
-- The fixer writes the spec under `packages/apps/e2e/`, adds it to
-  `liveTierSpecPattern`, and runs it with the live config, which starts the
-  API and the app. The command and its result go in the commit body, since
-  the reviewer cannot run it.
+- The fixer writes the spec under `packages/apps/e2e/`, adds its name to
+  `liveTierSpecs` (one line, in alphabetical order), and runs it with the
+  live config, which starts the API and the app. The command and its result
+  go in the commit body, since the reviewer cannot run it.
 - If the tier cannot be prepared, the fixer is told so, writes the spec
   anyway, and says it did not run.
 - The new spec joins the nightly live run. Pull-request CI does not run the
