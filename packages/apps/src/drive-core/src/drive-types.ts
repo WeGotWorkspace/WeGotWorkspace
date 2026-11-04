@@ -18,6 +18,7 @@ import type {
 } from "@wgw/openapi-types/drive-types";
 import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
 import type { DriveUploadBatchConflicts } from "@/lib/offline/drive/upload/drive-upload-conflicts";
+import type { DriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
 import type {
   DriveUploadConflictChoice,
   DriveUploadReplaceTarget,
@@ -174,10 +175,13 @@ export type DriveAPIOperations = {
    * as one batch waiting for the batch dialog (placeholders show at once).
    * Without it, the upload action falls back to `uploadFiles`.
    */
-  enqueueUploads?: (input: {
-    cwd: string;
-    files: File[];
-  }) => Promise<{ batchId: string; itemIds?: string[]; spaceCheck?: DriveUploadSpaceCheck }>;
+  enqueueUploads?: (input: { cwd: string; files: File[] }) => Promise<{
+    batchId: string;
+    itemIds?: string[];
+    spaceCheck?: DriveUploadSpaceCheck;
+    /** What the batch dialog asks; without it (or all null) the batch is released at once. */
+    questions?: DriveUploadBatchQuestions;
+  }>;
   /** Hand a queued batch to the background uploader with the dialog's answers. */
   releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
   /**
@@ -185,8 +189,17 @@ export type DriveAPIOperations = {
    * the batch dialog may offer (*Replace* only with the server's version check).
    */
   describeUploadConflicts?: (batchId: string) => Promise<DriveUploadBatchConflicts>;
+  /**
+   * Batches waiting for an answer whose tab is gone (closed or reloaded with
+   * the dialog open). This tab takes them over and asks again.
+   */
+  claimUnansweredUploadBatches?: () => Promise<
+    { batchId: string; itemIds: string[]; questions: DriveUploadBatchQuestions }[]
+  >;
   /** *Cancel* in the batch dialog: drop the batch, its placeholders, and its files. */
   cancelUploadBatch?: (batchId: string) => Promise<void>;
+  /** The user has seen a batch's notices (e.g. a *Replace* that kept both). */
+  dismissUploadNotices?: (batchId: string) => Promise<void>;
   /** Drop one `queued` or `failed` file with its placeholder. False while it is uploading. */
   removeQueuedUpload?: (itemId: string) => Promise<boolean>;
   /** *Retry* on one failed file. False when it is gone or has to be added again. */

@@ -4,7 +4,7 @@ packages/apps/src/docs-core/src/use-docs-controller.tsx#useDocsController	251	3	
 packages/apps/src/docs-core/src/use-docs-home-actions.tsx#useDocsHomeActions	409	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-access-controller.ts#useDriveAccessController	232	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-batch-actions.tsx#useDriveBatchActions	339	0	grandfathered
-packages/apps/src/drive-core/src/use-drive-controller.tsx#useDriveController	205	3	grandfathered
+packages/apps/src/drive-core/src/use-drive-controller.tsx#useDriveController	204	3	grandfathered
 packages/apps/src/drive-core/src/use-drive-grid-previews.ts#useDriveGridPreviews	319	6	grandfathered
 packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	426	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	362	8	grandfathered

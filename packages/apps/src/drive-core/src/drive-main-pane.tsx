@@ -20,6 +20,8 @@ import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
 import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
+import { DriveUploadNotices } from "@/drive-core/src/drive-upload-notices";
+import { useDriveUploadQueueContext } from "@/drive-core/src/drive-upload-queue";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -116,6 +118,8 @@ export function DriveMainPane({
 
   const { show, showError } = useAppToast();
   const { online } = useConnectivity();
+  const uploadQueue = useDriveUploadQueueContext();
+  const dismissUploadNotices = operations?.dismissUploadNotices;
 
   const handleDownload = (file: DriveFile) => {
     // Still uploading: this device's copy, without waiting for the server.
@@ -310,6 +314,13 @@ export function DriveMainPane({
             done={uploadProgress.done}
           />
         </div>
+      ) : null}
+
+      {uploadQueue && dismissUploadNotices ? (
+        <DriveUploadNotices
+          batches={uploadQueue.snapshot.batches}
+          onDismiss={(batchId) => void dismissUploadNotices(batchId).catch(showError)}
+        />
       ) : null}
 
       {selectionBar}
