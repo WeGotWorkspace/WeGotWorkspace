@@ -8296,8 +8296,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Issue a download ticket for a Drive folder as a zip
-         * @description WGW extension (#1621). The folder version of POST /jmap/download-tickets/{accountId}: the ticket is bound to one directory FileNode instead of a blobId, with the same secret, account and sign-in session binding, sliding idle expiry (30 min) and absolute lifetime (24 h). The returned URL streams the folder as a zip; the client hands it to the browser as a native download. An access token minted before session binding existed gets 403 `session_required`.
+         * Issue a download ticket for a Drive folder, or several selected items, as a zip
+         * @description WGW extension (#1621). The folder version of POST /jmap/download-tickets/{accountId}: the ticket is bound to one directory FileNode instead of a blobId, with the same secret, account and sign-in session binding, sliding idle expiry (30 min) and absolute lifetime (24 h). Send `nodeIds` instead of `nodeId` for several selected items as one zip (#1905): every id must be a live, visible Drive file or folder the account may read, or the whole request is a 404; `name` (the place the user is looking at) names the zip and its top folder. The returned URL streams the folder or the selection as a zip; the client hands it to the browser as a native download. An access token minted before session binding existed gets 403 `session_required`.
          */
         post: {
             parameters: {
@@ -8313,6 +8313,11 @@ export interface paths {
                     "application/json": {
                         /** @description Id of a directory FileNode the account may read. Folders in trash, notes and Doc attachments are refused. */
                         nodeId: string;
+                    } | {
+                        /** @description Ids of FileNodes (files or folders) the account may read, in zip order. A repeated id counts once. Items in trash, notes, Doc attachments, or named with a leading `.` are refused. An item inside another selected folder is stored once. */
+                        nodeIds: string[];
+                        /** @description Zip name stem and top folder, made safe and cut to 120 characters. Default `Download`. */
+                        name?: string;
                     };
                 };
             };
@@ -8326,7 +8331,7 @@ export interface paths {
                         "application/json": {
                             /** @description Absolute ticket URL (GET /jmap/folder-download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
                             url: string;
-                            /** @description Download file name: the folder's name plus `.zip`. */
+                            /** @description Download file name: the folder's name, or the selection's `name`, plus `.zip`. */
                             name: string;
                             /** Format: date-time */
                             idleExpires: string;
@@ -8345,7 +8350,7 @@ export interface paths {
                         "application/json": Record<string, never>;
                     };
                 };
-                /** @description Not a live directory the account can read, or accountId does not match the principal. */
+                /** @description Not a live directory the account can read (or, for `nodeIds`, any id is not a live, visible item the account can read), or accountId does not match the principal. */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -8370,8 +8375,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download a Drive folder as a zip through a ticket
-         * @description WGW extension (#1621). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this folder's zip. Each request re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the folder, so a withdrawn share stops the next request. The zip is written while it streams: entries are stored (not compressed), names are UTF-8 with the UTF-8 flag, times come from the files, ZIP64 is used past 4 GB or 65,535 entries. It holds the folder (as the top folder), its subfolders including empty ones, and its files; names starting with `.` (trash, notes, Doc attachments, collab sidecars), deleted items and nodes the account cannot read are left out. A file that changes while it is read is stored as read; one that disappears first is left out. No `Range`: a dropped download starts again. Rate-limited. Unknown, expired, or revoked tickets are 404.
+         * Download a Drive folder, or several selected items, as a zip through a ticket
+         * @description WGW extension (#1621). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this folder's zip. Each request re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the folder, so a withdrawn share stops the next request. The zip is written while it streams: entries are stored (not compressed), names are UTF-8 with the UTF-8 flag, times come from the files, ZIP64 is used past 4 GB or 65,535 entries. A selection ticket (#1905) re-checks each item: items no longer readable are left out, and the zip holds the rest under one top folder named after the ticket. A folder zip holds the folder (as the top folder), its subfolders including empty ones, and its files; names starting with `.` (trash, notes, Doc attachments, collab sidecars), deleted items and nodes the account cannot read are left out. A file that changes while it is read is stored as read; one that disappears first is left out. No `Range`: a dropped download starts again. Rate-limited. Unknown, expired, or revoked tickets are 404.
          */
         get: {
             parameters: {
@@ -8398,7 +8403,7 @@ export interface paths {
                         "application/zip": string;
                     };
                 };
-                /** @description Unknown, expired, or revoked ticket, or the folder is gone or no longer readable. */
+                /** @description Unknown, expired, or revoked ticket, or the folder (or every selected item) is gone or no longer readable. */
                 404: {
                     headers: {
                         [name: string]: unknown;

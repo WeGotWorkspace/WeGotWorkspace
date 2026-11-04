@@ -31,10 +31,32 @@ final class FolderZipStreamer
      */
     public function stream(JmapFileNode $folder, array $principal, callable $sink, ?callable $activity = null): void
     {
-        $disk = $this->storage->files();
+        $this->write($this->walker->entries($folder, $principal), $sink, $activity);
+    }
+
+    /**
+     * Several selected items under one top folder `$top` (#1905).
+     *
+     * @param  list<JmapFileNode>  $items
+     * @param  array{username: string, role: string}  $principal
+     * @param  callable(string): void  $sink
+     * @param  (callable(): void)|null  $activity  called after each entry and each file chunk
+     */
+    public function streamSelection(string $top, array $items, array $principal, callable $sink, ?callable $activity = null): void
+    {
+        $this->write($this->walker->selectionEntries($top, $items, $principal), $sink, $activity);
+    }
+
+    /**
+     * @param  iterable<array{directory: bool, path: string, key: string}>  $entries
+     * @param  callable(string): void  $sink
+     * @param  (callable(): void)|null  $activity
+     */
+    private function write(iterable $entries, callable $sink, ?callable $activity): void
+    {
         $zip = new ZipStreamWriter($sink, $this->chunkBytes);
 
-        foreach ($this->walker->entries($folder, $principal) as $entry) {
+        foreach ($entries as $entry) {
             if ($entry['directory']) {
                 $zip->addDirectory($entry['path'], $this->directoryTime($entry['key']));
             } else {
@@ -89,6 +111,10 @@ final class FolderZipStreamer
 
     private function directoryTime(string $key): int
     {
+        if ($key === '') {
+            // A selection's top folder has no storage: the time of the download.
+            return time();
+        }
         try {
             return $this->storage->files()->lastModified($key);
         } catch (\Throwable) {

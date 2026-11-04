@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property string $secret_hash
  * @property string $username
  * @property string $node_id
+ * @property list<string>|null $node_ids a selection's node ids (#1905); null for a folder ticket
  * @property string $zip_name
  * @property string $session_family
  * @property Carbon $issued_at
@@ -33,6 +34,7 @@ final class DriveFolderDownloadTicket extends Model
         'secret_hash',
         'username',
         'node_id',
+        'node_ids',
         'zip_name',
         'session_family',
         'issued_at',
@@ -43,6 +45,7 @@ final class DriveFolderDownloadTicket extends Model
     protected function casts(): array
     {
         return [
+            'node_ids' => 'array',
             'issued_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'absolute_expires_at' => 'datetime',
