@@ -25,7 +25,11 @@ import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
  * Folders (picked or dropped) go to the queue as one tree (#1620); without a
  * queue there is no folder upload.
  */
-export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: boolean) {
+export function useDriveUploadAction(
+  shell: DriveShellState,
+  uploadEnabled: boolean,
+  structureEnabled: boolean,
+) {
   const { show, showError } = useAppToast();
   const { view, commitView, currentUsername, groupRootNames, operations, setFiles } = shell;
   const showUploadToast = useCallback(
@@ -51,8 +55,11 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
   };
 
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  // Folders need structure edits: a guest cannot create a folder (#1620).
   const canUploadFolders =
-    uploadEnabled && Boolean(operations?.enqueueUploads && operations.releaseUploadBatch);
+    uploadEnabled &&
+    structureEnabled &&
+    Boolean(operations?.enqueueUploads && operations.releaseUploadBatch);
   const uploadTarget = () => {
     const targetParent = view.type === "folder" ? view.path : "My Drive";
     return {

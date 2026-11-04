@@ -223,3 +223,24 @@ describe("useDriveMutations upload action", () => {
     });
   });
 });
+
+describe("useDriveMutations folder upload for a guest (#1620 non-goal)", () => {
+  it("offers no folder upload and walks no dropped folder, with queue operations present", () => {
+    const enqueueUploads = vi.fn().mockResolvedValue({ batchId: "batch-1" });
+    const shell = buildShell({ enqueueUploads, releaseUploadBatch: vi.fn() });
+    (shell.data.user as { role: string }).role = "guest";
+    const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+    const directory = { isDirectory: true, isFile: false, name: "Photos" };
+    const dataTransfer = {
+      files: fileList([]),
+      items: [{ kind: "file", webkitGetAsEntry: () => directory }],
+    } as unknown as DataTransfer;
+
+    expect(result.current.uploadEnabled).toBe(true);
+    expect(result.current.canUploadFolders).toBe(false);
+    act(() => {
+      result.current.handleUploadDrop(dataTransfer);
+    });
+    expect(enqueueUploads).not.toHaveBeenCalled();
+  });
+});
