@@ -1,5 +1,5 @@
-Source: WeGotWorkspace/Product#89 (body-hash: b38df3b1)
-Goal: WeGotWorkspace/Product#89 — filed in this repository as #673 and transferred to Product; `#673` below means that issue.
+Source: ad-hoc — no Task was filed. #673 was a Goal filed in this repository before Goals moved to WeGotWorkspace/Product; `#673` below means that Goal.
+Goal: WeGotWorkspace/Product#89
 
 # Move notes when deleting a notebook
 

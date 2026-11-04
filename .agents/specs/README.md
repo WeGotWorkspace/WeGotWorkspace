@@ -114,7 +114,7 @@ Specs stay in place when the rule cannot be applied safely:
 
 - **Ad-hoc specs** (`Source: ad-hoc`) have no issue to close. Re-home them to an issue number, or leave them.
 - **Held back:** a non-markdown file (a code comment, a script) mentions the folder name, or the `plan.md` of a spec that stays in place does. Rewriting that plan would put it through `check-plan-structure`, which an older plan may not pass. Fix the mention first, or archive both specs together.
-- **Number does not resolve:** fix the `Source:` line first (for a Goal transferred to [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), write `Source: WeGotWorkspace/Product#M`).
+- **Number does not resolve:** fix the `Source:` line first. When the number was a Goal that moved to [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), no Task exists: write `Source: ad-hoc` and put the Product issue on the `Goal:` line (a Goal is never `Source:`, see [File roles](#file-roles)). The spec is then ad-hoc and stays in place.
 
 **Cadence:** [`doc-staleness.yml`](../../.github/workflows/doc-staleness.yml) runs on the first day of every month and posts the report as the job summary. Whoever picks up the report applies the rule in a `chore/` PR:
 
