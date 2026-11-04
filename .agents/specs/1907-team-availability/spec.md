@@ -1,0 +1,227 @@
+Source: #1907 (body-hash: 6631c581)
+Goal: WeGotWorkspace/Product#43
+
+# Team availability
+
+Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
+
+Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04). Revised twice on 2026-11-04 after external reviews: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation.
+
+## Goal
+
+- **Computed on request.** The server works out a person's busy periods for a requested time range when a teammate asks for them. Nothing is copied or stored per viewer. A change in the owner's calendar shows on the teammate's next fetch.
+- **One API, three users.** A vendor JMAP capability `urn:wgw:jmap:availability` with `TeamMember/get` (who may I see) and `TeamMember/getAvailability` (busy periods for a range). The sidebar, the invitee list (#1614) and the offline clash follow-up (#1914) all use it.
+- **Privacy first.** A master switch, "Share my availability with my Teams", is **off** by default. While it is off, nobody gets anything for that user.
+- **Owner settings.** With the switch on, the user sees in Settings → Calendar their own personal event calendars and their Team calendars:
+  - **(a) include:** whether the calendar counts. Every calendar starts checked.
+  - **(b) detail:** for personal calendars, whether teammates see only the time (`busy`, the default) or also the title and location (`details`). Team calendars are always time only.
+- ICS subscriptions are never listed and never count.
+- **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can uncheck a Team calendar for themselves.
+- **"Show as: Free" always wins**, in personal and Team calendars, for a series or one occurrence.
+- **Calendar sidebar.** A **Team availability** section lists teammates who share with the user. Rows are hidden by default. Ticking one shows that person's busy blocks for whatever range the user is looking at, including months or a year ahead.
+- **Invitee list.** In the event editor, each invitee who is a teammate sharing availability shows "Free" or "Busy" for the event's time, next to their RSVP status.
+- **Offline.** The client caches what it fetched (per person, per week) and prefetches the current week plus the next 4 weeks for ticked teammates. Offline, cached weeks still paint. One notice in the shared notice bar (the one Tasks uses for offline changes after access changed) states how old the data is, and says when a visible week was never fetched, so empty never passes for free.
+- **Never falsely free.** When the server could not work out all of a person's busy time (a recurrence over the limit, or too many periods), the result says so. The UI then never claims "Free" for that person and range.
+- **Project calendars (later, #810).** When Projects land, a member joins a Project in the UI. Joining is not an access rule (Teams are), but it is the switch that makes that Project's calendar count toward the member's availability. Product owner, 2026-11-04.
+
+## Non-goals
+
+- A "find a time" suggestion or a planning grid (later step on Product#43)
+- A day strip of busy blocks inside the event editor. The invitee list shows one Free/Busy status for the event's own time; the grid is the place to look around.
+- Warning after reconnect about events planned offline that now clash (#1914)
+- Sharing availability outside a shared Team, with external guests, or as a public URL
+- Availability over CalDAV (VFREEBUSY for teammates is gated in Teams visibility #1923; it does not use this calculator yet)
+- Per-event privacy UI (Product#42). Events already marked `CLASS:PRIVATE` or `CONFIDENTIAL` are always time only.
+- A "Tentative" state. WGW stores Busy or Free only (`freeBusyStatusFromWire`); everything that counts is "Busy".
+- Merging overlapping busy blocks into one block
+- A Team-level setting for how a Team calendar counts
+- One detail level per Team. Detail is per calendar and applies to every Team that can see it. This also keeps the server cache viewer-independent; per-Team detail would need the viewer in the cache key (see #1913).
+- Instance-wide admin policy for the feature
+
+## Affected packages
+
+- `packages/api`:
+  - availability calculator and settings tables
+  - JMAP capability `urn:wgw:jmap:availability`
+  - REST settings resource, OpenAPI
+  - PHPUnit
+- `packages/apps`:
+  - JMAP client and Dexie cache for availability
+  - Team availability sidebar section and read-only busy rendering
+  - availability status in the invitee list
+  - Availability section in Settings → Calendar
+  - event editor: new all-day events default to "Show as: Free"
+  - mock JMAP, Storybook, Vitest
+- `docs`: `docs/architecture/calendar-availability.md`
+
+## Technical constraints
+
+### Settings storage
+
+- `calendar_availability_owners(principal_uri PK, enabled, updated_at)`. No row means off.
+- `calendar_availability_prefs(principal_uri, calendarid, include, detail)`, primary key `(principal_uri, calendarid)`. `calendarid` is the collection id, not the instance id, so a Team calendar has one row per member. No row means included and `busy`. That covers calendars created later and Teams joined later.
+- Choices are kept while the switch is off, so turning it on again restores them. Rows for a deleted calendar are removed with it.
+- Two migrations, following the `wgw` migration layout, with the schema parity test updated.
+
+### Who may see whom
+
+- A viewer may read a person's availability only if all of these hold:
+  - the person has the switch on
+  - the person is not disabled
+  - they share at least one Team: `TeamColleagues::sharesTeamIgnoringAdminRole` from Teams visibility (#1917). The admin role gives no extra access.
+- The caller may always read their own availability (preview).
+- "Does not exist", "switch off" and "not allowed" all look the same: the id comes back in `notFound`.
+- The check runs on every request. Membership changes and switch changes apply on the next request; nothing has to be revoked.
+
+### Calculator
+
+`AvailabilityCalculator::busyPeriods(owner, utcStart, utcEnd, excludeUid?)`:
+
+- **Sources.**
+  - **Personal:** the owner's own instances (`access = 1`) of kind `EventCalendar`, without `subscriptionId`.
+  - **Team:** the group calendars (kind `EventCalendar`) of every Team the owner belongs to. When Projects land (#810), a Project calendar counts only for members who joined that Project; until then every Team event calendar counts by default.
+  - **Never:** subscriptions, calendars shared with the owner, chat, docs threads, task lists, notebooks.
+  - A source with `include = false` is skipped.
+- **Objects.** `calendarobjects` of type VEVENT in the sources, through the existing `candidateObjects` range query (no third range query), with an explicit column list and lazy, chunked iteration so one call never holds every candidate in memory. Objects over `VObjectPayloadGuard::MAX_ICS_BYTES`, or that fail to parse, are skipped and logged.
+- **Expansion.** Recurring events are expanded within the range with the existing `CalendarEventExpansionService`, including per-occurrence overrides. A recurrence over the instance limit is skipped and logged, as on the query path, and marks the result `complete: false`. Because the output is occurrences, overrides never become orphans.
+- **What counts as busy**, per occurrence:
+  - skip `TRANSP:TRANSPARENT` ("Show as: Free")
+  - skip `STATUS:CANCELLED`. This is new logic; the feed builder does not do it.
+  - on **personal** sources, skip occurrences where the owner is an `ATTENDEE` with `PARTSTAT=DECLINED`. The owner is matched against `CalendarPrincipalAddresses::addressesForUsername`. A decline from an address the instance does not know for that user is not recognised.
+  - on **Team** sources, ignore `ATTENDEE`, `ORGANIZER` and `PARTSTAT`. Declining a Team event does not free a member.
+- **Dedupe** by `(source UID, occurrence start)` over all sources. An invite to a Team event also lands in the attendee's personal calendar (`deliverLocal`). When a Team source has it, the Team rule wins: busy, time only.
+- **`excludeUid`** drops every occurrence with that UID (used for the event being edited, so an invitee is not "busy" with this very event). It is applied after the cache read.
+- **Output is built, not copied.** Redaction runs after the cache read. A period has only:
+  - `start` (LocalDateTime), `timeZone` (IANA id or null for floating), `duration`, `showWithoutTime` — the same time fields as a JMAP `CalendarEvent`
+  - `title` and `location`, only when the source is personal, its detail is `details`, and the event is not `CLASS:PRIVATE` / `CONFIDENTIAL`
+  - A `location` that is or contains a URL (`scheme://`) is dropped, so meeting links never leak. The title is cut at 200 characters.
+  - No UID, id, description, attendees, organizer, alarms, attachments, categories or `X-*`.
+- **Bounds.**
+  - A range may be at most 371 days (53 weeks, the year view).
+  - The work per call is capped as a product: `ids × days ≤ 3710` person-days (for example 10 people for a year, or 50 people for 74 days). Larger requests are `invalidArguments`; the client splits them.
+  - At most 2000 periods per person per call; beyond that the list is cut.
+  - A cut list or a skipped recurrence sets `complete: false` for that person.
+- **No side effects.** The calculator only reads.
+- **Cost and caching.**
+  - A per-owner fingerprint (the source calendar ids with their `synctoken`, the prefs `updated_at`, the owner's display name) is one SQL query. Sabre bumps the synctoken on every write path, raw `CalPDO` included.
+  - The cache holds the **unredacted internal list** per `(owner, range, fingerprint)`: times, source kind, private flag, title, location and an HMAC of the UID (keyed with the app key), never the raw UID. `excludeUid`, the detail level and the output field list are applied after the read, so the invitee tag shares the sidebar's cache entries.
+  - Entries live 5 minutes. A write changes the fingerprint, and the file cache only prunes on read, so a short TTL keeps dead entries from piling up.
+  - The default cache store is `file` (plaintext in the instance data directory). The entries hold nothing the calendar tables in the same directory do not already hold, and no raw UIDs.
+- **Observability.** A call that takes more than 500 ms logs its duration and counts (sources, objects, periods), never content.
+
+### API
+
+- **JMAP capability** `urn:wgw:jmap:availability` (vendor, like `urn:wgw:jmap:chat`), in the session object and OpenAPI.
+- **`TeamMember/get`** `{ accountId, ids: null | Id[] }`
+  - Returns `{ state, list: [{ id, name, isSelf, version }], notFound }`.
+  - `version` is a hash of the person's name, switch and prefs `updated_at`. It changes when they rename, or change which calendars count or how much detail they share.
+  - `ids: null` returns everyone the caller may see under the rule above, plus the caller when their switch is on (`isSelf: true`).
+  - `state` is a hash of every visible `(id, version)`, computed by this capability (not #1917's Team-set fingerprint, which misses switch, detail and name changes). The client compares it on its availability tick; there is no `/changes`.
+  - A user in no Team gets an empty list (or only themselves).
+- **`TeamMember/getAvailability`** `{ accountId, ids: Id[], utcStart, utcEnd, excludeEventId?: Id }`
+  - Returns `{ list: [{ id, periods: [...], complete }], notFound }`.
+  - At most 50 ids per call, at most 371 days, and at most 3710 person-days. Anything over, or `utcEnd <= utcStart`, is `invalidArguments`.
+  - `excludeEventId` must be a `CalendarEvent` the caller may edit, or one where the caller is the organizer or an attendee. The server takes its UID and passes it as `excludeUid`. Any other id is `invalidArguments`. This rules out events the caller only reads on a read-only shared calendar, where comparing results with and without the exclusion would tell more than the caller already knows.
+  - The period shape stays close to the standard `Principal/getAvailability` `BusyPeriod`, so a later move to the standard method is a rename.
+- **REST settings** (`x-wgw-access: user`), declared next to `calendars/subscriptions`, above the parameterised feed routes:
+  ```
+  GET /api/v1/calendars/availability
+    → { enabled, teams: [{ slug, name }],
+        calendars: [{ calendarId, name, color, source: "personal" | "team", include, detail }] }
+  PUT /api/v1/calendars/availability
+    { enabled?, calendars?: [{ calendarId, include?, detail? }] }
+    → same shape
+  ```
+  - Settings live in one REST resource, not on JMAP `Calendar`. The settings pane is the only reader and needs a connection anyway. `Calendar` objects, push state and the Dexie calendar cache stay unchanged.
+  - There is no `/changes` or push for settings: a change on the laptop shows on the phone the next time its settings pane opens. Teammates see it on their next availability fetch.
+  - `detail: "details"` on a Team calendar returns 422. A calendar that is not the caller's own personal or Team event calendar returns 422.
+  - This is server-side on purpose, unlike the device-local view prefs of #981: it decides what others may see.
+- **JMAP `Calendar`** does not change. The client-side type `includeInAvailability` stays unused.
+- **Search and MCP** do not see availability.
+
+### Web app
+
+- **Client.** `lib/jmap-client/availability/` wraps both methods.
+  - Every request covers a contiguous run of whole UTC weeks (Monday 00:00 UTC), one call per batch of people. The client splits people into batches so `ids × days` stays within 3710. A year view of 12 ticked teammates is two calls, not 52.
+  - Responses are split into weeks for the cache.
+- **Cache.** A new offline table in the calendars domain: `calendars_availability` keyed by `[principalId+weekStart]`, holding the periods JSON, `complete`, the person's `version` and `fetchedAt`. The teammates list (`TeamMember/get`) is cached in the same domain. A new schema version adds them.
+  - When a person's `version` changes, or they leave the list, all their cached weeks are dropped at once. This matters for privacy: someone who switches from "Title and location" back to "Time only" must not keep showing titles in a viewer's cache.
+  - Eviction: weeks outside the prefetch window that were fetched more than 30 days ago are dropped, and at most 60 weeks per person are kept (oldest first).
+- **Fetching.**
+  - Only ticked teammates are fetched. Unticked people cost nothing.
+  - On every range change (week, month, year, jumping to a date), the visible range is fetched at once for ticked teammates. Any range works online, including next year.
+  - A separate **60-second availability tick** compares `TeamMember/get` by `state`, refetches the visible range, and prefetches the current week plus the next 4 weeks. The 10-second calendar tick (`calendar-refresh.ts`) stays for the user's own events only.
+- **All-day periods.** A period with `showWithoutTime` covers its whole date(s) in the viewer's time zone, like all-day events on the grid. For the invitee tag, a busy all-day period on any date the event touches makes the invitee "Busy". Because new all-day events default to Free (#1927), this is mostly time off.
+- **Rendering.**
+  - Each ticked teammate becomes a read-only virtual calendar (`availability:{principalId}`). It is not stored in `calendars_calendars` and is never offered as a default or invite calendar.
+  - Its periods become read-only events. Drag, resize and create are blocked through `blocksCollectionWrite`.
+  - A period without a title renders as "Busy".
+  - Clicking opens a read-only popover: the person, the time, and the title and location when present. No notes, invitees, alarms, RSVP, Meet or delete.
+  - `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow (file-size ratchet); the popover lives in its own file.
+- **Sidebar.**
+  - A **Team availability** section after **Shared with me**, in its own file. `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow (file-size ratchet).
+  - Rows show a `user-avatar` and the person's name. The caller's own row comes first, "You (as teammates see you)", when their switch is on.
+  - Rows are hidden by default. The section is collapsible, with a filter input above 8 rows.
+  - A row whose visible range came back with `complete: false` shows a small marker with the tooltip "Some busy times could not be loaded."
+  - The existing partition helpers (`calendar-sidebar-order.ts`) must never place a virtual availability calendar in My calendars or Shared with me.
+- **Invitee list (#1614).**
+  - In `calendar-invitees-card.tsx`, each invitee who appears in `TeamMember/get` gets an availability tag next to the RSVP tag: "Free" or "Busy".
+  - It is for the event's own time: the occurrence being edited, or the first occurrence of a new series.
+  - "Busy" has a tooltip with the overlapping times, and their titles when the owner shares details.
+  - Saved events pass their id as `excludeEventId`.
+  - It updates (debounced) when the time, the all-day flag or the invitees change.
+  - It requests the UTC week (or weeks) containing the event, so the server answers from the same cache entries as the sidebar. The answer is not written to the client cache, because it carries the exclusion.
+  - Invitees who are not teammates sharing availability (switch off, no shared Team, external guests) get no tag.
+  - When the result for that invitee is `complete: false`, there is no tag: the UI never claims "Free" on partial data.
+  - It never blocks saving. Online only: offline, no tags show and no extra text.
+  - `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow; the logic lives in its own module.
+- **Owner settings** in one **Availability** section of Settings → Calendar, in its own file:
+  - Master switch "Share my availability with my Teams", off by default. While off, only one explanatory line shows.
+  - While on:
+    - the Teams that can see it, or a note that the user is in no Team yet
+    - one row per own personal event calendar (color, name): a checkbox "Counts toward my availability" (checked by default) and a select "Teammates see": "Time only" (default) or "Title and location", disabled while unchecked
+    - one row per Team calendar: the same checkbox, a fixed "Time only", and the hint "Every event on this Team calendar counts for the whole Team, also if you decline it."
+    - a footer line: "Events marked 'Show as: Free' never count."
+  - Save goes through the REST resource and calls `notifySettingsSliceSaved`. Offline shows an error toast, like share and publish.
+- **Event editor: all-day default (#1927).**
+  - A new all-day event starts with "Show as: Free". A new timed event keeps "Busy".
+  - Toggling all-day in the create dialog moves the default along, until the author touches "Show as".
+  - When an all-day event is Free, the Show-as field shows the hint "Set to Busy for time off, so teammates see you as away."
+  - Existing events and events from other clients are not changed.
+- **Visible UI** (sidebar, busy rendering, invitee tags, settings, all-day default) is reviewed with the product owner on screenshots before merge.
+
+## Edge cases
+
+- **Same event in two of the owner's calendars** (same UID). One period. Copies with different UIDs both count and overlap.
+- **Cross-Team case.** X is in Team A only. U is in Teams A and B. Team B's calendar has an event at that time.
+  - U is busy for X, as are all other Team B members with the switch on.
+  - Marked "Show as: Free", it counts for nobody.
+  - X sees only "Busy", never the title, and cannot tell a Team B event from U's own.
+  - Known residue: X can infer that several teammates are busy at the same moment. Accepted, because it is time only.
+- **Team calendar as a notice board.** All-day entries default to Free. Timed entries that are Busy block every member. A member can uncheck that Team calendar.
+- **A member declines a Team event.** They stay busy. The settings hint says so.
+- **Time off entered as an all-day event.** It defaults to Free, so it does not block until the author sets Busy. The editor hint says so.
+- **Owner turns a calendar off, or the switch off.** The next fetch reflects it. Teammates' caches keep old data until their next online fetch. Turning the switch off makes the person disappear from `TeamMember/get`, and the client then drops their rows and cache.
+- **A user removed from a Team.** On the next request they are in `notFound`. The client drops their row and their cached weeks. If they still share another Team with the viewer, nothing changes.
+- **A user with no Team.** `TeamMember/get` returns an empty list. The settings pane shows the "no Team yet" note.
+- **Owner changes their display name.** The `TeamMember/get` state changes and rows update.
+- **Recurring events** are expanded per request. An oversized recurrence is skipped and logged and does not fail the call.
+- **Floating-time and all-day events** keep their wall-clock time (`timeZone: null`, `showWithoutTime`). Display-zone conversion stays client-side (#981).
+- **Invitee edits the event being planned.** With `excludeEventId`, the invitee's own copy of this event never makes them "Busy".
+- **Viewer in another time zone.** Periods carry their own time zone. The client converts them like normal events.
+- **Offline viewer.**
+  - Cached weeks of ticked teammates paint from the cache. A visible week with no cache shows nothing for that person.
+  - **Offline notice.** Calendar gets the shared `NoticeBar` (`notice-bar/src/notice-bar.tsx`, today used by Tasks for parked writes), placed between the Calendar header and the grid. While offline with at least one ticked teammate, it shows one `info` notice:
+    - "Offline · teammates' availability updated {relative time}." using the oldest `fetchedAt` of the visible weeks. This states the age of the data; it does not promise anything.
+    - When a visible week was never fetched for a ticked teammate, the same notice adds: "Some weeks in view are not available offline." So an empty week is not read as free.
+    - It disappears when the connection is back. Stamp plus uncached hint confirmed by the product owner, 2026-11-04, in the notice bar at their request.
+  - `Notice` gets an optional action (`actionLabel` and `onAction` become optional together), because this notice has nothing to settle. Existing notices keep their action; a test covers a notice without one.
+  - The section header and the popover carry no offline text of their own.
+  - Planning offline is not blocked. A clash found after reconnect is #1914.
+  - The settings pane needs a connection (error toast). The invitee tags simply do not show.
+- **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no tag.
+- **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members uncheck what they do not want. With Projects (#810), joining a Project becomes that switch.
+
+## Follow-up issues
+
+- **#1914: Warn after reconnect when an event planned offline now clashes.** After the next sync, the client calls `TeamMember/getAvailability` for the invitees of each event that was created or rescheduled offline, with `excludeEventId`. Any overlap shows a `warning` notice in the same Calendar `NoticeBar` ("1 event you planned offline now clashes…") with a Review action; the review lists each event with Open event and Dismiss. It shows in one tab (Web Lock, as in the Tasks rescue dialog), survives a refresh, and never moves or cancels anything. No new endpoint is needed.
