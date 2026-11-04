@@ -12,6 +12,7 @@ import {
   queuePickedDriveUploads,
   type DriveUploadProgressView,
 } from "@/drive-core/src/drive-upload-listing";
+import { useDriveUploadBatchDialog } from "@/drive-core/src/use-drive-upload-batch-dialog";
 import { useDriveUploadBatchToasts } from "@/drive-core/src/use-drive-upload-batch-toasts";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 
@@ -33,6 +34,14 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
     [show],
   );
   const trackBatch = useDriveUploadBatchToasts(operations, { show: showUploadToast, showError });
+  const onBatchStored = useCallback(
+    (batch: { batchId: string; itemIds: readonly string[] }) => {
+      trackBatch(batch.batchId, batch.itemIds);
+      showUploadToast(driveLabels.uploadAddedToast(batch.itemIds.length));
+    },
+    [showUploadToast, trackBatch],
+  );
+  const batchDialog = useDriveUploadBatchDialog(operations, showError, onBatchStored);
 
   useEffect(
     () => () => {
@@ -55,10 +64,13 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
     const selected = Array.from(fileList);
     const targetParent = view.type === "folder" ? view.path : "My Drive";
     const cwd = apiPathFromUiPath(targetParent, currentUsername, groupRootNames);
-    const queued = queuePickedDriveUploads(operations, { cwd, files: selected }, showError, (b) => {
-      trackBatch(b.batchId, b.itemIds);
-      showUploadToast(driveLabels.uploadAddedToast(selected.length));
-    });
+    const queued = queuePickedDriveUploads(
+      operations,
+      { cwd, files: selected },
+      showError,
+      onBatchStored,
+      batchDialog.ask,
+    );
     if (queued) {
       // Placeholders appear through the queue subscription.
       if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
@@ -95,7 +107,7 @@ export function useDriveUploadAction(shell: DriveShellState, uploadEnabled: bool
     finishDirectUpload(selected.length);
   };
 
-  return { handleUpload, uploadProgress };
+  return { handleUpload, uploadProgress, uploadBatchDialog: batchDialog.dialog };
 }
 
 /** Storybook / mock Drive: files appear at once, nothing leaves the browser. */

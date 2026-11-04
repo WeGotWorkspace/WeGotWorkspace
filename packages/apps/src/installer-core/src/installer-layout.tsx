@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { installerCopy } from "@/installer-core/src/installer-copy";
+import { StepDots } from "@/step-dots/src/step-dots";
 
 import "@/installer-core/src/installer.css";
 
@@ -8,13 +10,6 @@ export type InstallerStep = InstallerFlowStep | "interrupt";
 
 const STEPS_WITH_DATABASE: InstallerFlowStep[] = ["welcome", "database", "account", "ready"];
 const STEPS_WITHOUT_DATABASE: InstallerFlowStep[] = ["welcome", "account", "ready"];
-
-const DOT_LABELS: Record<InstallerFlowStep, string> = {
-  welcome: "Welcome",
-  database: "Your data",
-  account: "Your account",
-  ready: "Ready",
-};
 
 export type InstallerLayoutProps = {
   title: ReactNode;
@@ -35,34 +30,22 @@ function InstallerStepDots({
   step: InstallerFlowStep;
   includeDatabaseStep: boolean;
 }) {
-  const steps = flowSteps(includeDatabaseStep);
-  const activeIndex = Math.max(0, steps.indexOf(step));
-
   return (
-    <ol className="installer__dots" role="list" aria-label="Setup progress">
-      {steps.map((id, index) => {
-        const current = index === activeIndex;
-        const done = index < activeIndex;
-        return (
-          <li
-            key={id}
-            className={
-              current
-                ? "installer__dot installer__dot--current"
-                : done
-                  ? "installer__dot installer__dot--done"
-                  : "installer__dot"
-            }
-            aria-current={current ? "step" : undefined}
-          >
-            <span className="sr-only">
-              {DOT_LABELS[id]}
-              {current ? ", current" : done ? ", done" : ""}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+    <StepDots
+      className="installer__dots"
+      steps={flowSteps(includeDatabaseStep)}
+      current={step}
+      label={installerCopy.setupProgress}
+      describeStep={(id, { status }) =>
+        `${installerCopy.stepLabels[id]}${
+          status === "current"
+            ? installerCopy.stepCurrent
+            : status === "done"
+              ? installerCopy.stepDone
+              : ""
+        }`
+      }
+    />
   );
 }
 

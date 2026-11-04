@@ -79,10 +79,12 @@ describe("useDriveMutations upload action", () => {
 
   it("says the files were added, and says Uploaded only once they are on the server", async () => {
     toast.show.mockClear();
-    let emit: (snapshot: DriveUploadQueueSnapshot) => void = () => undefined;
-    const watchUploadQueue = vi.fn((listener: typeof emit) => {
-      emit = listener;
-      return () => undefined;
+    // Every watcher hears every snapshot, like the shared queue watch.
+    const listeners = new Set<(snapshot: DriveUploadQueueSnapshot) => void>();
+    const emit = (snapshot: DriveUploadQueueSnapshot) => listeners.forEach((l) => l(snapshot));
+    const watchUploadQueue = vi.fn((listener: (snapshot: DriveUploadQueueSnapshot) => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     });
     const queued = (ids: string[]): DriveUploadQueueSnapshot => ({
       state: ids.length ? "running" : "idle",
@@ -137,5 +139,87 @@ describe("useDriveMutations upload action", () => {
     });
 
     await waitFor(() => expect(uploadFiles).toHaveBeenCalledTimes(1));
+  });
+
+  describe("batch dialog", () => {
+    const questions = {
+      space: null,
+      conflicts: null,
+      keepOffline: { limitBytes: 8, files: [{ itemId: "a", name: "a.mov", size: 9 }] },
+    };
+
+    it("asks before release, then releases with the answers and says the files were added", async () => {
+      toast.show.mockClear();
+      const releaseUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const shell = buildShell({
+        enqueueUploads: vi
+          .fn()
+          .mockResolvedValue({ batchId: "batch-1", itemIds: ["a"], questions }),
+        releaseUploadBatch,
+        cancelUploadBatch: vi.fn(),
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+
+      act(() => {
+        result.current.handleUpload(fileList([new File(["a"], "a.mov")]));
+      });
+      await waitFor(() =>
+        expect(result.current.uploadBatchDialog.request?.batchId).toBe("batch-1"),
+      );
+      expect(releaseUploadBatch).not.toHaveBeenCalled();
+      expect(toast.show).not.toHaveBeenCalled();
+
+      act(() => result.current.uploadBatchDialog.onUpload("batch-1", { keepOffline: "keep" }));
+      await waitFor(() =>
+        expect(releaseUploadBatch).toHaveBeenCalledWith("batch-1", { keepOffline: "keep" }),
+      );
+      expect(toast.show).toHaveBeenCalledWith("Added 1 file to uploads", expect.anything());
+      expect(result.current.uploadBatchDialog.request).toBeNull();
+    });
+
+    it("drops the whole batch on Cancel without a toast", async () => {
+      toast.show.mockClear();
+      const releaseUploadBatch = vi.fn();
+      const cancelUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const shell = buildShell({
+        enqueueUploads: vi
+          .fn()
+          .mockResolvedValue({ batchId: "batch-1", itemIds: ["a"], questions }),
+        releaseUploadBatch,
+        cancelUploadBatch,
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+      act(() => {
+        result.current.handleUpload(fileList([new File(["a"], "a.mov")]));
+      });
+      await waitFor(() => expect(result.current.uploadBatchDialog.request).not.toBeNull());
+      act(() => result.current.uploadBatchDialog.onCancel("batch-1"));
+      expect(cancelUploadBatch).toHaveBeenCalledWith("batch-1");
+      expect(releaseUploadBatch).not.toHaveBeenCalled();
+      expect(toast.show).not.toHaveBeenCalled();
+      expect(result.current.uploadBatchDialog.request).toBeNull();
+    });
+
+    it("takes over batches a closed tab left waiting, and releases those without questions", async () => {
+      const releaseUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const claimUnansweredUploadBatches = vi.fn().mockResolvedValue([
+        { batchId: "left-1", itemIds: ["x"], questions },
+        {
+          batchId: "left-2",
+          itemIds: ["y"],
+          questions: { space: null, conflicts: null, keepOffline: null },
+        },
+      ]);
+      const shell = buildShell({
+        enqueueUploads: vi.fn(),
+        releaseUploadBatch,
+        cancelUploadBatch: vi.fn(),
+        claimUnansweredUploadBatches,
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+      await waitFor(() => expect(result.current.uploadBatchDialog.request?.batchId).toBe("left-1"));
+      expect(releaseUploadBatch).toHaveBeenCalledWith("left-2", { keepOffline: "remove" });
+      expect(claimUnansweredUploadBatches).toHaveBeenCalledTimes(1);
+    });
   });
 });
