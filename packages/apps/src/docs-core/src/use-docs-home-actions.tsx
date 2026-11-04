@@ -1,26 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
-import { useQueuedMutation } from "@/hooks/use-queued-mutation";
+import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { captureOfflineDocsTrashSnapshot } from "@/lib/offline/docs/docs-hybrid-operations";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
+  moveDocsRowsToTrash,
   revertDocsHomeTrash,
   type DocsHomeTrashOfflineSnapshot,
 } from "@/docs-core/src/docs-home-trash-undo";
-import {
-  ensureTrashFolder,
-  listTrashEntryNames,
-  resolveFreeName,
-} from "@/drive-core/src/drive-batch-utils";
-import {
-  apiPathFromUiPath,
-  DRIVE_TRASH_UI_PATH,
-  normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
+import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 
@@ -156,6 +147,7 @@ export function useDocsHomeActions({
         execute: async (signal) => {
           await operations.setStar({ path: apiPath, starred: next }, { signal });
         },
+        revert: () => operations.setStar({ path: apiPath, starred: beforeStarred }),
         undo: rollback,
         onError: () => {
           rollback();
@@ -298,7 +290,8 @@ export function useDocsHomeActions({
         icon: <Trash2 className="size-4" />,
         undoToastMessage: "Delete undone.",
         rollback: rollbackUi,
-        executeImmediately: true,
+        // A permanent delete cannot be taken back: it waits, and Undo cancels it.
+        irreversible: true,
         execute: async (signal) => {
           await operations.deleteItems(
             rows.map((file) => normalizeApiVirtualPath(file.apiPath!)),
@@ -324,26 +317,13 @@ export function useDocsHomeActions({
       icon: <Trash2 className="size-4" />,
       undoToastMessage: "Move to trash undone.",
       rollback: rollbackUi,
-      execute: async (signal, markCompleted) => {
-        if (offlineUsername) {
-          offlineSnapshots = await Promise.all(
-            rows.map(async (file) => ({
-              id: file.id,
-              snapshot: await captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!),
-            })),
-          );
-        }
-        await ensureTrashFolder(operations, username, groupRootNames, signal);
-        const destination = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRootNames);
-        const trashNames = await listTrashEntryNames(operations, destination, signal);
-        for (const file of rows) {
-          const apiPath = normalizeApiVirtualPath(file.apiPath!);
-          const to = resolveFreeName(file.title, trashNames);
-          trashNames.add(to);
-          trashedNameById.set(file.id, to);
-          await operations.renameItem({ destination, from: apiPath, to }, { signal });
-          markCompleted(file.id);
-        }
+      execute: async (stop, markCompleted) => {
+        const trashed = { username, groupRoots: groupRootNames, offlineUsername, stop };
+        await moveDocsRowsToTrash(operations, rows, trashed, {
+          trashedNameById,
+          markCompleted,
+          onSnapshots: (snapshots) => (offlineSnapshots = snapshots),
+        });
         reload();
         onAvailabilityChanged?.();
       },
@@ -393,6 +373,9 @@ export function useDocsHomeActions({
       });
 
       const previousPaths = new Set(starredPaths);
+      const starChanges = rows
+        .map((file) => normalizeApiVirtualPath(file.apiPath!))
+        .filter((path) => previousPaths.has(path) !== nextValue);
       const toastIcon = nextValue ? (
         <Star className="size-4" fill="currentColor" />
       ) : (
@@ -419,17 +402,20 @@ export function useDocsHomeActions({
         key: `docs:batch-star:${ids.slice().sort().join(",")}`,
         toastMessage: nextValue ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
+          await settleAll(
+            rows.map(async (file) => {
+              const path = normalizeApiVirtualPath(file.apiPath!);
+              await operations.setStar({ path, starred: nextValue }, { signal });
+              markCompleted(path);
+            }),
+          );
+        },
+        revert: async (completedKeys) => {
           await Promise.all(
-            rows.map((file) =>
-              operations.setStar(
-                {
-                  path: normalizeApiVirtualPath(file.apiPath!),
-                  starred: nextValue,
-                },
-                { signal },
-              ),
-            ),
+            starChanges
+              .filter((path) => !completedKeys || completedKeys.has(path))
+              .map((path) => operations.setStar({ path, starred: !nextValue })),
           );
         },
         rollback: () => setStarredPaths(previousPaths),

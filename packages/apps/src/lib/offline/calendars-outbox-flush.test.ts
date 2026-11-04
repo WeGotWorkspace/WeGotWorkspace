@@ -352,4 +352,36 @@ describe("flushCalendarsOutbox", () => {
     const cached = await readCalendarBootstrapFromCache(username);
     expect(cached?.data.events.find((event) => event.id === "ev-1")?.title).toBe("Second");
   });
+
+  it("takes back a create that was undone while it was sent (#1854)", async () => {
+    const rowId = crypto.randomUUID();
+    createCalendarEventLive.mockImplementation(async () => {
+      // Undo of the offline create lands while the request is on its way.
+      const { removeOutboxMutation } = await import("@/lib/offline/calendars-offline-store");
+      await removeOutboxMutation(username, rowId);
+      return wireEvent("ev-undone", "Created");
+    });
+    deleteCalendarEventLive.mockResolvedValue(undefined);
+    await enqueueOutboxMutation(username, {
+      id: rowId,
+      domain: CALENDARS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: "local-9",
+        tempEventId: "local-9",
+        draft: {
+          calendarId: "default",
+          title: "Created",
+          start: "2033-01-11T09:00:00",
+          duration: "PT1H",
+        },
+      }),
+    });
+
+    await flushCalendarsOutbox(username);
+
+    expect(deleteCalendarEventLive).toHaveBeenCalledWith("ev-undone");
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.events.some((event) => event.id === "ev-undone")).toBe(false);
+  });
 });

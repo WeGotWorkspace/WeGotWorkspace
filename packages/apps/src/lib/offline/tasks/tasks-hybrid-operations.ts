@@ -37,12 +37,14 @@ import {
   readTasksChangesState,
   removeTaskFromCache,
   removeTaskListFromCache,
+  tasksOutboxTaskId,
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
   writeTasksChangesState,
 } from "@/lib/offline/tasks/tasks-offline-store";
-import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
+import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
 import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
@@ -151,13 +153,24 @@ async function queueOfflineMove(
 ): Promise<Task> {
   const etag = concurrencyEtag(existing, opts);
   const optimistic = { ...existing, taskListId };
-  await upsertTaskInCache(username, optimistic, true);
-  await enqueueOutboxMutation(username, {
-    id: crypto.randomUUID(),
-    domain: TASKS_DOMAIN,
-    op: "move",
-    payload: JSON.stringify({ taskId, taskListId }),
-    ifInState: etag,
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.transaction("rw", [tasksItemsTable(db), db.outbox], async () => {
+    await upsertTaskInCache(username, optimistic, true);
+    // A queued move of this task becomes this one, so Undo offline leaves one row. A row
+    // already on its way is sent again by the flush (see `settleSentOutboxMutation`).
+    const rows = await db.outbox.where("domain").equals(TASKS_DOMAIN).toArray();
+    const queued = rows.find((row) => row.op === "move" && tasksOutboxTaskId(row) === taskId);
+    if (queued) {
+      await db.outbox.put({ ...queued, payload: JSON.stringify({ taskId, taskListId }) });
+      return;
+    }
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId, taskListId }),
+      ifInState: etag,
+    });
   });
   return optimistic;
 }

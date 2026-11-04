@@ -33,7 +33,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 /** Longer than the 1.2 s autosave debounce, so the edit is queued. */
 const QUEUED_MS = 2_500;
 
-/** A notebook move waits behind its Undo toast before it is saved. */
+/** Room for the notebook move to land; it is sent at once since #1854. */
 const MOVE_UNDO_MS = 2_500;
 
 /** Counts answered metadata PATCHes of one note. */

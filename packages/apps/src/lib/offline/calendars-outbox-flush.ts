@@ -22,7 +22,11 @@ import {
 import { JmapSetItemError } from "@/lib/jmap-client";
 import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  getOutboxMutation,
+  sendChangedRowAgain,
+  settleSentOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
 import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import {
   listOutboxMutations,
@@ -102,6 +106,11 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const draft = payload.draft as CalendarEventDraft;
         const tempId = String(payload.tempEventId ?? "");
         const event = await createCalendarEventLive(draft);
+        if (event.id && !(await getOutboxMutation(username, row.id))) {
+          // Undone while it was sent (`discardUnsentCalendarEvent`): take it back.
+          await deleteCalendarEventLive(event.id);
+          continue;
+        }
         if (tempId) {
           await removeCalendarEventFromCache(username, tempId);
           if (event.id) tempToServerId.set(tempId, event.id);

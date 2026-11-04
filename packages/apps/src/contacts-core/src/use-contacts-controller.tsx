@@ -30,7 +30,6 @@ import {
   isContactGroupCard,
   listContactGroups,
   mergeBootstrapCardsPreservingOptimistic,
-  mergeGroupCardPreservingOptimisticMembers,
 } from "@/contacts-core/src/contacts-group-utils";
 import { mergeContactsLabels, type ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import {
@@ -58,15 +57,12 @@ import {
 import type {
   ContactCard,
   ContactCardCreate,
-  ContactCardPatch,
   ContactsAPIOperations,
-  ContactsMutationOpts,
   ContactsUIData,
 } from "@/contacts-core/src/contacts-types";
 import {
   applyContactAddressBookMoveToCards,
   canShowContactAddressBookMove,
-  contactMoveAddressBookPatch,
   contactsViewAfterAddressBookMove,
   groupsToDropOnAddressBookMove,
 } from "@/contacts-core/src/contacts-address-book-move";
@@ -88,6 +84,13 @@ import {
   vcardFilename,
 } from "@/contacts-core/src/contacts-vcard-export";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
+import {
+  cardCreateWrite,
+  contactMoveWrite,
+  contactMutationOpts,
+  groupMembersWrite,
+  groupRenameWrite,
+} from "@/contacts-core/src/contacts-undo-writes";
 
 type UseContactsControllerArgs = {
   data: ContactsUIData;
@@ -115,64 +118,12 @@ type UseContactsControllerArgs = {
 
 const WRITE_QUEUE_DELAY_MS = 2500;
 
-function isPreconditionFailed(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    (error as { status: number }).status === 412
-  );
-}
-
-async function patchGroupWithFreshEtag(
-  operations: ContactsAPIOperations,
-  groupId: string,
-  buildPatch: (freshGroup: ContactCard) => ContactCardPatch | null,
-  signal: AbortSignal,
-): Promise<ContactCard> {
-  const run = async (): Promise<ContactCard> => {
-    const fresh = await operations.getCard(groupId, { signal });
-    const patch = buildPatch(fresh);
-    if (!patch) return fresh;
-    return operations.patchCard(groupId, patch, contactMutationOpts(fresh, signal));
-  };
-
-  try {
-    return await run();
-  } catch (error) {
-    if (!isPreconditionFailed(error)) throw error;
-    return run();
-  }
-}
-
 function draftDisplayName(draft: ContactEditDraft, unknownLabel: string): string {
   const name = [draft.nameGiven, draft.nameGiven2, draft.nameSurname]
     .map((part) => part.trim())
     .filter(Boolean)
     .join(" ");
   return name || unknownLabel;
-}
-
-function replaceCardPreservingGroupMembers(
-  cards: ContactCard[],
-  cardId: string,
-  incoming: ContactCard,
-): ContactCard[] {
-  return cards.map((card) =>
-    card.id === cardId ? mergeGroupCardPreservingOptimisticMembers(incoming, card) : card,
-  );
-}
-
-function contactMutationOpts(
-  card: ContactCard | undefined,
-  signal?: AbortSignal,
-): ContactsMutationOpts {
-  const state = card ? (card as ContactCard & { state?: string }).state : undefined;
-  return {
-    signal,
-    ifInState: state ?? undefined,
-    ifMatch: card?.etag,
-  };
 }
 
 export function useContactsController({
@@ -730,6 +681,7 @@ export function useContactsController({
       queueMutation({
         key: `contacts:delete:${ids.slice().sort().join(",")}`,
         toastMessage: L.toastDeleted,
+        irreversible: true,
         execute: (signal) =>
           operations
             ? Promise.all(
@@ -885,18 +837,13 @@ export function useContactsController({
         key: `contacts:remove-from-group:${groupId}:${cardIds.slice().sort().join(",")}`,
         toastMessage: L.toastRemovedFromGroup(removedCount),
         icon: <UserMinus className="size-4" />,
-        execute: async (signal) => {
-          if (!operations) return;
-          const saved = await patchGroupWithFreshEtag(
-            operations,
-            groupId,
-            (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
-            signal,
-          );
-          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
-        },
-        undo: rollback,
-        onError: rollback,
+        ...groupMembersWrite({
+          operations,
+          groupId,
+          buildPatch: (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
+          rollback,
+          setCards,
+        }),
         undoToastMessage: "Removal undone.",
       });
     },
@@ -944,18 +891,13 @@ export function useContactsController({
         key: `contacts:rename-group:${groupId}`,
         toastMessage: L.toastGroupRenamed(value),
         icon: <Tag className="size-4" />,
-        execute: async (signal) => {
-          if (!operations) return;
-          const saved = await patchGroupWithFreshEtag(
-            operations,
-            groupId,
-            () => groupRenamePatch(value),
-            signal,
-          );
-          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
-        },
-        undo: rollback,
-        onError: rollback,
+        ...groupRenameWrite({
+          operations,
+          group,
+          name: groupRenamePatch(value).name,
+          rollback,
+          setCards,
+        }),
         undoToastMessage: "Rename undone.",
       });
     },
@@ -989,6 +931,7 @@ export function useContactsController({
       queueMutation({
         key: `contacts:delete-group:${groupId}`,
         toastMessage: L.toastGroupDeleted(groupName),
+        irreversible: true,
         execute: (signal) =>
           operations
             ? operations.deleteCard(groupId, contactMutationOpts(group, signal)).then(() => {})
@@ -1058,21 +1001,15 @@ export function useContactsController({
         key: `contacts:create-group:${optimisticId}`,
         toastMessage: L.toastGroupCreated(value),
         icon: <Check className="size-4" />,
-        execute: async (signal) => {
-          if (!operations) return;
-          const created = await operations.createCard(body, { signal });
-          setCards((prev) => prev.map((card) => (card.id === optimisticId ? created : card)));
-          if (membersToAdd.length === 0) return;
-          const saved = await patchGroupWithFreshEtag(
-            operations,
-            created.id,
-            (fresh) => groupAddMembersPatch(fresh, membersToAdd),
-            signal,
-          );
-          setCards((prev) => replaceCardPreservingGroupMembers(prev, created.id, saved));
-        },
-        undo: rollback,
-        onError: rollback,
+        ...cardCreateWrite({
+          operations,
+          body,
+          members: membersToAdd,
+          rollback,
+          onCreated: (created) =>
+            setCards((prev) => prev.map((card) => (card.id === optimisticId ? created : card))),
+          setCards,
+        }),
         undoToastMessage: "Group creation undone.",
       });
     },
@@ -1107,23 +1044,17 @@ export function useContactsController({
         key: `contacts:add-members:${groupId}:${cardIds.slice().sort().join(",")}`,
         toastMessage: L.toastMembersAdded(addedCount, groupName),
         icon: <UserPlus className="size-4" />,
-        execute: async (signal) => {
-          if (!operations) return;
-          const saved = await patchGroupWithFreshEtag(
-            operations,
-            groupId,
-            (fresh) => {
-              const cardsToAdd = cardIds
-                .map((id) => cardsRef.current.find((card) => card.id === id))
-                .filter((card): card is ContactCard => card !== undefined);
-              return groupAddMembersPatch(fresh, cardsToAdd);
-            },
-            signal,
-          );
-          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
-        },
-        undo: rollback,
-        onError: rollback,
+        ...groupMembersWrite({
+          operations,
+          groupId,
+          buildPatch: (fresh) =>
+            groupAddMembersPatch(
+              fresh,
+              cardsRef.current.filter((card) => cardIds.includes(card.id)),
+            ),
+          rollback,
+          setCards,
+        }),
         undoToastMessage: "Add members undone.",
       });
     },
@@ -1155,18 +1086,13 @@ export function useContactsController({
         key: `contacts:remove-members:${groupId}:${cardIds.slice().sort().join(",")}`,
         toastMessage: L.toastRemovedFromGroup(removedCount),
         icon: <UserMinus className="size-4" />,
-        execute: async (signal) => {
-          if (!operations) return;
-          const saved = await patchGroupWithFreshEtag(
-            operations,
-            groupId,
-            (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
-            signal,
-          );
-          setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
-        },
-        undo: rollback,
-        onError: rollback,
+        ...groupMembersWrite({
+          operations,
+          groupId,
+          buildPatch: (fresh) => groupRemoveMembersPatch(fresh, cardIds, cardsRef.current),
+          rollback,
+          setCards,
+        }),
         undoToastMessage: "Removal undone.",
       });
     },
@@ -1251,26 +1177,17 @@ export function useContactsController({
             key: `contacts:move:${active.id}:${destBookId}`,
             toastMessage: L.toastMovedToAddressBook(destName),
             icon: <BookUser className="size-4" />,
-            execute: async (signal) => {
-              if (!operations) return;
-              for (const group of groupsToDrop) {
-                const savedGroup = await patchGroupWithFreshEtag(
-                  operations,
-                  group.id,
-                  (fresh) => groupRemoveMembersPatch(fresh, [active.id], cardsRef.current),
-                  signal,
-                );
-                setCards((prev) => replaceCardPreservingGroupMembers(prev, group.id, savedGroup));
-              }
-              const saved = await operations.patchCard(
-                active.id,
-                contactMoveAddressBookPatch(sourceBookId, destBookId),
-                contactMutationOpts(active, signal),
-              );
-              setCards((prev) => prev.map((card) => (card.id === active.id ? saved : card)));
-            },
-            undo: rollback,
-            onError: rollback,
+            ...contactMoveWrite({
+              operations,
+              card: active,
+              sourceBookId,
+              destBookId,
+              groupsToDrop,
+              buildDropPatch: (fresh) =>
+                groupRemoveMembersPatch(fresh, [active.id], cardsRef.current),
+              rollback,
+              setCards,
+            }),
             undoToastMessage: "Move undone.",
           });
         },
@@ -1406,26 +1323,23 @@ export function useContactsController({
       key: `contacts:create:${optimisticId}`,
       toastMessage: L.toastCreated,
       icon: <Check className="size-4" />,
-      execute: async (signal) => {
-        if (!operations) return;
-        const created = await operations.createCard(body, { signal });
-        setCards((prev) => {
-          const replaced = prev.map((card) => (card.id === optimisticId ? created : card));
-          return cardsWithGroupMember(replaced, groupId, created);
-        });
-        setActiveId(created.id);
-
-        if (!groupId) return;
-        const saved = await patchGroupWithFreshEtag(
-          operations,
-          groupId,
-          (fresh) => groupAddMembersPatch(fresh, [created]),
-          signal,
-        );
-        setCards((prev) => replaceCardPreservingGroupMembers(prev, groupId, saved));
-      },
-      undo: rollback,
-      onError: rollback,
+      ...cardCreateWrite({
+        operations,
+        body,
+        intoGroupId: groupId,
+        rollback,
+        onCreated: (created) => {
+          setCards((prev) =>
+            cardsWithGroupMember(
+              prev.map((card) => (card.id === optimisticId ? created : card)),
+              groupId,
+              created,
+            ),
+          );
+          setActiveId(created.id);
+        },
+        setCards,
+      }),
       undoToastMessage: "Create undone.",
     });
   }, [
