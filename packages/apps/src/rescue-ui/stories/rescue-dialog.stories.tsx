@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, within } from "storybook/test";
 import type { ParkedWrite } from "@/lib/offline/core/parked-writes";
-import { RescueDialog, RescueEntry } from "@/rescue-ui/rescue-dialog";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { RescueDialog } from "@/rescue-ui/rescue-dialog";
+import { rescueNotice } from "@/rescue-ui/rescue-notice";
 import {
   notebookRescueView,
   parkedNote,
@@ -17,13 +19,11 @@ function Interactive(props: { writes: ParkedWrite<StoryNote>[] }) {
   const [open, setOpen] = useState(true);
   const drop = (ids: string[]) =>
     setWrites((all) => all.filter((write) => !ids.includes(write.id)));
-  const waiting = new Set(writes.map((write) => write.containerId)).size;
   return (
     <>
-      <RescueEntry
-        containers={open ? 0 : waiting}
-        view={notebookRescueView}
-        onOpen={() => setOpen(true)}
+      <NoticeBar
+        label="Needs your attention"
+        notices={[rescueNotice("notes", notebookRescueView, writes, () => setOpen(true))]}
       />
       <RescueDialog
         open={open && writes.length > 0}
@@ -132,14 +132,24 @@ export const Busy: StoryObj<typeof RescueDialog<StoryNote, (typeof storyNotebook
   ),
 };
 
-/** The header button that reopens the dialog after "Decide later". */
-export const EntryButton: StoryObj<typeof RescueEntry> = {
-  render: () => <RescueEntry containers={2} view={notebookRescueView} onOpen={() => undefined} />,
+/** The notice bar row that reopens the dialog after "Decide later" (#1894). */
+export const Notice: StoryObj = {
+  render: () => (
+    <NoticeBar
+      label="Needs your attention"
+      notices={[
+        rescueNotice(
+          "notes",
+          notebookRescueView,
+          [parkedNote("Pasta recipe", "Recipes"), parkedNote("Stand-up", "Team notes")],
+          () => undefined,
+        ),
+      ]}
+    />
+  ),
   play: async ({ canvasElement }) => {
-    await expect(
-      within(canvasElement).getByRole("button", {
-        name: "Notes from 2 notebooks need a new notebook",
-      }),
-    ).toBeVisible();
+    const bar = within(canvasElement).getByRole("region", { name: "Needs your attention" });
+    await expect(bar).toHaveTextContent("2 notes from 2 notebooks need a new notebook");
+    await expect(within(bar).getByRole("button", { name: "Review" })).toBeVisible();
   },
 };

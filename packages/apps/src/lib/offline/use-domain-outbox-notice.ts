@@ -18,10 +18,10 @@ type UseDomainOutboxNoticeArgs = {
 
 /**
  * No-poll sync notice for Docs and Drive. Refreshes on mount and when
- * `refreshKey` changes. `useContactsFailedSync` stays the poll variant
- * (interval plus a connectivity refresh). Notes keeps that same poll shape.
- * Calendar, Contacts, Notes, and Tasks still use their own hooks, and those
- * hooks list the same outbox rows through `isSyncNoticeOutboxRow`.
+ * `refreshKey` changes. Notes, Contacts, and Tasks poll instead through the
+ * shared `useFailedOutboxCount` (interval plus a connectivity refresh), and
+ * Calendar uses its own hook. All of them list the same outbox rows through
+ * `isSyncNoticeOutboxRow`.
  *
  * `active` is true when any of these remain:
  * - a transient outbox failure (`isRetryableOutboxRow`)

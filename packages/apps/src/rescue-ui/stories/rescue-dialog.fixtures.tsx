@@ -40,8 +40,14 @@ export const notebookRescueLabels: RescueLabels = {
   move: (count) => (count === 1 ? "Move note" : `Move ${count} notes`),
   discard: (count) => (count === 1 ? "Discard note" : `Discard ${count} notes`),
   later: "Decide later",
-  entry: (count) =>
-    count === 1 ? "Notes need a new notebook" : `Notes from ${count} notebooks need a new notebook`,
+  notice: (count, names) => {
+    const notes = count === 1 ? "1 note" : `${count} notes`;
+    if (names.length > 1) return `${notes} from ${names.length} notebooks need a new notebook`;
+    return count === 1
+      ? `A note from “${names[0]}” needs a new notebook`
+      : `${notes} from “${names[0]}” need a new notebook`;
+  },
+  review: "Review",
   moved: (count, name) =>
     count === 1 ? `Moved 1 note to “${name}”` : `Moved ${count} notes to “${name}”`,
   discarded: (count) => (count === 1 ? "Discarded 1 note" : `Discarded ${count} notes`),
@@ -60,7 +66,7 @@ export const notebookRescueView: RescueView<StoryNotebook> = {
       aria-hidden
     />
   ),
-  entryIcon: <FilePlus aria-hidden />,
+  noticeIcon: <FilePlus className="callout__icon" aria-hidden />,
 };
 
 let order = 0;

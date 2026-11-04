@@ -31,8 +31,13 @@ export type RescueLabels = {
   move: (count: number) => string;
   discard: (count: number) => string;
   later: string;
-  /** The header button that reopens the dialog: "Tasks need a new list". */
-  entry: (containers: number) => string;
+  /**
+   * The notice bar sentence while writes wait: "3 tasks from 2 lists need a
+   * new list". `containerNames` has one name per waiting container.
+   */
+  notice: (count: number, containerNames: string[]) => string;
+  /** The notice bar action that opens the dialog: "Review". */
+  review: string;
   moved: (count: number, containerName: string) => string;
   discarded: (count: number) => string;
   failed: string;
@@ -43,15 +48,15 @@ export type RescueLabels = {
 /** A container a rescued item can go to. Apps pass their own type. */
 export type RescueContainer = { id: string; name: string };
 
-/** How an app's containers look in the rescue dialog and its header button. */
+/** How an app's containers look in the rescue dialog and its notice. */
 export type RescueView<C extends RescueContainer> = {
   labels: RescueLabels;
   /** The app's dialog surface class, which carries its theme tokens (`tasks-dialog-surface`). */
   surfaceClassName: string;
   /** The container's glyph in the "Move to" menu. */
   containerIcon: (container: C) => ReactNode;
-  /** The glyph on the header button. */
-  entryIcon: ReactNode;
+  /** The glyph in the notice bar. */
+  noticeIcon: ReactNode;
 };
 
 /**

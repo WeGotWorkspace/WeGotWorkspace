@@ -108,7 +108,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [dropUploadActive, setDropUploadActive] = useState(false);
   // A guest uploads only through the queue, on a link that allows it (#1715).
   const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession(), operations);
-  const { handleUpload, uploadProgress } = useDriveUploadAction(shell, uploadEnabled);
+  const upload = useDriveUploadAction(shell, uploadEnabled);
   const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -455,7 +455,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     submitCreateMarkdown,
     dropUploadActive,
     setDropUploadActive,
-    uploadProgress,
+    ...upload,
     uploadEnabled,
     structureEnabled,
     fileInputRef,
@@ -475,7 +475,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     requestRenameItem,
     submitRenameItem,
     reallyDelete,
-    handleUpload,
+    uploadAction: upload,
     createFolder,
     submitCreateFolder,
     createMarkdown,

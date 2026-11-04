@@ -1,9 +1,9 @@
-import { Download, HardDrive } from "lucide-react";
+import { HardDrive } from "lucide-react";
 import { Tag } from "@/tag/src/tag";
-import { useAppToast } from "@/hooks/use-app-toast";
 import { DriveDetailActionBar } from "@/drive-core/src/drive-detail-action-bar";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { useCanDownloadDriveItem } from "@/drive-core/src/drive-item-download";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
@@ -53,8 +53,8 @@ export function DriveDetailPanel({
   onShare,
   showCloseButton = true,
 }: DriveDetailPanelProps) {
-  const { show } = useAppToast();
   const isEmpty = file == null;
+  const canDownload = useCanDownloadDriveItem(file, inTrash);
 
   const actions =
     !isEmpty && onDownload && onStar && onRename && onMove && onDelete
@@ -63,15 +63,13 @@ export function DriveDetailPanel({
           {
             isStarred,
             inTrash,
-            canDownload: file.kind !== "folder",
+            isFolder: file.kind === "folder",
+            canDownload,
             canShare,
             canManageStructure,
           },
           {
-            onDownload: () => {
-              onDownload();
-              show("Download started", { icon: <Download className="size-4" /> });
-            },
+            onDownload,
             onStar,
             onRename,
             onMove,
