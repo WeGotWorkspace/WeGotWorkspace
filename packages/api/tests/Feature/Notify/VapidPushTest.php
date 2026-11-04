@@ -14,6 +14,7 @@ use App\Services\Notify\WebPushSender;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\RecordingWebPushSender;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class VapidPushTest extends WgwDatabaseTestCase
@@ -24,23 +25,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
-        $this->app->instance(WebPushSender::class, new class implements WebPushSender
-        {
-            /** @var list<array{endpoint: string, payload: string}> */
-            public array $sent = [];
-
-            public int $status = 201;
-
-            /** @var array<string, int> */
-            public array $statusByEndpoint = [];
-
-            public function send(string $endpoint, string $p256dh, string $auth, string $payload, array $vapid): int
-            {
-                $this->sent[] = ['endpoint' => $endpoint, 'payload' => $payload];
-
-                return $this->statusByEndpoint[$endpoint] ?? $this->status;
-            }
-        });
+        $this->app->instance(WebPushSender::class, new RecordingWebPushSender);
         $this->app->forgetInstance(VapidPushService::class);
     }
 
@@ -242,6 +227,46 @@ final class VapidPushTest extends WgwDatabaseTestCase
         ])->assertCreated();
 
         $this->assertSame(1, PushSubscription::query()->where('principal', 'alice')->count());
+    }
+
+    /** Chrome Beta, Dev and Canary subscribe on jmt17.google.com (#1891). */
+    public function test_subscribe_accepts_a_chrome_beta_endpoint_and_sends_to_it(): void
+    {
+        $id = $this->seedDueSharedNotification('alice');
+        $endpoint = 'https://jmt17.google.com/fcm/send/alice-beta';
+        $token = $this->issueBearerTokenFor('alice');
+
+        $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
+            'endpoint' => $endpoint,
+            'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
+        ])->assertCreated();
+
+        $this->assertSame(1, PushSubscription::query()->where('principal', 'alice')->count());
+
+        app(VapidPushService::class)->sendNotification(Notification::query()->findOrFail($id));
+
+        $sender = app(WebPushSender::class);
+        $this->assertSame([$endpoint], array_column($sender->sent, 'endpoint'));
+        $this->assertSame(1, PushSubscription::query()->count());
+    }
+
+    public function test_subscribe_rejects_jmt17_lookalikes(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+
+        foreach ([
+            'https://x.jmt17.google.com/fcm/send/alice',
+            'https://evil-jmt17.google.com/fcm/send/alice',
+            'https://jmt17.google.com.evil.example/fcm/send/alice',
+            'https://www.google.com/fcm/send/alice',
+        ] as $endpoint) {
+            $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
+                'endpoint' => $endpoint,
+                'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
+            ])->assertStatus(400);
+        }
+
+        $this->assertSame(0, PushSubscription::query()->count());
     }
 
     public function test_send_prunes_a_disallowed_existing_subscription(): void

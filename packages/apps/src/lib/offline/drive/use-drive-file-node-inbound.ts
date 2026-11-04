@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import { syncDriveFileNodesIfStale } from "@/lib/offline/drive/drive-file-node-push";
 import {
@@ -44,10 +45,14 @@ export function useDriveFileNodeInbound(
     [show],
   );
 
+  // A share-link guest has no offline Drive; its shell username is the
+  // share owner's, whose offline data this device must not touch.
+  const owner = username && !wgwIsGuestSession() ? username : null;
+
   useEffect(() => {
-    if (!username) return;
+    if (!owner) return;
     let cancelled = false;
-    void syncDriveInboundFromFileNodes(username)
+    void syncDriveInboundFromFileNodes(owner)
       .then((result) => {
         if (!cancelled) showKept(result);
       })
@@ -60,9 +65,9 @@ export function useDriveFileNodeInbound(
     return () => {
       cancelled = true;
     };
-  }, [refreshKey, showKept, username]);
+  }, [owner, refreshKey, showKept]);
 
-  useJmapStateChange(username ? PUSH_TYPES : NO_TYPES, (states) =>
-    username ? syncDriveFileNodesIfStale(username, states, showKept) : true,
+  useJmapStateChange(owner ? PUSH_TYPES : NO_TYPES, (states) =>
+    owner ? syncDriveFileNodesIfStale(owner, states, showKept) : true,
   );
 }

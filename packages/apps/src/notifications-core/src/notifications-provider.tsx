@@ -28,6 +28,13 @@ import type {
   NotificationInboxItem,
   NotificationInboxList,
 } from "@/notifications-core/src/notifications-types";
+import { pushedItemFromMessage } from "@/notifications-core/src/push-delivery";
+import {
+  dropPushedItems,
+  holdPushedItem,
+  mergePushedItems,
+  type PushedInboxItems,
+} from "@/notifications-core/src/pushed-inbox-items";
 import { useNotificationsInboxPush } from "@/notifications-core/src/use-notifications-inbox-push";
 import { useNotificationsLocalAck } from "@/notifications-core/src/use-notifications-local-ack";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
@@ -90,11 +97,16 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const shownSeqRef = useRef(0);
   const shownRef = useRef<NotificationInboxList | null>(null);
   const hintRetryTimersRef = useRef<number[]>([]);
+  /** Rows the service worker posted that no inbox list carried yet (#1670). */
+  const pushedRef = useRef<PushedInboxItems>(new Map());
   const signedIn = signedInMember();
   const trackUnreadForLocalAck = useNotificationsLocalAck();
 
   const applyPayload = useCallback(
-    (payload: NotificationInboxList) => {
+    (fromServer: NotificationInboxList) => {
+      const merged = mergePushedItems(fromServer, pushedRef.current, Date.now());
+      pushedRef.current = merged.pending;
+      const payload = merged.payload;
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
       trackUnreadForLocalAck(payload.list);
@@ -123,6 +135,20 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       shownSeqRef.current = seq;
       shownRef.current = payload;
       applyPayload(payload);
+    },
+    [applyPayload],
+  );
+
+  /**
+   * A row the service worker posted from a Web Push. Shown at once and kept
+   * until an inbox list carries it; a row already seen is ignored, so it never
+   * chimes twice.
+   */
+  const applyPushedItem = useCallback(
+    (item: NotificationInboxItem) => {
+      if (seenRef.current.has(item.id)) return;
+      pushedRef.current = holdPushedItem(pushedRef.current, item, Date.now());
+      applyPayload(shownRef.current ?? { list: [], unreadCount: 0 });
     },
     [applyPayload],
   );
@@ -229,6 +255,11 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     const worker = navigator.serviceWorker;
     if (!worker) return;
     const onMessage = (event: MessageEvent) => {
+      const pushed = pushedItemFromMessage(event.data);
+      if (pushed) {
+        applyPushedItem(pushed);
+        return;
+      }
       const path = notificationNavigateFromMessage(event.data);
       if (!path) return;
       window.focus();
@@ -236,7 +267,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     };
     worker.addEventListener("message", onMessage);
     return () => worker.removeEventListener("message", onMessage);
-  }, []);
+  }, [applyPushedItem]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -255,6 +286,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   }, [signedIn]);
 
   const onOpenItem = useCallback(async (item: NotificationInboxItem) => {
+    pushedRef.current = dropPushedItems(pushedRef.current, [item.id]);
     setItems((prev) => prev.filter((row) => row.id !== item.id));
     setUnreadCount((prev) => Math.max(0, prev - 1));
     try {
@@ -282,6 +314,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const onMarkAllRead = useCallback(async () => {
     if (items.length === 0) return;
     const ids = items.map((item) => item.id);
+    pushedRef.current = dropPushedItems(pushedRef.current, ids);
     setItems([]);
     setUnreadCount(0);
     await Promise.all(ids.map((id) => ackNotification(id).catch(() => undefined)));
@@ -292,6 +325,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       const matched = items.filter(match);
       if (matched.length === 0) return;
       const ids = new Set(matched.map((item) => item.id));
+      pushedRef.current = dropPushedItems(pushedRef.current, ids);
       setItems((prev) => prev.filter((row) => !ids.has(row.id)));
       setUnreadCount((prev) => Math.max(0, prev - matched.length));
       await Promise.all([...ids].map((id) => ackNotification(id).catch(() => undefined)));

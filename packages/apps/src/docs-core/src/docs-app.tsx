@@ -1,13 +1,12 @@
 import { moveDocsPageSetupOverride, startDocWithDefaultPageSetup } from "@/lib/docs-page-setup";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import {
-  docsApiPathFromSearch,
-  docsSearchFromApiPath,
-  parseDocsRouteSearch,
-} from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
+import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -17,7 +16,7 @@ import {
   wgwIsGuestSession,
   wgwLiveApiEnabled,
 } from "@/lib/api/wgw/http";
-import { buildDocsCollabUrls } from "@/docs-core/src/docs-collab-urls";
+import { buildDocsEditorUrls } from "@/docs-core/src/docs-collab-urls";
 import type { DocsAppProps } from "@/docs-core/src/docs-app-props";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -32,6 +31,7 @@ import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
@@ -54,16 +54,41 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const { phase, error, retry, successVersion, session, data, networkOperations } =
     useDocsAPI(apiSource);
 
-  const filePath = useMemo(
-    () => docsApiPathFromSearch(parseDocsRouteSearch(search as Record<string, unknown>).file),
+  const routeSearch = useMemo(
+    () => parseDocsRouteSearch(search as Record<string, unknown>),
     [search],
   );
+  const isGuestSession = wgwIsGuestSession();
   const offlineUsername = resolveDocsOfflineUsername(session.user.username);
+  const [editorInboundKey, setEditorInboundKey] = useState(0);
+  const {
+    document: routeDocument,
+    followPath,
+    retry: retryRouteDocument,
+    relocate: relocateRouteDocument,
+  } = useDocsRouteDocument({
+    search: routeSearch,
+    canResolve: wgwLiveApiEnabled() && !isGuestSession,
+    username: offlineUsername,
+    refreshKey: editorInboundKey,
+  });
+  const filePath = routeDocument.status === "ready" ? routeDocument.path : null;
+  const fileNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
+  const onDocumentRoute = routeDocument.status !== "home";
+  useDriveFileNodeInbound(onDocumentRoute ? offlineUsername : undefined, editorInboundKey);
+  useOnReconnect(
+    useCallback(() => {
+      if (!onDocumentRoute) return;
+      setEditorInboundKey((key) => key + 1);
+    }, [onDocumentRoute]),
+  );
   const followMovedFile = useCallback(
     (apiPath: string) => {
-      void navigate({ to: "/docs", search: docsSearchFromApiPath(apiPath), replace: true });
+      // Opened by id: the id stays, only its path changes. By path: open the new path.
+      if (fileNodeId) void followPath(apiPath);
+      else void navigate({ to: "/docs", search: docsSearchFromApiPath(apiPath), replace: true });
     },
-    [navigate],
+    [fileNodeId, followPath, navigate],
   );
   const { holdServerSave } = useDocsEditorPathFollow({
     username: offlineUsername,
@@ -86,12 +111,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const handleFileRenamed = useCallback(
     (apiPath: string) => {
       if (filePath) moveDocsPageSetupOverride(filePath, apiPath);
-      void navigate({
-        to: "/docs",
-        search: docsSearchFromApiPath(apiPath),
-      });
+      void followPath(apiPath);
     },
-    [filePath, navigate],
+    [filePath, followPath],
   );
 
   const handleOpenHomeFile = useOpenDocsFile();
@@ -109,7 +131,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     username: session.user.username ?? "",
   });
 
-  const isGuestSession = wgwIsGuestSession();
   const showCollab = isDocsCollabEditablePath(filePath) && !isGuestSession;
   const {
     myRights: collabMyRights,
@@ -189,23 +210,26 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
 
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
-    const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
-      buildDocsCollabUrls(filePath);
     return {
-      signalUrl,
-      collabApiBaseUrl,
-      collabRtcUrl,
+      ...buildDocsEditorUrls(filePath, fileNodeId),
       authToken: collabAuthToken,
-      documentUrl,
-      yjsUrl,
-      room,
       // Held on this device while the server does not have this path yet, or may have moved it.
       roomNotPersistent: holdServerSave,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
+      // A save to the old path after a rename elsewhere: look up where the id lives now.
+      onDocumentGone: relocateRouteDocument,
     };
-  }, [collabAuthToken, filePath, holdServerSave, showCollab, showError]);
+  }, [
+    collabAuthToken,
+    fileNodeId,
+    filePath,
+    holdServerSave,
+    relocateRouteDocument,
+    showCollab,
+    showError,
+  ]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 
@@ -228,7 +252,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       successVersion={successVersion}
       render={() => (
         <div>
-          {filePath === null ? (
+          {routeDocument.status === "resolving" || routeDocument.status === "not-found" ? (
+            <DocsRouteStatus document={routeDocument} onRetry={retryRouteDocument} />
+          ) : filePath === null ? (
             <DocsHomeWorkspace
               session={session}
               offlineUsername={resolveDocsOfflineUsername(session.user.username)}

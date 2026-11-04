@@ -55,6 +55,7 @@ import {
   applyDriveSidecarPathMigration,
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { isPendingUploadFolderPath } from "@/lib/offline/drive/upload/drive-upload-folder-placeholders";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
   driveUploadQueueOperations,
@@ -64,6 +65,9 @@ import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
 } from "@/lib/offline/offline-session";
+
+/** The server writes every zip: offline there is nothing to save (#1621, #1905). */
+const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
 
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
@@ -118,6 +122,13 @@ async function readCachedDriveState(username: string, cwd: string): Promise<Driv
   if (!bootstrap) return null;
   const entries = await readDirectoryEntriesFromCache(username, cwd);
   return buildOfflineDriveUIData(bootstrap, cwd, entries);
+}
+
+/** A folder an upload has not created yet: only this device has it, as placeholders. */
+async function pendingUploadFolderState(username: string, cwd: string) {
+  return (await isPendingUploadFolderPath(username, cwd))
+    ? readCachedDriveState(username, cwd)
+    : null;
 }
 
 async function applyOfflineTrashSideEffects(username: string, from: string): Promise<void> {
@@ -183,6 +194,8 @@ export function createHybridDriveOperations(
     },
     changeDir: async (to, opts) => {
       const target = normalizeApiVirtualPath(to);
+      const pending = await pendingUploadFolderState(username, target);
+      if (pending) return pending;
       if (readBrowserOnline()) {
         try {
           const data = await live.changeDir(target, opts);
@@ -207,6 +220,8 @@ export function createHybridDriveOperations(
     },
     listDirectory: async (at, opts) => {
       const target = normalizeApiVirtualPath(at);
+      const pending = await pendingUploadFolderState(username, target);
+      if (pending) return pending;
       if (readBrowserOnline()) {
         try {
           const data = await live.listDirectory(target, opts);
@@ -297,6 +312,20 @@ export function createHybridDriveOperations(
         }
       }
       await downloadOfflineDriveFile(username, normalized);
+    },
+    downloadFolder: async (path, opts) => {
+      // The server writes the zip: there is no offline copy of a folder to save.
+      if (!readBrowserOnline() || !live.downloadFolder) {
+        throw new Error(ZIP_NEEDS_CONNECTION);
+      }
+      await live.downloadFolder(normalizeApiVirtualPath(path), opts);
+    },
+    downloadSelection: async (paths, name, opts) => {
+      // The server writes the zip, as for a folder.
+      if (!readBrowserOnline() || !live.downloadSelection) {
+        throw new Error(ZIP_NEEDS_CONNECTION);
+      }
+      await live.downloadSelection(paths.map(normalizeApiVirtualPath), name, opts);
     },
     readFileBlob: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);

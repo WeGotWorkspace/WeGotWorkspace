@@ -30,6 +30,7 @@ function buildShell(
     reloadStarredFromServer: vi.fn(),
     inTrashView: false,
     isUnderTrash: vi.fn(() => false),
+    searchQuery: "",
   } as unknown as DriveShellState;
 }
 
@@ -74,15 +75,16 @@ describe("useDriveMutations upload action", () => {
     );
     expect(enqueueUploads).toHaveBeenCalledWith({ cwd: "/users/testuser", files: picked });
     expect(uploadFiles).not.toHaveBeenCalled();
-    expect(result.current.uploadProgress).toBeNull();
   });
 
   it("says the files were added, and says Uploaded only once they are on the server", async () => {
     toast.show.mockClear();
-    let emit: (snapshot: DriveUploadQueueSnapshot) => void = () => undefined;
-    const watchUploadQueue = vi.fn((listener: typeof emit) => {
-      emit = listener;
-      return () => undefined;
+    // Every watcher hears every snapshot, like the shared queue watch.
+    const listeners = new Set<(snapshot: DriveUploadQueueSnapshot) => void>();
+    const emit = (snapshot: DriveUploadQueueSnapshot) => listeners.forEach((l) => l(snapshot));
+    const watchUploadQueue = vi.fn((listener: (snapshot: DriveUploadQueueSnapshot) => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     });
     const queued = (ids: string[]): DriveUploadQueueSnapshot => ({
       state: ids.length ? "running" : "idle",
@@ -98,6 +100,7 @@ describe("useDriveMutations upload action", () => {
         createdAt: 1,
         canRetry: false,
       })),
+      folders: [],
       batches: [],
       hasItems: ids.length > 0,
       totalBytes: ids.length,
@@ -137,5 +140,108 @@ describe("useDriveMutations upload action", () => {
     });
 
     await waitFor(() => expect(uploadFiles).toHaveBeenCalledTimes(1));
+  });
+
+  describe("batch dialog", () => {
+    const questions = {
+      space: null,
+      conflicts: null,
+      keepOffline: { limitBytes: 8, files: [{ itemId: "a", name: "a.mov", size: 9 }] },
+    };
+
+    it("asks before release, then releases with the answers and says the files were added", async () => {
+      toast.show.mockClear();
+      const releaseUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const shell = buildShell({
+        enqueueUploads: vi
+          .fn()
+          .mockResolvedValue({ batchId: "batch-1", itemIds: ["a"], questions }),
+        releaseUploadBatch,
+        cancelUploadBatch: vi.fn(),
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+
+      act(() => {
+        result.current.handleUpload(fileList([new File(["a"], "a.mov")]));
+      });
+      await waitFor(() =>
+        expect(result.current.uploadBatchDialog.request?.batchId).toBe("batch-1"),
+      );
+      expect(releaseUploadBatch).not.toHaveBeenCalled();
+      expect(toast.show).not.toHaveBeenCalled();
+
+      act(() => result.current.uploadBatchDialog.onUpload("batch-1", { keepOffline: "keep" }));
+      await waitFor(() =>
+        expect(releaseUploadBatch).toHaveBeenCalledWith("batch-1", { keepOffline: "keep" }),
+      );
+      expect(toast.show).toHaveBeenCalledWith("Added 1 file to uploads", expect.anything());
+      expect(result.current.uploadBatchDialog.request).toBeNull();
+    });
+
+    it("drops the whole batch on Cancel without a toast", async () => {
+      toast.show.mockClear();
+      const releaseUploadBatch = vi.fn();
+      const cancelUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const shell = buildShell({
+        enqueueUploads: vi
+          .fn()
+          .mockResolvedValue({ batchId: "batch-1", itemIds: ["a"], questions }),
+        releaseUploadBatch,
+        cancelUploadBatch,
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+      act(() => {
+        result.current.handleUpload(fileList([new File(["a"], "a.mov")]));
+      });
+      await waitFor(() => expect(result.current.uploadBatchDialog.request).not.toBeNull());
+      act(() => result.current.uploadBatchDialog.onCancel("batch-1"));
+      expect(cancelUploadBatch).toHaveBeenCalledWith("batch-1");
+      expect(releaseUploadBatch).not.toHaveBeenCalled();
+      expect(toast.show).not.toHaveBeenCalled();
+      expect(result.current.uploadBatchDialog.request).toBeNull();
+    });
+
+    it("takes over batches a closed tab left waiting, and releases those without questions", async () => {
+      const releaseUploadBatch = vi.fn().mockResolvedValue(undefined);
+      const claimUnansweredUploadBatches = vi.fn().mockResolvedValue([
+        { batchId: "left-1", itemIds: ["x"], questions },
+        {
+          batchId: "left-2",
+          itemIds: ["y"],
+          questions: { space: null, conflicts: null, keepOffline: null },
+        },
+      ]);
+      const shell = buildShell({
+        enqueueUploads: vi.fn(),
+        releaseUploadBatch,
+        cancelUploadBatch: vi.fn(),
+        claimUnansweredUploadBatches,
+      });
+      const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+      await waitFor(() => expect(result.current.uploadBatchDialog.request?.batchId).toBe("left-1"));
+      expect(releaseUploadBatch).toHaveBeenCalledWith("left-2", { keepOffline: "remove" });
+      expect(claimUnansweredUploadBatches).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe("useDriveMutations folder upload for a guest (#1620 non-goal)", () => {
+  it("offers no folder upload and walks no dropped folder, with queue operations present", () => {
+    const enqueueUploads = vi.fn().mockResolvedValue({ batchId: "batch-1" });
+    const shell = buildShell({ enqueueUploads, releaseUploadBatch: vi.fn() });
+    (shell.data.user as { role: string }).role = "guest";
+    const { result } = renderHook(() => useDriveMutations({ shell, list: buildList() }));
+    const directory = { isDirectory: true, isFile: false, name: "Photos" };
+    const dataTransfer = {
+      files: fileList([]),
+      items: [{ kind: "file", webkitGetAsEntry: () => directory }],
+    } as unknown as DataTransfer;
+
+    expect(result.current.uploadEnabled).toBe(true);
+    expect(result.current.canUploadFolders).toBe(false);
+    act(() => {
+      result.current.handleUploadDrop(dataTransfer);
+    });
+    expect(enqueueUploads).not.toHaveBeenCalled();
   });
 });

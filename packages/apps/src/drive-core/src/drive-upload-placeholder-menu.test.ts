@@ -32,4 +32,16 @@ describe("driveUploadPlaceholderMenu", () => {
     const others = menu.filter((action) => action.id !== "download");
     expect(others.every((action) => action.disabled)).toBe(true);
   });
+
+  it("gives a folder placeholder a working Open and no Download (#1620)", () => {
+    const onOpen = vi.fn();
+    const menu = driveUploadPlaceholderMenu(driveLabels, [], undefined, { onOpen });
+    expect(menu.map((action) => action.id)).not.toContain("download");
+    const openAction = menu.find((action) => action.id === "open");
+    expect(openAction?.disabled).toBeFalsy();
+    openAction?.onClick?.();
+    expect(onOpen).toHaveBeenCalledOnce();
+    const others = menu.filter((action) => action.id !== "open");
+    expect(others.every((action) => action.disabled)).toBe(true);
+  });
 });

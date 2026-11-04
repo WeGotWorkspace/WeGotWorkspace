@@ -2,6 +2,11 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
+  driveUploadNeedsSignIn,
+  signInThenRetryDriveUploads,
+} from "@/drive-core/src/drive-upload-sign-in";
+import { driveUploadFolderRowState } from "@/drive-core/src/drive-upload-folder-row-state";
+import {
   driveUploadRowState,
   type DriveUploadRowState,
 } from "@/drive-core/src/drive-upload-row-state";
@@ -11,6 +16,7 @@ import {
 } from "@/lib/offline/drive/upload/drive-upload-live-bytes";
 import type {
   DriveUploadBatchView,
+  DriveUploadFolderView,
   DriveUploadItemView,
   DriveUploadQueueSnapshot,
 } from "@/lib/offline/drive/upload/drive-upload-subscription";
@@ -41,12 +47,18 @@ export function useDriveUploadQueue(
 export type DriveUploadQueueModel = {
   snapshot: DriveUploadQueueSnapshot;
   itemById: ReadonlyMap<string, DriveUploadItemView>;
+  /** Folders of a folder upload (#1620), by their queue id. */
+  folderById: ReadonlyMap<string, DriveUploadFolderView>;
   batchById: ReadonlyMap<string, DriveUploadBatchView>;
   failedCount: number;
   retryableCount: number;
   retry?: (itemId: string) => void;
   remove?: (itemId: string) => void;
   retryAllFailed?: () => void;
+  /** *Retry* on a queue paused because the server is full (#1522). */
+  resume?: () => void;
+  /** *Choose another folder* on a `target_missing` or `forbidden` file (#1522). */
+  chooseFolder?: (itemId: string) => void;
 };
 
 /** Items removed from this tab, so the batch toast does not count them as uploaded. */
@@ -58,7 +70,7 @@ export function wasDriveUploadRemovedHere(itemId: string): boolean {
 
 export type DriveUploadQueueActions = Pick<
   DriveUploadQueueModel,
-  "retry" | "remove" | "retryAllFailed"
+  "retry" | "remove" | "retryAllFailed" | "resume" | "chooseFolder"
 >;
 
 /** Lookups over one snapshot, plus the actions this Drive offers. */
@@ -70,6 +82,7 @@ export function buildDriveUploadQueueModel(
   return {
     snapshot,
     itemById: new Map(snapshot.items.map((item) => [item.id, item])),
+    folderById: new Map((snapshot.folders ?? []).map((folder) => [folder.id, folder])),
     batchById: new Map(snapshot.batches.map((batch) => [batch.id, batch])),
     failedCount: failed.length,
     retryableCount: failed.filter((item) => item.canRetry).length,
@@ -82,16 +95,34 @@ export function useDriveUploadQueueModel(
   snapshot: DriveUploadQueueSnapshot | null,
   operations: DriveAPIOperations | undefined,
   showError: (message: string) => void,
+  chooseFolder?: (itemId: string) => void,
 ): DriveUploadQueueModel | null {
   const retryOne = operations?.retryQueuedUpload;
   const removeOne = operations?.removeQueuedUpload;
   const retryAll = operations?.retryAllFailedUploads;
+  const resume = operations?.resumeUploadQueue;
   return useMemo(() => {
     if (!snapshot) return null;
     const fail = (error: unknown) =>
       showError(error instanceof Error ? error.message : String(error));
+    // An `auth` file without a session goes through sign-in first (#1522).
+    const failedOnSignIn = (id?: string) =>
+      driveUploadNeedsSignIn() &&
+      snapshot.items.some(
+        (item) =>
+          item.status === "failed" &&
+          item.error?.code === "auth" &&
+          (id === undefined || item.id === id),
+      );
     return buildDriveUploadQueueModel(snapshot, {
-      ...(retryOne ? { retry: (id: string) => void retryOne(id).catch(fail) } : {}),
+      ...(retryOne
+        ? {
+            retry: (id: string) => {
+              if (failedOnSignIn(id)) signInThenRetryDriveUploads("auth");
+              else void retryOne(id).catch(fail);
+            },
+          }
+        : {}),
       ...(removeOne
         ? {
             remove: (id: string) =>
@@ -102,9 +133,18 @@ export function useDriveUploadQueueModel(
                 .catch(fail),
           }
         : {}),
-      ...(retryAll ? { retryAllFailed: () => void retryAll().catch(fail) } : {}),
+      ...(retryAll
+        ? {
+            retryAllFailed: () => {
+              if (failedOnSignIn()) signInThenRetryDriveUploads("all");
+              else void retryAll().catch(fail);
+            },
+          }
+        : {}),
+      ...(resume ? { resume: () => void resume().catch(fail) } : {}),
+      ...(chooseFolder ? { chooseFolder } : {}),
     });
-  }, [removeOne, retryAll, retryOne, showError, snapshot]);
+  }, [chooseFolder, removeOne, resume, retryAll, retryOne, showError, snapshot]);
 }
 
 const DriveUploadQueueContext = createContext<DriveUploadQueueModel | null>(null);
@@ -131,6 +171,13 @@ export function driveUploadRowStateFor(
   model: DriveUploadQueueModel | null,
 ): DriveUploadRowState {
   if (!model) return driveUploadRowState(upload);
+  const folder = model.folderById.get(upload.id);
+  if (folder) {
+    return driveUploadFolderRowState(folder, {
+      batch: model.batchById.get(folder.batchId),
+      queueState: model.snapshot.state,
+    });
+  }
   const item = model.itemById.get(upload.id);
   return driveUploadRowState(upload, {
     ...(item ? { item, batch: model.batchById.get(item.batchId) } : {}),

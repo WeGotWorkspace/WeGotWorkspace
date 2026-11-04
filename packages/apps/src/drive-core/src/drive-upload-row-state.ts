@@ -1,5 +1,6 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveUploadErrorCode } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type {
   DriveUploadBatchView,
   DriveUploadItemView,
@@ -26,6 +27,8 @@ export type DriveUploadRowState = {
   valueText: string;
   /** Failed only: the reason in words. */
   reasonText?: string;
+  /** Failed only: the reason code, for the actions that fit it (#1522). */
+  reason?: DriveUploadErrorCode;
   /** Failed with `no_local_copy` or `quota`: only *Remove* applies. */
   addAgain: boolean;
   canRetry: boolean;
@@ -84,6 +87,7 @@ export function driveUploadRowState(
       statusText,
       valueText: statusText,
       ...(reasonText ? { reasonText } : {}),
+      ...(reason ? { reason } : {}),
       addAgain,
       canRetry: item ? item.canRetry : !addAgain,
     };

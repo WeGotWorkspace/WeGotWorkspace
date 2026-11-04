@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
-import { TasksRescueDialog, TasksRescueEntry } from "@/tasks-core/src/tasks-rescue-dialog";
+import { rescueNotice } from "@/rescue-ui/rescue-notice";
+import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
+import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 
 const bootstrap = createTasksAppBootstrap();
 const template = bootstrap.data.tasks[0]!;
@@ -77,7 +79,7 @@ describe("TasksRescueDialog", () => {
 
     expect(onMove).toHaveBeenCalledWith(
       writes.map((write) => write.id),
-      { newListName: "Groceries" },
+      { newContainerName: "Groceries" },
     );
   });
 
@@ -114,7 +116,7 @@ describe("TasksRescueDialog", () => {
 
     expect(screen.queryByRole("textbox", { name: L.rescueNewListLabel })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: L.rescueMove(1) }));
-    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { listId: list.id });
+    expect(onMove).toHaveBeenCalledWith([writes[0]!.id], { containerId: list.id });
   });
 
   it("counts a long list in the title without naming its tasks", () => {
@@ -177,14 +179,36 @@ describe("TasksRescueDialog", () => {
     expect(screen.getByRole("heading", { name: L.rescueListTitle(1, "Groceries") })).toBeTruthy();
     expect(onLater).toHaveBeenCalledOnce();
   });
+});
 
-  it("offers the way back only while lists wait", () => {
-    const onOpen = vi.fn();
-    const { rerender } = render(<TasksRescueEntry lists={0} labels={L} onOpen={onOpen} />);
-    expect(screen.queryByRole("button")).toBeNull();
+describe("Tasks rescue notice (#1894)", () => {
+  const view = tasksRescueView(L);
 
-    rerender(<TasksRescueEntry lists={2} labels={L} onOpen={onOpen} />);
-    fireEvent.click(screen.getByRole("button", { name: L.rescueEntry(2) }));
-    expect(onOpen).toHaveBeenCalledOnce();
+  it("is absent while no task waits", () => {
+    expect(rescueNotice("tasks", view, [], vi.fn())).toBeNull();
+  });
+
+  it("names the list when one list waits", () => {
+    expect(rescueNotice("tasks", view, [parked("Buy stamps", "Groceries")], vi.fn())?.title).toBe(
+      "A task from “Groceries” needs a new list",
+    );
+    const two = [parked("Buy stamps", "Groceries"), parked("Oat milk", "Groceries")];
+    expect(rescueNotice("tasks", view, two, vi.fn())?.title).toBe(
+      "2 tasks from “Groceries” need a new list",
+    );
+  });
+
+  it("counts tasks and lists when several lists wait, and Review opens the dialog", () => {
+    const onReview = vi.fn();
+    const writes = [
+      parked("Buy stamps", "Groceries"),
+      parked("Oat milk", "Groceries"),
+      parked("Call the plumber", "Repairs"),
+    ];
+    const notice = rescueNotice("tasks", view, writes, onReview)!;
+    expect(notice.title).toBe("3 tasks from 2 lists need a new list");
+    expect(notice.actionLabel).toBe("Review");
+    notice.onAction();
+    expect(onReview).toHaveBeenCalledOnce();
   });
 });

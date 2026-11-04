@@ -527,7 +527,7 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const database = await resolveDocsCollabDatabase(room);
+    const database = await resolveDocsCollabDatabase(room, urls.nodeId);
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) {
       if (refs.ydocRef.current === ydoc) refs.ydocRef.current = null;
       ydoc.destroy();
@@ -650,9 +650,8 @@ export function useDocsCollabJoin({
       }
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
       if (!authToken) {
-        // Token may still be hydrating (docs-app race). Do not GET/PUT
-        // unauthenticated or skip mesh forever — finishAuthenticatedJoin
-        // runs when urls.authToken arrives.
+        // Token may still be hydrating (docs-app race): never GET/PUT unauthenticated;
+        // finishAuthenticatedJoin runs when urls.authToken arrives.
         return;
       }
       await finishAuthenticatedJoin(generation, name, authToken);
@@ -671,6 +670,7 @@ export function useDocsCollabJoin({
     urls.authToken,
     urls.authTokenUrl,
     urls.authUser,
+    urls.nodeId,
     urls.roomNotPersistent,
     userName,
   ]);

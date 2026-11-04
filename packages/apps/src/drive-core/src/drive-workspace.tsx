@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PanelRight } from "lucide-react";
+import { Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -21,6 +21,10 @@ import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { DriveDetailPanel } from "@/drive-core/src/drive-detail-panel";
+import {
+  DriveFolderDownloadContext,
+  startDriveItemDownload,
+} from "@/drive-core/src/drive-item-download";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
@@ -32,6 +36,8 @@ import {
   useDriveUploadQueueModel,
 } from "@/drive-core/src/drive-upload-queue";
 import { DriveUploadAnnouncer } from "@/drive-core/src/drive-upload-announcer";
+import { useDriveUploadChooseFolder } from "@/drive-core/src/drive-upload-choose-folder";
+import { useDriveUploadRetryAfterSignIn } from "@/drive-core/src/use-drive-upload-recovery";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
@@ -110,10 +116,15 @@ export function DriveWorkspace({
 
   const handleOpenShareForFile = useCallback(
     (apiPath: string, title: string) => {
-      shareDialog.openShareDialog(apiPath, title);
+      // The active item may be a file the listing does not show (opened from
+      // search, say). A path outside both is the open folder or one of its parents.
+      const entry =
+        controller.files.find((file) => file.apiPath === apiPath) ??
+        (controller.active?.apiPath === apiPath ? controller.active : undefined);
+      shareDialog.openShareDialog(apiPath, title, entry ? entry.kind === "folder" : true);
       onOpenShare?.(apiPath);
     },
-    [onOpenShare, shareDialog],
+    [controller.active, controller.files, onOpenShare, shareDialog],
   );
 
   const {
@@ -135,7 +146,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const uploadModel = useDriveUploadQueueModel(uploadQueue, operations, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const uploadModel = useDriveUploadQueueModel(
+    uploadQueue,
+    operations,
+    showError,
+    chooseUploadFolder.choose,
+  );
+  useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
@@ -152,8 +170,9 @@ export function DriveWorkspace({
 
   const guardedOpenFile = useCallback(
     (file: DriveFile) => {
-      // A placeholder has nothing on the server to open yet.
-      if (file.upload) {
+      // A file placeholder has nothing on the server to open yet. A folder of
+      // a folder upload opens: it lists what is uploading into it (#1620).
+      if (file.upload && file.kind !== "folder") {
         show(driveLabels.uploadOpenUnavailable);
         return;
       }
@@ -204,7 +223,11 @@ export function DriveWorkspace({
   const uploadCounts = useMemo(
     () =>
       uploadModel
-        ? { count: uploadModel.snapshot.items.length, failed: uploadModel.failedCount }
+        ? {
+            count: uploadModel.snapshot.items.length,
+            failed: uploadModel.failedCount,
+            paused: uploadModel.snapshot.state === "paused_server_full",
+          }
         : null,
     [uploadModel],
   );
@@ -271,14 +294,11 @@ export function DriveWorkspace({
         isStarred={!!starred[active.id]}
         inTrash={inTrashView}
         onClose={handleDetailClose}
-        onDownload={() => {
-          if (operations && active.apiPath && active.kind !== "folder") {
-            void operations.downloadFile(active.apiPath).catch((error: unknown) => {
-              const message = error instanceof Error ? error.message : String(error);
-              showError(message);
-            });
-          }
-        }}
+        onDownload={() =>
+          startDriveItemDownload(operations, active, showError, () =>
+            show("Download started", { icon: <Download className="size-4" /> }),
+          )
+        }
         onStar={() => toggleStar(active.id)}
         onRename={() => requestRenameItem(active)}
         onMove={() => requestMoveItem(active)}
@@ -323,6 +343,7 @@ export function DriveWorkspace({
     requestRenameItem,
     setConfirmDelete,
     shareEnabled,
+    show,
     showError,
     starred,
     structureEnabled,
@@ -331,90 +352,107 @@ export function DriveWorkspace({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <DriveUploadQueueProvider value={uploadModel}>
-        <WorkspaceAppLayout
-          className={cn(
-            "drive-workspace",
-            detailPanelOpen && "drive-workspace--panel-open",
-            className,
-          )}
-          sidebar={
-            <DriveSidebar
-              controller={controller}
-              session={session}
-              onLogout={onLogout}
-              onOpenDocsFile={onOpenDocsFile}
-              primarySidebarItems={primarySidebarItems}
-              groupSidebarItems={groupSidebarItems}
-            />
-          }
-          mainHeader={
-            <DriveMainHeader
-              controller={controller}
-              unifiedSearchEnabled={Boolean(operations)}
-              searchEnabled={searchEnabled}
-            />
-          }
-          main={
-            <DriveMainPane
-              controller={controller}
-              operations={operations}
-              openFile={guardedOpenFile}
-              offlineEnabled={offlineEnabled}
-              offlineAvailableIds={rowOfflineAvailableIds}
-              offlinePendingSyncIds={rowOfflinePendingSyncIds}
-              onMakeOfflineAvailable={handleMakeOfflineAvailable}
-              pinLoadingId={pinLoadingId}
-              extraFileActions={fileExtraActions}
-              shareEnabled={shareEnabled}
-              onOpenShare={handleOpenShareForFile}
-              activeMayShare={activeMayShare}
-              activeMayManageStructure={activeMayManageStructure}
-            />
-          }
-          panel={
-            useDetailDrawer ? undefined : (
-              <div
-                className="workspace-app-layout__panel drive-workspace__detail-panel"
-                data-open={detailPanelOpen ? "true" : "false"}
-                aria-hidden={!detailPanelOpen}
-                inert={!detailPanelOpen || undefined}
-              >
-                {detailPanel}
-              </div>
-            )
-          }
-        />
-        {useDetailDrawer ? (
-          <SideDrawer
-            open={detailPanelOpen}
-            onClose={handleDetailClose}
-            title={labels.detailSidebarTitle}
-            className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} drive-detail-panel-drawer`}
-          >
-            {detailPanel}
-          </SideDrawer>
-        ) : null}
-        <DriveWorkspaceModals
-          controller={controller}
-          shareOperations={shareOperations}
-          shareDialog={shareDialog}
-        />
-        {controller.uploadEnabled ? (
-          <input
-            ref={controller.fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            aria-label={labels.uploadFiles}
-            onChange={(e) => {
-              controller.handleUpload(e.target.files);
-              e.target.value = "";
-            }}
+      <DriveFolderDownloadContext.Provider value={Boolean(operations?.downloadFolder)}>
+        <DriveUploadQueueProvider value={uploadModel}>
+          <WorkspaceAppLayout
+            className={cn(
+              "drive-workspace",
+              detailPanelOpen && "drive-workspace--panel-open",
+              className,
+            )}
+            sidebar={
+              <DriveSidebar
+                controller={controller}
+                session={session}
+                onLogout={onLogout}
+                onOpenDocsFile={onOpenDocsFile}
+                primarySidebarItems={primarySidebarItems}
+                groupSidebarItems={groupSidebarItems}
+              />
+            }
+            mainHeader={
+              <DriveMainHeader
+                controller={controller}
+                unifiedSearchEnabled={Boolean(operations)}
+                searchEnabled={searchEnabled}
+              />
+            }
+            main={
+              <DriveMainPane
+                controller={controller}
+                operations={operations}
+                openFile={guardedOpenFile}
+                offlineEnabled={offlineEnabled}
+                offlineAvailableIds={rowOfflineAvailableIds}
+                offlinePendingSyncIds={rowOfflinePendingSyncIds}
+                onMakeOfflineAvailable={handleMakeOfflineAvailable}
+                pinLoadingId={pinLoadingId}
+                extraFileActions={fileExtraActions}
+                shareEnabled={shareEnabled}
+                onOpenShare={handleOpenShareForFile}
+                activeMayShare={activeMayShare}
+                activeMayManageStructure={activeMayManageStructure}
+              />
+            }
+            panel={
+              useDetailDrawer ? undefined : (
+                <div
+                  className="workspace-app-layout__panel drive-workspace__detail-panel"
+                  data-open={detailPanelOpen ? "true" : "false"}
+                  aria-hidden={!detailPanelOpen}
+                  inert={!detailPanelOpen || undefined}
+                >
+                  {detailPanel}
+                </div>
+              )
+            }
           />
-        ) : null}
-        <DriveUploadAnnouncer snapshot={uploadQueue} />
-      </DriveUploadQueueProvider>
+          {useDetailDrawer ? (
+            <SideDrawer
+              open={detailPanelOpen}
+              onClose={handleDetailClose}
+              title={labels.detailSidebarTitle}
+              className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} drive-detail-panel-drawer`}
+            >
+              {detailPanel}
+            </SideDrawer>
+          ) : null}
+          <DriveWorkspaceModals
+            controller={controller}
+            shareOperations={shareOperations}
+            shareDialog={shareDialog}
+          />
+          {controller.uploadEnabled ? (
+            <input
+              ref={controller.fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              aria-label={labels.uploadFiles}
+              onChange={(e) => {
+                controller.handleUpload(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          ) : null}
+          {controller.canUploadFolders ? (
+            <input
+              ref={controller.folderInputRef}
+              type="file"
+              // A folder with all its subfolders (#1620); React has no prop for it.
+              {...{ webkitdirectory: "" }}
+              className="hidden"
+              aria-label={labels.uploadFolder}
+              onChange={(e) => {
+                controller.handleUploadFolder(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          ) : null}
+          {chooseUploadFolder.dialog}
+          <DriveUploadAnnouncer snapshot={uploadQueue} />
+        </DriveUploadQueueProvider>
+      </DriveFolderDownloadContext.Provider>
     </TooltipProvider>
   );
 }
@@ -443,6 +481,8 @@ function DriveSidebar({
     createFolder,
     createMarkdown,
     fileInputRef,
+    folderInputRef,
+    canUploadFolders,
     uploadEnabled,
     structureEnabled,
   } = controller;
@@ -456,18 +496,22 @@ function DriveSidebar({
         <WorkspaceAppSettingsFooter
           appId="drive"
           session={session}
-          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
+          detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession(), uploadEnabled)}
           onLogout={onLogout}
         />
       }
       primaryButton={
-        // New folder is the menu's main action; guests cannot create anything yet (#1712).
-        structureEnabled ? (
+        // New folder is the menu's main action. Guests cannot create folders or
+        // files (#1712); a guest on a link that allows uploads gets Upload (#1715).
+        structureEnabled || uploadEnabled ? (
           <DriveNewMenu
             labels={labels}
-            onCreateFolder={createFolder}
+            onCreateFolder={structureEnabled ? createFolder : undefined}
             onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
-            onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
+            onUploadFolder={canUploadFolders ? () => folderInputRef.current?.click() : undefined}
+            onCreateMarkdown={
+              structureEnabled && uploadEnabled && onOpenDocsFile ? createMarkdown : undefined
+            }
           />
         ) : null
       }

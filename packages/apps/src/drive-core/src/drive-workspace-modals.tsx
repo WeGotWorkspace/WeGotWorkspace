@@ -23,6 +23,7 @@ import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { isForeignDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
+import { DriveUploadBatchDialog } from "@/drive-core/src/drive-upload-batch-dialog";
 import { ShareDialog } from "@/share-ui/share-dialog";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import type { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
@@ -245,10 +246,13 @@ export function DriveWorkspaceModals({
         onConfirm={submitCreateMarkdown}
       />
 
+      <DriveUploadBatchDialog {...controller.uploadBatchDialog} />
+
       {shareOperations ? (
         <ShareDialog
           path={shareDialog.shareDialog.path}
           title={shareDialog.shareDialog.title}
+          isFolder={shareDialog.shareDialog.isFolder}
           open={shareDialog.shareDialog.open}
           onOpenChange={shareDialog.handleShareDialogOpenChange}
           shareOperations={shareOperations}

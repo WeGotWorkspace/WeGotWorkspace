@@ -2,6 +2,7 @@ import { normalizeApiVirtualPath, parentAndName } from "@/lib/files/api-path";
 import {
   DriveTransportError,
   resolveDownloadableFileNode,
+  resolveFileNodeId,
   type DriveJmapSession,
 } from "@/lib/api/wgw/drive-jmap";
 import { wgwFetch } from "@/lib/api/wgw/http";
@@ -94,6 +95,98 @@ export async function downloadFileNodeWithTicket(
     signal,
   );
   startNativeDownload(ticket.url, name);
+}
+
+/** `POST /jmap/folder-download-tickets/{accountId}` answer (#1621). */
+export type DriveFolderDownloadTicket = DriveDownloadTicket & {
+  /** `<folder name>.zip`. */
+  name: string;
+};
+
+/** Asks the server for a ticket that streams one folder as a zip. */
+export function issueFolderDownloadTicket(
+  session: DriveJmapSession,
+  nodeId: string,
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  return postFolderDownloadTicket(session, { nodeId }, signal);
+}
+
+/**
+ * Asks the server for a ticket that streams several selected items as one
+ * zip (#1905). `name` is the place the user is looking at; the server makes it
+ * safe and names the zip and its top folder after it.
+ */
+export function issueSelectionDownloadTicket(
+  session: DriveJmapSession,
+  nodeIds: string[],
+  name: string,
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  return postFolderDownloadTicket(session, { nodeIds, name }, signal);
+}
+
+async function postFolderDownloadTicket(
+  session: DriveJmapSession,
+  body: { nodeId: string } | { nodeIds: string[]; name: string },
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  const res = await wgwFetch(
+    `/jmap/folder-download-tickets/${encodeURIComponent(session.accountId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    },
+  );
+  if (!res.ok) {
+    throw new DriveTransportError(
+      `POST /jmap/folder-download-tickets failed (${res.status})`,
+      res.status,
+    );
+  }
+  const ticket = (await res.json()) as Partial<DriveFolderDownloadTicket>;
+  if (!ticket.url) throw new Error("The download ticket has no URL.");
+  return {
+    url: ticket.url,
+    name: ticket.name || "download.zip",
+    idleExpires: ticket.idleExpires ?? "",
+    absoluteExpires: ticket.absoluteExpires ?? "",
+  };
+}
+
+/**
+ * *Download* on a folder (#1621): the server writes the zip while the
+ * browser saves it natively; the client never builds the zip or a `Blob`.
+ */
+export async function downloadFolderAsZipWithTicket(
+  session: DriveJmapSession,
+  path: string,
+  username: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const nodeId = await resolveFileNodeId(session, path, username, signal);
+  const ticket = await issueFolderDownloadTicket(session, nodeId, signal);
+  startNativeDownload(ticket.url, ticket.name);
+}
+
+/**
+ * *Download* on several selected items (#1905): one zip the server writes
+ * while the browser saves it natively, like a folder's.
+ */
+export async function downloadSelectionAsZipWithTicket(
+  session: DriveJmapSession,
+  paths: string[],
+  name: string,
+  username: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const nodeIds = await Promise.all(
+    paths.map((path) => resolveFileNodeId(session, path, username, signal)),
+  );
+  const ticket = await issueSelectionDownloadTicket(session, nodeIds, name, signal);
+  startNativeDownload(ticket.url, ticket.name);
 }
 
 /**

@@ -231,6 +231,7 @@ export function DocsHomePane({
     activeId,
     inTrashView,
     operations,
+    zipName: title ?? labels.homeTitle,
     exitSelection,
     batchStar: () => batchStar?.(selectedIds),
     requestDeleteSelected: () => requestDeleteSelected?.(selectedIds),

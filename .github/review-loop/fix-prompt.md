@@ -60,8 +60,9 @@ When a blocking item asks for a live Playwright spec:
   `calendar-live.ts`) and follow the existing live specs, such as
   `notes-offline-sync.spec.ts`. A second tab is `page.context().newPage()`;
   a reload is `page.reload()`; offline is `page.context().setOffline(true)`.
-- Add the file's name to `liveTierSpecPattern` in
-  `packages/apps/e2e/live-tier.mjs`. Without that, the live config skips it.
+- Add the spec's name (without `.spec.ts`) to `liveTierSpecs` in
+  `packages/apps/e2e/live-tier.mjs`: one line, in alphabetical order, with a
+  trailing comma. Without that, the live config skips it.
 - Run it, when the context says live e2e is ready:
   `pnpm --dir packages/apps exec playwright test --config playwright.live.config.mjs --retries=0 e2e/<name>.spec.ts`.
   It starts the API and the app itself. Run only your spec: a failing

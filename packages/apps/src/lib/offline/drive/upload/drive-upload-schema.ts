@@ -14,9 +14,10 @@ export const DRIVE_UPLOAD_STORES = {
 } as const;
 
 /**
- * Target folder of a queued file. This Epic only writes `server` ids. Folder
- * upload (#1040) adds `temporary` ids for folders it has not created yet; the
- * uploader skips those until they resolve.
+ * Target folder of a queued item. `temporary` is the id of a folder item of
+ * the same batch that the server has not created yet (folder upload, #1620);
+ * the uploader skips those until the folder is created and the target becomes
+ * its `server` id.
  */
 export type DriveUploadTargetFolder =
   { kind: "server"; id: string } | { kind: "temporary"; id: string };
@@ -78,7 +79,16 @@ export type DriveUploadReplaceTarget = { nodeId: string; blobId: string };
  * with it. Stored before the call, so a retry after a lost answer finds its
  * own file under that name instead of keeping both.
  */
-export type DriveUploadPlacing = { folderId: string; name: string; notice?: DriveUploadNotice };
+export type DriveUploadPlacing = {
+  folderId: string;
+  name: string;
+  notice?: DriveUploadNotice;
+  /** Folder items: the id the create returned, before the queue knew about it. */
+  nodeId?: string;
+};
+
+/** A folder that already exists under the planned name: add into it, or create `name (1)`. */
+export type DriveUploadFolderOnExisting = "merge" | "keep_both";
 
 /** One pick or drop. */
 export type OfflineDriveUploadBatchRow = {
@@ -108,7 +118,19 @@ export type OfflineDriveUploadItemRow = {
   id: string;
   batchId: string;
   targetFolder: DriveUploadTargetFolder;
+  /** `folder`: a folder to create (folder upload); absent for a file. */
+  kind?: "folder";
+  /** The folder item this item sits in; unset for items at the top of the batch. */
+  inFolder?: string;
+  /** Planned name; for a folder, the final name once created. */
   name: string;
+  /** Folder items: the folder's own name on the device. */
+  sourceName?: string;
+  /** Top-level folder items only. Nested folders always add into an existing one. */
+  onExisting?: DriveUploadFolderOnExisting;
+  /** Folder items: bytes and files below it when queued, so progress never goes backwards. */
+  subtreeBytes?: number;
+  subtreeFiles?: number;
   /** Stored so the queue total never reads file contents. */
   size: number;
   mimeType: string;
@@ -131,6 +153,7 @@ export type OfflineDriveUploadItemRow = {
   /**
    * Id of the node the server created for this item. Once set, a retry only
    * reads that node back and finishes; it never uploads or creates again.
+   * On a folder item it means the folder exists and its items target it.
    */
   createdNodeId?: string;
   /**

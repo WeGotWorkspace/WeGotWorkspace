@@ -1,12 +1,8 @@
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { formatBytesCompact } from "@/drive-core/src/drive-file-utils";
-import { driveLabels } from "@/drive-core/src/drive-labels";
-import type {
-  DriveAPIOperations,
-  DriveUIData,
-  DriveUploadProgress,
-} from "@/drive-core/src/drive-types";
+import type { DriveUploadBatchRequest } from "@/drive-core/src/drive-upload-batch-dialog";
+import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
+import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 
 /**
  * Bring the folder's upload placeholders in `previous` in line with the
@@ -33,23 +29,32 @@ export function mergeDriveUploadPlaceholders(
 }
 
 /**
- * Queue picked files and release the batch right away. No batch dialog step
- * exists yet, so files above the device offline limit get the default answer
- * (`remove`); #1521 puts the dialog between queueing and releasing.
+ * Queue picked files. A batch with questions (server space, name conflicts,
+ * keep offline) goes to `ask`, which shows the batch dialog; the dialog
+ * releases or cancels it. A batch without questions (or a caller without a
+ * dialog) is released right away with the default answer (`remove`).
  */
 export async function queueDriveUploadBatch(
   operations: Required<Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch">>,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   onStored?: (batch: DriveStoredUploadBatch) => void,
+  ask?: (request: DriveUploadBatchRequest) => void,
 ): Promise<string> {
-  const { batchId, itemIds } = await operations.enqueueUploads(input);
+  const { batchId, itemIds = [], questions } = await operations.enqueueUploads(input);
+  if (ask && questions && hasDriveUploadBatchQuestions(questions)) {
+    ask({ batchId, itemIds, questions });
+    return batchId;
+  }
   // Before release: the uploader cannot start (or finish) the batch yet.
-  onStored?.({ batchId, itemIds: itemIds ?? [] });
+  onStored?.({ batchId, itemIds });
   await operations.releaseUploadBatch(batchId, { keepOffline: "remove" });
   return batchId;
 }
 
-export type DriveStoredUploadBatch = { batchId: string; itemIds: string[] };
+/** Picked files, or a folder tree (#1620) with `files` empty. */
+export type DriveUploadInput = Parameters<NonNullable<DriveAPIOperations["enqueueUploads"]>>[0];
+
+export type DriveStoredUploadBatch = { batchId: string; itemIds: readonly string[] };
 
 /**
  * Queue picked files when this Drive has the upload queue (signed in, offline
@@ -57,63 +62,16 @@ export type DriveStoredUploadBatch = { batchId: string; itemIds: string[] };
  */
 export function queuePickedDriveUploads(
   operations: Pick<DriveAPIOperations, "enqueueUploads" | "releaseUploadBatch"> | undefined,
-  input: { cwd: string; files: File[] },
+  input: DriveUploadInput,
   showError: (message: string) => void,
   onStored?: (batch: DriveStoredUploadBatch) => void,
+  ask?: (request: DriveUploadBatchRequest) => void,
 ): boolean {
   const enqueueUploads = operations?.enqueueUploads;
   const releaseUploadBatch = operations?.releaseUploadBatch;
   if (!enqueueUploads || !releaseUploadBatch) return false;
-  void queueDriveUploadBatch({ enqueueUploads, releaseUploadBatch }, input, onStored).catch(
+  void queueDriveUploadBatch({ enqueueUploads, releaseUploadBatch }, input, onStored, ask).catch(
     (error: unknown) => showError(error instanceof Error ? error.message : String(error)),
   );
   return true;
-}
-
-/** Progress bar state of a direct (not queued) upload. */
-export type DriveUploadProgressView = {
-  label: string;
-  percent: number;
-  detail: string;
-  done: boolean;
-};
-
-export function driveUploadProgressView(progress: DriveUploadProgress): DriveUploadProgressView {
-  const totalBytes = Math.max(1, progress.totalBytes);
-  const percent = Math.min(100, Math.round((progress.uploadedBytes / totalBytes) * 100));
-  const label =
-    progress.currentFileName.trim() !== ""
-      ? driveLabels.uploadingFile(progress.currentFileName)
-      : driveLabels.uploadingFiles(progress.filesTotal);
-  const detail = driveLabels.uploadProgressDetail(
-    formatBytesCompact(progress.uploadedBytes),
-    formatBytesCompact(progress.totalBytes),
-    progress.filesCompleted,
-    progress.filesTotal,
-  );
-  return { label, percent, detail, done: false };
-}
-
-/** First frame of a direct upload, before the first progress event. */
-export function driveUploadStartView(files: readonly File[]): DriveUploadProgressView {
-  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-  return {
-    label:
-      files.length === 1
-        ? driveLabels.uploadingFile(files[0]!.name)
-        : driveLabels.uploadingFiles(files.length),
-    percent: 0,
-    detail: `0 / ${formatBytesCompact(totalBytes)}`,
-    done: false,
-  };
-}
-
-/** Last frame of a direct upload. */
-export function driveUploadDoneView(count: number): DriveUploadProgressView {
-  return {
-    label: driveLabels.uploadDoneToast(count),
-    percent: 100,
-    detail: driveLabels.uploadComplete,
-    done: true,
-  };
 }

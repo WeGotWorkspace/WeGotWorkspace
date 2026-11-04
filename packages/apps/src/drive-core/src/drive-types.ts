@@ -18,6 +18,8 @@ import type {
 } from "@wgw/openapi-types/drive-types";
 import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
 import type { DriveUploadBatchConflicts } from "@/lib/offline/drive/upload/drive-upload-conflicts";
+import type { DriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
+import type { DriveUploadTreeInput } from "@/lib/offline/drive/upload/drive-upload-folder-enqueue";
 import type {
   DriveUploadConflictChoice,
   DriveUploadReplaceTarget,
@@ -145,6 +147,17 @@ export type DriveAPIOperations = {
   ) => Promise<DriveUIData>;
   deleteItems: (paths: string[], opts?: DriveMutationOpts) => Promise<DriveUIData>;
   downloadFile: (path: string, opts?: { signal?: AbortSignal }) => Promise<void>;
+  /** *Download* on a folder (one zip) (#1621). Absent where folders cannot be downloaded (guests). */
+  downloadFolder?: (path: string, opts?: { signal?: AbortSignal }) => Promise<void>;
+  /**
+   * *Download* on several selected items: one zip named `name` (#1905).
+   * Absent where folders cannot be downloaded (guests).
+   */
+  downloadSelection?: (
+    paths: string[],
+    name: string,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<void>;
   readFileBlob: (path: string, opts?: { signal?: AbortSignal }) => Promise<Blob>;
   checkUploadReady: (opts?: { signal?: AbortSignal }) => Promise<void>;
   listStars: (opts?: { signal?: AbortSignal }) => Promise<string[]>;
@@ -170,12 +183,18 @@ export type DriveAPIOperations = {
   /**
    * Signed-in Drive with the offline layer: store picked files on the device
    * as one batch waiting for the batch dialog (placeholders show at once).
-   * Without it, the upload action falls back to `uploadFiles`.
+   * Without it, the upload action falls back to `uploadFiles`. With `tree`
+   * (a picked or dropped folder, #1620) the tree is queued instead of `files`.
    */
-  enqueueUploads?: (input: {
-    cwd: string;
-    files: File[];
-  }) => Promise<{ batchId: string; itemIds?: string[]; spaceCheck?: DriveUploadSpaceCheck }>;
+  enqueueUploads?: (input: { cwd: string; files: File[]; tree?: DriveUploadTreeInput }) => Promise<{
+    batchId: string;
+    itemIds?: string[];
+    /** Folder items of a `tree`, parents first. */
+    folderIds?: string[];
+    spaceCheck?: DriveUploadSpaceCheck;
+    /** What the batch dialog asks; without it (or all null) the batch is released at once. */
+    questions?: DriveUploadBatchQuestions;
+  }>;
   /** Hand a queued batch to the background uploader with the dialog's answers. */
   releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
   /**
@@ -183,11 +202,26 @@ export type DriveAPIOperations = {
    * the batch dialog may offer (*Replace* only with the server's version check).
    */
   describeUploadConflicts?: (batchId: string) => Promise<DriveUploadBatchConflicts>;
+  /**
+   * Batches waiting for an answer whose tab is gone (closed or reloaded with
+   * the dialog open). This tab takes them over and asks again.
+   */
+  claimUnansweredUploadBatches?: () => Promise<
+    { batchId: string; itemIds: string[]; questions: DriveUploadBatchQuestions }[]
+  >;
   /** *Cancel* in the batch dialog: drop the batch, its placeholders, and its files. */
   cancelUploadBatch?: (batchId: string) => Promise<void>;
-  /** Drop one `queued` or `failed` file with its placeholder. False while it is uploading. */
+  /** The user has seen a batch's notices (e.g. a *Replace* that kept both). */
+  dismissUploadNotices?: (batchId: string) => Promise<void>;
+  /**
+   * Drop one `queued` or `failed` file with its placeholder; a folder id drops
+   * everything below it too. False while something in it is uploading.
+   */
   removeQueuedUpload?: (itemId: string) => Promise<boolean>;
-  /** *Retry* on one failed file. False when it is gone or has to be added again. */
+  /**
+   * *Retry* on one failed file or folder (with its failed parent folders, and
+   * on a folder what failed below it). False when nothing could go back.
+   */
   retryQueuedUpload?: (itemId: string) => Promise<boolean>;
   /**
    * *Download* on a file that is still queued or uploading: saves this
@@ -222,4 +256,6 @@ export type DriveUploadBatchAnswers = {
   conflict?: DriveUploadConflictChoice;
   /** *Replace*: per colliding item, the existing file as the user saw it. */
   replaceTargets?: Readonly<Record<string, DriveUploadReplaceTarget>>;
+  /** Folder upload: the answer to `questions.folders` (default *Keep both*). */
+  folderConflict?: "merge" | "keep_both";
 };

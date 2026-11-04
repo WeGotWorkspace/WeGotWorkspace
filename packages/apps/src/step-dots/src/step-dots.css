@@ -1,0 +1,19 @@
+@import "../../styles.css" reference;
+
+/* Parents tune the dots through these tokens. */
+.step-dots {
+  @apply m-0 flex list-none items-center gap-2 p-0;
+}
+
+.step-dots__dot {
+  @apply size-1.5 rounded-full;
+  background-color: var(
+    --step-dots-muted,
+    color-mix(in oklab, var(--workspace-foreground, currentColor) 28%, transparent)
+  );
+}
+
+.step-dots__dot--current,
+.step-dots__dot--done {
+  background-color: var(--step-dots-active, var(--workspace-accent, currentColor));
+}

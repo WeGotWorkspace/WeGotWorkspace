@@ -7,9 +7,9 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
-import { UploadProgress } from "@/upload-progress/src/upload-progress";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { startDriveItemDownload } from "@/drive-core/src/drive-item-download";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
@@ -19,6 +19,8 @@ import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
 import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
+import { DriveUploadNotices } from "@/drive-core/src/drive-upload-notices";
+import { useDriveUploadQueueContext } from "@/drive-core/src/drive-upload-queue";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -64,7 +66,7 @@ export function DriveMainPane({
     view,
     dropUploadActive,
     setDropUploadActive,
-    handleUpload,
+    handleUploadDrop,
     uploadEnabled,
     structureEnabled,
     breadcrumbs,
@@ -93,7 +95,6 @@ export function DriveMainPane({
     active,
     selectionBar,
     searchQuery,
-    uploadProgress,
     folderListingPending,
     folderListingError,
     retryFolderListing,
@@ -115,6 +116,8 @@ export function DriveMainPane({
 
   const { show, showError } = useAppToast();
   const { online } = useConnectivity();
+  const uploadQueue = useDriveUploadQueueContext();
+  const dismissUploadNotices = operations?.dismissUploadNotices;
 
   const handleDownload = (file: DriveFile) => {
     // Still uploading: this device's copy, without waiting for the server.
@@ -130,13 +133,9 @@ export function DriveMainPane({
         });
       return;
     }
-    if (operations && file.apiPath && file.kind !== "folder") {
-      void operations.downloadFile(file.apiPath).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        showError(message);
-      });
-    }
-    show("Download started", { icon: <Download className="size-4" /> });
+    startDriveItemDownload(operations, file, showError, () =>
+      show("Download started", { icon: <Download className="size-4" /> }),
+    );
   };
 
   const searchActive = Boolean(searchQuery.trim());
@@ -251,7 +250,7 @@ export function DriveMainPane({
         event.preventDefault();
         if (!uploadEnabled) return;
         setDropUploadActive(false);
-        handleUpload(event.dataTransfer.files);
+        handleUploadDrop(event.dataTransfer);
       }}
     >
       {dropUploadActive ? (
@@ -304,15 +303,11 @@ export function DriveMainPane({
         </div>
       </div>
 
-      {uploadProgress ? (
-        <div className="drive-floating-upload">
-          <UploadProgress
-            label={uploadProgress.label}
-            percent={uploadProgress.percent}
-            detail={uploadProgress.detail}
-            done={uploadProgress.done}
-          />
-        </div>
+      {uploadQueue && dismissUploadNotices ? (
+        <DriveUploadNotices
+          batches={uploadQueue.snapshot.batches}
+          onDismiss={(batchId) => void dismissUploadNotices(batchId).catch(showError)}
+        />
       ) : null}
 
       {selectionBar}

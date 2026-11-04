@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Docs;
 
 use App\Events\EventDispatch;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Notify\DocsThreadActivityNotify;
 
 /**
@@ -14,6 +15,7 @@ final class DocsThreadEventEmitter
 {
     public function __construct(
         private readonly EventDispatch $events,
+        private readonly FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -51,6 +53,7 @@ final class DocsThreadEventEmitter
                 $isReply,
                 $recipients,
                 $snippet,
+                $this->fileNodes->liveByKey(ltrim($path, '/'))?->node_id,
             ),
         );
     }

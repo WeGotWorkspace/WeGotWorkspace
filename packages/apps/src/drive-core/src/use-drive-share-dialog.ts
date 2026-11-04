@@ -6,6 +6,8 @@ export type DriveShareDialogState = {
   open: boolean;
   path: string;
   title: string;
+  /** The shared item is a folder (its public link may allow adding files). */
+  isFolder: boolean;
 };
 
 function titleFromApiPath(apiPath: string): string {
@@ -26,9 +28,10 @@ export function useDriveShareDialog({
     open: false,
     path: "",
     title: "",
+    isFolder: false,
   });
 
-  const openShareDialog = useCallback((apiPath: string, title?: string) => {
+  const openShareDialog = useCallback((apiPath: string, title?: string, isFolder = false) => {
     if (isTopLevelDriveApiPath(apiPath)) return;
     const path = apiPath.trim();
     if (!path) return;
@@ -36,6 +39,7 @@ export function useDriveShareDialog({
       open: true,
       path,
       title: title?.trim() || titleFromApiPath(path),
+      isFolder,
     });
   }, []);
 

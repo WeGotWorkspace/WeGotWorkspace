@@ -48,7 +48,16 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/docs" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/docs" });
+    });
+  });
+
+  it("keeps the query of the return path in the href (#1522)", async () => {
+    render(<LoginScreen returnPath="/drive?view=uploads" />);
+    submitCredentials();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/drive?view=uploads" });
     });
   });
 
@@ -59,7 +68,7 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/notes" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/notes" });
     });
   });
 
@@ -83,7 +92,7 @@ describe("LoginScreen", () => {
     submitCredentials();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+      expect(mockNavigate).toHaveBeenCalledWith({ href: "/" });
     });
   });
 

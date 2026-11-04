@@ -44,8 +44,17 @@ async function replaceViaFileNodeSet(
             }),
           })
         ).json();
-      const all = await jmap([["FileNode/get", { accountId, ids: null }, "c0"]]);
-      const existing = all.methodResponses[0][1].list.find(
+      // Query by name: `ids: null` is refused once the account holds more
+      // files than maxObjectsInGet.
+      const named = await jmap([
+        ["FileNode/query", { accountId, filter: { name } }, "q0"],
+        [
+          "FileNode/get",
+          { accountId, "#ids": { resultOf: "q0", name: "FileNode/query", path: "/ids" } },
+          "c0",
+        ],
+      ]);
+      const existing = named.methodResponses[1][1].list.find(
         (node: { name: string }) => node.name === name,
       );
       const upload = await (

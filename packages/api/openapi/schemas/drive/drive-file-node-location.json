@@ -1,0 +1,25 @@
+{
+  "DriveFileNodeLocation": {
+    "type": "object",
+    "required": ["id", "path"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "FileNode id (`fn-` + 32 hex). Stable across rename and move."
+      },
+      "path": {
+        "type": "string",
+        "description": "Current virtual drive path, with a leading slash."
+      }
+    },
+    "additionalProperties": false
+  },
+  "DriveFileNodeLocationDataResponse": {
+    "type": "object",
+    "required": ["data"],
+    "properties": {
+      "data": { "$ref": "#/components/schemas/DriveFileNodeLocation" }
+    },
+    "additionalProperties": false
+  }
+}

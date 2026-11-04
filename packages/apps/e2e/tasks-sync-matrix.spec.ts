@@ -781,7 +781,11 @@ async function runCase(browser: Browser, action: Action, tabs: Tabs, net: Net, i
 // --- inbound helpers ---------------------------------------------------------------------------
 
 /** Fail the matching requests at the network, so the app queues the write. */
-async function holdRequests(tab: Tab, method: string, path: string): Promise<() => Promise<void>> {
+async function holdRequests(
+  tab: Pick<BrowserContext, "route" | "unroute">,
+  method: string,
+  path: string,
+): Promise<() => Promise<void>> {
   const url = `**/api/v1${path}`;
   const handler = async (route: Route) => {
     // The app tunnels PATCH, PUT and DELETE through POST (`X-HTTP-Method-Override`).
@@ -1135,8 +1139,13 @@ function rescueDialog(tab: Tab) {
   return tab.getByRole("dialog", { name: /^(A task|\d+ tasks) from / });
 }
 
+/** Review in the notice bar under the header (#1894), the way back to the dialog. */
 function rescueEntry(tab: Tab) {
-  return tab.getByRole("button", { name: /^Tasks (from \d+ lists )?need a new list$/ });
+  return tab
+    .getByRole("region", { name: "Needs your attention" })
+    .locator(".notice-bar__notice")
+    .filter({ hasText: /needs? a new list/ })
+    .getByRole("button", { name: "Review" });
 }
 
 /** A rescue into a new list keeps the old name, or "(copy)" when the old list stays. */
@@ -1702,4 +1711,68 @@ test.describe("inbound", () => {
       await cleanUpCase(id);
     }
   });
+});
+
+// --- the "could not sync" notice bar row (#1894) -----------------------------------------------
+
+/** The notice bar row for queued changes that fail to sync, under the header. */
+function syncNotice(tab: Tab) {
+  return tab
+    .getByRole("region", { name: "Needs your attention" })
+    .locator(".notice-bar__notice")
+    .filter({ hasText: "Some changes could not sync. They are saved on this device." });
+}
+
+test("sync notice · a held edit shows Retry in every tab and clears once it lands", async ({
+  browser,
+}) => {
+  const id = caseId();
+  let session: Session | null = null;
+  try {
+    const c = await inboundCase(browser, id, 1);
+    session = c.session;
+    const a = c.tab;
+    const title = `T1 ${id}`;
+    // Hold on the whole context, so a second tab cannot land the write either.
+    const release = await holdRequests(session.contexts[0]!, "PATCH", `/tasks/items/${c.tasks[0]}`);
+    await editTask(a, title, { title: `${title} v2` });
+    // The reconnect flush hits the held request and marks the queued row failed.
+    await reconnect(a);
+
+    const poll = { timeout: 2 * POLL_MS + 10_000 };
+    await expect(syncNotice(a), "the failed write shows the row").toBeVisible(poll);
+    await expect(syncNotice(a).getByRole("button", { name: "Retry" })).toBeEnabled();
+    await expect(rescueEntry(a), "it is not a refused write").toHaveCount(0);
+
+    await syncNotice(a).getByRole("button", { name: "Retry" }).click();
+    await expect(syncNotice(a).getByRole("button", { name: "Retry" })).toBeEnabled(poll);
+    await expect(syncNotice(a), "Retry while still held keeps the row").toBeVisible();
+
+    await hardRefresh([a]);
+    await expect(syncNotice(a), "the failed row survives a reload").toBeVisible(poll);
+
+    const b = await openTasksTab(session.contexts[0]!, "A2", session.events);
+    session.tabs.push(b);
+    await expect(syncNotice(b), "another tab reads the same outbox").toBeVisible(poll);
+    await expect(syncNotice(a)).toBeVisible();
+    expect((await serverTask(c.tasks[0]!))?.title, "nothing landed while held").toBe(title);
+
+    // Retry right after the release, before the failed flush retries on its own.
+    await release();
+    await syncNotice(a).getByRole("button", { name: "Retry" }).click();
+    await expect(syncNotice(a)).toHaveCount(0, poll);
+    await expect(syncNotice(b)).toHaveCount(0, poll);
+    expect((await serverTask(c.tasks[0]!))?.title, "the server has the new title").toBe(
+      `${title} v2`,
+    );
+
+    await hardRefresh([a, b]);
+    for (const tab of [a, b]) {
+      await expect(row(tab, `${title} v2`)).toBeVisible({ timeout: 15_000 });
+      await expect(tab.getByRole("region", { name: "Needs your attention" })).toHaveCount(0);
+    }
+  } finally {
+    await closeTabs(session);
+    await cleanUpCase(id);
+  }
 });

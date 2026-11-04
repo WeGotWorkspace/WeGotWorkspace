@@ -8,6 +8,7 @@ import {
   DRIVE_DOMAIN,
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
@@ -62,7 +63,31 @@ export async function upsertDriveEntry(
   entry: WgwDriveDirectoryEntry,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await driveEntriesTable(db).put(driveEntryRowFromEntry(entry));
+  const table = driveEntriesTable(db);
+  const row = driveEntryRowFromEntry(entry);
+  if (row.type !== "dir") {
+    await table.put(row);
+    return;
+  }
+  // Same tables the batch end locks, so a refresh sees the live item or the committed clear.
+  await db.transaction("rw", table, driveUploadItemsTable(db), async () => {
+    const existing = await table.get(row.id);
+    // A folder still taking an upload keeps its marker until the upload is done (#1620).
+    if (
+      existing?.uploadId &&
+      existing.type === "dir" &&
+      (await driveUploadItemsTable(db).get(existing.uploadId))
+    ) {
+      const { upload } = parseEntryRow(existing);
+      await table.put({
+        ...row,
+        uploadId: existing.uploadId,
+        data: JSON.stringify({ ...entry, upload }),
+      });
+      return;
+    }
+    await table.put(row);
+  });
 }
 
 /** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */
@@ -74,6 +99,24 @@ export async function readCachedDriveNodeId(
   const row = await driveEntriesTable(db).get(normalizeDriveEntryPath(apiPath));
   const nodeId = row?.nodeId?.trim();
   return nodeId || undefined;
+}
+
+/**
+ * FileNode id → path (leading slash) from the offline cache. `undefined` when no
+ * file row has the id, or when two file rows claim it (a stale row the next crawl
+ * fixes): an ambiguous answer must not open the wrong document.
+ */
+export async function readCachedDrivePathForNodeId(
+  username: string,
+  nodeId: string,
+): Promise<string | undefined> {
+  const id = nodeId.trim();
+  if (!id) return undefined;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await driveEntriesTable(db).where("nodeId").equals(id).toArray();
+  const files = rows.filter((row) => row.type === "file");
+  if (files.length !== 1) return undefined;
+  return `/${files[0].id.replace(/^\/+/, "")}`;
 }
 
 export async function upsertDriveEntries(

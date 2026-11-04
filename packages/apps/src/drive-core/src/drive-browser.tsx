@@ -1,10 +1,14 @@
-import { useRef } from "react";
-import { Check, Star, Folder, HardDrive } from "lucide-react";
+import { Star } from "lucide-react";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
-import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
-import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
-import { DriveFileItemActionsMenu } from "@/drive-core/src/drive-file-actions";
+import {
+  DriveSelectionCheckbox,
+  type FolderDropZoneProps,
+  type ItemDragHandlers,
+} from "@/drive-core/src/drive-browser-item-parts";
+import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
+import { DriveFolderTile } from "@/drive-core/src/drive-folder-tile";
+import { useLongPress } from "@/drive-core/src/use-drive-long-press";
 import {
   DriveOfflineBadge,
   DriveOfflinePinButton,
@@ -12,7 +16,6 @@ import {
 } from "@/drive-core/src/drive-offline-pin-button";
 import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { DriveUploadRing } from "@/drive-core/src/drive-upload-ring";
-import { driveUploadPlaceholderMenu } from "@/drive-core/src/drive-upload-placeholder-menu";
 import {
   DriveFileKindIcon,
   DriveLocationLabel,
@@ -22,7 +25,6 @@ import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
@@ -62,41 +64,7 @@ function DriveFileOfflinePinCell({
   );
 }
 
-function DriveSelectionCheckbox({
-  isSelected,
-  className,
-}: {
-  isSelected: boolean;
-  selectionMode?: boolean;
-  className?: string;
-}) {
-  return (
-    <span aria-hidden className={cn("drive-selection-checkbox-wrap", className)}>
-      <span
-        className={cn(
-          "drive-selection-checkbox",
-          isSelected && "drive-selection-checkbox--selected",
-        )}
-      >
-        {isSelected ? (
-          <Check className="drive-selection-checkbox__icon" strokeWidth={2.75} />
-        ) : null}
-      </span>
-    </span>
-  );
-}
-
 /* ---------------- Grid view ---------------- */
-
-type FolderDropZoneProps = Pick<
-  MenuItemProps,
-  "isDropTarget" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop"
->;
-
-type ItemDragHandlers = {
-  onDragStart: (e: React.DragEvent) => void;
-  onDragEnd: () => void;
-};
 
 export function DriveGridView({
   items,
@@ -181,7 +149,7 @@ export function DriveGridView({
         <Section title="Folders">
           <div className="drive-grid">
             {folders.map((f) => (
-              <FolderTile
+              <DriveFolderTile
                 key={f.id}
                 file={f}
                 isSelected={selectedIds.includes(f.id)}
@@ -204,6 +172,7 @@ export function DriveGridView({
                 canShare={fileCanShare?.(f)}
                 canManageStructure={fileCanManageStructure?.(f)}
                 onShare={onShare ? () => onShare(f) : undefined}
+                extraActions={extraFileActions?.(f)}
                 itemChrome={itemChrome}
               />
             ))}
@@ -261,150 +230,6 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
     <div>
       {title ? <h3 className="drive-item-label drive-browser-section-title">{title}</h3> : null}
       {children}
-    </div>
-  );
-}
-
-function useLongPress(handler: () => void) {
-  const t = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fired = useRef(false);
-  return {
-    fired,
-    start: () => {
-      fired.current = false;
-      t.current = setTimeout(() => {
-        fired.current = true;
-        handler();
-        if ("vibrate" in navigator) navigator.vibrate?.(15);
-      }, 450);
-    },
-    cancel: () => {
-      if (t.current) clearTimeout(t.current);
-      t.current = null;
-    },
-  };
-}
-
-function FolderTile({
-  file,
-  isSelected,
-  selectionMode,
-  isStarred,
-  isDragging,
-  isTouch,
-  folderDropZone,
-  itemDragHandlers,
-  onSelect,
-  onOpen,
-  onLongPress,
-  labels,
-  inTrash,
-  onStar,
-  onDownload,
-  onRename,
-  onMove,
-  onTrash,
-  canShare,
-  canManageStructure,
-  onShare,
-  itemChrome = "manage",
-}: {
-  file: DriveFile;
-  isSelected: boolean;
-  selectionMode: boolean;
-  isStarred: boolean;
-  isDragging: boolean;
-  isTouch: boolean;
-  folderDropZone: FolderDropZoneProps;
-  itemDragHandlers: ItemDragHandlers;
-  onSelect: (e: React.MouseEvent) => void;
-  onOpen: () => void;
-  onLongPress: () => void;
-  labels: DriveUILabels;
-  inTrash: boolean;
-  onStar: () => void;
-  onDownload: (file: DriveFile) => void;
-  onRename: () => void;
-  onMove: () => void;
-  onTrash: () => void;
-  canShare?: boolean;
-  canManageStructure?: boolean;
-  onShare?: () => void;
-  itemChrome?: "manage" | "picker";
-}) {
-  const lp = useLongPress(onLongPress);
-  const pickerChrome = itemChrome === "picker";
-  // Tile root is non-interactive so the actions menu is not nested inside a
-  // button (axe nested-interactive); the overlay button is the click target.
-  return (
-    <div
-      onContextMenu={
-        pickerChrome
-          ? undefined
-          : (e) => {
-              if (!isTouch) {
-                e.preventDefault();
-                onLongPress();
-              }
-            }
-      }
-      draggable={!pickerChrome && !isTouch}
-      onDragStart={pickerChrome ? undefined : itemDragHandlers.onDragStart}
-      onDragEnd={pickerChrome ? undefined : itemDragHandlers.onDragEnd}
-      {...(pickerChrome ? {} : folderDropZone)}
-      className={cn(
-        "group drive-folder-tile",
-        selectionMode && "drive-folder-tile--selection-mode",
-        isDragging && "drive-folder-tile--dragging",
-        folderDropZone.isDropTarget && "drive-folder-tile--drop-target",
-        isSelected && "drive-folder-tile--selected",
-        !isSelected && !folderDropZone.isDropTarget && "drive-folder-tile--idle",
-      )}
-    >
-      <DriveSelectionCheckbox
-        isSelected={isSelected}
-        selectionMode={selectionMode}
-        className="drive-folder-tile__checkbox"
-      />
-      <button
-        type="button"
-        aria-label={file.title}
-        className="drive-tile__hit"
-        onClick={(e) => {
-          if (lp.fired.current) return;
-          onSelect(e);
-        }}
-        onDoubleClick={selectionMode ? undefined : onOpen}
-        onTouchStart={pickerChrome ? undefined : lp.start}
-        onTouchEnd={pickerChrome ? undefined : lp.cancel}
-        onTouchMove={pickerChrome ? undefined : lp.cancel}
-      />
-      {isDrivePickerRootFile(file) ? (
-        <HardDrive className="drive-folder-tile__icon size-5 shrink-0" />
-      ) : (
-        <Folder className="drive-folder-tile__icon size-5 shrink-0" />
-      )}
-      <span className="drive-folder-tile__title">{file.title}</span>
-      {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
-      <DriveShareIndicators file={file} labels={labels} />
-      {pickerChrome ? null : (
-        <DriveFileItemActions
-          labels={labels}
-          file={file}
-          isStarred={isStarred}
-          inTrash={inTrash}
-          canOpen={!selectionMode}
-          onOpen={onOpen}
-          onDownload={onDownload}
-          onStar={onStar}
-          onRename={onRename}
-          onMove={onMove}
-          onDelete={onTrash}
-          canShare={canShare}
-          canManageStructure={canManageStructure}
-          onShare={onShare}
-        />
-      )}
     </div>
   );
 }
@@ -577,73 +402,6 @@ function FileTile({
       </div>
     </div>
   );
-}
-
-function DriveFileItemActions({
-  labels,
-  file,
-  isStarred,
-  inTrash,
-  canOpen = true,
-  onOpen,
-  onDownload,
-  onStar,
-  onRename,
-  onMove,
-  onDelete,
-  canShare,
-  canManageStructure,
-  onShare,
-  extraActions,
-  disabled = false,
-}: {
-  labels: DriveUILabels;
-  file: DriveFile;
-  isStarred: boolean;
-  inTrash: boolean;
-  /** When false, hide Open (matches double-click disabled in selection mode). */
-  canOpen?: boolean;
-  onOpen?: () => void;
-  onDownload: (file: DriveFile) => void;
-  onStar: () => void;
-  onRename?: () => void;
-  onMove?: () => void;
-  onDelete: () => void;
-  canShare?: boolean;
-  canManageStructure?: boolean;
-  onShare?: () => void;
-  extraActions?: ActionBarAction[];
-  disabled?: boolean;
-}) {
-  const actions = buildDriveFileActions(
-    labels,
-    {
-      isStarred,
-      inTrash,
-      isFolder: file.kind === "folder",
-      canOpen,
-      canDownload: file.kind !== "folder",
-      canShare,
-      canManageStructure,
-    },
-    {
-      onOpen,
-      onDownload: () => onDownload(file),
-      onStar,
-      onRename,
-      onMove,
-      onDelete,
-      onShare,
-    },
-  );
-  // A placeholder is not on the server yet: its own actions, the rest disabled.
-  const merged = file.upload
-    ? driveUploadPlaceholderMenu(labels, extraActions, () => onDownload(file))
-    : extraActions?.length
-      ? [...actions, ...extraActions]
-      : actions;
-  if (merged.length === 0) return null;
-  return <DriveFileItemActionsMenu actions={merged} disabled={disabled} />;
 }
 
 /* ---------------- List view (OS-style table) ---------------- */

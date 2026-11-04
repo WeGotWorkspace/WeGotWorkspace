@@ -56,4 +56,15 @@ export const installerCopy = {
   notSecureFix:
     "Serve this site over https:// and open the installer there. Most hosts offer a free certificate, for example from Let's Encrypt.",
   notSecureContinue: "Continue without https",
+  /** Accessible name of the step dots. */
+  setupProgress: "Setup progress",
+  /** Screen reader name of each step dot. */
+  stepLabels: {
+    welcome: "Welcome",
+    database: "Your data",
+    account: "Your account",
+    ready: "Ready",
+  },
+  stepCurrent: ", current",
+  stepDone: ", done",
 } as const;
