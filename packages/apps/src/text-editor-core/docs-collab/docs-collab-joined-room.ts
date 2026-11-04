@@ -31,8 +31,11 @@ export function leaveCollabRoom(
 ): void {
   const saveDue = cancelSaveTimer(saveTimerRef);
   if (!persistence) return;
-  const joined = joinedRooms.get(persistence) ?? current;
+  const remembered = joinedRooms.get(persistence);
   joinedRooms.delete(persistence);
+  // Same room: this render's urls are newer than the join's (a save hold
+  // may have been released while the room was open).
+  const joined = remembered && remembered.room !== current.room ? remembered : current;
   void closeCollabRoomStore(persistence, saveDue ? joined : null, {
     upload: !joined.urls.roomNotPersistent,
   });

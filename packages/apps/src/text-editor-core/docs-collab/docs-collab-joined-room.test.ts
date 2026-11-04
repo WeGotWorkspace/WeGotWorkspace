@@ -40,6 +40,20 @@ describe("leaveCollabRoom", () => {
     );
   });
 
+  it("uses the newer urls of the same room, so a released hold saves", () => {
+    const persistence = store();
+    rememberCollabRoomJoin(persistence, {
+      room: "a",
+      urls: urlsFor("a", { roomNotPersistent: true }),
+    });
+    leaveCollabRoom(persistence, armed(), { room: "a", urls: urlsFor("a") });
+    expect(closeCollabRoomStore).toHaveBeenCalledWith(
+      persistence,
+      { room: "a", urls: urlsFor("a") },
+      { upload: true },
+    );
+  });
+
   it("marks a held room unsaved without saving it to the server", () => {
     const persistence = store();
     const urls = urlsFor("a", { roomNotPersistent: true });
