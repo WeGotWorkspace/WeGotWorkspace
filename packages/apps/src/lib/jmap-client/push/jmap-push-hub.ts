@@ -1,4 +1,5 @@
 import type { CrossTabTopic } from "@/lib/offline/core/cross-tab-topic";
+import { pickFrontTab, type FocusSource, type FrontTab, type TabActivity } from "./front-tab";
 import { PushConfirmations } from "./push-confirmations";
 import { parsePushEventId, type PushHashes } from "./push-event-id";
 import type { PushSink, PushTransport, StateChange } from "./push-transport";
@@ -25,6 +26,10 @@ export type PushMessage =
       confirmed: PushHashes;
       /** Optional so a tab on an older build still parses. */
       visible?: boolean;
+      /** Epoch ms of the tab's last window focus (front-tab election). */
+      focusedAt?: number;
+      /** The screen the tab shows, path plus query. */
+      route?: string | null;
     }
   | { v: 1; kind: "bye"; tabId: string }
   | { v: 1; kind: "roll-call" }
@@ -61,6 +66,8 @@ export type JmapPushHubOptions = {
   /** Null without Web Locks: then the hub stays idle and the apps keep polling. */
   locks: WebLocks | null;
   visibility: VisibilitySource;
+  /** Window focus, for the front-tab election; without it every tab counts as never focused. */
+  focus?: FocusSource;
   createEventSource: (ctx: EventSourceContext) => EventSourceLike;
   /** Wake-only transports (mesh `check-now`, #1662); their `deliver` is ignored. */
   wakeTransports?: () => PushTransport[];
@@ -91,6 +98,10 @@ export class JmapPushHub {
   #eventSource: EventSourceLike | null = null;
   /** The stream's status while this tab leads, re-sent to tabs that join later. */
   #leaderStatus = false;
+  /** The screen this tab shows, as the app last reported it. */
+  #route: string | null = null;
+  /** Focus and route every other tab reported, for {@link frontTab}. */
+  #activity = new Map<string, TabActivity>();
 
   constructor(options: JmapPushHubOptions) {
     this.#options = options;
@@ -130,6 +141,33 @@ export class JmapPushHub {
     };
   }
 
+  /** The app reports the screen this tab shows (path plus query) on every navigation. */
+  setRoute(route: string): void {
+    if (route === this.#route) return;
+    this.#route = route;
+    this.#publishTab();
+  }
+
+  /**
+   * The tab the user is looking at: the most recently focused visible tab of
+   * this browser, or null when every tab is hidden (docs/architecture/
+   * notifications.md, "Active news on the client"). Visibility comes from the
+   * tabs' visible locks, so a tab that crashed never wins; focus and route
+   * come from what each tab reported. Without Web Locks, or while this hub
+   * does not run, only this tab is known.
+   */
+  async frontTab(): Promise<FrontTab | null> {
+    const { locks, tabId, visibility } = this.#options;
+    const held =
+      this.#active && locks ? await heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null) : null;
+    const visible = held ?? new Set<string>();
+    // This tab's own lock may still be on its way in or out.
+    if (visibility.visible()) visible.add(tabId);
+    else visible.delete(tabId);
+    const activity = new Map(this.#activity).set(tabId, this.#selfActivity());
+    return pickFrontTab(visible, activity, tabId);
+  }
+
   /** Ask the leader to reconnect now, for example right after this tab wrote. */
   wake(reason: string): void {
     if (!this.#active) return;
@@ -141,6 +179,7 @@ export class JmapPushHub {
     const { locks, tabId, topic, visibility } = this.#options;
     if (!locks) return;
     this.#confirmations.keepOnly(tabId);
+    this.#activity.clear();
     const cleanups: Array<() => void> = [];
     cleanups.push(topic.subscribe((message) => this.#onMessage(message)));
     cleanups.push(holdWebLock(locks, `${TAB_LOCK}${tabId}`));
@@ -157,7 +196,13 @@ export class JmapPushHub {
       }
     };
     syncVisible(false);
-    cleanups.push(visibility.subscribe(() => syncVisible(true)));
+    cleanups.push(
+      visibility.subscribe(() => {
+        syncVisible(true);
+        this.#publishTab();
+      }),
+    );
+    if (this.#options.focus) cleanups.push(this.#options.focus.subscribe(() => this.#publishTab()));
     cleanups.push(() => releaseVisible?.());
 
     const bye = () => this.#publish({ v: 1, kind: "bye", tabId }, { otherTabsOnly: true });
@@ -263,6 +308,12 @@ export class JmapPushHub {
         break;
       case "tab":
         this.#confirmations.setTab(message.tabId, message);
+        if (message.tabId !== this.#options.tabId) {
+          this.#activity.set(message.tabId, {
+            focusedAt: message.focusedAt ?? 0,
+            route: message.route ?? null,
+          });
+        }
         // A tab that just joined has not heard the status the leader sent before it.
         if (this.#eventSource && message.tabId !== this.#options.tabId) {
           this.#publish(
@@ -275,6 +326,7 @@ export class JmapPushHub {
         break;
       case "bye":
         this.#confirmations.removeTab(message.tabId);
+        this.#activity.delete(message.tabId);
         break;
       case "roll-call":
         this.#published = "";
@@ -324,11 +376,16 @@ export class JmapPushHub {
       types: [...types].sort(),
       confirmed,
       visible: this.#options.visibility.visible(),
+      ...this.#selfActivity(),
     };
     const key = JSON.stringify(message);
     if (key === this.#published) return;
     this.#published = key;
     this.#publish(message);
+  }
+
+  #selfActivity(): TabActivity {
+    return { focusedAt: this.#options.focus?.focusedAt() ?? 0, route: this.#route };
   }
 
   #publish(message: PushMessage, options?: { otherTabsOnly?: boolean }): void {
