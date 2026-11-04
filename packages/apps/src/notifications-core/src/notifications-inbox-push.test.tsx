@@ -375,6 +375,35 @@ describe("notification inbox on push", () => {
     expect(listCalls()).toBe(2);
   });
 
+  it("a tab that takes over the stream acks only the row no tab acked yet (#1834)", async () => {
+    const older = Array.from({ length: 10 }, (_, index) => ({ ...row, id: `n${index + 1}` }));
+    const tabA = render(<NotificationsProvider />);
+    await waitFor(() => expect(listCalls()).toBe(1));
+    vi.mocked(listNotifications).mockResolvedValue({ list: older, unreadCount: 10 });
+    await act(async () => {
+      await notificationListener()({ Notification: "7" }, "member");
+    });
+    await settle();
+    expect(ackedIds()).toEqual(older.map((item) => item.id));
+    tabA.unmount();
+    vi.mocked(ackLocalNotifications).mockClear();
+
+    // Tab B now holds the stream; its first fetch lists the rows tab A acked.
+    render(<NotificationsProvider />);
+    await waitFor(() => expect(listCalls()).toBe(3));
+    await settle();
+    expect(ackLocalNotifications).not.toHaveBeenCalled();
+
+    const fresh = { ...row, id: "n11" };
+    vi.mocked(listNotifications).mockResolvedValue({ list: [fresh, ...older], unreadCount: 11 });
+    await act(async () => {
+      await notificationListener()({ Notification: "8" }, "member");
+    });
+    await settle();
+
+    expect(vi.mocked(ackLocalNotifications).mock.calls).toEqual([[["n11"]]]);
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
