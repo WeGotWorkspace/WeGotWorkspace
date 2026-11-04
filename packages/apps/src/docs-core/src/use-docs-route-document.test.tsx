@@ -31,6 +31,7 @@ function deps(overrides: Partial<DocsLocatorDeps> = {}): DocsLocatorDeps {
     readCachedNodeId: vi.fn(async () => undefined),
     recordLocation: vi.fn(async () => undefined),
     isOnline: () => true,
+    ownedByQueuedWrite: vi.fn(async () => false),
     ...overrides,
   };
 }
@@ -74,6 +75,28 @@ describe("useDocsRouteDocument", () => {
       expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
     );
     expect(locator.fetchLocation).toHaveBeenCalledWith({ path: PATH }, expect.anything());
+  });
+
+  it("opens by path, without asking the server, when a queued write owns the path", async () => {
+    const locator = deps({ ownedByQueuedWrite: vi.fn(async () => true) });
+    const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
+
+    await waitFor(() => expect(result.current.document).toEqual({ status: "ready", path: PATH }));
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("stays unresolved and offline when the queue cannot be read", async () => {
+    const ownedByQueuedWrite = vi.fn(async () => {
+      throw new Error("idb");
+    });
+    const locator = deps({ ownedByQueuedWrite });
+    const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
+
+    await waitFor(() => expect(ownedByQueuedWrite).toHaveBeenCalled());
+    await act(async () => {});
+    expect(result.current.document).toEqual({ status: "resolving" });
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
   });
 
   it("opens the swapped-in id without a loading state", async () => {
@@ -232,6 +255,37 @@ describe("useDocsRouteDocument", () => {
     online = true;
     rerender({ search: { file: "users/alice/Roadmap.md" }, refreshKey: 1 });
 
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
+    );
+  });
+
+  it("keeps a held file link open by path, then swaps in the id once the hold clears", async () => {
+    // A queued offline create owns the path; the server's file there may be another one (#1563).
+    const locator = deps();
+    const search = { file: "users/alice/Roadmap.md" };
+    const { result, rerender } = renderHook(
+      ({ hold, refreshKey }) =>
+        useDocsRouteDocument({
+          search,
+          canResolve: true,
+          username: "alice",
+          refreshKey,
+          holdPathLookup: hold,
+          deps: locator,
+        }),
+      { initialProps: { hold: true, refreshKey: 0 } },
+    );
+    expect(result.current.document).toEqual({ status: "ready", path: PATH });
+
+    rerender({ hold: true, refreshKey: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+
+    rerender({ hold: false, refreshKey: 1 });
+    // Still open by path while the lookup runs: no loading state in between.
+    expect(result.current.document).toEqual({ status: "ready", path: PATH });
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
     );

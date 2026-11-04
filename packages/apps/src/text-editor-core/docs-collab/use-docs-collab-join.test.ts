@@ -99,11 +99,12 @@ type EchoSessionOptions = {
   room?: string;
   onDocStatus?: (status: string | ((prev: string) => string)) => void;
   updatePendingState?: (pending: boolean, failed?: boolean) => Promise<void>;
+  roomNotPersistent?: boolean;
 };
 
 function useEchoSession(
   userName: string,
-  { room = ROOM, onDocStatus, updatePendingState }: EchoSessionOptions = {},
+  { room = ROOM, onDocStatus, updatePendingState, roomNotPersistent }: EchoSessionOptions = {},
 ): {
   refs: DocsCollabSessionRefs;
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
@@ -122,7 +123,7 @@ function useEchoSession(
   const trySeedFromFile = useCallback(() => {
     trySeedFromFileRef.current();
   }, []);
-  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room };
+  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room, roomNotPersistent };
   const mesh = useDocsCollabMesh({
     refs,
     room,
@@ -414,6 +415,29 @@ describe("useDocsCollabJoin teardown", () => {
     const target = closeStore.mock.calls[0]?.[1];
     expect(target?.room).toBe("docs/room-a.md");
     expect(target?.urls.room).toBe("docs/room-a.md");
+    resetDocsCollabMeshLingerForTests();
+  });
+
+  it("saves a room left within the save delay once its save hold was released", async () => {
+    const closeStore = vi.mocked(leaveRoom.closeCollabRoomStore);
+    closeStore.mockClear();
+    const hook = renderHook(
+      ({ held }: { held: boolean }) => useEchoSession("Ada", { roomNotPersistent: held }),
+      { initialProps: { held: true } },
+    );
+    await act(async () => {
+      await hook.result.current.join();
+    });
+
+    // Opened held (a queued write may own the path), then released while open.
+    hook.rerender({ held: false });
+    hook.result.current.refs.saveTimerRef.current = setTimeout(() => undefined, 60_000);
+    act(() => {
+      hook.result.current.teardown();
+    });
+
+    expect(closeStore).toHaveBeenCalledTimes(1);
+    expect(closeStore.mock.calls[0]?.[2]).toEqual({ upload: true });
     resetDocsCollabMeshLingerForTests();
   });
 

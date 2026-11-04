@@ -1,37 +1,21 @@
-import type { ReactNode } from "react";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import type {
+  IrreversibleWriteArgs,
+  QueueMutation,
+  ReversibleWriteArgs,
+} from "@/hooks/use-queued-mutation";
 
-type QueueMutation = (args: DeferredApiWriteArgs) => void;
-
-type RunBatchActionArgs = {
+type BatchCommon = {
   queueMutation: QueueMutation;
-  key: string;
-  toastMessage: string;
-  execute: (signal: AbortSignal) => Promise<void>;
+  /** Puts the screen back, on Undo and on failure. */
   rollback: () => void;
   undoToastMessage: string;
-  icon?: ReactNode;
-  executeImmediately?: boolean;
 };
 
-export function runQueuedBatchAction({
-  queueMutation,
-  key,
-  toastMessage,
-  execute,
-  rollback,
-  undoToastMessage,
-  icon,
-  executeImmediately = false,
-}: RunBatchActionArgs) {
-  queueMutation({
-    key,
-    toastMessage,
-    execute,
-    undo: rollback,
-    onError: rollback,
-    undoToastMessage,
-    icon,
-    executeImmediately,
-  });
+type RunBatchActionArgs =
+  | (BatchCommon & Omit<ReversibleWriteArgs, "undo" | "onError" | "undoToastMessage">)
+  | (BatchCommon & Omit<IrreversibleWriteArgs, "undo" | "onError" | "undoToastMessage">);
+
+/** Queues a batch write whose Undo and failure both roll the screen back with `rollback`. */
+export function runQueuedBatchAction({ queueMutation, rollback, ...write }: RunBatchActionArgs) {
+  queueMutation({ ...write, undo: rollback, onError: rollback });
 }

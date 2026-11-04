@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, createElement } from "react";
 import { Temporal } from "@js-temporal/polyfill";
-import { Check, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type {
@@ -97,6 +97,17 @@ import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-displa
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
+import {
+  calendarEventWrite,
+  editPatchRevert,
+  MOVE_STEPS,
+  occurrenceOverridesRevert,
+  revertCreate,
+  revertEventMove,
+  revertSeriesSplit,
+  SPLIT_STEPS,
+  type CalendarEventMutation,
+} from "@/calendar-core/src/calendar-undo-writes";
 
 /** How the create editor was opened — workspace routes pointer → popover, menu → dialog. */
 export type CalendarCreateSource = "pointer" | "menu";
@@ -551,30 +562,13 @@ export function useCalendarController({
   }, []);
 
   const runEditorMutation = useCallback(
-    (args: {
-      key: string;
-      mutation: () => Promise<void>;
-      successToast: string;
-      undo: () => void;
-    }) => {
+    (args: CalendarEventMutation) => {
       if (!operations) return;
       setEditor(null);
       setEditorBusy(false);
-      queueMutation({
-        key: args.key,
-        toastMessage: args.successToast,
-        icon: createElement(Check, { className: "size-4" }),
-        executeImmediately: true,
-        execute: async () => {
-          await args.mutation();
-          onMutated?.();
-        },
-        undo: () => {
-          args.undo();
-          onMutated?.();
-        },
-        undoToastMessage: L.toastEventSaveUndone,
-      });
+      queueMutation(
+        calendarEventWrite(args, { onMutated, undoToastMessage: L.toastEventSaveUndone }),
+      );
     },
     [operations, queueMutation, onMutated, L.toastEventSaveUndone],
   );
@@ -600,11 +594,8 @@ export function useCalendarController({
             );
             createdId = created.id;
           },
-          undo: () => {
-            // queueMutation also runs undo on execute failure.
-            setHeldCreateIntent(null);
-            if (createdId) void operations.deleteEvent(createdId);
-          },
+          revert: () => revertCreate(operations, setPendingDeletedEventIds, createdId),
+          rollback: () => setHeldCreateIntent(null),
         });
         return;
       }
@@ -663,10 +654,8 @@ export function useCalendarController({
               targetId = (await resolveEventId?.(editor.eventId)) ?? editor.eventId;
               await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
             },
-            undo: () => {
-              void operations.patchEvent(targetId, {
-                recurrenceOverrides: original.recurrenceOverrides ?? {},
-              });
+            revert: async () => {
+              await operations.patchEvent(targetId, occurrenceOverridesRevert(original, overrides));
             },
           });
           return;
@@ -684,50 +673,49 @@ export function useCalendarController({
               : seriesRecurrenceRulesForSplit(undefined, editor.form);
           let targetId = editor.eventId;
           let forkedId: string | undefined;
+          // Adapter rows are fresher than bootstrap after only-this — partition from those.
+          const seriesOverrides = resolveSeriesRecurrenceOverrides(
+            original,
+            editor.eventId,
+            surfaceEvents,
+          );
+          const truncatePatch = truncateMasterSeriesPatch(
+            seriesRules,
+            editor.recurrenceId,
+            Boolean(original?.showWithoutTime ?? editor.form.allDay),
+            original?.start,
+            seriesOverrides,
+          );
+          const recurrenceId = editor.recurrenceId;
           runEditorMutation({
-            key: `calendar:split-series:${editor.eventId}:${editor.recurrenceId}`,
+            key: `calendar:split-series:${editor.eventId}:${recurrenceId}`,
             successToast: L.toastEventUpdated,
-            mutation: async () => {
+            mutation: async (markCompleted) => {
               targetId = original
                 ? editor.eventId
                 : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
-              const allDay = Boolean(original?.showWithoutTime ?? editor.form.allDay);
-              // Adapter rows are fresher than bootstrap after only-this — partition from those.
-              const seriesOverrides = resolveSeriesRecurrenceOverrides(
-                original,
-                editor.eventId,
-                surfaceEvents,
-              );
-              await operations.patchEvent(
-                targetId,
-                truncateMasterSeriesPatch(
-                  seriesRules,
-                  editor.recurrenceId!,
-                  allDay,
-                  original?.start,
-                  seriesOverrides,
-                ),
-              );
+              await operations.patchEvent(targetId, truncatePatch);
+              markCompleted(SPLIT_STEPS.truncate);
               const forked = await operations.createEvent(
                 forkSeriesDraftWithSplitOverrides(
                   editor.form,
                   seriesRules,
                   original,
-                  editor.recurrenceId!,
+                  recurrenceId,
                   seriesOverrides,
                 ),
               );
               forkedId = forked.id;
+              markCompleted(SPLIT_STEPS.fork);
             },
-            undo: () => {
-              if (forkedId) void operations.deleteEvent(forkedId);
-              if (original) {
-                void operations.patchEvent(
-                  targetId,
-                  formToFullPatch(calendarEventToForm(original)),
-                );
-              }
-            },
+            revert: (completed) =>
+              revertSeriesSplit(operations, completed, {
+                masterId: targetId,
+                forkedId,
+                truncatePatch,
+                seriesRules,
+                seriesOverrides,
+              }),
           });
           return;
         }
@@ -742,31 +730,28 @@ export function useCalendarController({
         runEditorMutation({
           key: `calendar:update-event:${editor.eventId}`,
           successToast: L.toastEventUpdated,
-          mutation: async () => {
+          mutation: async (markCompleted) => {
             targetId = original
               ? editor.eventId
               : ((await resolveEventId?.(editor.eventId)) ?? editor.eventId);
             if (patch.calendarId) {
               const created = await operations.createEvent(draftFromForm(editor.form, organizer));
               movedToId = created.id;
+              markCompleted(MOVE_STEPS.create);
               await operations.deleteEvent(targetId);
+              markCompleted(MOVE_STEPS.delete);
               return;
             }
             await operations.patchEvent(targetId, patch);
           },
-          undo: () => {
-            if (movedToId) {
-              void operations.deleteEvent(movedToId).then(() => {
-                if (original) {
-                  void operations.createEvent(
-                    draftFromForm(calendarEventToForm(original), organizer),
-                  );
-                }
-              });
-              return;
-            }
-            if (original) {
-              void operations.patchEvent(targetId, formToFullPatch(calendarEventToForm(original)));
+          revert: async (completed) => {
+            if (patch.calendarId) {
+              const originalDraft = original
+                ? draftFromForm(calendarEventToForm(original), organizer)
+                : undefined;
+              await revertEventMove(operations, completed, { movedToId, originalDraft });
+            } else if (original) {
+              await operations.patchEvent(targetId, editPatchRevert(patch, original));
             }
           },
         });
@@ -871,17 +856,18 @@ export function useCalendarController({
           });
         };
 
+        // A hard delete: it waits for the grace period, so Undo only has to cancel it.
         queueMutation({
           key: `calendar:delete-event:${eventId}`,
           toastMessage: L.toastEventDeleted,
           icon: createElement(Trash2, { className: "size-4" }),
+          irreversible: true,
           execute: async () => {
             const targetId = isWireEvent ? eventId : ((await resolveEventId?.(eventId)) ?? eventId);
             await operations.deleteEvent(targetId);
             onMutated?.();
           },
           undo: rollback,
-          onError: rollback,
           undoToastMessage: L.toastEventDeleteUndone,
         });
       })();
@@ -1334,25 +1320,22 @@ export function useCalendarController({
         ...(seriesRules?.length ? { customRecurrenceRules: seriesRules } : {}),
       };
       const seriesOverrides = resolveSeriesRecurrenceOverrides(original, masterKey, surfaceEvents);
+      const truncatePatch = truncateMasterSeriesPatch(
+        seriesRules,
+        args.recurrenceId,
+        allDay,
+        original?.start,
+        seriesOverrides,
+      );
       let targetId = masterKey;
       let forkedId: string | undefined;
-      queueMutation({
+      const mutation: CalendarEventMutation = {
         key: `calendar:split-drag:${masterKey}:${args.recurrenceId}`,
-        toastMessage: L.toastEventUpdated,
-        icon: createElement(Check, { className: "size-4" }),
-        executeImmediately: true,
-        execute: async () => {
+        successToast: L.toastEventUpdated,
+        mutation: async (markCompleted) => {
           targetId = (await resolveEventId?.(masterKey)) ?? masterKey;
-          await operations.patchEvent(
-            targetId,
-            truncateMasterSeriesPatch(
-              seriesRules,
-              args.recurrenceId,
-              allDay,
-              original?.start,
-              seriesOverrides,
-            ),
-          );
+          await operations.patchEvent(targetId, truncatePatch);
+          markCompleted(SPLIT_STEPS.truncate);
           const forked = await operations.createEvent(
             forkSeriesDraftWithSplitOverrides(
               form,
@@ -1363,17 +1346,20 @@ export function useCalendarController({
             ),
           );
           forkedId = forked.id;
-          onMutated?.();
+          markCompleted(SPLIT_STEPS.fork);
         },
-        undo: () => {
-          if (forkedId) void operations.deleteEvent(forkedId);
-          if (original) {
-            void operations.patchEvent(targetId, formToFullPatch(calendarEventToForm(original)));
-          }
-          onMutated?.();
-        },
-        undoToastMessage: L.toastEventSaveUndone,
-      });
+        revert: (completed) =>
+          revertSeriesSplit(operations, completed, {
+            masterId: targetId,
+            forkedId,
+            truncatePatch,
+            seriesRules,
+            seriesOverrides,
+          }),
+      };
+      queueMutation(
+        calendarEventWrite(mutation, { onMutated, undoToastMessage: L.toastEventSaveUndone }),
+      );
     },
     [
       operations,

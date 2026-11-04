@@ -54,6 +54,35 @@ describe("useDriveMutations star toast undo", () => {
     expect(updatedState).toEqual({ "f-1": true });
   });
 
+  it("sends the star at once and the old value back as the revert", async () => {
+    const queueMutation = vi.fn();
+    const reloadStarredFromServer = vi.fn();
+    const shell = buildShell({ starred: { "f-1": true }, reloadStarredFromServer });
+    const list = buildList({ queueMutation });
+
+    const { result } = renderHook(() => useDriveMutations({ shell, list }));
+
+    act(() => {
+      result.current.toggleStar("f-1");
+    });
+
+    const mutationConfig = queueMutation.mock.calls[0][0];
+    expect(mutationConfig.irreversible).toBeUndefined();
+    await mutationConfig.execute(new AbortController().signal, () => undefined);
+    expect(shell.operations!.setStar).toHaveBeenLastCalledWith(
+      { path: expect.any(String), starred: false },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+
+    await mutationConfig.revert(null);
+    expect(shell.operations!.setStar).toHaveBeenLastCalledWith({
+      path: expect.any(String),
+      starred: true,
+    });
+    // Starred spans folders: the revert refreshes it from any view too.
+    expect(reloadStarredFromServer).toHaveBeenCalledTimes(2);
+  });
+
   it("refreshes the starred list after a star from any view", async () => {
     const queueMutation = vi.fn();
     const reloadStarredFromServer = vi.fn();

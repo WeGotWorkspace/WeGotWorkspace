@@ -25,6 +25,7 @@ import {
   applyDriveSidecarPathMigration,
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { onlineOnlyDownloadSelection } from "@/lib/offline/shared/zip-download-online-only";
 import { DOCS_DOMAIN, type OfflineDocsAvailabilityRow } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import {
@@ -33,6 +34,13 @@ import {
   type OutboxFlushResult,
 } from "@/lib/offline/docs/docs-outbox-flush";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
+import { notifyDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
+import {
+  readDocsOfflineDirectory,
+  rememberDocsLiveDirectory,
+  readDocsOfflineEntriesByPaths,
+} from "@/lib/offline/docs/docs-offline-entries";
+import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
   buildOfflineDocsSearchResult,
@@ -70,8 +78,13 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>
 async function flushDocsOutboxTask(username: string): Promise<OutboxFlushResult> {
   const result = await flushDocsOutbox(username);
   reportDocsSyncConflicts(result.stateMismatches);
+  // Open tabs re-read what the flush settled (an editor waiting on a queued create, a list).
+  if (result.flushed > 0) notifyDocsCachesChanged(username);
   return result;
 }
+
+/** Permanent delete is not queued: it cannot be undone, so it waits for a connection. */
+export const DOCS_DELETE_NEEDS_CONNECTION = "Deleting permanently needs a connection.";
 
 function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> {
   return syncRunnerRegistry.getOrCreate(username, async () => flushDocsOutboxTask(username));
@@ -173,8 +186,6 @@ async function applyOnlineRenameSideEffects(
   await applyDriveSidecarPathMigration(username, from, destination, to);
 }
 
-const ZIP_NEEDS_CONNECTION = "Downloading a folder as a zip needs a connection.";
-
 export function createHybridDocsDriveOperations(username: string): DriveAPIOperations {
   const live = createWgwDriveOperations("/");
   // A guest has no write path yet (#1713): writes go to the server and fail
@@ -183,13 +194,7 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
 
   return {
     ...live,
-    downloadSelection: async (paths, name, opts) => {
-      // The server writes the zip: there is no offline copy to save.
-      if (!readBrowserOnline() || !live.downloadSelection) {
-        throw new Error(ZIP_NEEDS_CONNECTION);
-      }
-      await live.downloadSelection(paths.map(normalizeApiVirtualPath), name, opts);
-    },
+    downloadSelection: onlineOnlyDownloadSelection(live),
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);
       const isTrash = isDriveTrashApiPath(destination, username);
@@ -215,6 +220,11 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
             moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
           } else {
             await applyOnlineRenameSideEffects(username, input.from, input.destination, input.to);
+            await moveDocsPath(
+              username,
+              input.from,
+              docsOutboxPathFromRename(input.from, destination, to),
+            );
           }
           return data;
         } catch (error) {
@@ -235,7 +245,42 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
         ? { op: "trash", from, destination, to }
         : { op: "rename", from, destination, to: input.to };
       await queueDocsOutbox(username, payload);
+      // An editor of this Doc in another tab follows it now, while both are offline.
+      if (!isTrash) {
+        await moveDocsPath(username, from, docsOutboxPathFromRename(from, destination, input.to));
+      }
       return offlineQueuedDriveData(destination);
+    },
+    listDirectory: async (at, opts) => {
+      if (readBrowserOnline()) {
+        try {
+          const data = await live.listDirectory(at, opts);
+          rememberDocsLiveDirectory(username, normalizeApiVirtualPath(at), data.directory.files);
+          return data;
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      return readDocsOfflineDirectory(username, normalizeApiVirtualPath(at));
+    },
+    listEntriesByPaths: async (paths, opts) => {
+      if (readBrowserOnline()) {
+        try {
+          return await live.listEntriesByPaths(paths, opts);
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      return readDocsOfflineEntriesByPaths(username, paths);
+    },
+    deleteItems: async (paths, opts) => {
+      if (!readBrowserOnline()) throw new Error(DOCS_DELETE_NEEDS_CONNECTION);
+      try {
+        return await live.deleteItems(paths, opts);
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error, opts?.signal);
+        throw new Error(DOCS_DELETE_NEEDS_CONNECTION);
+      }
     },
     uploadFiles: async (input, opts) => {
       if (readBrowserOnline()) {

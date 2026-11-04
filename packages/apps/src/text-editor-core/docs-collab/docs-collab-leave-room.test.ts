@@ -66,6 +66,14 @@ describe("closeCollabRoomStore", () => {
     expect(room.urls()).toMatchObject({ yjsUrl: URLS.yjsUrl, authToken: undefined });
   });
 
+  it("only marks a held room, without saving it to the server", async () => {
+    const { persistence, calls } = store();
+    await closeCollabRoomStore(persistence, { room: "n1", urls: URLS }, { upload: false });
+    expect(calls).toEqual([`set ${PENDING_SERVER_SAVE_KEY}`, "destroy"]);
+    expect(setCollabRoomPendingServerSave).toHaveBeenCalledWith("n1", true);
+    expect(uploadPendingCollabRooms).not.toHaveBeenCalled();
+  });
+
   it("keeps the mark for the reconnect sweep while offline", async () => {
     online.value = false;
     const { persistence, raw } = store();

@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
-import { useQueuedMutation } from "@/hooks/use-queued-mutation";
+import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { captureOfflineDocsTrashSnapshot } from "@/lib/offline/docs/docs-hybrid-operations";
+import { DOCS_DELETE_NEEDS_CONNECTION } from "@/lib/offline/docs/docs-hybrid-operations";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
+  moveDocsRowsToTrash,
   revertDocsHomeTrash,
   type DocsHomeTrashOfflineSnapshot,
 } from "@/docs-core/src/docs-home-trash-undo";
-import {
-  ensureTrashFolder,
-  listTrashEntryNames,
-  resolveFreeName,
-} from "@/drive-core/src/drive-batch-utils";
-import {
-  apiPathFromUiPath,
-  DRIVE_TRASH_UI_PATH,
-  normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
+import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 
@@ -47,7 +40,43 @@ type UseDocsHomeActionsArgs = {
   reload: () => void;
   /** When true, delete confirms permanently remove files instead of moving to Trash. */
   inTrashView?: boolean;
+  /**
+   * Bump to read the stars again, e.g. after a reconnect's queued writes reached
+   * the server: a read when the connection came back can predate them (#1563).
+   */
+  starsRefreshKey?: number;
 };
+
+function filesWithApiPath(
+  ids: readonly string[],
+  fileById: (id: string) => DriveFile | undefined,
+): DriveFile[] {
+  return ids.map((id) => fileById(id)).filter((file): file is DriveFile => !!file?.apiPath);
+}
+
+/** A Doc moved back out of Trash gets its old row id again: stop hiding it (#1563). */
+function unhideArrivedFiles(
+  hidden: Set<string>,
+  destination: string,
+  moved: readonly DriveFile[],
+): Set<string> {
+  const arrived = moved.map(
+    (file) => `:${normalizeApiVirtualPath(`${destination}/${file.title}`).replace(/^\/+/, "")}`,
+  );
+  const next = new Set([...hidden].filter((id) => !arrived.some((key) => id.endsWith(key))));
+  return next.size === hidden.size ? hidden : next;
+}
+
+/** Deleting for good is never queued offline: say so instead of hiding the row (#1563). */
+function permanentDeleteNeedsConnection(
+  state: DocsHomeDeleteState,
+  offlineUsername: string | null | undefined,
+  showError: (message: string) => void,
+): boolean {
+  if (!state.permanent || !offlineUsername || getConnectivitySnapshot()) return false;
+  showError(DOCS_DELETE_NEEDS_CONNECTION);
+  return true;
+}
 
 export function useDocsHomeActions({
   operations,
@@ -58,6 +87,7 @@ export function useDocsHomeActions({
   onAvailabilityChanged,
   reload,
   inTrashView = false,
+  starsRefreshKey = 0,
 }: UseDocsHomeActionsArgs) {
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -105,7 +135,7 @@ export function useDocsHomeActions({
         setStarsReady(true);
       });
     return () => controller.abort();
-  }, [operations]);
+  }, [operations, starsRefreshKey]);
 
   /** Star map keyed by file id (search ids differ from api paths, so resolve per file). */
   const starred = useMemo(() => {
@@ -156,6 +186,7 @@ export function useDocsHomeActions({
         execute: async (signal) => {
           await operations.setStar({ path: apiPath, starred: next }, { signal });
         },
+        revert: () => operations.setStar({ path: apiPath, starred: beforeStarred }),
         undo: rollback,
         onError: () => {
           rollback();
@@ -229,9 +260,7 @@ export function useDocsHomeActions({
       const state = moveState;
       closeMove();
       if (!state || !operations) return;
-      const rows = state.ids
-        .map((id) => fileById(id))
-        .filter((file): file is DriveFile => !!file?.apiPath);
+      const rows = filesWithApiPath(state.ids, fileById);
       if (rows.length === 0) return;
       const destination = apiPathFromUiPath(destinationUiPath, username, groupRootNames);
       void (async () => {
@@ -240,6 +269,7 @@ export function useDocsHomeActions({
             const apiPath = normalizeApiVirtualPath(file.apiPath!);
             await operations.renameItem({ destination, from: apiPath, to: file.title });
           }
+          setHiddenFileIds((prev) => unhideArrivedFiles(prev, destination, rows));
           show(rows.length === 1 ? `Moved “${rows[0]!.title}”` : `Moved ${rows.length} files`);
           reload();
         } catch (error: unknown) {
@@ -268,10 +298,9 @@ export function useDocsHomeActions({
     const state = deleteState;
     closeDelete();
     if (!state || !operations) return;
-    const rows = state.ids
-      .map((id) => fileById(id))
-      .filter((file): file is DriveFile => !!file?.apiPath);
+    const rows = filesWithApiPath(state.ids, fileById);
     if (rows.length === 0) return;
+    if (permanentDeleteNeedsConnection(state, offlineUsername, showError)) return;
 
     const ids = rows.map((file) => file.id);
     setHiddenFileIds((prev) => {
@@ -298,7 +327,8 @@ export function useDocsHomeActions({
         icon: <Trash2 className="size-4" />,
         undoToastMessage: "Delete undone.",
         rollback: rollbackUi,
-        executeImmediately: true,
+        // A permanent delete cannot be taken back: it waits, and Undo cancels it.
+        irreversible: true,
         execute: async (signal) => {
           await operations.deleteItems(
             rows.map((file) => normalizeApiVirtualPath(file.apiPath!)),
@@ -324,26 +354,13 @@ export function useDocsHomeActions({
       icon: <Trash2 className="size-4" />,
       undoToastMessage: "Move to trash undone.",
       rollback: rollbackUi,
-      execute: async (signal, markCompleted) => {
-        if (offlineUsername) {
-          offlineSnapshots = await Promise.all(
-            rows.map(async (file) => ({
-              id: file.id,
-              snapshot: await captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!),
-            })),
-          );
-        }
-        await ensureTrashFolder(operations, username, groupRootNames, signal);
-        const destination = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRootNames);
-        const trashNames = await listTrashEntryNames(operations, destination, signal);
-        for (const file of rows) {
-          const apiPath = normalizeApiVirtualPath(file.apiPath!);
-          const to = resolveFreeName(file.title, trashNames);
-          trashNames.add(to);
-          trashedNameById.set(file.id, to);
-          await operations.renameItem({ destination, from: apiPath, to }, { signal });
-          markCompleted(file.id);
-        }
+      execute: async (stop, markCompleted) => {
+        const trashed = { username, groupRoots: groupRootNames, offlineUsername, stop };
+        await moveDocsRowsToTrash(operations, rows, trashed, {
+          trashedNameById,
+          markCompleted,
+          onSnapshots: (snapshots) => (offlineSnapshots = snapshots),
+        });
         reload();
         onAvailabilityChanged?.();
       },
@@ -393,6 +410,9 @@ export function useDocsHomeActions({
       });
 
       const previousPaths = new Set(starredPaths);
+      const starChanges = rows
+        .map((file) => normalizeApiVirtualPath(file.apiPath!))
+        .filter((path) => previousPaths.has(path) !== nextValue);
       const toastIcon = nextValue ? (
         <Star className="size-4" fill="currentColor" />
       ) : (
@@ -419,17 +439,20 @@ export function useDocsHomeActions({
         key: `docs:batch-star:${ids.slice().sort().join(",")}`,
         toastMessage: nextValue ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
+          await settleAll(
+            rows.map(async (file) => {
+              const path = normalizeApiVirtualPath(file.apiPath!);
+              await operations.setStar({ path, starred: nextValue }, { signal });
+              markCompleted(path);
+            }),
+          );
+        },
+        revert: async (completedKeys) => {
           await Promise.all(
-            rows.map((file) =>
-              operations.setStar(
-                {
-                  path: normalizeApiVirtualPath(file.apiPath!),
-                  starred: nextValue,
-                },
-                { signal },
-              ),
-            ),
+            starChanges
+              .filter((path) => !completedKeys || completedKeys.has(path))
+              .map((path) => operations.setStar({ path, starred: !nextValue })),
           );
         },
         rollback: () => setStarredPaths(previousPaths),

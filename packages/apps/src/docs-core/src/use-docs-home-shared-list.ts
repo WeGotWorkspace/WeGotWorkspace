@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { useDriveSharedList } from "@/drive-core/src/use-drive-shared-list";
+import { docsLabels } from "@/docs-core/src/docs-labels";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import {
   filterDocsHomeSharedByQuery,
   isDocsHomeCompatibleSharedFile,
@@ -31,6 +33,7 @@ export function useDocsHomeSharedList({
   query = "",
 }: UseDocsHomeSharedListOptions): UseDocsHomeSharedListResult {
   const drive = useDriveSharedList({ username, shareOperations, enabled });
+  const { online } = useConnectivity();
   const files = useMemo(
     () => filterDocsHomeSharedByQuery(drive.files.filter(isDocsHomeCompatibleSharedFile), query),
     [drive.files, query],
@@ -39,7 +42,8 @@ export function useDocsHomeSharedList({
   return {
     files,
     loading: drive.loading,
-    error: drive.error,
+    // Offline the list cannot be refreshed; say so, also when an earlier fetch succeeded.
+    error: online ? drive.error : docsLabels.homeSharedOffline,
     reload: drive.reload,
   };
 }

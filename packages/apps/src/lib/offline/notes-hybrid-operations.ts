@@ -33,6 +33,7 @@ import {
   getNoteFromCache,
   hasQueuedNoteUpsert,
   listOutboxMutations,
+  notesOutboxNoteId,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
   removeNotebookFromCache,
@@ -218,6 +219,47 @@ async function queueOfflineUpsert(
     );
   });
   return note;
+}
+
+/**
+ * Cache the archive state and queue it. A queued archive or restore of the same note
+ * that is not sent yet becomes this one (the server sets the status, so the last one
+ * wins): Undo offline then leaves one row, not two. A row already on its way is sent
+ * again by the flush (see `settleSentOutboxMutation`).
+ */
+async function queueArchiveState(
+  username: string,
+  existing: Note,
+  archived: boolean,
+): Promise<Note> {
+  const optimistic = { ...existing, archived };
+  const op = archived ? "archive" : "restore";
+  const groupSlug =
+    existing.scope === "group" && existing.groupSlug?.trim()
+      ? existing.groupSlug.trim()
+      : undefined;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.transaction("rw", [notesNotesTable(db), db.outbox], async () => {
+    await upsertNoteInCache(username, optimistic, true);
+    const rows = await db.outbox.where("domain").equals(NOTES_DOMAIN).toArray();
+    const queued = rows.find(
+      (row) =>
+        (row.op === "archive" || row.op === "restore") && notesOutboxNoteId(row) === existing.id,
+    );
+    if (queued) {
+      await db.outbox.put({ ...queued, op });
+      return;
+    }
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: NOTES_DOMAIN,
+      op,
+      // The version it started from: inbound sync tells "not sent yet" from a conflict.
+      ...(existing.etag ? { ifInState: existing.etag } : {}),
+      payload: JSON.stringify({ noteId: existing.id, ...(groupSlug ? { groupSlug } : {}) }),
+    });
+  });
+  return optimistic;
 }
 
 async function queueOfflineDelete(
@@ -426,21 +468,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
-      const groupSlug =
-        existing.scope === "group" && existing.groupSlug?.trim()
-          ? existing.groupSlug.trim()
-          : undefined;
       if (!readBrowserOnline() || existing.createPending) {
-        const optimistic = { ...existing, archived: true };
-        await upsertNoteInCache(username, optimistic, true);
-        await enqueueOutboxMutation(username, {
-          id: crypto.randomUUID(),
-          domain: NOTES_DOMAIN,
-          op: "archive",
-          // The version it started from: inbound sync tells "not sent yet" from a conflict.
-          ...(existing.etag ? { ifInState: existing.etag } : {}),
-          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
-        });
+        const optimistic = await queueArchiveState(username, existing, true);
         if (readBrowserOnline()) void runner.flush();
         return optimistic;
       }
@@ -452,17 +481,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       } catch (error) {
         if (await dropLocalIfServerGone(username, id, error)) throw error;
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const optimistic = { ...existing, archived: true };
-        await upsertNoteInCache(username, optimistic, true);
-        await enqueueOutboxMutation(username, {
-          id: crypto.randomUUID(),
-          domain: NOTES_DOMAIN,
-          op: "archive",
-          // The version it started from: inbound sync tells "not sent yet" from a conflict.
-          ...(existing.etag ? { ifInState: existing.etag } : {}),
-          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
-        });
-        return optimistic;
+        return queueArchiveState(username, existing, true);
       }
     },
     restoreNote: async (id, opts) => {
@@ -472,21 +491,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           !readBrowserOnline() ? "Note not found in cache while offline" : "Note not found",
         );
       }
-      const groupSlug =
-        existing.scope === "group" && existing.groupSlug?.trim()
-          ? existing.groupSlug.trim()
-          : undefined;
       if (!readBrowserOnline() || existing.createPending) {
-        const optimistic = { ...existing, archived: false };
-        await upsertNoteInCache(username, optimistic, true);
-        await enqueueOutboxMutation(username, {
-          id: crypto.randomUUID(),
-          domain: NOTES_DOMAIN,
-          op: "restore",
-          // The version it started from: inbound sync tells "not sent yet" from a conflict.
-          ...(existing.etag ? { ifInState: existing.etag } : {}),
-          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
-        });
+        const optimistic = await queueArchiveState(username, existing, false);
         if (readBrowserOnline()) void runner.flush();
         return optimistic;
       }
@@ -498,17 +504,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       } catch (error) {
         if (await dropLocalIfServerGone(username, id, error)) throw error;
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        const optimistic = { ...existing, archived: false };
-        await upsertNoteInCache(username, optimistic, true);
-        await enqueueOutboxMutation(username, {
-          id: crypto.randomUUID(),
-          domain: NOTES_DOMAIN,
-          op: "restore",
-          // The version it started from: inbound sync tells "not sent yet" from a conflict.
-          ...(existing.etag ? { ifInState: existing.etag } : {}),
-          payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
-        });
-        return optimistic;
+        return queueArchiveState(username, existing, false);
       }
     },
     patchNotebook: async (notebookId, patch, opts) => {

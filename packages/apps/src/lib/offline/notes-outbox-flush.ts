@@ -288,7 +288,13 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             row.op === "archive"
               ? await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined)
               : await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
-          await upsertNoteInCache(username, saved, false);
+          // Undo may have flipped the row while it was sent: then send it again.
+          const settlement = await settleSentOutboxMutation(username, row, {
+            cacheTables: (db) => [notesNotesTable(db)],
+            onRemoved: () => upsertNoteInCache(username, saved, false),
+          });
+          sendChangedRowAgain(rows, resends, settlement);
+          continue;
         } catch (error) {
           if (isNotesPersistGone(error)) {
             await dropLocalNoteAfterServerGone(username, noteId);

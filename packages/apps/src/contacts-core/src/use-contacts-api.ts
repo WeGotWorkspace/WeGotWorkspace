@@ -4,9 +4,7 @@ import { Check } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { createContactsJmapClient } from "@/lib/api/wgw/contacts";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { JmapContactsAdapter, type JmapAddressBook, type JmapContactCard } from "@/lib/jmap-client";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridContactsOperations,
@@ -15,13 +13,6 @@ import {
   readContactsCacheForBoot,
   refreshCachedContacts,
 } from "@/lib/offline/contacts-hybrid-operations";
-import {
-  ingestRemoteAddressBook,
-  ingestRemoteAddressBookDestroyed,
-  ingestRemoteContactCard,
-  ingestRemoteContactCardDestroyed,
-  reconcileContactsSnapshot,
-} from "@/lib/offline/contacts-jmap-inbound";
 import { readContactsBootstrapFromCache } from "@/lib/offline/contacts-offline-store";
 import {
   readOfflineContactsUsername,
@@ -32,11 +23,9 @@ import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queu
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import type { AddressBook, ContactCard, ContactsUIData } from "@/contacts-core/src/contacts-types";
+import type { ContactsUIData } from "@/contacts-core/src/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
-
-/** Live JMAP inbound poll (adapter owns the timer). */
-const ONLINE_CHANGES_POLL_MS = 10_000;
+import { useContactsLiveInbound } from "./use-contacts-live-inbound";
 
 export type UseContactsAPIOptions = {
   onSyncConflict?: (cardIds: string[]) => void;
@@ -130,61 +119,12 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     };
   }, [complete, offlineUsername, online, patchFromCache, phase]);
 
-  useEffect(() => {
-    if (!offlineUsername || !online || phase !== "ready" || !complete) return;
-    if (typeof window === "undefined") return;
-    if (!wgwLiveApiEnabled()) return;
-
-    const username = offlineUsername;
-    const adapter = new JmapContactsAdapter({
-      client: createContactsJmapClient(),
-      onRemoteContactCard: (card: JmapContactCard) => {
-        void ingestRemoteContactCard(username, card as ContactCard).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRemoteContactCardDestroyed: (cardId) => {
-        void ingestRemoteContactCardDestroyed(username, cardId).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRemoteAddressBook: (book: JmapAddressBook) => {
-        void ingestRemoteAddressBook(username, book as AddressBook).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRemoteAddressBookDestroyed: (bookId) => {
-        void ingestRemoteAddressBookDestroyed(username, bookId).then(() => {
-          void patchFromCache();
-        });
-      },
-      onRefetchAll: ({ books, cards }) => {
-        void reconcileContactsSnapshot(
-          username,
-          cards as ContactCard[],
-          books as AddressBook[],
-        ).then(() => {
-          void patchFromCache();
-        });
-      },
-    });
-
-    let cancelled = false;
-    void adapter
-      .initialize()
-      .then(() => {
-        if (cancelled) return;
-        adapter.startPolling(ONLINE_CHANGES_POLL_MS);
-      })
-      .catch(() => {
-        // Session missing contacts capability — Dexie cache still renders.
-      });
-
-    return () => {
-      cancelled = true;
-      adapter.stopPolling();
-    };
-  }, [complete, offlineUsername, online, patchFromCache, phase]);
+  useContactsLiveInbound({
+    username: offlineUsername,
+    // Refresh only once the first download (and its sync tokens) is finished.
+    enabled: online && phase === "ready" && complete,
+    patchFromCache,
+  });
 
   const refreshList = useCallback(() => {
     if (listRefreshing || coldDownload) return;
