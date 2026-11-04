@@ -106,6 +106,10 @@ See spec.md, Non-goals.
 - `feat/projects` treats a Project as a group principal and already calls `administrators` a "system Team". `path: .agents/specs/811-projects/spec.md:6` on branch `feat/projects`
 - [#1614](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1614) asks for the same Team rule for attendee busy blocks. `gh issue view 1614`: "The caller gets busy periods only for users who share at least one Team with them"
 
+- Item-level `/changes` fill `destroyed` for a collection that disappeared from the since-state by reading a per-viewer id registry that does not filter on visibility: `recordedEventIdsForCalendar`, `recordedCardIdsForBook`, `recordedNoteIdsForNotebook`. `path: app/Services/Calendars/JmapCalendarEventStateService.php:87`, `path: app/Services/Jmap/Methods/ContactCardChangesMethod.php:86`, `path: app/Services/Jmap/Methods/NoteChangesMethod.php:74`. `ChatMessage/changes` sends no per-message `destroyed` for a channel that disappeared; the client prunes by channel. `path: app/Services/Jmap/Methods/ChatMessageChangesMethod.php:26`
+- Address book sync tokens are built from `AddressBookCollectionAccess::accessibleListings`, which already applies `AddressBookShareVisibility`. `path: app/Services/Contacts/AddressBookRepository.php:200`, `path: app/Services/Contacts/AddressBookCollectionAccess.php:31`
+- The web app keeps the owner's `shareWith` in its offline cache (calendars, task lists, address books, channels). `path: packages/apps/src/lib/offline/calendars-offline-store.test.ts:68`
+
 ## Considered
 
 - **Existing component reused:** the dismissal filter (`CalendarShareVisibility::rejectDismissedSharees`, `AddressBookShareVisibility`, the dismissed check in `WgwCalendarBackend::getCalendarsForUser`). It already hides a share on every read path without deleting it, and it has tests on the CalDAV home and on lookup by id. Hiding a non-colleague's share is the same operation with a computed set.
@@ -136,6 +140,9 @@ See spec.md, Non-goals.
 - **Admins get free/busy for everyone:** rejected by the product owner, 2026-11-04 (in the Team availability session). Admins can find and invite anyone, but free/busy follows real Team membership.
 - **Admins join every Team presence room:** rejected by the product owner, 2026-11-04. Presence rooms are a peer-to-peer mesh capped at 32 peers (`app/Services/Principal/PrincipalSignalingService.php:28`). Admins see presence in their own Teams only.
 
+- **The owner's open app or offline cache updates its `shareWith` list when a grantee stops being a colleague:** rejected, 2026-11-04 (third review). The owner's collection does not change, so neither its state nor a poll moves. A cached sharee row stays until the owner's next fetch of that collection, the same lag a native CalDAV client has. It shows a name the owner already knew, and every write path goes through the server gate (chunk D) and the patch rule. Accepted and documented in the spec next to the native-client rule; chunk V checks the owner side after a reload.
+- **FileNode `rootsHash` over root paths:** rejected, 2026-11-04 (third review). Two grants can share a root path (two owners sharing the same Team folder, or a re-share with another level), so one hidden grant can leave the path set unchanged. `rootsHash` hashes the sorted ids of the viewer's resolved, visible member grants. A changed level is a changed grant row and already moves the sequence.
+
 ## Affected packages
 
 - `packages/api`
@@ -153,7 +160,7 @@ See spec.md, Non-goals.
 
 ## Open decisions
 
-None — every choice for this work is made. The former OD1–OD3 and the review blockers BL1–BL5 were settled on 2026-11-04; see Considered.
+None — every choice for this work is made. The former OD1–OD3, the review blockers BL1–BL5 and the third-review points (owner cache lag, `rootsHash` over grant ids) were settled on 2026-11-04; see Considered.
 
 ## Admin rule
 
@@ -285,8 +292,10 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
   - Patch writes of `shareWith` leave hidden grants untouched (test). Revoke-all (`shareWith: null` on calendars and address books, MCP `set` with `shareWith: null`) also revokes hidden grants, and OpenAPI says so.
   - Team-owned items are never filtered. Restoring a dismissed share does not bypass hiding.
   - Tests show that after a membership change, with no other write, these report the hidden collection as destroyed and the returning one as created: JMAP `Calendar/changes` (`CalendarChangesMethod`), `AddressBook/changes`, the push state from `JmapPushStateResolver`, and the REST `/changes` routes for task lists, notebooks and chat channels (`computeInstancesState`).
+  - Item level: `CalendarEvent/changes`, `ContactCard/changes` and `Note/changes` list every item of the hidden collection in `destroyed` and every item of the returning one in `created`. The id registries (`recordedEventIdsForCalendar`, `recordedCardIdsForBook`, `recordedNoteIdsForNotebook`) stay unfiltered; a test fails if a visibility filter is added to them. `ChatMessage/changes` keeps its documented behaviour (no per-message `destroyed`; the client prunes by channel), covered by one test.
+  - A test shows that `AddressBookRepository::syncTokens` drops a hidden address book, through `AddressBookCollectionAccess`.
   - The dead `CalendarRepository::changes` and `AddressBookRepository::changes` are removed.
-  - Known behaviour, stated in OpenAPI and in the issue: native CalDAV and CardDAV clients remove their local copy of a hidden collection and sync it again when it comes back. Nothing is deleted on the server.
+  - Known behaviour, stated in OpenAPI and in the issue: native CalDAV and CardDAV clients remove their local copy of a hidden collection and sync it again when it comes back. Nothing is deleted on the server. On the owner's side, an open app or offline cache keeps a hidden sharee in `shareWith` until its next fetch of that collection (see Considered).
   - No grant row is deleted or updated outside revoke-all (tests assert row counts).
 - **Verify with:** `composer --working-dir packages/api done-gate`
 - **Parallel with:** F, H (rebased on D)
@@ -300,7 +309,7 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Done when:**
   - A new filter in `DriveShareGrantResolver` drops member grants whose share owner is a non-colleague user. `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
   - Owner side: the owner's grant list and access panel omit non-colleague grantees. `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
-  - The FileNode state becomes `<seq>.<rootsHash>`, where `rootsHash` is a short hash of the viewer's visible roots. `FileNodeChangesMethod` accepts that format and answers `cannotCalculateChanges` when the hash differs. A legacy all-digit state also answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy. The push state for `files` uses the same value.
+  - The FileNode state becomes `<seq>.<rootsHash>`, where `rootsHash` is a short hash of the sorted ids of the viewer's resolved, visible member grants (not their root paths; see Considered). A test hides one of two grants on the same root path and gets `cannotCalculateChanges`. `FileNodeChangesMethod` accepts that format and answers `cannotCalculateChanges` when the hash differs. A legacy all-digit state also answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy. The push state for `files` uses the same value.
   - A hidden document answers its thread routes (`files/threads/*`) exactly as an unknown document. The thread state itself is unchanged.
   - A live Docs or Notes collab session is dropped on the next signaling check (`pnpm test:collab-api`).
   - Guest links and public links are unaffected.
@@ -334,7 +343,7 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
   - A Team's `group-member-set` is readable only by its members and by admins.
   - `principals/{user}` for a non-colleague returns the same 404 as for an unknown user. The filter sits on the collection node (`getChild`, `childExists`). The principal backend stays unfiltered.
   - The comment at `AppCalDAVPrincipalCollection.php:89` is **updated, not removed**. It says that `getChild` now resolves colleagues only, and that delivery to non-colleagues never reaches it because H's guard stops local delivery to them first.
-  - Tests: a CalDAV invite to a colleague is delivered locally; one to a non-colleague gets the same schedule-status as an external address and no local copy; an admin's invite to anyone is delivered locally.
+  - Tests: a CalDAV invite to a colleague is delivered locally; one to a non-colleague leaves no copy in that user's inbox and gets the same schedule-status as an external address in the same request (the test compares the two, it does not pin a code; the code follows Bug #1929); an admin's invite to anyone is delivered locally.
 - **Verify with:** `composer --working-dir packages/api done-gate`
 - **Parallel with:** E2 (after H)
 
@@ -371,7 +380,7 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 
 - **id:** `teams-visibility-verify`
 - **Skill:** testing
-- **Done when:** the verifier returns `PASS` or `PASS_WITH_NITS` (prompt from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md)), and the parent ran [done-checklist](../../skills/developer/done-checklist.md). Own browser e2e with two admins (in no shared Team) and four users (A–B share T1, B–C share T2, D is alone). It checks every surface in the Admin rule table, non-transitivity (A and C), admin-to-admin presence and free/busy (none on a fresh install; present on an upgraded instance where both admins are in the old "Administrators" Team), and hidden shares coming back when D joins T1. It runs once on a fresh install and once on an instance upgraded from main. It includes a second tab, a refresh while a share is hidden, and a native CalDAV client (DAVx⁵ or Apple Calendar) seeing a hidden calendar disappear and come back.
+- **Done when:** the verifier returns `PASS` or `PASS_WITH_NITS` (prompt from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md)), and the parent ran [done-checklist](../../skills/developer/done-checklist.md). Own browser e2e with two admins (in no shared Team) and four users (A–B share T1, B–C share T2, D is alone). It checks every surface in the Admin rule table, non-transitivity (A and C), admin-to-admin presence and free/busy (none on a fresh install; present on an upgraded instance where both admins are in the old "Administrators" Team), and hidden shares coming back when D joins T1. It runs once on a fresh install and once on an instance upgraded from main. It includes a second tab, a refresh on the owner's side while a share is hidden (the hidden sharee is gone from the owner's share dialog after the reload), and a native CalDAV client (DAVx⁵ or Apple Calendar) seeing a hidden calendar disappear and come back.
 - **Parallel with:** none
 
 ## Test plan

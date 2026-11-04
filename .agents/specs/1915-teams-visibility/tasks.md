@@ -11,7 +11,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 
 | id | owner / agent | skill | key paths | verify command |
 |----|---------------|-------|-----------|----------------|
-| `team-rename-copy` | builder | apps-ui | `packages/apps/src/admin-core/`, `settings-core/`, `*-labels.ts`, `drive-core/src/drive-path-utils.ts`, `ui/owner-scope-labels.ts`, `packages/api/app/Mcp/Tools/`, e2e specs | `pnpm --dir packages/apps exec vitest run` |
+| `team-rename-copy` | builder | apps-ui | `packages/apps/src/admin-core/`, `settings-core/`, `*-labels.ts`, `drive-core/src/drive-path-utils.ts`, `ui/owner-scope-labels.ts`, e2e specs | `pnpm --dir packages/apps exec vitest run` |
 | `admin-role` | builder | api, apps-ui | `app/Services/Auth/AdminRoleResolver.php`, `app/Services/Admin/`, `app/Services/Installer/InstallerSeeder.php`, `database/migrations/wgw/`, `packages/apps/src/admin-core/` | `composer --working-dir packages/api done-gate` |
 | `colleague-resolver` | builder | api | `packages/api/app/Services/Teams/TeamColleagues.php` (new), `tests/Feature/Teams/` | `composer --working-dir packages/api done-gate` |
 | `people-directory-filter` | builder | api | `app/Services/Calendars/CalendarSchedulingNotificationService.php`, `app/Services/Drive/DriveSharePrincipalDirectoryService.php`, `openapi/openapi.json` | `composer --working-dir packages/api done-gate` |

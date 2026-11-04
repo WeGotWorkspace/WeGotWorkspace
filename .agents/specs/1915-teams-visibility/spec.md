@@ -1,4 +1,4 @@
-Source: #1915 (body-hash: 4a122c5f)
+Source: #1915 (body-hash: 3ad8138d)
 Goal: WeGotWorkspace/Product#114
 
 # Teams: rename Groups, and see only colleagues you share a Team with
@@ -96,6 +96,7 @@ Existing grants are not touched by these gates.
 - Restoring a dismissed share does not bypass hiding. A hidden share becomes visible again only when the users share a Team again.
 - `/changes` must report a hidden collection as destroyed and a re-shown one as created, so the Dexie caches on other devices follow. JMAP push is pull-only, and every state except FileNode is already a map keyed by the viewer's visible collections, so hiding changes it on the next poll with no extra mechanism. FileNode uses one global sequence, so its state gains a hash of the viewer's visible roots; a changed hash, or a legacy all-digit state, answers `cannotCalculateChanges` and the client resyncs once.
 - Native CalDAV and CardDAV clients cannot tell hiding from deleting: they drop their local copy and sync it again when it comes back. Nothing is lost on the server. This is known and documented behaviour.
+- The owner's open app or offline cache can still list a hidden sharee until it next fetches that collection, because the owner's own collection did not change. After a reload the sharee is gone. Writes still follow the server rules. This is known and documented behaviour.
 - A live collab session (Docs, Notes) of a user who stops being a colleague of the document owner ends on the next signaling check, like a revoked share.
 - **The owner does not see it either.** A share to a non-colleague is absent from the owner's share list, on every surface (JMAP `shareWith`, Drive grant lists, the access panel, MCP). The owner cannot revoke it while it is hidden. It comes back, unchanged, when the two share a Team again.
 - **Owner writes keep hidden grants.** Calendar and address book `shareWith` writes and Drive `mergeShareWith` are already patches, so they leave hidden grants alone. An explicit "share with nobody" (`shareWith: null`, MCP `set` with `null`) also revokes hidden grants. Otherwise a later shared Team would reopen something the owner closed. Deleting the item removes them too, as today.
