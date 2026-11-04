@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   onReconnect: null as null | (() => void),
   onSettled: null as null | ((key: number) => void),
   owned: new Set<string>(),
+  readFails: false,
 }));
 
 vi.mock("@/hooks/use-connectivity", () => ({
@@ -29,7 +30,10 @@ vi.mock("@/lib/offline/drive/use-drive-file-node-inbound", () => ({
   },
 }));
 vi.mock("@/lib/offline/docs/docs-inbound-sync", () => ({
-  readDocsPendingWrites: async () => ({}) as DocsPendingWrites,
+  readDocsPendingWrites: async () => {
+    if (state.readFails) throw new Error("idb");
+    return {} as DocsPendingWrites;
+  },
   subscribeDocsCachesChanged: () => () => undefined,
 }));
 vi.mock("@/lib/offline/docs/docs-inbound-plan", () => ({
@@ -44,11 +48,17 @@ function render(filePath: string | null, onFollow = vi.fn()) {
   return renderHook(() => useDocsEditorPathFollow({ username: "alice", filePath, onFollow }));
 }
 
+/** Let the queued-write read answer. */
+async function settleQueueRead() {
+  await act(async () => {});
+}
+
 // The open Doc follows its file and holds its save while the path is unsure (#1563).
 describe("useDocsEditorPathFollow", () => {
   beforeEach(() => {
     state.online = true;
     state.owned = new Set();
+    state.readFails = false;
   });
 
   it("opens the new path when the Doc, or its folder, moves", async () => {
@@ -68,9 +78,10 @@ describe("useDocsEditorPathFollow", () => {
     expect(onFollow).not.toHaveBeenCalled();
   });
 
-  it("holds the save after being offline until the next pull settles online", () => {
+  it("holds the save after being offline until the next pull settles online", async () => {
     state.online = false;
     const { result, rerender } = render("/users/alice/Plan.md");
+    await settleQueueRead();
     expect(result.current.holdServerSave).toBe(true);
 
     state.online = true;
@@ -82,12 +93,13 @@ describe("useDocsEditorPathFollow", () => {
     expect(result.current.holdServerSave).toBe(false);
   });
 
-  it("keeps the hold after a followed move until the open path changes", () => {
+  it("keeps the hold after a followed move until the open path changes", async () => {
     state.online = false;
     let path = "/users/alice/Plan.md";
     const { result, rerender } = renderHook(() =>
       useDocsEditorPathFollow({ username: "alice", filePath: path, onFollow: vi.fn() }),
     );
+    await settleQueueRead();
     state.online = true;
     act(() => state.onReconnect?.());
     act(() => publishDocsPathMoved("alice", "/users/alice/Plan.md", "/users/alice/New.md"));
@@ -96,12 +108,16 @@ describe("useDocsEditorPathFollow", () => {
 
     path = "/users/alice/New.md";
     rerender();
+    // The new path's queue read has not answered yet.
+    expect(result.current.holdServerSave).toBe(true);
+    await settleQueueRead();
     expect(result.current.holdServerSave).toBe(false);
   });
 
-  it("ignores a pull that settled for an older reconnect", () => {
+  it("ignores a pull that settled for an older reconnect", async () => {
     state.online = false;
     const { result } = render("/users/alice/Plan.md");
+    await settleQueueRead();
     state.online = true;
     act(() => state.onReconnect?.());
     act(() => state.onReconnect?.());
@@ -116,6 +132,20 @@ describe("useDocsEditorPathFollow", () => {
     state.owned = new Set(["users/alice/New.md"]);
     const { result } = render("/users/alice/New.md");
     await waitFor(() => expect(result.current.holdServerSave).toBe(true));
+  });
+
+  it("holds the save on the first render, before the queue has answered", async () => {
+    const { result } = render("/users/alice/Plan.md");
+    expect(result.current.holdServerSave).toBe(true);
+    await settleQueueRead();
+    expect(result.current.holdServerSave).toBe(false);
+  });
+
+  it("keeps holding the save when the queue cannot be read", async () => {
+    state.readFails = true;
+    const { result } = render("/users/alice/Plan.md");
+    await settleQueueRead();
+    expect(result.current.holdServerSave).toBe(true);
   });
 
   it("holds nothing on the Docs home", () => {

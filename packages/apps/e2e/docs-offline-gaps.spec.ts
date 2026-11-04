@@ -7,7 +7,7 @@
 //    delete and Shared with me say they need a connection.
 // 4. "Changes synced" only shows once changes reached the server.
 // 5. No "Failed to fetch" and no uncaught error anywhere on Docs home offline.
-import { expect, test, type BrowserContext, type Page } from "./helpers/live-test";
+import { expect, test, type BrowserContext, type Page, type Route } from "./helpers/live-test";
 import {
   appendToActiveDocBody,
   docsHomeRow,
@@ -159,6 +159,61 @@ test("gap 1: an offline create whose name was taken on the server keeps both", a
 
   await expect
     .poll(() => serverText(`${HOME}/${base} (1).md`), { timeout: 45_000 })
+    .toContain(token);
+  expect(await serverText(`${HOME}/${base}.md`)).toContain("server-token");
+  expect(await serverText(`${HOME}/${base}.md`)).not.toContain(token);
+  await expect.poll(() => editorShows(page), { timeout: 15_000 }).toContain(`${base} (1)`);
+  expect(errors).toEqual([]);
+});
+
+test("gap 1, reloaded: a queued create keeps its own text after a reload online", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(150_000);
+  const errors = watchErrors(page);
+  const base = `Gaps reload ${run()}`;
+  const token = `offline-reload-${run()}`;
+  await gotoDocsHome(page);
+  await page.waitForTimeout(2000);
+  await goOffline(context, page);
+
+  await page.getByRole("button", { name: "New document" }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("row", { name: "Personal" }).click();
+  await dialog.getByRole("textbox").first().fill(base);
+  await dialog
+    .getByRole("button", { name: /create/i })
+    .last()
+    .click();
+  await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
+  await appendToActiveDocBody(page, token);
+  await page.waitForTimeout(2000);
+
+  // Meanwhile another device creates the same name.
+  await seedDocAtPath(`${HOME}/${base}.md`, "# server copy\n\nserver-token\n");
+
+  // The flush's create fails, so the create is still queued when the tab reloads online.
+  let createsRefused = 0;
+  const refuseCreate = async (route: Route) => {
+    const body = route.request().postData() ?? "";
+    if (body.includes("FileNode/set") && body.includes(base)) {
+      createsRefused += 1;
+      await route.fulfill({ status: 503, body: "unavailable" });
+      return;
+    }
+    await route.fallback();
+  };
+  await page.route("**/jmap**", refuseCreate);
+  await context.setOffline(false);
+  await expect.poll(() => createsRefused, { timeout: 30_000 }).toBeGreaterThan(0);
+  await page.reload();
+  await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(2000);
+  await page.unroute("**/jmap**", refuseCreate);
+
+  await expect
+    .poll(() => serverText(`${HOME}/${base} (1).md`), { timeout: 60_000 })
     .toContain(token);
   expect(await serverText(`${HOME}/${base}.md`)).toContain("server-token");
   expect(await serverText(`${HOME}/${base}.md`)).not.toContain(token);

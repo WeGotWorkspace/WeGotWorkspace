@@ -38,7 +38,7 @@ The owner was asleep; each open point is decided here.
    - A retried create may have landed with its answer lost. On a retry, a non-empty file under the wanted name with exactly the same size counts as our own earlier create, not as a clash. An empty file never matches, so the name keeps both.
    - While a queued create owns the path, the editor holds its server save, so the open room cannot write to the name before the flush settles it.
 2. **The text follows the file.**
-   - A cross-tab topic (`docs-path-moves.ts`) tells every tab, this one included, that a path (a file or a folder) is now another path. An open editor of that path, or of a Doc under that folder, opens the new path in place (history replace).
+   - A cross-tab topic (`docs-path-moves.ts`) tells every tab, this one included, that a path (a file or a folder) is now another path. An open editor of that path, or of a Doc under that folder, follows it. Opened by id, the id stays in the URL. Opened by path, the URL is replaced with the new path.
    - The topic is published after an offline rename (queued), an online rename, a kept-both create, and a move that Drive's FileNode inbound reports. It is not published for a path a queued local write still owns: the local name wins until that write settles (step 1, decision 5).
    - Before the topic is published, text in a path-keyed collab database (a Doc opened before its FileNode id was known, or created offline) moves to the new path. Only databases that exist are opened. A database keyed by FileNode id needs nothing, because the id survives a rename.
    - After being offline, the editor holds its server save until the first FileNode pull after reconnect settles. When a move of the open Doc is published, the hold also lasts until the editor is on the new path, online or after that pull. So nothing is written to the old name.
@@ -71,7 +71,7 @@ The owner was asleep; each open point is decided here.
 - Starred and Trash show their Docs offline instead of a fetch error.
 - Shared with me offline shows "Shared documents are not available offline."
 - "Delete permanently" offline shows "Deleting permanently needs a connection."
-- An open Doc follows a rename or move made elsewhere (its URL changes to the new name).
+- An open Doc follows a rename or move made elsewhere. Opened by id, the URL keeps that id and the tab title shows the new name. Opened by path, the URL changes to the new name.
 - An offline create whose name was taken lands as "name (1).md".
 - No "Changes synced" toast on Docs home when nothing was queued, and none while offline.
 
