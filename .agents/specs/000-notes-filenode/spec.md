@@ -2,7 +2,7 @@ Source: ad-hoc
 
 Goal: #380
 
-> **Superseded.** Notes left Drive. Store is CalDAV VJOURNAL; live inbound is vendor `urn:wgw:jmap:notes`. See [662-notes-vjournal](../662-notes-vjournal/spec.md) and [671-notes-jmap-dexie](../671-notes-jmap-dexie/spec.md). Keep this folder as historical FileNode design only.
+> **Superseded.** Notes left Drive. Store is CalDAV VJOURNAL; live inbound is vendor `urn:wgw:jmap:notes`. See [662-notes-vjournal](../archive/2026/662-notes-vjournal/spec.md) and [671-notes-jmap-dexie](../671-notes-jmap-dexie/spec.md). Keep this folder as historical FileNode design only.
 
 # Notes as FileNodes
 
