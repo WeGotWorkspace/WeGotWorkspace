@@ -234,12 +234,14 @@ export function DocsCollabEditor({
       editor={editor}
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
+      size={formatBarConfig.size}
       formattingDisabled={formattingDisabled}
       className={formatBarConfig.className}
       onInsertImage={onInsertImage}
       commentControl={
         !viewSource && commentControlLabels && onAddCommentFromSelection ? (
           <DocsCollabCommentControl
+            size={formatBarConfig.size}
             labels={commentControlLabels}
             canAddFromSelection={canAddCommentFromSelection}
             commentsDisabled={commentsDisabled}

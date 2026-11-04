@@ -695,7 +695,7 @@ function DocsCollabWorkspaceInner({
                   formatBar={
                     editorFormat === "text" || formatBarMode === "hidden"
                       ? false
-                      : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
+                      : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false, size: "lg" }
                   }
                   onContentChange={handleMarkdownChange}
                   onEditorReady={handleEditorReady}

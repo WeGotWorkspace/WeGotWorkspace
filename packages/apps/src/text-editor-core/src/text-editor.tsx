@@ -112,6 +112,7 @@ export function TextEditor({
       editor={editor}
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
+      size={formatBarConfig.size}
       className={formatBarConfig.className}
       onInsertImage={onInsertImage}
     />

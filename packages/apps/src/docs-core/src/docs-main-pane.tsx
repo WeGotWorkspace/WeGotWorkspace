@@ -75,7 +75,7 @@ export function DocsMainPane({
         formatBar={
           isPlainText || controller.readOnly
             ? false
-            : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
+            : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false, size: "lg" }
         }
         onUpdate={({ content }) => controller.onContentChange(content)}
         onEditorReady={onEditorReady}

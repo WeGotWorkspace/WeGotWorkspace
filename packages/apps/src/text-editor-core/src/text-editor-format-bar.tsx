@@ -36,6 +36,7 @@ import {
   TEXT_EDITOR_FORMAT_BAR_FULL,
   type TextEditorFormatBarConfig,
   type TextEditorFormatBarGroup,
+  type TextEditorFormatBarSize,
 } from "@/text-editor-core/src/text-editor-format-bar-config";
 
 type EditorChain = ReturnType<Editor["chain"]>;
@@ -46,12 +47,14 @@ function FormatBarIconButton({
   active,
   disabled,
   icon,
+  size,
 }: {
   label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
   icon: ReactNode;
+  size: TextEditorFormatBarSize;
 }) {
   return (
     <IconButton
@@ -60,7 +63,7 @@ function FormatBarIconButton({
       onClick={onClick}
       active={active}
       disabled={disabled}
-      size="md"
+      size={size}
       variant="outline"
       aria-pressed={active || undefined}
     />
@@ -86,6 +89,8 @@ export type TextEditorFormatBarProps = {
   trailing?: ReactNode;
   /** Opens the Docs image picker (hidden when omitted). */
   onInsertImage?: () => void;
+  /** Control size for every button in the bar. Defaults to `md`. */
+  size?: TextEditorFormatBarSize;
   className?: string;
 };
 
@@ -97,6 +102,7 @@ export function TextEditorFormatBar({
   commentControl,
   trailing,
   onInsertImage,
+  size = "md",
   className,
 }: TextEditorFormatBarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
@@ -159,17 +165,19 @@ export function TextEditorFormatBar({
   }
 
   return (
-    <div className={cn("text-editor-format-bar no-print", className)}>
+    <div className={cn("text-editor-format-bar no-print", className)} data-size={size}>
       <div className="text-editor-format-bar__controls">
         {showHistory ? (
           <>
             <FormatBarIconButton
+              size={size}
               label="Undo"
               disabled={formattingDisabled || !state.canUndo}
               onClick={() => chain().undo().run()}
               icon={<Undo2 />}
             />
             <FormatBarIconButton
+              size={size}
               label="Redo"
               disabled={formattingDisabled || !state.canRedo}
               onClick={() => chain().redo().run()}
@@ -188,7 +196,7 @@ export function TextEditorFormatBar({
                 aria-label={`${headingTriggerLabel}, heading level`}
                 disabled={formattingDisabled}
                 aria-pressed={headingActive || undefined}
-                size="md"
+                size={size}
                 variant="outline"
                 className={cn(
                   "text-editor-format-bar__heading-trigger",
@@ -233,6 +241,7 @@ export function TextEditorFormatBar({
         {showMarksBasic ? (
           <>
             <FormatBarIconButton
+              size={size}
               label="Bold"
               active={state.bold}
               disabled={formattingDisabled}
@@ -240,6 +249,7 @@ export function TextEditorFormatBar({
               icon={<Bold />}
             />
             <FormatBarIconButton
+              size={size}
               label="Italic"
               active={state.italic}
               disabled={formattingDisabled}
@@ -247,6 +257,7 @@ export function TextEditorFormatBar({
               icon={<Italic />}
             />
             <FormatBarIconButton
+              size={size}
               label="Underline"
               active={state.underline}
               disabled={formattingDisabled}
@@ -258,6 +269,7 @@ export function TextEditorFormatBar({
         {showMarksExtra ? (
           <>
             <FormatBarIconButton
+              size={size}
               label="Strike"
               active={state.strike}
               disabled={formattingDisabled}
@@ -265,6 +277,7 @@ export function TextEditorFormatBar({
               icon={<Strikethrough />}
             />
             <FormatBarIconButton
+              size={size}
               label="Inline code"
               active={state.code}
               disabled={formattingDisabled}
@@ -272,6 +285,7 @@ export function TextEditorFormatBar({
               icon={<Code />}
             />
             <FormatBarIconButton
+              size={size}
               label="Highlight"
               active={state.highlight}
               disabled={formattingDisabled}
@@ -284,6 +298,7 @@ export function TextEditorFormatBar({
         {showBlocksBasic ? (
           <>
             <FormatBarIconButton
+              size={size}
               label="Bullet list"
               active={state.bulletList}
               disabled={formattingDisabled}
@@ -291,6 +306,7 @@ export function TextEditorFormatBar({
               icon={<List />}
             />
             <FormatBarIconButton
+              size={size}
               label="Ordered list"
               active={state.orderedList}
               disabled={formattingDisabled}
@@ -302,6 +318,7 @@ export function TextEditorFormatBar({
         {showBlocksExtra ? (
           <>
             <FormatBarIconButton
+              size={size}
               label="Task list"
               active={state.taskList}
               disabled={formattingDisabled}
@@ -309,6 +326,7 @@ export function TextEditorFormatBar({
               icon={<ListChecks />}
             />
             <FormatBarIconButton
+              size={size}
               label="Blockquote"
               active={state.blockquote}
               disabled={formattingDisabled}
@@ -316,6 +334,7 @@ export function TextEditorFormatBar({
               icon={<Quote />}
             />
             <FormatBarIconButton
+              size={size}
               label="Divider"
               disabled={formattingDisabled}
               onClick={() => chain().setHorizontalRule().run()}
@@ -329,6 +348,7 @@ export function TextEditorFormatBar({
         ) : null}
         {showLink ? (
           <FormatBarIconButton
+            size={size}
             label="Link"
             active={state.link}
             disabled={formattingDisabled}
@@ -338,6 +358,7 @@ export function TextEditorFormatBar({
         ) : null}
         {onInsertImage ? (
           <FormatBarIconButton
+            size={size}
             label="Insert image"
             disabled={formattingDisabled}
             onClick={onInsertImage}
