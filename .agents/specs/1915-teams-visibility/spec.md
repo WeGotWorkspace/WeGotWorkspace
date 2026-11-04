@@ -1,4 +1,4 @@
-Source: #1915 (body-hash: e92a6430)
+Source: #1915 (body-hash: e6d890e5)
 Goal: WeGotWorkspace/Product#114
 
 # Teams: rename Groups, and see only colleagues you share a Team with
@@ -7,10 +7,10 @@ Written against `origin/main` at `0fa5d3521` and revised after an external revie
 
 ## Goal
 
-Two steps ahead of the Projects revision:
+Three steps ahead of the Projects revision:
 
 1. **Rename.** Every user-facing "Group" that means an admin-managed group principal becomes "Team". This covers Admin, Settings, share dialogs, move-to dialogs, Drive and Docs labels. Code, API, OpenAPI, DAV paths and database names keep `group`.
-2. **Visibility.** A non-admin user can find, see and interact only with **colleagues**: users who share at least one Team with them. Admins find everyone, but see presence and free/busy only in their own Teams. The server enforces this; the UI filtering follows from the server.
+2. **Visibility.** A non-admin user can find, see and interact only with **colleagues**: users who share at least one Team with them. Admins find and invite everyone, but DMs, shares, presence and free/busy follow their own Teams, as for anyone. The server enforces this; the UI filtering follows from the server.
 3. **Admin becomes a role.** Admin is no longer membership of the `administrators` group principal.
 
 Product decisions (product owner, 2026-11-04):
@@ -60,8 +60,8 @@ Product decisions (product owner, 2026-11-04):
 
 - `colleagues(viewer)` is the set of user principals that are members of at least one group principal the viewer is a member of, plus the viewer. Membership is `groupmembers` (`principal_id` = group, `member_id` = user).
 - Admin is a role (chunk J), so no group grants anything beyond membership. Two admins share a Team only if they are both in a real Team. The old "Administrators" Team is a real Team from then on.
-- **Admin rule** (product owner, 2026-11-04): an admin **finds and reaches everyone** (people lists, DM, share, invite, CalDAV group directory and principal lookup), but **watches only their own Teams** (presence and free/busy). The full mapping per surface is in plan.md, Admin rule.
-- The resolver has two checks with deliberately different names: `isColleague` (admins: everyone) and `sharesTeamIgnoringAdminRole` (presence, CalDAV VFREEBUSY, Team availability calendars, #1614). It returns a `ColleagueSet` value object, never `null` for "everyone".
+- **Admin rule** (product owner, 2026-11-04): an admin **finds and invites everyone** (people lists, the attendee picker, calendar invites, CalDAV group directory and principal lookup), but **DMs, shares, presence and free/busy follow real Team membership**, as for anyone. Decided 2026-11-04 after the PR review: a DM or share from an admin reaches only people in the admin's own Teams. Otherwise the recipient would never see it, because hiding is checked on the recipient's side. The full mapping per surface is in plan.md, Admin rule.
+- The resolver has two checks with deliberately different names: `isColleague` (admins: everyone; finding and inviting) and `sharesTeamIgnoringAdminRole` (real Team membership, admins too; DMs, shares and their pickers, hiding, presence, CalDAV VFREEBUSY, Team availability calendars, #1614). It returns a `ColleagueSet` value object, never `null` for "everyone".
 - The relation is **not transitive**. A shares a Team with B, and B with C. That does not make A and C colleagues. Every check is relative to the viewer.
 - The set is computed per request and memoised on the request. It is never cached across requests, because a membership change must take effect on the next request.
 - One query (a self-join on `groupmembers`) computes the set. There is no per-user loop.
@@ -70,18 +70,18 @@ Product decisions (product owner, 2026-11-04):
 ### Existence oracle
 
 - Wherever a username, principal URI or calendar user address comes from the caller, an unknown user and a non-colleague produce the **same** status, error code and message. This covers DM open, every share write path (REST, JMAP, MCP) and DAV principal lookup.
-- A non-admin may only name their own Teams as a group sharee. Another Team gives the same response as an unknown group.
+- A user, admins included, may only name their own Teams as a group sharee. Another Team gives the same response as an unknown group.
 
 ### Discovery surfaces (lists)
 
-- `GET calendars/scheduling/invitees` returns only colleagues. It feeds the DM rail, chat mentions, the calendar attendee picker and the share dialogs of Calendar, Tasks, Notes, Contacts and Meet.
-- `GET files/shares/principals` returns only colleagues and the caller's own Teams. Admins get every user and every Team.
+- `GET calendars/scheduling/invitees` returns only colleagues. It feeds the DM rail, chat mentions, the calendar attendee picker and the share dialogs of Calendar, Tasks, Notes, Contacts and Meet. Each entry carries `sharesTeam`; the DM rail and the share dialogs offer only entries where it is true. For non-admins it is always true; for admins it narrows DM and share pickers to their own Teams.
+- `GET files/shares/principals` returns only people who share a Team with the caller and the caller's own Teams, admins included: it only feeds share dialogs.
 - Over DAV, `principals/groups/` and each group's `group-member-set` are readable only by the group's members and by admins.
 - Presence: nobody joins the instance-wide `workspace` room any more, admins included. The client joins one `groups.{slug}` room per own Team and merges the rosters. The server already authorises those rooms by membership. Admins see presence only in their own Teams; pickers still show them every user.
 
 ### Interaction gates (writes)
 
-The server refuses each of these when the target is not a colleague, with the response from "Existence oracle":
+The server refuses each of these when the target shares no Team with the caller (`sharesTeamIgnoringAdminRole`, admins included), with the response from "Existence oracle":
 
 - opening a DM, over REST and through MCP `meet_channel_write kind=dm`
 - adding a user sharee to a calendar, task list, notebook, Meet channel, address book, Drive item or Docs document, over REST, JMAP and MCP share tools
@@ -92,18 +92,18 @@ Existing grants are not touched by these gates.
 ### Hiding existing shares ("Alles weg")
 
 - Hiding is **computed on read**. For the calendar family and address books, it sits next to the existing dismissal filter. Drive and Docs get a new filter in the grant resolver, because they have no dismissal mechanism. No grant row is deleted, revoked or rewritten.
-- A sharee instance or grant whose owner is a user principal that is not a colleague of the viewer is treated like a dismissed share. It is absent from listings, unreachable by id, absent from the CalDAV/CardDAV home and denied to collab joins. DMs are calendar-backed chat channels, so they follow the same filter.
+- A sharee instance or grant whose owner is a user principal who shares no Team with the viewer (admins included) is treated like a dismissed share. It is absent from listings, unreachable by id, absent from the CalDAV/CardDAV home and denied to collab joins. DMs are calendar-backed chat channels, so they follow the same filter.
 - Restoring a dismissed share does not bypass hiding. A hidden share becomes visible again only when the users share a Team again.
-- `/changes` must report a hidden collection as destroyed and a re-shown one as created, so the Dexie caches on other devices follow. JMAP push is pull-only, and every state except FileNode is already a map keyed by the viewer's visible collections, so hiding changes it on the next poll with no extra mechanism. FileNode uses one global sequence, so its state gains a hash of the viewer's visible grants and their access levels; a changed hash, or a legacy all-digit state, answers `cannotCalculateChanges` and the client resyncs once.
+- `/changes` must report a hidden collection as destroyed and a re-shown one as created, so the Dexie caches on other devices follow. JMAP push is pull-only, and every state except FileNode is already a map keyed by the viewer's visible collections, so hiding changes it on the next poll with no extra mechanism. FileNode uses one global sequence, so its state becomes `<seq>.<grantHash>` on `FileNode/get`, `FileNode/changes`, `FileNode/set` (including `ifInState`), `FileNode/query` and the push StateChange value. `grantHash` is a 128-bit hash of the sorted `(grant id, access)` pairs of the viewer's visible member grants. A matching `grantHash` gets a normal delta from the seq prefix; a different one, or a legacy all-digit state, answers `cannotCalculateChanges` and the client resyncs once. The push event-id basis keeps the root-marker composite and appends the same sorted pairs, so an open app also wakes for an in-place access change.
 - Native CalDAV and CardDAV clients cannot tell hiding from deleting: they drop their local copy and sync it again when it comes back. Nothing is lost on the server. This is known and documented behaviour.
 - The owner's open app or offline cache can still list a hidden sharee until it next fetches that collection, because the owner's own collection did not change. After a reload the sharee is gone. Writes still follow the server rules. This is known and documented behaviour.
 - A live collab session (Docs, Notes) of a user who stops being a colleague of the document owner ends on the next signaling check, like a revoked share.
-- **The owner does not see it either.** A share to a non-colleague is absent from the owner's share list, on every surface (JMAP `shareWith`, Drive grant lists, the access panel, MCP). The owner cannot revoke it while it is hidden. It comes back, unchanged, when the two share a Team again.
+- **The owner does not see it either.** A share to someone who shares no Team with the owner (admins included) is absent from the owner's share list, on every surface (JMAP `shareWith`, Drive grant lists, the access panel, MCP). The owner cannot revoke it while it is hidden. It comes back, unchanged, when the two share a Team again.
 - **Owner writes keep hidden grants.** Calendar and address book `shareWith` writes and Drive `mergeShareWith` are already patches, so they leave hidden grants alone. An explicit "share with nobody" (`shareWith: null`, MCP `set` with `null`) also revokes hidden grants. Otherwise a later shared Team would reopen something the owner closed. Deleting the item removes them too, as today.
 
 ### People inside an item you can open
 
-- Other members of a channel, comment authors and collab cursors in a document, event attendees, and the "shared with" list of a file are shown by name, even when they are not the viewer's colleagues. This happens only when a user in several Teams brings people from different Teams together in one item.
+- Other members of a channel, comment authors and collab cursors in a document, event attendees, and the "shared with" list of a file are shown by name, even when they are not the viewer's colleagues. This happens when a user in several Teams brings people from different Teams together in one item, or when someone leaves a Team the item's members shared.
 - They are never offered in a picker or a directory, and the UI offers no "message" or "share" action for them. The server gates (Interaction gates) refuse those actions anyway.
 - Anonymising them was rejected: attendee addresses live in the iCalendar data that CalDAV clients read, and comment authors live in the stored document.
 - Exception: for the **owner**, a non-colleague sharee is absent from the "shared with" list (see the owner rule above).
@@ -135,6 +135,7 @@ Existing grants are not touched by these gates.
 - An owner deletes an item that has hidden shares: the hidden grants go with it, as for any share today.
 - Dismissed and hidden at the same time: stays hidden after restore, and stays dismissed after the users share a Team again.
 - MySQL `LIKE ... ESCAPE` in the Drive principal search must stay valid on MySQL and SQLite (review finding 2026-10-13).
-- Instance with one admin and no Teams: the admin finds everyone, and other users see nobody until they are added to a Team. On an existing instance that is the state right after the update.
-- Two admins in no shared Team: each finds the other, but neither sees the other's presence or free/busy. On an upgraded instance, the existing admins are all in the old "Administrators" Team, so they are colleagues there and do see each other. That is accepted (product owner, 2026-11-04).
+- Instance with one admin and no Teams: the admin finds and can invite everyone, but has no one to DM or share with until the admin is in a Team with them. Other users see nobody until they are added to a Team. On an existing instance that is the state right after the update.
+- Two admins in no shared Team: each finds the other, but they cannot DM or share with each other and do not see each other's presence or free/busy. On an upgraded instance, the existing admins are all in the old "Administrators" Team, so they are colleagues there and do see each other. That is accepted (product owner, 2026-11-04).
+- An admin's existing DM or share with a user outside the admin's Teams: hidden for both, like anyone's, and back when they share a Team.
 - A user in Teams T1 and T2 is a colleague of both Teams' members. Members of T1 and T2 are not colleagues of each other unless they share a Team themselves.

@@ -135,13 +135,16 @@ See spec.md, Non-goals.
 - **DAV invites to non-colleagues via a new DAV-to-iMIP route:** rejected by the product owner, 2026-11-04. A non-colleague invited from a native client gets exactly what an external address gets today. The missing DAV-to-iMIP route is Bug #1929, for every external address.
 - **Merge-back layer for every share write:** rejected after review. Calendar and Drive writes are already patches. Only the revoke-all paths matter, and there an explicit "share with nobody" also revokes hidden grants (least privilege: a later shared Team must not reopen something the owner closed).
 - **One chunk E for every resource:** rejected after review. The calendar family reuses an existing filter. Drive and Docs have none, so they are their own chunk (E2).
-- **A cap on presence rooms per user:** rejected for now. A user in N Teams polls N small rooms instead of one room of up to 32. That is accepted and measured in chunk F, and a combined poll is a follow-up if it shows up in `docs/realtime-capacity.md` numbers.
+- **A cap on presence rooms per user:** rejected. A user in N Teams polls N small rooms instead of one room of up to 32. Chunk F measures it and builds a combined poll in the same chunk only if 4 Teams poll more than twice today's rate.
 - **Merging D and E1:** rejected. D is writes and E1 is reads; E1 is rebased on D instead.
 - **Admins get free/busy for everyone:** rejected by the product owner, 2026-11-04 (in the Team availability session). Admins can find and invite anyone, but free/busy follows real Team membership.
 - **Admins join every Team presence room:** rejected by the product owner, 2026-11-04. Presence rooms are a peer-to-peer mesh capped at 32 peers (`app/Services/Principal/PrincipalSignalingService.php:28`). Admins see presence in their own Teams only.
 
 - **The owner's open app or offline cache updates its `shareWith` list when a grantee stops being a colleague:** rejected, 2026-11-04 (third review). The owner's collection does not change, so neither its state nor a poll moves. A cached sharee row stays until the owner's next fetch of that collection, the same lag a native CalDAV client has. It shows a name the owner already knew, and every write path goes through the server gate (chunk D) and the patch rule. Accepted and documented in the spec next to the native-client rule; chunk V checks the owner side after a reload.
-- **FileNode `rootsHash` over root paths:** rejected, 2026-11-04 (third review). Two grants can share a root path (two owners sharing the same Team folder, or a re-share with another level), so one hidden grant can leave the path set unchanged. `rootsHash` hashes the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants. The access level is in the hash because `DriveShareGrantWriter` updates `access` in place on the same row and does not touch `change_seq` (`path: app/Services/Drive/DriveShareGrantWriter.php:107`): with ids only, a grant going from `read` to `readwrite` would leave the grantee's cache on the old level. Including it also closes that existing gap.
+- **FileNode `grantHash` over root paths:** rejected, 2026-11-04 (third review). Two grants can share a root path (two owners sharing the same Team folder, or a re-share with another level), so one hidden grant can leave the path set unchanged. `grantHash` hashes the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants. The access level is in the hash because `DriveShareGrantWriter` updates `access` in place on the same row and does not touch `change_seq` (`path: app/Services/Drive/DriveShareGrantWriter.php:107`): with ids only, a grant going from `read` to `readwrite` would leave the grantee's cache on the old level. Including it also closes that existing gap.
+
+- **Admins reach everyone with DM and share, and hiding exempts admin-owned shares:** rejected by the product owner, 2026-11-04 (PR review). With hiding checked on the recipient's side, an admin's DM to someone outside the admin's Teams was accepted and then never shown. A DM or share from an admin reaches only people in the admin's own Teams; admins still find and invite everyone.
+- **FileNode grant hash only in the StateChange string, or the push basis set to the global seq:** rejected (PR review). The first never wakes an open app, because the event id is built from the basis. The second wakes every browser on any file write, which `docs/architecture/jmap-push.md` is designed to avoid.
 
 ## Affected packages
 
@@ -160,17 +163,18 @@ See spec.md, Non-goals.
 
 ## Open decisions
 
-None — every choice for this work is made. The former OD1–OD3, the review blockers BL1–BL5 and the third-review points (owner cache lag, `rootsHash` over grant ids and access levels) were settled on 2026-11-04; see Considered.
+None — every choice for this work is made. The former OD1–OD3, the review blockers BL1–BL5 and the third-review points (owner cache lag, `grantHash` over grant ids and access levels on every FileNode method and in the push basis, admin DMs and shares only within own Teams) were settled on 2026-11-04; see Considered.
 
 ## Admin rule
 
-One paragraph, so that every chunk applies the same rule. Admin is a **role**, not a Team (chunk J). An admin **finds and reaches everyone**: people lists, DM, share and invite, and the CalDAV group directory and principal lookup. An admin **watches only their own Teams**: presence and free/busy follow real Team membership, as for any user. In code, the first group of checks calls `isColleague`. The second calls `sharesTeamIgnoringAdminRole`. No other variant exists.
+One paragraph, so that every chunk applies the same rule. Admin is a **role**, not a Team (chunk J). An admin **finds and invites everyone**: people lists, the attendee picker, calendar invites (delivered locally), and the CalDAV group directory and principal lookup. For **DMs, shares, presence and free/busy** an admin follows real Team membership, as for any user. Decided 2026-11-04 after the PR review: a DM or share from an admin reaches only people in the admin's own Teams. Otherwise the recipient would never see it, because hiding is checked on the recipient's side. In code, the first group of checks calls `isColleague`. The second calls `sharesTeamIgnoringAdminRole` (or `assertMayShareWith` / `isOwnTeam`, which use the same membership). No other variant exists.
 
 | Surface | Chunk | Check |
 |---|---|---|
-| Scheduling invitees, Drive share principals | C | `isColleague` |
-| DM open, share writes, group sharee | D | `assertVisibleUser`, `isOwnTeam` (admins: any Team) |
-| Hidden shares, owner share lists | E1, E2 | `isColleague` |
+| Scheduling invitees: attendee picker, mentions | C | `isColleague` |
+| DM rail and share dialogs (`sharesTeam` flag), Drive share principals | C | `sharesTeamIgnoringAdminRole` |
+| DM open, share writes, group sharee | D | `assertMayShareWith`, `isOwnTeam` (admins too) |
+| Hidden shares, owner share lists | E1, E2 | `sharesTeamIgnoringAdminRole` |
 | Presence rooms | F | own Teams only (admins too) |
 | `principals/groups/`, `group-member-set`, `principals/{user}` | G | `isColleague` / own Teams (admins: all) |
 | iTIP: JMAP → iMIP; DAV → same result as an external address | H | `isColleague` |
@@ -241,9 +245,9 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
   - A `TeamColleagues` service exposes:
     - `colleagues(viewer)`, which returns a `ColleagueSet` value object with `isUnrestricted()`, `contains(username)` and `usernames()`. It is never `null`.
     - `isColleague(viewer, username)`, where admins are colleagues of everyone
-    - `sharesTeamIgnoringAdminRole(viewer, username)`, the only check for presence and free/busy
-    - `isOwnTeam(viewer, groupSlug)`
-    - `assertVisibleUser(viewer, username)`, which throws the same exception as the existing unknown-user paths
+    - `sharesTeamIgnoringAdminRole(viewer, username)`, real Team membership for admins too: DMs, shares (writes, pickers, hiding), presence and free/busy
+    - `isOwnTeam(viewer, groupSlug)`, real membership for admins too
+    - `assertMayShareWith(viewer, username)`, which refuses unless `sharesTeamIgnoringAdminRole` and throws the same exception as the existing unknown-user paths
   - The Admin rule table in this plan is copied into the class docblock.
   - One query (a self-join on `groupmembers`) computes the set, memoised per request. Nothing is cached on a singleton or across requests.
   - `DriveGroupResolver::allowedGroupSlugs` and `GroupDirectoryService::groupsForUser` delegate to the same membership reader. `groupsForUser` becomes one query.
@@ -255,14 +259,14 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 
 - **id:** `people-directory-filter`
 - **Issue:** #1918
-- **Skill:** api
+- **Skill:** api, apps-ui
 - **Inputs:** invitees without a username parameter, sharing a response with `canSubmitEmail` — `path: app/Services/Calendars/CalendarSchedulingNotificationService.php:43`; Drive principals — `path: app/Services/Drive/DriveSharePrincipalDirectoryService.php:21`
 - **Done when:**
-  - `invitees(string $username)` returns only colleagues; admins get everyone. `canSubmitEmail` is unchanged. The controller passes the caller.
-  - Drive principals return only colleagues and own Teams; admins get everyone. Any `LIKE ... ESCAPE` stays valid on MySQL and SQLite.
+  - `invitees(string $username)` returns only colleagues; admins get everyone. Each entry carries `sharesTeam: boolean` (always true for non-admins). `canSubmitEmail` is unchanged. The controller passes the caller.
+  - Drive principals return only people who share a Team with the caller and own Teams, admins included (they only feed share dialogs). Any `LIKE ... ESCAPE` stays valid on MySQL and SQLite.
   - OpenAPI descriptions of both endpoints state the rule.
   - Feature tests per endpoint, for a non-admin and an admin.
-  - No client change is needed: one server filter covers the DM rail, mentions, the attendee picker and the share dialogs (`path: lib/api/wgw/meet-chat-directory.ts:47`, `path: lib/api/wgw/calendar.ts:272`).
+  - One server filter covers the DM rail, mentions, the attendee picker and the share dialogs (`path: lib/api/wgw/meet-chat-directory.ts:47`, `path: lib/api/wgw/calendar.ts:272`). Small client change: the DM rail and share dialogs offer only entries with `sharesTeam: true`, the attendee picker and mentions offer all. Vitest covers the filter.
 - **Verify with:** `composer --working-dir packages/api done-gate`
 - **Parallel with:** D, F, H
 
@@ -274,7 +278,7 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Inputs:** `path: app/Services/Chat/ChatChannelRepository.php:183`, `path: app/Services/Calendars/CalendarShareInvites.php:158`, `path: app/Services/Contacts/AddressBookShareInvites.php:119`, `path: app/Services/Drive/DriveShareShareeCheck.php:51`, `path: app/Mcp/McpMemberShareCommand.php:39`, `path: app/Mcp/Tools/MeetChannelWriteTool.php:118`
 - **Done when:**
   - The PR description names every caller of the four sharee checks: REST, JMAP `*/set shareWith`, MCP share tools and MCP DM.
-  - Each refuses a non-colleague user, and a group that is not one of the caller's own Teams (admins: any Team), with a response byte-identical to the unknown case. There is a test per write path.
+  - Each refuses a user who shares no Team with the caller, and a group that is not one of the caller's own Teams, admins included, with a response byte-identical to the unknown case. There is a test per write path, for a non-admin and an admin caller.
   - Existing grants are not touched.
 - **Verify with:** `composer --working-dir packages/api done-gate`
 - **Parallel with:** C, F, H
@@ -286,9 +290,10 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Skill:** api
 - **Inputs:** `path: app/Services/Calendars/CalendarShareVisibility.php:56` (viewer side, also used by `findReachable`), `path: app/Dav/Server/WgwCalendarBackend.php:199` (CalDAV home), `path: app/Services/Jmap/Methods/CalendarChangesMethod.php:52` and `path: app/Services/Jmap/Push/JmapPushStateResolver.php:156` (states keyed by visible collections), `path: app/Services/Contacts/AddressBookShareVisibility.php:17` (no filter method yet), `path: app/Services/Contacts/AddressBookCollectionAccess.php:25`, `path: app/Services/Calendars/CalendarShareInvites.php:90` (revoke-all), `path: app/Mcp/McpMemberShareCommand.php:39`
 - **Done when:**
-  - `CalendarShareVisibility` gets `rejectHiddenSharees(viewer, instances)` next to `rejectDismissedSharees`. It drops sharee instances whose owner is a user principal that is not a colleague. `accessibleInstances`, `findReachable` and `WgwCalendarBackend::getCalendarsForUser` apply both filters. That covers calendars, task lists, notebooks and Meet channels, DMs included.
+  - `CalendarShareVisibility` gets `rejectHiddenSharees(viewer, instances)` next to `rejectDismissedSharees`. It drops sharee instances whose owner is a user principal who shares no Team with the viewer (`sharesTeamIgnoringAdminRole`, admins included). `accessibleInstances`, `findReachable` and `WgwCalendarBackend::getCalendarsForUser` apply both filters. That covers calendars, task lists, notebooks and Meet channels, DMs included.
   - `AddressBookShareVisibility` gets the same pair of filters, applied in `AddressBookCollectionAccess` and on the CardDAV home.
-  - Owner side: the `shareWith` map that the owner reads (JMAP, CalDAV sharee properties, MCP listing) omits non-colleague sharees.
+  - Owner side: the `shareWith` map that the owner reads (JMAP, CalDAV sharee properties, MCP listing) omits sharees who share no Team with the owner (admins included).
+  - Test: an existing DM or calendar share between an admin and a user outside the admin's Teams is hidden for both and comes back when they share a Team.
   - Patch writes of `shareWith` leave hidden grants untouched (test). Revoke-all (`shareWith: null` on calendars and address books, MCP `set` with `shareWith: null`) also revokes hidden grants, and OpenAPI says so.
   - Team-owned items are never filtered. Restoring a dismissed share does not bypass hiding.
   - Tests show that after a membership change, with no other write, these report the hidden collection as destroyed and the returning one as created: JMAP `Calendar/changes` (`CalendarChangesMethod`), `AddressBook/changes`, the push state from `JmapPushStateResolver`, and the REST `/changes` routes for task lists, notebooks and chat channels (`computeInstancesState`).
@@ -307,9 +312,14 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Skill:** api
 - **Inputs:** `path: app/Services/Jmap/Methods/FileNodeChangesMethod.php:51` (digits-only guard), `path: app/Services/Drive/DriveShareGrantResolver.php:131`, `path: app/Services/Drive/DriveShareGrantResolver.php:181`, `path: app/Services/Drive/DriveShareService.php:360`, `path: app/Services/Drive/DriveShareAuthorizer.php:28`, `path: app/Services/Collab/CollabJoinAuthorizer.php:82`, `path: app/Services/Collab/DocCollabSignalingService.php:262`, `path: app/Services/Drive/DriveShareGrantWriter.php:26`
 - **Done when:**
-  - A new filter in `DriveShareGrantResolver` drops member grants whose share owner is a non-colleague user. `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
-  - Owner side: the owner's grant list and access panel omit non-colleague grantees. `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
-  - The FileNode state becomes `<seq>.<rootsHash>`, where `rootsHash` is a short hash of the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants (not their root paths; see Considered). Tests: hiding one of two grants on the same root path, and changing a grant from `read` to `readwrite`, each give `cannotCalculateChanges`. `FileNodeChangesMethod` accepts that format and answers `cannotCalculateChanges` when the hash differs. A legacy all-digit state also answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy. The push state for `files` uses the same value.
+  - A new filter in `DriveShareGrantResolver` drops member grants whose share owner is a user who shares no Team with the viewer (admins included). `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
+  - Owner side: the owner's grant list and access panel omit grantees who share no Team with the owner (admins included). `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
+  - The FileNode state is `<seq>.<grantHash>` on every method that returns it: `FileNode/get` (`path: app/Services/Jmap/Methods/FileNodeGetMethod.php:95`), `FileNode/changes`, `FileNode/set` including the `ifInState` guard (`path: app/Services/Jmap/Methods/FileNodeSetMethod.php:45`), `FileNode/query` (`path: app/Services/Jmap/Methods/FileNodeQueryMethod.php:100`) and the push StateChange value. Otherwise the Drive client's `fullResync` stores a bare digit token and every later sync resets the tree.
+  - `grantHash` is a 128-bit hash (as `JmapPushEventId::hash`) of the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants (not their root paths; see Considered).
+  - A matching `grantHash` gets a normal delta from the seq prefix. A different one answers `cannotCalculateChanges`. A legacy all-digit state answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy.
+  - The push event-id basis (`path: app/Services/Jmap/Push/JmapPushStateResolver.php:173`) keeps the root-marker composite and appends the sorted `(grant id, access)` pairs. The event source wakes an open app only when that hash changes (`path: app/Http/Controllers/Api/V1/Jmap/JmapEventSourceController.php:49`). The basis does not become the global seq, which would wake every browser on any file write.
+  - Tests: hiding one of two grants on the same root path, and a grant going from `read` to `readwrite`, each give `cannotCalculateChanges` and, with no file write, put `FileNode` in the next event-source response. After a resync, `FileNode/get` returns the new form and the next `FileNode/changes` is a delta.
+  - The FileNode rows in `docs/architecture/jmap-push.md` are updated.
   - A hidden document answers its thread routes (`files/threads/*`) exactly as an unknown document. The thread state itself is unchanged.
   - A live Docs or Notes collab session is dropped on the next signaling check (`pnpm test:collab-api`).
   - Guest links and public links are unaffected.
@@ -380,21 +390,21 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 
 - **id:** `teams-visibility-verify`
 - **Skill:** testing
-- **Done when:** the verifier returns `PASS` or `PASS_WITH_NITS` (prompt from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md)), and the parent ran [done-checklist](../../skills/developer/done-checklist.md). Own browser e2e with two admins (in no shared Team) and four users (A–B share T1, B–C share T2, D is alone). It checks every surface in the Admin rule table, non-transitivity (A and C), admin-to-admin presence and free/busy (none on a fresh install; present on an upgraded instance where both admins are in the old "Administrators" Team), and hidden shares coming back when D joins T1. It runs once on a fresh install and once on an instance upgraded from main. It includes a second tab, a refresh on the owner's side while a share is hidden (the hidden sharee is gone from the owner's share dialog after the reload), and a native CalDAV client (DAVx⁵ or Apple Calendar) seeing a hidden calendar disappear and come back.
+- **Done when:** the verifier returns `PASS` or `PASS_WITH_NITS` (prompt from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md)), and the parent ran [done-checklist](../../skills/developer/done-checklist.md). Own browser e2e with two admins (in no shared Team) and four users (A–B share T1, B–C share T2, D is alone). It checks every surface in the Admin rule table (admins find and invite everyone but cannot DM or share outside their Teams), non-transitivity (A and C), admin-to-admin presence and free/busy (none on a fresh install; present on an upgraded instance where both admins are in the old "Administrators" Team), and hidden shares coming back when D joins T1. It runs once on a fresh install and once on an instance upgraded from main. It includes a second tab, a refresh on the owner's side while a share is hidden (the hidden sharee is gone from the owner's share dialog after the reload), and a native CalDAV client (DAVx⁵ or Apple Calendar) seeing a hidden calendar disappear and come back.
 - **Parallel with:** none
 
 ## Test plan
 
 - [ ] API: OpenAPI → failing feature test → implement → `composer done-gate`, per chunk B–J
 - [ ] An existence-oracle test per write path and for `principals/{user}` and VFREEBUSY: the unknown and non-colleague responses are equal
-- [ ] Hiding: every read path, comeback after a shared Team, `/changes` destroyed/created without another write (JMAP, push state, REST), FileNode resync on a changed root set, collab drop, no grant row changed outside revoke-all
+- [ ] Hiding: every read path, comeback after a shared Team, `/changes` destroyed/created without another write (JMAP, push state, REST), FileNode resync when the `(grant id, access)` hash changes, an open app woken by an access change, collab drop, no grant row changed outside revoke-all
 - [ ] Admin role migration: current admins stay admin, and the old group stays a working Team
 - [ ] UI: copy rename with updated selectors and one share-copy source; admin toggle; empty-state stories; presence roster merge in Vitest
 - [ ] Own e2e (chunk V)
 
 ## Release note
 
-- For existing instances: after the update, a user who is in no Team sees no colleagues and no shares from users, until an admin adds them to a Team. Admins become a role; the old "Administrators" group stays as a Team. Goes into the changelog and the pioneer update notes.
+- For existing instances: after the update, a user who is in no Team sees no colleagues and no shares from users, until an admin adds them to a Team. Admins keep DMs and shares only with people in their own Teams. Admins become a role; the old "Administrators" group stays as a Team. Goes into the changelog and the pioneer update notes.
 
 ## Doc updates (only if user wants)
 
