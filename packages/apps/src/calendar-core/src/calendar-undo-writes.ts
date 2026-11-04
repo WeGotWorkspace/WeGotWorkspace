@@ -95,7 +95,6 @@ export function occurrenceOverridesRevert(
   return { recurrenceOverrides: revert };
 }
 
-/** Steps of a this-and-future split: truncate the master, then create the fork. */
 /**
  * Undo of a create: hides the card at once, since it stays in the surface's working set
  * until a sync, then deletes the event. When the delete fails the event is still on the
@@ -120,6 +119,7 @@ export async function revertCreate(
   }
 }
 
+/** Steps of a this-and-future split: truncate the master, then create the fork. */
 export const SPLIT_STEPS = { truncate: "truncate", fork: "fork" } as const;
 
 /**
