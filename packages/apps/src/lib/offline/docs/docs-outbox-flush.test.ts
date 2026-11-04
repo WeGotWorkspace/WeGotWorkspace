@@ -28,6 +28,17 @@ vi.mock("@/lib/api/wgw/drive", () => ({
   })),
 }));
 
+const createDriveFileKeepingBoth = vi.fn();
+vi.mock("@/lib/api/wgw/drive-create-keep-both", () => ({
+  createDriveFileKeepingBoth: (...args: unknown[]) => createDriveFileKeepingBoth(...args),
+}));
+
+const moveDocsPath = vi.fn(async (..._args: unknown[]) => undefined);
+vi.mock("@/lib/offline/docs/docs-path-moves", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/docs/docs-path-moves")>()),
+  moveDocsPath: (...args: unknown[]) => moveDocsPath(...args),
+}));
+
 describe("flushDocsOutbox", () => {
   const username = "alice";
 
@@ -35,6 +46,8 @@ describe("flushDocsOutbox", () => {
     renameItem.mockReset();
     uploadFiles.mockReset();
     setStar.mockReset();
+    createDriveFileKeepingBoth.mockReset();
+    moveDocsPath.mockClear();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
   });
@@ -152,6 +165,56 @@ describe("flushDocsOutbox", () => {
     await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/B.md")).resolves.toBe(
       false,
     );
+  });
+
+  it("keeps both when an offline create's name was taken, and later writes follow it (#1563)", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "create-1",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({ op: "create", apiPath: "/users/alice/Plan.md", content: "# mine" }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "star-after-create",
+      domain: DOCS_DOMAIN,
+      op: "star",
+      payload: JSON.stringify({ op: "star", path: "/users/alice/Plan.md", starred: true }),
+    });
+    createDriveFileKeepingBoth.mockResolvedValue("Plan (1).md");
+
+    const result = await flushDocsOutbox(username);
+
+    expect(result).toMatchObject({ flushed: 2, failed: 0 });
+    const [parent, file, opts] = createDriveFileKeepingBoth.mock.calls[0]!;
+    expect(parent).toBe("/users/alice");
+    expect((file as File).name).toBe("Plan.md");
+    expect(await (file as File).text()).toBe("# mine");
+    expect(opts).toEqual({ mayHaveLanded: false });
+    expect(moveDocsPath).toHaveBeenCalledWith(
+      username,
+      "/users/alice/Plan.md",
+      "/users/alice/Plan (1).md",
+    );
+    expect(setStar).toHaveBeenCalledWith({ path: "/users/alice/Plan (1).md", starred: true });
+    expect(uploadFiles).not.toHaveBeenCalled();
+  });
+
+  it("tells the create that a retried row may have landed already", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "create-retry",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({ op: "create", apiPath: "/users/alice/Retry.md", content: "x" }),
+    });
+    createDriveFileKeepingBoth.mockRejectedValueOnce(new Error("Failed to fetch"));
+    await flushDocsOutbox(username);
+    createDriveFileKeepingBoth.mockResolvedValueOnce("Retry.md");
+
+    const result = await flushDocsOutbox(username);
+
+    expect(result).toMatchObject({ flushed: 1, failed: 0 });
+    expect(createDriveFileKeepingBoth.mock.calls[1]![2]).toEqual({ mayHaveLanded: true });
+    expect(moveDocsPath).not.toHaveBeenCalled();
   });
 
   it("puts a folder's page setup back when its queued trash is dropped", async () => {

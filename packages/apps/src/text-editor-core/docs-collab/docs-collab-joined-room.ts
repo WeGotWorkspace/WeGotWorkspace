@@ -19,7 +19,10 @@ export function rememberCollabRoomJoin(
  * a save was still due, the store is saved in the background
  * (`closeCollabRoomStore`). Teardown can run in a render that already carries
  * the next room (Docs keeps the editor mounted across a room change), so that
- * save goes to the room the store was joined with, not to `current`.
+ * save goes to the room the store was joined with, not to `current`. A room
+ * held off the server (`roomNotPersistent`) is not saved, but its store is
+ * still marked unsaved, as its save timer would have done: otherwise text
+ * typed within the save delay before a followed rename is dropped (#1563).
  */
 export function leaveCollabRoom(
   persistence: IndexeddbPersistence | null,
@@ -28,8 +31,12 @@ export function leaveCollabRoom(
 ): void {
   const saveDue = cancelSaveTimer(saveTimerRef);
   if (!persistence) return;
-  const joined = joinedRooms.get(persistence) ?? current;
+  const remembered = joinedRooms.get(persistence);
   joinedRooms.delete(persistence);
-  const unsaved = saveDue && !joined.urls.roomNotPersistent ? joined : null;
-  void closeCollabRoomStore(persistence, unsaved);
+  // Same room: this render's urls are newer than the join's (a save hold
+  // may have been released while the room was open).
+  const joined = remembered && remembered.room !== current.room ? remembered : current;
+  void closeCollabRoomStore(persistence, saveDue ? joined : null, {
+    upload: !joined.urls.roomNotPersistent,
+  });
 }

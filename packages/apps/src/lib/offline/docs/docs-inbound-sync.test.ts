@@ -28,6 +28,7 @@ import {
   type DocsInboundChange,
   type DocsNodeFacts,
 } from "@/lib/offline/docs/docs-inbound-sync";
+import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 
 const username = "alice";
 const ALL: DocsListingBrowseFilters = {};
@@ -269,6 +270,23 @@ describe("applyDocsInboundChanges", () => {
       "/users/alice/New/b.md",
       "/users/alice/keep.md",
     ]);
+  });
+
+  it("tells an open editor where a Doc moved elsewhere went, unless a queued write owns it", async () => {
+    await queue(
+      { op: "rename", from: "/users/alice/old.md", destination: "/users/alice", to: "mine.md" },
+      "Service Unavailable",
+    );
+    const heard: Array<[string, string]> = [];
+    const stop = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
+
+    await applyDocsInboundChanges(username, [
+      moved("/users/alice/open.md", "/users/alice/moved.md"),
+      moved("/users/alice/mine.md", "/users/alice/theirs.md"),
+    ]);
+
+    await expect.poll(() => heard).toEqual([["users/alice/open.md", "users/alice/moved.md"]]);
+    stop();
   });
 
   it("tells every tab, this one included, only when a cache changed", async () => {

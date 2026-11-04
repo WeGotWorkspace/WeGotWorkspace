@@ -19,6 +19,7 @@ import {
 } from "@/lib/offline/docs/docs-inbound-plan";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
+import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import { DOCS_DOMAIN, docsListingRowsTable } from "@/lib/offline/docs/docs-schema";
 import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
@@ -133,7 +134,29 @@ export async function applyDocsInboundChanges(
   const starsChanged = await applyStarredPathChanges(username, changes);
   const changed = listingChanged || starsChanged;
   if (changed) notifyDocsCachesChanged(username);
+  await followRemoteMoves(username, changes, pending);
   return changed;
+}
+
+/**
+ * An editor that has a Doc open at a path that moved elsewhere follows it, and
+ * its local text moves along, so unsaved text is saved to the file, not to a
+ * new file at the old path. A path a queued local write owns keeps the local
+ * name (decision 5).
+ */
+async function followRemoteMoves(
+  username: string,
+  changes: readonly DocsInboundChange[],
+  pending: DocsPendingWrites,
+): Promise<void> {
+  for (const change of changes) {
+    if (change.kind !== "moved") continue;
+    const from = docsSourceKey(change.from);
+    if (docsRowOwnedByQueuedWrite(pending, from) || docsRowHiddenByQueuedWrite(pending, from)) {
+      continue;
+    }
+    await moveDocsPath(username, from, change.to);
+  }
 }
 
 /**

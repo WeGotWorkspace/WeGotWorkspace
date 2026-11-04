@@ -23,6 +23,7 @@ export const liveTierSpecs = [
   "docs-collab-suggest-save",
   "docs-home-browse",
   "docs-inbound-sync",
+  "docs-offline-gaps",
   "docs-offline-sync",
   "docs-open-by-id",
   "docs-page-break-two-tabs",

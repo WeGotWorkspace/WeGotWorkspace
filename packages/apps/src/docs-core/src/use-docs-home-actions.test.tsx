@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
-import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   captureOfflineDocsTrashSnapshot,
+  DOCS_DELETE_NEEDS_CONNECTION,
   undoOfflineDocsTrash,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
@@ -38,6 +39,7 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
   return {
     ...actual,
     readBrowserOnline: vi.fn(() => true),
+    getConnectivitySnapshot: vi.fn(() => true),
   };
 });
 
@@ -183,6 +185,7 @@ describe("useDocsHomeActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(true);
   });
 
   it("derives the starred map from listStars keyed by file id", async () => {
@@ -191,6 +194,30 @@ describe("useDocsHomeActions", () => {
 
     await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
     expect(result.current.starred["search:file:users/alice/B.md"]).toBeUndefined();
+  });
+
+  it("reads the stars again when the refresh key changes (#1563)", async () => {
+    const operations = createMockOperations();
+    // The read when the connection came back predates the queued star.
+    operations.listStars.mockResolvedValueOnce([]).mockResolvedValue(["/users/alice/A.md"]);
+    const { result, rerender } = renderHook(
+      ({ key }) =>
+        useDocsHomeActions({
+          operations,
+          files: FILES,
+          username: "alice",
+          groupRoots: [],
+          reload: vi.fn(),
+          starsRefreshKey: key,
+        }),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.starsReady).toBe(true));
+    expect(result.current.starred["search:file:users/alice/A.md"]).toBeUndefined();
+
+    rerender({ key: 1 });
+    await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
+    expect(operations.listStars).toHaveBeenCalledTimes(2);
   });
 
   it("toggles a star optimistically and persists via setStar", async () => {
@@ -858,5 +885,48 @@ describe("useDocsHomeActions", () => {
     );
     expect(operations.renameItem).not.toHaveBeenCalled();
     expect(reload).toHaveBeenCalled();
+  });
+
+  it("says deleting permanently needs a connection offline, and keeps the row (#1563)", () => {
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(false);
+    const operations = createMockOperations();
+    const trashFile = file({
+      id: "search:file:users/alice/.Trash/B.md",
+      title: "B.md",
+      apiPath: "/users/alice/.Trash/B.md",
+      parent: "Trash",
+    });
+    const { result } = renderActions(operations, vi.fn(), {
+      inTrashView: true,
+      files: [trashFile],
+      offlineUsername: "alice",
+    });
+
+    act(() => result.current.onTrash(trashFile));
+    act(() => result.current.confirmTrash());
+
+    expect(showErrorToast).toHaveBeenCalledWith(DOCS_DELETE_NEEDS_CONNECTION);
+    expect(queueMutation).not.toHaveBeenCalled();
+    expect(result.current.hiddenFileIds.size).toBe(0);
+  });
+
+  it("shows a Doc again once it is moved back out of Trash (#1563)", async () => {
+    const operations = createMockOperations();
+    const trashFile = file({
+      id: "search:file:users/alice/.Trash/A.md",
+      title: "A.md",
+      apiPath: "/users/alice/.Trash/A.md",
+      parent: "Trash",
+    });
+    const { result } = renderActions(operations, vi.fn(), { files: [FILES[0]!, trashFile] });
+
+    act(() => result.current.onTrash(FILES[0]!));
+    act(() => result.current.confirmTrash());
+    expect(result.current.hiddenFileIds.has(FILES[0]!.id)).toBe(true);
+
+    act(() => result.current.onMove(trashFile));
+    act(() => result.current.confirmMove("My Drive"));
+
+    await waitFor(() => expect(result.current.hiddenFileIds.has(FILES[0]!.id)).toBe(false));
   });
 });

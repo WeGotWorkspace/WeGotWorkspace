@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
@@ -26,8 +26,12 @@ function shownPaths(paths: readonly string[]): string {
 export function useDriveFileNodeInbound(
   username: string | null | undefined,
   refreshKey: number,
+  /** Called once the pull for `refreshKey` finished, whether it worked or not. */
+  onSettled?: (refreshKey: number) => void,
 ): void {
   const { show } = useAppToast();
+  const onSettledRef = useRef(onSettled);
+  onSettledRef.current = onSettled;
   const showKept = useCallback(
     (result: DriveInboundSyncResult) => {
       if (result.keptUnsavedPaths.length === 0) return;
@@ -54,6 +58,9 @@ export function useDriveFileNodeInbound(
       })
       .catch((error: unknown) => {
         console.warn("[drive-inbound] FileNode sync failed", error);
+      })
+      .finally(() => {
+        if (!cancelled) onSettledRef.current?.(refreshKey);
       });
     return () => {
       cancelled = true;
