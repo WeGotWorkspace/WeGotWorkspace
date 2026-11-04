@@ -11,6 +11,11 @@ import type { components } from "@wgw/openapi-types/openapi-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  cachedCollectionAudience,
+  cachedItemAudience,
+  checkNowAfterWrite,
+} from "@/lib/offline/core/collection-check-now";
 
 export class TasksRequestError extends Error {
   status: number;
@@ -136,8 +141,9 @@ export async function getTask(taskId: string, opts?: { signal?: AbortSignal }): 
 }
 
 export async function createTask(body: TaskCreate, opts?: TasksRequestOpts): Promise<Task> {
-  const json = await requestTasksJson("/tasks/items", "POST", body, opts);
-  return json as Task;
+  const task = (await requestTasksJson("/tasks/items", "POST", body, opts)) as Task;
+  checkNowAfterWrite([cachedCollectionAudience("tasks", [task.taskListId])]);
+  return task;
 }
 
 export async function patchTask(
@@ -145,13 +151,15 @@ export async function patchTask(
   patch: TaskPatch,
   opts?: TasksRequestOpts,
 ): Promise<Task> {
-  const json = await requestTasksJson(
+  const before = cachedItemAudience("tasks", taskId);
+  const task = (await requestTasksJson(
     `/tasks/items/${encodeURIComponent(taskId)}`,
     "PATCH",
     patch,
     opts,
-  );
-  return json as Task;
+  )) as Task;
+  checkNowAfterWrite([before, cachedCollectionAudience("tasks", [task.taskListId])]);
+  return task;
 }
 
 export async function putTask(
@@ -159,17 +167,21 @@ export async function putTask(
   body: TaskCreate,
   opts?: TasksRequestOpts,
 ): Promise<Task> {
-  const json = await requestTasksJson(
+  const before = cachedItemAudience("tasks", taskId);
+  const task = (await requestTasksJson(
     `/tasks/items/${encodeURIComponent(taskId)}`,
     "PUT",
     body,
     opts,
-  );
-  return json as Task;
+  )) as Task;
+  checkNowAfterWrite([before, cachedCollectionAudience("tasks", [task.taskListId])]);
+  return task;
 }
 
 export async function deleteTask(taskId: string, opts?: TasksRequestOpts): Promise<void> {
+  const before = cachedItemAudience("tasks", taskId);
   await requestTasksJson(`/tasks/items/${encodeURIComponent(taskId)}`, "DELETE", undefined, opts);
+  checkNowAfterWrite([before]);
 }
 
 export async function createTaskList(
@@ -185,13 +197,15 @@ export async function patchTaskList(
   patch: TaskListPatch,
   opts?: TasksRequestOpts,
 ): Promise<TaskList> {
-  const json = await requestTasksJson(
+  const before = cachedCollectionAudience("tasks", [taskListId]);
+  const list = (await requestTasksJson(
     `/tasks/tasklists/${encodeURIComponent(taskListId)}`,
     "PATCH",
     patch,
     opts,
-  );
-  return json as TaskList;
+  )) as TaskList;
+  checkNowAfterWrite([before], list.shareWith);
+  return list;
 }
 
 export async function deleteTaskList(
@@ -200,12 +214,14 @@ export async function deleteTaskList(
 ): Promise<void> {
   const body =
     opts?.onDestroyRemoveContents === true ? { onDestroyRemoveContents: true } : undefined;
+  const before = cachedCollectionAudience("tasks", [taskListId]);
   await requestTasksJson(
     `/tasks/tasklists/${encodeURIComponent(taskListId)}`,
     "DELETE",
     body,
     opts,
   );
+  checkNowAfterWrite([before]);
 }
 
 export function mapTaskProjectGroups(

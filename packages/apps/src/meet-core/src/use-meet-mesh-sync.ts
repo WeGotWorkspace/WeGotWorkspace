@@ -132,6 +132,10 @@ export function useMeetMeshSync({
     [],
   );
 
+  const sendCheckNow = useCallback((usernames: readonly string[]) => {
+    storeRef.current?.sendCheckNow(usernames);
+  }, []);
+
   const resolveMessage = useCallback(async (messageId: string) => {
     const account = usernameRef.current;
     if (!account) return undefined;
@@ -142,6 +146,7 @@ export function useMeetMeshSync({
     if (!operations) return undefined;
     const mesh = wrapMeetChatOperationsWithMesh(operations, selfUsername, liveCallChannelId, {
       sendToUsernames,
+      sendCheckNow,
       targetsFor,
       resolveMessage,
     });
@@ -171,7 +176,15 @@ export function useMeetMeshSync({
           }
         : undefined,
     };
-  }, [liveCallChannelId, operations, resolveMessage, selfUsername, sendToUsernames, targetsFor]);
+  }, [
+    liveCallChannelId,
+    operations,
+    resolveMessage,
+    selfUsername,
+    sendCheckNow,
+    sendToUsernames,
+    targetsFor,
+  ]);
 
   useMeetMeshCallReplay({
     store,

@@ -10,7 +10,10 @@ export type PushTiming = {
   maxBackoffMs: number;
   /** Wait after `501` or a response that is not an event stream: push is off on this server. */
   unavailableRetryMs: number;
-  /** An early reconnect (`wake`) never starts sooner than this after the previous request. */
+  /**
+   * Two early reconnects (`wake`) start at least this far apart. Regular
+   * reconnects do not count, so a wake right after one still goes at once.
+   */
   wakeGapMs: number;
   /** Consecutive failures after which push counts as down. */
   downAfterFailures: number;
@@ -84,8 +87,10 @@ export class EventSourceTransport implements PushTransport {
   #status: boolean | null = null;
   #running = false;
   #request: AbortController | null = null;
-  #lastStartedAt = Number.NEGATIVE_INFINITY;
+  #lastWakeAt = Number.NEGATIVE_INFINITY;
   #wakeQueued = false;
+  /** The next request is an early reconnect. */
+  #nextIsWake = false;
   #wait: Wait | null = null;
   #resolveWait: (() => void) | null = null;
   /** End of a `429` wait; going offline and back does not shorten it. */
@@ -123,8 +128,10 @@ export class EventSourceTransport implements PushTransport {
     }
     const wait = this.#wait;
     if (wait?.kind !== "retry") return;
-    const earliest = Math.max(Date.now(), this.#lastStartedAt + this.#timing.wakeGapMs);
-    if (earliest < wait.until) this.#arm(earliest - Date.now(), "retry");
+    const earliest = Math.max(Date.now(), this.#lastWakeAt + this.#timing.wakeGapMs);
+    if (earliest >= wait.until) return;
+    this.#nextIsWake = true;
+    this.#arm(earliest - Date.now(), "retry");
   }
 
   #stop(): void {
@@ -154,7 +161,8 @@ export class EventSourceTransport implements PushTransport {
   async #once(sink: PushSink): Promise<Outcome> {
     const request = new AbortController();
     this.#request = request;
-    this.#lastStartedAt = Date.now();
+    if (this.#nextIsWake) this.#lastWakeAt = Date.now();
+    this.#nextIsWake = false;
     this.#wakeQueued = false;
     try {
       const headers = new Headers(this.#options.headers?.());
@@ -211,7 +219,8 @@ export class EventSourceTransport implements PushTransport {
         this.#failures = 0;
         this.#report(true);
         if (this.#wakeQueued) {
-          return [Math.max(0, this.#lastStartedAt + this.#timing.wakeGapMs - Date.now()), "retry"];
+          this.#nextIsWake = true;
+          return [Math.max(0, this.#lastWakeAt + this.#timing.wakeGapMs - Date.now()), "retry"];
         }
         const hidden = (await this.#options.everyTabHidden?.()) ?? false;
         const delay = hidden ? Math.max(this.#retryMs, this.#timing.hiddenRetryMs) : this.#retryMs;

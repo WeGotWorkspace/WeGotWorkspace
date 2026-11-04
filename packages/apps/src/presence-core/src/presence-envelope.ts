@@ -39,12 +39,9 @@ export function presenceCallActiveEnvelope(
     : { v: 1, kind: "call-active", channel, active };
 }
 
-/** Build a suite-notify wake hint. Optional `tag` is a reason only — never title/body. */
-export function presenceNotifyHintEnvelope(
-  tag?: string,
-): Extract<PresenceEnvelope, { kind: "notify-hint" }> {
-  const trimmed = tag?.trim();
-  return trimmed ? { v: 1, kind: "notify-hint", tag: trimmed } : { v: 1, kind: "notify-hint" };
+/** The content-free "ask the server now" a writer sends to peers who share the data (#1662). */
+export function presenceCheckNowEnvelope(): Extract<PresenceEnvelope, { kind: "check-now" }> {
+  return { v: 1, kind: "check-now" };
 }
 
 /** Parse an inbound data-channel payload; unknown or malformed envelopes yield null. */
@@ -129,11 +126,6 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
     };
   }
 
-  if (envelope.kind === "channel-changed") {
-    if (typeof envelope.channel !== "string" || envelope.channel === "") return null;
-    return { v: 1, kind: "channel-changed", channel: envelope.channel };
-  }
-
   if (envelope.kind === "call-active") {
     if (typeof envelope.channel !== "string" || envelope.channel === "") return null;
     if (typeof envelope.active !== "boolean") return null;
@@ -144,11 +136,8 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
     );
   }
 
-  if (envelope.kind === "notify-hint") {
-    if (envelope.tag === undefined) return { v: 1, kind: "notify-hint" };
-    if (typeof envelope.tag !== "string" || envelope.tag.trim() === "") return null;
-    return presenceNotifyHintEnvelope(envelope.tag);
-  }
+  // Extra fields are dropped: the message never carries ids or content.
+  if (envelope.kind === "check-now") return presenceCheckNowEnvelope();
 
   if (envelope.kind === "meet-join-hint") {
     if (typeof envelope.room !== "string" || envelope.room === "") return null;

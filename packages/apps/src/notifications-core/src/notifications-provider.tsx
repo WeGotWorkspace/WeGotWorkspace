@@ -58,9 +58,9 @@ export const NOTIFICATIONS_INBOX_POLL_MS = 15_000;
 export const NOTIFICATIONS_INBOX_PUSH_POLL_MS = 60_000;
 
 /**
- * After a mesh notify-hint, re-GET again shortly in case the first response raced
- * an in-flight poll or a momentarily empty replica view. Kept short so the bell
- * still feels instant.
+ * After a mesh `check-now` while push is down, re-GET again shortly in case the
+ * first response raced an in-flight poll or a momentarily empty replica view.
+ * Kept short so the bell still feels instant.
  */
 export const NOTIFICATIONS_HINT_RETRY_MS = [300, 1_200] as const;
 
@@ -204,7 +204,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const pushConnected = useNotificationsInboxPush({ signedIn, fetchForPush, apply: applyShared });
   const pollMs = pushConnected ? NOTIFICATIONS_INBOX_PUSH_POLL_MS : NOTIFICATIONS_INBOX_POLL_MS;
 
-  const refreshFromNotifyHint = useCallback(() => {
+  const refreshFromCheckNow = useCallback(() => {
     for (const timer of hintRetryTimersRef.current) {
       window.clearTimeout(timer);
     }
@@ -244,12 +244,11 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 
   const presenceStore = usePresenceStoreContext();
   useEffect(() => {
-    if (!presenceStore) return;
-    // Open-tab acceleration: principal mesh wake → re-GET inbox (server remains SoT).
-    return presenceStore.subscribeNotifyHint(() => {
-      refreshFromNotifyHint();
-    });
-  }, [presenceStore, refreshFromNotifyHint]);
+    // While push is connected, a peer's `check-now` wakes the push stream instead,
+    // and the `Notification` state brings the inbox (#1662).
+    if (!presenceStore || pushConnected) return;
+    return presenceStore.subscribeCheckNow(refreshFromCheckNow);
+  }, [presenceStore, pushConnected, refreshFromCheckNow]);
 
   useEffect(() => {
     const worker = navigator.serviceWorker;
