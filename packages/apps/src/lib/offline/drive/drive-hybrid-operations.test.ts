@@ -30,6 +30,7 @@ vi.mock("@/lib/api/wgw/drive", () => ({
     uploadFiles: vi.fn(),
     downloadFile: vi.fn(),
     downloadFolder: vi.fn(async () => undefined),
+    downloadSelection: vi.fn(async () => undefined),
     readFileBlob: vi.fn(),
     listStars: vi.fn(async () => []),
     setStar: vi.fn(),
@@ -202,5 +203,40 @@ describe("createHybridDriveOperations downloadFolder", () => {
       "Downloading a folder as a zip needs a connection.",
     );
     expect(live.downloadFolder).not.toHaveBeenCalled();
+  });
+});
+
+describe("createHybridDriveOperations downloadSelection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hands the selection to the live operations while online", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const ops = createHybridDriveOperations(username, bootstrap());
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      downloadSelection: ReturnType<typeof vi.fn>;
+    };
+
+    await ops.downloadSelection?.(["/users/alice/Projects/", "/users/alice/a.md"], "Personal");
+
+    expect(live.downloadSelection).toHaveBeenCalledWith(
+      ["/users/alice/Projects", "/users/alice/a.md"],
+      "Personal",
+      undefined,
+    );
+  });
+
+  it("says a selection zip needs a connection while offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const ops = createHybridDriveOperations(username, bootstrap());
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      downloadSelection: ReturnType<typeof vi.fn>;
+    };
+
+    await expect(ops.downloadSelection?.(["/users/alice/a.md"], "Personal")).rejects.toThrow(
+      "Downloading a folder as a zip needs a connection.",
+    );
+    expect(live.downloadSelection).not.toHaveBeenCalled();
   });
 });

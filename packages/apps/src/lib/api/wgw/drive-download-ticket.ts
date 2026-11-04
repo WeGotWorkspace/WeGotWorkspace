@@ -104,9 +104,31 @@ export type DriveFolderDownloadTicket = DriveDownloadTicket & {
 };
 
 /** Asks the server for a ticket that streams one folder as a zip. */
-export async function issueFolderDownloadTicket(
+export function issueFolderDownloadTicket(
   session: DriveJmapSession,
   nodeId: string,
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  return postFolderDownloadTicket(session, { nodeId }, signal);
+}
+
+/**
+ * Asks the server for a ticket that streams several selected items as one
+ * zip (#1905). `name` is the place the user is looking at; the server makes it
+ * safe and names the zip and its top folder after it.
+ */
+export function issueSelectionDownloadTicket(
+  session: DriveJmapSession,
+  nodeIds: string[],
+  name: string,
+  signal?: AbortSignal,
+): Promise<DriveFolderDownloadTicket> {
+  return postFolderDownloadTicket(session, { nodeIds, name }, signal);
+}
+
+async function postFolderDownloadTicket(
+  session: DriveJmapSession,
+  body: { nodeId: string } | { nodeIds: string[]; name: string },
   signal?: AbortSignal,
 ): Promise<DriveFolderDownloadTicket> {
   const res = await wgwFetch(
@@ -114,7 +136,7 @@ export async function issueFolderDownloadTicket(
     {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ nodeId }),
+      body: JSON.stringify(body),
       signal,
     },
   );
@@ -146,6 +168,24 @@ export async function downloadFolderAsZipWithTicket(
 ): Promise<void> {
   const nodeId = await resolveFileNodeId(session, path, username, signal);
   const ticket = await issueFolderDownloadTicket(session, nodeId, signal);
+  startNativeDownload(ticket.url, ticket.name);
+}
+
+/**
+ * *Download* on several selected items (#1905): one zip the server writes
+ * while the browser saves it natively, like a folder's.
+ */
+export async function downloadSelectionAsZipWithTicket(
+  session: DriveJmapSession,
+  paths: string[],
+  name: string,
+  username: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const nodeIds = await Promise.all(
+    paths.map((path) => resolveFileNodeId(session, path, username, signal)),
+  );
+  const ticket = await issueSelectionDownloadTicket(session, nodeIds, name, signal);
   startNativeDownload(ticket.url, ticket.name);
 }
 

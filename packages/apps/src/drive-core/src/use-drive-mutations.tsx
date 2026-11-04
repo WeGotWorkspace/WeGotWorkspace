@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
@@ -13,6 +13,7 @@ import {
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
+import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortcut";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
@@ -76,6 +77,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     reloadStarredFromServer,
     inTrashView,
     isUnderTrash,
+    viewLabel,
   } = shell;
 
   const {
@@ -400,24 +402,12 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
 
   const markdownDialogDefaults = resolveCreateMarkdownDialogDefaults(view, files);
 
-  useEffect(() => {
-    const isMac =
-      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const inField =
-        !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-      if (inField || !structureEnabled) return;
-      const macDelete = isMac && (e.key === "Backspace" || (e.metaKey && e.key === "Backspace"));
-      const winDelete = !isMac && e.key === "Delete";
-      if ((macDelete || winDelete) && selectedIds.length > 0) {
-        e.preventDefault();
-        setConfirmDelete({ ids: selectedIds, permanent: inTrashView });
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [selectedIds, inTrashView, structureEnabled]);
+  useDriveDeleteShortcut({
+    selectedIds,
+    inTrashView,
+    structureEnabled,
+    requestDelete: setConfirmDelete,
+  });
 
   const { selectionBar } = useDriveSelectionBar({
     labels,
@@ -428,6 +418,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     inTrashView,
     operations,
     structureEnabled,
+    zipName: viewLabel,
     exitSelection,
     batchStar,
     requestDeleteSelected,
