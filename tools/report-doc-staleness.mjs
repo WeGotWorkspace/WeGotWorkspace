@@ -234,15 +234,17 @@ export function archiveMoves(report) {
  *
  * @param {{ path: string, name: string, lastCommit: string | null }[]} candidates
  * @param {Map<string, string>} livePlans repo path of plan.md → text
+ * @param {Set<string>} [held] candidates already held back; their plans stay live
  * @returns {Map<string, string[]>}
  */
-export function livePlanReferences(candidates, livePlans) {
+export function livePlanReferences(candidates, livePlans, held = new Set()) {
   /** @type {Map<string, string[]>} */
   const references = new Map();
-  for (const candidate of candidates) {
+  const moving = candidates.filter((candidate) => !held.has(candidate.name));
+  for (const candidate of moving) {
     const move = [{ from: candidate.path, to: `${SPECS_ARCHIVE_DIR}/0000/${candidate.name}` }];
     for (const [file, text] of livePlans) {
-      if (candidates.some((other) => file.startsWith(`${other.path}/`))) continue;
+      if (moving.some((other) => file.startsWith(`${other.path}/`))) continue;
       if (rewriteMarkdown(text, file, file, move) === text) continue;
       references.set(candidate.name, [...(references.get(candidate.name) ?? []), file]);
     }
@@ -569,7 +571,7 @@ function main() {
     livePlans.set(file, readFileSync(path.join(repoRoot, file), "utf8"));
   }
   const references = findCodeReferences(candidates.map((spec) => spec.name));
-  for (const [name, files] of livePlanReferences(candidates, livePlans)) {
+  for (const [name, files] of livePlanReferences(candidates, livePlans, new Set(references.keys()))) {
     references.set(name, [...(references.get(name) ?? []), ...files]);
   }
   const report = buildReport({
