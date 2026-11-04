@@ -34,6 +34,13 @@ type Options = {
   username: string | null | undefined;
   /** Bumped on reconnect / inbound refresh: re-check where the open Doc lives. */
   refreshKey: number;
+  /**
+   * A queued offline create or rename owns the `?file=` path, or the first
+   * pull after being offline has not told yet whether the file moved (#1563).
+   * The file the server has at that path may be another one, so the link
+   * stays open by path and is not swapped for an id until this clears.
+   */
+  holdPathLookup?: boolean;
   deps?: DocsLocatorDeps;
 };
 
@@ -48,7 +55,14 @@ type Options = {
  * "no longer available" flow keeps the local copy; "not found" is only for
  * an id this device never opened.
  */
-export function useDocsRouteDocument({ search, canResolve, username, refreshKey, deps }: Options) {
+export function useDocsRouteDocument({
+  search,
+  canResolve,
+  username,
+  refreshKey,
+  holdPathLookup = false,
+  deps,
+}: Options) {
   const navigate = useNavigate();
   const locator = useMemo(() => deps ?? createDocsLocatorDeps(username), [deps, username]);
   const id = search.id;
@@ -122,6 +136,10 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
 
   useEffect(() => {
     if (id || !filePath || !canResolve) return;
+    if (holdPathLookup) {
+      setPathOnly(filePath);
+      return;
+    }
     const controller = new AbortController();
     void locateDocsByPath(filePath, locator, controller.signal)
       .then((result) => {
@@ -135,7 +153,7 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [canResolve, filePath, id, locator, navigate, refreshKey]);
+  }, [canResolve, filePath, holdPathLookup, id, locator, navigate, refreshKey]);
 
   /** The open Doc now lives at `path` (renamed inside Docs). */
   const followPath = useCallback(
@@ -171,7 +189,7 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
   let routeDocument: DocsRouteDocument;
   if (!id) {
     if (!filePath) routeDocument = { status: "home" };
-    else if (!canResolve || pathOnly === filePath)
+    else if (!canResolve || holdPathLookup || pathOnly === filePath)
       routeDocument = { status: "ready", path: filePath };
     else routeDocument = { status: "resolving" };
   } else if (idState?.id === id) {

@@ -61,6 +61,8 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const isGuestSession = wgwIsGuestSession();
   const offlineUsername = resolveDocsOfflineUsername(session.user.username);
   const [editorInboundKey, setEditorInboundKey] = useState(0);
+  // Mirrors `holdServerSave` below: while saves are held, a `?file=` link is not swapped for an id.
+  const [holdPathLookup, setHoldPathLookup] = useState(false);
   const {
     document: routeDocument,
     followPath,
@@ -71,6 +73,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     canResolve: wgwLiveApiEnabled() && !isGuestSession,
     username: offlineUsername,
     refreshKey: editorInboundKey,
+    holdPathLookup,
   });
   const filePath = routeDocument.status === "ready" ? routeDocument.path : null;
   const fileNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
@@ -95,6 +98,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     filePath,
     onFollow: followMovedFile,
   });
+  useEffect(() => setHoldPathLookup(holdServerSave), [holdServerSave]);
 
   useNotificationsMarkReadOnConsume({
     docsApiPath: filePath,

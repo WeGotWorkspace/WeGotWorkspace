@@ -237,6 +237,37 @@ describe("useDocsRouteDocument", () => {
     );
   });
 
+  it("keeps a held file link open by path, then swaps in the id once the hold clears", async () => {
+    // A queued offline create owns the path; the server's file there may be another one (#1563).
+    const locator = deps();
+    const search = { file: "users/alice/Roadmap.md" };
+    const { result, rerender } = renderHook(
+      ({ hold, refreshKey }) =>
+        useDocsRouteDocument({
+          search,
+          canResolve: true,
+          username: "alice",
+          refreshKey,
+          holdPathLookup: hold,
+          deps: locator,
+        }),
+      { initialProps: { hold: true, refreshKey: 0 } },
+    );
+    expect(result.current.document).toEqual({ status: "ready", path: PATH });
+
+    rerender({ hold: true, refreshKey: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+
+    rerender({ hold: false, refreshKey: 1 });
+    // Still open by path while the lookup runs: no loading state in between.
+    expect(result.current.document).toEqual({ status: "ready", path: PATH });
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
+    );
+  });
+
   it("does not resolve for guests", async () => {
     const locator = deps();
     const { result } = render({ file: "users/bob/Shared/report.md" }, locator, false);
