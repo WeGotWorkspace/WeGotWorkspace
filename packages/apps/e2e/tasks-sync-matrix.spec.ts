@@ -781,7 +781,11 @@ async function runCase(browser: Browser, action: Action, tabs: Tabs, net: Net, i
 // --- inbound helpers ---------------------------------------------------------------------------
 
 /** Fail the matching requests at the network, so the app queues the write. */
-async function holdRequests(tab: Tab, method: string, path: string): Promise<() => Promise<void>> {
+async function holdRequests(
+  tab: Pick<BrowserContext, "route" | "unroute">,
+  method: string,
+  path: string,
+): Promise<() => Promise<void>> {
   const url = `**/api/v1${path}`;
   const handler = async (route: Route) => {
     // The app tunnels PATCH, PUT and DELETE through POST (`X-HTTP-Method-Override`).
@@ -1729,7 +1733,8 @@ test("sync notice · a held edit shows Retry in every tab and clears once it lan
     session = c.session;
     const a = c.tab;
     const title = `T1 ${id}`;
-    const release = await holdRequests(a, "PATCH", `/tasks/items/${c.tasks[0]}`);
+    // Hold on the whole context, so a second tab cannot land the write either.
+    const release = await holdRequests(session.contexts[0]!, "PATCH", `/tasks/items/${c.tasks[0]}`);
     await editTask(a, title, { title: `${title} v2` });
     // The reconnect flush hits the held request and marks the queued row failed.
     await reconnect(a);
@@ -1739,13 +1744,20 @@ test("sync notice · a held edit shows Retry in every tab and clears once it lan
     await expect(syncNotice(a).getByRole("button", { name: "Retry" })).toBeEnabled();
     await expect(rescueEntry(a), "it is not a refused write").toHaveCount(0);
 
+    await syncNotice(a).getByRole("button", { name: "Retry" }).click();
+    await expect(syncNotice(a).getByRole("button", { name: "Retry" })).toBeEnabled(poll);
+    await expect(syncNotice(a), "Retry while still held keeps the row").toBeVisible();
+
     await hardRefresh([a]);
     await expect(syncNotice(a), "the failed row survives a reload").toBeVisible(poll);
 
     const b = await openTasksTab(session.contexts[0]!, "A2", session.events);
     session.tabs.push(b);
     await expect(syncNotice(b), "another tab reads the same outbox").toBeVisible(poll);
+    await expect(syncNotice(a)).toBeVisible();
+    expect((await serverTask(c.tasks[0]!))?.title, "nothing landed while held").toBe(title);
 
+    // Retry right after the release, before the failed flush retries on its own.
     await release();
     await syncNotice(a).getByRole("button", { name: "Retry" }).click();
     await expect(syncNotice(a)).toHaveCount(0, poll);

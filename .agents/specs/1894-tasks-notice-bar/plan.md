@@ -48,7 +48,7 @@ None — Wouter picked option A and the sync notice in the bar (2026-11-03).
 - Without a notice, the Tasks layout is unchanged: `mainNotice` and `notice` are optional and the bar renders nothing without notices. A wrong change shifts the header or list. Proof: `path: packages/apps/src/notice-bar/src/notice-bar.test.tsx` assertion `renders nothing when no notice waits`.
 - The rescue dialog still opens, moves and discards from the new entry point, also from a second tab. A wrong change leaves parked tasks with no way to reach them. Proof: `cmd: playwright test -c playwright.matrix.config.mjs tasks-sync-matrix -g "rescued|sharing"` (24 cases, `rescueEntry` now finds Review in the bar).
 - Notes and Contacts still count their failed rows the same way after the hook is shared. Proof: `path: packages/apps/src/notes-core/src/use-notes-failed-sync.test.tsx`, `path: packages/apps/src/contacts-core/src/use-contacts-failed-sync.test.tsx`.
-- Refused writes do not show as "could not sync": they leave the outbox when parked. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-parked-writes.test.ts`.
+- Refused task writes do not show as "could not sync": they leave the outbox when parked. A wrong change shows both rows for one refused task. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-parked-writes.test.ts`.
 
 ## Chunks
 

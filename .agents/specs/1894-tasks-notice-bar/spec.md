@@ -30,4 +30,4 @@ Tasks shows what needs the user's attention after working offline in a bar betwe
 - Both notices at once: sync on top, rescue below.
 - Review while the dialog is open in another tab: the existing "open in another Tasks tab" toast (`useParkedWrites` one-tab lock).
 - Retry while still offline or still blocked: the row stays and the button is enabled again after the attempt.
-- A refused write (403/404) is parked and leaves the outbox, so it shows as a rescue notice, never as "could not sync".
+- A refused task write (403/404) is parked and leaves the outbox, so it shows as a rescue notice, not as "could not sync". A refused list write (rename or delete) stays queued as a permanent failure and keeps the sync row up, as in the other apps.

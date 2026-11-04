@@ -40,7 +40,7 @@ export function NoticeBar({ notices, label, className }: NoticeBarProps) {
           <Callout
             severity={notice.tone ?? "warning"}
             className="notice-bar__callout"
-            icon={notice.icon ? <span className="callout__icon">{notice.icon}</span> : undefined}
+            icon={notice.icon}
             title={notice.title}
             action={
               <Button
