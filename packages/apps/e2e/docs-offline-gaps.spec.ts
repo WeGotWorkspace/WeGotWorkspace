@@ -76,8 +76,19 @@ async function toasts(page: Page, text: string): Promise<{ text: string; online:
   return all.filter((toast) => toast.text.includes(text));
 }
 
-function editorFile(page: Page): string {
-  return new URL(page.url()).searchParams.get("file") ?? "";
+/**
+ * Which file the editor shows. Opened by path, that is `?file=`. Opened by
+ * FileNode id (#1751), the URL keeps `?id=` across a rename, so read the file
+ * name from the tab title instead.
+ */
+async function editorShows(page: Page): Promise<string> {
+  return new URL(page.url()).searchParams.get("file") ?? (await page.title());
+}
+
+const ID_URL = /[?&]id=(fn-[0-9a-f]{32})/;
+
+function editorNodeId(page: Page): string {
+  return ID_URL.exec(page.url())?.[1] ?? "";
 }
 
 /** Star and trash run once their Undo toast closes; wait for that. */
@@ -151,9 +162,7 @@ test("gap 1: an offline create whose name was taken on the server keeps both", a
     .toContain(token);
   expect(await serverText(`${HOME}/${base}.md`)).toContain("server-token");
   expect(await serverText(`${HOME}/${base}.md`)).not.toContain(token);
-  await expect
-    .poll(() => editorFile(page), { timeout: 15_000 })
-    .toBe(`users/${E2E_USERNAME}/${base} (1).md`);
+  await expect.poll(() => editorShows(page), { timeout: 15_000 }).toContain(`${base} (1)`);
   expect(errors).toEqual([]);
 });
 
@@ -172,15 +181,18 @@ test("gap 2a: a rename in another tab offline takes the open editor and its text
   await gotoDocsHome(home);
   await expect(docsHomeRow(home, name)).toBeVisible({ timeout: 30_000 });
   await openEditor(editor, `${HOME}/${name}`);
+  // Opened online, the editor names the file by its id and keeps its text under that id.
+  const nodeId = editorNodeId(editor);
+  expect(nodeId).not.toBe("");
 
   await goOffline(context, editor);
   await appendToActiveDocBody(editor, token);
   await editor.waitForTimeout(1000);
   await renameFromRow(home, name, nextBase);
-  // The editor follows while both tabs are still offline.
-  await expect
-    .poll(() => editorFile(editor), { timeout: 10_000 })
-    .toBe(`users/${E2E_USERNAME}/${nextBase}.md`);
+  // The editor follows while both tabs are still offline, on the same id.
+  await expect.poll(() => editorShows(editor), { timeout: 10_000 }).toContain(nextBase);
+  expect(editorNodeId(editor)).toBe(nodeId);
+  await expect(editor.locator(".ProseMirror")).toContainText(token);
 
   await context.setOffline(false);
   await expect
@@ -217,9 +229,7 @@ test("gap 2b: a rename on another device while this one types offline keeps the 
     await expect.poll(() => serverText(`${HOME}/${nextBase}.md`)).not.toBeNull();
 
     await deviceA.setOffline(false);
-    await expect
-      .poll(() => editorFile(editor), { timeout: 30_000 })
-      .toBe(`users/${E2E_USERNAME}/${nextBase}.md`);
+    await expect.poll(() => editorShows(editor), { timeout: 30_000 }).toContain(nextBase);
     await expect
       .poll(() => serverText(`${HOME}/${nextBase}.md`), { timeout: 45_000 })
       .toContain(token);
