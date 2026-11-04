@@ -57,6 +57,16 @@ describe("routeShowsNavigate", () => {
     expect(
       routeShowsNavigate("/docs?file=Plans%2Fq4.md&thread=t1", "/docs?file=Plans%2Fq4.md"),
     ).toBe(true);
+    expect(
+      routeShowsNavigate(
+        "/docs?file=Agenda%20Anne%20%26%20Co.md",
+        "/docs?file=Agenda%20Anne%20%26%20Co.md",
+      ),
+    ).toBe(true);
+    expect(routeShowsNavigate("/docs?file=A%23b.md", "/docs?file=A%23b.md")).toBe(true);
+    expect(
+      routeShowsNavigate("/docs?file=Agenda.md", "/docs?file=Agenda%20Anne%20%26%20Co.md"),
+    ).toBe(false);
     expect(routeShowsNavigate("/docs?file=Other.md", "/docs?file=Plans%2Fq4.md")).toBe(false);
     expect(routeShowsNavigate("/docs", "/docs?file=Plans%2Fq4.md")).toBe(false);
   });

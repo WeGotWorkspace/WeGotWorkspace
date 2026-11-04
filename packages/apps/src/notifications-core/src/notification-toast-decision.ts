@@ -1,4 +1,5 @@
 import type { FrontTab } from "@/lib/jmap-client/push/front-tab";
+import { sanitizeNotificationNavigate } from "@/notifications-core/src/notification-click-navigate";
 import { normalizeNotificationNavigate } from "@/notifications-core/src/notification-consume-match";
 import {
   browserStorage,
@@ -40,7 +41,7 @@ function parsePath(path: string): URL | null {
  */
 export function routeShowsNavigate(route: string, navigate: string): boolean {
   const open = parsePath(route);
-  const target = parsePath(normalizeNotificationNavigate(navigate));
+  const target = parsePath(sanitizeNotificationNavigate(navigate));
   if (!open || !target) return false;
   const targetPath = normalizeNotificationNavigate(target.pathname);
   if (targetPath === "/" || normalizeNotificationNavigate(open.pathname) !== targetPath) {
