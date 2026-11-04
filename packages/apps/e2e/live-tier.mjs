@@ -40,6 +40,7 @@ export const liveTierSpecs = [
   "drive-upload-queue",
   "drive-upload-recovery",
   "meet-adhoc-two-users",
+  "meet-chat-push",
   "meet-guest-chat",
   "meet-guest-video-mirror",
   "notes-collab-access-lost",
