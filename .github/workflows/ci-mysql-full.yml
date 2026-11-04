@@ -3,6 +3,8 @@ name: CI MySQL (full)
 # MySQL parity safety net: runs the ENTIRE PHPUnit suite against MySQL.
 # PR CI only runs the MySQL parity subset (see ci.yml `api-mysql`); this workflow
 # guarantees full MySQL coverage without adding wall-clock to every pull request.
+# The suite is split into round-robin file shards (scripts/phpunit-shard.php):
+# one job ran past its 45-minute timeout once the ownership matrix landed.
 # Triggers: pushes to main, a nightly schedule, and manual dispatch.
 
 env:
@@ -24,12 +26,16 @@ permissions:
 
 jobs:
   api-mysql-full:
-    name: API tests (full MySQL suite)
+    name: API tests (full MySQL suite, shard ${{ matrix.shard }}/3)
     if: >-
       github.event_name != 'push' ||
       !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       mysql:
         image: mysql:8.0
@@ -75,7 +81,7 @@ jobs:
       - name: Install yjs for collab round-trip tests
         run: bash tools/install-api-test-yjs.sh
 
-      - name: API tests (full MySQL suite)
+      - name: API tests (full MySQL suite, shard ${{ matrix.shard }}/3)
         env:
           WGW_TEST_DRIVER: mysql
           WGW_TEST_MYSQL_HOST: 127.0.0.1
@@ -83,4 +89,5 @@ jobs:
           WGW_TEST_MYSQL_DATABASE: wgw_test
           WGW_TEST_MYSQL_USERNAME: root
           WGW_TEST_MYSQL_PASSWORD: root
-        run: composer --working-dir packages/api run test:mysql
+          WGW_PHPUNIT_SHARD: ${{ matrix.shard }}/3
+        run: composer --working-dir packages/api run test:mysql:shard
