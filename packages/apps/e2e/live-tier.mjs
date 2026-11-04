@@ -13,6 +13,7 @@
 export const liveTierSpecs = [
   "calendar-far-week-event",
   "calendar-offline-week-event",
+  "calendar-push",
   "contacts-first-download",
   "contacts-first-open-count",
   "contacts-offline-read-only",

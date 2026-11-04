@@ -5,7 +5,6 @@ import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/Even
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { resolveCalendarSurfaceEvents } from "@/calendar-core/src/calendar-surface-events";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
 import {
   createCalendarEventsApi,
@@ -13,6 +12,7 @@ import {
   type CalendarEventsApi,
 } from "@/calendar-core/src/calendar-events-api";
 import { calendarInfoFromJmap } from "@/calendar-core/src/calendar-share";
+import { useCalendarLiveInbound } from "@/calendar-core/src/use-calendar-live-inbound";
 import {
   ingestRemoteCalendar,
   ingestRemoteCalendarDestroyed,
@@ -55,6 +55,8 @@ export function useCalendarSurface(
   const workingSetRef = useRef<CalendarEventsMap>(new Map());
   const eventsApiRef = useRef<CalendarEventsApi>(undefined);
   const adapterRef = useRef<JmapEventsAdapter>(undefined);
+  /** The adapter once its first states loaded: push and the poll run on it. */
+  const [liveAdapter, setLiveAdapter] = useState<JmapEventsAdapter | null>(null);
   const operations = options?.operations;
   const usernameRef = useRef(options?.username);
   usernameRef.current = options?.username;
@@ -107,8 +109,7 @@ export function useCalendarSurface(
     void adapter
       .initialize(calendarBootstrapWindow())
       .then(() => {
-        if (cancelled) return;
-        adapter.startPolling(CALENDAR_BACKGROUND_POLL_MS);
+        if (!cancelled) setLiveAdapter(adapter);
       })
       .catch(() => {
         // Offline or first-paint: Dexie/working set still render.
@@ -116,11 +117,13 @@ export function useCalendarSurface(
     return () => {
       cancelled = true;
       adapter.stopPolling();
+      setLiveAdapter(null);
       if (adapterRef.current === adapter) {
         adapterRef.current = undefined;
       }
     };
   }, [client]);
+  useCalendarLiveInbound(liveAdapter);
 
   const cacheMap = useMemo(
     () => calendarEventsToEngineMap([...data.events], { calendars: data.calendars }),

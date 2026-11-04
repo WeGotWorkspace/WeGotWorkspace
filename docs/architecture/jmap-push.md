@@ -206,7 +206,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 |-----|-------|-------|
 | Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` (built, `use-notes-live-inbound.ts`); the open note comes without `body` (`note-body-rooms.ts`) |
 | Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
-| Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.sync()` |
+| Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.syncIfStale()` (built, `use-calendar-live-inbound.ts`); the 10 s event poll runs every 60 s while push is connected |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
 | Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); toast to do ([notifications.md](notifications.md#active-news-on-the-client)) |
 | Drive, Docs home | `FileNode` | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
