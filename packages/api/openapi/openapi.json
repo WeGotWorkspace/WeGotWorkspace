@@ -9182,7 +9182,7 @@
                       },
                       "name": {
                         "type": "string",
-                        "description": "Zip name stem and top folder, made safe and cut to 120 characters. Default `Download`."
+                        "description": "Zip name stem and top folder, cut to 120 characters and then made safe. Default `Download`."
                       }
                     }
                   }

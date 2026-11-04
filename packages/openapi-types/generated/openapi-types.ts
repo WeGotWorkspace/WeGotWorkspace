@@ -8316,7 +8316,7 @@ export interface paths {
                     } | {
                         /** @description Ids of FileNodes (files or folders) the account may read, in zip order. A repeated id counts once. Items in trash, notes, Doc attachments, or named with a leading `.` are refused. An item inside another selected folder is stored once. */
                         nodeIds: string[];
-                        /** @description Zip name stem and top folder, made safe and cut to 120 characters. Default `Download`. */
+                        /** @description Zip name stem and top folder, cut to 120 characters and then made safe. Default `Download`. */
                         name?: string;
                     };
                 };

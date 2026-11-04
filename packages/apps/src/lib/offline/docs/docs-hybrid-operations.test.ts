@@ -356,3 +356,21 @@ describe("createHybridDocsDriveOperations offline star and download", () => {
     );
   });
 });
+
+describe("createHybridDocsDriveOperations selection zip", () => {
+  it("refuses a selection zip while offline without calling the live method", async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const liveDownloadSelection = vi.fn();
+    vi.mocked(createWgwDriveOperations).mockReturnValueOnce({
+      ...createWgwDriveOperations("/"),
+      downloadSelection: liveDownloadSelection,
+    });
+    const operations = createHybridDocsDriveOperations(username);
+
+    await expect(operations.downloadSelection?.(["/users/alice/A.md"], "Download")).rejects.toThrow(
+      "Downloading a folder as a zip needs a connection.",
+    );
+    expect(liveDownloadSelection).not.toHaveBeenCalled();
+  });
+});
