@@ -39,13 +39,31 @@ export const Default: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const checkbox = canvas.getByRole("checkbox", { name: "Hide Work" });
-    await expect(checkbox).toHaveClass("checkbox--size-sm");
+    // Suite norm: a coloured dot, not a checkbox box.
+    const dot = checkbox.querySelector(".collection-sidebar-row__visibility-dot") as HTMLElement;
+    await expect(getComputedStyle(dot).borderRadius).not.toBe("0px");
+    await expect(getComputedStyle(dot).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
     await userEvent.click(canvas.getByRole("button", { name: "Work" }));
     await expect(args.onSelect).toHaveBeenCalledOnce();
     await expect(args.onToggleVisibility).not.toHaveBeenCalled();
     await userEvent.click(checkbox);
     await expect(args.onToggleVisibility).toHaveBeenCalledOnce();
     await expect(args.onSelect).toHaveBeenCalledOnce();
+  },
+};
+
+/** A hidden collection: the dot turns grey. */
+export const Hidden: Story = {
+  tags: ["vitest-ci"],
+  args: { visible: false, selected: false },
+  play: async ({ canvasElement }) => {
+    const toggle = within(canvasElement).getByRole("checkbox", { name: "Show Work" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    const dot = toggle.querySelector(".collection-sidebar-row__visibility-dot") as HTMLElement;
+    const row = canvasElement.querySelector(".collection-sidebar-row") as HTMLElement;
+    await expect(getComputedStyle(dot).backgroundColor).not.toBe(
+      getComputedStyle(row).getPropertyValue("--collection-row-color"),
+    );
   },
 };
 
