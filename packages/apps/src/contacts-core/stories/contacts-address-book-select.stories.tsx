@@ -18,7 +18,7 @@ function ContactsAddressBookSelectHarness({
   onValueChange,
 }: {
   variant?: "field" | "toolbar";
-  triggerVariant?: "labeled" | "swatch";
+  triggerVariant?: "labeled" | "swatch" | "ghost";
   disabled?: boolean;
   onValueChange: (bookId: string) => void;
 }) {
@@ -110,4 +110,23 @@ export const Field: Story = {
 
 export const Disabled: Story = {
   args: { variant: "toolbar", disabled: true },
+};
+
+/** Ghost: the contact's address book above its name in the detail pane (Notes-style). */
+export const Ghost: Story = {
+  tags: ["vitest-ci"],
+  args: { variant: "toolbar", triggerVariant: "ghost" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("combobox", {
+      name: defaultContactsLabels.personalAddressBook,
+    });
+    await expect(trigger).toHaveClass("collection-ghost-select");
+    await expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    await expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "Engineering" }));
+    await expect(args.onValueChange).toHaveBeenCalledWith("group-eng");
+    await expect(canvas.getByRole("combobox", { name: "Engineering" })).toBeTruthy();
+  },
 };

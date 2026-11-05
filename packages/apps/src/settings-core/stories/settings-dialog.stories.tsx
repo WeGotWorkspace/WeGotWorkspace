@@ -1,10 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { pushWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceAppSettingsSidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 
 registerBuiltinSettings();
 
@@ -20,18 +19,9 @@ function MockApiStory({ children }: { children: ReactNode }) {
   return children;
 }
 
-const namedSession = {
-  ...mockWorkspaceSession,
-  user: {
-    ...mockWorkspaceSession.user,
-    displayName: "Demo User",
-    username: "demo.user",
-  },
-};
-
-const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
+const meta: Meta<typeof WorkspaceAppSettingsSidebarSection> = {
   title: "Features/Settings/Dialog",
-  component: WorkspaceAppSettingsFooter,
+  component: WorkspaceAppSettingsSidebarSection,
   parameters: {
     layout: "padded",
   },
@@ -46,36 +36,31 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
+type Story = StoryObj<typeof WorkspaceAppSettingsSidebarSection>;
 
 export const VisibleForCalendar: Story = {
   args: {
     appId: "calendar",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
-    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
 
 export const HiddenForDrive: Story = {
   args: {
     appId: "drive",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
 
 export const CalendarPanel: Story = {
   args: {
     appId: "calendar",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -98,7 +83,6 @@ export const CalendarPanel: Story = {
 export const TasksPanel: Story = {
   args: {
     appId: "tasks",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -113,7 +97,6 @@ export const TasksPanel: Story = {
 export const ContactsPanel: Story = {
   args: {
     appId: "contacts",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -128,7 +111,6 @@ export const ContactsPanel: Story = {
 export const NotesPanel: Story = {
   args: {
     appId: "notes",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -30,7 +30,8 @@ import {
   dismissSidebarOverlay,
   sidebarSelectMarker,
 } from "@/workspace-shell/src/sidebar-breakpoint";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
@@ -414,9 +415,7 @@ export function NotesWorkspace({
           <AppSidebar
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
-            footer={
-              <WorkspaceAppSettingsFooter appId="notes" session={session} onLogout={onLogout} />
-            }
+            footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
             primaryButton={
               <NotesNewMenu
                 labels={L}
@@ -429,7 +428,7 @@ export function NotesWorkspace({
               />
             }
           >
-            <SidebarSection items={primarySidebarItems} />
+            <WorkspaceAppPrimarySidebarSection appId="notes" items={primarySidebarItems} />
             {ownedNotebooks.length > 0 ? (
               <SidebarSection title={L.sectionNotebooks}>
                 <NotesSidebarRows

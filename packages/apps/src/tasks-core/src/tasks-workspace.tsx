@@ -11,7 +11,8 @@ import {
 } from "@/collection-sidebar/src/collection-sidebar-row";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -240,11 +241,9 @@ export function TasksWorkspace({
                 onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               />
             }
-            footer={
-              <WorkspaceAppSettingsFooter appId="tasks" session={session} onLogout={onLogout} />
-            }
+            footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
           >
-            <SidebarSection items={topSidebarItems} />
+            <WorkspaceAppPrimarySidebarSection appId="tasks" items={topSidebarItems} />
             {ownedLists.length > 0 ? (
               <SidebarSection title={L.sidebarProjects}>
                 <TasksSidebarRows

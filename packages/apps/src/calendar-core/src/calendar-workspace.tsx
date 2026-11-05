@@ -31,7 +31,8 @@ import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-sear
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppSettingsSidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -857,14 +858,15 @@ export function CalendarWorkspace({
               )
             }
             footer={
-              <WorkspaceAppSettingsFooter
-                appId="calendar"
+              <WorkspaceSidebarAccountFooter
                 session={session}
                 detailLine={session.user.email}
                 onLogout={onLogout}
               />
             }
           >
+            {/* Settings on top, in its own section: the calendar lists follow. */}
+            <WorkspaceAppSettingsSidebarSection appId="calendar" />
             <SidebarSection title={L.myCalendarsSection}>
               <CalendarSidebarRows
                 calendars={myCalendars}

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { Folder } from "lucide-react";
+import { Folder, Settings } from "lucide-react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -73,51 +73,46 @@ export const Default: Story = {
   ),
 };
 
-export const AccountFooterWithSettings: Story = {
+/** Suite norm: Settings is the last row of the first section; the footer is the account only. */
+export const SettingsInFirstSection: Story = {
   parameters: {
     layout: "fullscreen",
-    routerPath: "/calendar",
+    routerPath: "/notes",
   },
   render: () => (
     <div className="h-dvh" style={{ ["--workspace-accent" as string]: "var(--color-we-got-sand)" }}>
       <AppSidebar
         open
         onCloseMobile={() => {}}
-        footer={
-          <WorkspaceSidebarAccountFooter
-            session={namedSession}
-            settingsItem={{ label: "Settings", onClick: () => {} }}
-            onLogout={() => {}}
-          />
-        }
+        footer={<WorkspaceSidebarAccountFooter session={namedSession} onLogout={() => {}} />}
       >
         <SidebarSection
-          title="Calendars"
           items={[
             {
-              label: "Personal",
+              label: "All Items",
               icon: <Folder className="size-4" />,
               selected: true,
               onClick: () => {},
             },
-            {
-              label: "Work",
-              icon: <Folder className="size-4" />,
-              onClick: () => {},
-            },
+            { label: "Settings", icon: <Settings className="size-4" />, onClick: () => {} },
           ]}
+        />
+        <SidebarSection
+          title="Notebooks"
+          items={[{ label: "Work", icon: <Folder className="size-4" />, onClick: () => {} }]}
         />
       </AppSidebar>
     </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
+    const settings = canvas.getByRole("button", { name: "Settings" });
+    await expect(settings.closest(".workspace-sidebar-account-footer")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
 
-export const AccountFooterWithoutSettings: Story = {
+export const AccountFooter: Story = {
   render: () => (
     <div className="w-64 border">
       <WorkspaceSidebarAccountFooter session={namedSession} onLogout={() => {}} />

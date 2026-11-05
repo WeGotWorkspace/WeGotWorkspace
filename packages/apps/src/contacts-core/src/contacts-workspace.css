@@ -58,7 +58,7 @@
  * CSS and scroll together. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
-  --contacts-list-card-row-size: 4.625rem;
+  --contacts-list-card-row-size: 6.75rem;
   --contacts-list-header-row-size: 2.25rem;
   --list-item-intrinsic-block-size: var(--contacts-list-card-row-size);
 }
@@ -72,9 +72,16 @@
 }
 
 .contacts-list-panel__list .list-sticky-header {
-  /* Calm list: no rule under the letter, the pane's own fill; it lines up with the row text. */
+  /* Calm list: no rule under the letter; frosted pane fill so rows blur past beneath it.
+   * It lines up with the row text. */
   border-bottom: 0;
-  background-color: var(--collection-list-pane-fill, var(--workspace-surface));
+  background-color: color-mix(
+    in oklch,
+    var(--collection-list-pane-fill, var(--workspace-surface)) 72%,
+    transparent
+  );
+  -webkit-backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
+  backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
   padding-inline: calc(var(--list-item-inset, 0.5rem) + 0.75rem);
   box-sizing: border-box;
   block-size: var(--contacts-list-header-row-size);
@@ -98,6 +105,20 @@
 
 .contacts-workspace .collection-sidebar-row--drop-target {
   background-color: color-mix(in oklch, var(--workspace-accent) 18%, transparent);
+}
+
+/* Row meta: the address book (dot + name). */
+.contacts-list-panel__book {
+  @apply inline-flex min-w-0 items-center gap-1.5;
+}
+
+.contacts-list-panel__book-name {
+  @apply truncate;
+}
+
+/* The company / email line: one line, not the two-line note preview. */
+.contacts-list-panel__list .list-item__body.list-item__body--preview {
+  @apply line-clamp-1;
 }
 
 .contacts-list-panel__pending-dot {
@@ -149,6 +170,11 @@
 
 .contacts-detail-view__heading {
   @apply flex min-w-0 flex-1 flex-col justify-center gap-1;
+}
+
+/* The address book switcher, directly above the name. */
+.contacts-detail-view__eyebrow {
+  @apply flex min-w-0;
 }
 
 .contacts-detail-view__title {

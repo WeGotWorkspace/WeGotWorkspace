@@ -3,7 +3,8 @@ import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 
@@ -51,9 +52,9 @@ export function DocsHomeSidebar({
           />
         ) : undefined
       }
-      footer={<WorkspaceAppSettingsFooter appId="docs" session={session} onLogout={onLogout} />}
+      footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
     >
-      <SidebarSection items={primaryItems} />
+      <WorkspaceAppPrimarySidebarSection appId="docs" items={primaryItems} />
       {driveItems.length > 0 ? (
         <SidebarSection title={drivesSectionLabel} items={driveItems} />
       ) : null}

@@ -21,7 +21,12 @@ export type {
 export { BUILTIN_PANEL_IDS } from "./settings-types";
 export { registerBuiltinSettings } from "./register-builtin-settings";
 export { useWorkspaceAppSettingsEntry } from "./use-workspace-app-settings-entry";
-export { WorkspaceAppSettingsFooter } from "./workspace-app-settings-footer";
+export {
+  useWorkspaceAppSettingsSidebarItem,
+  withSettingsSidebarItem,
+  WorkspaceAppPrimarySidebarSection,
+  WorkspaceAppSettingsSidebarSection,
+} from "./workspace-app-settings-sidebar";
 export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "./settings-slice-saved";
 export {
   settingsProfileFormSchema,

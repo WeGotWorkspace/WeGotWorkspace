@@ -106,19 +106,6 @@
 }
 
 /*
- * Settings row: no hairline. It floats over the scrolling rows with the footer, so it
- * carries the rail colour with a short fade on top; the card below stays see-through.
- */
-.workspace-sidebar-account-footer__settings {
-  @apply py-2;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--app-sidebar-bg, var(--workspace-sidebar-surface)) 0.75rem
-  );
-}
-
-/*
  * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
  * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.
  * Product headers (e.g. Calendar `.view-header`) own accent wash tokens / overrides.

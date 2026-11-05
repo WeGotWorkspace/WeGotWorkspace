@@ -17,6 +17,7 @@ import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-notebook-select.css";
+import "@/ui/collection-ghost-select.css";
 
 /** Sentinel so Create stays out of the selected notebook value (Calendar Select pattern). */
 export const NOTES_CREATE_NOTEBOOK_VALUE = "__create_notebook__";
@@ -155,14 +156,24 @@ export function NotesNotebookSelect({
 
   const trigger = ghost ? (
     <SelectPrimitive.Trigger
-      className={cn("notes-notebook-select", "notes-notebook-select--ghost", className)}
+      className={cn(
+        "notes-notebook-select",
+        "notes-notebook-select--ghost",
+        "collection-ghost-select",
+        className,
+      )}
       aria-label={accessibleName}
       disabled={disabled}
       style={{ "--collection-row-color": notebookDotColor(value) } as CSSProperties}
     >
       <NotesNotebookColorDot />
       <span className="notes-notebook-select__name">{value.name}</span>
-      {disabled ? null : <ChevronDown className="notes-notebook-select__chevron" aria-hidden />}
+      {disabled ? null : (
+        <ChevronDown
+          className="notes-notebook-select__chevron collection-ghost-select__chevron"
+          aria-hidden
+        />
+      )}
     </SelectPrimitive.Trigger>
   ) : swatch ? (
     <SelectPrimitive.Trigger asChild disabled={disabled}>
@@ -216,7 +227,7 @@ export function NotesNotebookSelect({
           <TooltipContent>{accessibleName}</TooltipContent>
         </Tooltip>
       )}
-      <SelectContent className="notes-notebook-select__menu">
+      <SelectContent className="notes-notebook-select__menu collection-ghost-select__menu">
         {items.map((notebook) => (
           <SelectItem key={notebook.id} value={notebook.id}>
             <NotebookSelectOption notebook={notebook} />

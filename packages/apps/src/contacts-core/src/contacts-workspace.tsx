@@ -4,13 +4,15 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/ui/tooltip";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
+import { ContactsDetailAddressBookSelect } from "@/contacts-core/src/contacts-detail-address-book-select";
 import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
 import { ContactsNewMenu } from "@/contacts-core/src/contacts-new-menu";
@@ -32,7 +34,6 @@ import {
   ContactsImportDialog,
   contactsImportDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-import-dialog";
-import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   contactsBookViewKey,
   writableGroupAddressBooks,
@@ -300,13 +301,7 @@ export function ContactsWorkspace({
             <AppSidebar
               open={c.sidebarOpen}
               onCloseMobile={c.closeSidebar}
-              footer={
-                <WorkspaceAppSettingsFooter
-                  appId="contacts"
-                  session={session}
-                  onLogout={onLogout}
-                />
-              }
+              footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
               primaryButton={
                 <ContactsNewMenu
                   labels={L}
@@ -320,7 +315,7 @@ export function ContactsWorkspace({
                 />
               }
             >
-              <SidebarSection items={primarySidebarItems} />
+              <WorkspaceAppPrimarySidebarSection appId="contacts" items={primarySidebarItems} />
               {ownedAddressBooks.length > 0 ? (
                 <SidebarSection title={L.sectionAddressBooks}>
                   <ContactsSidebarBookRows
@@ -392,6 +387,7 @@ export function ContactsWorkspace({
             selectionBar,
             onRefreshList,
             pendingCardIds,
+            addressBooks,
           });
 
           return {
@@ -430,16 +426,6 @@ export function ContactsWorkspace({
               canSaveCreate={canSaveCreate}
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
-              moveAddressBook={
-                canMoveActiveContact && active
-                  ? {
-                      books: writableMoveBooks,
-                      value: firstEnabledAddressBookId(active.addressBookIds) ?? "",
-                      personalLabel: L.personalAddressBook,
-                      onMove: moveActiveContactToAddressBook,
-                    }
-                  : undefined
-              }
               onEdit={startEdit}
               onDelete={deleteActive}
               onDownload={downloadActive}
@@ -469,6 +455,18 @@ export function ContactsWorkspace({
               editDraft={editDraft}
               displayName={displayName}
               groupTags={groupTags}
+              eyebrow={
+                active && !createMode ? (
+                  <ContactsDetailAddressBookSelect
+                    card={active}
+                    labels={L}
+                    addressBooks={addressBooks}
+                    writableBooks={writableMoveBooks}
+                    canMove={canMoveActiveContact}
+                    onMove={moveActiveContactToAddressBook}
+                  />
+                ) : undefined
+              }
               onDraftChange={updateEditDraft}
               onUpdatePhone={updatePhone}
               onUpdateEmail={updateEmail}

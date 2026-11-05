@@ -64,6 +64,8 @@ type ContactsDetailViewProps = {
    * Group membership chips (Notes TagGroup). Omit to hide — group cards and
    * create-mode have no membership tags.
    */
+  /** Above the name: the address book switcher (Notes-style eyebrow). */
+  eyebrow?: ReactNode;
   groupTags?: {
     assigned: ContactDetailGroupChip[];
     suggestions: ContactCard[];
@@ -598,6 +600,7 @@ export function ContactsDetailView({
   onRemoveEmail,
   onRemoveAddress,
   groupTags,
+  eyebrow,
   locale = "en-US",
   className,
 }: ContactsDetailViewProps) {
@@ -616,12 +619,18 @@ export function ContactsDetailView({
           />
           {!isEditing && card ? (
             <div className="contacts-detail-view__heading">
+              {eyebrow ? <div className="contacts-detail-view__eyebrow">{eyebrow}</div> : null}
               <h1 className="contacts-detail-view__title">{contactDisplayName(card)}</h1>
               {contactViewIdentityLines(card).map((line, index) => (
                 <p key={`${index}-${line}`} className="contacts-detail-view__subtitle">
                   {line}
                 </p>
               ))}
+            </div>
+          ) : null}
+          {isEditing && !createMode && eyebrow ? (
+            <div className="contacts-detail-view__heading">
+              <div className="contacts-detail-view__eyebrow">{eyebrow}</div>
             </div>
           ) : null}
           {createMode && isEditing ? (

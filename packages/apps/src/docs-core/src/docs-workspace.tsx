@@ -12,7 +12,7 @@ import { wgwIsGuestSession, wgwRedirectGuestShareReauth } from "@/lib/api/wgw/ht
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
@@ -233,8 +233,7 @@ function DocsSidebar({
       appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       footer={
-        <WorkspaceAppSettingsFooter
-          appId="docs"
+        <WorkspaceSidebarAccountFooter
           session={session}
           detailLine={workspaceUserFooterDetailLine(session, controller.readOnly)}
           onLogout={onLogout}

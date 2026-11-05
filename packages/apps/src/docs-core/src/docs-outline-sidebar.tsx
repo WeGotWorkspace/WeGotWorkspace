@@ -6,6 +6,10 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { DocsOutlineItem } from "@/docs-core/src/docs-outline";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { cn } from "@/lib/utils";
+import {
+  useWorkspaceAppSettingsSidebarItem,
+  withSettingsSidebarItem,
+} from "@/settings-core/src/workspace-app-settings-sidebar";
 
 import "@/docs-core/src/docs-outline-sidebar.css";
 
@@ -29,6 +33,7 @@ export function DocsOutlineSidebar({
   showOutline = true,
 }: DocsOutlineSidebarProps) {
   const navigate = useNavigate();
+  const settingsItem = useWorkspaceAppSettingsSidebarItem("docs");
 
   const homeItems = useMemo(
     (): MenuItemProps[] => [
@@ -68,10 +73,13 @@ export function DocsOutlineSidebar({
     });
   }, [activeIndex, items, labels.outlineEmpty, onSelect]);
 
+  // First section: the way back, then Settings (suite norm).
+  const firstItems = withSettingsSidebarItem(showBackToHome ? homeItems : [], settingsItem);
+
   return (
     <>
-      {showBackToHome ? (
-        <SidebarSection className="docs-outline-sidebar__back" items={homeItems} />
+      {firstItems.length > 0 ? (
+        <SidebarSection className="docs-outline-sidebar__back" items={firstItems} />
       ) : null}
       {showOutline ? <SidebarSection title={labels.sidebarOutline} items={menuItems} /> : null}
     </>

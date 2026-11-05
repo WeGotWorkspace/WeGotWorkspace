@@ -13,7 +13,7 @@ import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -619,8 +619,7 @@ function DocsCollabWorkspaceInner({
               onCloseMobile={() => setSidebarOpen(false)}
               appSwitchSubtitle="Docs"
               footer={
-                <WorkspaceAppSettingsFooter
-                  appId="docs"
+                <WorkspaceSidebarAccountFooter
                   session={session}
                   detailLine={session.user.username}
                   onLogout={onLogout}
