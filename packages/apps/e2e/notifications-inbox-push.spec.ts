@@ -1,4 +1,11 @@
 import { expect, test, type BrowserContext, type Page, type Request } from "./helpers/live-test";
+import {
+  dmChannel,
+  postDm,
+  pushConnected,
+  signedInContext,
+  tokenFor,
+} from "./helpers/notifications-live";
 
 /**
  * #1668: a new notification reaches the bell on push, in two tabs of one
@@ -14,9 +21,6 @@ import { expect, test, type BrowserContext, type Page, type Request } from "./he
  * no mesh `notify-hint` reaches the recipient's tabs either.
  */
 
-const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
-const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
-const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 const PUSH_BOUND_MS = 8_000;
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -26,25 +30,10 @@ test("a new notification reaches the bell of both tabs on push, fetched and acke
 }) => {
   const adminToken = await tokenFor("admin");
   const memberToken = await tokenFor("member");
-  const context = await browser.newContext({
-    baseURL: APP,
-    storageState: { cookies: [], origins: [] },
-  });
-  await context.addInitScript(
-    ({ access }) => {
-      localStorage.setItem("wgw.api.access_token", access);
-      localStorage.setItem("wgw.api.session_kind", "member");
-    },
-    { access: adminToken },
-  );
+  const context = await signedInContext(browser, adminToken);
 
   try {
-    const dm = await context.request.post(`${API}/api/v1/chat/dms`, {
-      headers: { Authorization: `Bearer ${memberToken}` },
-      data: { principal: "admin" },
-    });
-    expect(dm.ok(), await dm.text()).toBeTruthy();
-    const channelId = ((await dm.json()) as { id: string }).id;
+    const channelId = await dmChannel(context, memberToken, "admin");
 
     const tabA = await context.newPage();
     const tabB = await context.newPage();
@@ -87,25 +76,10 @@ test("a tab that takes over the stream acks only the new row, not the rows the c
 }) => {
   const adminToken = await tokenFor("admin");
   const memberToken = await tokenFor("member");
-  const context = await browser.newContext({
-    baseURL: APP,
-    storageState: { cookies: [], origins: [] },
-  });
-  await context.addInitScript(
-    ({ access }) => {
-      localStorage.setItem("wgw.api.access_token", access);
-      localStorage.setItem("wgw.api.session_kind", "member");
-    },
-    { access: memberToken },
-  );
+  const context = await signedInContext(browser, memberToken);
 
   try {
-    const dm = await context.request.post(`${API}/api/v1/chat/dms`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-      data: { principal: "member" },
-    });
-    expect(dm.ok(), await dm.text()).toBeTruthy();
-    const channelId = ((await dm.json()) as { id: string }).id;
+    const channelId = await dmChannel(context, adminToken, "member");
     // Unread rows the member already has before any tab opens.
     for (let i = 0; i < 3; i++)
       await postDm(context, adminToken, channelId, `unread ${i} ${Date.now()}`);
@@ -181,22 +155,6 @@ async function sendDm(
   return { latency, text, rowId: row.id, ackedIds: counter.acks()[0]! };
 }
 
-async function postDm(
-  context: BrowserContext,
-  senderToken: string,
-  channelId: string,
-  text: string,
-): Promise<void> {
-  const posted = await context.request.post(
-    `${API}/api/v1/chat/channels/${encodeURIComponent(channelId)}/messages`,
-    {
-      headers: { Authorization: `Bearer ${senderToken}` },
-      data: { id: ulid(), body: text },
-    },
-  );
-  expect(posted.ok(), await posted.text()).toBeTruthy();
-}
-
 type ListedRow = { id: string; body?: string | null };
 
 /** Inbox GETs, the ids each local-ack sent, and the rows the GETs listed. */
@@ -236,14 +194,6 @@ function countInboxRequests(pages: Page[]) {
   };
 }
 
-/** Resolves once a push request in any tab of the context got an event stream back. */
-function pushConnected(context: BrowserContext): Promise<unknown> {
-  return context.waitForEvent("response", {
-    predicate: (response) => /\/jmap\/events\//.test(response.url()) && response.status() === 200,
-    timeout: 30_000,
-  });
-}
-
 /** The tab that sent the latest push request holds the stream. */
 function trackStreamTab(pages: Page[]): () => Page | null {
   let last: Page | null = null;
@@ -258,30 +208,4 @@ function trackStreamTab(pages: Page[]): () => Page | null {
 async function openBell(page: Page): Promise<void> {
   await page.locator(".notification-inbox-tray__trigger").click();
   await expect(page.locator(".notification-inbox-tray__popover")).toBeVisible();
-}
-
-async function tokenFor(username: string): Promise<string> {
-  const response = await fetch(`${API}/api/v1/auth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password: PASSWORD }),
-  });
-  expect(response.ok, await response.clone().text()).toBeTruthy();
-  const tokens = (await response.json()) as { access_token?: string };
-  if (!tokens.access_token) throw new Error(`Login for ${username} did not return tokens.`);
-  return tokens.access_token;
-}
-
-/** Chat message ids are ULIDs (26 Crockford base32 characters). */
-function ulid(): string {
-  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-  let time = Date.now();
-  let head = "";
-  for (let i = 0; i < 10; i++) {
-    head = alphabet[time % 32] + head;
-    time = Math.floor(time / 32);
-  }
-  let tail = "";
-  for (let i = 0; i < 16; i++) tail += alphabet[Math.floor(Math.random() * 32)];
-  return head + tail;
 }

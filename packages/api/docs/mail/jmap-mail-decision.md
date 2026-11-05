@@ -4,7 +4,7 @@
 >
 > **Status (2026-10-23):** the IMAP client this document describes (`MailImapClient`, `MailImapProcess`, the mail REST layer) was removed in #1573. The substrate facts below describe that code as it was; the repository history keeps it.
 
-> **Issue:** [#440](https://github.com/WeGotWorkspace/wegotworkspace/issues/440) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/452-jmap-envelope-mail/`
+> **Issue:** [#440](https://github.com/WeGotWorkspace/wegotworkspace/issues/440) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/archive/2026/452-jmap-envelope-mail/`
 > **External spec:** RFC 8621 (final) · **Related goals:** Product#5 (send/receive, fulfilled), Product#17 (threads, adopted), Product#18 (offline mail, adopted), Product#22 (multi-account) · **Eng tracker:** #401
 >
 > Decision gate: mail envelope Tasks M1 (read-only) / M2 (writes + submission) are filed **only if** this document's recommendation is "build".

@@ -8,7 +8,7 @@ import { AppToastCallout } from "@/ui/app-toast-callout";
 const DEFAULT_DURATION_MS = 4000;
 
 /** Fills Sonner’s `[data-sonner-toaster]` width (`--width`); keep chrome inside {@link AppToastCallout}. */
-const CUSTOM_TOAST_FRAME_CLASS =
+export const CUSTOM_TOAST_FRAME_CLASS =
   "w-full min-w-0 max-w-none !bg-transparent !p-0 !border-0 !shadow-none";
 
 export type AppToastShowOptions = {

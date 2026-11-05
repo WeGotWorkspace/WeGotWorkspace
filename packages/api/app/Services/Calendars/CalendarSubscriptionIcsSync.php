@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
@@ -11,8 +12,6 @@ use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\RecurrenceOverrideSupport;
 use App\Services\VObject\ICalendarUid;
 use App\Services\VObject\VObjectPayloadGuard;
-use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 
@@ -21,7 +20,10 @@ use Sabre\VObject\Component\VEvent;
  */
 final class CalendarSubscriptionIcsSync
 {
-    public function __construct(private readonly VObjectPayloadGuard $payloadGuard) {}
+    public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
+        private readonly VObjectPayloadGuard $payloadGuard,
+    ) {}
 
     public function sync(CalendarInstance $instance, string $ics): void
     {
@@ -38,7 +40,7 @@ final class CalendarSubscriptionIcsSync
             ->get()
             ->keyBy(fn (CalendarObject $object): string => (string) $object->uid);
 
-        $caldav = $this->calBackend();
+        $caldav = $this->backends->calBackend();
 
         foreach ($incoming as $uid => $document) {
             $uri = $this->objectUriForUid($uid);
@@ -152,10 +154,5 @@ final class CalendarSubscriptionIcsSync
         $hash = substr(hash('sha256', $uid), 0, 32);
 
         return 'sub-'.$hash.'.ics';
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

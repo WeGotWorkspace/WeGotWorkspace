@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
@@ -17,6 +18,8 @@ use Sabre\VObject\Recur\MaxInstancesExceededException;
 final class CalendarEventQuerySupport
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarRepository $calendars,
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarEventExpansionService $expansion,
@@ -263,8 +266,8 @@ final class CalendarEventQuerySupport
 
         $syncToken = $this->normalizeSyncToken($instance, $since);
         // Sabre's PDO backend treats a falsy token as the initial sync.
-        $changes = $this->mutations->calBackend()->getChangesForCalendar(
-            $this->mutations->calBackendCalendarId($instance),
+        $changes = $this->backends->calBackend()->getChangesForCalendar(
+            $this->collections->backendId($instance),
             $syncToken === null ? '0' : $syncToken,
             1,
         );

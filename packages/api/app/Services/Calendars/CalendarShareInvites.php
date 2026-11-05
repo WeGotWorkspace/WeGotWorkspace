@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
-use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\DAV\Xml\Element\Sharee;
 
@@ -18,6 +17,8 @@ use Sabre\DAV\Xml\Element\Sharee;
 final class CalendarShareInvites
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarPrincipalAddresses $addresses,
     ) {}
 
@@ -51,7 +52,7 @@ final class CalendarShareInvites
         }
 
         $grants = [];
-        foreach ($this->calBackend()->getInvites($this->backendId($instance)) as $sharee) {
+        foreach ($this->backends->calBackend()->getInvites($this->collections->backendId($instance)) as $sharee) {
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER) {
                 continue;
             }
@@ -71,7 +72,7 @@ final class CalendarShareInvites
             throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
         }
 
-        $currentInvites = array_values($this->calBackend()->getInvites($this->backendId($instance)));
+        $currentInvites = array_values($this->backends->calBackend()->getInvites($this->collections->backendId($instance)));
         $sharees = $shareWith === null
             ? $this->revokeAllSharees($currentInvites)
             : $this->shareesFromPatch($instance, $shareWith, $currentInvites);
@@ -80,7 +81,7 @@ final class CalendarShareInvites
             return;
         }
 
-        $this->calBackend()->updateInvites($this->backendId($instance), $sharees);
+        $this->backends->calBackend()->updateInvites($this->collections->backendId($instance), $sharees);
     }
 
     /**
@@ -210,18 +211,5 @@ final class CalendarShareInvites
             'mayShare' => false,
             'mayDelete' => false,
         ];
-    }
-
-    /**
-     * @return array{0: int, 1: int}
-     */
-    private function backendId(CalendarInstance $instance): array
-    {
-        return [(int) $instance->calendarid, (int) $instance->id];
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

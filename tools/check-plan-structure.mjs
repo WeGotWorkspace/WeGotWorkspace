@@ -262,6 +262,8 @@ export function evaluatePlans({ plans, diffPaths }) {
   for (const plan of plans) {
     const rel = plan.path.replace(/\\/g, "/");
     if (rel.includes(".agents/specs/_template/")) continue;
+    // Archived specs are history (.agents/specs/README.md, Archive rule): a move is not a revision.
+    if (rel.includes(".agents/specs/archive/")) continue;
     const isPlan = rel.includes(".agents/specs/") && rel.endsWith("/plan.md");
     const isSpec = rel.includes(".agents/specs/") && rel.endsWith("/spec.md");
     if (!isPlan && !isSpec) continue;
