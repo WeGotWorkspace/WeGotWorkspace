@@ -34,6 +34,7 @@ function ListHarness({
   listRefreshing = false,
   onRefreshList,
   onEditTag,
+  starred = {},
   slot = "list",
 }: {
   notes: Note[];
@@ -46,6 +47,7 @@ function ListHarness({
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   onEditTag?: () => void;
+  starred?: Record<string, boolean>;
   slot?: "list" | "header" | "both";
 }) {
   const panel = NotesListPanel({
@@ -66,7 +68,7 @@ function ListHarness({
     searchInputRef: createRef<HTMLInputElement>(),
     view,
     isTouch: false,
-    starred: {},
+    starred,
     archived: {},
     activeId,
     isItemDragging: () => false,
@@ -182,7 +184,11 @@ describe("NotesListPanel notebook labels", () => {
     expect(meta("n-1")).toContain("Journal");
     expect(meta("n-2")).toContain("Work");
     expect(screen.queryByText("Drafts")).toBeNull();
-    expect(document.querySelector(".notes-notebook-color-icon")).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-list-item-id="n-1"] .list-item__meta .notes-notebook-color-dot',
+      ),
+    ).toBeTruthy();
   });
 
   it("shows the date top right, a preview, and the notebook with its colour dot", () => {
@@ -197,8 +203,8 @@ describe("NotesListPanel notebook labels", () => {
     expect(row.querySelector(".list-item__body--preview")!.textContent).toBe("Body text");
     const notebook = row.querySelector(".list-item__meta .notes-list-panel__notebook")!;
     expect(notebook.textContent).toBe("Journal");
-    const dot = notebook.querySelector(".notes-list-panel__notebook-dot") as HTMLElement;
-    expect(dot.style.getPropertyValue("--notebook-dot-color")).toBe("#ea8c72");
+    const dot = notebook.querySelector(".notes-notebook-color-dot") as HTMLElement;
+    expect(dot.style.getPropertyValue("--collection-row-color")).toBe("#ea8c72");
   });
 
   it("shows the group collection display name, not the group-… slug", () => {
@@ -228,12 +234,25 @@ describe("NotesListPanel notebook labels", () => {
     );
     expect(screen.getByText("Administratorss").closest(".list-item__meta")).toBeTruthy();
     expect(screen.queryByText("group-administrators")).toBeNull();
-    expect(container.querySelector(".notes-notebook-color-icon")).toBeNull();
+    expect(container.querySelector(".list-item__meta .notes-notebook-color-dot")).toBeTruthy();
   });
 
   it("marks only starred notes with a star", () => {
     const { container } = render(<ListHarness notes={[baseNote]} />);
     expect(container.querySelector(".notes-list-panel__star-pip")).toBeNull();
+  });
+
+  it("puts the star right before the date, not in the meta line", () => {
+    const { container } = render(
+      <ListHarness notes={[baseNote]} starred={{ [baseNote.id]: true }} />,
+    );
+    const trailing = container.querySelector(".list-item__title-row .list-item__title-trailing");
+    const star = trailing?.querySelector(".notes-list-panel__star-pip");
+    expect(star?.getAttribute("aria-label")).toBe(defaultNotesLabels.sidebarStarred);
+    expect(star?.closest(".list-item__date-leading")?.nextElementSibling?.className).toBe(
+      "list-item__date",
+    );
+    expect(container.querySelector(".list-item__meta .notes-list-panel__star-pip")).toBeNull();
   });
 });
 
@@ -410,7 +429,6 @@ describe("NotesListPanel access chips", () => {
       />,
     );
     expect(screen.getByText("bob").closest(".list-item__meta")).toBeTruthy();
-    expect(container.querySelector(".notes-notebook-color-icon")).toBeNull();
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();
   });

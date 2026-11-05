@@ -51,6 +51,8 @@ type ListItemProps = {
    */
   metaPosition?: ListItemMetaPosition;
   date: string;
+  /** Marks right before the date in the top-right corner, e.g. a star (`below` only). */
+  dateLeading?: ReactNode;
   icons?: ReactNode[];
   /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present, unless `showEmptyText` is set. */
   text?: ReactNode;
@@ -108,6 +110,7 @@ export function ListItem({
   subtitle,
   metaPosition = "above",
   date,
+  dateLeading,
   icons = [],
   text,
   showEmptyText = false,
@@ -257,7 +260,14 @@ export function ListItem({
               <h3 className="list-item__title" data-empty={title ? "false" : "true"}>
                 {title || emptyTitle}
               </h3>
-              {date ? <span className="list-item__date">{date}</span> : null}
+              {date || dateLeading ? (
+                <span className="list-item__title-trailing">
+                  {dateLeading ? (
+                    <span className="list-item__date-leading">{dateLeading}</span>
+                  ) : null}
+                  {date ? <span className="list-item__date">{date}</span> : null}
+                </span>
+              ) : null}
             </div>
             {bodyContent ? (
               <div className="list-item__body list-item__body--preview">{bodyContent}</div>

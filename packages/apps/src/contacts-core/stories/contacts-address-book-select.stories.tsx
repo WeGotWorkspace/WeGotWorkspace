@@ -77,7 +77,7 @@ export const Toolbar: Story = {
       "Bob",
     ]);
     await expect(document.querySelector(".contacts-address-book-select__separator")).toBeNull();
-    await expect(document.querySelectorAll(".notes-notebook-color-icon").length).toBeGreaterThan(0);
+    await expect(document.querySelectorAll(".notes-notebook-color-dot").length).toBeGreaterThan(0);
     await expect(document.querySelector(".contacts-group-icon")).toBeNull();
 
     await userEvent.click(screen.getByRole("option", { name: "Engineering" }));

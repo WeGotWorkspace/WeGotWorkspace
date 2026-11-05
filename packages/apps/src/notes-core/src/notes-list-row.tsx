@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo } from "react";
 import { Archive, Circle, Eye, Share2, Star } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import type { Note } from "@/lib/models/note";
@@ -12,6 +12,7 @@ import {
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
@@ -20,11 +21,7 @@ import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 function NotesListNotebook({ name, color }: { name: string; color?: string }) {
   return (
     <span className="notes-list-panel__notebook">
-      <span
-        className="notes-list-panel__notebook-dot"
-        aria-hidden
-        style={{ "--notebook-dot-color": notebookDotColor({ color }) } as CSSProperties}
-      />
+      <NotesNotebookColorDot color={notebookDotColor({ color })} />
       <span className="notes-list-panel__notebook-name">{name}</span>
     </span>
   );
@@ -95,6 +92,13 @@ export const NotesListRow = memo(function NotesListRow({
       subtitle={location ? <NotesListNotebook name={location} color={notebookColor} /> : null}
       metaPosition="below"
       date={formatNoteDateForList(note.date)}
+      dateLeading={
+        starred ? (
+          <span className="notes-list-panel__star-pip" role="img" aria-label={L.sidebarStarred}>
+            <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
+          </span>
+        ) : null
+      }
       text={excerpt || null}
       icons={[
         pendingSync ? (
@@ -125,16 +129,6 @@ export const NotesListRow = memo(function NotesListRow({
             aria-label={L.shared}
           >
             <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
-          </span>
-        ) : null,
-        starred ? (
-          <span
-            key="star"
-            className="notes-list-panel__star-pip"
-            role="img"
-            aria-label={L.sidebarStarred}
-          >
-            <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
           </span>
         ) : null,
       ].filter(Boolean)}

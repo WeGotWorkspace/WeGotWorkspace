@@ -42,6 +42,24 @@ const base = {
   onTagRemove: () => {},
 };
 
+/** The notebook sits above the title (an eyebrow slot); the sheet has no tint. */
+export const WithNotebookEyebrow: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...base,
+    pullQuote: undefined,
+    eyebrow: <span data-testid="eyebrow">The Journal</span>,
+  },
+  play: async ({ canvasElement }) => {
+    const eyebrow = canvasElement.querySelector(".note-detail-view__eyebrow") as HTMLElement;
+    await expect(eyebrow).toHaveTextContent("The Journal");
+    const title = within(canvasElement).getByRole("textbox", { name: "Title" });
+    await expect(
+      eyebrow.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  },
+};
+
 export const Editable: Story = {
   args: {
     ...base,

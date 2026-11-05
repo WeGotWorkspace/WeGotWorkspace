@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
-import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { cn } from "@/lib/utils";
 import "@/contacts-core/src/contacts-address-book-select.css";
 
@@ -71,7 +71,7 @@ function AddressBookSelectOption({
       className="contacts-address-book-select__option"
       style={{ "--collection-row-color": addressBookDotColor(book, overrides) } as CSSProperties}
     >
-      <NotesNotebookColorIcon />
+      <NotesNotebookColorDot />
       <span className="contacts-address-book-select__name">{name}</span>
     </span>
   );
@@ -120,7 +120,7 @@ export function ContactsAddressBookSelect({
               } as CSSProperties
             }
           >
-            <NotesNotebookColorIcon />
+            <NotesNotebookColorDot />
           </span>
         }
         className={cn(

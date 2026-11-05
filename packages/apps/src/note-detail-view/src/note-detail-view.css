@@ -20,6 +20,11 @@
   color: var(--notes-detail-contrast-fg, var(--workspace-foreground));
 }
 
+/* Above the title (the notebook switcher); its text lines up with the title. */
+.note-detail-view__eyebrow {
+  @apply mb-1 flex min-w-0;
+}
+
 /**
  * Notes sheet type ramp. Multipliers × shared `--text-editor-prose-font-size`
  * (fluid clamp ~15–16px). Title is `text-4xl` (2.25rem / 36px) so it stays ≥

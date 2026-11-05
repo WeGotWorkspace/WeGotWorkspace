@@ -35,6 +35,7 @@ import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
+import { NotesDetailNotebookSelect } from "@/notes-core/src/notes-detail-notebook-select";
 import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
@@ -534,15 +535,8 @@ export function NotesWorkspace({
               starred={starred}
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
-              notebooks={selectNotebooks}
-              onMoveToNotebook={moveActiveNoteToNotebook}
-              onCreateNotebook={
-                canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
-              }
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
-              notebookColor={activeNotebook?.color}
-              readOnly={shareReadOnly}
               canArchive={noteCanArchive}
             />
           ) : c.detailOpenMobile ? (
@@ -608,6 +602,20 @@ export function NotesWorkspace({
                 body={active.body}
                 collab={accessLost ? undefined : noteBodyCollab}
                 readOnly={noteReadOnly}
+                eyebrow={
+                  <NotesDetailNotebookSelect
+                    active={active}
+                    labels={L}
+                    archived={archived}
+                    notebooks={selectNotebooks}
+                    onMoveToNotebook={moveActiveNoteToNotebook}
+                    onCreateNotebook={
+                      canManageNotebooks ? () => openCreateNotebook([active.id]) : undefined
+                    }
+                    notebookColor={activeNotebook?.color}
+                    readOnly={shareReadOnly}
+                  />
+                }
               />
             </>
           );

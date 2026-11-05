@@ -1,4 +1,11 @@
-import { useId, useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -78,6 +85,8 @@ export type NoteDetailViewProps = {
   collab?: NoteCollabConfig;
   /** When `true`, body and tags are display-only. Default `false` (editing on). */
   readOnly?: boolean;
+  /** Above the title, e.g. the notebook switcher. */
+  eyebrow?: ReactNode;
   className?: string;
 };
 
@@ -102,6 +111,7 @@ export function NoteDetailView({
   body,
   collab,
   readOnly = false,
+  eyebrow,
   className,
 }: NoteDetailViewProps) {
   const markdown = noteBodyToMarkdown(body);
@@ -140,6 +150,7 @@ export function NoteDetailView({
 
   return (
     <article className={cn("note-detail-view paper-sheet", className)}>
+      {eyebrow ? <div className="note-detail-view__eyebrow">{eyebrow}</div> : null}
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>

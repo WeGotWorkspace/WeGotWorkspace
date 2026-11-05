@@ -6,15 +6,9 @@
  * Notes product shell: cream panes. The sidebar rail is the shared Sand wash,
  * not a full-bleed accent. `--workspace-accent` is Dark (buttons, checks,
  * selected chips use white on that fill). Detail pane / desk is the same cream
- * as the footer and action bar (`--workspace-chrome-footer-bg`), so the open-note
- * paper card can
- * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
- * `--notes-detail-tint` at 11% in oklab (same % as Calendar’s srgb
- * `surfaceTint`) — a very light notebook wash that keeps chroma/hue,
- * never the full collection color. Do not mix the sheet in oklch: an
- * 11% cylindrical blend into warm Soft interpolates toward cream’s hue
- * and reads peach for purple/teal notebooks.
- * `--notes-detail-accent` still binds to that tint so selected
+ * as the footer and action bar (`--workspace-chrome-footer-bg`), and the open
+ * note sits on it without a tinted sheet (`--paper-sheet-bg` is the surface).
+ * `--notes-detail-accent` binds to the notebook tint so selected
  * Star/Archive and editor checks use the live notebook hue. Detail tag
  * chips invert the paper sheet: fill is `--notes-detail-contrast-fg`,
  * label and icons are `--paper-sheet-bg` (no notebook color, no stroke).
@@ -71,8 +65,7 @@
    * chip rule (sidebar-local `--button-outline-active-background`). Do not
    * alias that wash here: `.notes-workspace` resolves the mix against the
    * desk surface, not the sidebar. Selected chips use the foreground/surface pair.
-   * Detail category chips invert the sheet (`--notes-detail-contrast-fg` /
-   * `--paper-sheet-bg`). `--note-detail-tag-*` stays the editor task-list wash. */
+   * Detail tags are a neutral wash; `--note-detail-tag-*` is the editor task-list wash. */
   --notes-tag-fg: var(--workspace-foreground);
   /* Selected sidebar tag chip — foreground fill, surface label, no stroke. Nested
    * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
@@ -88,13 +81,11 @@
   );
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: var(--notes-detail-accent);
-  /* Very light notebook wash on cream — not the full `--notes-detail-tint`.
-   * oklab (not oklch): small % keeps notebook chroma/hue on warm Soft. */
-  --paper-sheet-bg: color-mix(
-    in oklab,
-    var(--notes-detail-tint, var(--workspace-surface)) 11%,
-    var(--workspace-surface)
-  );
+  /* The open note sits on the plain pane surface: no notebook wash, no sheet
+   * shadow. The notebook colour lives in the eyebrow above the title and on
+   * the editor checks (`--notes-detail-accent`). */
+  --paper-sheet-bg: var(--workspace-surface);
+  --paper-sheet-shadow: none;
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
     in oklch,
@@ -338,10 +329,13 @@
 
 .notes-workspace .note-detail-view__tag-group .tag {
   @apply border-0;
-  /* Invert the paper sheet: fill is the sheet text, ink is the sheet fill. */
-  --tag-bg: var(--notes-detail-contrast-fg, var(--workspace-foreground));
-  --tag-fg: var(--paper-sheet-bg);
+  /* A neutral wash with a quiet 1px edge, built like the checked boxes. Neutral,
+   * not the notebook colour: tags run across notebooks. */
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
+  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 80%, var(--workspace-surface));
   background-color: var(--tag-bg);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklch, var(--workspace-foreground) 14%, var(--workspace-surface));
   color: var(--tag-fg);
 }
 

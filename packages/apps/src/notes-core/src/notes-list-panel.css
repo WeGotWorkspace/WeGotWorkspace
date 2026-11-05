@@ -45,11 +45,6 @@
   @apply inline-flex min-w-0 items-center gap-1.5;
 }
 
-.notes-list-panel__notebook-dot {
-  @apply size-2 shrink-0 rounded-full;
-  background-color: var(--notebook-dot-color);
-}
-
 .notes-list-panel__notebook-name {
   @apply truncate;
 }

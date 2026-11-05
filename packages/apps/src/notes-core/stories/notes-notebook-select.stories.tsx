@@ -16,10 +16,12 @@ function NotesNotebookSelectHarness({
   onNotebookChange,
   onCreateNotebook,
   disabled = false,
+  triggerVariant,
 }: {
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
   onCreateNotebook?: () => void;
   disabled?: boolean;
+  triggerVariant?: "labeled" | "swatch" | "ghost";
 }) {
   const [current, setCurrent] = useState<NotesNotebookSelectItem>(
     seedNotebooks[2] ?? seedNotebooks[0] ?? { id: "Drafts", name: "Drafts" },
@@ -32,6 +34,7 @@ function NotesNotebookSelectHarness({
         value={current}
         labels={defaultNotesLabels}
         disabled={disabled}
+        triggerVariant={triggerVariant}
         onNotebookChange={(notebook) => {
           setCurrent(notebook);
           onNotebookChange(notebook);
@@ -74,7 +77,7 @@ export const Default: Story = {
       defaultNotesLabels.addNotebook,
     ]);
     await expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
-    await expect(document.querySelectorAll(".notes-notebook-color-icon").length).toBeGreaterThan(0);
+    await expect(document.querySelectorAll(".notes-notebook-color-dot").length).toBeGreaterThan(0);
     await expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     await expect(screen.getByRole("option", { name: "Drafts" })).toHaveAttribute(
       "data-state",
@@ -91,5 +94,34 @@ export const Disabled: Story = {
   args: {
     disabled: true,
     onCreateNotebook: undefined,
+  },
+};
+
+/** Ghost: the notebook name in its colour, above the note title in the detail pane. */
+export const Ghost: Story = {
+  tags: ["vitest-ci"],
+  args: { triggerVariant: "ghost" },
+  play: async ({ args, canvasElement }) => {
+    const trigger = within(canvasElement).getByRole("combobox", { name: "Drafts" });
+    await expect(trigger).toHaveClass("notes-notebook-select--ghost");
+    await expect(trigger.querySelector(".notes-notebook-select__chevron")).toBeTruthy();
+    await expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "Published" }));
+    await expect(args.onNotebookChange).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Published" }),
+    );
+    await expect(within(canvasElement).getByRole("combobox", { name: "Published" })).toBeTruthy();
+  },
+};
+
+/** Ghost, locked (shared or view-only note): no chevron, not clickable. */
+export const GhostDisabled: Story = {
+  tags: ["vitest-ci"],
+  args: { triggerVariant: "ghost", disabled: true, onCreateNotebook: undefined },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole("combobox", { name: "Drafts" });
+    await expect(trigger).toBeDisabled();
+    await expect(trigger.querySelector(".notes-notebook-select__chevron")).toBeNull();
   },
 };

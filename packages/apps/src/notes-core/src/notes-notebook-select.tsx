@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { ChevronDown } from "lucide-react";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@/ui/select";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-notebook-select.css";
@@ -42,8 +43,10 @@ export type NotesNotebookSelectProps = {
   /**
    * `swatch` reuses ColorSwatchTrigger (icon + chevron, no caption) — same chrome as
    * CalendarEventCalendarPicker. `labeled` keeps the Select trigger with visible name.
+   * `ghost` is the notebook name in its own colour with a small chevron and no
+   * chrome (the note detail eyebrow).
    */
-  triggerVariant?: "labeled" | "swatch";
+  triggerVariant?: "labeled" | "swatch" | "ghost";
   /** Dialog fields use `sm` (32px). Toolbar / action bar keep default `md`. */
   size?: ControlSize;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
@@ -124,7 +127,7 @@ function NotebookSelectOption({ notebook }: { notebook: NotesNotebookSelectItem 
       className="notes-notebook-select__option"
       style={{ "--collection-row-color": notebookDotColor(notebook) } as CSSProperties}
     >
-      <NotesNotebookColorIcon />
+      <NotesNotebookColorDot />
       <span className="notes-notebook-select__name">{notebook.name}</span>
     </span>
   );
@@ -148,7 +151,20 @@ export function NotesNotebookSelect({
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
   const swatch = triggerVariant === "swatch";
 
-  const trigger = swatch ? (
+  const ghost = triggerVariant === "ghost";
+
+  const trigger = ghost ? (
+    <SelectPrimitive.Trigger
+      className={cn("notes-notebook-select", "notes-notebook-select--ghost", className)}
+      aria-label={accessibleName}
+      disabled={disabled}
+      style={{ "--collection-row-color": notebookDotColor(value) } as CSSProperties}
+    >
+      <NotesNotebookColorDot />
+      <span className="notes-notebook-select__name">{value.name}</span>
+      {disabled ? null : <ChevronDown className="notes-notebook-select__chevron" aria-hidden />}
+    </SelectPrimitive.Trigger>
+  ) : swatch ? (
     <SelectPrimitive.Trigger asChild disabled={disabled}>
       <ColorSwatchTrigger
         label={accessibleName}
@@ -159,7 +175,7 @@ export function NotesNotebookSelect({
             className="notes-notebook-select__option"
             style={{ "--collection-row-color": notebookDotColor(value) } as CSSProperties}
           >
-            <NotesNotebookColorIcon />
+            <NotesNotebookColorDot />
           </span>
         }
         className={cn("notes-notebook-select", "notes-notebook-select--swatch", className)}
@@ -191,11 +207,16 @@ export function NotesNotebookSelect({
         onNotebookChange(notebook);
       }}
     >
-      <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent>{accessibleName}</TooltipContent>
-      </Tooltip>
-      <SelectContent>
+      {ghost ? (
+        // The name is on the trigger already; no tooltip needed.
+        trigger
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent>{accessibleName}</TooltipContent>
+        </Tooltip>
+      )}
+      <SelectContent className="notes-notebook-select__menu">
         {items.map((notebook) => (
           <SelectItem key={notebook.id} value={notebook.id}>
             <NotebookSelectOption notebook={notebook} />

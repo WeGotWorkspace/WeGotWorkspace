@@ -230,7 +230,7 @@ describe("ContactsDetailActionBar address-book move", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("contacts-address-book-select--swatch");
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
     expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
     fireEvent.click(trigger);
 

@@ -366,6 +366,19 @@ input.input:focus-visible:not(:read-only),
  * Accent + fg still come from portaled tokens via `bridgePortalThemeVars`.
  * Washes: shared `workspace-derive.css` (`--menu-item-*`).
  */
+/*
+ * Select lists are frosted floating chrome, like the dropdown menus: frost fill
+ * and blur, floating radius, no border, frost shadow.
+ */
+.select-ui__content {
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  border: 0;
+  border-radius: var(--floating-toolbar-radius);
+  box-shadow: var(--frost-shadow);
+}
+
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
   border-radius: var(--control-radius);

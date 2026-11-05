@@ -30,3 +30,47 @@
 .notes-notebook-select.notes-notebook-select--swatch {
   min-width: 3.25rem;
 }
+
+/* The list: as roomy as the other dropdowns, wide enough for long names. */
+.notes-notebook-select__menu {
+  min-width: max(var(--radix-select-trigger-width), 13rem);
+}
+
+/*
+ * Ghost variant (note detail eyebrow): the notebook's dot and name in its own
+ * colour and a chevron, no chrome, at small-button size. The negative inline
+ * margin keeps the dot in line with the title while the hover wash has room.
+ */
+.notes-notebook-select.notes-notebook-select--ghost {
+  @apply inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium outline-none;
+  min-block-size: var(--control-height-sm);
+  margin-inline-start: -0.625rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--control-radius);
+  border: 0;
+  background: transparent;
+  color: color-mix(
+    in oklch,
+    var(--collection-row-color, var(--workspace-foreground)) 80%,
+    var(--workspace-foreground)
+  );
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.notes-notebook-select--ghost:hover:not(:disabled),
+.notes-notebook-select--ghost[data-state="open"] {
+  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+}
+
+.notes-notebook-select--ghost:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.notes-notebook-select--ghost:disabled {
+  cursor: default;
+}
+
+.notes-notebook-select__chevron {
+  @apply size-4 shrink-0 opacity-60;
+}

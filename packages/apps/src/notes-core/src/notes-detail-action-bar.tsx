@@ -2,12 +2,6 @@ import { Archive, ArchiveRestore, MoreHorizontal, Star } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import {
-  NotesNotebookSelect,
-  type NotesNotebookSelectItem,
-} from "@/notes-core/src/notes-notebook-select";
-import { notebookDisplayName } from "@/notes-core/src/notes-note-utils";
-import { notebookDisplayColor } from "@/notes-core/src/notes-notebook-color";
 
 type NotesDetailActionBarProps = {
   active: Note | undefined;
@@ -17,18 +11,8 @@ type NotesDetailActionBarProps = {
   closeMobileDetail: () => void;
   /** List / view title shown on the mobile back control. */
   backLabel?: string;
-  notebooks: NotesNotebookSelectItem[];
-  onMoveToNotebook: (notebook: NotesNotebookSelectItem) => void;
-  onCreateNotebook?: () => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
-  /** Notebook `calendarcolor` for the switcher (same colored notebook icon as list/sidebar). */
-  notebookColor?: string | null;
-  /**
-   * View-only share: disable move (body+tags gated separately via
-   * NoteDetailView `readOnly`). Star stays enabled: it is the caller's own.
-   */
-  readOnly?: boolean;
   /**
    * Full share / owner: archive + structure manage. Edit-only shares stay false.
    * Defaults true for Storybook / owned notes without an explicit gate.
@@ -43,13 +27,8 @@ export function NotesDetailActionBar({
   starred,
   closeMobileDetail,
   backLabel,
-  notebooks,
-  onMoveToNotebook,
-  onCreateNotebook,
   toggleStar,
   toggleArchive,
-  notebookColor,
-  readOnly = false,
   canArchive = true,
 }: NotesDetailActionBarProps) {
   // Empty / deselected detail: caller must omit this bar. Never render a
@@ -58,19 +37,8 @@ export function NotesDetailActionBar({
     return null;
   }
 
-  const sharedInbox = !!active.sharedInbox;
-  // Writable group notebooks are My notebooks — same move as personal.
-  // Lock inbound Shared-with-me leftovers, view-only shares, and archived
-  // notes, which do not move until they are restored (#1535).
-  const notebookLocked = sharedInbox || readOnly || !!archived[active.id];
+  // The notebook switcher lives above the title (NotesDetailNotebookSelect).
   const archiveLocked = !canArchive;
-  // Personal shares: keep grantor username on the list row only — detail switcher
-  // shows notebook / Shared with me, not the username chip. Group notebooks use
-  // the collection display name (same as the sidebar), never the group-… slug.
-  const locationLabel = sharedInbox
-    ? active.notebook.trim() || labels.sidebarSharedWithMe
-    : notebookDisplayName(active, notebooks).trim() || labels.toolbarMoveToNotebook;
-  const selectColor = notebookColor ?? notebookDisplayColor(active, notebooks);
 
   const rightActions = [
     {
@@ -94,21 +62,6 @@ export function NotesDetailActionBar({
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
-      rightLeading={
-        <NotesNotebookSelect
-          notebooks={notebooks}
-          value={{
-            id: active.notebookId,
-            name: locationLabel,
-            color: selectColor,
-          }}
-          labels={labels}
-          triggerVariant="swatch"
-          disabled={notebookLocked}
-          onNotebookChange={onMoveToNotebook}
-          onCreateNotebook={notebookLocked ? undefined : onCreateNotebook}
-        />
-      }
       rightActions={rightActions}
       rightMenuLabel="More actions"
       rightMenuIcon={<MoreHorizontal />}
