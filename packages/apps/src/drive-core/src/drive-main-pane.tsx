@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { Cloud, CloudAlert, Download } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { DriveListLoadMore } from "@/drive-core/src/drive-list-load-more";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
@@ -98,6 +99,10 @@ export function DriveMainPane({
     folderListingError,
     retryFolderListing,
     listLoading,
+    allLoading,
+    allHasMore,
+    allLoadingMore,
+    loadMoreAll,
   } = controller;
 
   const showFolderListingBusy =
@@ -276,6 +281,8 @@ export function DriveMainPane({
                 {labels.folderListingRetry}
               </Button>
             </CollectionState>
+          ) : allLoading && !searchQuery.trim() ? (
+            <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
           ) : view.type === "uploads" ? (
             <DriveUploadsPane
               files={visibleItems}
@@ -284,12 +291,22 @@ export function DriveMainPane({
             />
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
-              {labels.emptyFolder}
+              {view.type === "all" ? labels.allFilesEmpty : labels.emptyFolder}
             </CollectionState>
-          ) : viewMode === "grid" ? (
-            <DriveGridView {...gridBrowserProps} />
           ) : (
-            <DriveListView {...sharedBrowserProps} activeId={activeId} />
+            <>
+              {viewMode === "grid" ? (
+                <DriveGridView {...gridBrowserProps} />
+              ) : (
+                <DriveListView {...sharedBrowserProps} activeId={activeId} />
+              )}
+              <DriveListLoadMore
+                hasMore={allHasMore && !searchQuery.trim()}
+                loadingMore={allLoadingMore}
+                onLoadMore={loadMoreAll}
+                loadingLabel={labels.listLoadingMore}
+              />
+            </>
           )}
         </div>
       </div>

@@ -31,8 +31,18 @@
   @apply mb-3;
 }
 
+/*
+ * One inset on all four sides. The sticky head bars stick at that same inset,
+ * so they never ride above where they start.
+ */
 .drive-workspace :is(.drive-grid-layout, .drive-list-view) {
-  @apply px-4 md:px-6 py-3 sm:py-5 md:py-8;
+  --drive-browser-inset: 1rem;
+  --list-head-sticky-gap: var(--drive-browser-inset);
+  padding: var(--drive-browser-inset);
+
+  @media (min-width: 48rem) {
+    --drive-browser-inset: 1.5rem;
+  }
 }
 
 .drive-workspace .drive-grid-layout {
@@ -347,6 +357,11 @@
   @apply min-w-0 max-w-full;
 }
 
+/* The table's row spacing sits above the header too: stick where it starts. */
+.drive-workspace .drive-list-table thead {
+  --list-head-sticky-gap: calc(var(--drive-browser-inset) + 0.125rem);
+}
+
 .drive-workspace .drive-list-table {
   @apply w-full min-w-0 table-fixed text-sm;
   border-collapse: separate;
@@ -502,4 +517,10 @@
 
 .drive-workspace .drive-list-file-icon {
   color: var(--workspace-accent);
+}
+
+/* End of a long listing (All Files, All Docs): the next page loads on reaching it. */
+.drive-browser-load-more {
+  @apply flex flex-col items-center px-4 pb-8 md:px-6;
+  color: var(--workspace-label-color, var(--workspace-foreground));
 }

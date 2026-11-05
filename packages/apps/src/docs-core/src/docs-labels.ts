@@ -17,7 +17,7 @@ export const docsLabels = {
   homeStarredEmpty: "No starred documents yet.",
   homeTrashEmpty: "Trash is empty.",
   homeLoading: "Loading documents…",
-  homeLoadMore: "Load more",
+  homeLoadingMore: filesBrowserSidebarLabels.loadingMore,
   homeLoadError: "Could not load documents.",
   homeNotAvailableOffline: "This document is not available offline.",
   /** Shared with me is read from the server only (#1563). */
@@ -68,7 +68,7 @@ export const docsLabels = {
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
   homeCreateError: "Could not create a new document.",
-  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "My Files"). */
+  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "All Files"). */
   homeAllDocs: filesBrowserSidebarLabels.homeDocs,
   homeSharedWithMe: driveLabels.sidebarSharedWithMe,
   homeRecent: driveLabels.sidebarRecent,

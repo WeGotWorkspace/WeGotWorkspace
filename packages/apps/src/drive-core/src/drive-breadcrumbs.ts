@@ -14,6 +14,7 @@ export function isDriveSharedGroupPath(path: string): boolean {
 type DriveViewBreadcrumbLabels = Pick<
   DriveUILabels,
   | "accessTitle"
+  | "sidebarHome"
   | "sidebarMyDrive"
   | "sidebarRecent"
   | "sidebarSharedDrives"
@@ -30,6 +31,7 @@ export function buildDriveViewBreadcrumbs(
 ): PathBreadcrumbItem[] {
   if (view.type === "folder") return buildDriveFolderBreadcrumbs(view.path, labels, rootLabels);
   const titles: Record<Exclude<ViewKey["type"], "folder">, string> = {
+    all: labels.sidebarHome,
     access: labels.accessTitle,
     recent: labels.sidebarRecent,
     starred: labels.sidebarStarred,

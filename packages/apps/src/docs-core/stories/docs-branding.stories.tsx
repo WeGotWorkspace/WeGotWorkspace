@@ -35,7 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof DocsHomeWorkspace>;
 
-/** Docs list / home chrome (sidebar My Docs, Shared with me, drives) — not inside a document. */
+/** Docs list / home chrome (sidebar All Docs, Shared with me, drives) — not inside a document. */
 export const Default: Story = {
   name: "Home",
   args: {

@@ -33,6 +33,8 @@ export type DriveFile = Note & {
 };
 
 export type ViewKey =
+  /** Every file across the drives (All Files), the Drive home. */
+  | { type: "all" }
   | { type: "folder"; path: string }
   | { type: "recent" }
   | { type: "starred" }

@@ -301,6 +301,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       },
       ...p,
     ]);
+    // Outside a folder (All Files, Recent…) the new folder opens where it lives.
+    if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
     show(`Folder “${v}” created`, { icon: <FolderPlus className="size-4" /> });
     setNewFolderDialogOpen(false);
     setNewFolderName("");

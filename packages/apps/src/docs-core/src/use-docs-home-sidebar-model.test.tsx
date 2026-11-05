@@ -24,7 +24,7 @@ describe("useDocsHomeSidebarModel", () => {
     );
 
     expect(result.current.primaryItems.map((item) => item.label)).toEqual([
-      "My Docs",
+      "All Docs",
       "Shared with me",
       "Recent",
       "Starred",

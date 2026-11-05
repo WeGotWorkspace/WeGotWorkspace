@@ -30,8 +30,4 @@
   padding-bottom: var(--floating-dock-clearance);
 }
 
-.docs-home-workspace .docs-home-pane__load-more {
-  @apply flex justify-center px-4 pb-8 md:px-6;
-}
-
 /* Grid density + tile chrome: canonical in drive-browser.css (Docs remaps accent only). */

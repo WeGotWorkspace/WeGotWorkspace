@@ -21,7 +21,7 @@
 .destination-picker--file-select
   .destination-picker__body
   :is(.drive-grid-layout, .drive-list-view) {
-  @apply px-3 py-3;
+  --drive-browser-inset: 0.75rem;
 }
 
 /*

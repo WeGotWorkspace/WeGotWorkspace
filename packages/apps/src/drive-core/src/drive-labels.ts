@@ -2,7 +2,7 @@ import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sideba
 import type { DriveFile } from "@/drive-core/src/drive-models";
 
 export const driveLabels = {
-  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  /** Primary AppSidebar home (SST with Docs; Docs uses "All Docs"). */
   sidebarHome: filesBrowserSidebarLabels.homeDrive,
   /**
    * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
@@ -27,6 +27,9 @@ export const driveLabels = {
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
+  allFilesEmpty: "No files yet",
+  allFilesLoading: filesBrowserSidebarLabels.listLoading,
+  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
   /** Folder view when the live listing failed and no rows are shown — never "empty". */
   folderListingFailed: "This folder could not be loaded",

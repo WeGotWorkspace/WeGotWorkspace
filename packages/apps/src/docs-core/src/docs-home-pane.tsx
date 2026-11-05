@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { DriveListLoadMore } from "@/drive-core/src/drive-list-load-more";
 import type { Dispatch, MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { FileText } from "lucide-react";
-import { Button } from "@/button/src/button";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
@@ -392,18 +392,12 @@ export function DocsHomePane({
                   locationColumnLabel={labels.homeLocationColumn}
                 />
               )}
-              {hasMore ? (
-                <div className="docs-home-pane__load-more">
-                  <Button
-                    variant="outline"
-                    size="md"
-                    label={labels.homeLoadMore}
-                    disabled={loadingMore}
-                    aria-busy={loadingMore}
-                    onClick={onLoadMore}
-                  />
-                </div>
-              ) : null}
+              <DriveListLoadMore
+                hasMore={hasMore}
+                loadingMore={loadingMore}
+                onLoadMore={onLoadMore}
+                loadingLabel={labels.homeLoadingMore}
+              />
             </>
           )}
         </div>
