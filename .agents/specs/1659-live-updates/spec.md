@@ -3,7 +3,7 @@ Goal: WeGotWorkspace/Product#149, WeGotWorkspace/Product#150
 
 # Notifications and live updates
 
-Technical translation of Epic [#1659](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1659). Child Tasks: #1660–#1669, #1671 and #1533. Related under Epic #1600: #1670 (urgent Web Push), which builds on #1601 and #1605. The canonical design is [docs/architecture/notifications.md](../../../docs/architecture/notifications.md) (rules, silent vs active news, delivery) and [docs/architecture/jmap-push.md](../../../docs/architecture/jmap-push.md) (state, event source, hub, transports). This spec does not repeat them; it fixes what an implementer must hold on to.
+Technical translation of Epic [#1659](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1659). Child Tasks: #1660–#1669, #1671, #1533 and #1943. Related under Epic #1600: #1670 (urgent Web Push), which builds on #1601 and #1605. The canonical design is [docs/architecture/notifications.md](../../../docs/architecture/notifications.md) (rules, silent vs active news, delivery) and [docs/architecture/jmap-push.md](../../../docs/architecture/jmap-push.md) (state, event source, hub, transports). This spec does not repeat them; it fixes what an implementer must hold on to.
 
 ## Goal
 
