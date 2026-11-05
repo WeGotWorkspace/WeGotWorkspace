@@ -1,9 +1,17 @@
 @import "../../styles.css" reference;
 
+/*
+ * The list sits on its own wash, close to the sidebar tone but lighter than the content
+ * surface, so sidebar → list → detail read as three planes without lines.
+ */
 .collection-list-pane {
-  @apply relative flex min-w-0 flex-1 shrink-0 flex-col border-r md:w-96 md:flex-none;
-  background-color: var(--workspace-root-bg, var(--workspace-surface));
-  border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+  @apply relative flex min-w-0 flex-1 shrink-0 flex-col md:w-[26rem] md:flex-none xl:w-[28rem];
+  /* Named so sticky bits inside the list (letter headings) can paint the same fill. */
+  --collection-list-pane-fill: var(
+    --collection-list-pane-bg,
+    color-mix(in oklch, var(--workspace-sidebar-surface) 75%, var(--workspace-surface))
+  );
+  background-color: var(--collection-list-pane-fill);
 }
 
 .collection-list-body {
@@ -14,7 +22,12 @@
   @apply relative;
 }
 
+/* Same strip as every pane header (`--workspace-header-*`). */
 .collection-header {
+  @apply shrink-0 border-b px-4 md:px-6;
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
   border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
 }
 

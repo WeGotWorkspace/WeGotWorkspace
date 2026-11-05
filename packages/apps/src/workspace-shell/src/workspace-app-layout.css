@@ -34,10 +34,14 @@
 
 .workspace-app-layout__main-header {
   /*
-   * Block padding (`p-4 md:p-6`) is the suite chrome rhythm — AppSidebar header
-   * mirrors it with `py-4 md:py-6` so the app-switch tile tops with IconButtons.
+   * The suite header strip (`--workspace-header-*`): list, detail and side-panel
+   * headers share the height, and the AppSidebar head the padding, so the bottom
+   * rules line up and the app-switch tile tops with the IconButtons.
    */
-  @apply shrink-0 border-b p-4 md:p-6;
+  @apply shrink-0 border-b px-4 md:px-6;
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
   border-color: var(--workspace-main-header-border-color, var(--border));
 }
 

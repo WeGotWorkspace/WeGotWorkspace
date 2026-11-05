@@ -155,6 +155,16 @@
   --list-row-padding-x: 1rem;
   --list-row-radius: var(--sidebar-item-radius);
   /*
+   * Pane header strip (main, list, detail and side-panel headers, and the sidebar
+   * head): one height everywhere so the bottom rules line up across columns.
+   * One row of md controls plus the block padding plus the 1px rule. A host that
+   * changes the padding re-declares the height too (see Calendar below 40rem).
+   */
+  --workspace-header-padding-y: 1rem;
+  --workspace-header-height: calc(
+    var(--control-height-md, 2.25rem) + 2 * var(--workspace-header-padding-y) + 1px
+  );
+  /*
    * Floating toolbars: Docs format pill, selection bar, Meet controls and mini player.
    * One padding, radius, gap and separator; controls are `lg`. Narrow hosts step down
    * (see floating-action-bar.css and the Docs editor container queries).
@@ -534,4 +544,13 @@ select {
 .lucide-folder,
 .lucide-folder * {
   fill: none;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --workspace-header-padding-y: 1.5rem;
+    --workspace-header-height: calc(
+      var(--control-height-md, 2.25rem) + 2 * var(--workspace-header-padding-y) + 1px
+    );
+  }
 }

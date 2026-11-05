@@ -46,11 +46,12 @@
 
 .app-sidebar__header {
   /*
-   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so
+   * Block padding is the suite header strip (`--workspace-header-padding-y`) so
    * the app-switch icon tile tops align with ViewHeader IconButtons across the
    * mobile overlay split. Keep `items-start` so the mark does not float above the bell.
    */
-  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
+  @apply flex shrink-0 items-start justify-between gap-3;
+  padding-block: var(--workspace-header-padding-y);
   padding-inline: var(--app-sidebar-padding-x);
 }
 

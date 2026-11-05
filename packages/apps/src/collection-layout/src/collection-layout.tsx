@@ -15,7 +15,7 @@ type CollectionHeaderProps = {
 };
 
 export function CollectionHeader({ children }: CollectionHeaderProps) {
-  return <header className="collection-header p-4 md:p-6 border-b">{children}</header>;
+  return <header className="collection-header">{children}</header>;
 }
 
 type CollectionListWorkspaceProps = {

@@ -11,7 +11,11 @@
 }
 
 .docs-home-workspace .docs-home-pane__header {
-  @apply shrink-0 px-4 pb-3 pt-4 md:px-6 md:pt-6;
+  @apply shrink-0 px-4 md:px-6;
+  /* Same strip as every pane header (`--workspace-header-*`). */
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
   border-bottom: 1px solid
     var(--docs-border, color-mix(in oklch, var(--workspace-foreground) 12%, transparent));
 }
