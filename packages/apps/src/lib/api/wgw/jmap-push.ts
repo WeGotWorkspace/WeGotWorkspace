@@ -8,7 +8,11 @@ import {
 import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 import { EventSourceTransport } from "@/lib/jmap-client/push/event-source-transport";
 import { isPushMessage, JmapPushHub, type PushMessage } from "@/lib/jmap-client/push/jmap-push-hub";
-import { MeshCheckNowTransport } from "@/lib/jmap-client/push/mesh-check-now";
+import {
+  MeshCheckNowTransport,
+  meshLinked,
+  subscribeMeshLinked,
+} from "@/lib/jmap-client/push/mesh-check-now";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
@@ -101,6 +105,8 @@ function createHub(): JmapPushHub {
             subscribeBrowserOnline(() => listener(getConnectivitySnapshot())),
         },
         refreshAuth: wgwAwaitSessionRefreshForReconnect,
+        // A linked presence mesh carries colleagues' check-now; wait 5 s, not 3 s (#1943).
+        mesh: { linked: meshLinked, subscribe: subscribeMeshLinked },
         headers: (): Record<string, string> => {
           const browserId = readRtcBrowserId();
           return browserId ? { [BROWSER_ID_HEADER]: browserId } : {};

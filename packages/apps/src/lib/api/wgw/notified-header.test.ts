@@ -31,6 +31,8 @@ describe("X-Wgw-Notified", () => {
     unregister = registerMeshCheckNowPort({
       sendCheckNow: (usernames) => sent.push([...usernames]),
       subscribeCheckNow: () => () => undefined,
+      meshLinked: () => false,
+      subscribeMeshLinked: () => () => undefined,
     });
     const res = response(201, "alice");
     expect(nudgeNotifiedUsers(res)).toBe(res);

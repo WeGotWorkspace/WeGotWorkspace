@@ -139,6 +139,10 @@ export class PresenceRtcSession implements PresenceMeshSession {
     return this.mesh.getRoomPeers();
   }
 
+  isLinked(peerId: string): boolean {
+    return this.mesh.getDataChannel(peerId)?.readyState === "open";
+  }
+
   broadcast(envelope: PresenceEnvelope): void {
     this.mesh.broadcastJson(envelope);
   }
