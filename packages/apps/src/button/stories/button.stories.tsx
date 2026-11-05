@@ -60,6 +60,20 @@ export const AllSizes: Story = {
   },
 };
 
+/**
+ * `variant="selection"`: the selected-sidebar-item fill, no border. Used for the
+ * floating action bar's Done.
+ */
+export const Selection: Story = {
+  args: { ...Primary.args, variant: "selection", icon: undefined, label: "Done" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Done" }).className).toContain(
+      "button--variant-selection",
+    );
+  },
+};
+
 export const Ghost: Story = {
   args: { ...Primary.args, variant: "ghost" },
 };

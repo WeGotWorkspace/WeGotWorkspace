@@ -148,7 +148,13 @@ export const ListViewSelectionModeDark: Story = {
       if (!found) throw new Error("Expected a selected checkbox checkmark");
       return found;
     });
-    // `--scheme-on-ink` in the dark theme, not a fixed white.
-    await expect(getComputedStyle(icon).color).toBe("rgb(17, 17, 17)");
+    // `--scheme-on-ink` in the dark theme (dark on the light accent), not a fixed white.
+    const probe = document.createElement("span");
+    probe.style.color = "var(--scheme-on-ink)";
+    icon.parentElement?.append(probe);
+    const onInk = getComputedStyle(probe).color;
+    probe.remove();
+    await expect(getComputedStyle(icon).color).toBe(onInk);
+    await expect(onInk).not.toBe("rgb(255, 255, 255)");
   },
 };
