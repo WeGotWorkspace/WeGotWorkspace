@@ -1,5 +1,13 @@
 import { expect, test, type BrowserContext } from "./helpers/live-test";
 import {
+  cachedAudience,
+  meshOpen,
+  pushConnected,
+  spyCount,
+  spyOnMesh,
+  writerCreatesTask,
+} from "./helpers/mesh-spy";
+import {
   api,
   cleanUpCase,
   createList,
@@ -154,76 +162,6 @@ test("a Meet DM still sends its mesh preview, with a check-now after it", async 
   }
 });
 
-/** Counts open presence data channels and received `check-now` and chat preview messages. */
-function spyOnMesh() {
-  const state = { open: 0, checkNow: 0, previews: 0 };
-  (window as unknown as { __meshSpy: typeof state }).__meshSpy = state;
-  const Original = window.RTCPeerConnection;
-  if (!Original) return;
-  const decoder = new TextDecoder();
-  const count = (text: string) => {
-    if (text.includes("check-now")) state.checkNow += 1;
-    if (text.includes("channel-message")) state.previews += 1;
-  };
-  const track = (channel: RTCDataChannel) => {
-    channel.addEventListener("open", () => (state.open += 1));
-    // Frames are bytes; decode leniently, a frame may hold a binary header.
-    channel.addEventListener("message", (event: MessageEvent) => {
-      const data: unknown = event.data;
-      if (typeof data === "string") count(data);
-      else if (data instanceof ArrayBuffer) count(decoder.decode(data));
-      else if (data instanceof Blob) void data.text().then(count);
-    });
-  };
-  class SpiedPeerConnection extends Original {
-    constructor(...args: ConstructorParameters<typeof RTCPeerConnection>) {
-      super(...args);
-      this.addEventListener("datachannel", (event) => track(event.channel));
-    }
-    createDataChannel(...args: Parameters<RTCPeerConnection["createDataChannel"]>) {
-      const channel = super.createDataChannel(...args);
-      track(channel);
-      return channel;
-    }
-  }
-  window.RTCPeerConnection = SpiedPeerConnection;
-}
-
-type SpyState = { open: number; checkNow: number; previews: number };
-type SpyWindow = Window & { __meshSpy?: SpyState };
-
-function meshOpen(tab: Tab): Promise<number> {
-  return tab.evaluate(() => (window as SpyWindow).__meshSpy?.open ?? 0);
-}
-
-function spyCount(tab: Tab, key: "checkNow" | "previews"): Promise<number> {
-  return tab.evaluate((name) => (window as SpyWindow).__meshSpy?.[name] ?? 0, key);
-}
-
-/** The writer's app modules, loaded by Vite under the same URL the app uses. */
-function cachedAudience(tab: Tab, listId: string): Promise<string[]> {
-  return tab.evaluate(async (list) => {
-    const path = "/src/lib/offline/core/collection-check-now.ts";
-    const module = (await import(/* @vite-ignore */ path)) as {
-      cachedCollectionAudience(domain: string, ids: string[]): Promise<string[]>;
-    };
-    return module.cachedCollectionAudience("tasks", [list]);
-  }, listId);
-}
-
-async function writerCreatesTask(tab: Tab, listId: string, title: string): Promise<void> {
-  await tab.evaluate(
-    async ({ list, text }) => {
-      const path = "/src/lib/api/wgw/tasks.ts";
-      const module = (await import(/* @vite-ignore */ path)) as {
-        createTask(body: { taskListIds: Record<string, boolean>; title: string }): Promise<unknown>;
-      };
-      await module.createTask({ taskListIds: { [list]: true }, title: text });
-    },
-    { list: listId, text: title },
-  );
-}
-
 async function writerSendsDm(tab: Tab, channelId: string, body: string): Promise<void> {
   await tab.evaluate(
     async ({ channel, text, messageId }) => {
@@ -240,13 +178,6 @@ async function writerSendsDm(tab: Tab, channelId: string, body: string): Promise
 async function openBell(tab: Tab): Promise<void> {
   await tab.locator(".notification-inbox-tray__trigger").click();
   await expect(tab.locator(".notification-inbox-tray__popover")).toBeVisible();
-}
-
-function pushConnected(context: BrowserContext): Promise<unknown> {
-  return context.waitForEvent("response", {
-    predicate: (response) => /\/jmap\/events\//.test(response.url()) && response.status() === 200,
-    timeout: 60_000,
-  });
 }
 
 /** Chat message ids are ULIDs (26 Crockford base32 characters). */

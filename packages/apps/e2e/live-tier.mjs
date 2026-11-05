@@ -59,6 +59,7 @@ export const liveTierSpecs = [
   "notes-undo-two-users",
   "notifications-inbox-push",
   "presence-offline-start",
+  "push-mesh-interval",
   "queued-write-reload",
   "tasks-inbound-sync",
   "tasks-push",
