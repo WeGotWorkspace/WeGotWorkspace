@@ -557,10 +557,14 @@
   }
 }
 
+/* Transparent like the other bar buttons (the frost shows through); wash on hover/open. */
 .docs-workspace__editor .text-editor-format-bar__heading-trigger {
-  background-color: var(--docs-chip-bg);
   border-radius: 0.5rem;
   min-width: 5rem;
+}
+
+.docs-workspace__editor .text-editor-format-bar__heading-trigger[data-state="open"] {
+  background-color: var(--docs-chip-bg);
 }
 
 .docs-workspace__editor .text-editor-format-bar__sep {
