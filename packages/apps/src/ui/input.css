@@ -380,7 +380,9 @@ input.input:focus-visible:not(:read-only),
 }
 
 .select-ui__item {
-  @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
+  @apply relative flex w-full cursor-default select-none items-center py-2 pl-2.5 pr-8 text-sm outline-none transition-colors;
+  /* Same row as a dropdown menu item (36px, 8px / 10px). */
+  min-height: 2.25rem;
   border-radius: var(--control-radius);
   color: var(--workspace-foreground);
 }
