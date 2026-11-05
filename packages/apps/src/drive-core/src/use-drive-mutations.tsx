@@ -413,7 +413,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     requestDelete: setConfirmDelete,
   });
 
-  const { selectionBar } = useDriveSelectionBar({
+  const { selectionBar, selectionBarButtons } = useDriveSelectionBar({
     labels,
     files,
     selectedIds,
@@ -462,6 +462,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     itemDragHandlers,
     folderDropZoneProps,
     selectionBar,
+    selectionBarButtons,
     requestDeleteSelected,
     requestDeleteItem,
     requestMoveSelected,

@@ -22,6 +22,7 @@ import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { DriveDetailPanel } from "@/drive-core/src/drive-detail-panel";
+import { driveItemLocationLabel } from "@/drive-core/src/drive-breadcrumbs";
 import {
   DriveFolderDownloadContext,
   startDriveItemDownload,
@@ -269,6 +270,9 @@ export function DriveWorkspace({
     isUnderTrash,
     setConfirmDelete,
     structureEnabled,
+    selectedIds,
+    selectionBarButtons,
+    folderPickerRootLabels,
   } = controller;
 
   const handleDetailClose = useCallback(() => {
@@ -284,13 +288,21 @@ export function DriveWorkspace({
   const shareEnabled = Boolean(shareOperations);
 
   const detailPanel = useMemo(() => {
+    const selection = {
+      selectedCount: selectedIds.length,
+      selectionActions: selectionBarButtons,
+    };
     if (!active) {
-      return <DriveDetailPanel labels={labels} file={null} onClose={handleDetailClose} />;
+      return (
+        <DriveDetailPanel labels={labels} file={null} onClose={handleDetailClose} {...selection} />
+      );
     }
     return (
       <DriveDetailPanel
+        {...selection}
         labels={labels}
         file={active}
+        locationLabel={driveItemLocationLabel(active, labels, folderPickerRootLabels)}
         preview={activePreview}
         isStarred={!!starred[active.id]}
         inTrash={inTrashView}
@@ -331,6 +343,9 @@ export function DriveWorkspace({
     );
   }, [
     active,
+    folderPickerRootLabels,
+    selectedIds.length,
+    selectionBarButtons,
     activeMayManageStructure,
     activeMayShare,
     activePreview,

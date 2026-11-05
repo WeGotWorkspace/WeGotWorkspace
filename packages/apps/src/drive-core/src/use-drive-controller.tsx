@@ -224,6 +224,7 @@ export function useDriveController({
     sidebarDropZoneProps: list.sidebarDropZoneProps,
     folderDropZoneProps: mutations.folderDropZoneProps,
     selectionBar: mutations.selectionBar,
+    selectionBarButtons: mutations.selectionBarButtons,
     requestDeleteSelected: mutations.requestDeleteSelected,
     requestDeleteItem: mutations.requestDeleteItem,
     requestMoveSelected: mutations.requestMoveSelected,
