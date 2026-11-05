@@ -86,12 +86,32 @@
   outline: none;
 }
 
-/* A bigger hit area than the dot itself. */
+/* The dot stays small; its hit area is a square as tall as the row (40px, 44px
+ * on touch). It reaches left into the row padding and stops halfway to the
+ * name, so tapping the name still selects the collection. */
+.collection-sidebar-row__visibility {
+  --collection-sidebar-row-hit-size: 2.5rem;
+}
+
+@media (pointer: coarse) {
+  .collection-sidebar-row__visibility {
+    --collection-sidebar-row-hit-size: 2.75rem;
+  }
+}
+
 .collection-sidebar-row__visibility::before {
   content: "";
   position: absolute;
-  inset: -0.375rem;
-  border-radius: 9999px;
+  inset-block: calc(
+    (
+        var(--collection-sidebar-row-leading-size, 0.875rem) -
+          var(--collection-sidebar-row-hit-size)
+      ) /
+      2
+  );
+  inset-inline-end: -0.25rem;
+  width: var(--collection-sidebar-row-hit-size);
+  border-radius: var(--control-radius);
 }
 
 .collection-sidebar-row__visibility:focus-visible {

@@ -43,6 +43,15 @@ export const Default: Story = {
     const dot = checkbox.querySelector(".collection-sidebar-row__visibility-dot") as HTMLElement;
     await expect(getComputedStyle(dot).borderRadius).not.toBe("0px");
     await expect(getComputedStyle(dot).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    // The dot stays 10px; its hit area is a row-tall square (40px, 44px on touch).
+    await expect(dot.getBoundingClientRect().width).toBe(10);
+    const hitArea = getComputedStyle(checkbox, "::before");
+    await expect(parseFloat(hitArea.width)).toBeGreaterThanOrEqual(40);
+    await expect(parseFloat(hitArea.height)).toBeGreaterThanOrEqual(40);
+    // Just above the dot still toggles; the name still selects.
+    const box = checkbox.getBoundingClientRect();
+    const above = document.elementFromPoint(box.left + box.width / 2, box.top - 10);
+    await expect(above?.closest(".collection-sidebar-row__visibility")).toBe(checkbox);
     await userEvent.click(canvas.getByRole("button", { name: "Work" }));
     await expect(args.onSelect).toHaveBeenCalledOnce();
     await expect(args.onToggleVisibility).not.toHaveBeenCalled();
