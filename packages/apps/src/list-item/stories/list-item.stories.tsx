@@ -145,25 +145,42 @@ export const MultiSelectDark: Story = {
 /**
  * The focus ring is keyboard-only. Chrome also matches `:focus-visible` after a
  * Cmd/Shift-click (multi-select); the last real input (`data-modality`) decides.
+ * During a multi-selection there is no ring: the checks already show the range.
  */
 export const KeyboardOnlyFocusRing: Story = {
-  ...MultiSelect,
+  tags: ["vitest-ci"],
+  args: { ...NoteStyle.args, isActive: false, icons: [] },
+  render: (args) => (
+    <div className="max-w-md">
+      <div data-list-selection-mode="false">
+        <ListItem {...args} id="single" title="Single" />
+      </div>
+      <div data-list-selection-mode="true">
+        <ListItem {...args} id="multi" title="In a multi-selection" isSelected selectionMode />
+      </div>
+    </div>
+  ),
   play: async ({ canvasElement }) => {
-    const row = canvasElement.querySelector<HTMLElement>(".list-item__button")!;
+    const [single, multi] = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>(".list-item__button"),
+    );
     const root = document.documentElement;
     const previous = root.dataset.modality;
+    const ringOn = (row: HTMLElement) => getComputedStyle(row).boxShadow.includes("inset");
     try {
       root.dataset.modality = "keyboard";
-      row.focus({ focusVisible: true } as FocusOptions);
-      if (row.matches(":focus-visible")) {
-        await expect(getComputedStyle(row).boxShadow).toContain("inset");
-      }
+      single.focus({ focusVisible: true } as FocusOptions);
+      if (single.matches(":focus-visible")) await expect(ringOn(single)).toBe(true);
       root.dataset.modality = "pointer";
-      await expect(getComputedStyle(row).boxShadow).toBe("none");
+      await expect(ringOn(single)).toBe(false);
+
+      root.dataset.modality = "keyboard";
+      multi.focus({ focusVisible: true } as FocusOptions);
+      await expect(ringOn(multi)).toBe(false);
     } finally {
       if (previous === undefined) delete root.dataset.modality;
       else root.dataset.modality = previous;
-      row.blur();
+      (document.activeElement as HTMLElement | null)?.blur();
     }
   },
 };

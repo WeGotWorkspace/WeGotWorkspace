@@ -170,10 +170,16 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     void during();
   }, [notifyNoteChange, setSelectedIds, setSelectionMode, workspaceLayoutRef]);
 
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
   // URL / deep-link changes update activeId — keep selectedIds aligned so
   // isActive and isSelected never paint two different rows in single-select UI.
+  // When the URL only catches up with a local move (Shift+Arrow extends the
+  // selection and moves the active note), keep the selection.
   useEffect(() => {
     if (initialNoteId === undefined) return;
+    if (initialNoteId && initialNoteId === activeIdRef.current) return;
     setActiveId(initialNoteId);
     if (initialNoteId) {
       selectSingle(initialNoteId);
@@ -182,9 +188,6 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       setSelectionMode(false);
     }
   }, [initialNoteId, selectSingle, setActiveId, setSelectedIds, setSelectionMode]);
-
-  const activeIdRef = useRef(activeId);
-  activeIdRef.current = activeId;
 
   // Sidebar selectView clears activeId first, so this still resets to empty.
   // Notebook move keeps activeId so the same note stays selected after the

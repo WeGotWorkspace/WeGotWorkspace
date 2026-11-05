@@ -22,7 +22,6 @@ export function useListKeyboardNavigation({
   itemSelector = "[data-list-item-id]",
 }: UseListKeyboardNavigationArgs) {
   const keyboardAnchorIdRef = useRef<string | null>(null);
-  const keyboardSelectionSideRef = useRef<"top" | "bottom" | null>(null);
 
   const scrollListItemIntoView = useCallback(
     (id: string) => {
@@ -44,7 +43,6 @@ export function useListKeyboardNavigation({
       const fallbackIndex = direction > 0 ? 0 : visibleIds.length - 1;
       if (!extendSelection) {
         keyboardAnchorIdRef.current = null;
-        keyboardSelectionSideRef.current = null;
         const baseIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
         const nextIndex = Math.min(visibleIds.length - 1, Math.max(0, baseIndex + direction));
         const nextId = visibleIds[nextIndex];
@@ -57,6 +55,9 @@ export function useListKeyboardNavigation({
         return;
       }
 
+      // Shift+Arrow (or Space held): the anchor stays put and the moving edge is
+      // the active item, so the range can grow, shrink, and cross the anchor
+      // (Finder / Mail behaviour).
       const anchorId =
         keyboardAnchorIdRef.current && visibleIds.includes(keyboardAnchorIdRef.current)
           ? keyboardAnchorIdRef.current
@@ -68,33 +69,8 @@ export function useListKeyboardNavigation({
       const anchorIndex = visibleIds.indexOf(anchorId);
       if (anchorIndex < 0) return;
 
-      const selectedIndexes = selectedIds
-        .map((id) => visibleIds.indexOf(id))
-        .filter((idx) => idx >= 0)
-        .sort((a, b) => a - b);
-      const minSelected = selectedIndexes[0] ?? anchorIndex;
-      const maxSelected = selectedIndexes[selectedIndexes.length - 1] ?? anchorIndex;
-
-      if (!keyboardSelectionSideRef.current) {
-        const probeBase = currentIndex >= 0 ? currentIndex : anchorIndex;
-        const probeIndex = Math.min(visibleIds.length - 1, Math.max(0, probeBase + direction));
-        if (probeIndex < anchorIndex) keyboardSelectionSideRef.current = "top";
-        else if (probeIndex > anchorIndex) keyboardSelectionSideRef.current = "bottom";
-        else keyboardSelectionSideRef.current = direction < 0 ? "top" : "bottom";
-      }
-      const side = keyboardSelectionSideRef.current;
-      if (!side) return;
-
-      const currentEdgeIndex = side === "top" ? minSelected : maxSelected;
-      const steppedEdgeIndex = Math.min(
-        visibleIds.length - 1,
-        Math.max(0, currentEdgeIndex + direction),
-      );
-      const nextEdgeIndex =
-        side === "top"
-          ? Math.min(steppedEdgeIndex, anchorIndex)
-          : Math.max(steppedEdgeIndex, anchorIndex);
-
+      const edgeIndex = currentIndex >= 0 ? currentIndex : anchorIndex;
+      const nextEdgeIndex = Math.min(visibleIds.length - 1, Math.max(0, edgeIndex + direction));
       const start = Math.min(anchorIndex, nextEdgeIndex);
       const end = Math.max(anchorIndex, nextEdgeIndex);
       const nextSelection = visibleIds.slice(start, end + 1);
@@ -121,7 +97,6 @@ export function useListKeyboardNavigation({
 
   useEffect(() => {
     if (selectedIds.length <= 1) {
-      keyboardSelectionSideRef.current = null;
       keyboardAnchorIdRef.current = selectedIds[0] ?? null;
     }
   }, [selectedIds]);
