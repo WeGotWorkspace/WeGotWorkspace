@@ -19,7 +19,7 @@ describe("FloatingActionBar", () => {
                 icon: <CheckCircle2 />,
                 onClick: vi.fn(),
                 separatorBefore: true,
-                variant: "primary",
+                variant: "selection",
               },
             ]}
           />
@@ -38,7 +38,7 @@ describe("FloatingActionBar", () => {
     );
     expect(outlineButtons.length).toBe(2);
     expect(
-      container.querySelector(".floating-action-bar__actions .button--variant-primary"),
+      container.querySelector(".floating-action-bar__actions .button--variant-selection"),
     ).toBeTruthy();
     expect(
       container.querySelector(".floating-action-bar__actions .button--variant-ghost"),
@@ -48,7 +48,11 @@ describe("FloatingActionBar", () => {
     ).toBeTruthy();
     expect(container.querySelector(".floating-action-bar__spacer")).toBeTruthy();
 
-    expect(within(container as HTMLElement).getByText("2 Items")).toBeTruthy();
+    // Compact count: check + number, with a separator before the actions.
+    const count = container.querySelector(".floating-action-bar__count");
+    expect(count?.querySelector("svg")).toBeTruthy();
+    expect(within(count as HTMLElement).getByText("2 Items").className).toBe("sr-only");
+    expect(count?.nextElementSibling?.className).toBe("floating-action-bar__spacer");
   });
 
   it("uses singular Item copy for one selection", () => {
@@ -57,6 +61,6 @@ describe("FloatingActionBar", () => {
         <FloatingActionBar items={1} buttons={[{ label: "Star", icon: <Star /> }]} />
       </TooltipProvider>,
     );
-    expect(within(container as HTMLElement).getByText("1 Item")).toBeTruthy();
+    expect(within(container as HTMLElement).getByText("1 Item").className).toBe("sr-only");
   });
 });

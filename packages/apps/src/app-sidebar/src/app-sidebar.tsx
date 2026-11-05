@@ -9,6 +9,7 @@ import {
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
+import { publishElementHeight } from "@/lib/publish-element-height";
 
 export type AppSidebarProps = {
   open: boolean;
@@ -63,7 +64,14 @@ export function AppSidebar({
   className,
 }: AppSidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
   useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
+  // The footer floats over the list so rows scroll under the frosted account card.
+  useEffect(
+    () =>
+      publishElementHeight(sidebarRef.current, footerRef.current, "--app-sidebar-footer-height"),
+    [footer],
+  );
 
   const handleSidebarClick = (event: MouseEvent<HTMLElement>) => {
     if (!sidebarSelectClickDismisses(event.target)) return;
@@ -95,7 +103,11 @@ export function AppSidebar({
           </div>
         </div>
 
-        {footer ? <footer className="app-sidebar__footer">{footer}</footer> : null}
+        {footer ? (
+          <footer ref={footerRef} className="app-sidebar__footer">
+            {footer}
+          </footer>
+        ) : null}
       </aside>
     </>
   );

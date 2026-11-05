@@ -83,7 +83,10 @@
 
 .sidebar-section .menu-item--surface-idle {
   @apply font-medium;
-  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
+  color: var(
+    --app-sidebar-item-color,
+    color-mix(in oklab, var(--workspace-foreground) 75%, transparent)
+  );
 }
 
 .menu-item--surface-selected {
@@ -95,7 +98,7 @@
   border-radius: var(--sidebar-item-radius, 0.25rem);
 }
 
-/* Selected = the suite selection (`--workspace-selected-*`, may be a gradient). */
+/* Selected = the suite selection (`--workspace-selected-*`). */
 .sidebar-section .menu-item--surface-selected {
   @apply font-medium;
   background: var(

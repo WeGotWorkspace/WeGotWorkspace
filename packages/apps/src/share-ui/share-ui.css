@@ -29,8 +29,6 @@
   --card-panel-bg: color-mix(in oklab, var(--card, var(--workspace-surface)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
   --input-height: var(--control-height-sm, 2rem);
-  /* Match outline IconButtons to Input/Select (--control-border-color). */
-  --button-outline-border-color: var(--control-border-color);
 }
 
 .share-dialog {

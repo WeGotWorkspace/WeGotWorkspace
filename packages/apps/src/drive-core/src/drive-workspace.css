@@ -49,16 +49,16 @@
   background-color: var(--workspace-surface);
 }
 
-@media (max-width: 767px) {
-  .drive-workspace .drive-main-pane:has(.drive-selection-bar) .drive-main-pane__scroll {
-    padding-bottom: 5.5rem;
-  }
-}
-
+/*
+ * The breadcrumb floats over the top of the listing so files scroll under it:
+ * frosted glass with a hairline. The scroller reserves its height.
+ */
 .drive-workspace .drive-main-pane__breadcrumbs {
-  @apply px-4 md:px-6 shrink-0;
+  @apply absolute inset-x-0 top-0 z-20 px-4 md:px-6;
   padding-block: 1rem;
-  background-color: var(--button-outline-hover-background);
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
   border-bottom: 1px solid var(--border);
   --path-breadcrumb-lead-color: var(--workspace-foreground);
   --path-breadcrumb-lead-bg: var(--button-outline-active-background);
@@ -94,6 +94,16 @@
 
 .drive-workspace .drive-main-pane__scroll {
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
+}
+
+/* Rows scroll clear of the floating search / selection bar. */
+.drive-workspace .drive-main-pane__scroll {
+  padding-bottom: var(--floating-dock-clearance);
+}
+
+.drive-workspace .drive-main-pane:has(> .drive-main-pane__breadcrumbs) .drive-main-pane__scroll {
+  padding-top: var(--drive-breadcrumbs-height, 4.375rem);
+  scroll-padding-top: var(--drive-breadcrumbs-height, 4.375rem);
 }
 
 .drive-workspace .drive-main-pane__retry {

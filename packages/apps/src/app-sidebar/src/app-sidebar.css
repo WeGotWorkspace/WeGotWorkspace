@@ -35,6 +35,11 @@
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
   --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
+  /*
+   * Hierarchy: rows read first, section labels sit back. Labels keep the row size
+   * but quieter ink (60% clears 4.5:1 on the rail in both themes); rows are near-full ink.
+   */
+  --app-sidebar-item-color: var(--workspace-item-color);
   /* Collection + MenuItem row height — lg (40px) for breathing room, not the in-row xs edit/fold hit. */
   --app-sidebar-item-height: var(--control-height-lg, 2.5rem);
 }
@@ -65,10 +70,6 @@
   /* Tile tops at header edge — no mt offset. */
   @apply shrink-0;
   /*
-   * Bell stroke = sidebar right hairline (same token as `.app-sidebar` `border-r`).
-   */
-  --button-outline-border-color: var(--app-sidebar-border-color, var(--border));
-  /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
    * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
    * Unread badge fill/on-color stay on the tray trigger (severity red, `--color-error`).
@@ -98,6 +99,8 @@
 .app-sidebar__sections {
   @apply min-h-0 flex-1 overflow-y-auto pt-4;
   padding-inline: var(--app-sidebar-padding-x);
+  /* Scroll clear of the floating footer (height published by AppSidebar). */
+  padding-bottom: calc(var(--app-sidebar-footer-height, 0px) + 0.5rem);
 }
 
 /* Sections are separated by space only (no hairline); same total gap as before. */
@@ -105,8 +108,18 @@
   @apply mt-7;
 }
 
+/*
+ * Footer floats over the bottom of the scroll area (rows scroll under the frosted
+ * account card). Its gaps let clicks through to the rows beneath.
+ */
 .app-sidebar__footer {
-  @apply shrink-0;
+  @apply absolute inset-x-0 z-10;
+  bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+}
+
+.app-sidebar__footer > * {
+  pointer-events: auto;
 }
 
 .app-sidebar[data-open="true"] {
@@ -128,11 +141,7 @@
     z-index: 31;
     border-start-end-radius: 1rem;
     border-end-end-radius: 1rem;
-    border-inline-end-color: color-mix(
-      in oklch,
-      var(--workspace-sidebar-foreground) var(--scheme-panel-edge, 8%),
-      transparent
-    );
+    border-inline-end-color: var(--workspace-divider-color);
     box-shadow: var(--scheme-panel-shadow, none);
   }
 

@@ -491,6 +491,7 @@
   --button-outline-hover-color: #fff;
   --button-outline-border-color: rgb(255 255 255 / 0.28);
   --button-outline-hover-background: rgb(255 255 255 / 0.16);
+  --button-hover-background: rgb(255 255 255 / 0.16);
   --button-outline-active-background: rgb(255 255 255 / 0.16);
   --button-active-color: #fff;
 }

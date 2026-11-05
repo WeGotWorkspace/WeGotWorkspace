@@ -25,3 +25,8 @@
 .collection-list-end {
   @apply h-6 shrink-0;
 }
+
+/* Rows scroll clear of the floating search / selection bar docked over the list. */
+.collection-list-pane .notes-swipe-list {
+  padding-bottom: var(--floating-dock-clearance);
+}

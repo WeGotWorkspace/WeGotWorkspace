@@ -39,9 +39,6 @@
    */
   @apply shrink-0 border-b p-4 md:p-6;
   border-color: var(--workspace-main-header-border-color, var(--border));
-  /* Chrome buttons are borderless; a wash shows on hover. */
-  --button-outline-border-color: transparent;
-  --button-outline-hover-background: var(--button-outline-active-background);
 }
 
 .workspace-app-layout__main-scroll {
@@ -93,8 +90,6 @@
   box-shadow: var(--frost-shadow);
   --workspace-user-footer-text-color: var(--workspace-foreground);
   color: var(--workspace-user-footer-text-color);
-  --button-outline-border-color: transparent;
-  --button-outline-hover-background: var(--button-outline-active-background);
   --user-avatar-presence-ring: color-mix(
     in oklch,
     var(--workspace-foreground) 7%,
@@ -106,46 +101,17 @@
   margin: 0.5rem 0 0;
 }
 
-/* Settings row: no hairline above it; the account card below is the only container. */
+/*
+ * Settings row: no hairline. It floats over the scrolling rows with the footer, so it
+ * carries the rail colour with a short fade on top; the card below stays see-through.
+ */
 .workspace-sidebar-account-footer__settings {
   @apply py-2;
-}
-
-.workspace-sidebar-account-footer__settings-button {
-  @apply relative flex w-full min-w-0 items-center gap-2 rounded text-left text-sm font-medium;
-  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
-  /* Same glyph inset as collection / menu rows so the icon column lines up. */
-  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
-  border: 1px solid transparent;
-  background-color: transparent;
-  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
-}
-
-.workspace-sidebar-account-footer__settings-button:hover {
-  color: var(
-    --button-outline-hover-color,
-    var(--button-outline-color, var(--workspace-foreground))
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--app-sidebar-bg, var(--workspace-sidebar-surface)) 0.75rem
   );
-  background-color: var(
-    --button-outline-hover-background,
-    color-mix(in oklab, var(--workspace-foreground) 4%, var(--workspace-surface))
-  );
-}
-
-.workspace-sidebar-account-footer__settings-button:focus-visible {
-  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
-  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
-}
-
-.workspace-sidebar-account-footer__settings-icon {
-  @apply inline-flex shrink-0 items-center justify-center self-center;
-  width: 1rem;
-  min-width: 1rem;
-  height: 1rem;
-}
-
-.workspace-sidebar-account-footer__settings-label {
-  @apply min-w-0 truncate;
 }
 
 /*

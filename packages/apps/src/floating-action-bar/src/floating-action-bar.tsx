@@ -1,7 +1,9 @@
 import { useEffect, useState, type TransitionEvent } from "react";
+import { SquareCheck } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import type { ButtonSeverity, ButtonVariant } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import "@/floating-action-bar/src/floating-action-bar.css";
 
 export type FloatingActionBarButton = {
@@ -12,7 +14,7 @@ export type FloatingActionBarButton = {
   active?: boolean;
   /** Destructive actions (trash / archive): danger fg + severity hover wash. */
   severity?: ButtonSeverity;
-  /** Done is primary; other selection actions stay outline. */
+  /** Done uses `selection` (the selected sidebar look); other actions stay outline. */
   variant?: ButtonVariant;
   /** Visual hairline before this control (typically Done). */
   separatorBefore?: boolean;
@@ -63,7 +65,18 @@ export function FloatingActionBar({
       data-state={open ? "open" : "closed"}
       onTransitionEnd={handleTransitionEnd}
     >
-      <span className="floating-action-bar__count">{selectionCountLabel(items)}</span>
+      {/* Count label (not a button): the row checkbox glyph and the number, dimmed. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="floating-action-bar__count">
+            <SquareCheck className="floating-action-bar__count-icon" aria-hidden />
+            <span aria-hidden>{items}</span>
+            <span className="sr-only">{selectionCountLabel(items)}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{`${selectionCountLabel(items)} selected`}</TooltipContent>
+      </Tooltip>
+      <span className="floating-action-bar__spacer" aria-hidden />
       <div className="floating-action-bar__actions">
         {buttons.map((button) => (
           <span key={button.id ?? button.label} className="contents">
@@ -76,7 +89,7 @@ export function FloatingActionBar({
               onClick={button.onClick}
               active={button.active}
               severity={button.severity}
-              size="md"
+              size="lg"
               variant={button.variant ?? "outline"}
             />
           </span>

@@ -15,6 +15,7 @@
   --segmented-control-hover-bg: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
   --segmented-control-active-fg: var(--workspace-accent-foreground);
   --segmented-control-active-bg: var(--workspace-accent);
+  --segmented-control-inner-radius: 0;
   --segmented-control-track-border-color: color-mix(
     in oklab,
     var(--workspace-foreground) 20%,

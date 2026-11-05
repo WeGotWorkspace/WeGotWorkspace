@@ -5,6 +5,7 @@ export const BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
 export const ICON_BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
 export const BUTTON_VARIANT_OPTIONS = [
   "primary",
+  "selection",
   "destructive",
   "destructive-outline",
   "outline",
@@ -59,6 +60,7 @@ export const ICON_BUTTON_SIZE_CLASSNAMES: Record<IconButtonSize, string> = {
 };
 export const BUTTON_VARIANT_CLASSNAMES: Record<ButtonVariant, string> = {
   primary: "button--variant-primary",
+  selection: "button--variant-selection",
   destructive: "button--variant-destructive",
   "destructive-outline": "button--variant-destructive-outline",
   outline: "button--variant-outline",

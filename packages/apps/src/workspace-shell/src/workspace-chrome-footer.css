@@ -12,9 +12,6 @@
     color-mix(in oklab, var(--workspace-surface) 88%, transparent)
   );
   backdrop-filter: blur(8px);
-  /* Chrome buttons are borderless; a wash shows on hover. */
-  --button-outline-border-color: transparent;
-  --button-outline-hover-background: var(--button-outline-active-background);
   border-top: 1px solid
     var(
       --workspace-chrome-footer-border,

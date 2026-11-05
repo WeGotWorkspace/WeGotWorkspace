@@ -11,7 +11,7 @@
   --drive-item-selected-hover-background: var(--drive-item-selected-background);
 }
 
-/** Matches sidebar / form labels (`.field-label-row__label`). */
+/** Same as sidebar section labels: quiet label ink. */
 .drive-workspace .drive-item-label {
   @apply flex items-center gap-1 text-sm font-medium truncate min-w-0;
   letter-spacing: normal;
@@ -19,7 +19,7 @@
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
   );
-  color: var(--field-label-color, var(--workspace-foreground));
+  color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-item-label > svg {
@@ -123,12 +123,12 @@
 }
 
 .drive-workspace .drive-folder-tile--selected {
-  background-color: var(--drive-item-selected-background);
+  background: var(--drive-item-selected-background);
   box-shadow: none;
 }
 
 .drive-workspace .drive-folder-tile--selected:hover {
-  background-color: var(--drive-item-selected-hover-background);
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-folder-tile--idle {
@@ -267,12 +267,12 @@
 
 .drive-workspace .drive-file-tile--selected .drive-file-tile__preview,
 .drive-workspace .drive-file-tile--selected .drive-file-tile__footer {
-  background-color: var(--drive-item-selected-background);
+  background: var(--drive-item-selected-background);
 }
 
 .drive-workspace .drive-file-tile--selected:hover .drive-file-tile__preview,
 .drive-workspace .drive-file-tile--selected:hover .drive-file-tile__footer {
-  background-color: var(--drive-item-selected-hover-background);
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-file-tile__star-badge {
@@ -349,75 +349,97 @@
 .drive-workspace .drive-list-table {
   @apply w-full min-w-0 table-fixed text-sm;
   border-collapse: separate;
-  border-spacing: 0;
-  color: var(--workspace-foreground);
+  /* A hair of air so adjacent rounded selections stay apart. */
+  border-spacing: 0 0.125rem;
+  /* Titles in the same ink as sidebar items. */
+  color: var(--workspace-item-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-list-col-name {
   width: 100%;
   min-width: 0;
-  padding-inline-start: 0.5rem;
+}
+
+/* Row inset: first and last cell, headers included, so labels line up with values. */
+.drive-workspace .drive-list-table :is(th, td):first-child {
+  padding-inline-start: var(--list-row-padding-x, 1rem);
+}
+
+.drive-workspace .drive-list-table :is(th, td):last-child {
+  padding-inline-end: var(--list-row-padding-x, 1rem);
 }
 
 .drive-workspace .drive-list-col-offline {
   width: 2.75rem;
 }
 
-.drive-workspace .drive-list-col-offline.drive-list-head__cell {
-  padding-bottom: 0.5rem;
-}
-
 .drive-workspace .drive-list-col-modified {
-  width: 5.5rem;
+  width: 8rem;
 }
 
 .drive-workspace .drive-list-col-kind {
-  width: 5.5rem;
+  width: 7rem;
 }
 
 .drive-workspace .drive-list-col-size {
-  width: 5rem;
+  width: 6rem;
 }
 
 .drive-workspace .drive-list-col-location {
-  width: 10rem;
+  width: 12rem;
 }
 
 .drive-workspace .drive-list-col-actions {
-  width: 4.5rem;
-  padding-inline-end: 0.5rem;
+  width: 6.5rem;
 }
 
 .drive-workspace .drive-list-head {
   @apply text-left;
 }
 
-.drive-workspace .drive-list-head > th {
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+/*
+ * Header row: sticky (with a little air under Drive's floating breadcrumb), rounded
+ * like the rows, and frosted so rows scroll visibly under it. The glass sits on the
+ * whole row group, not per cell, so the blur reads as one piece.
+ */
+.drive-workspace .drive-list-table > thead {
+  position: sticky;
+  top: calc(var(--drive-breadcrumbs-height, 0px) + var(--list-head-sticky-gap, 0.75rem));
+  z-index: 2;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
 }
 
-/** Matches sidebar section labels (`.field-label-row__label`). Source strings own casing. */
 .drive-workspace .drive-list-head__cell {
-  @apply pb-2 pt-0 text-left text-sm font-medium truncate;
+  @apply py-0 text-left text-sm font-medium truncate;
+  height: var(--list-row-height, 3rem);
   letter-spacing: normal;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
   );
-  color: var(--field-label-color, var(--workspace-foreground));
+  color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-list-head__cell--align-end {
   text-align: right;
 }
 
+/*
+ * Rows are rounded like sidebar items, without separators. Fills sit on the row
+ * (one box across all cells); the clip rounds them.
+ */
 .drive-workspace .drive-list-row {
   @apply cursor-default transition-colors;
+  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
 }
 
 .drive-workspace
-  .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--drop-target):hover
-  > td {
+  .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--active):not(
+    .drive-list-row--drop-target
+  ):hover {
   background-color: var(--drive-item-hover-background);
 }
 
@@ -427,15 +449,21 @@
 }
 
 .drive-workspace .drive-list-row[data-selection-mode="true"] .drive-list-row__name {
-  @apply pl-9;
+  padding-inline-start: calc(var(--list-row-padding-x, 1rem) + 1.5rem);
 }
 
 .drive-workspace .drive-list-row__checkbox {
-  @apply absolute left-3 top-1/2 -translate-y-1/2;
+  @apply absolute top-1/2 -translate-y-1/2;
+  left: var(--list-row-padding-x, 1rem);
 }
 
 .drive-workspace .drive-list-row > td {
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  height: var(--list-row-height, 3rem);
+}
+
+/* Same hairline as the sidebar edge between rows. */
+.drive-workspace .drive-list-row:not(:last-child) > td {
+  border-bottom: 1px solid var(--workspace-divider-color);
 }
 
 .drive-workspace .drive-list-row--drop-target {
@@ -443,16 +471,14 @@
   box-shadow: inset 0 0 0 1.5px var(--color-emerald);
 }
 
-.drive-workspace .drive-list-row--selected > td {
-  background-color: var(--drive-item-selected-background);
-}
-
-.drive-workspace .drive-list-row--selected:hover > td {
-  background-color: var(--drive-item-selected-hover-background);
-}
-
+/* Painted on the row, not the cells, so the rounded clip shapes it. */
+.drive-workspace .drive-list-row--selected,
 .drive-workspace .drive-list-row--active {
-  background-color: var(--drive-item-selected-background);
+  background: var(--drive-item-selected-background);
+}
+
+.drive-workspace .drive-list-row--selected:hover {
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-list-row--dragging {

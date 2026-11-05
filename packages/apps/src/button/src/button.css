@@ -78,6 +78,19 @@
   opacity: 0.9;
 }
 
+/* The selected sidebar item as an action (selection bar Done). Same fill and ink, no border. */
+.button--variant-selection {
+  color: var(--workspace-selected-color, var(--workspace-foreground));
+  background: var(
+    --workspace-selected-background,
+    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+  );
+}
+
+.button--variant-selection:hover {
+  opacity: 0.9;
+}
+
 .button--variant-destructive {
   background-color: var(--button-destructive-bg, var(--destructive));
   color: var(--button-destructive-fg, var(--destructive-foreground));
@@ -121,8 +134,11 @@
     var(--button-outline-color, var(--workspace-foreground))
   );
   background-color: var(
-    --button-outline-hover-background,
-    color-mix(in oklab, var(--workspace-sidebar-surface) 14%, transparent)
+    --button-hover-background,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-sidebar-surface) 14%, transparent)
+    )
   );
 }
 

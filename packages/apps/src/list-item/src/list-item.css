@@ -38,15 +38,15 @@
 }
 
 .list-item__button[data-active="true"]:not([data-selected="true"]) {
-  /* Same surface as `.app-sidebar` when the workspace publishes it. */
-  background-color: var(
+  /* Open item: the sidebar selection. */
+  background: var(
     --list-item-active-bg,
     var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))
   );
 }
 
 .list-item__button[data-selected="true"] {
-  background-color: var(
+  background: var(
     --list-item-selected-bg,
     var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))
   );
@@ -125,7 +125,7 @@
 .list-item__title {
   @apply text-base font-medium leading-tight tracking-tight truncate;
   font-family: var(--font-sans);
-  color: var(--list-item-title-color, var(--workspace-foreground));
+  color: var(--list-item-title-color, var(--workspace-item-color, var(--workspace-foreground)));
 }
 
 .list-item__title--in-header {

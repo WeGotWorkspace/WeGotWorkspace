@@ -240,6 +240,72 @@
   }
 }
 
-.view-header__search-stack {
-  @apply mt-0.5;
+/*
+ * Search floats at the bottom of its column, in the selection bar's dock: a rounded,
+ * frosted field the list scrolls under. It steps aside while the selection bar is up.
+ * Containing block (and the scope for the selection-bar check): `.workspace-app-layout__main`
+ * or `.collection-list-pane`.
+ */
+.view-header__search-stack.anchored-dropdown-anchor {
+  position: absolute;
+  left: 50%;
+  bottom: var(--floating-dock-bottom);
+  z-index: 30;
+  width: min(28rem, calc(100% - 2rem));
+  translate: -50% 0;
+  transition:
+    opacity 200ms ease,
+    translate 200ms ease;
+}
+
+.view-header__search-stack > .collection-search-input.input {
+  margin: 0;
+  height: var(--floating-dock-height);
+  min-height: var(--floating-dock-height);
+  --input-padding-x: 1rem;
+  border-color: transparent;
+  border-radius: var(--floating-toolbar-radius);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  --input-background: var(--frost-background);
+  --input-background-hover: var(--frost-background);
+  --input-background-focus: var(--frost-background);
+  --input-border-hover: transparent;
+  --input-border-focus: transparent;
+  --input-shadow: var(--frost-shadow);
+}
+
+.view-header__search-stack > .collection-search-input.input:focus-within {
+  --input-shadow: var(--frost-shadow), 0 0 0 2px var(--ring);
+}
+
+/* Results open upward from the docked field. */
+.view-header__search-stack .anchored-dropdown-panel {
+  top: auto;
+  bottom: calc(100% + 0.5rem);
+}
+
+/* The selection bar takes the dock (Notes hides its bar from md up, so search stays). */
+:is(.workspace-app-layout__main, .collection-list-pane):has(.floating-action-bar[data-state="open"])
+  .view-header__search-stack {
+  opacity: 0;
+  translate: -50% 0.5rem;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  :is(.workspace-app-layout__main, .collection-list-pane):has(
+      .floating-action-bar.md\:hidden[data-state="open"]
+    )
+    .view-header__search-stack {
+    opacity: 1;
+    translate: -50% 0;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-header__search-stack.anchored-dropdown-anchor {
+    transition: none;
+  }
 }

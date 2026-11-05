@@ -11,7 +11,10 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
+  color: var(
+    --app-sidebar-item-color,
+    color-mix(in oklab, var(--workspace-foreground) 75%, transparent)
+  );
   /* Shared leading column width (checkbox / icon / color-dot) — size-3.5. */
   --collection-sidebar-row-leading-size: 0.875rem;
 }
@@ -31,7 +34,7 @@
   );
 }
 
-/* Selected = the suite selection (`--workspace-selected-*`, may be a gradient). */
+/* Selected = the suite selection (`--workspace-selected-*`). */
 .collection-sidebar-row--selected,
 .collection-sidebar-row--selected:hover {
   color: var(

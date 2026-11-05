@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
-import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
+import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
 type WorkspaceAppLayoutBaseProps = {
@@ -232,21 +232,17 @@ export function WorkspaceSidebarAccountFooter({
   return (
     <div className="workspace-sidebar-account-footer">
       {settingsItem ? (
-        <div className="workspace-sidebar-account-footer__settings">
-          <button
-            type="button"
-            className="workspace-sidebar-account-footer__settings-button"
-            onClick={settingsItem.onClick}
-            {...sidebarSelectMarker}
-          >
-            <span className="workspace-sidebar-account-footer__settings-icon" aria-hidden>
-              <Settings className="size-4" />
-            </span>
-            <span className="workspace-sidebar-account-footer__settings-label">
-              {settingsItem.label}
-            </span>
-          </button>
-        </div>
+        // Same row as every other sidebar item (shape, height, colour, hover).
+        <SidebarSection
+          className="workspace-sidebar-account-footer__settings"
+          items={[
+            {
+              label: settingsItem.label,
+              icon: <Settings className="size-4" />,
+              onClick: settingsItem.onClick,
+            },
+          ]}
+        />
       ) : null}
       <WorkspaceUserFooter
         name={session.user.displayName}

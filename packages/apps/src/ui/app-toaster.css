@@ -81,12 +81,7 @@
   --callout-text: var(--workspace-foreground);
   --callout-icon-color: var(--workspace-foreground);
   --button-outline-color: var(--workspace-foreground);
-  --button-outline-border-color: var(--control-border-color);
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-foreground) 4%,
-    transparent
-  );
+  --button-hover-background: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
   color: var(--callout-text);

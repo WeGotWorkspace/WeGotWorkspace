@@ -80,7 +80,6 @@
 }
 
 .docs-suggestion-card__reject {
-  --button-outline-border-color: transparent;
   background-color: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
 }
 

@@ -75,31 +75,43 @@
     var(--workspace-foreground) 12%,
     var(--workspace-surface)
   );
-  --button-ghost-hover-background: var(--button-outline-hover-background);
+  /*
+   * Buttons are borderless suite-wide (the Docs norm): no stroke, the 8% wash on
+   * hover. `--button-outline-hover-background` stays the 4% wash that cards, tags
+   * and list rows reuse; buttons hover with `--button-hover-background`.
+   */
+  --button-outline-border-color: transparent;
+  --button-destructive-outline-border-color: transparent;
+  --button-hover-background: var(--button-outline-active-background);
+  --button-ghost-hover-background: var(--button-hover-background);
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: var(--workspace-foreground);
 
   /*
-   * Selected (sidebar rows, pressed outline toggles). May be a gradient, so
-   * consumers paint it with `background`. Light: flat ink wash; dark: sky wash
-   * with a hairline (strengths from `--scheme-selection-*`).
+   * Selected (sidebar rows, list rows, tiles, pressed toggles): one flat wash.
+   * Light: ink; dark: sky (`--scheme-selection-*`).
    */
-  --workspace-selected-background: linear-gradient(
-    90deg,
-    color-mix(
-      in oklch,
-      var(--scheme-selection) var(--scheme-selection-from),
-      var(--workspace-surface)
-    ),
-    color-mix(
-      in oklch,
-      var(--scheme-selection) var(--scheme-selection-to),
-      var(--workspace-surface)
-    )
+  --workspace-selected-background: color-mix(
+    in oklch,
+    var(--scheme-selection) var(--scheme-selection-strength),
+    var(--workspace-surface)
   );
   --workspace-selected-shadow: inset 0 0 0 1px
     color-mix(in oklch, var(--scheme-selection) var(--scheme-selection-edge), transparent);
   --workspace-selected-color: var(--workspace-foreground);
+
+  /* Hairline dividers: the sidebar edge and the lines between list rows. */
+  --workspace-divider-color: color-mix(
+    in oklch,
+    var(--workspace-foreground) var(--scheme-panel-edge, 8%),
+    transparent
+  );
+
+  /* Item ink: sidebar rows and list-view titles share it. */
+  --workspace-item-color: color-mix(in oklab, var(--workspace-foreground) 90%, transparent);
+
+  /* Quiet labels: sidebar section titles and list/table column headers. */
+  --workspace-label-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
 
   /* Frosted floating chrome: ink tint over translucent paper, theme shadow. */
   --frost-background: color-mix(
@@ -108,6 +120,11 @@
     color-mix(in oklch, var(--workspace-surface) var(--scheme-frost-paper), transparent)
   );
   --frost-shadow: var(--scheme-frost-shadow);
+  --floating-toolbar-separator-color: color-mix(
+    in oklch,
+    var(--workspace-foreground) 10%,
+    transparent
+  );
 
   --menu-item-hover-background: var(--button-outline-hover-background);
   --menu-item-selected-background: var(--button-outline-active-background);
@@ -203,6 +220,6 @@
     0 1px 2px color-mix(in oklch, var(--workspace-foreground) 4%, transparent),
     0 10px 30px -10px color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 
-  /* Same step as outline icon-button active. Do not mix `--workspace-accent` (solid Dark). */
-  --drive-item-selected-background: var(--button-outline-active-background);
+  /* Selected tiles, list rows and open list items: the sidebar selection. */
+  --drive-item-selected-background: var(--workspace-selected-background);
 }

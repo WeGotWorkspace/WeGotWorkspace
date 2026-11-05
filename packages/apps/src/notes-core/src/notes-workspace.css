@@ -65,7 +65,7 @@
    * `--button-outline-hover-background`). Active-only stays the Drive tile wash.
    */
   --list-item-selected-bg: var(--button-outline-hover-background);
-  --list-item-active-bg: var(--drive-item-selected-background);
+  --list-item-active-bg: var(--workspace-selected-background);
   /* Checked fill is accent (Dark). Glyph follows the accent-foreground pair. */
   --list-item-checkbox-icon-color: var(--workspace-accent-foreground);
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
