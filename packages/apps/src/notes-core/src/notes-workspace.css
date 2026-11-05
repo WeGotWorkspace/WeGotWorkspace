@@ -300,21 +300,6 @@
   --button-outline-hover-color: var(--notes-detail-accent-strong);
 }
 
-.notes-workspace .note-detail-view__tag-group {
-  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-  --tag-group-input-border: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
-  --tag-group-input-bg: color-mix(in oklch, var(--workspace-foreground) 4%, transparent);
-  --tag-group-input-bg-focus: var(--workspace-surface);
-  --tag-group-input-fg: var(--workspace-foreground);
-  --tag-group-suggestions-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --tag-group-suggestions-bg: var(--workspace-surface);
-  --tag-group-suggestion-bg-active: color-mix(
-    in oklch,
-    var(--workspace-foreground) 6%,
-    transparent
-  );
-}
-
 /* The open note's tags are active tags: the same colours as a selected sidebar
  * tag. The Add tag control keeps its neutral wash. */
 .notes-workspace .note-detail-view__tag-group .tag {
