@@ -9,10 +9,10 @@ use App\Models\CalendarInstance;
 use App\Models\ChatChannelMeta;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CollectionKind;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\PropPatch;
 
@@ -47,6 +47,7 @@ use Sabre\DAV\PropPatch;
 final class ChatGroupDefaultChannelProvisioner
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
         private readonly WgwCalendarBackendFactory $backends,
     ) {}
 
@@ -162,12 +163,7 @@ final class ChatGroupDefaultChannelProvisioner
         }
 
         $propPatch = new PropPatch(['{DAV:}displayname' => $displayName]);
-        $this->calBackend()->updateCalendar([(int) $instance->calendarid, (int) $instance->id], $propPatch);
+        $this->backends->calBackend()->updateCalendar($this->collections->backendId($instance), $propPatch);
         $propPatch->commit();
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }
