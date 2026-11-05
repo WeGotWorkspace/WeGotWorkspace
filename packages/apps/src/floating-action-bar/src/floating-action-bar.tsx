@@ -1,6 +1,6 @@
 import { useEffect, useState, type TransitionEvent } from "react";
 import { SquareCheck } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import type { ButtonSeverity, ButtonVariant } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -14,10 +14,12 @@ export type FloatingActionBarButton = {
   active?: boolean;
   /** Destructive actions (trash / archive): danger fg + severity hover wash. */
   severity?: ButtonSeverity;
-  /** Done uses `selection` (the selected sidebar look); other actions stay outline. */
+  /** Defaults to outline, like every other action (Done included). */
   variant?: ButtonVariant;
   /** Visual hairline before this control (typically Done). */
   separatorBefore?: boolean;
+  /** A text button (its label, no icon) instead of an icon-only button (Done). */
+  showLabel?: boolean;
 };
 
 type FloatingActionBarProps = {
@@ -83,15 +85,27 @@ export function FloatingActionBar({
             {button.separatorBefore ? (
               <span className="floating-action-bar__spacer" aria-hidden />
             ) : null}
-            <IconButton
-              label={button.label}
-              icon={button.icon}
-              onClick={button.onClick}
-              active={button.active}
-              severity={button.severity}
-              size="lg"
-              variant={button.variant ?? "outline"}
-            />
+            {button.showLabel ? (
+              <Button
+                label={button.label}
+                className="floating-action-bar__text-button"
+                icon={button.icon}
+                onClick={button.onClick}
+                severity={button.severity}
+                size="lg"
+                variant={button.variant ?? "outline"}
+              />
+            ) : (
+              <IconButton
+                label={button.label}
+                icon={button.icon}
+                onClick={button.onClick}
+                active={button.active}
+                severity={button.severity}
+                size="lg"
+                variant={button.variant ?? "outline"}
+              />
+            )}
           </span>
         ))}
         {children}

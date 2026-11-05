@@ -71,6 +71,12 @@
   gap: var(--floating-toolbar-gap);
 }
 
+/* Done: a text button beside the icon actions. Same height, radius and states;
+ * menu-sized text (14px) instead of the lg control's 16px. */
+.floating-action-bar__text-button {
+  font-size: var(--input-font-size-md, 0.875rem);
+}
+
 .floating-action-bar__spacer {
   @apply shrink-0 self-center;
   width: 1px;

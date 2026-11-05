@@ -1,5 +1,5 @@
 import { CheckSquare2 } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import type { ButtonSeverity, ButtonVariant } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
 import "@/multi-selection-view/src/multi-selection-view.css";
@@ -12,10 +12,12 @@ export type MultiSelectionViewAction = {
   active?: boolean;
   /** Destructive actions (trash / archive): danger fg + severity hover wash. */
   severity?: ButtonSeverity;
-  /** Done is primary; other selection actions stay outline. */
+  /** Defaults to outline, like every other action (Done included). */
   variant?: ButtonVariant;
   /** Hairline before this control (typically Done). */
   separatorBefore?: boolean;
+  /** A text button (its label, no icon) instead of an icon-only button (Done). */
+  showLabel?: boolean;
 };
 
 export type MultiSelectionViewProps = {
@@ -80,15 +82,27 @@ export function MultiSelectionView({
               {action.separatorBefore ? (
                 <span className="multi-selection-view__spacer" aria-hidden />
               ) : null}
-              <IconButton
-                label={action.label}
-                onClick={action.onClick}
-                active={action.active}
-                severity={action.severity}
-                icon={action.icon}
-                size={compact ? "lg" : "xl"}
-                variant={action.variant ?? "outline"}
-              />
+              {action.showLabel ? (
+                <Button
+                  label={action.label}
+                  className="multi-selection-view__text-button"
+                  onClick={action.onClick}
+                  severity={action.severity}
+                  icon={action.icon}
+                  size={compact ? "lg" : "xl"}
+                  variant={action.variant ?? "outline"}
+                />
+              ) : (
+                <IconButton
+                  label={action.label}
+                  onClick={action.onClick}
+                  active={action.active}
+                  severity={action.severity}
+                  icon={action.icon}
+                  size={compact ? "lg" : "xl"}
+                  variant={action.variant ?? "outline"}
+                />
+              )}
             </span>
           ))}
         </div>

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { CheckCircle2 } from "lucide-react";
 import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar";
 import { useEntityBatchActions } from "@/hooks/use-entity-batch-actions";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
@@ -103,11 +102,13 @@ export function useWorkspaceSelectionPresentation({
     () => [
       ...actionButtons,
       {
+        // Done leaves selection mode: an outline button like the others, its
+        // label spelled out and no icon.
         label: doneLabel,
-        icon: <CheckCircle2 className="size-4" />,
+        icon: null,
         onClick: () => exitSelection(activeId),
         separatorBefore: true,
-        variant: "selection",
+        showLabel: true,
       },
     ],
     [actionButtons, doneLabel, exitSelection, activeId],

@@ -1,5 +1,5 @@
 import { render, within } from "@testing-library/react";
-import { CheckCircle2, Star, Trash2 } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar";
@@ -16,10 +16,10 @@ describe("FloatingActionBar", () => {
               { label: "Delete", icon: <Trash2 />, onClick: vi.fn(), severity: "danger" },
               {
                 label: "Done",
-                icon: <CheckCircle2 />,
+                icon: null,
                 onClick: vi.fn(),
                 separatorBefore: true,
-                variant: "selection",
+                showLabel: true,
               },
             ]}
           />
@@ -36,10 +36,14 @@ describe("FloatingActionBar", () => {
     const outlineButtons = container.querySelectorAll(
       ".floating-action-bar__actions .button--variant-outline",
     );
-    expect(outlineButtons.length).toBe(2);
+    // Done is outline too: its label spelled out, no icon.
+    expect(outlineButtons.length).toBe(3);
     expect(
       container.querySelector(".floating-action-bar__actions .button--variant-selection"),
-    ).toBeTruthy();
+    ).toBeNull();
+    const done = within(container as HTMLElement).getByRole("button", { name: "Done" });
+    expect(done.querySelector(".button__label")?.textContent).toBe("Done");
+    expect(done.querySelector("svg")).toBeNull();
     expect(
       container.querySelector(".floating-action-bar__actions .button--variant-ghost"),
     ).toBeNull();
