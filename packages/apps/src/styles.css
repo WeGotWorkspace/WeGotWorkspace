@@ -313,6 +313,9 @@
   --scheme-selection: var(--scheme-ink);
   --scheme-selection-strength: 6%;
   --scheme-selection-edge: 0%;
+  /* Selection marks (list multi-select checks): the same colour, stronger. */
+  --scheme-selection-mark-strength: 16%;
+  --scheme-selection-mark-edge: 40%;
   /* Frosted chrome: ink tint over a translucent paper fill. */
   --scheme-frost-ink: 0%;
   --scheme-frost-paper: 86%;
@@ -376,6 +379,8 @@
   --scheme-selection: oklch(0.68 0.13 240);
   --scheme-selection-strength: 18%;
   --scheme-selection-edge: 30%;
+  --scheme-selection-mark-strength: 42%;
+  --scheme-selection-mark-edge: 80%;
   --scheme-frost-ink: 7%;
   --scheme-frost-paper: 0%;
   --scheme-frost-shadow:

@@ -43,7 +43,10 @@
   }
 }
 
-.list-item__button:focus-visible {
+/* Keyboard focus only. Chrome also matches `:focus-visible` after a Cmd/Shift-click
+ * (multi-select), so skip it while the last input was a pointer
+ * (`installKeyboardFocusModality`, which ignores modifier keys). */
+html:not([data-modality="pointer"]) .list-item__button:focus-visible {
   box-shadow: inset 0 0 0 2px var(--list-item-accent-color, var(--color-emerald));
 }
 
@@ -98,20 +101,36 @@
   opacity: 1;
 }
 
+/* Round multi-select marks. Checked: the selected wash's tint, stronger
+ * (`--workspace-selected-mark-*`), so it sits with the row it selects. */
 .list-item__checkbox {
-  @apply inline-flex size-4 items-center justify-center rounded-[4px] border;
+  @apply inline-flex items-center justify-center rounded-full border;
+  width: 1.125rem;
+  height: 1.125rem;
   border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
   background-color: transparent;
 }
 
 .list-item__button[data-selected="true"] .list-item__checkbox {
-  border-color: var(--list-item-accent-color, var(--color-emerald));
-  background-color: var(--list-item-accent-color, var(--color-emerald));
+  border-color: var(
+    --list-item-checkbox-checked-border,
+    var(--workspace-selected-mark-border, var(--workspace-foreground))
+  );
+  background-color: var(
+    --list-item-checkbox-checked-bg,
+    var(
+      --workspace-selected-mark-background,
+      color-mix(in oklab, var(--workspace-foreground) 16%, transparent)
+    )
+  );
 }
 
 .list-item__checkbox-icon {
   @apply size-3;
-  color: var(--list-item-checkbox-icon-color, var(--workspace-accent-foreground));
+  color: var(
+    --list-item-checkbox-icon-color,
+    var(--workspace-selected-mark-color, var(--workspace-foreground))
+  );
 }
 
 .list-item__leading {

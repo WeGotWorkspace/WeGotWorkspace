@@ -53,8 +53,6 @@
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  /* Checked fill is accent (Dark). Glyph follows the accent-foreground pair. */
-  --list-item-checkbox-icon-color: var(--workspace-accent-foreground);
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
   /* Workspace-level — sidebar collection rows override with row color.
    * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph

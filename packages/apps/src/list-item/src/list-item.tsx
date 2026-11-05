@@ -12,7 +12,12 @@ import {
   useListItemHighlight,
 } from "@/list-item/src/list-item-selection";
 import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
+import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 import "./list-item.css";
+
+// The focus ring is keyboard-only: a Cmd/Shift-click (multi-select) counts as
+// keyboard for `:focus-visible`, so the ring also checks the last real input.
+installKeyboardFocusModality();
 
 export type SwipeAction = {
   icon: React.ReactNode;
