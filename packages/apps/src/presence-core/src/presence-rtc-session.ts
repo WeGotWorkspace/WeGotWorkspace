@@ -124,9 +124,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
       this.pollIntervals.steadyMs = ALONE_STEADY_POLL_MS;
       return;
     }
-    const allLinked = peers.every(
-      (peer) => this.mesh.getDataChannel(peer.id)?.readyState === "open",
-    );
+    const allLinked = peers.every((peer) => this.isLinked(peer.id));
     this.pollIntervals.steadyMs = allLinked ? IDLE_STEADY_POLL_MS : ACTIVE_STEADY_POLL_MS;
   }
 
