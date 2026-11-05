@@ -87,6 +87,9 @@ class FakeSession implements PresenceMeshSession {
 
   failJoin = false;
 
+  /** Peer ids with an open data channel. */
+  linked = new Set<string>();
+
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
   async join(): Promise<{ peerId: string; superseded?: true }> {
@@ -109,6 +112,10 @@ class FakeSession implements PresenceMeshSession {
 
   getRoomPeers(): RtcPeerDescriptor[] {
     return this.peers;
+  }
+
+  isLinked(peerId: string): boolean {
+    return this.linked.has(peerId);
   }
 
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {
@@ -378,6 +385,55 @@ describe("PresenceStore roster", () => {
     expect(session.sentTo).toEqual([
       { peerId: "bob-aaa111", envelope: { v: 1, kind: "presence", status: "away" } },
     ]);
+  });
+});
+
+describe("PresenceStore mesh linked (#1943)", () => {
+  it("is linked only by an open data channel to another user", async () => {
+    const { session, store } = setup();
+    expect(store.meshLinked()).toBe(false);
+    store.start(SELF);
+    await flushMicrotasks();
+
+    session.peers = [
+      { id: "alice-other-tab", name: "Alice", user: "alice" },
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+    ];
+    session.emit({ type: "roster" });
+    expect(store.meshLinked()).toBe(false);
+
+    // Own other browser: it sends no check-now, so it does not count.
+    session.linked.add("alice-other-tab");
+    session.emit({ type: "dc-open", peerId: "alice-other-tab" });
+    expect(store.meshLinked()).toBe(false);
+
+    session.linked.add("bob-aaa111");
+    session.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    expect(store.meshLinked()).toBe(true);
+
+    await store.stop();
+    expect(store.meshLinked()).toBe(false);
+  });
+
+  it("tells subscribers when the link state changes, not on other snapshot changes", async () => {
+    const { session, store } = setup();
+    store.start(SELF);
+    await flushMicrotasks();
+    const listener = vi.fn();
+    store.subscribeMeshLinked(listener);
+
+    session.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    session.emit({ type: "roster" });
+    expect(listener).not.toHaveBeenCalled();
+
+    session.linked.add("bob-aaa111");
+    session.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    session.emit({ type: "roster" });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    session.linked.delete("bob-aaa111");
+    session.emit({ type: "roster" });
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -969,6 +1025,34 @@ describe("PresenceStore cross-window leadership", () => {
     expect(leaderSession.sentTo).toEqual([
       { peerId: "bob-aaa111", envelope: { v: 1, kind: "check-now" } },
     ]);
+  });
+
+  it("a follower window knows whether the leader's mesh is linked (#1943)", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+    const followerListener = vi.fn();
+    storeB.subscribeMeshLinked(followerListener);
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await drain();
+    expect(storeB.meshLinked()).toBe(false);
+
+    leaderSession.linked.add("bob-aaa111");
+    leaderSession.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    await drain();
+    expect(storeA.meshLinked()).toBe(true);
+    expect(storeB.meshLinked()).toBe(true);
+    expect(followerListener).toHaveBeenCalledTimes(1);
+
+    leaderSession.linked.delete("bob-aaa111");
+    leaderSession.emit({ type: "roster" });
+    await drain();
+    expect(storeB.meshLinked()).toBe(false);
+    expect(followerListener).toHaveBeenCalledTimes(2);
   });
 
   it("relays an inbound check-now to follower windows", async () => {

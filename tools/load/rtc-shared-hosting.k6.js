@@ -13,6 +13,14 @@
  * push scenarios alone. Per-source state timings need
  * WGW_JMAP_PUSH_SERVER_TIMING=1 on the server (Server-Timing header).
  *
+ * PUSH_USER may list several accounts that share PUSH_PASSWORD (`a,b,c`): the
+ * browsers spread over them, because one account allows 300 push requests a
+ * minute. PUSH_INTERVAL_MS makes every browser reconnect at that interval
+ * instead of the server's `retry:`, the way a browser with a linked presence
+ * mesh waits 5 s while the server says 3 s (#1943). FPM_STATUS_URL (a PHP-FPM
+ * `pm.status_path`, for example `https://example.test/fpm-status`) adds a
+ * sampler that reports busy FPM children as `fpm_busy_children`.
+ *
  *   k6 run -e BASE_URL=https://example.test -e PUSH_USER=load -e PUSH_PASSWORD=... \
  *     tools/load/rtc-shared-hosting.k6.js
  *
@@ -37,13 +45,20 @@
 import http from "k6/http";
 import encoding from "k6/encoding";
 import { check, sleep } from "k6";
-import { Trend } from "k6/metrics";
+import { Counter, Trend } from "k6/metrics";
 
 const base = (__ENV.BASE_URL || "http://127.0.0.1:9080").replace(/\/$/, "");
 const presenceUsers = Number(__ENV.PRESENCE_USERS || 8);
-const pushUser = __ENV.PUSH_USER || "";
+const pushUsers = (__ENV.PUSH_USER || "")
+  .split(",")
+  .map((name) => name.trim())
+  .filter((name) => name !== "");
+// Writes and their folder belong to the first account.
+const pushUser = pushUsers[0] || "";
 const pushPassword = __ENV.PUSH_PASSWORD || "";
 const pushEnabled = pushUser !== "" && pushPassword !== "";
+const pushIntervalMs = Number(__ENV.PUSH_INTERVAL_MS || 0);
+const fpmStatusUrl = __ENV.FPM_STATUS_URL || "";
 const pushOnly = __ENV.PUSH_ONLY === "1";
 const pushBrowsers = Number(__ENV.PUSH_BROWSERS || 16);
 const pushBatchSize = Number(__ENV.PUSH_BATCH_SIZE || 10);
@@ -82,6 +97,7 @@ async function urgentSubscriptionKeys() {
 }
 
 const pushRequest = new Trend("push_request_ms", true);
+const pushRequests = new Counter("push_requests");
 const pushStateBySource = {};
 for (const source of [
   "notes",
@@ -94,6 +110,7 @@ for (const source of [
 ]) {
   pushStateBySource[source] = new Trend(`push_state_${source}_ms`, true);
 }
+const fpmBusyChildren = new Trend("fpm_busy_children");
 const driveWriteSingle = new Trend("drive_write_single_ms", true);
 const driveWriteBatch = new Trend("drive_write_batch_ms", true);
 const urgentWrite = new Trend("urgent_write_ms", true);
@@ -124,6 +141,16 @@ const pushScenarios = pushEnabled
         preAllocatedVUs: 1,
         exec: "driveBatch",
       },
+      ...(fpmStatusUrl
+        ? {
+            fpmStatus: {
+              executor: "constant-vus",
+              vus: 1,
+              duration: pushDuration,
+              exec: "fpmStatus",
+            },
+          }
+        : {}),
     }
   : {};
 
@@ -285,7 +312,8 @@ export async function setup() {
   if (!pushEnabled) {
     return { urgent };
   }
-  const token = login(pushUser, pushPassword);
+  const tokens = pushUsers.map((name) => login(name, pushPassword));
+  const token = tokens[0];
   const basic = `Basic ${encoding.b64encode(`${pushUser}:${pushPassword}`)}`;
   http.request("MKCOL", `${base}/files/users/${pushUser}/${pushFolder}`, null, {
     headers: { Authorization: basic },
@@ -297,7 +325,7 @@ export async function setup() {
     (node) => node.name === pushFolder,
   );
 
-  return { token, basic, folderId: folder ? folder.id : null, urgent };
+  return { token, tokens, basic, folderId: folder ? folder.id : null, urgent };
 }
 
 /**
@@ -357,8 +385,12 @@ export function urgent(data) {
 let lastEventId = null;
 
 export function push(data) {
+  if (__ITER === 0) {
+    // Real browsers open at random moments; without this every VU would fire in step.
+    sleep((Math.random() * (pushIntervalMs || 3000)) / 1000);
+  }
   const headers = {
-    Authorization: `Bearer ${data.token}`,
+    Authorization: `Bearer ${data.tokens[(__VU - 1) % data.tokens.length]}`,
     Accept: "text/event-stream",
     "X-WGW-Browser-Id": __VU.toString(16).padStart(32, "0"),
   };
@@ -371,6 +403,7 @@ export function push(data) {
   });
   check(res, { "push ok": (r) => r.status === 200 });
   pushRequest.add(res.timings.duration);
+  pushRequests.add(1);
   for (const part of String(res.headers["Server-Timing"] || "").split(",")) {
     const match = part.trim().match(/^([a-z]+);dur=([0-9.]+)$/);
     if (match && pushStateBySource[match[1]]) {
@@ -387,8 +420,24 @@ export function push(data) {
   }
   if (res.status === 429) {
     retryMs = Number(res.headers["Retry-After"] || 3) * 1000;
+  } else if (pushIntervalMs > 0) {
+    retryMs = pushIntervalMs;
   }
   sleep(retryMs / 1000);
+}
+
+/**
+ * Busy FPM children four times a second. The status request itself takes a
+ * child, so one is subtracted.
+ */
+export function fpmStatus() {
+  const res = http.get(`${fpmStatusUrl}?json`, {
+    tags: { name: "fpm-status" },
+  });
+  if (res.status === 200) {
+    fpmBusyChildren.add(Math.max(0, Number(res.json("active processes")) - 1));
+  }
+  sleep(0.25);
 }
 
 export function driveWrite(data) {

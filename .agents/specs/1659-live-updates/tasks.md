@@ -23,6 +23,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `chunk-inbox` | #1668 | builder | workspace | `packages/apps/src/notifications-core/src/` | `pnpm --dir packages/apps exec vitest run src/notifications-core` |
 | `chunk-toast` | #1669 | builder | apps-ui | `packages/apps/src/notifications-core/src/`, `packages/apps/src/ui/` | `pnpm test:apps-done-gate` |
 | `chunk-metadata` | #1671 | builder | api | `packages/api/app/Services/Notes/`, `packages/api/app/Services/Calendars/`, `packages/api/app/Services/Tasks/`, `packages/api/app/Services/Contacts/` | `pnpm test:api-done-gate` |
+| `chunk-mesh-interval` | #1943 | builder | client-transport | `packages/apps/src/lib/jmap-client/push/`, `packages/apps/src/presence-core/src/`, `tools/load/rtc-shared-hosting.k6.js` | `pnpm --dir packages/apps exec vitest run src/lib/jmap-client/push src/presence-core` |
 | `chunk-verify` | — | verifier | code-review | all of the above | `pnpm run ci:quality` |
 
 Related, outside this Epic: #1670 (urgent Web Push for `meet.started`) under #1600, after #1601, #1605, `chunk-server`, `chunk-inbox` and `chunk-toast`.

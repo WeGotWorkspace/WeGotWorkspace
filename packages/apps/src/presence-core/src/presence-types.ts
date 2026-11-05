@@ -155,5 +155,7 @@ export type PresenceMeshSession = {
   broadcast(envelope: PresenceEnvelope): void;
   sendTo(peerId: string, envelope: PresenceEnvelope): void;
   getRoomPeers(): RtcPeerDescriptor[];
+  /** True while this peer's data channel is open, so envelopes reach it. */
+  isLinked(peerId: string): boolean;
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void;
 };

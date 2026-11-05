@@ -72,12 +72,13 @@ Silent news needs no curation: every change to data the user can read moves thei
 
 Latency on shared hosting:
 
-| Path                                                           | Typical                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------- |
-| Writer is a WGW tab sharing a collection with you, mesh linked | about 1 s (mesh "check now" → event source → fetch)           |
-| Writer is outside the mesh or outside the suite                | within the event-source retry, about 3 s                      |
-| Web Push, urgent news (meeting started), app closed            | a few seconds: sent right after the write's response          |
-| Web Push, other active news, app closed                        | 20–80 s (20 s local-ack grace, then up to one 60 s cron tick) |
+| Path                                                                                                | Typical                                                       |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Writer is a WGW tab sharing a collection with you, mesh linked                                      | about 0.2–0.4 s (mesh "check now" → event source → fetch)     |
+| Writer is outside the mesh or outside the suite (a DAV client, your other device), your mesh linked | within the event-source interval, about 5 s                   |
+| Same, your mesh not linked (WebRTC blocked, room full)                                              | within the event-source `retry`, about 3 s                    |
+| Web Push, urgent news (meeting started), app closed                                                 | a few seconds: sent right after the write's response          |
+| Web Push, other active news, app closed                                                             | 20–80 s (20 s local-ack grace, then up to one 60 s cron tick) |
 
 ### Urgent active news
 
@@ -133,14 +134,23 @@ Before #1668 the bell waited for its 15 s poll. Now the spread follows the strea
 
 **With `check-now` (#1662):** `e2e/mesh-check-now.spec.ts`, two users in two browsers, the writer writing from their open tab at a random point in the retry cycle, four runs of three rounds, same local setup:
 
-| Write → shown to the other user | Mesh up | Mesh blocked (push alone) |
-|---------------------------------|---------|---------------------------|
-| DM → row in the bell | 0.12–0.23 s, median 0.14 s | 0.84–3.5 s, median 1.9 s |
-| Task on a shared list → in their open Tasks tab | 0.22–0.42 s, median 0.32 s | 0.21–2.9 s, median 1.4 s |
+| Write → shown to the other user                 | Mesh up                    | Mesh blocked (push alone) |
+| ----------------------------------------------- | -------------------------- | ------------------------- |
+| DM → row in the bell                            | 0.12–0.23 s, median 0.14 s | 0.84–3.5 s, median 1.9 s  |
+| Task on a shared list → in their open Tasks tab | 0.22–0.42 s, median 0.32 s | 0.21–2.9 s, median 1.4 s  |
 
 With the mesh up, a change no longer waits for the next `retry`.
 
-**Local-ack grace:** stays at 20 s. While push is connected a visible tab acks within about 3 s, so 5–10 s would do. But while push is down (rate-limited, `501`, offline) the ack waits for the 15 s poll, and the server cannot tell which case a browser is in, so a shorter grace would send phone pushes for news already on screen. Revisit once push uptime is measured: either poll faster while push is down, or give a shorter grace only to a user whose browser made an event-source request in the last few seconds.
+**Interval by mesh state (#1943):** `e2e/push-mesh-interval.spec.ts`, same setup, two runs of three rounds per case. A task added from the owner's open tab (in-suite) and a VTODO the owner PUTs over CalDAV (outside the suite) on a list shared with the other user, whose browser reconnects every 5 s with a held mesh link and every 3 s without one:
+
+| Write → shown to the other user | Mesh up (5 s) | Mesh blocked (3 s) |
+| ------------------------------- | ------------- | ------------------ |
+| Task from the owner's open tab  | 0.24–0.33 s   | 1.1–3.4 s          |
+| VTODO over CalDAV               | 0.5–5.1 s     | 1.6–3.7 s          |
+
+The other user's event-source requests started 3.05 s apart, then 5.05 s apart once the link had held 30 s, and 3.05 s apart again right after the writer's side dropped the link.
+
+**Local-ack grace:** stays at 20 s. While push is connected a visible tab acks within one reconnect interval plus a fetch: about 3 s without a mesh link, about 5 s with one ([jmap-push.md](jmap-push.md#interval-by-mesh-state)), and well under a second when the writer's `check-now` reaches it. So 10 s would do. But while push is down (rate-limited, `501`, offline) the ack waits for the 15 s poll, and the server cannot tell which case a browser is in, so a shorter grace would send phone pushes for news already on screen. Revisit once push uptime is measured: either poll faster while push is down, or give a shorter grace only to a user whose browser made an event-source request in the last few seconds.
 
 ## The mesh as messenger
 

@@ -60,6 +60,7 @@ export const liveTierSpecs = [
   "notifications-inbox-push",
   "notifications-toast",
   "presence-offline-start",
+  "push-mesh-interval",
   "queued-write-reload",
   "tasks-inbound-sync",
   "tasks-push",

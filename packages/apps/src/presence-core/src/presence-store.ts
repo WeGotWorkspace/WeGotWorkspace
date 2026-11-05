@@ -198,6 +198,32 @@ export class PresenceStore implements MeshCheckNowPort {
     };
   };
 
+  /**
+   * True while the mesh has an open data channel to a peer of another user
+   * (#1943). Own other browsers do not count: they send no `check-now`. A
+   * follower window answers from the leader's relayed roster.
+   */
+  meshLinked = (): boolean => {
+    const session = this.session;
+    if (!session) return false;
+    const self = this.selfUsername.trim().toLowerCase();
+    return session.getRoomPeers().some((peer) => {
+      const username = (peer.user ?? "").trim().toLowerCase();
+      return username !== "" && username !== self && session.isLinked(peer.id);
+    });
+  };
+
+  /** Calls `listener` when {@link meshLinked} changes. */
+  subscribeMeshLinked = (listener: () => void): (() => void) => {
+    let last = this.meshLinked();
+    return this.subscribe(() => {
+      const linked = this.meshLinked();
+      if (linked === last) return;
+      last = linked;
+      listener();
+    });
+  };
+
   /** A peer's content-free `check-now`: ask the server, never trust the mesh for data. */
   subscribeCheckNow = (listener: () => void): (() => void) => {
     this.checkNowListeners.add(listener);
@@ -445,10 +471,13 @@ export class PresenceStore implements MeshCheckNowPort {
   }
 
   private relayRosterToFollowers(): void {
-    if (!this.isMeshLeader || !this.session) return;
+    const session = this.session;
+    if (!this.isMeshLeader || !session) return;
+    const peers = session.getRoomPeers();
     this.coordinator?.publishRosterState({
-      peers: this.session.getRoomPeers(),
+      peers,
       selfPeerId: null,
+      linkedPeerIds: peers.filter((peer) => session.isLinked(peer.id)).map((peer) => peer.id),
     });
   }
 

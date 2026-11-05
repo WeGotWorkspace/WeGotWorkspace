@@ -2,22 +2,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventSourceTransport } from "./event-source-transport";
 import {
   MeshCheckNowTransport,
+  meshLinked,
   registerMeshCheckNowPort,
   sendMeshCheckNow,
+  subscribeMeshLinked,
   type MeshCheckNowPort,
 } from "./mesh-check-now";
 
 function fakePort() {
   const listeners = new Set<() => void>();
+  const linkListeners = new Set<() => void>();
   const sent: string[][] = [];
+  let linked = false;
   const port: MeshCheckNowPort = {
     sendCheckNow: (usernames) => sent.push([...usernames]),
     subscribeCheckNow: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    meshLinked: () => linked,
+    subscribeMeshLinked: (listener) => {
+      linkListeners.add(listener);
+      return () => linkListeners.delete(listener);
+    },
   };
-  return { port, sent, receive: () => listeners.forEach((listener) => listener()), listeners };
+  const setLinked = (next: boolean) => {
+    linked = next;
+    linkListeners.forEach((listener) => listener());
+  };
+  return {
+    port,
+    sent,
+    receive: () => listeners.forEach((listener) => listener()),
+    listeners,
+    linkListeners,
+    setLinked,
+  };
 }
 
 let cleanup: Array<() => void> = [];
@@ -52,6 +72,30 @@ describe("mesh check-now port", () => {
     expect(mesh.listeners.size).toBe(0);
   });
 
+  it("mesh linked follows the registered port, also across store swaps", () => {
+    const changes = vi.fn();
+    cleanup.push(subscribeMeshLinked(changes));
+    expect(meshLinked()).toBe(false);
+
+    const first = fakePort();
+    const unregisterFirst = registerMeshCheckNowPort(first.port);
+    expect(changes).toHaveBeenCalledTimes(1);
+    first.setLinked(true);
+    expect(meshLinked()).toBe(true);
+    expect(changes).toHaveBeenCalledTimes(2);
+
+    unregisterFirst();
+    expect(meshLinked()).toBe(false);
+    expect(changes).toHaveBeenCalledTimes(3);
+    expect(first.linkListeners.size).toBe(0);
+
+    const second = fakePort();
+    cleanup.push(registerMeshCheckNowPort(second.port));
+    second.setLinked(true);
+    expect(meshLinked()).toBe(true);
+    expect(changes).toHaveBeenCalledTimes(5);
+  });
+
   it("an old port's unregister does not drop a newer port", () => {
     const first = fakePort();
     const second = fakePort();
@@ -81,6 +125,8 @@ describe("mesh check-now reconnects the event source", () => {
       fetch,
       lastEventId: () => null,
       connectivity: { online: () => true, subscribe: () => () => undefined },
+      // As wired in `lib/api/wgw/jmap-push.ts`.
+      mesh: { linked: meshLinked, subscribe: subscribeMeshLinked },
     });
     const sink = { deliver: vi.fn(), wake: (reason: string) => transport.reconnectNow(reason) };
     const mesh = fakePort();
@@ -98,6 +144,19 @@ describe("mesh check-now reconnects the event source", () => {
     mesh.receive();
     await vi.advanceTimersByTimeAsync(0);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits 5 s while the presence mesh has held a link, 3 s once it is lost", async () => {
+    const { fetch, mesh } = stream();
+    mesh.setLinked(true);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetch).toHaveBeenCalledTimes(11);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetch).toHaveBeenCalledTimes(13);
+
+    mesh.setLinked(false);
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(fetch).toHaveBeenCalledTimes(16);
   });
 
   it("allows at most one early reconnect per 2 s, however many peers nudge", async () => {

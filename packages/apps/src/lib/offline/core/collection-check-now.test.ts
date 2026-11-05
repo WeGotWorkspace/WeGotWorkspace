@@ -82,6 +82,8 @@ describe("collection check-now audience", () => {
     unregister = registerMeshCheckNowPort({
       sendCheckNow: (usernames) => sent.push([...usernames]),
       subscribeCheckNow: () => () => undefined,
+      meshLinked: () => false,
+      subscribeMeshLinked: () => () => undefined,
     });
     checkNowAfterWrite(
       [cachedCollectionAudience("tasks", ["list-shared"]), Promise.reject(new Error("x"))],

@@ -180,6 +180,140 @@ describe("EventSourceTransport", () => {
     });
   });
 
+  describe("mesh-dependent interval (#1943)", () => {
+    function mesh(initial: boolean) {
+      const listeners = new Set<() => void>();
+      let linked = initial;
+      return {
+        linked: () => linked,
+        subscribe: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        set(next: boolean) {
+          linked = next;
+          for (const listener of listeners) listener();
+        },
+      };
+    }
+
+    it("mesh up: every 3 s until the link has held 30 s, then every 5 s", async () => {
+      const { transport, fetch, sink } = setup({ mesh: mesh(true) });
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(at(fetch)).toBe(11);
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(at(fetch)).toBe(11);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(12);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(at(fetch)).toBe(13);
+      stop();
+    });
+
+    it("mesh down: the server's retry, with or without a mesh source", async () => {
+      for (const source of [mesh(false), undefined]) {
+        const { transport, fetch, sink } = setup({ mesh: source });
+        const stop = transport.start(sink);
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(at(fetch)).toBe(21);
+        stop();
+      }
+    });
+
+    it("a lost link shortens the running 5 s wait to 3 s from the last request", async () => {
+      const link = mesh(true);
+      const { transport, fetch, sink } = setup({ mesh: link, timing: { meshLinkedHoldMs: 0 } });
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(1_000);
+      link.set(false);
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(at(fetch)).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(2);
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(at(fetch)).toBe(3);
+      stop();
+    });
+
+    it("a link lost after 3 s of a 5 s wait reconnects at once", async () => {
+      const link = mesh(true);
+      const { transport, fetch, sink } = setup({ mesh: link, timing: { meshLinkedHoldMs: 0 } });
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(at(fetch)).toBe(1);
+      link.set(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(at(fetch)).toBe(2);
+      stop();
+    });
+
+    it("a new link never lengthens the running wait", async () => {
+      const link = mesh(false);
+      const { transport, fetch, sink } = setup({ mesh: link, timing: { meshLinkedHoldMs: 0 } });
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(1_000);
+      link.set(true);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(at(fetch)).toBe(2);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(at(fetch)).toBe(3);
+      stop();
+    });
+
+    it("a flapping mesh keeps the 3 s cadence", async () => {
+      const link = mesh(true);
+      const { transport, fetch, sink } = setup({ mesh: link });
+      const stop = transport.start(sink);
+      for (let second = 1; second <= 120; second += 1) {
+        await vi.advanceTimersByTimeAsync(1_000);
+        if (second % 20 === 0) link.set(false);
+        if (second % 20 === 2) link.set(true);
+      }
+      expect(at(fetch)).toBe(41);
+      stop();
+    });
+
+    it("keeps the hidden interval, the wake and the back-off from the server's retry", async () => {
+      const hidden = setup({
+        mesh: mesh(true),
+        everyTabHidden: () => true,
+        timing: { meshLinkedHoldMs: 0 },
+      });
+      const stopHidden = hidden.transport.start(hidden.sink);
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(at(hidden.fetch)).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(hidden.fetch)).toBe(2);
+      stopHidden();
+
+      const { transport, fetch, sink } = setup({
+        mesh: mesh(true),
+        timing: { meshLinkedHoldMs: 0 },
+      });
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(1_000);
+      transport.reconnectNow("check-now");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(at(fetch)).toBe(2);
+
+      fetch
+        .mockRejectedValueOnce(new TypeError("network"))
+        .mockRejectedValueOnce(new TypeError("x"));
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(at(fetch)).toBe(3);
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(at(fetch)).toBe(3);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(4);
+      await vi.advanceTimersByTimeAsync(5_999);
+      expect(at(fetch)).toBe(4);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(5);
+      stop();
+    });
+  });
+
   describe("failures", () => {
     it("on 429 waits Retry-After, reports push down and ignores wakes meanwhile", async () => {
       const { transport, fetch, sink, onStatus } = setup();

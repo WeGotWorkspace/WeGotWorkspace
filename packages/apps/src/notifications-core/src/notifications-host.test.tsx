@@ -77,6 +77,9 @@ class FakeSession implements PresenceMeshSession {
   getRoomPeers(): RtcPeerDescriptor[] {
     return this.peers;
   }
+  isLinked(): boolean {
+    return false;
+  }
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
