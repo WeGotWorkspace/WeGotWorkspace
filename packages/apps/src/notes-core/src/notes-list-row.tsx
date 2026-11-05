@@ -141,7 +141,6 @@ export const NotesListRow = memo(function NotesListRow({
         ? {
             swipeLeftAction: {
               icon: <Star className="size-5" fill={starred ? "currentColor" : "none"} />,
-              color: "var(--color-emerald)",
               label: starred ? L.swipeUnstar : L.swipeStar,
               onActivate: () => onToggleStar(note.id),
             },
@@ -149,7 +148,6 @@ export const NotesListRow = memo(function NotesListRow({
               ? {
                   swipeRightAction: {
                     icon: <Archive className="size-5" />,
-                    color: "var(--workspace-accent)",
                     label: archived ? L.swipeUnarchive : L.swipeArchive,
                     destructive: true,
                     onActivate: () => onToggleArchive(note.id),

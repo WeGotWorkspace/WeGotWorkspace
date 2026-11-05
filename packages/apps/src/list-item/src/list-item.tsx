@@ -22,7 +22,8 @@ installKeyboardFocusModality();
 
 export type SwipeAction = {
   icon: React.ReactNode;
-  color: string;
+  /** Fill and label colour as one pair (suite tokens); defaults to the accent. */
+  tone?: "accent" | "danger";
   onActivate: () => void;
   label?: string;
   destructive?: boolean;
@@ -322,10 +323,7 @@ export function ListItem({
         onClick={() => swipeLeftAction.onActivate()}
         destructive={swipeLeftAction.destructive}
       >
-        <div
-          className="list-item__swipe-action"
-          style={{ "--list-item-swipe-bg": swipeLeftAction.color } as CSSProperties}
-        >
+        <div className="list-item__swipe-action" data-tone={swipeLeftAction.tone ?? "accent"}>
           {swipeLeftAction.icon}
           {swipeLeftAction.label ?? "Action"}
         </div>
@@ -339,10 +337,7 @@ export function ListItem({
         onClick={() => swipeRightAction.onActivate()}
         destructive={swipeRightAction.destructive}
       >
-        <div
-          className="list-item__swipe-action"
-          style={{ "--list-item-swipe-bg": swipeRightAction.color } as CSSProperties}
-        >
+        <div className="list-item__swipe-action" data-tone={swipeRightAction.tone ?? "accent"}>
           {swipeRightAction.icon ?? <Archive className="size-5" />}
           {swipeRightAction.label ?? "Action"}
         </div>

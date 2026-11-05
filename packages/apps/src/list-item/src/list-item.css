@@ -237,8 +237,15 @@ html:not([data-modality="pointer"])
   );
 }
 
+/* Fill and label come as a pair, so the label stays readable in both themes. */
 .list-item__swipe-action {
-  @apply flex items-center justify-center text-white text-xs font-medium gap-1 flex-col w-full;
+  @apply flex items-center justify-center text-xs font-medium gap-1 flex-col w-full;
   min-width: 5rem;
-  background-color: var(--list-item-swipe-bg);
+  background-color: var(--workspace-accent);
+  color: var(--workspace-accent-foreground);
+}
+
+.list-item__swipe-action[data-tone="danger"] {
+  background-color: var(--color-error);
+  color: var(--scheme-on-danger, #ffffff);
 }

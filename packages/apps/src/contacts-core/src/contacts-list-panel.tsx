@@ -419,7 +419,6 @@ function ContactsListRows({
                     ? {
                         swipeRightAction: {
                           icon: <UserMinus className="size-5" />,
-                          color: "var(--contacts-swipe-remove-color)",
                           label: L.swipeRemoveFromGroup,
                           onActivate: () => onSwipeRemoveFromGroup(card.id),
                         },
@@ -427,7 +426,7 @@ function ContactsListRows({
                     : {
                         swipeRightAction: {
                           icon: <Trash2 className="size-5" />,
-                          color: "var(--contacts-swipe-delete-color)",
+                          tone: "danger",
                           label: L.swipeDelete,
                           onActivate: () => onSwipeDelete(card.id),
                         },
