@@ -42,10 +42,20 @@ describe("formatListDateTime", () => {
     expect(formatListDateTime(edited.toISOString())).toBe(formatTime(edited));
   });
 
+  it("says yesterday, in the viewer's language, for the day before", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 10, 0, 30, 0));
+    const edited = new Date(2026, 5, 9, 23, 50, 0);
+    const label = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(-1, "day");
+    expect(formatListDateTime(edited.toISOString())).toBe(
+      label.charAt(0).toLocaleUpperCase() + label.slice(1),
+    );
+  });
+
   it("shows compact date (no year) for earlier days in the current year", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 5, 10, 18, 0, 0));
-    const edited = new Date(2026, 5, 9, 8, 30, 0);
+    const edited = new Date(2026, 5, 8, 8, 30, 0);
     expect(formatListDateTime(edited.toISOString())).toBe(formatSameYearDate(edited));
   });
 

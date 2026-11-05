@@ -286,7 +286,7 @@ export const SortByColumn: Story = {
     const byName = (a: string, b: string) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 
-    await expect(canvas.getByRole("columnheader", { name: /Modified/ })).toHaveAttribute(
+    await expect(canvas.getByRole("columnheader", { name: /Last modified/ })).toHaveAttribute(
       "aria-sort",
       "descending",
     );

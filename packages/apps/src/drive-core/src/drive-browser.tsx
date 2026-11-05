@@ -29,11 +29,13 @@ import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import {
   DRIVE_KIND_LABEL,
   DRIVE_LIST_SORT_COLUMNS,
+  formatDriveModified,
   type DriveListSort,
   type DriveListSortKey,
 } from "@/drive-core/src/drive-list-sort";
 import { listSortAria } from "@/lib/list-sort";
 import { SortableColumnHeader } from "@/ui/sortable-column-header";
+import "@/ui/list-head-bar.css";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -154,7 +156,7 @@ export function DriveGridView({
   return (
     <div className="drive-grid-layout">
       {folders.length > 0 && (
-        <Section title="Folders">
+        <Section title={labels.gridSectionFolders}>
           <div className="drive-grid">
             {folders.map((f) => (
               <DriveFolderTile
@@ -189,7 +191,7 @@ export function DriveGridView({
       )}
 
       {files.length > 0 && (
-        <Section>
+        <Section title={labels.gridSectionFiles}>
           <div className="drive-grid">
             {files.map((f) => (
               <FileTile
@@ -233,12 +235,13 @@ export function DriveGridView({
   );
 }
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+/** A grid section: its heading is the list head bar, sticky while the section scrolls. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      {title ? <h3 className="drive-item-label drive-browser-section-title">{title}</h3> : null}
+    <section aria-label={title}>
+      <h3 className="list-head-bar drive-browser-section-title">{title}</h3>
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -465,7 +468,7 @@ export function DriveListView({
   isTouch: boolean;
   labels: DriveUILabels;
   searchActive?: boolean;
-  /** Show a Location column (between Name and Modified) for cross-drive listings. */
+  /** Show a Location column (between Name and Last modified) for cross-drive listings. */
   showLocationColumn?: boolean;
   /** Header label for the optional Location column. */
   locationColumnLabel?: string;
@@ -518,7 +521,7 @@ export function DriveListView({
   return (
     <div className="drive-list-view">
       <table className="drive-list-table">
-        <thead>
+        <thead className="list-head-bar">
           <tr className="drive-list-head">
             <th className="drive-list-col-name drive-list-head__cell" aria-sort={ariaSort("name")}>
               {head("name", searchActive ? labels.searchViewTitle : labels.listColumnName)}
@@ -540,21 +543,21 @@ export function DriveListView({
               className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell"
               aria-sort={ariaSort("modified")}
             >
-              {head("modified", "Modified")}
+              {head("modified", labels.listColumnLastModified)}
             </th>
             {showKindColumn ? (
               <th
                 className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell"
                 aria-sort={ariaSort("kind")}
               >
-                {head("kind", "Kind")}
+                {head("kind", labels.listColumnKind)}
               </th>
             ) : null}
             <th
               className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
               aria-sort={ariaSort("size")}
             >
-              {head("size", "Size", "end")}
+              {head("size", labels.listColumnSize, "end")}
             </th>
             {pickerChrome ? null : (
               <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
@@ -675,7 +678,7 @@ export function DriveListView({
                   </td>
                 ) : null}
                 <td className="drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap">
-                  {f.date}
+                  {formatDriveModified(f)}
                 </td>
                 {showKindColumn ? (
                   <td className="drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted">

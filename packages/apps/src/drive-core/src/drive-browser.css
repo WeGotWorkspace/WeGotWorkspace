@@ -26,6 +26,7 @@
   @apply size-3.5 shrink-0;
 }
 
+/* Grid section headings: the shared sticky frosted bar, like the list header. */
 .drive-workspace .drive-browser-section-title {
   @apply mb-3;
 }
@@ -373,8 +374,9 @@
   width: 2.75rem;
 }
 
+/* Fits the "Last modified" header and its sort arrow. */
 .drive-workspace .drive-list-col-modified {
-  width: 8rem;
+  width: 9.5rem;
 }
 
 .drive-workspace .drive-list-col-kind {
@@ -397,30 +399,10 @@
   @apply text-left;
 }
 
-/*
- * Header row: sticky (with a little air at the top of the list), rounded
- * like the rows, and frosted so rows scroll visibly under it. The glass sits on the
- * whole row group, not per cell, so the blur reads as one piece.
- */
-.drive-workspace .drive-list-table > thead {
-  position: sticky;
-  top: var(--list-head-sticky-gap, 0.75rem);
-  z-index: 2;
-  background: var(--frost-background);
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
-}
-
+/* Header row: the shared sticky frosted bar (`ui/list-head-bar.css`). */
 .drive-workspace .drive-list-head__cell {
-  @apply py-0 text-left text-sm font-medium truncate;
+  @apply py-0 text-left truncate;
   height: var(--list-row-height, 3rem);
-  letter-spacing: normal;
-  font-family: var(
-    --field-label-font-family,
-    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
-  );
-  color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-list-head__cell--align-end {

@@ -1,4 +1,5 @@
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import { formatListTimestamp } from "@/lib/datetime/format-list-date";
 import {
   compareListNumber,
   compareListText,
@@ -30,6 +31,14 @@ export const DRIVE_KIND_LABEL: Readonly<Record<FileKind, string>> = {
   file: "File",
 };
 
+/**
+ * Last modified for a list cell or the details panel, in the viewer's locale: time
+ * today, "Yesterday", else the date. Falls back to the stored display text.
+ */
+export function formatDriveModified(file: Pick<DriveFile, "modifiedMs" | "date">): string {
+  return file.modifiedMs !== undefined ? formatListTimestamp(file.modifiedMs) : file.date;
+}
+
 export const DRIVE_LIST_DEFAULT_SORT: DriveListSort = { key: "name", direction: "asc" };
 
 export const DRIVE_LIST_SORT_STORAGE_KEY = "wgw.drive.listSort";
@@ -55,11 +64,12 @@ function compareBy(a: DriveFile, b: DriveFile, sort: DriveListSort): number {
 }
 
 /**
- * Columns that keep folders above files (Google Drive convention). Kind, size and
- * location sort folders like any other row, so the click visibly reorders the list:
- * folders group under "Folder", and have no size, so they sink below files.
+ * Only the name sort keeps folders above files (Finder convention). Every other
+ * column sorts folders like any other row on the underlying value (epoch ms for
+ * Last modified, bytes for Size), so the order always matches the column: a file
+ * changed today sits above a folder changed last week.
  */
-const FOLDERS_FIRST: ReadonlySet<DriveListSortKey> = new Set(["name", "modified"]);
+const FOLDERS_FIRST: ReadonlySet<DriveListSortKey> = new Set(["name"]);
 
 /** Sort a Drive or Docs listing by a column; ties fall back to the name, A→Z. */
 export function sortDriveFiles(files: readonly DriveFile[], sort: DriveListSort): DriveFile[] {

@@ -9,6 +9,7 @@ export function parseTimestamp(value: string): number | null {
 let timeFormat: Intl.DateTimeFormat | null = null;
 let dayMonthFormat: Intl.DateTimeFormat | null = null;
 let dayMonthYearFormat: Intl.DateTimeFormat | null = null;
+let relativeDayFormat: Intl.RelativeTimeFormat | null = null;
 
 function listTimeFormat(): Intl.DateTimeFormat {
   timeFormat ??= new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -28,19 +29,40 @@ function listDayFormat(withYear: boolean): Intl.DateTimeFormat {
   return dayMonthFormat;
 }
 
+/** "Yesterday" in the viewer's language, capitalised for a list cell. */
+function yesterdayLabel(): string {
+  relativeDayFormat ??= new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const label = relativeDayFormat.format(-1, "day");
+  return label.charAt(0).toLocaleUpperCase() + label.slice(1);
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 /**
- * Compact list/footer stamp: time today, day+month this year, else day+month+year.
- * Returns the raw string when it is not a parseable timestamp.
+ * Compact list/footer stamp, locale-based: time today, "Yesterday", day+month this
+ * year, else day+month+year.
+ */
+export function formatListTimestamp(ms: number): string {
+  const d = new Date(ms);
+  const now = new Date();
+  if (isSameDay(d, now)) return listTimeFormat().format(d);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (isSameDay(d, yesterday)) return yesterdayLabel();
+  return listDayFormat(d.getFullYear() !== now.getFullYear()).format(d);
+}
+
+/**
+ * {@link formatListTimestamp} for a date string. Returns the raw string when it is
+ * not a parseable timestamp.
  */
 export function formatListDateTime(raw: string): string {
   const ts = parseTimestamp(raw);
   if (ts === null) return raw;
-  const d = new Date(ts);
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) return listTimeFormat().format(d);
-  return listDayFormat(d.getFullYear() !== now.getFullYear()).format(d);
+  return formatListTimestamp(ts);
 }

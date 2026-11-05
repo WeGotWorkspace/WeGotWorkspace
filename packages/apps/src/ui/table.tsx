@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import "@/ui/list-head-bar.css";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
@@ -17,11 +18,8 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    // Sticky, frosted, rounded header row (suite list norm); one glass for the whole row.
-    className={cn(
-      "sticky top-[var(--list-head-sticky-gap,0.75rem)] z-[2] [background:var(--frost-background)] [backdrop-filter:var(--frost-blur)] [clip-path:inset(0_round_var(--list-row-radius,0.625rem))]",
-      className,
-    )}
+    // Sticky, frosted, rounded header row (suite list norm): the shared list head bar.
+    className={cn("list-head-bar", className)}
     {...props}
   />
 ));

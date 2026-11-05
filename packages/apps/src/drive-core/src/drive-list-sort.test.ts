@@ -58,12 +58,19 @@ describe("sortDriveFiles", () => {
     ]);
   });
 
-  it("keeps items without a value last in both directions", () => {
+  it("sorts dates on the timestamp, folders mixed in, missing dates last", () => {
     expect(titles(sortDriveFiles(files, { key: "modified", direction: "desc" }))).toEqual([
       "alpha",
-      "Beta",
       "file 10",
       "file 2",
+      "Beta",
+      "no date",
+    ]);
+    expect(titles(sortDriveFiles(files, { key: "modified", direction: "asc" }))).toEqual([
+      "Beta",
+      "file 2",
+      "file 10",
+      "alpha",
       "no date",
     ]);
     expect(titles(sortDriveFiles(files, { key: "size", direction: "asc" }))).toEqual([

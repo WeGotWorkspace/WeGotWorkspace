@@ -19,6 +19,11 @@ export const driveLabels = {
   searchViewTitle: "Search",
   listColumnName: "Name",
   listColumnLocation: "Location",
+  gridSectionFolders: "Folders",
+  gridSectionFiles: "Files",
+  listColumnLastModified: "Last modified",
+  listColumnKind: "Kind",
+  listColumnSize: "Size",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
@@ -114,6 +119,8 @@ export const driveLabels = {
   detailClosePanel: "Close",
   /** Empty body when the details panel is open with no file selected. */
   detailEmpty: "Select a file to see its details.",
+  /** Details panel label above the count when several items are selected. */
+  detailMultipleSelection: "Multiple selection",
   selectionDone: "Done",
   selectionStar: "Star",
   selectionMove: "Move",
