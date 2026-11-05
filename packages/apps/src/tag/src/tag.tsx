@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Plus, Tag as TagIcon, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -125,7 +125,7 @@ export type TagGroupProps = {
   addAriaLabel?: string;
   /** Override the default `Remove tag {label}` name on chip dismiss. */
   removeAriaLabelFor?: (label: string) => string;
-  /** Default chip icon when an item does not supply its own. */
+  /** Chip icon when an item does not supply its own. Default: none (text-only chips). */
   tagIcon?: ReactNode;
   /** Density for chips + add control. Default `md` keeps compact call sites unchanged. */
   size?: TagSize;
@@ -367,7 +367,8 @@ export function TagGroup({
   const canAdd = !readonly && !!onAddTag;
   const items = normalizeTagItems(tags);
   const suggestionItems = normalizeTagItems(suggestions);
-  const defaultIcon = tagIcon ?? <TagIcon />;
+  // Suite norm: plain text chips, no tag glyph unless a caller asks for one.
+  const defaultIcon = tagIcon;
 
   const closeAdd = () => setAdding(false);
 

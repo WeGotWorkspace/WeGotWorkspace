@@ -1,24 +1,24 @@
 @import "../../styles.css" reference;
 
 .tag-group {
-  /* Soft chip radius — same global `--control-radius` (button-pill is an alias). */
-  --tag-radius: var(--control-radius);
+  /* Full capsule (`--control-radius-pill`): chips read as labels, not buttons. */
+  --tag-radius: var(--control-radius-pill);
   /* Compact 24px default — below control-height-xs; lg aliases xs (28px). */
   --tag-height: 1.5rem;
   --tag-font-size: 0.75rem;
   --tag-icon-size: 0.75rem;
-  --tag-padding-inline: 0.5rem;
+  --tag-padding-inline: 0.625rem;
   --tag-gap: 0.375rem;
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): touch-safe chips. 32px with a mouse,
- * 44px (`--control-height-xl`) on a touch screen. */
+/* Interactive chips (Notes detail and sidebar): 30px with a mouse, 44px
+ * (`--control-height-xl`) on a touch screen. */
 .tag-group--size-lg {
-  --tag-height: var(--control-height-sm, 2rem);
+  --tag-height: 1.875rem;
   --tag-font-size: 0.875rem;
   --tag-icon-size: 1rem;
-  --tag-padding-inline: 0.75rem;
+  --tag-padding-inline: 0.875rem;
   --tag-gap: 0.375rem;
   @apply gap-2;
 }
@@ -26,7 +26,7 @@
 @media (pointer: coarse) {
   .tag-group--size-lg {
     --tag-height: var(--control-height-xl, 2.75rem);
-    --tag-padding-inline: 0.875rem;
+    --tag-padding-inline: 1rem;
   }
 }
 
@@ -38,24 +38,33 @@
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--tag-radius, var(--control-radius));
-  background-color: var(--tag-bg, color-mix(in oklab, var(--workspace-foreground) 8%, transparent));
-  color: var(--tag-fg, var(--workspace-foreground));
+  border-radius: var(--tag-radius, var(--control-radius-pill));
+  /* The one neutral chip look (suite norm): a quiet wash over whatever sits
+   * behind it, no edge. Callers only swap `--tag-bg` / `--tag-fg` for states
+   * (selected, status colours), never the chip itself. */
+  background-color: var(--tag-bg, color-mix(in oklch, var(--workspace-foreground) 7%, transparent));
+  color: var(--tag-fg, color-mix(in oklch, var(--workspace-foreground) 80%, transparent));
 }
 
 .tag--size-lg {
-  --tag-height: var(--control-height-sm, 2rem);
+  --tag-height: 1.875rem;
   --tag-font-size: 0.875rem;
   --tag-icon-size: 1rem;
-  --tag-padding-inline: 0.75rem;
+  --tag-padding-inline: 0.875rem;
   --tag-gap: 0.375rem;
 }
 
 @media (pointer: coarse) {
   .tag--size-lg {
     --tag-height: var(--control-height-xl, 2.75rem);
-    --tag-padding-inline: 0.875rem;
+    --tag-padding-inline: 1rem;
   }
+}
+
+/* The label truncates (overflow hidden), so it needs a line box tall enough for
+ * descenders: at the chip's `line-height: 1`, g/p/y were cut off. */
+.tag__label {
+  line-height: 1.25;
 }
 
 .tag__icon {
@@ -70,8 +79,8 @@
 .tag__remove {
   /* UA `button { color: buttontext }` ignores inherited chip ink. */
   @apply relative z-10 inline-flex shrink-0 cursor-pointer items-center justify-center;
-  @apply appearance-none border-0 bg-transparent p-0 opacity-70 transition-opacity hover:opacity-100;
-  color: var(--tag-remove-fg, var(--tag-fg, inherit));
+  @apply appearance-none border-0 bg-transparent p-0;
+  color: var(--tag-remove-fg, inherit);
   pointer-events: auto;
   /* Expand hit area without changing chip layout much */
   margin-inline-end: -0.25rem;
@@ -123,7 +132,7 @@
   padding-inline: var(--tag-padding-inline, 0.5rem);
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--tag-radius, var(--control-radius));
+  border-radius: var(--tag-radius, var(--control-radius-pill));
   background-color: var(
     --tag-group-add-bg,
     color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
@@ -157,7 +166,7 @@
   min-width: 7rem;
   max-width: 12rem;
   width: 8rem;
-  border-radius: var(--tag-radius, var(--control-radius));
+  border-radius: var(--tag-radius, var(--control-radius-pill));
   border-color: var(--tag-group-input-border, var(--control-border-color));
   background-color: var(
     --tag-group-input-bg,

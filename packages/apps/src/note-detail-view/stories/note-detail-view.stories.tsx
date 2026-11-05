@@ -5,8 +5,7 @@ import { ActionBar } from "@/action-bar/src/action-bar";
 import { DocsCollabPresenceChrome } from "@/text-editor-core/docs-collab/docs-collab-presence-chrome";
 import { TooltipProvider } from "@/ui/tooltip";
 import { NoteDetailView } from "../src/note-detail-view";
-import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
-import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
+import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 
 import "@/notes-core/src/notes-workspace.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
@@ -108,12 +107,26 @@ export const ReadOnly: Story = {
   },
 };
 
-/** Static layout preview: presence left in the pinned footer; actions stay in the bar. */
+/**
+ * Collab layout: collaborator avatars in the action bar before the actions (the
+ * Docs header look); the last-edited date beside the notebook; no footer.
+ */
 export const CollabChromePreview: Story = {
   render: () => (
     <div className="notes-workspace notes-story-scope notes-story-scope--detail flex min-h-[24rem] flex-col">
       <ActionBar
         onBack={() => {}}
+        rightLeading={
+          <DocsCollabPresenceChrome
+            variant="header"
+            localUser={{ displayName: "Alex Example" }}
+            peers={[
+              { id: "peer-1", name: "Sam Lee" },
+              { id: "peer-2", name: "Jordan Kim" },
+            ]}
+            connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
+          />
+        }
         rightActions={[
           {
             id: "star",
@@ -124,30 +137,31 @@ export const CollabChromePreview: Story = {
         ]}
       />
       <div className="workspace-detail-pane__scroll flex-1">
-        <article className="note-detail-view paper-sheet">
-          <p className="text-muted-foreground text-sm">
-            Collab session chrome preview — presence sits left in the footer; edited meta pins on
-            the right.
-          </p>
-        </article>
+        <NoteDetailView
+          {...base}
+          pullQuote={undefined}
+          eyebrow={<NotesDetailLastEdited lastEdited="6 May 2026" editedLabel="Edited" />}
+        />
       </div>
-      <WorkspaceDetailFooter
-        className="notes-detail-footer"
-        start={
-          <DocsCollabPresenceChrome
-            localUser={{ displayName: "Alex Example" }}
-            peers={[
-              { id: "peer-1", name: "Sam Lee" },
-              { id: "peer-2", name: "Jordan Kim" },
-            ]}
-            connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
-          />
-        }
-        tags={notesLastEditedTag({
-          lastEdited: "6 May 2026",
-          editedLabel: "Last edited",
-        })}
-      />
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const presence = canvasElement.querySelector(
+      ".action-bar .docs-collab-presence-chrome--header",
+    );
+    await expect(presence).toBeTruthy();
+    // Round avatars, no people glyph (same as the Docs header).
+    const glyph = presence!.querySelector(".docs-collab-presence-chrome__icon-trigger");
+    await expect(getComputedStyle(glyph as HTMLElement).display).toBe("none");
+    const mark = presence!.querySelector(".user-avatar__mark") as HTMLElement;
+    await expect(mark.getBoundingClientRect().width).toBe(32);
+
+    const edited = canvasElement.querySelector(
+      ".note-detail-view__eyebrow .notes-detail-last-edited",
+    );
+    await expect(edited).toBeTruthy();
+    await expect(edited!.querySelector(".tag")).toBeNull();
+    await expect(edited).toHaveTextContent("|Edited 6 May 2026");
+    await expect(canvasElement.querySelector(".workspace-detail-footer")).toBeNull();
+  },
 };

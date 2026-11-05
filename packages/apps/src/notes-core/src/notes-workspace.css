@@ -61,12 +61,9 @@
    * uses the shared Dark-mixed default. Detail editor task-lists use the tag
    * wash on `.note-text-editor-body`. */
   --checkbox-checked-border: var(--workspace-accent);
-  /* Idle sidebar filter chips read the selected collection-row wash on the
-   * chip rule (sidebar-local `--button-outline-active-background`). Do not
-   * alias that wash here: `.notes-workspace` resolves the mix against the
-   * desk surface, not the sidebar. Selected chips use the foreground/surface pair.
-   * Detail tags are a neutral wash; `--note-detail-tag-*` is the editor task-list wash. */
-  --notes-tag-fg: var(--workspace-foreground);
+  /* Sidebar and detail tags share the Tag primitive's neutral chip. Selected
+   * sidebar chips use the foreground/surface pair below.
+   * `--note-detail-tag-*` is the editor task-list wash, not the tags. */
   /* Selected sidebar tag chip — foreground fill, surface label, no stroke. Nested
    * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--workspace-foreground);
@@ -272,22 +269,11 @@
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
-/* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
-.notes-workspace .workspace-detail-footer__meta-tag--edited {
-  @apply shrink-0;
-  --tag-bg: var(--button-outline-hover-background);
-  /* 72% clears WCAG AA on cream footer wash (~4.5:1); 65% was ~4.38:1. */
-  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-}
-
-.notes-workspace .workspace-detail-footer__meta-tag--edited .tag {
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
-}
-
 /* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
 .notes-workspace .workspace-detail-pane > .action-bar {
   background-color: var(--workspace-chrome-footer-bg, var(--workspace-surface));
+  /* Collaborator avatars ring in the bar's own fill (Docs header look). */
+  --collab-presence-header-surface: var(--workspace-chrome-footer-bg, var(--workspace-surface));
   /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
   padding-inline: var(--notes-pane-padding-x);
 }
@@ -327,29 +313,11 @@
   );
 }
 
-.notes-workspace .note-detail-view__tag-group .tag {
-  @apply border-0;
-  /* A neutral wash with a quiet 1px edge, built like the checked boxes. Neutral,
-   * not the notebook colour: tags run across notebooks. */
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
-  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 80%, var(--workspace-surface));
-  background-color: var(--tag-bg);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklch, var(--workspace-foreground) 14%, var(--workspace-surface));
-  color: var(--tag-fg);
-}
-
-.notes-workspace .note-detail-view__tag-group .tag__icon,
-.notes-workspace .note-detail-view__tag-group .tag__label,
-.notes-workspace .note-detail-view__tag-group .tag__remove {
-  color: var(--tag-fg);
-  @apply opacity-100;
-}
-
-/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows).
- * Match section heading / MenuItem inset — not `px-4` (double-gutter vs rows). */
+/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows), the same `lg`
+ * chips as the detail (look lives in the Tag primitive). Match section heading / MenuItem inset — not
+ * `px-4` (double-gutter vs rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-1.5 space-y-0;
+  @apply flex flex-wrap gap-2 space-y-0;
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
@@ -360,7 +328,9 @@
 
 .notes-workspace .notes-sidebar-tags__item {
   @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
-  @apply cursor-pointer rounded-full outline-none;
+  @apply cursor-pointer outline-none;
+  /* Focus ring follows the capsule chip. */
+  border-radius: var(--control-radius-pill);
 }
 
 .notes-workspace .notes-sidebar-tags__item:focus-visible {
@@ -368,30 +338,23 @@
   --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
-/* Idle chips: same wash as a selected sidebar row, no stroke.
- * Resolve on the chip so `.app-sidebar`’s recomputed active wash wins. */
+/* Idle chips are the primitive's neutral chip; only the states swap its tokens. */
 .notes-workspace .notes-sidebar-tags__item .tag {
-  @apply max-w-full border-0;
-  background-color: var(
-    --collection-sidebar-row-selected-bg,
-    var(--button-outline-active-background)
-  );
-  color: var(--notes-tag-fg);
+  @apply max-w-full;
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
-  background-color: var(--button-outline-active-hover-background);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 11%, transparent);
 }
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  @apply border-0;
-  background-color: var(--notes-tag-selected-bg);
-  color: var(--notes-tag-selected-fg);
+  --tag-bg: var(--notes-tag-selected-bg);
+  --tag-fg: var(--notes-tag-selected-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
-  background-color: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 

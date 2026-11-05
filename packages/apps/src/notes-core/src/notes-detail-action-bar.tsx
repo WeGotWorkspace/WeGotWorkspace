@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Archive, ArchiveRestore, MoreHorizontal, Star } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { Note } from "@/lib/models/note";
@@ -18,6 +19,8 @@ type NotesDetailActionBarProps = {
    * Defaults true for Storybook / owned notes without an explicit gate.
    */
   canArchive?: boolean;
+  /** Collaborators on this note, before Star / Archive (like the Docs header). */
+  presence?: ReactNode;
 };
 
 export function NotesDetailActionBar({
@@ -30,6 +33,7 @@ export function NotesDetailActionBar({
   toggleStar,
   toggleArchive,
   canArchive = true,
+  presence,
 }: NotesDetailActionBarProps) {
   // Empty / deselected detail: caller must omit this bar. Never render a
   // back-only ActionBar — that regressed as chrome when no note is selected.
@@ -62,6 +66,7 @@ export function NotesDetailActionBar({
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
+      rightLeading={presence}
       rightActions={rightActions}
       rightMenuLabel="More actions"
       rightMenuIcon={<MoreHorizontal />}

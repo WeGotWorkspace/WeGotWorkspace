@@ -658,6 +658,7 @@ function DocsCollabWorkspaceInner({
                   leading={
                     collabSession ? (
                       <DocsCollabPresenceChrome
+                        variant="header"
                         className="docs-workspace__header-presence"
                         localUser={{ displayName: collabSession.user.name }}
                         peers={presencePeers}

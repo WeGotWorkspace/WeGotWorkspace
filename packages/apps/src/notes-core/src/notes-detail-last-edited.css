@@ -1,0 +1,23 @@
+@import "../../styles.css" reference;
+
+/*
+ * Above the note title, after the ghost notebook switcher. The switcher's own
+ * end padding is the space before the bar, so the gap after it matches.
+ */
+.notes-detail-last-edited {
+  @apply inline-flex min-w-0 shrink-0 items-center text-sm whitespace-nowrap;
+  gap: 0.625rem;
+  color: color-mix(
+    in oklch,
+    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 60%,
+    transparent
+  );
+}
+
+.notes-detail-last-edited__separator {
+  color: color-mix(
+    in oklch,
+    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 25%,
+    transparent
+  );
+}

@@ -5,18 +5,32 @@ import { DocsCollabPresence, type DocsCollabPresenceProps } from "./docs-collab-
 
 import "@/text-editor-core/docs-collab/docs-collab-presence-chrome.css";
 
-export type DocsCollabPresenceChromeProps = DocsCollabPresenceProps;
+export type DocsCollabPresenceChromeProps = DocsCollabPresenceProps & {
+  /**
+   * `header`: round, overlapping avatars with a surface ring and no people glyph,
+   * for the Docs header and the Notes detail action bar. Default is the footer look.
+   */
+  variant?: "footer" | "header";
+};
 
 /**
- * Shared footer collab chrome: Users icon + “Online collaborators” tooltip +
- * {@link DocsCollabPresence}. Used by Notes and Docs detail footers.
+ * Shared collab chrome: Users icon + “Online collaborators” tooltip +
+ * {@link DocsCollabPresence}. The `header` variant drops the icon and shows
+ * round, overlapping avatars (Docs header, Notes detail action bar).
  */
 export function DocsCollabPresenceChrome({
   className,
+  variant = "footer",
   ...presenceProps
 }: DocsCollabPresenceChromeProps) {
   return (
-    <div className={cn("docs-collab-presence-chrome", className)}>
+    <div
+      className={cn(
+        "docs-collab-presence-chrome",
+        variant === "header" && "docs-collab-presence-chrome--header",
+        className,
+      )}
+    >
       <Tooltip>
         <TooltipTrigger asChild>
           <span

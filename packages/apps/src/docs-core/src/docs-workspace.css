@@ -670,26 +670,9 @@
   margin-inline-start: 0.25rem;
 }
 
-/* Header presence: round, overlapping avatars with a surface ring (no leading people glyph). */
+/* Header presence: shared `--header` look (docs-collab-presence-chrome.css), ringed in the docs surface. */
 .docs-workspace__header-presence {
-  --user-avatar-radius: 9999px;
-  --user-avatar-border-width: 2px;
-  --user-avatar-border: var(--docs-surface);
-  --user-avatar-bg: color-mix(in oklch, var(--workspace-foreground) 14%, var(--docs-surface));
-  margin-inline-end: 0.5rem;
-}
-
-.docs-workspace__header-presence .docs-collab-presence-chrome__icon-trigger {
-  display: none;
-}
-
-.docs-workspace__header-presence .user-avatar__mark {
-  width: 2rem;
-  height: 2rem;
-}
-
-.docs-workspace__header-presence .docs-collab-presence__chip--overlap {
-  margin-inline-start: -0.625rem;
+  --collab-presence-header-surface: var(--docs-surface);
 }
 
 /* Free-text status (loading, errors): neutral dot, not "saved" green. */

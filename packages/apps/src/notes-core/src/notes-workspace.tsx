@@ -1,4 +1,4 @@
-import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, StickyNote } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
@@ -37,9 +37,8 @@ import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { NotesDetailNotebookSelect } from "@/notes-core/src/notes-detail-notebook-select";
-import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
-import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import { projectNoteTitle } from "@/notes-core/src/note-title-projection";
@@ -482,7 +481,7 @@ export function NotesWorkspace({
                         aria-pressed={selected}
                         {...dropHandlers}
                       >
-                        <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
+                        <Tag label={tag} size="lg" />
                       </button>
                     </li>
                   ),
@@ -537,6 +536,7 @@ export function NotesWorkspace({
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               canArchive={noteCanArchive}
+              presence={collabSessionActive ? <NoteCollabChrome variant="header" /> : undefined}
             />
           ) : c.detailOpenMobile ? (
             <ActionBar onBack={closeMobileDetail} backLabel={viewLabel} />
@@ -602,34 +602,27 @@ export function NotesWorkspace({
                 collab={accessLost ? undefined : noteBodyCollab}
                 readOnly={noteReadOnly}
                 eyebrow={
-                  <NotesDetailNotebookSelect
-                    active={active}
-                    labels={L}
-                    archived={archived}
-                    notebooks={selectNotebooks}
-                    onMoveToNotebook={moveActiveNoteToNotebook}
-                    onCreateNotebook={
-                      canManageNotebooks ? () => openCreateNotebook([active.id]) : undefined
-                    }
-                    notebookColor={activeNotebook?.color}
-                    readOnly={shareReadOnly}
-                  />
+                  <>
+                    <NotesDetailNotebookSelect
+                      active={active}
+                      labels={L}
+                      archived={archived}
+                      notebooks={selectNotebooks}
+                      onMoveToNotebook={moveActiveNoteToNotebook}
+                      onCreateNotebook={
+                        canManageNotebooks ? () => openCreateNotebook([active.id]) : undefined
+                      }
+                      notebookColor={activeNotebook?.color}
+                      readOnly={shareReadOnly}
+                    />
+                    <NotesDetailLastEdited
+                      lastEdited={formatNoteLastEdited(active)}
+                      editedLabel={L.editedLabel}
+                    />
+                  </>
                 }
               />
             </>
-          );
-        }}
-        detailFooter={() => {
-          if (!showSingleNoteDetail || !active) return null;
-          return (
-            <WorkspaceDetailFooter
-              className="notes-detail-footer"
-              start={collabSessionActive ? <NoteCollabChrome /> : undefined}
-              tags={notesLastEditedTag({
-                lastEdited: formatNoteLastEdited(active),
-                editedLabel: L.editedLabel,
-              })}
-            />
           );
         }}
       />

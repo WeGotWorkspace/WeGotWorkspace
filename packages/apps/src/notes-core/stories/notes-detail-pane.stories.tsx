@@ -2,8 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor } from "storybook/test";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
-import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
+import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
@@ -50,23 +49,20 @@ function NotesDetailPaneHarness({
             readOnly={readOnly}
             pullQuote={base.pullQuote}
             body={body}
+            eyebrow={
+              <NotesDetailLastEdited lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
+            }
           />
         </div>
-        <WorkspaceDetailFooter
-          className="notes-detail-footer"
-          tags={notesLastEditedTag({
-            lastEdited: base.lastEdited,
-            editedLabel: base.editedLabel,
-          })}
-        />
       </div>
     </NotesStoryScope>
   );
 }
 
 /**
- * Detail tags are a neutral wash (tags run across notebooks): not the notebook
- * colour, nearly no chroma, and the remove button follows the chip ink.
+ * Detail tags are the Tag primitive's neutral chip (tags run across notebooks):
+ * not the notebook colour, a faint ink wash with no edge, and the label follows
+ * the chip ink.
  */
 function expectNeutralDetailTag(chip: HTMLElement, host: HTMLElement) {
   const notebookWash = document.createElement("span");
@@ -75,9 +71,9 @@ function expectNeutralDetailTag(chip: HTMLElement, host: HTMLElement) {
   const style = getComputedStyle(chip);
   expect(style.backgroundColor).not.toBe(getComputedStyle(notebookWash).backgroundColor);
   notebookWash.remove();
-  const chroma = Number(/oklch\([\d.]+ ([\d.]+)/.exec(style.backgroundColor)?.[1] ?? "1");
-  expect(chroma).toBeLessThan(0.02);
-  expect(style.boxShadow).toContain("inset");
+  const alpha = Number(/\/ ([\d.]+)\)$/.exec(style.backgroundColor)?.[1] ?? "1");
+  expect(alpha).toBeLessThan(0.12);
+  expect(style.boxShadow).toBe("none");
   const label = chip.querySelector(".tag__label");
   expect(label).toBeTruthy();
   expect(getComputedStyle(label!).color).toBe(style.color);
@@ -103,8 +99,8 @@ export const Editable: Story = {
     expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
     expect(sheet!.querySelector(".note-text-editor-body")).toBeTruthy();
-    expect(sheet!.querySelector(".notes-detail-footer")).toBeNull();
-    expect(canvasElement.querySelector(".notes-detail-footer")).toBeTruthy();
+    // No footer: the last-edited date sits above the title.
+    expect(canvasElement.querySelector(".workspace-detail-footer")).toBeNull();
 
     const editor = canvasElement.querySelector('[contenteditable="true"]');
     expect(editor).toBeTruthy();
@@ -131,22 +127,16 @@ export const Editable: Story = {
       expect(canvasElement.querySelector(`[aria-label="Remove tag ${tagLabel}"]`)).toBeNull();
     });
 
-    const edited = canvasElement.querySelector(
-      ".workspace-detail-footer__meta-tag--edited",
+    // Last edited: plain text after a bar beside the notebook, not a chip.
+    const edited = sheet!.querySelector(
+      ".note-detail-view__eyebrow .notes-detail-last-edited",
     ) as HTMLElement | null;
     expect(edited).toBeTruthy();
-    expect(edited!.getAttribute("aria-label")).toBe("Last edited");
-    expect(edited!.textContent).toMatch(/\d/);
-    expect(edited!.textContent).not.toMatch(/Last edited/);
-    const chip = edited!.querySelector(".tag") as HTMLElement | null;
-    expect(chip).toBeTruthy();
-    const chipStyle = getComputedStyle(chip!);
-    expect(chipStyle.display).not.toBe("none");
-    expect(chipStyle.visibility).not.toBe("hidden");
-    expect(Number.parseFloat(chipStyle.opacity || "1")).toBeGreaterThan(0);
-    const rect = chip!.getBoundingClientRect();
-    expect(rect.width).toBeGreaterThan(0);
-    expect(rect.height).toBeGreaterThan(0);
+    expect(edited!.querySelector(".tag")).toBeNull();
+    expect(edited!.querySelector(".notes-detail-last-edited__separator")?.textContent).toBe("|");
+    const date = edited!.querySelector(".notes-detail-last-edited__date") as HTMLElement;
+    expect(date.textContent).toMatch(/\d/);
+    expect(date.getBoundingClientRect().width).toBeGreaterThan(0);
 
     expect(
       getComputedStyle(workspace as HTMLElement)
@@ -166,7 +156,7 @@ export const Editable: Story = {
   },
 };
 
-/** Tags are touch-safe chips (32px with a mouse, 44px on touch) right under the title. */
+/** Tags are touch-safe chips (30px with a mouse, 44px on touch) right under the title. */
 export const TouchSafeTags: Story = {
   tags: ["vitest-ci"],
   args: {},
@@ -175,7 +165,7 @@ export const TouchSafeTags: Story = {
     const group = canvasElement.querySelector(".note-detail-view__tag-group") as HTMLElement;
     const chip = group.querySelector(".tag") as HTMLElement;
     const remove = chip.querySelector(".tag__remove") as HTMLElement;
-    const minHeight = matchMedia("(pointer: coarse)").matches ? 44 : 32;
+    const minHeight = matchMedia("(pointer: coarse)").matches ? 44 : 30;
 
     const chipBox = chip.getBoundingClientRect();
     await expect(chipBox.height).toBeGreaterThanOrEqual(minHeight);
