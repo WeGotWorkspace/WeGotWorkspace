@@ -56,8 +56,8 @@
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
   /* Workspace-level — sidebar collection rows override with row color.
    * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph
-   * uses the shared Dark-mixed default. Detail editor task-lists use the tag
-   * wash on `.note-text-editor-body`. */
+   * uses the shared Dark-mixed default. Editor task checks take the notebook
+   * colour (`.note-text-editor-body` below). */
   --checkbox-checked-border: var(--workspace-accent);
   /* Tags are the Tag primitive's chip. Idle sidebar chips keep its neutral wash;
    * an active tag (selected in the sidebar, set on the open note) is this pair:
@@ -123,18 +123,6 @@
 /* Detail scroll shares the cream desk (card is the notebook sheet). */
 .notes-workspace .workspace-detail-pane__scroll {
   background-color: var(--notes-detail-body-bg);
-}
-
-/*
- * Notes detail editor task-list only — not Docs, not sidebar 16px collection
- * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
- * Same family as detail tags: saturated border + surfaceTint fill.
- */
-.notes-workspace .note-text-editor-body {
-  --checkbox-border-color: var(--note-detail-tag-border);
-  --checkbox-checked-bg: var(--note-detail-tag-bg);
-  --checkbox-checked-border: var(--note-detail-tag-border);
-  --checkbox-checked-fg: var(--note-detail-tag-fg);
 }
 
 /*
@@ -207,6 +195,13 @@
     @apply mx-0 max-w-none;
     --paper-sheet-shadow: none;
   }
+}
+
+/* Editor task checks: the selection mark shape, filled with the notebook colour
+ * and a check in its contrast ink (dark or light, per notebook). */
+.notes-workspace .note-text-editor-body {
+  --text-editor-task-check-fill: var(--notes-detail-accent);
+  --text-editor-task-check-color: var(--notes-detail-check-fg, var(--workspace-accent-foreground));
 }
 
 /* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */

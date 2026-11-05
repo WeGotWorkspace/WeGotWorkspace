@@ -1,11 +1,43 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor } from "storybook/test";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
+
+/**
+ * Editor task checks: the selection mark shape (empty ring, or one solid fill)
+ * in the notebook colour, with a check in its contrast ink.
+ */
+async function expectNotebookTaskChecks(canvasElement: HTMLElement) {
+  const box = (state: "true" | "false") =>
+    canvasElement.querySelector<HTMLElement>(
+      `ul[data-type="taskList"] li[data-checked="${state}"] > label span`,
+    );
+  await waitFor(() => expect(box("true")).toBeTruthy());
+  const checked = box("true")!;
+  const unchecked = box("false")!;
+  const resolve = (value: string) => {
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    checked.parentElement!.appendChild(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  };
+  const style = getComputedStyle(checked);
+  expect(style.backgroundColor).toBe(resolve("var(--notes-detail-accent)"));
+  expect(style.borderTopColor).toBe(style.backgroundColor);
+  expect(style.color).toBe(
+    resolve("var(--notes-detail-check-fg, var(--workspace-accent-foreground))"),
+  );
+  expect(style.color).not.toBe(style.backgroundColor);
+  expect(getComputedStyle(checked, "::after").backgroundColor).toBe(style.color);
+  expect(getComputedStyle(unchecked).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+}
 
 function NotesDetailPaneHarness({
   readOnly = false,
@@ -231,40 +263,7 @@ export const NotebookTint: Story = {
     expect(scroll!.scrollHeight).toBeLessThanOrEqual(scroll!.clientHeight + 1);
     expect(sheet!.scrollHeight).toBeLessThanOrEqual(sheet!.clientHeight + 1);
 
-    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
-    expect(editor).toBeTruthy();
-    const checkboxFill = document.createElement("span");
-    const checkboxMark = document.createElement("span");
-    const checkboxBorder = document.createElement("span");
-    const tagBg = document.createElement("span");
-    const tagFg = document.createElement("span");
-    const tagBorder = document.createElement("span");
-    const accentProbe = document.createElement("span");
-    checkboxFill.style.color = "var(--checkbox-checked-bg)";
-    checkboxMark.style.color = "var(--checkbox-checked-fg)";
-    checkboxBorder.style.color = "var(--checkbox-checked-border)";
-    tagBg.style.color = "var(--note-detail-tag-bg)";
-    tagFg.style.color = "var(--note-detail-tag-fg)";
-    tagBorder.style.color = "var(--note-detail-tag-border)";
-    accentProbe.style.color = "var(--notes-detail-accent)";
-    editor!.appendChild(checkboxFill);
-    editor!.appendChild(checkboxMark);
-    editor!.appendChild(checkboxBorder);
-    editor!.appendChild(tagBg);
-    editor!.appendChild(tagFg);
-    editor!.appendChild(tagBorder);
-    workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(checkboxFill).color).toBe(getComputedStyle(tagBg).color);
-    expect(getComputedStyle(checkboxFill).color).not.toBe(getComputedStyle(accentProbe).color);
-    expect(getComputedStyle(checkboxMark).color).toBe(getComputedStyle(tagFg).color);
-    expect(getComputedStyle(checkboxBorder).color).toBe(getComputedStyle(tagBorder).color);
-    checkboxFill.remove();
-    checkboxMark.remove();
-    checkboxBorder.remove();
-    tagBg.remove();
-    tagFg.remove();
-    tagBorder.remove();
-    accentProbe.remove();
+    await expectNotebookTaskChecks(canvasElement);
   },
 };
 
@@ -286,9 +285,6 @@ export const NotebookTintDark: Story = {
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
     expectActiveDetailTag(chip!, workspace!);
-    const accentStrong = document.createElement("span");
-    accentStrong.style.color = "var(--notes-detail-accent-strong)";
-    workspace!.appendChild(accentStrong);
     const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement | null;
     const softInk = document.createElement("span");
     softInk.style.color = "var(--notes-detail-contrast-fg)";
@@ -296,34 +292,21 @@ export const NotebookTintDark: Story = {
     expect(title).toBeTruthy();
     expect(getComputedStyle(title!).color).toBe(getComputedStyle(softInk).color);
     softInk.remove();
-    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
-    expect(editor).toBeTruthy();
-    const fill = document.createElement("span");
-    const mark = document.createElement("span");
-    const tagBg = document.createElement("span");
-    const accent = document.createElement("span");
-    const cream = document.createElement("span");
-    fill.style.color = "var(--checkbox-checked-bg)";
-    mark.style.color = "var(--checkbox-checked-fg)";
-    tagBg.style.color = "var(--note-detail-tag-bg)";
-    accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-we-got-soft)";
-    editor!.appendChild(fill);
-    editor!.appendChild(mark);
-    editor!.appendChild(tagBg);
-    workspace!.appendChild(accent);
-    workspace!.appendChild(cream);
-    expect(getComputedStyle(fill).color).toBe(getComputedStyle(tagBg).color);
-    expect(getComputedStyle(fill).color).not.toBe(getComputedStyle(accent).color);
-    expect(getComputedStyle(mark).color).toBe(getComputedStyle(accentStrong).color);
-    expect(getComputedStyle(mark).color).not.toBe(getComputedStyle(cream).color);
-    fill.remove();
-    mark.remove();
-    tagBg.remove();
-    accent.remove();
-    cream.remove();
-    accentStrong.remove();
+    await expectNotebookTaskChecks(canvasElement);
   },
+};
+
+/** Task checks: the selection mark shape, filled with the notebook colour when checked. */
+export const TaskChecks: Story = {
+  tags: ["vitest-ci"],
+  args: { withTasks: true },
+  play: async ({ canvasElement }) => expectNotebookTaskChecks(canvasElement),
+};
+
+/** Dark: same notebook fill and contrast check. */
+export const TaskChecksDark: Story = {
+  ...TaskChecks,
+  decorators: [withDarkTheme],
 };
 
 export const ReadOnly: Story = {

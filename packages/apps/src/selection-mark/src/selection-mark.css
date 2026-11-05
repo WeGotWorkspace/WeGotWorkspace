@@ -1,12 +1,16 @@
 @import "../../styles.css" reference;
 
 /* Round multi-select mark. Checked: one solid fill in the selected wash's tint,
- * stronger, with a dark check (`--workspace-selected-mark-*`). */
+ * stronger, with a dark check (`--workspace-selected-mark-*`). The editor's task
+ * checkboxes paint the same tokens (text-editor.css). */
 .selection-mark {
   @apply inline-flex shrink-0 items-center justify-center rounded-full border;
   width: var(--selection-mark-size, 1.125rem);
   height: var(--selection-mark-size, 1.125rem);
-  border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
+  border-color: var(
+    --workspace-selection-mark-ring,
+    color-mix(in oklab, var(--workspace-foreground) 30%, transparent)
+  );
   background-color: transparent;
 }
 

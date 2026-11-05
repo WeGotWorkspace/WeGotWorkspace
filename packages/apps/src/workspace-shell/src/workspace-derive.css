@@ -103,7 +103,7 @@
     color-mix(in oklch, var(--scheme-selection) var(--scheme-selection-edge), transparent);
   --workspace-selected-color: var(--workspace-foreground);
   /*
-   * Selection marks (the multi-select checks in list rows): one solid fill in
+   * Selection marks (list multi-select and editor task checkboxes): one solid fill in
    * the selected wash's own colour at a stronger mix (a mid ink in light,
    * bright sky in dark), with a dark check: a deep shade of that same colour.
    */
@@ -114,6 +114,12 @@
   );
   --workspace-selected-mark-background: var(--workspace-selected-mark-border);
   --workspace-selected-mark-color: color-mix(in oklch, var(--scheme-selection) 25%, black);
+  /* Unchecked: an empty ring (list rows and the editor's task checkboxes). */
+  --workspace-selection-mark-ring: color-mix(
+    in oklab,
+    var(--workspace-foreground) 30%,
+    transparent
+  );
 
   /* Hairline dividers: the sidebar edge and the lines between list rows. */
   --workspace-divider-color: color-mix(
