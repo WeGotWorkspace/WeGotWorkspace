@@ -60,19 +60,23 @@ function NotesDetailPaneHarness({
 }
 
 /**
- * Detail tags are the Tag primitive's neutral chip (tags run across notebooks):
- * not the notebook colour, a faint ink wash with no edge, and the label follows
- * the chip ink.
+ * The open note's tags are active tags: the selected-sidebar-tag colours (ink
+ * dimmed into the surface, surface label), not the notebook colour, no edge;
+ * the label follows the chip ink.
  */
-function expectNeutralDetailTag(chip: HTMLElement, host: HTMLElement) {
-  const notebookWash = document.createElement("span");
-  notebookWash.style.backgroundColor = "var(--note-detail-tag-bg)";
-  host.appendChild(notebookWash);
+function expectActiveDetailTag(chip: HTMLElement, host: HTMLElement) {
+  const probe = (value: string) => {
+    const span = document.createElement("span");
+    span.style.backgroundColor = value;
+    host.appendChild(span);
+    const color = getComputedStyle(span).backgroundColor;
+    span.remove();
+    return color;
+  };
   const style = getComputedStyle(chip);
-  expect(style.backgroundColor).not.toBe(getComputedStyle(notebookWash).backgroundColor);
-  notebookWash.remove();
-  const alpha = Number(/\/ ([\d.]+)\)$/.exec(style.backgroundColor)?.[1] ?? "1");
-  expect(alpha).toBeLessThan(0.12);
+  expect(style.backgroundColor).toBe(probe("var(--notes-tag-active-bg)"));
+  expect(style.backgroundColor).not.toBe(probe("var(--note-detail-tag-bg)"));
+  expect(style.color).toBe(probe("var(--notes-tag-active-fg)"));
   expect(style.boxShadow).toBe("none");
   const label = chip.querySelector(".tag__label");
   expect(label).toBeTruthy();
@@ -215,7 +219,7 @@ export const NotebookTint: Story = {
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    expectNeutralDetailTag(chip!, workspace!);
+    expectActiveDetailTag(chip!, workspace!);
     const sheetRect = sheet!.getBoundingClientRect();
     expect(getComputedStyle(sheet!).minHeight).not.toBe("100%");
     // Sheet grows with content; desk scrollport owns overflow (no sheet max-height / overflow-y).
@@ -283,7 +287,7 @@ export const NotebookTintDark: Story = {
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    expectNeutralDetailTag(chip!, workspace!);
+    expectActiveDetailTag(chip!, workspace!);
     const accentStrong = document.createElement("span");
     accentStrong.style.color = "var(--notes-detail-accent-strong)";
     workspace!.appendChild(accentStrong);
@@ -337,7 +341,7 @@ export const ReadOnly: Story = {
     const chip = canvasElement.querySelector(".note-detail-view__tag-group .tag");
     expect(workspace).toBeTruthy();
     expect(chip).toBeTruthy();
-    expectNeutralDetailTag(chip as HTMLElement, workspace as HTMLElement);
+    expectActiveDetailTag(chip as HTMLElement, workspace as HTMLElement);
   },
 };
 

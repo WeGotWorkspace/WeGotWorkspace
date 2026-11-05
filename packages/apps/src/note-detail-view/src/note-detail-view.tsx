@@ -201,7 +201,8 @@ export function NoteDetailView({
       {useCollabSurface ? (
         <NoteCollabEditorSurface
           editable={!readOnly}
-          autofocus={autoFocusTitle ? false : undefined}
+          // Opening a note never puts the caret in the body; click to edit.
+          autofocus={false}
         />
       ) : (
         <NoteTextEditorBody

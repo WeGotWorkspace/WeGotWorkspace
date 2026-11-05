@@ -61,13 +61,17 @@
    * uses the shared Dark-mixed default. Detail editor task-lists use the tag
    * wash on `.note-text-editor-body`. */
   --checkbox-checked-border: var(--workspace-accent);
-  /* Sidebar and detail tags share the Tag primitive's neutral chip. Selected
-   * sidebar chips use the foreground/surface pair below.
+  /* Tags are the Tag primitive's chip. Idle sidebar chips keep its neutral wash;
+   * an active tag (selected in the sidebar, set on the open note) is this pair:
+   * the ink dimmed a little into the surface, with a surface label. Nested
+   * `.notes-workspace` inherits the tokens so stories do not reset chip text.
    * `--note-detail-tag-*` is the editor task-list wash, not the tags. */
-  /* Selected sidebar tag chip — foreground fill, surface label, no stroke. Nested
-   * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
-  --notes-tag-selected-bg: var(--workspace-foreground);
-  --notes-tag-selected-fg: var(--workspace-surface);
+  --notes-tag-active-bg: color-mix(
+    in oklch,
+    var(--workspace-foreground) 78%,
+    var(--workspace-surface)
+  );
+  --notes-tag-active-fg: var(--workspace-surface);
   /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
    * surfaceTint 14% accent into surface (srgb). */
   --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
@@ -313,9 +317,16 @@
   );
 }
 
+/* The open note's tags are active tags: the same colours as a selected sidebar
+ * tag. The Add tag control keeps its neutral wash. */
+.notes-workspace .note-detail-view__tag-group .tag {
+  --tag-bg: var(--notes-tag-active-bg);
+  --tag-fg: var(--notes-tag-active-fg);
+}
+
 /* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows), the same `lg`
- * chips as the detail (look lives in the Tag primitive). Match section heading / MenuItem inset — not
- * `px-4` (double-gutter vs rows). */
+ * chips as the detail (look lives in the Tag primitive). Match section heading /
+ * MenuItem inset — not `px-4` (double-gutter vs rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
   @apply flex flex-wrap gap-2 space-y-0;
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
@@ -349,8 +360,8 @@
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  --tag-bg: var(--notes-tag-selected-bg);
-  --tag-fg: var(--notes-tag-selected-fg);
+  --tag-bg: var(--notes-tag-active-bg);
+  --tag-fg: var(--notes-tag-active-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
