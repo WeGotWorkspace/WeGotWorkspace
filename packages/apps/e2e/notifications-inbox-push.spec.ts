@@ -18,7 +18,7 @@ import {
  * Bound: 8 s, well inside the 15 s poll. While push is connected the fallback
  * poll runs every 60 s, and the whole spec runs well within 60 s of push
  * connecting, so a pass proves the push path. The sender writes over REST, so
- * no mesh `notify-hint` reaches the recipient's tabs either.
+ * no mesh `check-now` reaches the recipient's tabs either.
  */
 
 const PUSH_BOUND_MS = 8_000;
