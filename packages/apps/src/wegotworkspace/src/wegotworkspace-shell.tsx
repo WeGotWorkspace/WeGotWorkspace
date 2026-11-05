@@ -1,4 +1,5 @@
-import { HeadContent, Link, Outlet } from "@tanstack/react-router";
+import { HeadContent, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { useReportRouteToPushHub } from "@/lib/api/wgw/use-jmap-state-change";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
 import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
 import { NotificationsProvider } from "@/notifications-core/src/notifications-provider";
@@ -11,6 +12,13 @@ import {
 import { AppToaster } from "@/ui/sonner";
 import { TooltipProvider } from "@/ui/tooltip";
 
+/** Reports each navigation to the push hub, apart from the shell so it does not re-render it. */
+function PushHubRouteReporter() {
+  const route = useLocation({ select: (location) => location.pathname + location.searchStr });
+  useReportRouteToPushHub(route);
+  return null;
+}
+
 export function WeGotWorkspaceShell() {
   registerBuiltinSettings();
   return (
@@ -19,6 +27,7 @@ export function WeGotWorkspaceShell() {
         <SettingsDialogProvider>
           <NotificationsProvider>
             <HeadContent />
+            <PushHubRouteReporter />
             <Outlet />
             {/* Active-call card outside /meet; renders nothing without the suite call store. */}
             <MeetCallMiniPlayer />
