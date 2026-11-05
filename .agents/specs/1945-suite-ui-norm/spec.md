@@ -1,4 +1,4 @@
-Source: #1945 (body-hash: 59ad6866)
+Source: #1945 (body-hash: 39f1e311)
 Goal: WeGotWorkspace/Product#84
 
 # Suite UI norm from the Docs spike
@@ -11,7 +11,9 @@ Decided with the product lead on 2026-11-05:
 
 - **Light scheme:** neutral for the whole suite. Surface `#ffffff`, rail `#f6f7f9`, ink `#16181d`. Brand cream stays in the logo and the app icons only.
 - **Dark scheme:** the spike's cool blue-black (`#0e1216` surface, `#10161b` rail, `#eef1f5` ink).
-- **Selection:** one recipe for sidebar rows and pressed outline toggles. Light is a quiet ink wash; dark is a sky wash fading right with a sky hairline.
+- **Selection:** one recipe. Light is a quiet ink wash; dark is a sky wash fading right with a sky hairline.
+  - Sidebar rows (40px high) take the wash without the hairline.
+  - Pressed outline toggles keep the quiet wash by default. The full selection look is opt-in through `pressedStyle="selection"` on Button and IconButton. Docs Suggest uses it.
 
 ## Non-goals
 

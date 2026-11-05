@@ -35,6 +35,12 @@ export const Active: StoryObj<typeof IconButton> = {
   args: { ...Default.args, active: true },
 };
 
+/** `pressedStyle="selection"`: the suite selection instead of the quiet wash. */
+export const ActiveSelection: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, active: true, pressedStyle: "selection" },
+};
+
 export const Ghost: StoryObj<typeof IconButton> = {
   ...Default,
   args: { ...Default.args, variant: "ghost" },

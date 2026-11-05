@@ -52,20 +52,8 @@
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 70%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
 
   --notes-list-star-color: var(--workspace-accent);
   /* Tile pair is notes yellow. Rail stays Soft from :root. */

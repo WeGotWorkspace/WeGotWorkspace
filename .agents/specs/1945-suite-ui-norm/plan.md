@@ -37,6 +37,7 @@ This draws from the Product#84 dark-mode track (suite design language). It displ
 ## Considered
 
 - **Keep a Docs-scoped palette, as in the spike.** Rejected: the product lead wants one norm, and scoped pairs drift.
+- **Give every pressed toggle the selection look.** Tried, then rejected by the product lead on 2026-11-05: action buttons read as glowing. It became the opt-in `pressedStyle="selection"`.
 - **Push the Docs selection gradient into `--button-outline-active-background`.** Rejected: that token is painted with `background-color` by dropdown menus and segmented controls, and a gradient there is invalid. A separate `--workspace-selected-*` trio is read only by consumers that paint with `background`.
 - **Per-theme recipes in `workspace-derive.css`.** Rejected in favour of scheme parameters (`--scheme-selection*`, `--scheme-frost-*`, `--scheme-panel-*`). The dark swap stays in Tier 1.5 and Tier 3 keeps one recipe.
 - **Put the frost pill on every format bar.** Rejected: Chat renders the bar inline (`chat-composer.css:23`). The floating pill stays Docs placement and uses the shared frost tokens.
@@ -100,7 +101,8 @@ None. Light scope, dark selection colour and the Meet exclusion were decided on 
   - Pressed outline. `path: packages/apps/src/button/src/button.css:197`
   - Account footer. `path: packages/apps/src/workspace-shell/src/workspace-app-layout.css:80`
 - **Done when:**
-  - Both row primitives and pressed outline toggles paint the selected trio, and rows use `--sidebar-item-radius`.
+  - Both row primitives paint the selected wash without a hairline. Rows use `--sidebar-item-radius` and are 40px high (`--app-sidebar-item-height`).
+  - `pressedStyle="selection"` on Button and IconButton paints the full trio. The default pressed look is unchanged.
   - `app-sidebar` draws the desktop panel edge (rounded end, scheme shadow and hairline).
   - The account footer is the frost card.
   - Main header and chrome footer buttons are borderless with a hover wash.

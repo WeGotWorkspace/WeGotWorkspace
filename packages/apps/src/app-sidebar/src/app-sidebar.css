@@ -35,8 +35,8 @@
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
   --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
-  /* Collection + MenuItem row height — md chrome, not the in-row xs edit/fold hit. */
-  --app-sidebar-item-height: var(--control-height-md, 2.25rem);
+  /* Collection + MenuItem row height — lg (40px) for breathing room, not the in-row xs edit/fold hit. */
+  --app-sidebar-item-height: var(--control-height-lg, 2.5rem);
 }
 
 .app-sidebar__header {
@@ -121,6 +121,30 @@
 
 .app-sidebar[data-open="false"] {
   @apply -translate-x-full sidebar:-ml-64 sidebar:border-r-0;
+}
+
+/*
+ * Docked (desktop) sidebar: a panel with a rounded end edge, a scheme hairline and
+ * the scheme shadow (none in light, a soft drop in dark). Raised over main so the
+ * shadow falls on the canvas.
+ */
+@media (min-width: 72.5rem) {
+  .app-sidebar {
+    position: relative;
+    z-index: 31;
+    border-start-end-radius: 1rem;
+    border-end-end-radius: 1rem;
+    border-inline-end-color: color-mix(
+      in oklch,
+      var(--workspace-sidebar-foreground) var(--scheme-panel-edge, 8%),
+      transparent
+    );
+    box-shadow: var(--scheme-panel-shadow, none);
+  }
+
+  .app-sidebar[data-open="false"] {
+    box-shadow: none;
+  }
 }
 
 .app-sidebar__scrim {

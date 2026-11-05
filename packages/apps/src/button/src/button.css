@@ -223,6 +223,34 @@
   );
 }
 
+/*
+ * `pressedStyle="selection"`: the suite selection (flat ink wash in light, sky wash
+ * plus hairline in dark) for a mode that must read from across the screen.
+ */
+.button.button--variant-outline.button--pressed-selection:is(
+    .icon-button--active,
+    [aria-pressed="true"]
+  ),
+.button.button--variant-outline.button--pressed-selection:is(
+    .icon-button--active,
+    [aria-pressed="true"]
+  ):hover {
+  color: var(--workspace-selected-color, var(--workspace-foreground));
+  border-color: transparent;
+  background: var(
+    --workspace-selected-background,
+    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+  );
+}
+
+/* Selection hairline; the focus ring (also box-shadow) wins while focused. */
+.button.button--variant-outline.button--pressed-selection:is(
+    .icon-button--active,
+    [aria-pressed="true"]
+  ):not(:focus-visible) {
+  box-shadow: var(--workspace-selected-shadow, none);
+}
+
 /* Lucide marks are stroke-based; generic `.icon-button--active` fill would solid-blob them. */
 .button.button--variant-outline.icon-button--active .button__icon > svg {
   fill: none;

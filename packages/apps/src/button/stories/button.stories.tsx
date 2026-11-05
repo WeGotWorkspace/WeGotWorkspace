@@ -83,3 +83,24 @@ export const Link: Story = {
 export const Disabled: Story = {
   args: { ...Primary.args, disabled: true },
 };
+
+/** Pressed toggle, default look: quiet ink wash, control stroke kept. */
+export const OutlinePressed: Story = {
+  args: {
+    ...Primary.args,
+    variant: "outline",
+    label: "Suggest",
+    className: "icon-button--active",
+    "aria-pressed": true,
+  },
+};
+
+/** `pressedStyle="selection"`: the suite selection (sky wash + hairline in dark). */
+export const OutlinePressedSelection: Story = {
+  args: { ...OutlinePressed.args, pressedStyle: "selection" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole("button", { name: "Suggest" });
+    await expect(button.className).toContain("button--pressed-selection");
+  },
+};

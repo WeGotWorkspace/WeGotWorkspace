@@ -84,6 +84,7 @@ describe("DocsCollabSuggestControls", () => {
 
     const pressed = screen.getByRole("button", { name: docsLabels.editMode });
     expect(pressed.className).toContain("icon-button--active");
+    expect(pressed.className).toContain("button--pressed-selection");
     expect(pressed.getAttribute("aria-pressed")).toBe("true");
     expect(pressed.textContent).toContain(docsLabels.suggestModeActive);
     expect(pressed.textContent).not.toContain(docsLabels.editMode);

@@ -74,6 +74,7 @@ export function DocsCollabSuggestControls({
           }}
           size="md"
           variant="outline"
+          pressedStyle="selection"
           aria-pressed={isSuggest}
           disabled={disabled}
         />

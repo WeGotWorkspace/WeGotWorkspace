@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { Button, IconButton } from "@/button/src/button";
-import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   DropdownMenu,
@@ -195,13 +194,9 @@ export function TextEditorFormatBar({
                 type="button"
                 aria-label={`${headingTriggerLabel}, heading level`}
                 disabled={formattingDisabled}
-                aria-pressed={headingActive || undefined}
                 size={size}
                 variant="outline"
-                className={cn(
-                  "text-editor-format-bar__heading-trigger",
-                  headingActive && ICON_BUTTON_ACTIVE_CLASSNAME,
-                )}
+                className="text-editor-format-bar__heading-trigger"
               >
                 <span className="text-editor-format-bar__heading-trigger-label">
                   {headingTriggerLabel}

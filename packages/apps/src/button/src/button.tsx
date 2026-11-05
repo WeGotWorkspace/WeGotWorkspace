@@ -7,10 +7,12 @@ import {
   BUTTON_BASE_CLASSNAME,
   BUTTON_ICON_SLOT_CLASSNAME,
   BUTTON_PILL_CLASSNAME,
+  BUTTON_PRESSED_SELECTION_CLASSNAME,
   BUTTON_SEVERITY_CLASSNAMES,
   BUTTON_VARIANT_CLASSNAMES,
   getButtonSizeClassName,
   normalizeButtonVariant,
+  type ButtonPressedStyle,
   type ButtonSeverity,
   type ButtonSizeProp,
   type ButtonVariantProp,
@@ -22,6 +24,7 @@ export {
   buttonVariants,
   normalizeButtonSize,
   normalizeButtonVariant,
+  type ButtonPressedStyle,
   type ButtonSeverity,
   type ButtonSize,
   type ButtonSizeProp,
@@ -45,6 +48,8 @@ export type ButtonProps = Omit<React.ComponentPropsWithRef<"button">, "children"
   variant?: ButtonVariantProp;
   /** Semantic actions: danger (destructive) or success (resolve/accept) fg + wash. */
   severity?: ButtonSeverity;
+  /** Look when pressed (`aria-pressed` / active): quiet wash (default) or the suite selection. */
+  pressedStyle?: ButtonPressedStyle;
   asChild?: boolean;
   children?: ReactNode;
 };
@@ -59,6 +64,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       pill = false,
       variant = "primary",
       severity,
+      pressedStyle = "wash",
       className,
       style,
       children,
@@ -94,6 +100,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           pill && BUTTON_PILL_CLASSNAME,
           BUTTON_VARIANT_CLASSNAMES[normalizedVariant],
           severity ? BUTTON_SEVERITY_CLASSNAMES[severity] : undefined,
+          pressedStyle === "selection" && BUTTON_PRESSED_SELECTION_CLASSNAME,
           className,
         )}
         style={style}

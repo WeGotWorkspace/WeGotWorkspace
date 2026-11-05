@@ -24,24 +24,8 @@
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 80%,
-    var(--workspace-surface)
-  );
-  --workspace-user-footer-subtitle-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 80%,
-    var(--workspace-surface)
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface

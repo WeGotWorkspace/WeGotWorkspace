@@ -35,6 +35,14 @@ export const BUTTON_ICON_SLOT_CLASSNAME = "button__icon";
 export const BUTTON_SIZE_ICON_CLASSNAME = "button--size-icon";
 export const ICON_BUTTON_ACTIVE_CLASSNAME = "icon-button--active";
 
+/**
+ * Pressed look for outline toggles. `wash` (default) is the quiet ink wash;
+ * `selection` is the suite selection (sky wash + hairline in dark), for a mode
+ * that must read from across the screen (Docs Suggest).
+ */
+export type ButtonPressedStyle = "wash" | "selection";
+export const BUTTON_PRESSED_SELECTION_CLASSNAME = "button--pressed-selection";
+
 export const BUTTON_SIZE_CLASSNAMES: Record<ButtonSize, string> = {
   xs: controlSizeClassName("button", "xs"),
   sm: controlSizeClassName("button", "sm"),

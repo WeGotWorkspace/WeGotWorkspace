@@ -37,7 +37,7 @@
   --docs-text: var(--workspace-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
   --docs-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  --docs-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --docs-border: var(--border);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -424,7 +424,10 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Spike: Docs polish (dark reference). Tokens first, then surfaces.    */
+/* Docs chrome. Scheme, selection, sidebar panel, account card and     */
+/* borderless header buttons are suite-wide (styles.css, workspace-    */
+/* derive.css, app-sidebar, workspace-app-layout). Only Docs-specific   */
+/* surfaces live here.                                                  */
 /* ------------------------------------------------------------------ */
 
 .docs-workspace {
@@ -433,91 +436,12 @@
   --docs-toolbar-bg: color-mix(in oklch, var(--workspace-foreground) 2.5%, var(--docs-surface));
   --docs-toolbar-border: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
   --docs-toolbar-radius: 0.875rem;
-  --docs-outline-dot-active: var(--workspace-foreground);
-  /* Frosted glass for floating chrome (format pill, account card): fill + light edge, no border. */
-  --docs-frost-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 4%,
-    color-mix(in oklch, var(--docs-surface) 72%, transparent)
-  );
-  --docs-frost-blur: blur(16px) saturate(1.4);
-  --docs-frost-shadow:
-    inset 0 1px 0 color-mix(in oklch, white 70%, transparent), 0 1px 2px rgb(0 0 0 / 0.06),
-    0 10px 28px -14px rgb(0 0 0 / 0.28);
+  /* Active outline row dot: the suite selection hue (ink in light, sky in dark). */
+  --docs-outline-dot-active: var(--scheme-selection);
 }
 
-:root[data-theme="dark"] .docs-workspace {
-  --docs-frost-bg: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
-  --docs-frost-shadow:
-    inset 0 1px 0 color-mix(in oklch, white 7%, transparent),
-    inset 0 0 0 1px color-mix(in oklch, white 2%, transparent), 0 1px 2px rgb(0 0 0 / 0.25),
-    0 12px 32px -16px rgb(0 0 0 / 0.6);
-}
-
-/*
- * Light: neutral paper (Docs polish reference) instead of suite cream. A scope may remap
- * the Tier 2 pair (like Meet does for dark); washes re-derive from these locally.
- */
-:root:not([data-theme="dark"]) :is(.docs-workspace, .docs-dialog-surface) {
-  --workspace-surface: oklch(from #ffffff l c h);
-  --workspace-foreground: oklch(from #16181d l c h);
-  --workspace-accent: var(--workspace-foreground);
-  --workspace-accent-foreground: oklch(from #ffffff l c h);
-  --workspace-sidebar-surface: oklch(from #f6f7f9 l c h);
-  --workspace-sidebar-foreground: var(--workspace-foreground);
-  --docs-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
-}
-
-:root:not([data-theme="dark"]) .docs-workspace {
-  /* Selected row (sidebar) and pressed Suggest: quiet grey pill for the selected row, no edge. */
-  --sidebar-item-selected-background: color-mix(
-    in oklch,
-    var(--workspace-foreground) 6%,
-    transparent
-  );
-  --sidebar-item-selected-color: var(--workspace-foreground);
-}
-
-:root:not([data-theme="dark"]) .docs-workspace .text-editor {
+.docs-workspace .text-editor {
   --text-editor-page-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
-}
-
-:root:not([data-theme="dark"]) .docs-workspace {
-  /* Whiter glass on white paper; a hairline-weight shadow instead of a border. */
-  --docs-frost-bg: color-mix(in oklch, var(--workspace-surface) 86%, transparent);
-  --docs-frost-shadow:
-    0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 5%, transparent),
-    0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.14);
-}
-
-:root[data-theme="dark"] .docs-workspace {
-  /* Sky accent for selection in the outline (reference: #3a9fe1 edge, #183061 wash). */
-  --docs-sky: oklch(0.68 0.13 240);
-  --docs-outline-dot-active: oklch(0.75 0.15 230);
-  --docs-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
-}
-
-:root[data-theme="dark"] .docs-workspace {
-  /* Selected row (sidebar) and pressed Suggest: sky wash fading right, one hairline that follows the radius (no side bar). */
-  --sidebar-item-selected-background: linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--docs-sky) 26%, var(--workspace-sidebar-surface)),
-    color-mix(in oklch, var(--docs-sky) 10%, var(--workspace-sidebar-surface))
-  );
-  --sidebar-item-selected-shadow: inset 0 0 0 1px
-    color-mix(in oklch, var(--docs-sky) 30%, transparent);
-  --sidebar-item-selected-color: var(--workspace-foreground);
-}
-
-.docs-workspace .app-sidebar .sidebar-section .menu-item {
-  border-radius: var(--docs-chip-radius);
-}
-
-/* Header: hairline under the title row, like the format chrome below it. */
-.docs-workspace .workspace-app-layout__main-header {
-  border-bottom: 1px solid var(--docs-border);
 }
 
 /* Format bar: ghost buttons at every width. */
@@ -545,10 +469,10 @@
     padding: 0.375rem 0.5rem;
     border: 0;
     border-radius: var(--docs-toolbar-radius);
-    background: var(--docs-frost-bg);
-    -webkit-backdrop-filter: var(--docs-frost-blur);
-    backdrop-filter: var(--docs-frost-blur);
-    box-shadow: var(--docs-frost-shadow);
+    background: var(--frost-background);
+    -webkit-backdrop-filter: var(--frost-blur);
+    backdrop-filter: var(--frost-blur);
+    box-shadow: var(--frost-shadow);
   }
 
   /* Clear the pill (40px controls + pads) plus the usual desk gap. */
@@ -573,10 +497,6 @@
   background: var(--docs-toolbar-border);
 }
 
-:root[data-theme="dark"] .docs-workspace .text-editor {
-  --text-editor-page-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
-}
-
 /* Footer stats: plain text with hairline separators instead of chips. */
 .docs-workspace__stats-footer .tag {
   background-color: transparent !important;
@@ -594,44 +514,8 @@
   margin-inline-start: 0.25rem;
 }
 
-/* Sidebar account footer: a raised card. */
-.docs-workspace .workspace-sidebar-account-footer {
-  padding-block-end: 0.75rem;
-}
-
-.docs-workspace .workspace-sidebar-account-footer .workspace-app-layout__user-footer {
-  margin-block-start: 0.5rem;
-  padding: 0.625rem 0.625rem 0.625rem 0.75rem;
-  border: 0;
-  border-radius: 0.75rem;
-  background: var(--docs-frost-bg);
-  -webkit-backdrop-filter: var(--docs-frost-blur);
-  backdrop-filter: var(--docs-frost-blur);
-  box-shadow: var(--docs-frost-shadow);
-  --workspace-user-footer-text-color: var(--workspace-foreground);
-  /* Ghost log-out: the glass card is the only container. */
-  --button-outline-border-color: transparent;
-  --button-outline-hover-background: color-mix(
-    in oklch,
-    var(--workspace-foreground) 8%,
-    transparent
-  );
-  --user-avatar-presence-ring: color-mix(
-    in oklch,
-    var(--workspace-foreground) 7%,
-    var(--workspace-sidebar-surface)
-  );
-}
-
 .docs-workspace__footer-tools {
   @apply flex items-center gap-2;
-}
-
-/* Header + footer chrome: ghost buttons (no hairline); wash on hover only. */
-.docs-workspace .workspace-app-layout__main-header,
-.docs-workspace__stats-footer {
-  --button-outline-border-color: transparent;
-  --button-outline-hover-background: var(--docs-chip-bg);
 }
 
 /* Source view: a labelled switch, not a mystery </> glyph. */
@@ -738,15 +622,6 @@
   --docs-status-dot: var(--color-warning);
 }
 
-/* Suggesting: the standard pressed toggle, in the Docs sidebar's selected-row style. */
-.docs-workspace .docs-collab-suggest-controls.button.icon-button--active,
-.docs-workspace .docs-collab-suggest-controls.button.icon-button--active:hover {
-  background: var(--sidebar-item-selected-background);
-  box-shadow: var(--sidebar-item-selected-shadow, none);
-  color: var(--sidebar-item-selected-color);
-  border-color: transparent;
-}
-
 /* Page sheets: rounded. Pages mode draws page ends inside `.breaker`; give that the desk
  * colour and round each page end, so every page reads as its own rounded card. */
 .docs-workspace {
@@ -809,26 +684,6 @@
 
 .docs-workspace .docs-workspace__rename:hover:not(:disabled) {
   opacity: 1;
-}
-
-/* Desktop sidebar: a panel with a rounded right edge, a light hairline and a soft shadow. */
-@media (min-width: 72.5rem) {
-  .docs-workspace .app-sidebar {
-    position: relative;
-    z-index: 31;
-    border-start-end-radius: 1rem;
-    border-end-end-radius: 1rem;
-    border-right-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-    box-shadow: 10px 0 28px -12px rgb(0 0 0 / 0.55);
-  }
-}
-
-/* Light: the rail reads by its grey fill and a hairline; no shadow. */
-@media (min-width: 72.5rem) {
-  :root:not([data-theme="dark"]) .docs-workspace .app-sidebar {
-    border-right-color: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
-    box-shadow: none;
-  }
 }
 
 .docs-workspace__header-actions-trailing {

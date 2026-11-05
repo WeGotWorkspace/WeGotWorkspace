@@ -38,10 +38,10 @@
    * mirrors it with `py-4 md:py-6` so the app-switch tile tops with IconButtons.
    */
   @apply shrink-0 border-b p-4 md:p-6;
-  border-color: var(
-    --workspace-main-header-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
+  border-color: var(--workspace-main-header-border-color, var(--border));
+  /* Chrome buttons are borderless; a wash shows on hover. */
+  --button-outline-border-color: transparent;
+  --button-outline-hover-background: var(--button-outline-active-background);
 }
 
 .workspace-app-layout__main-scroll {
@@ -75,10 +75,35 @@
 
 .workspace-sidebar-account-footer {
   padding-inline: var(--app-sidebar-padding-x, 1rem);
+  padding-block-end: 0.75rem;
+}
+
+/*
+ * Signed-in user in any sidebar: a frosted card (no border); log-out is a ghost
+ * button inside it. Inside the account footer the wrapper owns the inset.
+ */
+.app-sidebar .workspace-app-layout__user-footer {
+  margin: 0.5rem var(--app-sidebar-padding-x, 1rem) 0.75rem;
+  padding: 0.625rem 0.625rem 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+  --workspace-user-footer-text-color: var(--workspace-foreground);
+  color: var(--workspace-user-footer-text-color);
+  --button-outline-border-color: transparent;
+  --button-outline-hover-background: var(--button-outline-active-background);
+  --user-avatar-presence-ring: color-mix(
+    in oklch,
+    var(--workspace-foreground) 7%,
+    var(--workspace-sidebar-surface)
+  );
 }
 
 .workspace-sidebar-account-footer .workspace-app-layout__user-footer {
-  padding-inline: 0;
+  margin: 0.5rem 0 0;
 }
 
 .workspace-sidebar-account-footer__settings {

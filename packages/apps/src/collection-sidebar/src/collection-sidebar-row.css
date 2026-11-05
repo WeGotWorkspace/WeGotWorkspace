@@ -6,7 +6,7 @@
 .collection-sidebar-row {
   @apply relative flex min-w-0 items-center gap-2 text-sm font-medium;
   min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
-  border-radius: var(--collection-sidebar-row-radius, 0.25rem);
+  border-radius: var(--collection-sidebar-row-radius, var(--sidebar-item-radius, 0.25rem));
   /* Align leading content with section titles / app-switch glyph inset. */
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
@@ -31,41 +31,19 @@
   );
 }
 
-/* Selected = outline icon-button--active washes/fg; no visible stroke (idle/hover/selected). */
-.collection-sidebar-row--selected {
-  color: var(
-    --collection-sidebar-row-selected-color,
-    var(--button-active-color, var(--color-emerald))
-  );
-  border-color: transparent;
-  background-color: var(
-    --collection-sidebar-row-selected-bg,
-    var(
-      --button-outline-active-background,
-      var(
-        --button-outline-hover-background,
-        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
-      )
-    )
-  );
-}
-
+/* Selected = the suite selection (`--workspace-selected-*`, may be a gradient). */
+.collection-sidebar-row--selected,
 .collection-sidebar-row--selected:hover {
   color: var(
     --collection-sidebar-row-selected-color,
-    var(--button-active-color, var(--color-emerald))
+    var(--workspace-selected-color, var(--workspace-foreground))
   );
-  background-color: var(
+  border-color: transparent;
+  background: var(
     --collection-sidebar-row-selected-bg,
     var(
-      --button-outline-active-hover-background,
-      var(
-        --button-outline-active-background,
-        var(
-          --button-outline-hover-background,
-          color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
-        )
-      )
+      --workspace-selected-background,
+      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
     )
   );
 }

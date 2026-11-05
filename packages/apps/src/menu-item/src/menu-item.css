@@ -90,21 +90,26 @@
   @apply bg-transparent;
 }
 
-/* Selected = outline icon-button--active wash/fg (parents publish --button-outline-*). */
+/* Sidebar rows share one radius with collection rows. */
+.sidebar-section .menu-item {
+  border-radius: var(--sidebar-item-radius, 0.25rem);
+}
+
+/* Selected = the suite selection (`--workspace-selected-*`, may be a gradient). */
 .sidebar-section .menu-item--surface-selected {
   @apply font-medium;
-  /* `background` (not -color) so parents may publish a gradient wash. */
   background: var(
     --sidebar-item-selected-background,
     var(
-      --button-outline-active-background,
+      --workspace-selected-background,
       color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
     )
   );
+  /* Rows take the wash only; the selection hairline is for the pressed-button variant. */
   box-shadow: var(--sidebar-item-selected-shadow, none);
   color: var(
     --sidebar-item-selected-color,
-    var(--button-active-color, var(--workspace-foreground))
+    var(--workspace-selected-color, var(--workspace-foreground))
   );
 }
 
