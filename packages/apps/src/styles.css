@@ -157,12 +157,14 @@
   /*
    * Pane header strip (main, list, detail and side-panel headers, and the sidebar
    * head): one height everywhere so the bottom rules line up across columns.
-   * One row of md controls plus the block padding plus the 1px rule. A host that
-   * changes the padding re-declares the height too (see Calendar below 40rem).
+   * One row of header controls plus the block padding plus the 1px rule. A host
+   * that changes the padding re-declares the height too (see Calendar below 40rem).
+   * Header and sidebar controls are 40px (`lg`); see the scope rule below.
    */
-  --workspace-header-padding-y: 1rem;
+  --workspace-header-control-height: var(--control-height-lg, 2.5rem);
+  --workspace-header-padding-y: 0.875rem;
   --workspace-header-height: calc(
-    var(--control-height-md, 2.25rem) + 2 * var(--workspace-header-padding-y) + 1px
+    var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
   );
   /*
    * Floating toolbars: Docs format pill, selection bar, Meet controls and mini player.
@@ -233,7 +235,12 @@
    * Prefer `--control-radius` for ordinary controls; `--control-radius-pill`
    * for intentional full capsules only.
    */
-  --control-radius-button-pill: var(--control-radius);
+  --control-radius-button-pill: var(--control-radius-button);
+  /*
+   * Buttons (icon buttons and button-like triggers too) round like the sidebar
+   * rows, so a row and a button side by side share one corner.
+   */
+  --control-radius-button: var(--sidebar-item-radius);
   /*
    * Panel overlay motion — AppSidebar mobile slide + SideDrawer/Sheet enter/exit.
    * Keep duration + easing in sync across left chrome and right drawers.
@@ -314,7 +321,6 @@
   --scheme-selection-strength: 6%;
   --scheme-selection-edge: 0%;
   /* Selection marks (list multi-select checks): the same colour, stronger. */
-  --scheme-selection-mark-strength: 16%;
   --scheme-selection-mark-edge: 40%;
   /* Frosted chrome: ink tint over a translucent paper fill. */
   --scheme-frost-ink: 0%;
@@ -379,7 +385,6 @@
   --scheme-selection: oklch(0.68 0.13 240);
   --scheme-selection-strength: 18%;
   --scheme-selection-edge: 30%;
-  --scheme-selection-mark-strength: 42%;
   --scheme-selection-mark-edge: 80%;
   --scheme-frost-ink: 7%;
   --scheme-frost-paper: 0%;
@@ -553,9 +558,25 @@ select {
 
 @media (min-width: 768px) {
   :root {
-    --workspace-header-padding-y: 1.5rem;
+    --workspace-header-padding-y: 1.375rem;
     --workspace-header-height: calc(
-      var(--control-height-md, 2.25rem) + 2 * var(--workspace-header-padding-y) + 1px
+      var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
     );
   }
+}
+
+/*
+ * Pane headers and the sidebar: `md` controls (the IconButton default) step up
+ * to the header control height, so every header and sidebar button is 40px.
+ */
+:is(
+  .app-sidebar,
+  .workspace-shell-header,
+  .collection-header,
+  .action-bar,
+  .workspace-app-layout__main-header,
+  .docs-home-pane__header,
+  .docs-collab-sidebar-panel__header
+) {
+  --control-height-md: var(--workspace-header-control-height);
 }

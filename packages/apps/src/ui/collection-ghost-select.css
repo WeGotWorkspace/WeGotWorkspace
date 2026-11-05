@@ -11,7 +11,7 @@
   min-block-size: var(--control-height-sm);
   margin-inline-start: -0.625rem;
   padding: 0.25rem 0.625rem;
-  border-radius: var(--control-radius);
+  border-radius: var(--control-radius-button);
   border: 0;
   background: transparent;
   color: color-mix(

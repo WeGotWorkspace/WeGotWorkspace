@@ -3,7 +3,7 @@
 .button {
   @apply inline-flex items-center justify-center gap-2 whitespace-nowrap border-0 font-medium transition-colors;
   @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
-  border-radius: var(--control-radius);
+  border-radius: var(--control-radius-button);
   --button-icon-size: 1rem;
 }
 

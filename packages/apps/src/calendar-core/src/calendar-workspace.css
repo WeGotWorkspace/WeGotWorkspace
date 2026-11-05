@@ -218,9 +218,9 @@
 @media (max-width: 40rem) {
   /* Tighter header strip on phones: re-declare both tokens so every Calendar header follows. */
   .calendar-workspace {
-    --workspace-header-padding-y: 0.75rem;
+    --workspace-header-padding-y: 0.625rem;
     --workspace-header-height: calc(
-      var(--control-height-md, 2.25rem) + 2 * var(--workspace-header-padding-y) + 1px
+      var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
     );
   }
 

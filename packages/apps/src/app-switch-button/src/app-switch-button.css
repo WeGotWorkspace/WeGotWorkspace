@@ -16,9 +16,10 @@
 .app-switch-button__menu-icon {
   @apply shrink-0;
 }
+/* The brand tile keeps 36px, also where headers step md controls up to 40px. */
 .app-switch-button__icon {
-  height: var(--control-height-md, 2.25rem);
-  width: var(--control-height-md, 2.25rem);
+  height: var(--app-switch-icon-size, 2.25rem);
+  width: var(--app-switch-icon-size, 2.25rem);
 }
 
 .app-switch-button__menu-icon {

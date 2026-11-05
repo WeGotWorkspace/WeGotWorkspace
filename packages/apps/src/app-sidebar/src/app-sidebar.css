@@ -29,8 +29,9 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
-  /* Same size as `.app-switch-button__icon` (md control height). */
-  --app-switch-icon-size: var(--control-height-md, 2.25rem);
+  /* Same size as `.app-switch-button__icon`. Pinned: the sidebar steps its md
+   * controls up to 40px, the brand tile stays 36px. */
+  --app-switch-icon-size: 2.25rem;
   /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */

@@ -91,7 +91,6 @@
 
 .docs-suggestion-card__decision .button {
   height: var(--control-height-lg);
-  border-radius: 0.625rem;
 }
 
 .docs-suggestion-card__accept {
