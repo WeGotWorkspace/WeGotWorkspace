@@ -42,7 +42,8 @@
   box-sizing: border-box;
   min-block-size: var(--workspace-header-height);
   padding-block: var(--workspace-header-padding-y);
-  border-color: var(--workspace-main-header-border-color, var(--border));
+  /* Same hairline as the sidebar edge. */
+  border-color: var(--workspace-divider-color);
 }
 
 .workspace-app-layout__main-scroll {

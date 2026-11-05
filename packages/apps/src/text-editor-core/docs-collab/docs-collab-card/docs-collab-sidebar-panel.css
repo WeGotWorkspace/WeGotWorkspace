@@ -60,10 +60,8 @@
   min-block-size: var(--workspace-header-height);
   padding-block: var(--workspace-header-padding-y);
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
-  border-color: var(
-    --docs-collab-sidebar-panel-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
-  );
+  /* Same hairline as the sidebar edge and every other pane header. */
+  border-color: var(--workspace-divider-color);
   background-color: var(--docs-collab-sidebar-panel-bg, var(--app-sidebar-bg, var(--sidebar-bg)));
   backdrop-filter: blur(8px);
 }

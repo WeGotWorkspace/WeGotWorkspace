@@ -28,7 +28,8 @@
   box-sizing: border-box;
   min-block-size: var(--workspace-header-height);
   padding-block: var(--workspace-header-padding-y);
-  border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
+  /* Same hairline as the sidebar edge. */
+  border-color: var(--workspace-divider-color);
 }
 
 .collection-empty-state {
