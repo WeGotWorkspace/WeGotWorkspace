@@ -53,7 +53,7 @@ const DropdownMenuSubContent = React.forwardRef<
   const assignContentRef = React.useCallback(
     (node: React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null) => {
       contentRef.current = node;
-      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (node) bridgePortalThemeFromOpenTrigger(node, { frost: true });
       if (typeof ref === "function") ref(node);
       else if (ref) ref.current = node;
     },
@@ -62,7 +62,7 @@ const DropdownMenuSubContent = React.forwardRef<
 
   React.useLayoutEffect(() => {
     const content = contentRef.current;
-    if (content) bridgePortalThemeFromOpenTrigger(content);
+    if (content) bridgePortalThemeFromOpenTrigger(content, { frost: true });
   }, []);
 
   return (
@@ -88,7 +88,7 @@ const DropdownMenuContent = React.forwardRef<
   const assignContentRef = React.useCallback(
     (node: React.ElementRef<typeof DropdownMenuPrimitive.Content> | null) => {
       contentRef.current = node;
-      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (node) bridgePortalThemeFromOpenTrigger(node, { frost: true });
       inertOutsideRef(node);
     },
     [inertOutsideRef],
@@ -96,7 +96,7 @@ const DropdownMenuContent = React.forwardRef<
 
   React.useLayoutEffect(() => {
     const content = contentRef.current;
-    if (content) bridgePortalThemeFromOpenTrigger(content);
+    if (content) bridgePortalThemeFromOpenTrigger(content, { frost: true });
   }, []);
 
   return (

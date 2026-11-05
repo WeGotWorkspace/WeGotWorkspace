@@ -25,16 +25,30 @@
   @apply ml-auto;
 }
 
-.dropdown-menu-ui__sub-content {
-  @apply z-50 min-w-[8rem] overflow-hidden bg-popover p-1 text-popover-foreground shadow-lg;
-  border-radius: var(--control-radius);
+/*
+ * Menus are frosted floating chrome, like the selection bar, the search dock and
+ * toasts: frost fill and blur, floating radius, no border, frost shadow. The
+ * portal bridge hands over the trigger's paper as `--workspace-surface`, and
+ * `workspace-derive.css` recomputes the frost from it here.
+ */
+.dropdown-menu-ui__sub-content,
+.dropdown-menu-ui__content {
+  @apply z-50 min-w-[8rem] p-1.5 text-popover-foreground;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  border: 0;
+  border-radius: var(--floating-toolbar-radius);
+  box-shadow: var(--frost-shadow);
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
 
+.dropdown-menu-ui__sub-content {
+  @apply overflow-hidden;
+}
+
 .dropdown-menu-ui__content {
-  @apply z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden bg-popover p-1 text-popover-foreground shadow-md;
-  border-radius: var(--control-radius);
-  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  @apply max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overflow-x-hidden;
 }
 
 .dropdown-menu-ui__sub-content[data-state="open"],

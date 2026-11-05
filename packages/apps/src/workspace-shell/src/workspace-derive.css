@@ -46,7 +46,9 @@
   .meet-call-stage,
   .meet-call-expanded,
   .share-dialog,
-  .share-access-card
+  .share-access-card,
+  .dropdown-menu-ui__content,
+  .dropdown-menu-ui__sub-content
 ) {
   --workspace-accent-strong: color-mix(
     in oklch,

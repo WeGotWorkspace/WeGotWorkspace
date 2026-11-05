@@ -88,7 +88,6 @@
 .app-switch-button__menu {
   @apply min-w-48 p-1.5;
   user-select: none;
-  border-color: color-mix(in oklab, currentColor 25%, transparent);
 }
 
 .app-switch-button__menu .menu-item__label {

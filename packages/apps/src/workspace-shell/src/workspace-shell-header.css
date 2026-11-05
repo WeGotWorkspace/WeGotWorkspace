@@ -62,7 +62,6 @@
 .workspace-shell-header__user-menu-content {
   @apply min-w-48 p-1.5;
   user-select: none;
-  border-color: color-mix(in oklab, currentColor 25%, transparent);
 }
 
 .workspace-shell-header__spacer {
