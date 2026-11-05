@@ -12,14 +12,22 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): --control-height-xs (28px), not form md+. */
+/* Interactive editors (notes detail): touch-safe chips. 32px with a mouse,
+ * 44px (`--control-height-xl`) on a touch screen. */
 .tag-group--size-lg {
-  --tag-height: var(--control-height-xs, 1.75rem);
-  --tag-font-size: 0.8125rem;
-  --tag-icon-size: 0.875rem;
-  --tag-padding-inline: 0.625rem;
+  --tag-height: var(--control-height-sm, 2rem);
+  --tag-font-size: 0.875rem;
+  --tag-icon-size: 1rem;
+  --tag-padding-inline: 0.75rem;
   --tag-gap: 0.375rem;
-  @apply gap-1.5;
+  @apply gap-2;
+}
+
+@media (pointer: coarse) {
+  .tag-group--size-lg {
+    --tag-height: var(--control-height-xl, 2.75rem);
+    --tag-padding-inline: 0.875rem;
+  }
 }
 
 .tag {
@@ -36,11 +44,18 @@
 }
 
 .tag--size-lg {
-  --tag-height: var(--control-height-xs, 1.75rem);
-  --tag-font-size: 0.8125rem;
-  --tag-icon-size: 0.875rem;
-  --tag-padding-inline: 0.625rem;
+  --tag-height: var(--control-height-sm, 2rem);
+  --tag-font-size: 0.875rem;
+  --tag-icon-size: 1rem;
+  --tag-padding-inline: 0.75rem;
   --tag-gap: 0.375rem;
+}
+
+@media (pointer: coarse) {
+  .tag--size-lg {
+    --tag-height: var(--control-height-xl, 2.75rem);
+    --tag-padding-inline: 0.875rem;
+  }
 }
 
 .tag__icon {
@@ -69,11 +84,15 @@
   box-shadow: 0 0 0 1px var(--tag-remove-fg, var(--tag-fg, currentColor));
 }
 
+/* The remove target runs the full chip height and reaches its end edge. */
 .tag--size-lg .tag__remove,
 .tag-group--size-lg .tag__remove {
-  min-width: 1.5rem;
-  min-height: 1.5rem;
-  margin-inline-end: -0.25rem;
+  align-self: stretch;
+  min-width: var(--tag-height);
+  min-height: 0;
+  margin-inline-end: calc(var(--tag-padding-inline) * -1);
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
 }
 
 .tag__remove svg {
@@ -188,8 +207,8 @@
 }
 
 .tag-group--size-lg .tag-group__suggestion {
-  @apply px-2.5 py-1.5;
-  min-height: 1.75rem;
+  @apply px-3 py-1.5;
+  min-height: var(--tag-height);
 }
 
 .tag-group__suggestion:hover,

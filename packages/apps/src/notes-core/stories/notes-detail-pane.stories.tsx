@@ -166,6 +166,30 @@ export const Editable: Story = {
   },
 };
 
+/** Tags are touch-safe chips (32px with a mouse, 44px on touch) right under the title. */
+export const TouchSafeTags: Story = {
+  tags: ["vitest-ci"],
+  args: {},
+  play: async ({ canvasElement }) => {
+    const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement;
+    const group = canvasElement.querySelector(".note-detail-view__tag-group") as HTMLElement;
+    const chip = group.querySelector(".tag") as HTMLElement;
+    const remove = chip.querySelector(".tag__remove") as HTMLElement;
+    const minHeight = matchMedia("(pointer: coarse)").matches ? 44 : 32;
+
+    const chipBox = chip.getBoundingClientRect();
+    await expect(chipBox.height).toBeGreaterThanOrEqual(minHeight);
+    // The remove target spans the chip's full height and reaches its end edge.
+    const removeBox = remove.getBoundingClientRect();
+    await expect(removeBox.height).toBe(chipBox.height);
+    await expect(removeBox.width).toBeGreaterThanOrEqual(minHeight);
+    await expect(Math.round(removeBox.right)).toBe(Math.round(chipBox.right));
+    // Close under the title.
+    const gap = group.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+    await expect(gap).toBeLessThan(20);
+  },
+};
+
 export const NotebookTint: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#ec4899", withTasks: true },
