@@ -1,0 +1,62 @@
+@import "../../styles.css" reference;
+
+/*
+ * File avatar (suite file norm): the square at the start of a grid tile. An
+ * extension label sits on its own hue; lightness and chroma are fixed per theme,
+ * so every hue keeps the same contrast (label ≥ 4.5:1 on its wash).
+ */
+:root {
+  --file-avatar-size: 2.75rem;
+  --file-avatar-radius: calc(var(--control-radius, 0.5rem) - 0.125rem);
+  --file-avatar-wash: 0.93 0.045;
+  --file-avatar-ink: 0.45 0.14;
+}
+
+:root[data-theme="dark"] {
+  --file-avatar-wash: 0.33 0.06;
+  --file-avatar-ink: 0.87 0.09;
+}
+
+.drive-file-avatar {
+  @apply relative inline-flex shrink-0 items-center justify-center overflow-hidden select-none;
+  width: var(--file-avatar-size);
+  height: var(--file-avatar-size);
+  border-radius: var(--file-avatar-radius);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  color: var(--workspace-foreground);
+}
+
+.drive-file-avatar svg {
+  @apply size-5;
+}
+
+.drive-file-avatar--extension {
+  background-color: oklch(var(--file-avatar-wash) var(--file-avatar-hue, 250));
+  color: oklch(var(--file-avatar-ink) var(--file-avatar-hue, 250));
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.drive-file-avatar--long {
+  font-size: 0.625rem;
+}
+
+.drive-file-avatar--thumbnail {
+  background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
+}
+
+.drive-file-avatar--thumbnail img {
+  @apply absolute inset-0 h-full w-full object-cover;
+}
+
+/* Images have a hairline so a white photo still has an edge on white paper. */
+.drive-file-avatar--thumbnail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+}

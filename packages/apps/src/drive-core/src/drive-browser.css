@@ -49,15 +49,12 @@
   @apply space-y-6 sm:space-y-8;
 }
 
-/* ≥2 cols on narrow; auto-fill denser tracks when wider (Docs + Drive SST). */
+/* Landscape cards: one column on a phone, auto-fill wider tracks beyond (Docs + Drive SST). */
 .drive-workspace .drive-grid {
   --drive-grid-gap: 0.75rem;
   display: grid;
   gap: var(--drive-grid-gap);
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(min(13.5rem, calc((100% - var(--drive-grid-gap)) / 2)), 1fr)
-  );
+  grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
 }
 
 @media (min-width: 30rem) {
@@ -72,8 +69,14 @@
   }
 }
 
-.drive-workspace .drive-folder-tile {
-  @apply relative w-full text-left px-4 h-16 sm:h-[4.25rem] flex items-center gap-3 outline-none focus-visible:ring-2;
+/*
+ * Grid tiles are landscape cards (folders and files alike): avatar, then the
+ * name over a details line, then the actions.
+ */
+.drive-workspace :is(.drive-folder-tile, .drive-file-tile) {
+  @apply relative flex w-full min-w-0 items-center gap-3 text-left outline-none;
+  min-height: calc(var(--file-avatar-size, 2.75rem) + 1.5rem);
+  padding: 0.75rem 0.5rem 0.75rem 0.75rem;
   border-radius: var(--control-radius);
   transition:
     padding 180ms ease,
@@ -108,10 +111,9 @@
 }
 
 /* Decorative tile content must not block the overlay hit target. */
-.drive-workspace .drive-folder-tile__icon,
-.drive-workspace .drive-folder-tile__title,
-.drive-workspace .drive-folder-tile__star,
-.drive-workspace .drive-file-tile__preview,
+.drive-workspace .drive-file-avatar,
+.drive-workspace .drive-folder-tile__text,
+.drive-workspace .drive-file-tile__avatar,
 .drive-workspace .drive-file-tile__footer,
 .drive-workspace .drive-selection-checkbox-wrap {
   pointer-events: none;
@@ -155,12 +157,7 @@
   color: var(--workspace-foreground);
 }
 
-.drive-workspace .drive-folder-tile__title {
-  @apply flex-1 min-w-0 truncate text-sm font-medium;
-  color: var(--workspace-foreground);
-}
-
-/* Name and, while it uploads (#1620), the folder's progress under it. */
+/* Name, then the details line (or, while it uploads (#1620), its progress). */
 .drive-workspace .drive-folder-tile__text {
   @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
@@ -170,29 +167,21 @@
   color: var(--color-emerald);
 }
 
-.drive-workspace .drive-folder-tile--selection-mode {
-  @apply pl-9;
+.drive-workspace :is(.drive-folder-tile--selection-mode, .drive-file-tile--selection-mode) {
+  padding-inline-start: 2.25rem;
 }
 
-.drive-workspace .drive-folder-tile__checkbox {
+.drive-workspace :is(.drive-folder-tile__checkbox, .drive-file-tile__checkbox) {
   @apply absolute left-3 top-1/2 z-[1] -translate-y-1/2;
 }
 
+/* Name and details on the left, actions on the right. */
 .drive-workspace .drive-file-tile__footer {
-  @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
-  background-color: var(--workspace-surface);
-  border-color: var(--border);
-  transition:
-    padding 180ms ease,
-    background-color 150ms ease;
+  @apply flex min-w-0 flex-1 items-center gap-2;
 }
 
-.drive-workspace .drive-file-tile--selection-mode .drive-file-tile__footer {
-  @apply pl-9;
-}
-
-.drive-workspace .drive-file-tile__checkbox {
-  @apply absolute left-3 top-1/2 z-[1] -translate-y-1/2;
+.drive-workspace .drive-file-tile__avatar {
+  @apply flex shrink-0;
 }
 
 .drive-workspace .drive-selection-checkbox-wrap {
@@ -238,22 +227,16 @@
   color: var(--workspace-accent-foreground);
 }
 
-/*
- * File tiles: idle paper + the shared control hairline.
- * Inset shadow sits on ::after — opaque preview/footer otherwise cover a parent inset.
- */
+/* File tiles: idle paper + the shared control hairline (same as folder tiles). */
 .drive-workspace .drive-file-tile {
-  @apply relative overflow-hidden transition-all cursor-pointer outline-none;
-  border-radius: var(--control-radius);
+  @apply cursor-pointer;
   background-color: var(--workspace-surface);
-  box-shadow: none;
 }
 
 .drive-workspace .drive-file-tile::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 2;
   pointer-events: none;
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px var(--border);
@@ -263,31 +246,24 @@
   @apply opacity-40;
 }
 
-.drive-workspace
-  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
-  .drive-file-tile__preview,
-.drive-workspace
-  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
-  .drive-file-tile__footer {
+.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within) {
   background-color: var(--drive-item-hover-background);
 }
 
 .drive-workspace .drive-file-tile--selected {
-  box-shadow: none;
-}
-
-.drive-workspace .drive-file-tile--selected .drive-file-tile__preview,
-.drive-workspace .drive-file-tile--selected .drive-file-tile__footer {
   background: var(--drive-item-selected-background);
 }
 
-.drive-workspace .drive-file-tile--selected:hover .drive-file-tile__preview,
-.drive-workspace .drive-file-tile--selected:hover .drive-file-tile__footer {
+.drive-workspace .drive-file-tile--selected::after {
+  box-shadow: none;
+}
+
+.drive-workspace .drive-file-tile--selected:hover {
   background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-file-tile__star-badge {
-  @apply absolute top-2 right-2 z-10 pointer-events-none;
+  @apply size-3.5 shrink-0;
   color: var(--color-emerald);
 }
 
@@ -325,14 +301,45 @@
   @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
 
-.drive-workspace .drive-file-tile__title-row {
+.drive-workspace :is(.drive-file-tile__title-row, .drive-folder-tile__title-row) {
   @apply flex min-w-0 items-center gap-1.5;
 }
 
-.drive-workspace .drive-file-tile__title {
+.drive-workspace :is(.drive-file-tile__title, .drive-folder-tile__title) {
   /* Content-sized so share indicators sit next to the title (list-view adjacency). */
-  @apply min-w-0 truncate text-sm sm:text-[0.9375rem] font-medium;
-  color: var(--workspace-foreground);
+  @apply min-w-0 truncate text-sm font-medium;
+  color: var(--workspace-item-color, var(--workspace-foreground));
+}
+
+/*
+ * Details line: location · size · last modified, side by side. Segments keep
+ * their own width; the location shrinks first.
+ */
+.drive-workspace .drive-tile-meta {
+  @apply flex min-w-0 items-center text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 62%, transparent);
+}
+
+.drive-workspace .drive-tile-meta__segment {
+  @apply shrink-0 whitespace-nowrap;
+}
+
+.drive-workspace .drive-tile-meta__segment + .drive-tile-meta__segment::before {
+  content: "·";
+  margin-inline: 0.375rem;
+}
+
+.drive-workspace .drive-tile-meta__segment--location {
+  @apply flex min-w-0 shrink;
+}
+
+.drive-workspace .drive-tile-meta .drive-location-label {
+  @apply gap-1 text-xs;
+  color: inherit;
+}
+
+.drive-workspace .drive-tile-meta .drive-location-label__icon {
+  @apply size-3;
 }
 
 .drive-workspace .drive-file-tile__location {

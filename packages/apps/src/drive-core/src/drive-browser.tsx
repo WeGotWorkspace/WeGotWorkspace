@@ -20,8 +20,9 @@ import {
   DriveFileKindIcon,
   DriveLocationLabel,
   DriveShareIndicators,
+  DriveTileMeta,
 } from "@/drive-core/src/drive-browser-indicators";
-import { FilePreview } from "@/file-preview/src/file-preview";
+import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -167,6 +168,7 @@ export function DriveGridView({
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
                 isTouch={isTouch}
+                showLocation={showLocationColumn}
                 folderDropZone={folderDropZoneProps(driveFolderUiPath(f))}
                 itemDragHandlers={itemDragHandlers(f.id)}
                 onSelect={(e) => onSelect(f.id, e)}
@@ -348,35 +350,25 @@ function FileTile({
         onTouchEnd={pickerChrome ? undefined : lp.cancel}
         onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      {isStarred ? (
-        <span className="drive-file-tile__star-badge" aria-hidden="true">
-          <Star className="size-3.5" fill="currentColor" />
-        </span>
-      ) : null}
-      <div className="drive-file-tile__preview">
-        <FilePreview
-          fileKind={file.kind}
-          fileName={file.title}
-          fileApiPath={file.apiPath}
-          preview={preview}
-          variant="tile"
-          textMode="clamped"
-          mediaClassName="h-full w-full object-cover"
-        />
-      </div>
+      <DriveSelectionCheckbox
+        isSelected={isSelected}
+        selectionMode={selectionMode}
+        className="drive-file-tile__checkbox"
+      />
+      <span className="drive-file-tile__avatar">
+        <DriveFileAvatar file={file} preview={preview} />
+      </span>
       <div className="drive-file-tile__footer">
-        <DriveSelectionCheckbox
-          isSelected={isSelected}
-          selectionMode={selectionMode}
-          className="drive-file-tile__checkbox"
-        />
         <div className="drive-file-tile__text min-w-0 flex-1">
           <div className="drive-file-tile__title-row">
             <span className="drive-file-tile__title">{file.title}</span>
+            {isStarred ? (
+              <Star className="drive-file-tile__star-badge" fill="currentColor" aria-hidden />
+            ) : null}
             <DriveShareIndicators file={file} labels={labels} />
           </div>
           <DriveUploadStatus file={file} />
-          {showLocation && file.location ? <DriveLocationLabel file={file} /> : null}
+          <DriveTileMeta file={file} showLocation={showLocation} />
         </div>
         <div className="drive-file-tile__actions flex shrink-0 items-center">
           <DriveFileOfflinePinCell

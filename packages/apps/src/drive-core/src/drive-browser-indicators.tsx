@@ -5,6 +5,7 @@ import { kindIcon } from "@/drive-core/src/drive-icons";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
+import { formatDriveModified } from "@/drive-core/src/drive-list-sort";
 import { cn } from "@/lib/utils";
 
 /** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */
@@ -26,6 +27,34 @@ export function DriveLocationLabel({ file }: { file: DriveFile }) {
     <span className="drive-location-label">
       <Icon className="drive-location-label__icon" aria-hidden />
       <span className="drive-location-label__text">{file.location}</span>
+    </span>
+  );
+}
+
+/**
+ * A grid tile's details on one line, in segments: where it lives (when the view
+ * spans drives), its size and when it last changed. Empty segments drop out.
+ */
+export function DriveTileMeta({
+  file,
+  showLocation = false,
+}: {
+  file: DriveFile;
+  showLocation?: boolean;
+}) {
+  const size = file.kind === "folder" ? "" : file.size.trim();
+  const modified = formatDriveModified(file).trim();
+  const location = showLocation && file.location ? file.location : "";
+  if (!location && !size && !modified) return null;
+  return (
+    <span className="drive-tile-meta">
+      {location ? (
+        <span className="drive-tile-meta__segment drive-tile-meta__segment--location">
+          <DriveLocationLabel file={file} />
+        </span>
+      ) : null}
+      {size ? <span className="drive-tile-meta__segment tabular-nums">{size}</span> : null}
+      {modified ? <span className="drive-tile-meta__segment tabular-nums">{modified}</span> : null}
     </span>
   );
 }

@@ -66,7 +66,7 @@ describe("DriveGridView tile interaction", () => {
 
     const hit = screen.getByRole("button", { name: FILE.title });
     expect(hit.className).toContain("drive-tile__hit");
-    expect(container.querySelector(".drive-file-tile__preview")).toBeTruthy();
+    expect(container.querySelector(".drive-file-tile__avatar .drive-file-avatar")).toBeTruthy();
 
     fireEvent.click(hit);
     expect(onSelect).toHaveBeenCalledWith(FILE.id, expect.any(Object));
@@ -123,13 +123,13 @@ describe("DriveGridView tile interaction", () => {
     expect(onLongPress).toHaveBeenCalledWith(FILE.id);
   });
 
-  it("does not render a Files section heading above tiles", () => {
+  it("heads the tiles with the sticky Files bar", () => {
     render(
       <div className="drive-workspace">
         <DriveGridView {...baseBrowserProps()} />
       </div>,
     );
-    expect(screen.queryByRole("heading", { name: "Files" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Files" }).className).toContain("list-head-bar");
   });
 
   it("shows drive location under the tile title when enabled", () => {
