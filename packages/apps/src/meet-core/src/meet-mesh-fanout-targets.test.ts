@@ -5,13 +5,6 @@ import {
   meetMeshSenderMayHint,
 } from "@/meet-core/src/meet-mesh-fanout-targets";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
-
-const directory: CollectionSharePrincipal[] = [
-  { id: "bob", displayName: "Bob", principalType: "user" },
-  { id: "carol", displayName: "Carol", principalType: "user" },
-  { id: "groups/eng", displayName: "Eng", principalType: "group" },
-];
 
 function channel(overrides: Partial<MeetChannel> & Pick<MeetChannel, "id">): MeetChannel {
   return {
@@ -22,18 +15,49 @@ function channel(overrides: Partial<MeetChannel> & Pick<MeetChannel, "id">): Mee
   };
 }
 
+/** A Team channel: alice and bob are in the Team; carol is a coworker outside it. */
+const teamChannel = channel({
+  id: "chat-grp-eng",
+  scope: "group",
+  groupSlug: "eng",
+  members: ["alice", "bob"],
+});
+
 describe("meetMeshFanoutUsernames", () => {
   it("targets only the DM peer", () => {
+    expect(meetMeshFanoutUsernames({ channelId: "dm:bob", selfUsername: "alice" })).toEqual([
+      "bob",
+    ]);
+  });
+
+  it("targets the server roster of a Team channel and nobody outside it", () => {
     expect(
       meetMeshFanoutUsernames({
-        channelId: "dm:bob",
+        channelId: "chat-grp-eng",
         selfUsername: "alice",
-        directory,
+        channels: [teamChannel],
       }),
     ).toEqual(["bob"]);
   });
 
-  it("targets explicit shareWith users and skips groups and self", () => {
+  it("targets the roster of a shared channel, owner and group sharees included", () => {
+    expect(
+      meetMeshFanoutUsernames({
+        channelId: "chat-secret",
+        selfUsername: "bob",
+        channels: [
+          channel({
+            id: "chat-secret",
+            isSharee: true,
+            shareWith: null,
+            members: ["alice", "bob", "dave"],
+          }),
+        ],
+      }).sort(),
+    ).toEqual(["alice", "dave"]);
+  });
+
+  it("falls back to explicit user grants when the cached row has no roster", () => {
     expect(
       meetMeshFanoutUsernames({
         channelId: "chat-secret",
@@ -48,130 +72,104 @@ describe("meetMeshFanoutUsernames", () => {
             },
           }),
         ],
-        directory,
       }),
     ).toEqual(["bob"]);
   });
 
-  it("widens group-owned channels to directory users (receiver still ACL-drops)", () => {
+  it("sends a Team channel without a cached roster to nobody", () => {
     expect(
       meetMeshFanoutUsernames({
         channelId: "chat-grp-eng",
         selfUsername: "alice",
         channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
-        directory,
-      }).sort(),
-    ).toEqual(["bob", "carol"]);
+      }),
+    ).toEqual([]);
+  });
+
+  it("sends an unknown channel to nobody", () => {
+    expect(
+      meetMeshFanoutUsernames({
+        channelId: "chat-missing",
+        selfUsername: "alice",
+        channels: [teamChannel],
+      }),
+    ).toEqual([]);
   });
 
   it("unions share add and remove across snapshots", () => {
     expect(
-      meetMeshFanoutUsernamesUnion({ selfUsername: "alice", directory }, [
-        channel({
-          id: "chat-secret",
-          shareWith: { bob: { mayRead: true } },
-        }),
-        channel({
-          id: "chat-secret",
-          shareWith: { carol: { mayRead: true } },
-        }),
+      meetMeshFanoutUsernamesUnion({ selfUsername: "alice" }, [
+        channel({ id: "chat-secret", members: ["alice", "bob"] }),
+        channel({ id: "chat-secret", members: ["alice", "carol"] }),
       ]).sort(),
     ).toEqual(["bob", "carol"]);
-  });
-
-  it("returns nobody when membership cannot be resolved", () => {
-    expect(
-      meetMeshFanoutUsernames({
-        channelId: "chat-empty",
-        selfUsername: "alice",
-        channels: [channel({ id: "chat-empty" })],
-        directory,
-      }),
-    ).toEqual([]);
   });
 });
 
 describe("meetMeshSenderMayHint", () => {
   it("accepts only the DM peer", () => {
+    expect(meetMeshSenderMayHint({ channelId: "dm:bob", senderUsername: "bob" })).toBe(true);
+    expect(meetMeshSenderMayHint({ channelId: "dm:bob", senderUsername: "mallory" })).toBe(false);
+  });
+
+  it("accepts a Team channel member and drops a coworker outside the Team", () => {
     expect(
       meetMeshSenderMayHint({
-        channelId: "dm:bob",
+        channelId: "chat-grp-eng",
         senderUsername: "bob",
+        selfUsername: "alice",
+        channels: [teamChannel],
       }),
     ).toBe(true);
     expect(
       meetMeshSenderMayHint({
-        channelId: "dm:bob",
-        senderUsername: "mallory",
+        channelId: "chat-grp-eng",
+        senderUsername: "carol",
+        selfUsername: "alice",
+        channels: [teamChannel],
       }),
     ).toBe(false);
   });
 
-  it("drops a sender who is not in shareWith", () => {
+  it("drops a payload for a channel whose roster does not list the receiver", () => {
     expect(
       meetMeshSenderMayHint({
-        channelId: "chat-secret",
-        senderUsername: "mallory",
-        channels: [
-          channel({
-            id: "chat-secret",
-            shareWith: { bob: { mayRead: true } },
-          }),
-        ],
+        channelId: "chat-grp-eng",
+        senderUsername: "bob",
+        selfUsername: "carol",
+        channels: [teamChannel],
       }),
     ).toBe(false);
   });
 
-  it("accepts a sender listed in shareWith and skips group grants", () => {
+  it("compares usernames case-insensitively", () => {
+    expect(
+      meetMeshSenderMayHint({
+        channelId: "chat-grp-eng",
+        senderUsername: "Bob",
+        selfUsername: "ALICE",
+        channels: [teamChannel],
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back to explicit user grants and skips group grants", () => {
+    const shared = channel({
+      id: "chat-secret",
+      shareWith: { bob: { mayRead: true }, "groups/eng": { mayRead: true } },
+    });
     expect(
       meetMeshSenderMayHint({
         channelId: "chat-secret",
         senderUsername: "bob",
-        channels: [
-          channel({
-            id: "chat-secret",
-            shareWith: {
-              bob: { mayRead: true },
-              "groups/eng": { mayRead: true },
-            },
-          }),
-        ],
-        directory,
+        channels: [shared],
       }),
     ).toBe(true);
     expect(
       meetMeshSenderMayHint({
         channelId: "chat-secret",
         senderUsername: "carol",
-        channels: [
-          channel({
-            id: "chat-secret",
-            shareWith: {
-              bob: { mayRead: true },
-              "groups/eng": { mayRead: true },
-            },
-          }),
-        ],
-        directory,
-      }),
-    ).toBe(false);
-  });
-
-  it("accepts directory users on group-owned channels", () => {
-    expect(
-      meetMeshSenderMayHint({
-        channelId: "chat-grp-eng",
-        senderUsername: "carol",
-        channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
-        directory,
-      }),
-    ).toBe(true);
-    expect(
-      meetMeshSenderMayHint({
-        channelId: "chat-grp-eng",
-        senderUsername: "mallory",
-        channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
-        directory,
+        channels: [shared],
       }),
     ).toBe(false);
   });
@@ -179,17 +177,16 @@ describe("meetMeshSenderMayHint", () => {
   it("is fail-closed when membership cannot be resolved", () => {
     expect(
       meetMeshSenderMayHint({
-        channelId: "chat-empty",
+        channelId: "chat-grp-eng",
         senderUsername: "bob",
-        channels: [channel({ id: "chat-empty" })],
-        directory,
+        channels: [channel({ id: "chat-grp-eng", scope: "group", groupSlug: "eng" })],
       }),
     ).toBe(false);
     expect(
       meetMeshSenderMayHint({
         channelId: "chat-missing",
         senderUsername: "bob",
-        channels: [channel({ id: "chat-empty" })],
+        channels: [teamChannel],
       }),
     ).toBe(false);
   });

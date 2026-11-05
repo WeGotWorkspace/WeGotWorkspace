@@ -44,6 +44,7 @@ export const liveTierSpecs = [
   "meet-chat-push",
   "meet-guest-chat",
   "meet-guest-video-mirror",
+  "meet-mesh-channel-roster",
   "mesh-check-now",
   "notes-collab-access-lost",
   "notes-collab-missed-tail",

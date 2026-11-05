@@ -7,11 +7,16 @@ const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 
 export const OWNER = process.env.WGW_E2E_USERNAME ?? "admin";
 export const TEAMMATE = process.env.WGW_E2E_TEAMMATE ?? "member";
+const DEFAULT_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 const PASSWORDS: Record<string, string> = {
-  [OWNER]: process.env.WGW_E2E_PASSWORD ?? "storybook-dev",
-  [TEAMMATE]:
-    process.env.WGW_E2E_TEAMMATE_PASSWORD ?? process.env.WGW_E2E_PASSWORD ?? "storybook-dev",
+  [OWNER]: DEFAULT_PASSWORD,
+  [TEAMMATE]: process.env.WGW_E2E_TEAMMATE_PASSWORD ?? DEFAULT_PASSWORD,
 };
+
+/** A user a spec creates itself signs in with the dev install's default password. */
+export function passwordFor(user: string): string {
+  return PASSWORDS[user] ?? DEFAULT_PASSWORD;
+}
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -25,7 +30,7 @@ async function login(user: string): Promise<Login> {
     const res = await fetch(`${API}/api/v1/auth/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: user, password: PASSWORDS[user] }),
+      body: JSON.stringify({ username: user, password: passwordFor(user) }),
     });
     if (res.status === 429) {
       await sleep(10_000);

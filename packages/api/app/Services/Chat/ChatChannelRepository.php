@@ -437,6 +437,9 @@ final class ChatChannelRepository
             $rights['mayDelete'] = false;
         }
         $roster = $this->rosterUsernames($instance, $groupSlug);
+        // The channel's readers: the presence mesh sends message previews to them only.
+        $members = array_values(array_unique(array_map('strtolower', $roster)));
+        sort($members);
 
         return [
             'id' => $uri,
@@ -453,6 +456,7 @@ final class ChatChannelRepository
             'guestRoomCode' => $meta?->room_code,
             'dmPeer' => $kind === ChatChannelMeta::KIND_DM ? $this->dmPeerFromRoster($username, $roster) : null,
             'memberCount' => count($roster),
+            'members' => $members,
             'unreadCount' => $this->unreadCounter->count($username, (int) $instance->calendarid),
         ];
     }

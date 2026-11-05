@@ -20,7 +20,6 @@ import type { MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 import type { PresenceStore } from "@/presence-core/src/presence-store";
 import type { PresenceEnvelope } from "@/presence-core/src/presence-types";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 
 export function useMeetMeshSync({
   operations,
@@ -28,7 +27,6 @@ export function useMeetMeshSync({
   username,
   selfUsername,
   channels,
-  directory,
   onApplied,
 }: {
   operations?: MeetChatOperations;
@@ -36,7 +34,6 @@ export function useMeetMeshSync({
   username: string | null;
   selfUsername: string | null | undefined;
   channels: readonly MeetChannel[];
-  directory?: readonly CollectionSharePrincipal[];
   onApplied?: () => void;
 }): {
   meshCallActive: Record<string, boolean>;
@@ -51,8 +48,6 @@ export function useMeetMeshSync({
   onAppliedRef.current = onApplied;
   const channelsRef = useRef(channels);
   channelsRef.current = channels;
-  const directoryRef = useRef(directory);
-  directoryRef.current = directory;
   const usernameRef = useRef(username);
   usernameRef.current = username;
   const selfRef = useRef(selfUsername);
@@ -100,7 +95,7 @@ export function useMeetMeshSync({
         knownChannelIds: knownChannelIdsRef.current,
         acl: {
           channels: channelsRef.current,
-          directory: directoryRef.current,
+          self: account,
         },
       }).then((result) => {
         if (result === "applied") onAppliedRef.current?.();
@@ -116,13 +111,9 @@ export function useMeetMeshSync({
         channelId,
         selfUsername: selfRef.current,
         channels: channelsRef.current,
-        directory: directoryRef.current,
       });
     }
-    return meetMeshFanoutUsernamesUnion(
-      { selfUsername: selfRef.current, directory: directoryRef.current },
-      rows,
-    );
+    return meetMeshFanoutUsernamesUnion({ selfUsername: selfRef.current }, rows);
   }, []);
 
   const sendToUsernames = useCallback(

@@ -11893,6 +11893,8 @@ export interface components {
             dmPeer?: string | null;
             /** @description Roster size (owner plus sharees, groups expanded). */
             memberCount?: number;
+            /** @description Usernames on the roster (owner plus sharees, groups expanded), lowercase and sorted. Clients send presence-mesh message previews only to these users. */
+            members?: string[];
             /** @description Unread messages after the caller's read marker, own messages excluded. */
             unreadCount?: number;
         };

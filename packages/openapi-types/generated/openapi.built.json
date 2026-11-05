@@ -10017,6 +10017,13 @@
                         "minimum": 0,
                         "description": "Roster size (owner plus sharees, groups expanded)."
                     },
+                    "members": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Usernames on the roster (owner plus sharees, groups expanded), lowercase and sorted. Clients send presence-mesh message previews only to these users."
+                    },
                     "unreadCount": {
                         "type": "integer",
                         "minimum": 0,

@@ -5,7 +5,7 @@
  * every hint we put on the principal presence mesh: apply (Dexie ingest) and
  * wrap (fan out after a successful local write). Payloads are untrusted —
  * `authorId` / reactor must match the signaling sender; the sender must be a
- * local ACL member (`shareWith` / group directory). Unknown channels are
+ * reader on the channel's `members` roster. Unknown channels are
  * dropped. Every successful write also sends the channel's members a
  * content-free `check-now`, so their push hub asks the server at once (#1662).
  */

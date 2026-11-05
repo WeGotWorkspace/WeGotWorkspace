@@ -156,8 +156,19 @@ The other user's event-source requests started 3.05 s apart, then 5.05 s apart o
 
 The principal presence mesh already carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`):
 
-- `channel-message`, `-patch`, `-destroy`, `channel-reaction`: the message itself, checked on arrival (sender is the author, sender is an ACL member), and confirmed by the server poll.
+- `channel-message`, `-patch`, `-destroy`, `channel-reaction`: the message itself, sent only to the channel's readers, checked on arrival (sender is the author, sender and receiver are both readers), and confirmed by the server poll.
 - `check-now`: no content; the receiver's push hub asks the server now (#1662). It replaced `channel-changed` and `notify-hint`.
+
+Who receives a chat preview, and the chat `check-now` that follows it (`meet-core/src/meet-mesh-fanout-targets.ts`):
+
+| Channel | Receivers |
+|---|---|
+| DM | the other person |
+| Team channel, shared channel, meeting chat | the channel's `members`: the server roster (owner side plus sharees, Teams expanded), minus the writer |
+| A cached row without `members` | its explicit user grants in `shareWith`; nobody for a Team channel |
+| A channel the writer has not cached | nobody |
+
+Never the presence room as a whole: it holds every signed-in coworker who is online, and most of them cannot read the channel. Guests do not join the presence room. A receiver drops a preview for a channel it does not hold, or whose cached roster lacks the sender or itself, before anything is stored. Unit tests pin this in `meet-mesh-fanout-targets.test.ts`; the live spec `meet-mesh-channel-roster` checks a coworker outside the Team gets no frame.
 
 How `check-now` works:
 
@@ -169,7 +180,7 @@ How `check-now` works:
 
 - Writes that come from an active collab room (Yjs saves of a note or doc being edited together) send no check-now: the Yjs channel has delivered the content, and the event source catches the metadata within its retry.
 - The receiving hub reconnects its event source at once. It allows at most one early reconnect per 2 s, so even a storm of writes costs each browser at most 30 extra requests a minute.
-- Built (#1662): the writer's audience comes from `X-Wgw-Notified` (active news: the server names the users this request notified) and from the cached `shareWith` user grants of the collection (silent news, `lib/offline/core/collection-check-now.ts`). Group grants, group collections and Drive have no member list on the client, so they nudge nobody. Meet chat keeps its own channel targets (`meet-mesh-sot.ts`).
+- Built (#1662): the writer's audience comes from `X-Wgw-Notified` (active news: the server names the users this request notified) and from the cached `shareWith` user grants of the collection (silent news, `lib/offline/core/collection-check-now.ts`). Group grants, group collections and Drive have no member list on the client, so they nudge nobody. Meet chat sends its check-now to the same channel `members` as its previews (`meet-mesh-sot.ts`).
 - The chat preview kinds stay as they are, under rule 9.
 
 ### Rule 9: when a transport may carry content
@@ -177,6 +188,7 @@ How `check-now` works:
 A preview is allowed only when all of these hold:
 
 - the item is small and self-contained (a chat message, not a file listing);
+- the sender sends it only to the users the server lists as readers of the collection, never to the presence room as a whole;
 - the receiver checks the sender against the collection's ACL it already holds;
 - the server confirms it: the next sync replaces the preview with the stored item, or removes it;
 - losing the preview loses nothing, because the event source delivers the same change.
