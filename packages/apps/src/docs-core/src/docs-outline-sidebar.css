@@ -1,6 +1,6 @@
 @import "../../styles.css" reference;
 
-/* Spike: tree outline (no numbers). Depth indents; top rows show a fold chevron or a dot. */
+/* Tree outline (no numbers). Depth indents; top rows show a fold chevron or a dot. */
 .docs-outline-sidebar__chevron {
   @apply block size-4 shrink-0;
 }

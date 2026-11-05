@@ -68,7 +68,7 @@
   opacity: 0.85;
 }
 
-/* Spike: decision row under the change — labelled, full width (Accept solid green). */
+/* Decision row under the change — labelled, full width (Accept solid green). */
 .docs-suggestion-card__decision {
   @apply mt-4 grid grid-cols-2 gap-2.5;
 }

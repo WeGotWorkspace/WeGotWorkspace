@@ -1510,7 +1510,7 @@
 }
 
 /*
- * Spike (dark): track changes as tinted chips — green insert with a hairline edge,
+ * Dark: track changes as tinted chips — green insert with a hairline edge,
  * rose strike-through delete. Shared by editor marks and review-card previews.
  */
 :root[data-theme="dark"] .text-editor-prose ins[data-change-id] {

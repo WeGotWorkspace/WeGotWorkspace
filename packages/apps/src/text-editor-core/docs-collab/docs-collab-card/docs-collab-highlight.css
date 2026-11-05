@@ -88,7 +88,7 @@
   background: var(--text-editor-highlight);
 }
 
-/* Spike (dark): same chips as the editor's track-change marks. */
+/* Dark: same chips as the editor's track-change marks. */
 :root[data-theme="dark"] .docs-collab-highlight--insertion {
   border-bottom: 0;
   border-radius: 0.25rem;
