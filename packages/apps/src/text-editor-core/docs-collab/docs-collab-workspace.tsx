@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Pencil } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
@@ -114,6 +115,8 @@ export type DocsCollabWorkspaceProps = {
   driveUsername?: string;
   /** Doc virtual path (`/users/…/file.md`) for `.attachments/{docFnId}/` uploads. */
   docApiPath?: string;
+  /** Opens the rename dialog; the pencil next to the title shows only when set (and editable). */
+  onRename?: () => void;
 };
 
 function countWords(text: string): number {
@@ -143,6 +146,7 @@ export function DocsCollabWorkspace({
   driveOperations,
   driveUsername,
   docApiPath,
+  onRename,
 }: DocsCollabWorkspaceProps = {}) {
   const { userName, promptDismissed } = useDocsCollabUserName(userNameProp);
 
@@ -170,6 +174,7 @@ export function DocsCollabWorkspace({
       driveOperations={driveOperations}
       driveUsername={driveUsername}
       docApiPath={docApiPath}
+      onRename={onRename}
     />
   );
 }
@@ -187,6 +192,7 @@ function DocsCollabWorkspaceInner({
   driveOperations,
   driveUsername,
   docApiPath,
+  onRename,
 }: {
   userName: string;
   documentTitle?: string;
@@ -200,6 +206,7 @@ function DocsCollabWorkspaceInner({
   driveOperations?: DriveAPIOperations;
   driveUsername?: string;
   docApiPath?: string;
+  onRename?: () => void;
 }) {
   const labels = docsLabels;
   const reportDocumentGoneRef = useRef<() => void>(() => undefined);
@@ -634,6 +641,19 @@ function DocsCollabWorkspaceInner({
               title={resolvedDocumentTitle}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
+              // Rename sits on the name it changes (same pencil as the non-collab header).
+              titleSuffix={
+                onRename && permissions.editable ? (
+                  <IconButton
+                    label={labels.rename}
+                    icon={<Pencil />}
+                    size="sm"
+                    variant="outline"
+                    className="docs-workspace__rename"
+                    onClick={onRename}
+                  />
+                ) : undefined
+              }
               actions={
                 <DocsHeaderActions
                   leading={
