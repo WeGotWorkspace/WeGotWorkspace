@@ -116,7 +116,8 @@
 
 .docs-collab-card[data-active="true"] {
   border-color: color-mix(in oklch, var(--workspace-foreground) 14%, transparent);
-  box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.6);
+  /* Lifted like a panel over content: the theme's overlay shadow, not a literal. */
+  box-shadow: 0 18px 40px -20px var(--scheme-panel-overlay-shadow-color);
 }
 
 .docs-collab-card__avatar .user-avatar__mark {
