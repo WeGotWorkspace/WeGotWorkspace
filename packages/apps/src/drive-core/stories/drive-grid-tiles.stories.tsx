@@ -66,8 +66,8 @@ const meta = {
   ],
   parameters: driveStoryParameters({
     componentDescription:
-      "Grid tiles (suite file norm), shared by Drive and Docs: landscape cards with an avatar (image thumbnail, else the extension on its own colour, else the folder icon), the name, and a details line with location · size · last modified.",
-    snippet: `<DriveGridView items={files} filePreviews={previews} showLocationColumn … />`,
+      "Grid tiles (suite file norm), shared by Drive and Docs: landscape cards with an avatar (image thumbnail, else the extension on its own colour, else the folder icon), the name, and a details line with size · last modified.",
+    snippet: `<DriveGridView items={files} filePreviews={previews} … />`,
   }),
   args: {
     ...createDriveBrowserStoryProps({
@@ -111,35 +111,26 @@ export const Tiles: Story = {
   },
 };
 
-/** The details line: location, size and last modified side by side, in that order. */
+/** The details line: size and last modified side by side; no drive (no room on a tile). */
 export const DetailsLine: Story = {
   play: async ({ canvasElement }) => {
-    const meta = tileFor(canvasElement, "Meeting notes.md").querySelector(".drive-tile-meta")!;
+    const tile = tileFor(canvasElement, "Meeting notes.md");
+    const meta = tile.querySelector(".drive-tile-meta")!;
     const segments = Array.from(meta.querySelectorAll(".drive-tile-meta__segment")).map(
       (segment) => segment.textContent,
     );
-    await expect(segments[0]).toBe("Administrators");
-    await expect(segments[1]).toBe("4 KB");
-    await expect(segments).toHaveLength(3);
+    await expect(segments).toHaveLength(2);
+    await expect(segments[0]).toBe("4 KB");
+    await expect(within(tile).queryByText("Administrators")).not.toBeInTheDocument();
     await expect(getComputedStyle(meta).display).toBe("flex");
     // Landscape: the avatar sits beside the name, not above it.
-    const tile = tileFor(canvasElement, "Meeting notes.md").getBoundingClientRect();
-    await expect(tile.width).toBeGreaterThan(tile.height * 2);
+    const box = tile.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThan(box.height * 2);
     // Folders have no size.
     await expect(
       within(canvasElement.querySelector('[aria-label="Folders"]') as HTMLElement).queryByText(
         /KB|MB/,
       ),
-    ).not.toBeInTheDocument();
-  },
-};
-
-/** Without a cross-drive view the location drops out of the details line. */
-export const WithoutLocation: Story = {
-  args: { showLocationColumn: false },
-  play: async ({ canvasElement }) => {
-    await expect(
-      within(tileFor(canvasElement, "Meeting notes.md")).queryByText("Administrators"),
     ).not.toBeInTheDocument();
   },
 };

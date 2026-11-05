@@ -1,7 +1,8 @@
 @import "../../styles.css" reference;
 
 /*
- * File avatar (suite file norm): the square at the start of a grid tile. An
+ * File avatar (suite file norm): the square at the start of a grid tile or,
+ * smaller, a list row. An
  * extension label sits on its own hue; lightness and chroma are fixed per theme,
  * so every hue keeps the same contrast (label ≥ 4.5:1 on its wash).
  */
@@ -59,4 +60,22 @@
   inset: 0;
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+}
+
+/* List rows: the same avatar, small enough to sit in a 3rem row. */
+.drive-file-avatar--sm {
+  --file-avatar-size: 2rem;
+  --file-avatar-radius: calc(var(--control-radius, 0.5rem) - 0.25rem);
+}
+
+.drive-file-avatar--sm svg {
+  @apply size-4;
+}
+
+.drive-file-avatar--sm.drive-file-avatar--extension {
+  font-size: 0.625rem;
+}
+
+.drive-file-avatar--sm.drive-file-avatar--long {
+  font-size: 0.5rem;
 }

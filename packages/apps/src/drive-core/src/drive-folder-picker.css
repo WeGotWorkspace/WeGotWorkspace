@@ -46,8 +46,6 @@
     .drive-folder-tile__icon,
     .drive-folder-tile__star,
     .drive-list-folder-icon,
-    .drive-list-file-icon,
-    .drive-file-tile__kind-icon,
     .drive-file-tile__star-badge
   ) {
   color: var(--workspace-accent);

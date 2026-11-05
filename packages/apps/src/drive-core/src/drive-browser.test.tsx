@@ -132,7 +132,7 @@ describe("DriveGridView tile interaction", () => {
     expect(screen.getByRole("heading", { name: "Files" }).className).toContain("list-head-bar");
   });
 
-  it("shows drive location under the tile title when enabled", () => {
+  it("leaves the drive out of a tile's details line, even across drives", () => {
     render(
       <div className="drive-workspace">
         <DriveGridView
@@ -143,8 +143,8 @@ describe("DriveGridView tile interaction", () => {
         />
       </div>,
     );
-    expect(screen.getByText("Personal")).toBeTruthy();
-    expect(document.querySelector(".drive-location-label")).toBeTruthy();
+    expect(screen.queryByText("Personal")).toBeNull();
+    expect(screen.getByText(FILE.size)).toBeTruthy();
   });
 
   it("hides overflow actions and drag in picker chrome", () => {

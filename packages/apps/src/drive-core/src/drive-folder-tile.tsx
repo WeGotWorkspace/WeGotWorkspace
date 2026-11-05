@@ -25,7 +25,6 @@ export function DriveFolderTile({
   isStarred,
   isDragging,
   isTouch,
-  showLocation = false,
   folderDropZone,
   itemDragHandlers,
   onSelect,
@@ -50,8 +49,6 @@ export function DriveFolderTile({
   isStarred: boolean;
   isDragging: boolean;
   isTouch: boolean;
-  /** Where the folder lives, in its details line (views that span drives). */
-  showLocation?: boolean;
   folderDropZone: FolderDropZoneProps;
   itemDragHandlers: ItemDragHandlers;
   onSelect: (e: React.MouseEvent) => void;
@@ -125,7 +122,7 @@ export function DriveFolderTile({
           <DriveShareIndicators file={file} labels={labels} />
         </span>
         <DriveUploadStatus file={file} />
-        <DriveTileMeta file={file} showLocation={showLocation} />
+        <DriveTileMeta file={file} />
       </span>
       {pickerChrome ? null : (
         <DriveFileItemActions

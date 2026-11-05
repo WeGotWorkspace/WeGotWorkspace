@@ -17,7 +17,6 @@ import {
 import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { DriveUploadRing } from "@/drive-core/src/drive-upload-ring";
 import {
-  DriveFileKindIcon,
   DriveLocationLabel,
   DriveShareIndicators,
   DriveTileMeta,
@@ -100,7 +99,6 @@ export function DriveGridView({
   onShare,
   fileCanShare,
   fileCanManageStructure,
-  showLocationColumn = false,
   offlineAvailableIds,
   offlinePendingSyncIds,
   offlineEnabled = false,
@@ -116,7 +114,7 @@ export function DriveGridView({
   starred: Record<string, boolean>;
   labels: DriveUILabels;
   searchActive?: boolean;
-  /** Show each file's drive location as a subtitle under the tile title. */
+  /** Shared with the list view; tiles leave the drive out (no room). */
   showLocationColumn?: boolean;
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
@@ -168,7 +166,6 @@ export function DriveGridView({
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
                 isTouch={isTouch}
-                showLocation={showLocationColumn}
                 folderDropZone={folderDropZoneProps(driveFolderUiPath(f))}
                 itemDragHandlers={itemDragHandlers(f.id)}
                 onSelect={(e) => onSelect(f.id, e)}
@@ -205,7 +202,6 @@ export function DriveGridView({
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
                 isTouch={isTouch}
-                showLocation={showLocationColumn}
                 isOfflineAvailable={offlineAvailableIds?.has(f.id) ?? false}
                 isOfflinePendingSync={offlinePendingSyncIds?.has(f.id) ?? false}
                 offlineEnabled={offlineEnabled}
@@ -255,7 +251,6 @@ function FileTile({
   isStarred,
   isDragging,
   isTouch,
-  showLocation = false,
   isOfflineAvailable = false,
   isOfflinePendingSync = false,
   offlineEnabled = false,
@@ -286,7 +281,6 @@ function FileTile({
   isStarred: boolean;
   isDragging: boolean;
   isTouch: boolean;
-  showLocation?: boolean;
   isOfflineAvailable?: boolean;
   isOfflinePendingSync?: boolean;
   offlineEnabled?: boolean;
@@ -368,7 +362,7 @@ function FileTile({
             <DriveShareIndicators file={file} labels={labels} />
           </div>
           <DriveUploadStatus file={file} />
-          <DriveTileMeta file={file} showLocation={showLocation} />
+          <DriveTileMeta file={file} />
         </div>
         <div className="drive-file-tile__actions flex shrink-0 items-center">
           <DriveFileOfflinePinCell
@@ -626,7 +620,7 @@ export function DriveListView({
                       selectionMode={selectionMode}
                       className="drive-list-row__checkbox"
                     />
-                    <DriveFileKindIcon file={f} listStyle />
+                    <DriveFileAvatar file={f} size="sm" />
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <span className="min-w-0 truncate font-medium">{f.title}</span>
                       <DriveShareIndicators file={f} labels={labels} />

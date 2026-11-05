@@ -17,16 +17,23 @@ import "@/drive-core/src/drive-file-avatar.css";
 export function DriveFileAvatar({
   file,
   preview,
+  size = "md",
 }: {
   file: DriveFile;
   preview?: FilePreviewPayload;
+  /** `sm` for list rows; `md` for grid tiles. */
+  size?: "sm" | "md";
 }) {
+  const sizeClass = size === "sm" ? "drive-file-avatar--sm" : undefined;
   const [failed, setFailed] = useState(false);
 
   if (file.kind === "folder") {
     const Icon = isDrivePickerRootFile(file) ? HardDrive : Folder;
     return (
-      <span className="drive-file-avatar drive-file-avatar--folder" aria-hidden="true">
+      <span
+        className={cn("drive-file-avatar drive-file-avatar--folder", sizeClass)}
+        aria-hidden="true"
+      >
         <Icon className="drive-folder-tile__icon" />
       </span>
     );
@@ -42,7 +49,10 @@ export function DriveFileAvatar({
 
   if (thumbnailUrl) {
     return (
-      <span className="drive-file-avatar drive-file-avatar--thumbnail" aria-hidden="true">
+      <span
+        className={cn("drive-file-avatar drive-file-avatar--thumbnail", sizeClass)}
+        aria-hidden="true"
+      >
         <img src={thumbnailUrl} alt="" loading="lazy" onError={() => setFailed(true)} />
       </span>
     );
@@ -52,7 +62,10 @@ export function DriveFileAvatar({
   const label = extensionAvatarLabel(file.title);
   if (!label) {
     return (
-      <span className="drive-file-avatar drive-file-avatar--kind" aria-hidden="true">
+      <span
+        className={cn("drive-file-avatar drive-file-avatar--kind", sizeClass)}
+        aria-hidden="true"
+      >
         {kindIcon[file.kind]}
       </span>
     );
@@ -63,6 +76,7 @@ export function DriveFileAvatar({
       className={cn(
         "drive-file-avatar drive-file-avatar--extension",
         label.length > 3 && "drive-file-avatar--long",
+        sizeClass,
       )}
       style={{ "--file-avatar-hue": extensionHue(extension) } as CSSProperties}
       data-extension={extension}

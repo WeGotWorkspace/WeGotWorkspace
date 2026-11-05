@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
-import { Folder, Globe2, HardDrive, Share, Share2, Users2 } from "lucide-react";
+import { Globe2, HardDrive, Share, Share2, Users2 } from "lucide-react";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { kindIcon } from "@/drive-core/src/drive-icons";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
-import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import { formatDriveModified } from "@/drive-core/src/drive-list-sort";
-import { cn } from "@/lib/utils";
 
 /** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */
 function isSharedByLocation(file: DriveFile): boolean {
@@ -32,27 +29,15 @@ export function DriveLocationLabel({ file }: { file: DriveFile }) {
 }
 
 /**
- * A grid tile's details on one line, in segments: where it lives (when the view
- * spans drives), its size and when it last changed. Empty segments drop out.
+ * A grid tile's details on one line: size and when it last changed. Empty
+ * segments drop out. The drive is left out; a tile has no room for it.
  */
-export function DriveTileMeta({
-  file,
-  showLocation = false,
-}: {
-  file: DriveFile;
-  showLocation?: boolean;
-}) {
+export function DriveTileMeta({ file }: { file: DriveFile }) {
   const size = file.kind === "folder" ? "" : file.size.trim();
   const modified = formatDriveModified(file).trim();
-  const location = showLocation && file.location ? file.location : "";
-  if (!location && !size && !modified) return null;
+  if (!size && !modified) return null;
   return (
     <span className="drive-tile-meta">
-      {location ? (
-        <span className="drive-tile-meta__segment drive-tile-meta__segment--location">
-          <DriveLocationLabel file={file} />
-        </span>
-      ) : null}
       {size ? <span className="drive-tile-meta__segment tabular-nums">{size}</span> : null}
       {modified ? <span className="drive-tile-meta__segment tabular-nums">{modified}</span> : null}
     </span>
@@ -108,41 +93,6 @@ export function DriveShareIndicators({
           <Share2 className="drive-shared-indicator__icon" aria-hidden />
         </DriveShareIndicatorIcon>
       ) : null}
-    </span>
-  );
-}
-
-export function DriveFileKindIcon({
-  file,
-  listStyle = false,
-}: {
-  file: DriveFile;
-  listStyle?: boolean;
-}) {
-  if (isDrivePickerRootFile(file)) {
-    return (
-      <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
-        <HardDrive className="size-4" />
-      </span>
-    );
-  }
-
-  if (file.kind === "folder") {
-    return (
-      <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
-        <Folder className="size-4" />
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className={cn(
-        "shrink-0",
-        listStyle ? "drive-list-file-icon [&>svg]:size-4" : "drive-file-tile__kind-icon",
-      )}
-    >
-      {kindIcon[file.kind]}
     </span>
   );
 }
