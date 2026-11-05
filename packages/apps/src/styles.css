@@ -166,6 +166,10 @@
   --workspace-header-height: calc(
     var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
   );
+  /* Text inset of a detail sheet (Notes note, Contacts card), phones included. */
+  --workspace-detail-sheet-padding-x: 1.5rem;
+  /* Detail page title (note, task, event, selection summary): 28px on phones, 36px from md. */
+  --workspace-detail-title-size: 1.75rem;
   /*
    * Floating toolbars: Docs format pill, selection bar, Meet controls and mini player.
    * One padding, radius, gap and separator; controls are `lg`. Narrow hosts step down
@@ -517,7 +521,9 @@ select {
   .input,
   .input__field,
   .textarea,
-  .tag-group__input {
+  .tag-group__input,
+  /* Its "Add tag" button too: same text before and after focus (chips: tag.css). */
+  .tag-group__add-button {
     --input-font-size-xs: 1rem;
     --input-font-size-sm: 1rem;
     --input-font-size-md: 1rem;
@@ -546,7 +552,21 @@ select {
 
   .text-editor,
   .text-editor-prose {
-    --text-editor-prose-font-size: 1rem;
+    --text-editor-prose-font-size: 0.9375rem;
+  }
+
+  /*
+   * iOS Safari zooms in when the focused element's own text is under 16px. For
+   * the editor that is the contenteditable root, so the root stays 16px and its
+   * blocks take the 15px body size. `:where` keeps this at zero specificity, so
+   * heading sizes still win.
+   */
+  .text-editor-prose[contenteditable="true"] {
+    font-size: 1rem;
+  }
+
+  :where(.text-editor-prose[contenteditable="true"]) > * {
+    font-size: var(--text-editor-prose-font-size);
   }
 }
 
@@ -558,6 +578,7 @@ select {
 
 @media (min-width: 768px) {
   :root {
+    --workspace-detail-title-size: 2.25rem;
     --workspace-header-padding-y: 1.375rem;
     --workspace-header-height: calc(
       var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px

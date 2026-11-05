@@ -69,7 +69,7 @@ export function MultiSelectionView({
       <h1
         className={cn(
           "multi-selection-view__title font-sans font-semibold leading-[1.1] tracking-tight",
-          compact ? "text-xl" : "text-3xl md:text-4xl",
+          compact ? "text-xl" : "text-[length:var(--workspace-detail-title-size)]",
         )}
       >
         {resolvedTitle}

@@ -6,6 +6,11 @@
  */
 .collection-list-pane {
   @apply relative flex min-w-0 flex-1 shrink-0 flex-col md:w-[26rem] md:flex-none xl:w-[28rem];
+  /*
+   * Own stacking context: the floating search and selection bar stay under the
+   * phone detail pane (z-20) that slides over this column, not on top of it.
+   */
+  isolation: isolate;
   /* Named so sticky bits inside the list (letter headings) can paint the same fill. */
   --collection-list-pane-fill: var(
     --collection-list-pane-bg,

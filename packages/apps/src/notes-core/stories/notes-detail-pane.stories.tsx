@@ -160,7 +160,7 @@ export const Editable: Story = {
   },
 };
 
-/** Tags are touch-safe chips (30px with a mouse, 44px on touch) right under the title. */
+/** Tags are 30px chips right under the title; on touch the remove target grows invisibly to 44px. */
 export const TouchSafeTags: Story = {
   tags: ["vitest-ci"],
   args: {},
@@ -169,14 +169,12 @@ export const TouchSafeTags: Story = {
     const group = canvasElement.querySelector(".note-detail-view__tag-group") as HTMLElement;
     const chip = group.querySelector(".tag") as HTMLElement;
     const remove = chip.querySelector(".tag__remove") as HTMLElement;
-    const minHeight = matchMedia("(pointer: coarse)").matches ? 44 : 30;
-
     const chipBox = chip.getBoundingClientRect();
-    await expect(chipBox.height).toBeGreaterThanOrEqual(minHeight);
+    await expect(Math.round(chipBox.height)).toBe(30);
     // The remove target spans the chip's full height and reaches its end edge.
     const removeBox = remove.getBoundingClientRect();
     await expect(removeBox.height).toBe(chipBox.height);
-    await expect(removeBox.width).toBeGreaterThanOrEqual(minHeight);
+    await expect(removeBox.width).toBeGreaterThanOrEqual(30);
     await expect(Math.round(removeBox.right)).toBe(Math.round(chipBox.right));
     // Close under the title.
     const gap = group.getBoundingClientRect().top - title.getBoundingClientRect().bottom;

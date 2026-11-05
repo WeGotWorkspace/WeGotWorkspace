@@ -12,8 +12,8 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive chips (Notes detail and sidebar): 30px with a mouse, 44px
- * (`--control-height-xl`) on a touch screen. */
+/* Interactive chips (Notes detail and sidebar): 30px on every screen. On touch
+ * the remove and Add tag targets grow invisibly to 44px instead (below). */
 .tag-group--size-lg {
   --tag-height: 1.875rem;
   --tag-font-size: 0.875rem;
@@ -21,13 +21,6 @@
   --tag-padding-inline: 0.875rem;
   --tag-gap: 0.375rem;
   @apply gap-2;
-}
-
-@media (pointer: coarse) {
-  .tag-group--size-lg {
-    --tag-height: var(--control-height-xl, 2.75rem);
-    --tag-padding-inline: 1rem;
-  }
 }
 
 .tag {
@@ -54,10 +47,12 @@
   --tag-gap: 0.375rem;
 }
 
-@media (pointer: coarse) {
+/* Phones: the Add tag field must be 16px (iOS zooms smaller fields on focus),
+ * so the chips beside it take the same text size. */
+@media (max-width: 767px) {
+  .tag-group--size-lg,
   .tag--size-lg {
-    --tag-height: var(--control-height-xl, 2.75rem);
-    --tag-padding-inline: 1rem;
+    --tag-font-size: 1rem;
   }
 }
 
@@ -119,6 +114,22 @@
   border-end-end-radius: inherit;
 }
 
+/* Touch: a 44px (`--control-height-xl`) target around the remove button and
+ * Add tag, without growing the chip. */
+@media (pointer: coarse) {
+  .tag__remove::before,
+  .tag-group__add-button::before {
+    content: "";
+    position: absolute;
+    inset-block: calc((var(--tag-height, 1.5rem) - var(--control-height-xl, 2.75rem)) / 2);
+    inset-inline: 0;
+  }
+
+  .tag__remove::before {
+    inset-inline: calc((var(--tag-height, 1.5rem) - var(--control-height-xl, 2.75rem)) / 2);
+  }
+}
+
 .tag__remove svg {
   width: var(--tag-icon-size, 0.75rem);
   height: var(--tag-icon-size, 0.75rem);
@@ -153,7 +164,7 @@
 }
 
 .tag-group__add-button {
-  @apply inline-flex shrink-0 items-center;
+  @apply relative inline-flex shrink-0 items-center;
   color: var(--tag-group-add-fg, color-mix(in oklch, var(--workspace-foreground) 60%, transparent));
   transition: color 150ms ease;
 }

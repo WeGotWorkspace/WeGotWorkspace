@@ -139,7 +139,7 @@
 
 /*
  * Note paper sits on the cream desk. Horizontal gutters stay flushed
- * (`padding-inline: 0`) so the sheet owns `--notes-pane-padding-x`. Block
+ * (`padding-inline: 0`) so the sheet owns `--workspace-detail-sheet-padding-x`. Block
  * padding is a modest desk gap under the action-bar and a small gap above
  * the footer — not the pane defaults (`pt-6 pb-10` / `md:pt-12 md:pb-16`).
  * Min-height fills the scrollport (minus desk pads); height grows with
@@ -152,9 +152,8 @@
 }
 
 .notes-workspace .note-detail-view.paper-sheet {
-  /* Match list gutter; note-detail-view.css carries the same defaults.
+  /* Inset comes from note-detail-view.css (`--workspace-detail-sheet-padding-x`).
    * Scrollport floor via shared `.paper-sheet` + `--paper-sheet-min-height`. */
-  padding-inline: var(--notes-pane-padding-x);
   --paper-sheet-min-height: calc(
     100% - var(--note-detail-sheet-desk-pad-block-start) -
       var(--note-detail-sheet-desk-pad-block-end)
