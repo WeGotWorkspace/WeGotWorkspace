@@ -114,7 +114,7 @@ describe("useMeetMeshSync", () => {
     expect(session.sentTo[0]?.envelope.kind).toBe("channel-message");
     expect(session.sentTo[1]).toEqual({
       peerId: "bob-aaa111",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
   });
 

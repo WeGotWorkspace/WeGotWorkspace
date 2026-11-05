@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notify;
 
 use App\Models\Notification;
+use App\Services\Notify\NotifiedRecipients;
 use App\Services\Notify\TaskStatusChangedNotify;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
@@ -42,7 +43,10 @@ final class TaskStatusChangedNotifyTest extends WgwDatabaseTestCase
         $this->asUser('alice')->patchJson($url, [
             'workflowStatus' => 'completed',
             'progress' => 100,
-        ], $this->withIfMatch($this->fetchEtagFromGetAs('alice', $url)))->assertOk();
+        ], $this->withIfMatch($this->fetchEtagFromGetAs('alice', $url)))
+            ->assertOk()
+            // The writer learns whom to send a mesh check-now (#1662).
+            ->assertHeader(NotifiedRecipients::HEADER, 'bob');
 
         $this->assertSame(1, Notification::query()->where('principal', 'bob')->where('action', 'status_changed')->count());
         $this->assertSame(0, Notification::query()->where('principal', 'alice')->where('action', 'status_changed')->count());

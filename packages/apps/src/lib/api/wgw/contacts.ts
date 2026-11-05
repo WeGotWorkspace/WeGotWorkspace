@@ -26,6 +26,10 @@ import {
   type JmapAddressBook,
   type JmapContactCard,
 } from "@/lib/jmap-client";
+import {
+  cachedCollectionAudience,
+  checkNowAfterWrite,
+} from "@/lib/offline/core/collection-check-now";
 
 export class ContactsRequestError extends Error {
   status: number;
@@ -113,12 +117,15 @@ export async function patchAddressBook(
   patch: AddressBookMutationPatch,
   _opts?: { signal?: AbortSignal },
 ): Promise<AddressBook> {
+  const before = cachedCollectionAudience("contacts", [addressBookId]);
   const { contacts, accountId } = await connectedContacts();
   await contacts.setAddressBooks({
     accountId,
     update: { [addressBookId]: patch },
   });
-  return getAddressBook(addressBookId);
+  const book = await getAddressBook(addressBookId);
+  checkNowAfterWrite([before], book.shareWith);
+  return book;
 }
 
 function toAddressBook(book: JmapAddressBook): AddressBook {

@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\Notification;
 use App\Models\NotificationDelivery;
 use App\Services\Notify\NotificationCopyFormatter;
+use App\Services\Notify\NotifiedRecipients;
 use App\Services\Notify\UrgentPushService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -19,6 +20,9 @@ use Illuminate\Support\Str;
  *
  * Urgent actions ({@see UrgentPushService::ACTIONS}) skip the local-ack grace:
  * their Web Push goes out right after the response (#1670).
+ *
+ * Every principal whose inbox changed is recorded in {@see NotifiedRecipients},
+ * so the actor's response can name them for a mesh `check-now` (#1662).
  */
 final class NotifyListener implements WorkspaceEventListener
 {
@@ -48,10 +52,12 @@ final class NotifyListener implements WorkspaceEventListener
         $urgent = UrgentPushService::isUrgent($event->domain, $event->action);
         $created = [];
         $recipients = $this->recipients($event);
+        $notified = app(NotifiedRecipients::class);
         foreach ($recipients as $principal) {
             if ($principal === '' || strcasecmp($principal, $event->actor) === 0) {
                 continue;
             }
+            $notified->record($event->actor, $principal);
             if (($event->data['clear'] ?? false) === true) {
                 $this->clearInbox($event, $principal);
 
