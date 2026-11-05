@@ -9,6 +9,8 @@
   --tag-icon-size: 0.75rem;
   --tag-padding-inline: 0.625rem;
   --tag-gap: 0.375rem;
+  /* Chip text ÷ 16px, for the Add tag field on phones (below). */
+  --tag-input-scale: 0.75;
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
@@ -20,6 +22,7 @@
   --tag-icon-size: 1rem;
   --tag-padding-inline: 0.875rem;
   --tag-gap: 0.375rem;
+  --tag-input-scale: 0.875;
   @apply gap-2;
 }
 
@@ -45,15 +48,6 @@
   --tag-icon-size: 1rem;
   --tag-padding-inline: 0.875rem;
   --tag-gap: 0.375rem;
-}
-
-/* Phones: the Add tag field must be 16px (iOS zooms smaller fields on focus),
- * so the chips beside it take the same text size. */
-@media (max-width: 767px) {
-  .tag-group--size-lg,
-  .tag--size-lg {
-    --tag-font-size: 1rem;
-  }
 }
 
 /* The label truncates (overflow hidden), so it needs a line box tall enough for
@@ -161,6 +155,30 @@
 
 .tag-group--size-lg {
   --tag-add-width: 8.5rem;
+}
+
+/*
+ * Phones: iOS Safari zooms in on a focused field under 16px. The Add tag field
+ * renders at 16px in a box 1/scale larger, then scales back down, so it looks
+ * exactly like the button and the chips (same size as on desktop). The
+ * negative margins give the scaled-away space back to the layout.
+ */
+@media (max-width: 767px) {
+  .tag-group__input {
+    font-size: 1rem;
+    width: calc(var(--tag-add-width, 7rem) / var(--tag-input-scale, 0.75));
+    height: calc(var(--tag-height, 1.5rem) / var(--tag-input-scale, 0.75));
+    min-height: 0;
+    padding-inline: calc(var(--tag-padding-inline, 0.625rem) / var(--tag-input-scale, 0.75));
+    margin-inline-end: calc(
+      var(--tag-add-width, 7rem) - var(--tag-add-width, 7rem) / var(--tag-input-scale, 0.75)
+    );
+    margin-block-end: calc(
+      var(--tag-height, 1.5rem) - var(--tag-height, 1.5rem) / var(--tag-input-scale, 0.75)
+    );
+    transform: scale(var(--tag-input-scale, 0.75));
+    transform-origin: 0 0;
+  }
 }
 
 .tag-group__add-button {

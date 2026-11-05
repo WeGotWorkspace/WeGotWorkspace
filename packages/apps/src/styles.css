@@ -520,15 +520,11 @@ select {
    */
   .input,
   .input__field,
-  .textarea,
-  .tag-group__input,
-  /* Its "Add tag" button too: same text before and after focus (chips: tag.css). */
-  .tag-group__add-button {
+  .textarea {
+    /* The Add tag field is 16px too, scaled to the chip size (tag.css). */
     --input-font-size-xs: 1rem;
     --input-font-size-sm: 1rem;
     --input-font-size-md: 1rem;
-    /* Chip field reads `--tag-font-size`, not the input size steps. */
-    --tag-font-size: 1rem;
     /* Height stays on the shared scale so fields line up with selects and buttons. */
     font-size: 1rem;
   }
