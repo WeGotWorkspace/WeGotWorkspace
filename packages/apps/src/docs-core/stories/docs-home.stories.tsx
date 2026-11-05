@@ -311,7 +311,7 @@ export const SortByColumn: Story = {
   },
 };
 
-/** The create button resolves a non-colliding name from the live My Drive listing. */
+/** From All Docs the picker opens in Personal, ready to create; the name skips taken ones. */
 export const CreateUniqueName: Story = {
   name: "Create (unique name)",
   tags: ["vitest-ci"],
@@ -324,14 +324,14 @@ export const CreateUniqueName: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const createButton = await canvas.findByRole("button", { name: "New document" });
-    await userEvent.click(createButton);
+    await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
     const dialog = await body.findByRole("dialog", { name: "New document" });
     const dialogScope = within(dialog);
-    const personalRow = dialogScope.getByText("Personal").closest("tr");
-    await expect(personalRow).not.toHaveClass("destination-list-row--selected");
-    await expect(dialogScope.getByRole("button", { name: "Create" })).toBeDisabled();
-    await userEvent.click(personalRow!);
+    await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
+    // All Docs is a home, not a filter: no jump (the open dialog hides the page from the tree).
+    await expect(
+      canvas.getByRole("heading", { name: "All Docs", hidden: true }),
+    ).toBeInTheDocument();
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
@@ -339,9 +339,9 @@ export const CreateUniqueName: Story = {
   },
 };
 
-/** The New document picker lists drives with none selected until the user chooses one. */
+/** With a drive open in the sidebar, the picker opens in that drive. */
 export const CreateFromSelectedDrive: Story = {
-  name: "Create (chosen drive)",
+  name: "Create (open drive)",
   tags: ["vitest-ci"],
   args: {
     fetcher: createPaginatedFetcher(FIXTURES),
@@ -358,16 +358,38 @@ export const CreateFromSelectedDrive: Story = {
     await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
     const dialog = await body.findByRole("dialog", { name: "New document" });
     const dialogScope = within(dialog);
-
-    await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
-    const engineeringRow = dialogScope.getByText("engineering").closest("tr");
-    await expect(engineeringRow).not.toHaveClass("destination-list-row--selected");
-    await expect(dialog.querySelector(".destination-list-row--selected")).toBeNull();
-    await userEvent.click(engineeringRow!);
+    await expect(dialogScope.getByText("engineering")).toBeInTheDocument();
 
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/groups/engineering/Untitled 2.md"),
+    );
+  },
+};
+
+/** From Recent (or Shared with me, Starred, Trash) Docs opens Personal first. */
+export const CreateFromRecent: Story = {
+  name: "Create (from Recent)",
+  tags: ["vitest-ci"],
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+    operations: createMockHomeOperations([], ["Untitled.md"]),
+    onCreateDocument: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole("button", { name: "Recent" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
+    await expect(
+      await canvas.findByRole("heading", { name: "Personal", hidden: true }),
+    ).toBeInTheDocument();
+
+    const dialog = await body.findByRole("dialog", { name: "New document" });
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
     );
   },
 };

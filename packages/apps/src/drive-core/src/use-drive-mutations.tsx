@@ -11,6 +11,7 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
+import { driveCreateJumpsToPersonal } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
@@ -98,7 +99,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   } = list;
 
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
   const [renameDialog, setRenameDialog] = useState<null | { id: string; extension: string }>(null);
   const [renameName, setRenameName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<null | { ids: string[]; permanent: boolean }>(
@@ -272,16 +272,21 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       });
   };
 
+  /** From Recent, Shared with me, Starred or Trash, open Personal before creating. */
+  const jumpToPersonalForCreate = useCallback(() => {
+    if (driveCreateJumpsToPersonal(view)) commitView({ type: "folder", path: "My Drive" });
+  }, [commitView, view]);
+
   const createFolder = () => {
     if (!structureEnabled) return;
-    setNewFolderName("");
+    jumpToPersonalForCreate();
     setNewFolderDialogOpen(true);
   };
 
-  const submitCreateFolder = () => {
-    const v = newFolderName.trim();
+  const submitCreateFolder = (name: string, destinationPath: string) => {
+    const v = name.trim();
     if (!v) return;
-    const targetParent = view.type === "folder" ? view.path : "My Drive";
+    const targetParent = destinationPath;
     const id = `f-${Date.now()}`;
     setFiles((p) => [
       {
@@ -301,11 +306,12 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       },
       ...p,
     ]);
-    // Outside a folder (All Files, Recent…) the new folder opens where it lives.
-    if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
+    // The new folder opens where it lives (All Files, or another folder picked).
+    if (view.type !== "folder" || view.path !== targetParent) {
+      commitView({ type: "folder", path: targetParent });
+    }
     show(`Folder “${v}” created`, { icon: <FolderPlus className="size-4" /> });
     setNewFolderDialogOpen(false);
-    setNewFolderName("");
     if (operations) {
       void operations
         .createFolder({
@@ -327,9 +333,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
 
   const createMarkdown = useCallback(() => {
     if (!onOpenDocsFile || !structureEnabled) return;
+    jumpToPersonalForCreate();
     setMarkdownDialogError(null);
     setMarkdownDialogOpen(true);
-  }, [onOpenDocsFile, structureEnabled]);
+  }, [jumpToPersonalForCreate, onOpenDocsFile, structureEnabled]);
 
   const closeMarkdownDialog = useCallback(() => {
     if (markdownDialogSubmitting) return;
@@ -434,8 +441,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   return {
     newFolderDialogOpen,
     setNewFolderDialogOpen,
-    newFolderName,
-    setNewFolderName,
     renameDialog,
     setRenameDialog,
     renameName,

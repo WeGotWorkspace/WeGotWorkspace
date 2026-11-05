@@ -145,8 +145,6 @@ export function useDriveController({
     setViewMode: list.setViewMode,
     newFolderDialogOpen: mutations.newFolderDialogOpen,
     setNewFolderDialogOpen: mutations.setNewFolderDialogOpen,
-    newFolderName: mutations.newFolderName,
-    setNewFolderName: mutations.setNewFolderName,
     renameDialog: mutations.renameDialog,
     setRenameDialog: mutations.setRenameDialog,
     renameName: mutations.renameName,

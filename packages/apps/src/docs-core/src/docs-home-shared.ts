@@ -56,6 +56,14 @@ export function filterDocsHomeSharedByQuery(
 }
 
 /** Browse `pathPrefix` for unified search when the view is a single drive; otherwise undefined. */
+/**
+ * Creating from Shared with me, Recent, Starred or Trash first opens Personal,
+ * so the new document lands in a drive the person is looking at.
+ */
+export function docsHomeCreateJumpsToPersonal(view: DocsHomeView): boolean {
+  return view.type !== "all" && view.type !== "drive";
+}
+
 export function docsHomeBrowsePathPrefix(view: DocsHomeView): string | undefined {
   return view.type === "drive" ? view.pathPrefix : undefined;
 }
