@@ -34,8 +34,13 @@ const META_RTC = "meet-chat:rtc";
 const META_DIRECTORY = "meet-chat:directory";
 const META_GROUPS = "meet-chat:groups";
 
-/** Sync-token scope for the channel collection list (`ChatChannel/changes`). */
-export const MEET_CHAT_CHANNELS_TOKEN_SCOPE = "__channels__";
+/**
+ * Sync-token scope for the channel collection list (`ChatChannel/changes`).
+ * Bump the suffix when cached channel rows need a field they lack: a new
+ * scope has no token, so the next sync fetches every channel again. `v2`:
+ * `members`, which the presence mesh needs to target previews.
+ */
+export const MEET_CHAT_CHANNELS_TOKEN_SCOPE = "__channels_v2__";
 
 function metaKeyForSyncToken(scope: string): string {
   return `meet-chat:state:${scope}`;

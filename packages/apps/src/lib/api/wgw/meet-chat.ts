@@ -117,6 +117,7 @@ export function meetChannelFromWire(row: WgwChatChannel): MeetChannel {
     topic: row.topic ?? null,
     ...(row.unreadCount !== undefined ? { unreadCount: row.unreadCount } : {}),
     ...(row.memberCount !== undefined ? { memberCount: row.memberCount } : {}),
+    ...(row.members !== undefined ? { members: row.members } : {}),
   };
 }
 

@@ -41,6 +41,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $this->assertTrue($created['myRights']['mayWriteAll']);
         $this->assertTrue($created['myRights']['mayShare']);
         $this->assertSame(1, $created['memberCount']);
+        $this->assertSame(['alice'], $created['members']);
 
         $list = $this->asUser('alice')->getJson('/api/v1/chat/channels')->assertOk()->json('list');
         $this->assertCount(1, $list);
@@ -249,6 +250,8 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $ownerView = $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$channelId)->assertOk()->json();
         $this->assertSame(['bob'], array_keys($ownerView['shareWith']));
         $this->assertSame(2, $ownerView['memberCount']);
+        $this->assertSame(['alice', 'bob'], $ownerView['members']);
+        $this->assertSame(['alice', 'bob'], $shared['members']);
 
         // Sharees rename their own instance but cannot touch shared state.
         $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$channelId, ['name' => 'Team (bob)'])->assertOk();
@@ -324,6 +327,8 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $this->assertSame('group', $created['scope']);
         $this->assertSame('devs', $created['groupSlug']);
         $this->assertSame(2, $created['memberCount']);
+        // The roster is the group, not the workspace: carol is no reader.
+        $this->assertSame(['alice', 'bob'], $created['members']);
 
         // Fellow group member sees and may administer it; outsiders 404.
         $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$created['id'])->assertOk()
