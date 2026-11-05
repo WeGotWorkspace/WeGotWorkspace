@@ -99,7 +99,7 @@ function resolvedBackground(host: Element, value: string) {
 
 async function expectTintedRoundMarks(canvasElement: HTMLElement) {
   const [checked, unchecked] = Array.from(
-    canvasElement.querySelectorAll<HTMLElement>(".list-item__checkbox"),
+    canvasElement.querySelectorAll<HTMLElement>(".selection-mark"),
   );
   // Round marks.
   const box = checked.getBoundingClientRect();
@@ -114,12 +114,20 @@ async function expectTintedRoundMarks(canvasElement: HTMLElement) {
   await expect(getComputedStyle(checked).backgroundColor).not.toBe(
     getComputedStyle(row).backgroundColor,
   );
-  await expect(checked.querySelector(".list-item__checkbox-icon")).toBeTruthy();
+  // One solid fill: the background is the edge colour.
+  await expect(getComputedStyle(checked).backgroundColor).toBe(
+    getComputedStyle(checked).borderTopColor,
+  );
+  // A dark check on it.
+  const icon = checked.querySelector(".selection-mark__icon") as HTMLElement;
+  await expect(icon).toBeTruthy();
+  const lightness = (color: string) => Number(/oklch\(([\d.]+)/.exec(color)?.[1] ?? "1");
+  await expect(lightness(getComputedStyle(icon).color)).toBeLessThan(0.25);
   // Unchecked: an empty ring.
   await expect(getComputedStyle(unchecked).backgroundColor).toBe("rgba(0, 0, 0, 0)");
 }
 
-/** Multi-select: round marks; a checked mark is the row's selection tint, stronger. */
+/** Multi-select: round marks; a checked mark is a solid, stronger selection tint with a dark check. */
 export const MultiSelect: Story = {
   tags: ["vitest-ci"],
   args: { ...NoteStyle.args, isActive: false, icons: [] },
@@ -133,7 +141,7 @@ export const MultiSelectDark: Story = {
   decorators: [withDarkTheme],
   play: async ({ canvasElement }) => {
     await expectTintedRoundMarks(canvasElement);
-    const checked = canvasElement.querySelector<HTMLElement>(".list-item__checkbox")!;
+    const checked = canvasElement.querySelector<HTMLElement>(".selection-mark")!;
     const row = checked.closest(".list-item__button") as HTMLElement;
     const chroma = (color: string) => Number(/oklch\([\d.]+ ([\d.]+)/.exec(color)?.[1] ?? "0");
     await expect(chroma(getComputedStyle(checked).backgroundColor)).toBeGreaterThan(

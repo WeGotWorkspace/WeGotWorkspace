@@ -167,8 +167,10 @@
   color: var(--color-emerald);
 }
 
+/* Selection mode: the mark sits where the tile content starts at rest (12px),
+ * and the content moves over by the mark plus a 12px gap. */
 .drive-workspace :is(.drive-folder-tile--selection-mode, .drive-file-tile--selection-mode) {
-  padding-inline-start: 2.25rem;
+  padding-inline-start: calc(0.75rem + var(--selection-mark-size, 1.125rem) + 0.75rem);
 }
 
 .drive-workspace :is(.drive-folder-tile__checkbox, .drive-file-tile__checkbox) {
@@ -208,23 +210,6 @@
     .drive-list-row[data-selection-mode="true"] .drive-list-row__name
   ) {
   @apply select-none;
-}
-
-.drive-workspace .drive-selection-checkbox {
-  @apply inline-flex size-4 items-center justify-center rounded-[4px] border;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
-  background-color: transparent;
-}
-
-.drive-workspace .drive-selection-checkbox--selected {
-  border-color: var(--color-emerald);
-  background-color: var(--color-emerald);
-}
-
-/* Pair of the accent fill: white on Dark ink, near-black on Soft ink in the dark theme. */
-.drive-workspace .drive-selection-checkbox__icon {
-  @apply size-3;
-  color: var(--workspace-accent-foreground);
 }
 
 /* File tiles: idle paper + the shared control hairline (same as folder tiles). */
@@ -434,13 +419,15 @@
   transition: padding-inline-start 180ms ease;
 }
 
+/* Selection mode: the mark sits where the row content starts at rest, and the
+ * content moves over by the mark plus a 12px gap. */
 .drive-workspace .drive-list-row[data-selection-mode="true"] .drive-list-row__name {
-  padding-inline-start: calc(var(--list-row-padding-x, 1rem) + 1.5rem);
+  padding-inline-start: calc(var(--selection-mark-size, 1.125rem) + 0.75rem);
 }
 
 .drive-workspace .drive-list-row__checkbox {
   @apply absolute top-1/2 -translate-y-1/2;
-  left: var(--list-row-padding-x, 1rem);
+  inset-inline-start: 0;
 }
 
 .drive-workspace .drive-list-row > td {

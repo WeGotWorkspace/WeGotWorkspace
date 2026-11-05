@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { Archive, Check } from "lucide-react";
+import { Archive } from "lucide-react";
 import {
   SwipeableListItem,
   SwipeAction as SwipeActionPrimitive,
@@ -12,6 +12,7 @@ import {
   useListItemHighlight,
 } from "@/list-item/src/list-item-selection";
 import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
+import { SelectionMark } from "@/selection-mark/src/selection-mark";
 import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 import "./list-item.css";
 
@@ -233,11 +234,7 @@ export function ListItem({
       style={themeVars}
     >
       <span aria-hidden className="list-item__checkbox-wrap">
-        <span className="list-item__checkbox">
-          {highlight.isSelected ? (
-            <Check className="list-item__checkbox-icon" strokeWidth={2.75} />
-          ) : null}
-        </span>
+        <SelectionMark checked={highlight.isSelected} />
       </span>
 
       {leading ? <span className="list-item__leading">{leading}</span> : null}

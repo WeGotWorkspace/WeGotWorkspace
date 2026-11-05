@@ -103,21 +103,17 @@
     color-mix(in oklch, var(--scheme-selection) var(--scheme-selection-edge), transparent);
   --workspace-selected-color: var(--workspace-foreground);
   /*
-   * Selection marks (the multi-select checks in list rows): the selected wash's
-   * own colour at a stronger mix, so a checked mark is the same tint, more
-   * saturated and brighter in dark (sky), a deeper ink wash in light.
+   * Selection marks (the multi-select checks in list rows): one solid fill in
+   * the selected wash's own colour at a stronger mix (a mid ink in light,
+   * bright sky in dark), with a dark check: a deep shade of that same colour.
    */
-  --workspace-selected-mark-background: color-mix(
-    in oklch,
-    var(--scheme-selection) var(--scheme-selection-mark-strength),
-    var(--workspace-surface)
-  );
   --workspace-selected-mark-border: color-mix(
     in oklch,
     var(--scheme-selection) var(--scheme-selection-mark-edge),
     var(--workspace-surface)
   );
-  --workspace-selected-mark-color: var(--workspace-foreground);
+  --workspace-selected-mark-background: var(--workspace-selected-mark-border);
+  --workspace-selected-mark-color: color-mix(in oklch, var(--scheme-selection) 25%, black);
 
   /* Hairline dividers: the sidebar edge and the lines between list rows. */
   --workspace-divider-color: color-mix(

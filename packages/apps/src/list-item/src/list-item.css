@@ -105,38 +105,6 @@ html:not([data-modality="pointer"])
   opacity: 1;
 }
 
-/* Round multi-select marks. Checked: the selected wash's tint, stronger
- * (`--workspace-selected-mark-*`), so it sits with the row it selects. */
-.list-item__checkbox {
-  @apply inline-flex items-center justify-center rounded-full border;
-  width: 1.125rem;
-  height: 1.125rem;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
-  background-color: transparent;
-}
-
-.list-item__button[data-selected="true"] .list-item__checkbox {
-  border-color: var(
-    --list-item-checkbox-checked-border,
-    var(--workspace-selected-mark-border, var(--workspace-foreground))
-  );
-  background-color: var(
-    --list-item-checkbox-checked-bg,
-    var(
-      --workspace-selected-mark-background,
-      color-mix(in oklab, var(--workspace-foreground) 16%, transparent)
-    )
-  );
-}
-
-.list-item__checkbox-icon {
-  @apply size-3;
-  color: var(
-    --list-item-checkbox-icon-color,
-    var(--workspace-selected-mark-color, var(--workspace-foreground))
-  );
-}
-
 .list-item__leading {
   @apply shrink-0;
 }

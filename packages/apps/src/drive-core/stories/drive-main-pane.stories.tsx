@@ -124,7 +124,7 @@ export const ListViewSelectionMode: Story = {
   },
 };
 
-/** The accent fill is light in the dark theme; the checkmark must stay dark on it. */
+/** The shared selection mark: a bright sky fill in the dark theme, with a dark check on it. */
 export const ListViewSelectionModeDark: Story = {
   name: "List view selection mode (dark theme)",
   tags: ["vitest-ci"],
@@ -143,18 +143,20 @@ export const ListViewSelectionModeDark: Story = {
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
     const icon = await waitFor(() => {
       const found = canvasElement.querySelector<SVGElement>(
-        ".drive-selection-checkbox--selected .drive-selection-checkbox__icon",
+        ".selection-mark[data-state='checked'] .selection-mark__icon",
       );
       if (!found) throw new Error("Expected a selected checkbox checkmark");
       return found;
     });
-    // `--scheme-on-ink` in the dark theme (dark on the light accent), not a fixed white.
-    const probe = document.createElement("span");
-    probe.style.color = "var(--scheme-on-ink)";
-    icon.parentElement?.append(probe);
-    const onInk = getComputedStyle(probe).color;
-    probe.remove();
-    await expect(getComputedStyle(icon).color).toBe(onInk);
-    await expect(onInk).not.toBe("rgb(255, 255, 255)");
+    // Same mark as list rows: round, solid fill (= its edge), dark check.
+    const mark = icon.closest(".selection-mark") as HTMLElement;
+    await expect(getComputedStyle(mark).backgroundColor).toBe(
+      getComputedStyle(mark).borderTopColor,
+    );
+    await expect(Number.parseFloat(getComputedStyle(mark).borderTopLeftRadius)).toBeGreaterThan(
+      mark.getBoundingClientRect().width / 2 - 1,
+    );
+    const lightness = (color: string) => Number(/oklch\(([\d.]+)/.exec(color)?.[1] ?? "1");
+    await expect(lightness(getComputedStyle(icon).color)).toBeLessThan(0.25);
   },
 };
