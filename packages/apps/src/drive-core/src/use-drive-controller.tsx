@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { isKeyboardFieldTarget } from "@/lib/keyboard/is-keyboard-field-target";
 import type { ViewKey } from "@/drive-core/src/drive-models";
@@ -122,22 +122,6 @@ export function useDriveController({
     onUndoQueuedAction: list.undoLatest,
   });
 
-  const handleUnifiedSearchSelect = useMemo(
-    () =>
-      shell.createUnifiedSearchSelectHandler(list.openFile, {
-        setActiveId: list.setActiveId,
-        setSelectedIds: list.setSelectedIds,
-        setDetailOpen: list.setDetailOpen,
-      }),
-    [
-      list.openFile,
-      list.setActiveId,
-      list.setDetailOpen,
-      list.setSelectedIds,
-      shell.createUnifiedSearchSelectHandler,
-    ],
-  );
-
   return {
     labels: shell.labels,
     currentUsername: shell.currentUsername,
@@ -240,7 +224,6 @@ export function useDriveController({
     selectView: shell.selectView,
     listLoading: shell.listLoading,
     operations: shell.operations,
-    handleUnifiedSearchSelect,
   };
 }
 

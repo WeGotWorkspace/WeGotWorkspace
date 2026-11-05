@@ -29,7 +29,6 @@ import {
 } from "@/drive-core/src/drive-item-download";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
-import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { useDriveUploadPlaceholderActions } from "@/drive-core/src/use-drive-upload-placeholder-actions";
 import {
@@ -386,13 +385,7 @@ export function DriveWorkspace({
                 groupSidebarItems={groupSidebarItems}
               />
             }
-            mainHeader={
-              <DriveMainHeader
-                controller={controller}
-                unifiedSearchEnabled={Boolean(operations)}
-                searchEnabled={searchEnabled}
-              />
-            }
+            mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
             main={
               <DriveMainPane
                 controller={controller}
@@ -542,11 +535,9 @@ function DriveSidebar({
 
 function DriveMainHeader({
   controller,
-  unifiedSearchEnabled,
   searchEnabled,
 }: {
   controller: DriveController;
-  unifiedSearchEnabled: boolean;
   searchEnabled: boolean;
 }) {
   const {
@@ -559,7 +550,6 @@ function DriveMainHeader({
     searchQuery,
     setSearchQuery,
     searchInputRef,
-    handleUnifiedSearchSelect,
     detailOpen,
     setDetailOpen,
     breadcrumbs,
@@ -597,16 +587,6 @@ function DriveMainHeader({
       searchValue={searchEnabled ? searchQuery : undefined}
       onSearchInput={searchEnabled ? setSearchQuery : undefined}
       searchInputRef={searchInputRef}
-      searchContent={
-        searchEnabled && unifiedSearchEnabled ? (
-          <UnifiedSearchApiDropdown
-            className="drive-main-header__search-dropdown anchored-dropdown-panel"
-            query={searchQuery}
-            limit={10}
-            onSelect={handleUnifiedSearchSelect}
-          />
-        ) : null
-      }
       actions={
         <div className="drive-main-header__actions">
           <ViewModeToggle

@@ -106,12 +106,6 @@ export type DriveUnifiedSearchResult = {
   metadata?: Record<string, unknown>;
 };
 
-export type DriveUnifiedSearchDownloadInput = {
-  resultId?: number | string;
-  sourceType: "caldav" | "carddav";
-  sourceKey: string;
-};
-
 export type { DriveUploadQueueSnapshot };
 
 export type DriveAPIOperations = {
@@ -176,10 +170,6 @@ export type DriveAPIOperations = {
       onProgress?: (progress: DriveUploadProgress) => void;
     },
   ) => Promise<DriveUIData>;
-  downloadUnifiedSearchRecord?: (
-    input: DriveUnifiedSearchDownloadInput,
-    opts?: { signal?: AbortSignal },
-  ) => Promise<void>;
   /**
    * Signed-in Drive with the offline layer: store picked files on the device
    * as one batch waiting for the batch dialog (placeholders show at once).

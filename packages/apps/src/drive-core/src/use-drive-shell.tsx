@@ -30,16 +30,10 @@ import type {
   DriveAPIOperations,
   DriveShareOperations,
   DriveUIData,
-  DriveUnifiedSearchResult,
 } from "@/drive-core/src/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
-import {
-  apiPathFromSearchSourceKey,
-  driveFileFromSearchResult,
-  parentVirtualPath,
-} from "@/drive-core/src/drive-search-utils";
 
 export type UseDriveShellArgs = {
   data: DriveUIData;
@@ -49,14 +43,6 @@ export type UseDriveShellArgs = {
   listLoading?: boolean;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
-};
-
-export type DriveShellOpenFileHandler = (file: DriveFile) => void;
-
-export type DriveShellSelectionHandlers = {
-  setActiveId: (id: string | null) => void;
-  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
-  setDetailOpen: (open: boolean) => void;
 };
 
 export function useDriveShell({
@@ -345,51 +331,6 @@ export function useDriveShell({
         ? `access:${view.scopePath ?? ""}`
         : view.type;
 
-  const createUnifiedSearchSelectHandler = useCallback(
-    (openFile: DriveShellOpenFileHandler, selection: DriveShellSelectionHandlers) =>
-      (result: DriveUnifiedSearchResult) => {
-        void (async () => {
-          try {
-            if (result.sourceType === "caldav" || result.sourceType === "carddav") {
-              await operations?.downloadUnifiedSearchRecord?.({
-                resultId: result.id,
-                sourceType: result.sourceType,
-                sourceKey: result.sourceKey,
-              });
-              return;
-            }
-            if (result.sourceType === "note") {
-              window.open("/notes", "_blank", "noopener,noreferrer");
-              return;
-            }
-            if (result.sourceType !== "file") return;
-            const apiPath = apiPathFromSearchSourceKey(result.sourceKey);
-            if (!apiPath) return;
-            const uiPath = uiPathFromApiPath(apiPath, currentUsername);
-            if (result.category === "folder") {
-              setSearchQuery("");
-              selectView({ type: "folder", path: uiPath });
-              return;
-            }
-            const file = driveFileFromSearchResult(result, uiPath, apiPath, currentUsername);
-            if (result.category === "image") {
-              selection.setActiveId(file.id);
-              selection.setSelectedIds([file.id]);
-              selection.setDetailOpen(true);
-              return;
-            }
-            openFile(file);
-          } catch {
-            const apiPath = apiPathFromSearchSourceKey(result.sourceKey);
-            if (!apiPath) return;
-            const uiPath = uiPathFromApiPath(apiPath, currentUsername);
-            selectView({ type: "folder", path: parentVirtualPath(uiPath) });
-          }
-        })();
-      },
-    [currentUsername, operations, selectView],
-  );
-
   return {
     labels: driveLabels,
     currentUsername,
@@ -426,7 +367,6 @@ export function useDriveShell({
     operations,
     data,
     reloadStarredFromServer,
-    createUnifiedSearchSelectHandler,
   };
 }
 

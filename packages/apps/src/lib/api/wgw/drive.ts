@@ -11,7 +11,6 @@ import {
   wgwIsGuestSession,
   wgwReadJson,
 } from "@/lib/api/wgw/http";
-import { downloadWgwUnifiedSearchRecord } from "@/lib/api/wgw/search";
 import type {
   WgwDriveDirectoryEntry,
   WgwDriveListingResponse,
@@ -222,7 +221,7 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
 
 function createSharedDriveOperations(): Pick<
   DriveAPIOperations,
-  "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord"
+  "search" | "listStars" | "setStar"
 > {
   return {
     async search(query, opts) {
@@ -242,9 +241,6 @@ function createSharedDriveOperations(): Pick<
     },
     async setStar(input, opts) {
       await setDriveFileStar(input.path, input.starred, opts);
-    },
-    async downloadUnifiedSearchRecord(input, opts) {
-      await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });
     },
   };
 }

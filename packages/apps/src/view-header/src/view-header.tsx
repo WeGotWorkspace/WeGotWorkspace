@@ -49,7 +49,6 @@ type ViewHeaderProps = {
   searchDebounceMs?: number;
   searchMinLength?: number;
   searchInputRef?: RefObject<HTMLInputElement | null>;
-  searchContent?: ReactNode;
 };
 
 export function ViewHeader({
@@ -70,7 +69,6 @@ export function ViewHeader({
   searchDebounceMs = 180,
   searchMinLength,
   searchInputRef,
-  searchContent,
 }: ViewHeaderProps) {
   const { query, setQuery } = useViewHeaderSearchQuery({
     searchValue,
@@ -128,14 +126,13 @@ export function ViewHeader({
         </div>
       </div>
       {searchPlaceholder ? (
-        <div className="view-header__search-stack anchored-dropdown-anchor">
+        <div className="view-header__search-stack">
           <CollectionSearchInput
             inputRef={searchInputRef}
             value={query}
             onChange={setQuery}
             placeholder={searchPlaceholder}
           />
-          {searchContent}
         </div>
       ) : null}
     </>
