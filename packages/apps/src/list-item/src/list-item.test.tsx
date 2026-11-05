@@ -34,18 +34,35 @@ describe("ListItem", () => {
     ).toBeTruthy();
   });
 
-  it("renders title above subtitle when metaPosition is below (contacts layout)", () => {
-    const { container } = render(<ListItem {...baseProps} metaPosition="below" />);
-    const content = container.querySelector(".list-item__content");
-    expect(content).not.toBeNull();
-
-    const subtitle = content!.querySelector(".list-item__subtitle");
-    const title = content!.querySelector(".list-item__title");
-    expect(subtitle).not.toBeNull();
-    expect(title).not.toBeNull();
+  it("puts the date top right, the preview, then the meta line when metaPosition is below", () => {
+    const { container } = render(
+      <ListItem
+        {...baseProps}
+        metaPosition="below"
+        date="28 Oct"
+        text="First lines of the note"
+        icons={[<i key="pin" />]}
+      />,
+    );
+    const titleRow = container.querySelector(".list-item__title-row")!;
+    expect(titleRow.querySelector(".list-item__title")!.textContent).toBe("Jane Doe");
+    expect(titleRow.querySelector(".list-item__date")!.textContent).toBe("28 Oct");
+    const preview = container.querySelector(".list-item__body--preview")!;
+    const meta = container.querySelector(".list-item__meta")!;
     expect(
-      title!.compareDocumentPosition(subtitle!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      titleRow.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(preview.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(meta.querySelector(".list-item__meta-segment")!.textContent).toBe("Acme Corp");
+    expect(meta.querySelector(".list-item__meta-trailing i")).not.toBeNull();
+  });
+
+  it("has no placeholder body in the below layout, even without a title", () => {
+    const { container } = render(
+      <ListItem {...baseProps} metaPosition="below" title="" text="" showEmptyText />,
+    );
+    expect(container.querySelector(".list-item__body")).toBeNull();
+    expect(container.querySelector(".list-item__title")!.getAttribute("data-empty")).toBe("true");
   });
 
   it("omits the body row when text is empty and a title is present", () => {

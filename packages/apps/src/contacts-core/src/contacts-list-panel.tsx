@@ -110,14 +110,11 @@ export function ContactsListPanel({
     visibleCards.map((card) => card.id),
   );
 
-  const headerCount =
-    selectionMode || selectedIds.length > 1
-      ? selectedIds.length
-      : (downloadTotal ?? visibleCards.length);
-  const headerCountLabel =
-    selectionMode || selectedIds.length > 1
-      ? L.listSelected(headerCount)
-      : L.listContacts(headerCount);
+  const multiSelecting = selectionMode || selectedIds.length > 1;
+  const headerCount = multiSelecting ? selectedIds.length : (downloadTotal ?? visibleCards.length);
+  const headerCountLabel = multiSelecting
+    ? L.listSelected(headerCount)
+    : L.listContacts(headerCount);
 
   return {
     header: (
@@ -146,6 +143,7 @@ export function ContactsListPanel({
         searchValue={searchQuery}
         onSearchInput={setSearchQuery}
         searchInputRef={searchInputRef}
+        searchHidden={multiSelecting}
       />
     ),
     listContent: listLoading ? (
@@ -336,10 +334,10 @@ function ContactsListRows({
                 key={card.id}
                 id={card.id}
                 title={name}
-                subtitle={contactListSubtitle(card)}
+                /* Suite list norm: one quiet line (company, else email, else phone). */
+                subtitle={contactListSubtitle(card) || contactListDetail(card)}
                 metaPosition="below"
                 date=""
-                text={contactListDetail(card)}
                 icons={[
                   isPendingSync ? (
                     <span

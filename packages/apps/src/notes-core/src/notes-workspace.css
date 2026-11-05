@@ -59,13 +59,6 @@
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  /*
-   * Selected list row: same wash as sidebar item hover
-   * (`.sidebar-section .menu-item--interactive:hover` /
-   * `--button-outline-hover-background`). Active-only stays the Drive tile wash.
-   */
-  --list-item-selected-bg: var(--button-outline-hover-background);
-  --list-item-active-bg: var(--workspace-selected-background);
   /* Checked fill is accent (Dark). Glyph follows the accent-foreground pair. */
   --list-item-checkbox-icon-color: var(--workspace-accent-foreground);
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);

@@ -25,9 +25,6 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  /* Selected list row: same wash as sidebar item hover. Active-only stays the Drive tile wash. */
-  --list-item-selected-bg: var(--button-outline-hover-background);
-  --list-item-active-bg: var(--workspace-selected-background);
 }
 
 /*
@@ -61,24 +58,34 @@
  * CSS and scroll together. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
-  --contacts-list-card-row-size: 5.5rem;
+  --contacts-list-card-row-size: 4.625rem;
   --contacts-list-header-row-size: 2.25rem;
   --list-item-intrinsic-block-size: var(--contacts-list-card-row-size);
 }
 
 .contacts-list-panel__list .list-item__button {
   box-sizing: border-box;
-  block-size: var(--contacts-list-card-row-size);
-  max-block-size: var(--contacts-list-card-row-size);
-  padding-block: 0.75rem;
+  /* The fixed row slot holds the row plus the gap below it. */
+  block-size: calc(var(--contacts-list-card-row-size) - var(--list-item-gap, 0.125rem));
+  max-block-size: calc(var(--contacts-list-card-row-size) - var(--list-item-gap, 0.125rem));
   overflow: hidden;
 }
 
 .contacts-list-panel__list .list-sticky-header {
+  /* Calm list: no rule under the letter, the pane's own fill; it lines up with the row text. */
+  border-bottom: 0;
+  background-color: var(--collection-list-pane-fill, var(--workspace-surface));
+  padding-inline: calc(var(--list-item-inset, 0.5rem) + 0.75rem);
   box-sizing: border-box;
   block-size: var(--contacts-list-header-row-size);
   max-block-size: var(--contacts-list-header-row-size);
   overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .contacts-list-panel__list .list-sticky-header {
+    padding-inline: calc(var(--list-item-inset, 0.5rem) + 1rem);
+  }
 }
 
 .contacts-list-panel__spacer {

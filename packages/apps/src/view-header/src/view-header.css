@@ -290,11 +290,18 @@
   :is(.workspace-app-layout__main, .collection-list-pane):has(
       .floating-action-bar.md\:hidden[data-state="open"]
     )
-    .view-header__search-stack {
+    .view-header__search-stack:not([data-hidden="true"]) {
     opacity: 1;
     translate: -50% 0;
     pointer-events: auto;
   }
+}
+
+/* Explicitly stepped aside (multi-select); the md exception above skips it. */
+.view-header__search-stack[data-hidden="true"] {
+  opacity: 0;
+  translate: -50% 0.5rem;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

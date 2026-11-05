@@ -118,7 +118,12 @@ export const Default: Story = {
     await expect(canvasElement.querySelector(".list-item__tags")).toBeNull();
     await expect(canvas.queryByText("architecture")).toBeNull();
     await expect(canvas.queryByText("essay")).toBeNull();
-    await expect(canvasElement.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    // Suite list norm: title + date top right, a two-line preview, the notebook with its dot.
+    await expect(canvasElement.querySelector(".notes-notebook-color-icon")).toBeNull();
+    const row = canvasElement.querySelector(".list-item__button") as HTMLElement;
+    await expect(row.querySelector(".list-item__title-row .list-item__date")).toBeTruthy();
+    await expect(row.querySelector(".list-item__body--preview")).toBeTruthy();
+    await expect(row.querySelector(".notes-list-panel__notebook-dot")).toBeTruthy();
     await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();
     const input = canvas.getByPlaceholderText("Search notes...");
     await userEvent.type(input, "Nordic");

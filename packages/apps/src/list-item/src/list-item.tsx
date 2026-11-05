@@ -24,7 +24,6 @@ export type SwipeAction = {
 
 type ListItemTheme = {
   baseBackground: string;
-  activeBackground: string;
   selectedBackground: string;
   borderColor: string;
   accentColor: string;
@@ -45,13 +44,17 @@ type ListItemProps = {
   title: string;
   /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
   subtitle: ReactNode;
-  /** Subtitle/meta line placement. Mail keeps the default `above`; contacts and notes pass `below`. */
+  /**
+   * `below` (Notes, Contacts): title with the date top right, an optional two-line
+   * preview (`text`), then one quiet line `subtitle · icons`.
+   * `above` (Mail-style): subtitle, icons and date in a header row over the title.
+   */
   metaPosition?: ListItemMetaPosition;
   date: string;
   icons?: ReactNode[];
   /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present, unless `showEmptyText` is set. */
   text?: ReactNode;
-  /** Keep the body line when `text` is empty, using `emptyText` as the placeholder. */
+  /** Keep the body line when `text` is empty, using `emptyText` as the placeholder (`above` only). */
   showEmptyText?: boolean;
   isActive: boolean;
   isSelected: boolean;
@@ -74,10 +77,8 @@ type ListItemProps = {
 
 const defaultTheme: ListItemTheme = {
   baseBackground: "transparent",
-  activeBackground:
-    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))",
   selectedBackground:
-    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))",
+    "var(--sidebar-item-selected-background, var(--workspace-selected-background))",
   borderColor: "color-mix(in oklab, var(--workspace-foreground) 10%, transparent)",
   accentColor: "var(--color-emerald)",
   titleColor: "var(--workspace-foreground)",
@@ -91,7 +92,6 @@ const DESTRUCTIVE_CALLBACK_DELAY_MS = 380;
 function themeToCssVars(theme: Partial<ListItemTheme>): CSSProperties {
   const vars: Record<string, string> = {};
   if (theme.baseBackground) vars["--list-item-base-bg"] = theme.baseBackground;
-  if (theme.activeBackground) vars["--list-item-active-bg"] = theme.activeBackground;
   if (theme.selectedBackground) vars["--list-item-selected-bg"] = theme.selectedBackground;
   if (theme.borderColor) vars["--list-item-border-color"] = theme.borderColor;
   if (theme.accentColor) vars["--list-item-accent-color"] = theme.accentColor;
@@ -134,7 +134,9 @@ export function ListItem({
   const highlight = useListItemHighlight(entityId, { isActive, isSelected });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
-  const bodyContent = text || (showEmptyText || !title ? emptyText : null);
+  // The calm `below` layout has no placeholder body: an untitled row already reads as empty.
+  const bodyContent =
+    text || (metaPosition === "above" && (showEmptyText || !title) ? emptyText : null);
   const bodyIsPlaceholder = !text && bodyContent != null;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
@@ -248,40 +250,52 @@ export function ListItem({
         ) : null}
 
         {metaPosition === "below" ? (
-          <div className="list-item__header-row">
+          /* Suite list norm: title with the date top right, an optional preview, then
+             one quiet meta line (where · status). */
+          <>
+            <div className="list-item__title-row">
+              <h3 className="list-item__title" data-empty={title ? "false" : "true"}>
+                {title || emptyTitle}
+              </h3>
+              {date ? <span className="list-item__date">{date}</span> : null}
+            </div>
+            {bodyContent ? (
+              <div className="list-item__body list-item__body--preview">{bodyContent}</div>
+            ) : null}
+            {subtitle || icons.length > 0 ? (
+              <div className="list-item__meta">
+                {subtitle ? (
+                  <span className="list-item__meta-segment list-item__subtitle--below">
+                    {subtitle}
+                  </span>
+                ) : null}
+                {icons.length > 0 ? (
+                  <span className="list-item__meta-trailing">
+                    {icons.map((icon, index) => (
+                      <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
+                        {icon}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
             <h3
-              className="list-item__title list-item__title--in-header"
+              className="list-item__title list-item__title--standalone"
               data-empty={title ? "false" : "true"}
             >
               {title || emptyTitle}
             </h3>
-            <span className="list-item__meta-trailing">
-              {icons.map((icon, index) => (
-                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
-                  {icon}
-                </span>
-              ))}
-              <span className="list-item__date">{date}</span>
-            </span>
-          </div>
-        ) : (
-          <h3
-            className="list-item__title list-item__title--standalone"
-            data-empty={title ? "false" : "true"}
-          >
-            {title || emptyTitle}
-          </h3>
+            {bodyContent ? (
+              <div className="list-item__body" data-empty={bodyIsPlaceholder ? "true" : "false"}>
+                {bodyContent}
+              </div>
+            ) : null}
+          </>
         )}
-
-        {metaPosition === "below" && subtitle ? (
-          <p className="list-item__subtitle list-item__subtitle--below">{subtitle}</p>
-        ) : null}
-
-        {bodyContent ? (
-          <div className="list-item__body" data-empty={bodyIsPlaceholder ? "true" : "false"}>
-            {bodyContent}
-          </div>
-        ) : null}
       </div>
     </button>
   );

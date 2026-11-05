@@ -49,6 +49,8 @@ type ViewHeaderProps = {
   searchDebounceMs?: number;
   searchMinLength?: number;
   searchInputRef?: RefObject<HTMLInputElement | null>;
+  /** Steps the floating search aside (e.g. during multi-select); it stays mounted, so the query is kept. */
+  searchHidden?: boolean;
 };
 
 export function ViewHeader({
@@ -69,6 +71,7 @@ export function ViewHeader({
   searchDebounceMs = 180,
   searchMinLength,
   searchInputRef,
+  searchHidden = false,
 }: ViewHeaderProps) {
   const { query, setQuery } = useViewHeaderSearchQuery({
     searchValue,
@@ -126,7 +129,11 @@ export function ViewHeader({
         </div>
       </div>
       {searchPlaceholder ? (
-        <div className="view-header__search-stack">
+        <div
+          className="view-header__search-stack"
+          data-hidden={searchHidden ? "true" : undefined}
+          inert={searchHidden || undefined}
+        >
           <CollectionSearchInput
             inputRef={searchInputRef}
             value={query}

@@ -1,7 +1,6 @@
 import { memo, type CSSProperties } from "react";
 import { Archive, Circle, Eye, Share2, Star } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import {
@@ -13,36 +12,21 @@ import {
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
-import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 
-function NotesListNotebookMark({
-  location,
-  notebookColor,
-}: {
-  location: string;
-  notebookColor?: string | null;
-}) {
+/** The notebook at the foot of a row: its colour dot and its name. */
+function NotesListNotebook({ name, color }: { name: string; color?: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className="notes-list-panel__notebook"
-          role="img"
-          aria-label={location}
-          style={
-            {
-              "--collection-row-color": notebookDotColor({ color: notebookColor }),
-            } as CSSProperties
-          }
-        >
-          <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{location}</TooltipContent>
-    </Tooltip>
+    <span className="notes-list-panel__notebook">
+      <span
+        className="notes-list-panel__notebook-dot"
+        aria-hidden
+        style={{ "--notebook-dot-color": notebookDotColor({ color }) } as CSSProperties}
+      />
+      <span className="notes-list-panel__notebook-name">{name}</span>
+    </span>
   );
 }
 
@@ -99,23 +83,20 @@ export const NotesListRow = memo(function NotesListRow({
   const showShared = noteShowsSharedBadge(note);
   const showViewOnly = noteShowsViewOnlyBadge(note);
   const canArchive = noteAllowsStructureManage(note);
-  const notebookColor = notebookDisplayColor(note, notebookCollections);
   const location = noteListLocationLabel(note, L, notebookCollections);
+  const notebookColor = notebookDisplayColor(note, notebookCollections);
   const excerpt = noteListExcerpt(note);
   return (
     <ListItem
       id={note.id}
       title={note.title?.trim() ? noteListTitle(note) : ""}
       emptyTitle={NOTE_LIST_EMPTY_TITLE}
-      subtitle={null}
+      /* Suite list norm: title + date top right, a two-line preview, then the notebook. */
+      subtitle={location ? <NotesListNotebook name={location} color={notebookColor} /> : null}
       metaPosition="below"
       date={formatNoteDateForList(note.date)}
-      showEmptyText
-      text={excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
+      text={excerpt || null}
       icons={[
-        location ? (
-          <NotesListNotebookMark key="notebook" location={location} notebookColor={notebookColor} />
-        ) : null,
         pendingSync ? (
           <span
             key="pending"
@@ -146,13 +127,16 @@ export const NotesListRow = memo(function NotesListRow({
             <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
           </span>
         ) : null,
-        <span
-          key="star"
-          className="notes-list-panel__star-pip"
-          data-active={starred ? "true" : "false"}
-        >
-          <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
-        </span>,
+        starred ? (
+          <span
+            key="star"
+            className="notes-list-panel__star-pip"
+            role="img"
+            aria-label={L.sidebarStarred}
+          >
+            <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
+          </span>
+        ) : null,
       ].filter(Boolean)}
       isActive={false}
       isSelected={false}

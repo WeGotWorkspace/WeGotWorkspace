@@ -1,21 +1,50 @@
 @import "../../styles.css" reference;
 
+/*
+ * Suite list norm (Notes, Contacts): calm rows without separators, inset from the
+ * pane edge and rounded like sidebar items, so a hover or the open item reads as
+ * one soft pill. Text starts at inset + padding, the same line as the pane header.
+ */
 .list-item__button {
-  @apply relative w-full text-left px-4 py-3 md:px-6 md:py-4 border-b block select-none outline-none focus:outline-none;
+  @apply relative text-left block select-none outline-none focus:outline-none;
+  box-sizing: border-box;
+  width: calc(100% - 2 * var(--list-item-inset, 0.5rem));
+  margin-inline: var(--list-item-inset, 0.5rem);
+  padding-block: var(--list-item-padding-y, 1rem);
+  /* A little air between rows, so neighbouring highlights stay apart. */
+  margin-block-end: var(--list-item-gap, 0.125rem);
+  padding-inline: var(--list-item-padding-x, 0.75rem);
+  border: 0;
+  border-radius: var(--list-row-radius, 0.625rem);
   background-color: var(--list-item-bg, var(--list-item-base-bg, transparent));
-  border-color: var(
-    --list-item-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
   outline-color: var(--list-item-accent-color, var(--color-emerald));
   /* Skip layout/paint for off-screen rows. `auto` keeps the last painted size;
      the fallback only matters before first render. Parents override via
      `--list-item-intrinsic-block-size`. */
   content-visibility: auto;
-  contain-intrinsic-block-size: auto var(--list-item-intrinsic-block-size, 5.5rem);
+  contain-intrinsic-block-size: auto var(--list-item-intrinsic-block-size, 4.75rem);
   transition:
     padding 180ms ease,
     background-color 150ms ease;
+}
+
+@media (min-width: 768px) {
+  .list-item__button {
+    padding-inline: var(--list-item-padding-x, 1rem);
+  }
+}
+
+@media (hover: hover) {
+  .list-item__button:not([data-active="true"]):not([data-selected="true"]):hover {
+    background-color: var(
+      --list-item-hover-bg,
+      color-mix(in oklab, var(--workspace-foreground) 5%, transparent)
+    );
+  }
+}
+
+.list-item__button:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--list-item-accent-color, var(--color-emerald));
 }
 
 .list-item__button[data-selection-mode="true"] {
@@ -37,23 +66,26 @@
   gap: 0.75rem;
 }
 
-.list-item__button[data-active="true"]:not([data-selected="true"]) {
-  /* Open item: the sidebar selection. */
-  background: var(
-    --list-item-active-bg,
-    var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))
-  );
-}
-
-.list-item__button[data-selected="true"] {
+/* The open item and selected items take the sidebar item selection (one suite token). */
+.list-item__button:is([data-active="true"], [data-selected="true"]) {
   background: var(
     --list-item-selected-bg,
-    var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))
+    var(
+      --sidebar-item-selected-background,
+      var(
+        --workspace-selected-background,
+        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+      )
+    )
+  );
+  color: var(
+    --sidebar-item-selected-color,
+    var(--workspace-selected-color, var(--workspace-foreground))
   );
 }
 
 .list-item__checkbox-wrap {
-  @apply absolute left-3 md:left-4 top-1/2 -translate-y-1/2;
+  @apply absolute left-3 top-1/2 -translate-y-1/2;
   opacity: 0;
   transition: opacity 150ms ease;
 }
@@ -110,8 +142,50 @@
   );
 }
 
-.list-item__subtitle--below {
-  @apply mb-1;
+/* `below` layout: title left, date top right. */
+.list-item__title-row {
+  @apply flex min-w-0 items-baseline justify-between gap-3;
+}
+
+.list-item__title-row .list-item__title {
+  @apply min-w-0;
+}
+
+.list-item__title-row .list-item__date {
+  @apply shrink-0 text-[0.8125rem];
+}
+
+/* Preview under the title: two lines at most. */
+.list-item__body.list-item__body--preview {
+  @apply line-clamp-2 leading-snug;
+  /* Stops short of the edge, so the text block reads as a column under the title. */
+  margin-inline-end: var(--list-item-preview-end-gap, 3.5rem);
+}
+
+/* The quiet line at the bottom: segments joined by a middle dot, status icons last. */
+.list-item__meta {
+  @apply mt-1.5 flex min-w-0 items-center gap-1.5 text-[0.8125rem] leading-tight;
+  color: var(
+    --list-item-muted-color,
+    color-mix(in oklab, var(--workspace-foreground) 62%, transparent)
+  );
+}
+
+.list-item__meta-segment {
+  @apply whitespace-nowrap;
+}
+
+.list-item__meta-segment.list-item__subtitle--below {
+  @apply min-w-0 truncate;
+}
+
+.list-item__meta-segment + .list-item__meta-segment::before {
+  content: "·";
+  margin-inline-end: 0.375rem;
+}
+
+.list-item__meta .list-item__meta-trailing {
+  @apply ms-0.5;
 }
 
 .list-item__date {
@@ -123,16 +197,13 @@
 }
 
 .list-item__title {
-  @apply text-base font-medium leading-tight tracking-tight truncate;
+  @apply text-[0.9375rem] font-medium leading-snug truncate;
   font-family: var(--font-sans);
   color: var(--list-item-title-color, var(--workspace-item-color, var(--workspace-foreground)));
 }
 
-.list-item__title--in-header {
-  @apply min-w-0;
-}
-
-.list-item__title--standalone {
+/* Mail-style rows (meta above) keep a gap before the body line. */
+.list-item__header-row + .list-item__title--standalone {
   @apply mb-1;
 }
 
@@ -142,7 +213,7 @@
 }
 
 .list-item__body {
-  @apply text-sm leading-relaxed line-clamp-1 min-w-0 tracking-tight;
+  @apply mt-1 text-sm leading-relaxed line-clamp-1 min-w-0 tracking-tight;
   color: var(
     --list-item-body-color,
     color-mix(in oklab, var(--workspace-foreground) 68%, transparent)
