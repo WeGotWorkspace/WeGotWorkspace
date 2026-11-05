@@ -69,6 +69,8 @@ export function DriveMainPane({
     structureEnabled,
     selectView,
     visibleItems,
+    listSort,
+    toggleListSort,
     viewMode,
     filePreviews,
     richPreviews,
@@ -172,6 +174,8 @@ export function DriveMainPane({
 
   const sharedBrowserProps = {
     items: visibleItems,
+    sort: listSort,
+    onSort: toggleListSort,
     selectedIds,
     starred,
     labels,

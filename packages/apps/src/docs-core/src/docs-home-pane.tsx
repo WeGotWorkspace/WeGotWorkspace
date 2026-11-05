@@ -14,6 +14,12 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
+import { useListSort } from "@/hooks/use-list-sort";
+import {
+  DRIVE_LIST_SORT_COLUMNS,
+  sortDriveFiles,
+  type DriveListSort,
+} from "@/drive-core/src/drive-list-sort";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
@@ -26,6 +32,10 @@ import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 const noop = () => {};
 const noopUndo = () => false;
 const noopSetItems: Dispatch<SetStateAction<DriveFile[]>> = () => {};
+
+/** Docs home opens newest first, like the server order. */
+const DOCS_HOME_DEFAULT_SORT: DriveListSort = { key: "modified", direction: "desc" };
+const DOCS_HOME_SORT_STORAGE_KEY = "wgw.docs.listSort";
 
 export type DocsHomePaneProps = {
   labels: DocsUILabels;
@@ -107,7 +117,7 @@ export function DocsHomePane({
   title,
   emptyMessage,
   emptyIcon,
-  files,
+  files: unsortedFiles,
   loading,
   refreshing = false,
   loadingMore,
@@ -139,6 +149,14 @@ export function DocsHomePane({
   shareOperations,
   username = "",
 }: DocsHomePaneProps) {
+  const { sort, toggleSort } = useListSort({
+    columns: DRIVE_LIST_SORT_COLUMNS,
+    defaultSort: DOCS_HOME_DEFAULT_SORT,
+    storageKey: DOCS_HOME_SORT_STORAGE_KEY,
+  });
+  // Sorted here so grid, list, and shift-range selection share one order.
+  const files = useMemo(() => sortDriveFiles(unsortedFiles, sort), [sort, unsortedFiles]);
+
   const filesById = useMemo(() => {
     const map = new Map<string, DriveFile>();
     for (const file of files) map.set(file.id, file);
@@ -295,6 +313,8 @@ export function DocsHomePane({
 
   const sharedBrowserProps = {
     items: files,
+    sort,
+    onSort: toggleSort,
     selectedIds,
     starred: starred ?? {},
     labels: driveLabels,

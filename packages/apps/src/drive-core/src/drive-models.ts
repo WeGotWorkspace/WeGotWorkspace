@@ -11,6 +11,10 @@ export type DriveFile = Note & {
   parent: string;
   kind: FileKind;
   size: string;
+  /** Last change in epoch ms, for sorting (`date` is display text). */
+  modifiedMs?: number;
+  /** Size in bytes, for sorting (`size` is display text; unset for folders). */
+  sizeBytes?: number;
   apiPath?: string;
   /** From directory listing `myRights.mayShare` when available. */
   mayShare?: boolean;

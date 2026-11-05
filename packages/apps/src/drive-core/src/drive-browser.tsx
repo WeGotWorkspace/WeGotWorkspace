@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/drive-core/src/drive-models";
 import { cn } from "@/lib/utils";
 import {
   DriveSelectionCheckbox,
@@ -26,6 +26,14 @@ import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
+import {
+  DRIVE_KIND_LABEL,
+  DRIVE_LIST_SORT_COLUMNS,
+  type DriveListSort,
+  type DriveListSortKey,
+} from "@/drive-core/src/drive-list-sort";
+import { listSortAria } from "@/lib/list-sort";
+import { SortableColumnHeader } from "@/ui/sortable-column-header";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -406,16 +414,6 @@ function FileTile({
 
 /* ---------------- List view (OS-style table) ---------------- */
 
-const KIND_LABEL: Record<FileKind, string> = {
-  folder: "Folder",
-  doc: "Document",
-  image: "Image",
-  video: "Video",
-  audio: "Audio",
-  archive: "Archive",
-  file: "File",
-};
-
 export function DriveListView({
   items,
   activeId,
@@ -453,8 +451,13 @@ export function DriveListView({
   pinLoadingId,
   offlineBadgeLabels,
   itemChrome = "manage",
+  sort,
+  onSort,
 }: {
   items: DriveFile[];
+  /** Column sort; omit for a list that keeps its given order (headers stay plain). */
+  sort?: DriveListSort;
+  onSort?: (key: DriveListSortKey) => void;
   activeId: string | null;
   selectedIds: string[];
   starred: Record<string, boolean>;
@@ -498,13 +501,27 @@ export function DriveListView({
   const pickerChrome = itemChrome === "picker";
   // The offline column also holds an upload's progress ring.
   const slotColumn = offlineEnabled || items.some((file) => file.upload);
+  const head = (key: DriveListSortKey, label: string, align: "start" | "end" = "start") =>
+    sort && onSort ? (
+      <SortableColumnHeader
+        label={label}
+        sortKey={key}
+        sort={sort}
+        onSort={onSort}
+        firstDirection={DRIVE_LIST_SORT_COLUMNS[key]}
+        align={align}
+      />
+    ) : (
+      label
+    );
+  const ariaSort = (key: DriveListSortKey) => (sort ? listSortAria(sort, key) : undefined);
   return (
     <div className="drive-list-view">
       <table className="drive-list-table">
         <thead>
           <tr className="drive-list-head">
-            <th className="drive-list-col-name drive-list-head__cell">
-              {searchActive ? labels.searchViewTitle : labels.listColumnName}
+            <th className="drive-list-col-name drive-list-head__cell" aria-sort={ariaSort("name")}>
+              {head("name", searchActive ? labels.searchViewTitle : labels.listColumnName)}
             </th>
             {slotColumn ? (
               <th className="drive-list-col-offline drive-list-head__cell">
@@ -512,20 +529,32 @@ export function DriveListView({
               </th>
             ) : null}
             {showLocationColumn ? (
-              <th className="drive-list-col-location drive-list-head__cell hidden sm:table-cell">
-                {locationColumnLabel}
+              <th
+                className="drive-list-col-location drive-list-head__cell hidden sm:table-cell"
+                aria-sort={ariaSort("location")}
+              >
+                {head("location", locationColumnLabel)}
               </th>
             ) : null}
-            <th className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell">
-              Modified
+            <th
+              className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell"
+              aria-sort={ariaSort("modified")}
+            >
+              {head("modified", "Modified")}
             </th>
             {showKindColumn ? (
-              <th className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell">
-                Kind
+              <th
+                className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell"
+                aria-sort={ariaSort("kind")}
+              >
+                {head("kind", "Kind")}
               </th>
             ) : null}
-            <th className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell">
-              Size
+            <th
+              className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
+              aria-sort={ariaSort("size")}
+            >
+              {head("size", "Size", "end")}
             </th>
             {pickerChrome ? null : (
               <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
@@ -650,7 +679,7 @@ export function DriveListView({
                 </td>
                 {showKindColumn ? (
                   <td className="drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted">
-                    {KIND_LABEL[f.kind]}
+                    {DRIVE_KIND_LABEL[f.kind]}
                   </td>
                 ) : null}
                 <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">

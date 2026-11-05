@@ -195,6 +195,8 @@ export function useDriveController({
     inTrashView: shell.inTrashView,
     isUnderTrash: shell.isUnderTrash,
     visibleItems: list.visibleItems,
+    listSort: list.listSort,
+    toggleListSort: list.toggleListSort,
     folderListingPending: shell.folderListingPending,
     folderListingError: shell.folderListingError,
     retryFolderListing: shell.retryFolderListing,
