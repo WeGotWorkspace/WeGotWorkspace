@@ -43,10 +43,13 @@ final class WritePathContractTest extends TestCase
 
     public function test_calendar_contacts_notes_tasks_use_caldav_or_carddav_backends(): void
     {
+        // #1639: CalDAV writes get their backend from one factory, which hands
+        // out Sabre's PDO backend.
         $pairs = [
-            'Services/Calendars/CalendarEventMutationSupport.php' => 'Sabre\\CalDAV\\Backend\\PDO',
-            'Services/Tasks/TaskRepository.php' => 'Sabre\\CalDAV\\Backend\\PDO',
-            'Services/Notes/NoteRepository.php' => 'Sabre\\CalDAV\\Backend\\PDO',
+            'Dav/Server/WgwCalendarBackendFactory.php' => 'Sabre\\CalDAV\\Backend\\PDO',
+            'Services/Calendars/CalendarEventMutationSupport.php' => 'App\\Dav\\Server\\WgwCalendarBackendFactory',
+            'Services/Tasks/TaskRepository.php' => 'App\\Dav\\Server\\WgwCalendarBackendFactory',
+            'Services/Notes/NoteRepository.php' => 'App\\Dav\\Server\\WgwCalendarBackendFactory',
             'Services/Contacts/ContactCardRepository.php' => 'App\\Dav\\Server\\WgwCardBackend',
         ];
         foreach ($pairs as $rel => $backend) {

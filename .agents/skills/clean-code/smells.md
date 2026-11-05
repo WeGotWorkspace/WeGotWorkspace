@@ -73,6 +73,8 @@ A new counted source file over 800 lines is a merge block unless its baseline en
 
 `pnpm ratchet:update` lowers a stored count or deletes a row that is now at or under 800 lines. It never raises a count and never adds a path. Adding a path is a manual edit with a reason in the third column. `pnpm ratchet:rebaseline` refreshes existing baseline counts after integrating main (may raise); do not use it on a feature PR to excuse growth. CI `check-growth` warns when a count rises or a new baseline row appears versus the PR base; raising the baseline requires code-owner review of `tools/file-size-baseline.tsv`. The existing hook limits below stay stricter for `use*.ts(x)`.
 
+**Calendar Lit components are an exception.** Do not propose splitting or restructuring the files in `packages/apps/src/lib/calendar-elements/` as a size fix. They move to React in one rewrite later; until then, pull design tokens and domain logic outward (`styles.css`, `lib/calendar-engine/`, `lib/` domain modules) and keep changes inside the Lit components to bug fixes. Decision: [docs/architecture/calendar-react-lit.md](../../../docs/architecture/calendar-react-lit.md).
+
 ## Project-specific red flags
 
 - [ ] Legacy PHP patterns in `packages/api` (see `api/SKILL.md` forbidden list)

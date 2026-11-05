@@ -8,7 +8,7 @@ export type AppToastCalloutProps = {
   /** Active suite app label (Docs, Tasks, …) shown under the message. */
   appName: string;
   /** Primary toast body (main line above the app name). */
-  title: string;
+  title: ReactNode;
   message?: ReactNode;
   severity: CalloutSeverity;
   icon?: ReactNode;
@@ -18,6 +18,8 @@ export type AppToastCalloutProps = {
   showRetry?: boolean;
   onRetry?: () => void;
   retryLabel?: string;
+  /** Makes the toast content one button; the toast closes after it runs. */
+  onSelect?: () => void;
 };
 
 export function AppToastCallout({
@@ -33,6 +35,7 @@ export function AppToastCallout({
   showRetry = false,
   onRetry,
   retryLabel = "Retry",
+  onSelect,
 }: AppToastCalloutProps) {
   const showAction = showUndo || showRetry;
   const actionLabel = showUndo ? undoLabel : retryLabel;
@@ -55,6 +58,14 @@ export function AppToastCallout({
       title={body}
       message={appName}
       icon={icon}
+      onSelect={
+        onSelect
+          ? () => {
+              onSelect();
+              toast.dismiss(toastId);
+            }
+          : undefined
+      }
       action={
         showAction ? (
           <Button

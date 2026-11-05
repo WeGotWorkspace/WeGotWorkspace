@@ -14,6 +14,8 @@ export type CalloutProps = {
   icon?: ReactNode;
   /** Optional control (e.g. `Button`) aligned to the right, vertically centered with the content. */
   action?: ReactNode;
+  /** Makes the content one button (a toast that opens what it is about). */
+  onSelect?: () => void;
   className?: string;
 };
 
@@ -37,6 +39,7 @@ export function Callout({
   message,
   icon,
   action,
+  onSelect,
   className,
 }: CalloutProps) {
   const Icon = defaultIconForSeverity(severity);
@@ -49,6 +52,7 @@ export function Callout({
             icon={icon ?? <Icon className="callout__icon" aria-hidden />}
             label={title}
             description={message}
+            onClick={onSelect}
           />
         </div>
         {action != null ? <div className="callout__action">{action}</div> : null}

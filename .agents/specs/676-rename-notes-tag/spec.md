@@ -1,5 +1,5 @@
-Source: #676 (body-hash: 932755b2)
-Goal: #676
+Source: ad-hoc — no Task was filed. #676 was a Goal filed in this repository before Goals moved to WeGotWorkspace/Product; `#676` below means that Goal.
+Goal: WeGotWorkspace/Product#92
 
 # Rename a notes tag across every loaded note
 

@@ -64,6 +64,25 @@ function documentVisibility() {
   };
 }
 
+/** When this window last got focus; a window focused at load counts from then. */
+function windowFocus() {
+  let focusedAt = document.hasFocus() ? Date.now() : 0;
+  const listeners = new Set<() => void>();
+  window.addEventListener("focus", () => {
+    focusedAt = Date.now();
+    for (const listener of listeners) listener();
+  });
+  return {
+    focusedAt: () => focusedAt,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 function randomTabId(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -84,6 +103,7 @@ function createHub(): JmapPushHub {
     topic: crossTabTopic<PushMessage>(CHANNEL, isPushMessage),
     locks: browserWebLocks(),
     visibility: documentVisibility(),
+    focus: windowFocus(),
     onPageHide: (listener) => {
       window.addEventListener("pagehide", listener);
       return () => window.removeEventListener("pagehide", listener);
