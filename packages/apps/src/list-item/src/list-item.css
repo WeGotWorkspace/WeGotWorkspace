@@ -13,7 +13,9 @@
   padding-block: var(--list-item-padding-y, 1rem);
   /* A little air between rows, so neighbouring highlights stay apart. */
   margin-block-end: var(--list-item-gap, 0.125rem);
-  padding-inline: var(--list-item-padding-x, 0.75rem);
+  /* Where the row text (and the select mark) starts, inside the pill. */
+  --list-item-text-inset: var(--list-item-padding-x, 1.25rem);
+  padding-inline: var(--list-item-text-inset);
   border: 0;
   border-radius: var(--list-row-radius, 0.625rem);
   background-color: var(--list-item-bg, var(--list-item-base-bg, transparent));
@@ -30,7 +32,7 @@
 
 @media (min-width: 768px) {
   .list-item__button {
-    padding-inline: var(--list-item-padding-x, 1rem);
+    --list-item-text-inset: var(--list-item-padding-x, 1.5rem);
   }
 }
 
@@ -54,13 +56,18 @@ html:not([data-modality="pointer"])
   box-shadow: inset 0 0 0 2px var(--list-item-accent-color, var(--color-emerald));
 }
 
-.list-item__button[data-selection-mode="true"] {
-  @apply pl-9 md:pl-11;
+/* Selection mode: the mark sits on the text line and the text moves past it.
+ * The list root paints the mode, so memoized rows do not each re-render. */
+.list-item__button[data-selection-mode="true"],
+[data-list-selection-mode="true"] .list-item__button {
+  padding-inline-start: calc(var(--list-item-text-inset) + 1.5rem);
 }
 
-/* List root paints mode so memoized rows do not each re-render to show checkboxes. */
-[data-list-selection-mode="true"] .list-item__button {
-  @apply pl-9 md:pl-11;
+@media (min-width: 768px) {
+  .list-item__button[data-selection-mode="true"],
+  [data-list-selection-mode="true"] .list-item__button {
+    padding-inline-start: calc(var(--list-item-text-inset) + 1.75rem);
+  }
 }
 
 .list-item__button[data-dragging="true"] {
@@ -92,7 +99,8 @@ html:not([data-modality="pointer"])
 }
 
 .list-item__checkbox-wrap {
-  @apply absolute left-3 top-1/2 -translate-y-1/2;
+  @apply absolute top-1/2 -translate-y-1/2;
+  left: var(--list-item-text-inset);
   opacity: 0;
   transition: opacity 150ms ease;
 }
@@ -237,15 +245,15 @@ html:not([data-modality="pointer"])
   );
 }
 
-/* Fill and label come as a pair, so the label stays readable in both themes. */
+/* No fill: the action sits on the list surface it uncovers, and the tone
+ * colours only its icon and label (ink, or the error red). */
 .list-item__swipe-action {
   @apply flex items-center justify-center text-xs font-medium gap-1 flex-col w-full;
   min-width: 5rem;
-  background-color: var(--workspace-accent);
-  color: var(--workspace-accent-foreground);
+  background-color: transparent;
+  color: var(--workspace-foreground);
 }
 
 .list-item__swipe-action[data-tone="danger"] {
-  background-color: var(--color-error);
-  color: var(--scheme-on-danger, #ffffff);
+  color: var(--color-error);
 }

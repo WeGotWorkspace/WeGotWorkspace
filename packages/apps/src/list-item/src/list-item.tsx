@@ -6,12 +6,20 @@ import {
   TrailingActions,
   LeadingActions,
 } from "react-swipeable-list";
-import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
+import {
+  useCancelDelegatedPress,
+  useListItemEventDelegation,
+} from "@/list-item/src/list-item-delegation";
 import {
   useHasListSelectionStore,
   useListItemHighlight,
 } from "@/list-item/src/list-item-selection";
-import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
+import {
+  LIST_ITEM_LONG_PRESS_DELAY_MS,
+  touchMovedPastSlop,
+  touchStartPoint,
+  type TouchStartPoint,
+} from "@/list-item/src/use-delegated-list-item-events";
 import { SelectionMark } from "@/selection-mark/src/selection-mark";
 import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 import "./list-item.css";
@@ -22,7 +30,7 @@ installKeyboardFocusModality();
 
 export type SwipeAction = {
   icon: React.ReactNode;
-  /** Fill and label colour as one pair (suite tokens); defaults to the accent. */
+  /** Icon and label colour (no fill): ink, or the error red for `danger`. */
   tone?: "accent" | "danger";
   onActivate: () => void;
   label?: string;
@@ -95,7 +103,6 @@ const defaultTheme: ListItemTheme = {
   bodyColor: "color-mix(in oklab, var(--workspace-foreground) 60%, transparent)",
 };
 
-const TOUCH_MOVE_CANCEL_PX = 8;
 const DESTRUCTIVE_CALLBACK_DELAY_MS = 380;
 
 function themeToCssVars(theme: Partial<ListItemTheme>): CSSProperties {
@@ -140,6 +147,7 @@ export function ListItem({
 }: ListItemProps) {
   const entityId = itemId ?? id;
   const delegated = useListItemEventDelegation();
+  const cancelDelegatedPress = useCancelDelegatedPress();
   const hasSelectionStore = useHasListSelectionStore();
   const highlight = useListItemHighlight(entityId, { isActive, isSelected });
   const palette = { ...defaultTheme, ...theme };
@@ -151,10 +159,10 @@ export function ListItem({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const longPressBlockedBySwipeRef = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
+  const touchStartRef = useRef<TouchStartPoint | null>(null);
 
   const startLongPress = (e: React.TouchEvent<HTMLButtonElement>) => {
-    touchStartYRef.current = e.touches[0]?.clientY ?? null;
+    touchStartRef.current = touchStartPoint(e.touches);
     longPressBlockedBySwipeRef.current = false;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -171,15 +179,12 @@ export function ListItem({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLButtonElement>) => {
-    const startY = touchStartYRef.current;
-    const touch = e.touches[0];
-    if (!touch || startY === null) return;
-    if (Math.abs(touch.clientY - startY) > TOUCH_MOVE_CANCEL_PX) cancelLongPress();
+    if (touchMovedPastSlop(touchStartRef.current, e.touches)) cancelLongPress();
   };
 
   const resetTouchIntent = () => {
     cancelLongPress();
-    touchStartYRef.current = null;
+    touchStartRef.current = null;
   };
 
   const button = (
@@ -357,11 +362,13 @@ export function ListItem({
       onSwipeStart={() => {
         longPressBlockedBySwipeRef.current = true;
         cancelLongPress();
+        cancelDelegatedPress();
       }}
       onSwipeProgress={(progress) => {
         if (progress <= 0) return;
         longPressBlockedBySwipeRef.current = true;
         cancelLongPress();
+        cancelDelegatedPress();
       }}
       onSwipeEnd={() => {
         longPressBlockedBySwipeRef.current = false;

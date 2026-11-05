@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ListItem } from "@/list-item/src/list-item";
 
@@ -105,6 +105,29 @@ describe("ListItem", () => {
     const { getByRole } = render(<ListItem {...baseProps} onClick={onClick} />);
     getByRole("button").click();
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts multi-select on a held touch, but not when the finger swipes sideways", () => {
+    vi.useFakeTimers();
+    try {
+      const onLongPress = vi.fn();
+      const { getByRole } = render(<ListItem {...baseProps} isTouch onLongPress={onLongPress} />);
+      const row = getByRole("button");
+
+      fireEvent.touchStart(row, { touches: [{ clientX: 100, clientY: 20 }] });
+      fireEvent.touchMove(row, { touches: [{ clientX: 70, clientY: 21 }] });
+      vi.advanceTimersByTime(600);
+      fireEvent.touchEnd(row);
+      expect(onLongPress).not.toHaveBeenCalled();
+
+      fireEvent.touchStart(row, { touches: [{ clientX: 100, clientY: 20 }] });
+      fireEvent.touchMove(row, { touches: [{ clientX: 103, clientY: 22 }] });
+      vi.advanceTimersByTime(600);
+      fireEvent.touchEnd(row);
+      expect(onLongPress).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders ReactNode body content such as tags", () => {
