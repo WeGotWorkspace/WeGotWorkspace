@@ -127,11 +127,13 @@ for (const mesh of ["up", "blocked"] as const) {
         await blockSignaling();
         const lostAt = requests.length;
         expect(await dropMesh(writer)).toBeGreaterThan(0);
-        await sleep(12_000);
+        // Three gaps after the drop; at 5 s they would take 15 s or more.
+        await expect
+          .poll(() => gaps(requests.slice(lostAt)).length, { timeout: 20_000, intervals: [500] })
+          .toBeGreaterThanOrEqual(3);
         // The first gap may straddle the drop; the ones after it run at 3 s.
-        dropGaps = gaps(requests.slice(lostAt));
+        dropGaps = gaps(requests.slice(lostAt)).slice(0, 3);
         console.log(`[push-mesh-interval] after the drop: ${gaps(requests).join(" ")}`);
-        expect(dropGaps.length).toBeGreaterThanOrEqual(3);
         expectGaps(dropGaps, 3_000);
       }
 
