@@ -3,10 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { Pencil, Sparkles } from "lucide-react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { Button } from "@/button/src/button";
-import {
-  BUTTON_ICON_SLOT_CLASSNAME,
-  ICON_BUTTON_ACTIVE_CLASSNAME,
-} from "@/button/src/button.shared";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -63,7 +60,9 @@ export function DocsCollabSuggestControls({
             isSuggest && ICON_BUTTON_ACTIVE_CLASSNAME,
             className,
           )}
+          label={isSuggest ? docsLabels.suggestModeActive : suggestLabel}
           aria-label={actionLabel}
+          icon={isSuggest ? <Sparkles aria-hidden /> : <Pencil aria-hidden />}
           onClick={() => {
             if (isSuggest) {
               editor.commands.setEditMode();
@@ -77,16 +76,7 @@ export function DocsCollabSuggestControls({
           variant="outline"
           aria-pressed={isSuggest}
           disabled={disabled}
-        >
-          <span className={BUTTON_ICON_SLOT_CLASSNAME}>
-            {isSuggest ? <Sparkles aria-hidden /> : <Pencil aria-hidden />}
-          </span>
-          {/* Both labels share one grid cell so the button keeps the wider width (no shift). */}
-          <span className="button__label docs-collab-suggest-controls__label">
-            <span data-shown={!isSuggest}>{suggestLabel}</span>
-            <span data-shown={isSuggest}>{docsLabels.suggestModeActive}</span>
-          </span>
-        </Button>
+        />
       </TooltipTrigger>
       <TooltipContent>{actionLabel}</TooltipContent>
     </Tooltip>

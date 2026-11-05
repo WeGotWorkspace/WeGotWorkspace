@@ -95,6 +95,7 @@ describe("DocsCollabSuggestControls", () => {
     expect(showToast).toHaveBeenCalledWith(docsLabels.toastSwitchedToEditMode);
     const off = screen.getByRole("button", { name: docsLabels.suggestMode });
     expect(off.getAttribute("aria-pressed")).toBe("false");
+    expect(off.className).not.toContain("icon-button--active");
     expect(off.querySelector("svg.lucide-pencil")).not.toBeNull();
   });
 

@@ -454,6 +454,43 @@
     0 12px 32px -16px rgb(0 0 0 / 0.6);
 }
 
+/*
+ * Light: neutral paper (Docs polish reference) instead of suite cream. A scope may remap
+ * the Tier 2 pair (like Meet does for dark); washes re-derive from these locally.
+ */
+:root:not([data-theme="dark"]) :is(.docs-workspace, .docs-dialog-surface) {
+  --workspace-surface: oklch(from #ffffff l c h);
+  --workspace-foreground: oklch(from #16181d l c h);
+  --workspace-accent: var(--workspace-foreground);
+  --workspace-accent-foreground: oklch(from #ffffff l c h);
+  --workspace-sidebar-surface: oklch(from #f6f7f9 l c h);
+  --workspace-sidebar-foreground: var(--workspace-foreground);
+  --docs-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+}
+
+:root:not([data-theme="dark"]) .docs-workspace {
+  /* Selected row (sidebar) and pressed Suggest: quiet grey pill for the selected row, no edge. */
+  --sidebar-item-selected-background: color-mix(
+    in oklch,
+    var(--workspace-foreground) 6%,
+    transparent
+  );
+  --sidebar-item-selected-color: var(--workspace-foreground);
+}
+
+:root:not([data-theme="dark"]) .docs-workspace .text-editor {
+  --text-editor-page-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+}
+
+:root:not([data-theme="dark"]) .docs-workspace {
+  /* Whiter glass on white paper; a hairline-weight shadow instead of a border. */
+  --docs-frost-bg: color-mix(in oklch, var(--workspace-surface) 86%, transparent);
+  --docs-frost-shadow:
+    0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 5%, transparent),
+    0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.14);
+}
+
 :root[data-theme="dark"] .docs-workspace {
   /* Sky accent for selection in the outline (reference: #3a9fe1 edge, #183061 wash). */
   --docs-sky: oklch(0.68 0.13 240);
@@ -462,8 +499,8 @@
   --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
 }
 
-:root[data-theme="dark"] .docs-workspace .app-sidebar {
-  /* Sky wash fading right, one hairline that follows the radius (no side bar). */
+:root[data-theme="dark"] .docs-workspace {
+  /* Selected row (sidebar) and pressed Suggest: sky wash fading right, one hairline that follows the radius (no side bar). */
   --sidebar-item-selected-background: linear-gradient(
     90deg,
     color-mix(in oklch, var(--docs-sky) 26%, var(--workspace-sidebar-surface)),
@@ -697,31 +734,13 @@
   --docs-status-dot: var(--color-warning);
 }
 
-/* Suggesting: amber outline + soft glow so the mode reads from across the screen. */
-.docs-collab-suggest-controls.button[aria-pressed="true"] {
-  --docs-suggest-amber: oklch(0.76 0.17 62);
-  color: oklch(0.92 0.08 80);
-  border-color: var(--docs-suggest-amber);
-  background-color: color-mix(in oklch, var(--docs-suggest-amber) 22%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--docs-suggest-amber) 35%, transparent),
-    0 0 22px -2px color-mix(in oklch, var(--docs-suggest-amber) 70%, transparent);
-}
-
-.docs-collab-suggest-controls__label {
-  display: inline-grid;
-}
-
-.docs-collab-suggest-controls__label > span {
-  grid-area: 1 / 1;
-}
-
-.docs-collab-suggest-controls__label > span[data-shown="false"] {
-  visibility: hidden;
-}
-
-.docs-collab-suggest-controls.button[aria-pressed="true"] .button__icon {
-  color: var(--docs-suggest-amber);
+/* Suggesting: the standard pressed toggle, in the Docs sidebar's selected-row style. */
+.docs-workspace .docs-collab-suggest-controls.button.icon-button--active,
+.docs-workspace .docs-collab-suggest-controls.button.icon-button--active:hover {
+  background: var(--sidebar-item-selected-background);
+  box-shadow: var(--sidebar-item-selected-shadow, none);
+  color: var(--sidebar-item-selected-color);
+  border-color: transparent;
 }
 
 /* Page sheets: rounded. Pages mode draws page ends inside `.breaker`; give that the desk
@@ -797,6 +816,14 @@
     border-end-end-radius: 1rem;
     border-right-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
     box-shadow: 10px 0 28px -12px rgb(0 0 0 / 0.55);
+  }
+}
+
+/* Light: the rail reads by its grey fill and a hairline; no shadow. */
+@media (min-width: 72.5rem) {
+  :root:not([data-theme="dark"]) .docs-workspace .app-sidebar {
+    border-right-color: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+    box-shadow: none;
   }
 }
 
