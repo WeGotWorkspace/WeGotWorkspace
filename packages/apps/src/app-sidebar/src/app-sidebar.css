@@ -90,9 +90,8 @@
 }
 
 .app-sidebar__primary-button {
-  /* Hairline under Compose; asymmetric block padding (pt-2 / pb-4). */
-  @apply shrink-0 border-b pt-2 pb-4;
-  border-color: var(--app-sidebar-border-color, var(--border));
+  /* No hairline under Compose: spacing alone separates it; asymmetric block padding (pt-2 / pb-4). */
+  @apply shrink-0 pt-2 pb-4;
   padding-inline: var(--app-sidebar-padding-x);
 }
 
@@ -101,14 +100,9 @@
   padding-inline: var(--app-sidebar-padding-x);
 }
 
-/*
- * Hairline between sections. Same soft token as the rail
- * (`--app-sidebar-border-color`, which Settings aliases to `--border`).
- * `mt-3.5` + `pt-3.5` keeps the previous `space-y-7` gap, with the line centered.
- */
+/* Sections are separated by space only (no hairline); same total gap as before. */
 .app-sidebar__sections > .sidebar-section + .sidebar-section {
-  @apply mt-3.5 border-t pt-3.5;
-  border-color: var(--app-sidebar-border-color, var(--border));
+  @apply mt-7;
 }
 
 .app-sidebar__footer {

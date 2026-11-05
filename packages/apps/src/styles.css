@@ -276,7 +276,7 @@
     0 0 0 1px color-mix(in oklch, var(--scheme-ink) 5%, transparent),
     0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.14);
   /* Desktop sidebar panel: edge hairline strength and drop shadow. */
-  --scheme-panel-edge: 8%;
+  --scheme-panel-edge: 6%;
   --scheme-panel-shadow: none;
 }
 
@@ -335,7 +335,7 @@
     inset 0 1px 0 color-mix(in oklch, white 7%, transparent),
     inset 0 0 0 1px color-mix(in oklch, white 2%, transparent), 0 1px 2px rgb(0 0 0 / 0.25),
     0 12px 32px -16px rgb(0 0 0 / 0.6);
-  --scheme-panel-edge: 12%;
+  --scheme-panel-edge: 5%;
   --scheme-panel-shadow: 10px 0 28px -12px rgb(0 0 0 / 0.55);
 }
 

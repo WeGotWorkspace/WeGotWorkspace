@@ -106,12 +106,9 @@
   margin: 0.5rem 0 0;
 }
 
+/* Settings row: no hairline above it; the account card below is the only container. */
 .workspace-sidebar-account-footer__settings {
-  @apply border-t py-2;
-  border-color: var(
-    --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
+  @apply py-2;
 }
 
 .workspace-sidebar-account-footer__settings-button {
