@@ -15,7 +15,7 @@
 }
 
 .app-sidebar {
-  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
+  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r sidebar:h-full sidebar:min-h-0 transition-[translate,margin,border-width] overflow-hidden will-change-transform;
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
   background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
@@ -131,22 +131,27 @@
 }
 
 /*
- * Docked (desktop) sidebar: a panel with a rounded end edge, a scheme hairline and
- * the scheme shadow (none in light, a soft drop in dark). Raised over main so the
- * shadow falls on the canvas.
+ * Sidebar panel at every width: a rounded end edge, a scheme hairline and the
+ * scheme shadow. Docked (desktop) it is raised over main so the shadow falls on the
+ * canvas; on mobile the same panel slides over the content. A closed panel casts
+ * no shadow (it would bleed in at the screen edge).
  */
+.app-sidebar {
+  border-start-end-radius: var(--sidebar-panel-radius);
+  border-end-end-radius: var(--sidebar-panel-radius);
+  border-inline-end-color: var(--workspace-divider-color);
+  box-shadow: var(--sidebar-panel-overlay-shadow-start);
+}
+
+.app-sidebar[data-open="false"] {
+  box-shadow: none;
+}
+
 @media (min-width: 72.5rem) {
   .app-sidebar {
     position: relative;
     z-index: 31;
-    border-start-end-radius: 1rem;
-    border-end-end-radius: 1rem;
-    border-inline-end-color: var(--workspace-divider-color);
-    box-shadow: var(--scheme-panel-shadow, none);
-  }
-
-  .app-sidebar[data-open="false"] {
-    box-shadow: none;
+    box-shadow: var(--sidebar-panel-shadow-start);
   }
 }
 

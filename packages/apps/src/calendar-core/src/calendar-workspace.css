@@ -146,21 +146,6 @@
   @apply isolate min-w-0;
 }
 
-.calendar-workspace .workspace-app-layout__panel,
-.calendar-workspace .calendar-workspace__invitations-panel {
-  @apply flex min-h-0 flex-col overflow-hidden border-l;
-  flex: 0 0 var(--calendar-invitations-column-width);
-  width: var(--calendar-invitations-column-width);
-  max-width: var(--calendar-invitations-column-width);
-  border-color: var(--docs-border);
-  background-color: var(--app-sidebar-bg);
-}
-
-/* Closed dock still occupies a translated flex slot over the grid; inert + no hits. */
-.calendar-workspace .calendar-workspace__invitations-panel[data-open="false"] {
-  @apply pointer-events-none;
-}
-
 .calendar-workspace .calendar-invitations-trigger {
   @apply relative;
 }

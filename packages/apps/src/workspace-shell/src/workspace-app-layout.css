@@ -162,9 +162,22 @@
   }
 }
 
-/* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
+/*
+ * Right-hand panel: the AppSidebar mirrored (suite SST). Same fill, hairline,
+ * inner-edge radius and shadow, on the opposite edge, with the same slide.
+ * Products only set `--workspace-panel-width`. Raised over main so the shadow
+ * falls on the content.
+ */
 .workspace-app-layout__panel {
-  @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width];
+  @apply relative z-[1] flex min-h-0 shrink-0 flex-col overflow-hidden will-change-transform transition-[translate,margin,border-width];
+  flex-basis: var(--workspace-panel-width, auto);
+  width: var(--workspace-panel-width, auto);
+  max-width: var(--workspace-panel-width, none);
+  background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
+  border-inline-start: 1px solid var(--workspace-divider-color, var(--border));
+  border-start-start-radius: var(--sidebar-panel-radius);
+  border-end-start-radius: var(--sidebar-panel-radius);
+  box-shadow: var(--sidebar-panel-shadow-end);
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
 }
@@ -176,6 +189,7 @@
 .workspace-app-layout__panel[data-open="false"] {
   @apply translate-x-full border-l-0 pointer-events-none;
   margin-right: calc(-1 * var(--workspace-panel-width, 0px));
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

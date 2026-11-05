@@ -368,13 +368,6 @@
   }
 }
 
-.docs-workspace .workspace-app-layout__panel {
-  @apply flex min-h-0 flex-col border-l;
-  width: var(--docs-comments-column-width);
-  border-color: var(--docs-border);
-  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
-}
-
 .docs-workspace__editor .text-editor--view-source .text-editor__source {
   background-color: var(--docs-surface);
 }

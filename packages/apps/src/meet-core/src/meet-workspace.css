@@ -1171,7 +1171,7 @@
 
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
-  @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;
+  @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden;
   background-color: var(--workspace-surface);
   color: var(--workspace-foreground);
   --chat-surface: var(--workspace-surface);
@@ -1184,6 +1184,11 @@
     var(--workspace-foreground) 8%,
     transparent
   );
+}
+
+/* The in-call chat is a pane of the stage, not a sidebar: square corners. */
+.meet-call-stage__chat {
+  @apply rounded-none;
 }
 
 .meet-workspace__rail .chat-thread-panel__header {
@@ -1458,21 +1463,19 @@
   --button-active-color: inherit;
 }
 
-/* Calendar inbox: one flush rail. Overlay below 1160px; flex when docked.
- * Popover chrome matches AppSidebar: `shadow-2xl` + panel-scrim (`bg-black/30`). */
+/*
+ * Chat rail: overlay below 1160px, flex when docked. Shape, edge and shadow come
+ * from the shared `.workspace-app-layout__panel` (the AppSidebar mirrored); the
+ * overlay uses the same overlay shadow as the mobile AppSidebar.
+ */
 .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-  @apply absolute inset-y-0 end-0 z-20 rounded-none border-l sidebar:static sidebar:shadow-none;
-  width: var(--workspace-panel-width);
-  max-width: var(--workspace-panel-width);
+  @apply absolute inset-y-0 end-0 z-20 sidebar:relative;
   height: 100%;
-  border-color: var(--docs-collab-sidebar-panel-border-color);
-  /* Motion stays on `.workspace-app-layout__panel` (translate, margin, border-width). */
 }
 
 @media (min-width: 72.5rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply shadow-none;
-    position: static;
+    position: relative;
     inset: auto;
   }
 
@@ -1483,7 +1486,11 @@
 
 @container workspace-columns (max-width: 72.49rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply absolute inset-y-0 end-0 shadow-2xl;
+    @apply absolute inset-y-0 end-0;
+  }
+
+  .meet-workspace .meet-workspace__rail.workspace-app-layout__panel[data-open="true"] {
+    box-shadow: var(--sidebar-panel-overlay-shadow-end);
   }
 
   .meet-workspace .workspace-app-layout__panel-scrim {
@@ -1493,8 +1500,7 @@
 
 @container workspace-columns (min-width: 72.5rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply shadow-none;
-    position: static;
+    position: relative;
     inset: auto;
   }
 
@@ -1506,7 +1512,11 @@
 @supports not (container-type: inline-size) {
   @media (max-width: 72.49rem) {
     .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-      @apply absolute inset-y-0 end-0 shadow-2xl;
+      @apply absolute inset-y-0 end-0;
+    }
+
+    .meet-workspace .meet-workspace__rail.workspace-app-layout__panel[data-open="true"] {
+      box-shadow: var(--sidebar-panel-overlay-shadow-end);
     }
 
     .meet-workspace .workspace-app-layout__panel-scrim {

@@ -109,20 +109,6 @@
   @apply isolate min-w-0;
 }
 
-.drive-workspace .workspace-app-layout__panel,
-.drive-workspace .drive-workspace__detail-panel {
-  @apply flex min-h-0 flex-col overflow-hidden border-l;
-  flex: 0 0 var(--drive-detail-column-width);
-  width: var(--drive-detail-column-width);
-  max-width: var(--drive-detail-column-width);
-  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
-}
-
-.drive-workspace .drive-workspace__detail-panel[data-open="false"] {
-  @apply pointer-events-none;
-}
-
 .drive-workspace .drive-detail-panel__path {
   --tag-bg: var(--drive-detail-tag-bg);
   --tag-fg: var(--drive-detail-tag-fg);
