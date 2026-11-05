@@ -67,31 +67,29 @@
 }
 
 /**
- * Generic toast surface — cream paper, ink type, IconButton outline chrome.
- * No app-accent or severity color coding; severity only affects default icons.
- * Background is slightly translucent so the page peeks through a little.
+ * Toast surface: the frosted floating chrome of the selection bar and the search
+ * dock (frost fill and blur, floating radius, no border, frost shadow). Ink type,
+ * IconButton outline chrome; severity only changes the default icon.
  */
 [data-sonner-toast] .callout,
 [data-sonner-toast] .callout--info,
 [data-sonner-toast] .callout--success,
 [data-sonner-toast] .callout--warning,
 [data-sonner-toast] .callout--error {
-  --callout-bg: color-mix(in oklab, var(--workspace-surface) 90%, transparent);
-  --callout-border: var(--control-border-color);
+  --callout-bg: var(--frost-background);
+  --callout-border: transparent;
   --callout-text: var(--workspace-foreground);
   --callout-icon-color: var(--workspace-foreground);
   --button-outline-color: var(--workspace-foreground);
   --button-hover-background: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
   background-color: var(--callout-bg);
-  border-color: var(--callout-border);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  border: 0;
   color: var(--callout-text);
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--floating-toolbar-radius);
   user-select: none;
-  box-shadow: var(
-    --control-shadow,
-    0 1px 2px color-mix(in oklab, var(--workspace-foreground) 4%, transparent),
-    0 10px 30px -10px color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
-  );
+  box-shadow: var(--frost-shadow);
 }
 
 /* Toast body — primary content (top line). */
