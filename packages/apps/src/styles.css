@@ -147,6 +147,10 @@
 
 :root {
   --radius: 0.625rem;
+  /* Sidebar rows (menu-item and collection rows) and their selected wash. */
+  --sidebar-item-radius: 0.625rem;
+  /* Frosted chrome blur (format pill, account card). Fill and shadow are Tier 3. */
+  --frost-blur: blur(16px) saturate(1.4);
   color-scheme: light;
   /*
    * Tier 2 — four surface/foreground pairs. Components and product sheets mix
@@ -241,14 +245,39 @@
  * brand primitives must see the scheme recomputed from them locally.
  */
 :where(:root, :root *) {
-  --scheme-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
-  --scheme-sidebar-surface: var(--color-we-got-soft);
-  --scheme-ink: var(--color-we-got-dark);
-  --scheme-on-ink: #ffffff;
+  /*
+   * Neutral paper: white surface, cool light-grey rail, near-black ink. Brand
+   * Soft / Dark stay in the logo and app icons only. The plain-hex line first
+   * is the value the PWA colour guard reads; the oklch line is what paints.
+   */
+  --scheme-surface: oklch(from #ffffff l c h);
+  --scheme-sidebar-surface: #f6f7f9;
+  --scheme-sidebar-surface: oklch(from #f6f7f9 l c h);
+  --scheme-ink: oklch(from #16181d l c h);
+  --scheme-on-ink: oklch(from #ffffff l c h);
   /* Text on the error red, both themes (dark on-ink #111 is only 3.4:1 there). */
   --scheme-on-danger: #ffffff;
   /* Docs letter sheet. */
   --scheme-letter: oklch(1 0 0);
+  /*
+   * Theme-dependent shape parameters. Tier 3 (`workspace-derive.css`) keeps one
+   * recipe per token and reads these, so only this tier swaps for dark.
+   * Selection: a wash of `--scheme-selection` fading from/to these strengths,
+   * with an inset hairline at `--scheme-selection-edge`. Light is a flat ink wash.
+   */
+  --scheme-selection: var(--scheme-ink);
+  --scheme-selection-from: 6%;
+  --scheme-selection-to: 6%;
+  --scheme-selection-edge: 0%;
+  /* Frosted chrome: ink tint over a translucent paper fill. */
+  --scheme-frost-ink: 0%;
+  --scheme-frost-paper: 86%;
+  --scheme-frost-shadow:
+    0 0 0 1px color-mix(in oklch, var(--scheme-ink) 5%, transparent),
+    0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.14);
+  /* Desktop sidebar panel: edge hairline strength and drop shadow. */
+  --scheme-panel-edge: 8%;
+  --scheme-panel-shadow: none;
 }
 
 /*
@@ -279,21 +308,35 @@
 
 :where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
   /*
-   * Spike: cool blue-black (Docs polish reference). Written as `oklch(from #hex ...)`:
-   * Chrome mixes bare hex in oklch to `hue: none` with chroma left over, which
-   * paints every derived wash red-brown.
+   * Cool blue-black. Written as `oklch(from #hex ...)`: Chrome mixes bare hex
+   * in oklch to `hue: none` with chroma left over, which paints every derived
+   * wash red-brown.
    */
   --scheme-surface: oklch(from #0e1216 l c h);
+  --scheme-sidebar-surface: #10161b;
   --scheme-sidebar-surface: oklch(from #10161b l c h);
   --scheme-ink: oklch(from #eef1f5 l c h);
   --scheme-on-ink: oklch(from #0e1216 l c h);
   --scheme-letter: oklch(from #13181e l c h);
-  /* Spike: track-change chips (editor marks + review-card previews). */
+  /* Track-change chips (editor marks + review-card previews). */
   --track-ins-fg: oklch(0.9 0.09 155);
   --track-ins-bg: oklch(0.72 0.19 150 / 0.16);
   --track-ins-edge: oklch(0.72 0.19 150 / 0.55);
   --track-del-fg: oklch(0.8 0.1 15);
   --track-del-bg: oklch(0.65 0.2 20 / 0.14);
+  /* Sky selection: wash fading right plus a hairline that follows the radius. */
+  --scheme-selection: oklch(0.68 0.13 240);
+  --scheme-selection-from: 26%;
+  --scheme-selection-to: 10%;
+  --scheme-selection-edge: 30%;
+  --scheme-frost-ink: 7%;
+  --scheme-frost-paper: 0%;
+  --scheme-frost-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 7%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, white 2%, transparent), 0 1px 2px rgb(0 0 0 / 0.25),
+    0 12px 32px -16px rgb(0 0 0 / 0.6);
+  --scheme-panel-edge: 12%;
+  --scheme-panel-shadow: 10px 0 28px -12px rgb(0 0 0 / 0.55);
 }
 
 @layer base {

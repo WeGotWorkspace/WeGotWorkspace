@@ -12,7 +12,7 @@ export type ResolvedTheme = "light" | "dark";
  * Manifests cannot vary by scheme and carry the light value.
  * `pwa-document-shell.test.ts` guards the copies in `index.html`, `theme-boot.js` and CSS.
  */
-export const WORKSPACE_PWA_THEME_COLORS = { light: "#fff5e9", dark: "#1c1c1c" } as const;
+export const WORKSPACE_PWA_THEME_COLORS = { light: "#f6f7f9", dark: "#10161b" } as const;
 
 const STORAGE_KEY = "wgw.theme";
 const CHANGE_EVENT = "wgw-theme";

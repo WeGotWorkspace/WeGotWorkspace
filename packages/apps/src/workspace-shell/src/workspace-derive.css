@@ -79,6 +79,36 @@
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: var(--workspace-foreground);
 
+  /*
+   * Selected (sidebar rows, pressed outline toggles). May be a gradient, so
+   * consumers paint it with `background`. Light: flat ink wash; dark: sky wash
+   * with a hairline (strengths from `--scheme-selection-*`).
+   */
+  --workspace-selected-background: linear-gradient(
+    90deg,
+    color-mix(
+      in oklch,
+      var(--scheme-selection) var(--scheme-selection-from),
+      var(--workspace-surface)
+    ),
+    color-mix(
+      in oklch,
+      var(--scheme-selection) var(--scheme-selection-to),
+      var(--workspace-surface)
+    )
+  );
+  --workspace-selected-shadow: inset 0 0 0 1px
+    color-mix(in oklch, var(--scheme-selection) var(--scheme-selection-edge), transparent);
+  --workspace-selected-color: var(--workspace-foreground);
+
+  /* Frosted floating chrome: ink tint over translucent paper, theme shadow. */
+  --frost-background: color-mix(
+    in oklch,
+    var(--workspace-foreground) var(--scheme-frost-ink),
+    color-mix(in oklch, var(--workspace-surface) var(--scheme-frost-paper), transparent)
+  );
+  --frost-shadow: var(--scheme-frost-shadow);
+
   --menu-item-hover-background: var(--button-outline-hover-background);
   --menu-item-selected-background: var(--button-outline-active-background);
   --menu-item-selected-hover-background: var(--button-outline-active-hover-background);
