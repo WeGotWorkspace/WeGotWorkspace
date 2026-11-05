@@ -52,7 +52,7 @@ export const Default: Story = {
   },
 };
 
-/** A hidden collection: the dot turns grey. */
+/** A hidden collection: the dot turns grey and the name dims with it. */
 export const Hidden: Story = {
   tags: ["vitest-ci"],
   args: { visible: false, selected: false },
@@ -64,6 +64,8 @@ export const Hidden: Story = {
     await expect(getComputedStyle(dot).backgroundColor).not.toBe(
       getComputedStyle(row).getPropertyValue("--collection-row-color"),
     );
+    const title = row.querySelector(".collection-sidebar-row__title") as HTMLElement;
+    await expect(Number(getComputedStyle(title).opacity)).toBeLessThan(1);
   },
 };
 

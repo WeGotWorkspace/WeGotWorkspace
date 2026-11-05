@@ -111,6 +111,13 @@
   background-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
 }
 
+/* A hidden collection reads as off: the name and count dim with the dot. */
+.collection-sidebar-row:has(.collection-sidebar-row__visibility[data-state="unchecked"])
+  :is(.collection-sidebar-row__title, .collection-sidebar-row__trailing) {
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+}
+
 @media (hover: hover) {
   .collection-sidebar-row__visibility:hover .collection-sidebar-row__visibility-dot {
     transform: scale(1.2);
