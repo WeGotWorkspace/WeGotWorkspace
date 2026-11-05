@@ -404,8 +404,6 @@
  */
 .drive-workspace .drive-list-table > thead {
   position: sticky;
-  /* Sticky insets count from inside the scroller's padding, which already clears
-   * Drive's floating breadcrumb; only the gap is added. */
   top: var(--list-head-sticky-gap, 0.75rem);
   z-index: 2;
   background: var(--frost-background);

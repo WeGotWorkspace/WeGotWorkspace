@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, PanelRight } from "lucide-react";
+import { ChevronRight, Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
@@ -546,13 +547,37 @@ function DriveMainHeader({
     handleUnifiedSearchSelect,
     detailOpen,
     setDetailOpen,
+    breadcrumbs,
+    selectView,
+    view,
   } = controller;
+
+  // The folder path lives in the header: parent folders lead, the open folder is the title.
+  const searching = searchEnabled && searchQuery.trim() !== "";
+  const trail = !searching && breadcrumbs.length > 1 ? breadcrumbs.slice(0, -1) : [];
+  const title = searching
+    ? labels.searchViewTitle
+    : trail.length > 0
+      ? breadcrumbs[breadcrumbs.length - 1].label
+      : viewLabel;
 
   return (
     <ViewHeader
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen((v) => !v)}
-      title={searchEnabled && searchQuery.trim() ? labels.searchViewTitle : viewLabel}
+      title={title}
+      titlePrefix={
+        trail.length > 0 ? (
+          <span className="drive-main-header__trail">
+            <PathBreadcrumb
+              items={trail}
+              currentPath={view.type === "folder" ? view.path : undefined}
+              onNavigate={(path) => selectView({ type: "folder", path })}
+            />
+            <ChevronRight className="drive-main-header__trail-separator" aria-hidden />
+          </span>
+        ) : undefined
+      }
       searchPlaceholder={searchEnabled ? labels.searchPlaceholder : undefined}
       searchValue={searchEnabled ? searchQuery : undefined}
       onSearchInput={searchEnabled ? setSearchQuery : undefined}

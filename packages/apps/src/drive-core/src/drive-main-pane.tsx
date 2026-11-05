@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Cloud, CloudAlert, Download } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
-import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { startDriveItemDownload } from "@/drive-core/src/drive-item-download";
@@ -21,7 +19,6 @@ import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
 import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
 import { DriveUploadNotices } from "@/drive-core/src/drive-upload-notices";
 import { useDriveUploadQueueContext } from "@/drive-core/src/drive-upload-queue";
-import { publishElementHeight } from "@/lib/publish-element-height";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -70,7 +67,6 @@ export function DriveMainPane({
     handleUploadDrop,
     uploadEnabled,
     structureEnabled,
-    breadcrumbs,
     selectView,
     visibleItems,
     viewMode,
@@ -112,7 +108,6 @@ export function DriveMainPane({
     visibleItems.length === 0;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const paneRef = useRef<HTMLElement | null>(null);
   // Grid previews load only for tiles on (or near) screen.
   useDriveTilesInView(scrollRef, setTilesInView, viewMode === "grid");
 
@@ -229,18 +224,8 @@ export function DriveMainPane({
       ? view.path.split("/").pop() || labels.sidebarMyDrive
       : labels.sidebarMyDrive;
 
-  const showBreadcrumbs = !searchQuery.trim();
-  // The breadcrumb floats over the listing (frosted); the scroller reserves its height.
-  useEffect(() => {
-    if (!showBreadcrumbs) return;
-    const pane = paneRef.current;
-    const crumbs = pane?.querySelector<HTMLElement>(":scope > .drive-main-pane__breadcrumbs");
-    return publishElementHeight(pane, crumbs, "--drive-breadcrumbs-height");
-  }, [showBreadcrumbs]);
-
   return (
     <section
-      ref={paneRef}
       className="drive-main-pane"
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
@@ -269,16 +254,6 @@ export function DriveMainPane({
         <FileDropOverlay>
           {labels.dropUploadHint} {dropTargetLabel}
         </FileDropOverlay>
-      ) : null}
-
-      {showBreadcrumbs ? (
-        <PathBreadcrumb
-          className="drive-main-pane__breadcrumbs"
-          leadingIcon={<DriveViewIcon view={view} className="size-[1.125rem]" />}
-          items={breadcrumbs}
-          currentPath={view.type === "folder" ? view.path : undefined}
-          onNavigate={(path) => selectView({ type: "folder", path })}
-        />
       ) : null}
 
       <div className="drive-main-pane__body">

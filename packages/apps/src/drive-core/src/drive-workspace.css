@@ -49,27 +49,27 @@
   background-color: var(--workspace-surface);
 }
 
-/*
- * The breadcrumb floats over the top of the listing so files scroll under it:
- * frosted glass with a hairline. The scroller reserves its height.
- */
-.drive-workspace .drive-main-pane__breadcrumbs {
-  @apply absolute inset-x-0 top-0 z-20 px-4 md:px-6;
-  padding-block: 1rem;
-  background: var(--frost-background);
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  border-bottom: 1px solid var(--border);
-  --path-breadcrumb-lead-color: var(--workspace-foreground);
-  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
+.drive-workspace .drive-main-header__search-dropdown {
+  max-height: min(55dvh, 420px);
+  --unified-search-dropdown-width: 100%;
+}
+
+/* Folder path in the header: parent folders (links) before the open folder's title. */
+.drive-workspace .view-header__title-prefix:has(.drive-main-header__trail) {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.drive-workspace .drive-main-header__trail {
+  @apply flex min-w-0 items-center gap-2;
   --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   --path-breadcrumb-current-color: var(--workspace-foreground);
   --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
-.drive-workspace .drive-main-header__search-dropdown {
-  max-height: min(55dvh, 420px);
-  --unified-search-dropdown-width: 100%;
+.drive-workspace .drive-main-header__trail-separator {
+  @apply size-4 shrink-0;
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
 .drive-workspace .drive-main-header__actions {
@@ -99,11 +99,6 @@
 /* Rows scroll clear of the floating search / selection bar. */
 .drive-workspace .drive-main-pane__scroll {
   padding-bottom: var(--floating-dock-clearance);
-}
-
-.drive-workspace .drive-main-pane:has(> .drive-main-pane__breadcrumbs) .drive-main-pane__scroll {
-  padding-top: var(--drive-breadcrumbs-height, 4.375rem);
-  scroll-padding-top: var(--drive-breadcrumbs-height, 4.375rem);
 }
 
 .drive-workspace .drive-main-pane__retry {
