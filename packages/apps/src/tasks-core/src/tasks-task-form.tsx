@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   TASK_WORKFLOW_STATUSES,
   taskDueIsDateOnly,
+  type TaskDueFields,
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
@@ -16,8 +18,15 @@ import {
   TASK_PRIORITY_NONE,
   type TaskPriorityValue,
 } from "@/tasks-core/src/tasks-priority";
-import { TasksComposerDuePicker } from "@/tasks-core/src/tasks-composer-due-picker";
-import { TasksRemindPicker } from "@/tasks-core/src/tasks-remind-picker";
+import {
+  TasksComposerDuePicker,
+  TasksDueAllDaySwitch,
+} from "@/tasks-core/src/tasks-composer-due-picker";
+import { taskAlarmControls } from "@/tasks-core/src/tasks-remind-picker";
+import {
+  TASK_FIELD_SELECT_CONTENT_CLASS,
+  TASK_FIELD_SELECT_ITEM_CLASS,
+} from "@/tasks-core/src/tasks-field-classes";
 import "@/tasks-core/src/tasks-field-controls.css";
 
 export type TasksTaskFormValue = {
@@ -33,10 +42,6 @@ export type TasksTaskFormValue = {
 };
 
 export const DEFAULT_WORKFLOW_STATUS: TaskWorkflowStatus = "needs-action";
-
-export const TASK_FIELD_SELECT_TRIGGER_CLASS = "tasks-field__select";
-export const TASK_FIELD_SELECT_CONTENT_CLASS = "tasks-field__select-content";
-export const TASK_FIELD_SELECT_ITEM_CLASS = "tasks-field__select-item";
 
 export function emptyTaskForm(listId: string): TasksTaskFormValue {
   return {
@@ -75,7 +80,15 @@ export function TaskFieldOption({ icon, label }: { icon: ReactNode; label: strin
   );
 }
 
-export type TaskFieldControl = "due" | "status" | "priority" | "remind";
+export type TaskFieldControls = {
+  status: ReactNode;
+  due: ReactNode;
+  /** The All day switch; null while the task has no due date. */
+  allDay: ReactNode | null;
+  priority: ReactNode;
+  /** One per alarm, then an empty one to add the next. */
+  alarms: ReactNode[];
+};
 
 type TaskFieldControlsProps = {
   L: TasksUILabels;
@@ -84,35 +97,35 @@ type TaskFieldControlsProps = {
   disabled?: boolean;
 };
 
-/** One control per task field, for the rows of the task detail pane. */
+/**
+ * One control per task field, for the rows of the task detail pane: the suite ghost
+ * dropdown (as the list switcher above the title), value and chevron, no chrome.
+ */
 export function taskFieldControls({
   L,
   value,
   onChange,
   disabled = false,
-}: TaskFieldControlsProps): Record<TaskFieldControl, ReactNode> {
+}: TaskFieldControlsProps): TaskFieldControls {
   const setField = <K extends keyof TasksTaskFormValue>(key: K, next: TasksTaskFormValue[K]) => {
     onChange((previous) => ({ ...previous, [key]: next }));
   };
+  const dueProps = {
+    labels: L,
+    due: value.due,
+    showWithoutTime: value.showWithoutTime,
+    onChange: (next: TaskDueFields) =>
+      onChange((previous) => ({
+        ...previous,
+        due: next.due,
+        showWithoutTime: next.showWithoutTime,
+        timeZone: next.timeZone,
+      })),
+    disabled,
+  };
   return {
-    due: (
-      <TasksComposerDuePicker
-        labels={L}
-        due={value.due}
-        showWithoutTime={value.showWithoutTime}
-        timeZone={value.timeZone}
-        onChange={(next) =>
-          onChange((previous) => ({
-            ...previous,
-            due: next.due,
-            showWithoutTime: next.showWithoutTime,
-            timeZone: next.timeZone,
-          }))
-        }
-        disabled={disabled}
-        triggerClassName={TASK_FIELD_SELECT_TRIGGER_CLASS}
-      />
-    ),
+    due: <TasksComposerDuePicker {...dueProps} />,
+    allDay: value.due ? <TasksDueAllDaySwitch {...dueProps} /> : null,
     status: (
       <Select
         value={value.workflowStatus}
@@ -121,13 +134,13 @@ export function taskFieldControls({
         }
         disabled={disabled}
       >
-        <SelectTrigger
-          size="md"
-          className={TASK_FIELD_SELECT_TRIGGER_CLASS}
+        <CollectionGhostSelectTrigger
+          className="tasks-field__ghost"
           aria-label={L.addTaskStatus}
-        >
-          <SelectValue />
-        </SelectTrigger>
+          disabled={disabled}
+          leading={workflowStatusIcon(value.workflowStatus)}
+          label={workflowStatusLabel(value.workflowStatus, L)}
+        />
         <SelectContent className={TASK_FIELD_SELECT_CONTENT_CLASS}>
           {TASK_WORKFLOW_STATUSES.map((status) => (
             <SelectItem key={status} value={status} className={TASK_FIELD_SELECT_ITEM_CLASS}>
@@ -146,13 +159,13 @@ export function taskFieldControls({
         onValueChange={(priority) => setField("priority", Number(priority) as TaskPriorityValue)}
         disabled={disabled}
       >
-        <SelectTrigger
-          size="md"
-          className={TASK_FIELD_SELECT_TRIGGER_CLASS}
+        <CollectionGhostSelectTrigger
+          className="tasks-field__ghost"
           aria-label={L.addTaskPriority}
-        >
-          <SelectValue />
-        </SelectTrigger>
+          disabled={disabled}
+          leading={priorityIcon(value.priority)}
+          label={priorityLabel(value.priority, L)}
+        />
         <SelectContent className={TASK_FIELD_SELECT_CONTENT_CLASS}>
           {COMPOSER_PRIORITY_VALUES.map((priority) => (
             <SelectItem
@@ -166,13 +179,11 @@ export function taskFieldControls({
         </SelectContent>
       </Select>
     ),
-    remind: (
-      <TasksRemindPicker
-        labels={L}
-        alerts={value.alerts}
-        onChange={(alerts) => setField("alerts", alerts)}
-        disabled={disabled}
-      />
-    ),
+    alarms: taskAlarmControls({
+      labels: L,
+      alerts: value.alerts,
+      onChange: (alerts) => setField("alerts", alerts),
+      disabled,
+    }),
   };
 }

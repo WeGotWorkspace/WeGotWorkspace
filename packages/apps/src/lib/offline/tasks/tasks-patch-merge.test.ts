@@ -31,6 +31,16 @@ describe("applyTaskPatch", () => {
 
     expect(merged.alerts).toEqual(next);
   });
+
+  it("removes one alert sent as null and keeps the others, as the API does", () => {
+    const task = {
+      ...taskWithAlert(),
+      alerts: taskAlertsFromList([offsetReminderAlert("-PT30M"), offsetReminderAlert("-P1D")]),
+    };
+    const merged = applyTaskPatch(task, { alerts: { alert1: null } });
+
+    expect(merged.alerts).toEqual({ alert2: offsetReminderAlert("-P1D") });
+  });
 });
 
 describe("coalesceTaskPatches", () => {
@@ -39,5 +49,14 @@ describe("coalesceTaskPatches", () => {
     const coalesced = coalesceTaskPatches(first, { alerts: null } as TaskPatch);
 
     expect(coalesced.alerts).toBeNull();
+  });
+
+  it("merges two alert maps id by id, the later winning", () => {
+    const coalesced = coalesceTaskPatches(
+      { alerts: { alert1: offsetReminderAlert("-PT30M"), alert2: offsetReminderAlert("-P1D") } },
+      { alerts: { alert1: null } },
+    );
+
+    expect(coalesced.alerts).toEqual({ alert1: null, alert2: offsetReminderAlert("-P1D") });
   });
 });

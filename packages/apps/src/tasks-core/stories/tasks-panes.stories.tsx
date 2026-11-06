@@ -57,6 +57,10 @@ async function playListAndDetail(canvasElement: HTMLElement) {
   // Nothing open yet.
   expect(canvas.getByText(L.selectTask)).toBeTruthy();
 
+  // An open task's circle: a dimmed ring, half a pixel heavier than the 1px border.
+  expect(getComputedStyle(circle).boxShadow).toContain("inset");
+  expect(getComputedStyle(circle).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+
   await userEvent.click(row.querySelector(".list-item__button")!);
   const detailTitle = await waitFor(() => canvas.getByLabelText(L.addTaskName));
   expect((detailTitle as HTMLTextAreaElement).value).toBe("Buy milk");
@@ -68,12 +72,20 @@ async function playListAndDetail(canvasElement: HTMLElement) {
   const sheet = canvasElement.querySelector<HTMLElement>(".tasks-detail-view.paper-sheet")!;
   expect(getComputedStyle(sheet).boxShadow).toBe("none");
   const fields = sheet.querySelectorAll(".tasks-detail-view__field");
-  expect(fields).toHaveLength(4);
+  expect(fields).toHaveLength(5);
   expect(
     Array.from(fields).map((field) => field.querySelector(".card__row-title")?.textContent),
-  ).toEqual([L.addTaskStatus, L.dueLabel, L.detailReminder, L.addTaskPriority]);
+  ).toEqual([L.addTaskStatus, L.dueLabel, L.dueAllDay, L.addTaskPriority, L.detailAlarm(1)]);
   for (const field of Array.from(fields)) {
     expect(getComputedStyle(field).borderBottomStyle).toBe("solid");
+    // Each value is the shared ghost dropdown (no chrome), its label at the same size;
+    // All day is a switch.
+    if (field.querySelector('[role="switch"]')) continue;
+    const ghost = field.querySelector<HTMLElement>(".collection-ghost-select")!;
+    expect(getComputedStyle(ghost).borderTopWidth).toBe("0px");
+    expect(getComputedStyle(field.querySelector(".card__row-title")!).fontSize).toBe(
+      getComputedStyle(ghost).fontSize,
+    );
   }
   expect(canvas.getByRole("combobox", { name: L.addTaskList })).toBeTruthy();
 }
@@ -114,11 +126,13 @@ async function playMultiSelect(canvasElement: HTMLElement) {
   const quickAdd = canvas.getByLabelText(L.quickAddLabel);
   expect(getComputedStyle(quickAdd).borderTopColor).toBe("rgba(0, 0, 0, 0)");
 
-  // Reminder bell, then priority flag, then the relative due day: top right, icons only.
+  // Top right: the reminder bell, then the priority flag, icons only. The relative due
+  // day sits in the foot, after the list name.
   const marked = rowFor(canvasElement, "Prep launch notes");
   const corner = marked.querySelector(".list-item__title-trailing")!;
   expect(corner.querySelector(".tasks-field__remind--row")).toBeTruthy();
-  expect(corner.querySelector(".list-item__date")?.textContent).toBeTruthy();
+  expect(corner.querySelector(".tasks-priority-mark")).toBeTruthy();
+  expect(marked.querySelector(".tasks-list-row__due")?.textContent).toMatch(/^Due /);
 
   const first = rowFor(canvasElement, "Buy milk");
   const second = rowFor(canvasElement, "Review API spec");

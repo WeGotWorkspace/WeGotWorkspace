@@ -28,8 +28,10 @@
 .tasks-list-panel__quick-add-input.input,
 .tasks-list-panel__quick-add-input {
   @apply w-full;
-  /* No box: the field reads as the first row; a keyboard focus ring stays. */
+  /* No box, also on a mouse focus: the field reads as the first row. Keyboard
+     focus keeps the ring. */
   border-color: transparent;
+  --control-border-color: transparent;
   --input-border-focus: transparent;
   --input-shadow: none;
   /* Text starts on the row text line: checkbox (20px) plus the row gap (12px). */
@@ -66,6 +68,12 @@
   @apply inline-flex min-w-0 shrink-0 items-center gap-1.5;
 }
 
+/* The shared middle dot sits inside the segment, a flex item here: the row gap already
+   spaces it from the text, so drop its own margin and both sides match. */
+.tasks-list-row__meta .list-item__meta-segment + .list-item__meta-segment::before {
+  margin-inline-end: 0;
+}
+
 .tasks-list-row__meta-item:first-child {
   @apply shrink;
 }
@@ -74,10 +82,24 @@
   @apply truncate;
 }
 
-/* The suite tasks checkbox look, at the row's leading control size. */
+/* The suite selection mark (as the Notes editor task checks), at the row's leading
+   control size: an empty dimmed ring as thick as the title strokes, or one solid
+   fill in the multi-selection colour with a contrasting check. */
 .tasks-list-row .tasks-list-row__complete {
   --checkbox-size: var(--list-item-leading-control-size, 1.25rem);
   --checkbox-check-size: 0.875rem;
+  --checkbox-border-color: var(
+    --workspace-selection-mark-ring,
+    color-mix(in oklab, var(--workspace-foreground) 30%, transparent)
+  );
+  --checkbox-checked-bg: var(--workspace-selected-mark-background, var(--workspace-foreground));
+  --checkbox-checked-border: var(--checkbox-checked-bg);
+  --checkbox-checked-fg: var(--workspace-selected-mark-color, var(--workspace-surface));
+}
+
+/* Browsers round a 1.5px border down to 1px; the inner half pixel is a shadow. */
+.tasks-list-row .tasks-list-row__complete[data-state="unchecked"]:not(:focus-visible) {
+  box-shadow: inset 0 0 0 0.5px var(--checkbox-border-color);
 }
 
 .tasks-list-row__complete-hint {

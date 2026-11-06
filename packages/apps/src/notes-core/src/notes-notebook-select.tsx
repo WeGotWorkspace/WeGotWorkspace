@@ -1,6 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown } from "lucide-react";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
@@ -17,7 +16,7 @@ import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-notebook-select.css";
-import "@/ui/collection-ghost-select.css";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 
 /** Sentinel so Create stays out of the selected notebook value (Calendar Select pattern). */
 export const NOTES_CREATE_NOTEBOOK_VALUE = "__create_notebook__";
@@ -155,26 +154,14 @@ export function NotesNotebookSelect({
   const ghost = triggerVariant === "ghost";
 
   const trigger = ghost ? (
-    <SelectPrimitive.Trigger
-      className={cn(
-        "notes-notebook-select",
-        "notes-notebook-select--ghost",
-        "collection-ghost-select",
-        className,
-      )}
+    <CollectionGhostSelectTrigger
+      className={cn("notes-notebook-select", "notes-notebook-select--ghost", className)}
       aria-label={accessibleName}
       disabled={disabled}
       style={{ "--collection-row-color": notebookDotColor(value) } as CSSProperties}
-    >
-      <NotesNotebookColorDot />
-      <span className="notes-notebook-select__name">{value.name}</span>
-      {disabled ? null : (
-        <ChevronDown
-          className="notes-notebook-select__chevron collection-ghost-select__chevron"
-          aria-hidden
-        />
-      )}
-    </SelectPrimitive.Trigger>
+      leading={<NotesNotebookColorDot />}
+      label={value.name}
+    />
   ) : swatch ? (
     <SelectPrimitive.Trigger asChild disabled={disabled}>
       <ColorSwatchTrigger

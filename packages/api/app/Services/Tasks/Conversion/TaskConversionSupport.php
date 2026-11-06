@@ -129,7 +129,11 @@ final class TaskConversionSupport
                 && is_array($value)
                 && isset($merged[$key])
                 && is_array($merged[$key])) {
-                $merged[$key] = array_replace($merged[$key], $value);
+                // JSON merge patch per entry: a null entry removes it (one alarm of several).
+                $merged[$key] = array_filter(
+                    array_replace($merged[$key], $value),
+                    static fn (mixed $entry): bool => $entry !== null,
+                );
 
                 continue;
             }
@@ -205,6 +209,17 @@ final class TaskConversionSupport
 
         if ($showWithoutTime) {
             $task['showWithoutTime'] = true;
+        }
+
+        // A UTC time (`...Z`, no TZID) is JSCalendar wall time in "UTC", as the writer
+        // reads it back; otherwise a picked UTC zone would come back as floating.
+        if (($timeZone === null || $timeZone === '') && ! $showWithoutTime) {
+            foreach (['start', 'due'] as $field) {
+                if (isset($task[$field]) && is_string($task[$field]) && str_ends_with($task[$field], 'Z')) {
+                    $task[$field] = substr($task[$field], 0, -1);
+                    $timeZone = 'UTC';
+                }
+            }
         }
 
         if ($timeZone !== null && $timeZone !== '') {

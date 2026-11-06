@@ -418,6 +418,7 @@ Artisan (idempotent): `wgw:tasks:migrate-default-vtodos`, `wgw:calendars:provisi
 - **Single sidebar view** — no combined state + list filter in v0.9.
 - **Tasks offline** — architecture committed ([#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331)); v0.9 scheduling per [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313).
 - **Tier-2 Yjs collab** — only if rich description editor ships (Decision 15).
+- **Due time zones** — the Tasks UI has no time zone picker yet: it saves every due time as floating wall-clock time (`timeZone: null`). A due with a zone (set by another CalDAV client or the API) shows its wall time without the zone, and editing its date, time or All day makes it floating. The API and the ICS mapping still read and write zones ([#1945](https://github.com/WeGotWorkspace/wegotworkspace/issues/1945)).
 
 ---
 

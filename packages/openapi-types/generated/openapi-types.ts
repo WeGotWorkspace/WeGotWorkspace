@@ -10912,8 +10912,9 @@ export interface components {
             recurrenceOverrides?: {
                 [key: string]: components["schemas"]["TaskRecurrenceOverride"];
             };
+            /** @description Merged per alert id; null clears all alerts, an alert set to null removes that one */
             alerts?: {
-                [key: string]: components["schemas"]["TaskAlert"];
+                [key: string]: components["schemas"]["TaskAlert"] | null;
             } | null;
             participants?: {
                 [key: string]: components["schemas"]["TaskParticipant"];

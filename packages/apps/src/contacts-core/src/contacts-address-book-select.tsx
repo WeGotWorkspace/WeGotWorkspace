@@ -1,6 +1,5 @@
 import type { CSSProperties, KeyboardEvent, KeyboardEventHandler } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown } from "lucide-react";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
@@ -11,7 +10,7 @@ import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-a
 import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { cn } from "@/lib/utils";
 import "@/contacts-core/src/contacts-address-book-select.css";
-import "@/ui/collection-ghost-select.css";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 
 /** Closed Radix Select typeahead prefix-matches labels ("Admin" vs "Administrators"). */
 export function suppressClosedSelectTypeahead(event: KeyboardEvent<HTMLButtonElement>): void {
@@ -109,23 +108,20 @@ export function ContactsAddressBookSelect({
   );
 
   const trigger = ghost ? (
-    <SelectPrimitive.Trigger
+    <CollectionGhostSelectTrigger
       id={id}
       className={cn(
         "contacts-address-book-select",
         "contacts-address-book-select--ghost",
-        "collection-ghost-select",
         className,
       )}
       aria-label={accessibleName}
       disabled={disabled}
       onKeyDown={onTriggerKeyDown}
       style={{ "--collection-row-color": selectedColor } as CSSProperties}
-    >
-      <NotesNotebookColorDot />
-      <span className="collection-ghost-select__name">{bookName || label}</span>
-      {disabled ? null : <ChevronDown className="collection-ghost-select__chevron" aria-hidden />}
-    </SelectPrimitive.Trigger>
+      leading={<NotesNotebookColorDot />}
+      label={bookName || label}
+    />
   ) : swatch ? (
     <SelectPrimitive.Trigger asChild disabled={disabled}>
       <ColorSwatchTrigger

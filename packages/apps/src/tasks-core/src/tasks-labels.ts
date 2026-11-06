@@ -67,8 +67,8 @@ export type TasksUILabels = {
   remindingBefore: (durations: string) => string;
   remindingAfter: (durations: string) => string;
   remindingAfterClause: (durations: string) => string;
-  dueAddTime: string;
-  dueDateOnly: string;
+  /** The due time dropdown's empty choice: a due day without a time. */
+  dueAllDay: string;
   dueTimeLabel: string;
   remindAtTimeOfTask: string;
   kanbanToggle: string;
@@ -130,7 +130,8 @@ export type TasksUILabels = {
   emptyList: string;
   /** Detail pane: the notes field and the field rows. */
   detailNotesPlaceholder: string;
-  detailReminder: string;
+  /** One alarm row, numbered from 1. */
+  detailAlarm: (number: number) => string;
   /** Multi-select: the selection bar, the detail pane and the move dialog. */
   selectionLabel: string;
   selectionTitle: (count: number) => string;
@@ -246,8 +247,7 @@ export const defaultTasksLabels: TasksUILabels = {
   remindingBefore: (durations) => `Reminding ${durations} before`,
   remindingAfter: (durations) => `Reminding ${durations} after`,
   remindingAfterClause: (durations) => `${durations} after`,
-  dueAddTime: "Add time",
-  dueDateOnly: "Date only",
+  dueAllDay: "All day",
   dueTimeLabel: "Time",
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
@@ -310,7 +310,7 @@ export const defaultTasksLabels: TasksUILabels = {
   searchPlaceholder: "Search tasks...",
   emptyList: "No tasks",
   detailNotesPlaceholder: "Add notes…",
-  detailReminder: "Reminder",
+  detailAlarm: (number) => `Alarm ${number}`,
   selectionLabel: "Multiple selection",
   selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
   selectionComplete: "Mark complete",

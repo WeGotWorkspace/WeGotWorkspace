@@ -4,7 +4,6 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import {
   emptyTaskForm,
-  TASK_FIELD_SELECT_TRIGGER_CLASS,
   taskFieldControls,
   taskToFormValue,
 } from "@/tasks-core/src/tasks-task-form";
@@ -25,8 +24,8 @@ function renderControls(disabled = false) {
     <TooltipProvider>
       {controls.status}
       {controls.due}
-      {controls.remind}
       {controls.priority}
+      {controls.alarms}
     </TooltipProvider>,
   );
   return { onChange };
@@ -78,15 +77,21 @@ describe("taskFieldControls", () => {
     expect(update(emptyTaskForm("default")).priority).toBe(1);
   });
 
-  it("uses the compact md field chips", () => {
+  it("uses the shared ghost dropdown for every field, showing its value", () => {
     renderControls();
 
-    for (const name of [defaultTasksLabels.addTaskStatus, defaultTasksLabels.addTaskPriority]) {
-      const trigger = screen.getByLabelText(name);
-      expect(trigger.classList.contains("select-trigger--size-md")).toBe(true);
-      expect(trigger.classList.contains(TASK_FIELD_SELECT_TRIGGER_CLASS)).toBe(true);
+    const triggers = [
+      screen.getByLabelText(defaultTasksLabels.addTaskStatus),
+      screen.getByRole("button", { name: new RegExp(`^${defaultTasksLabels.addTaskDue}`) }),
+      screen.getByLabelText(defaultTasksLabels.addTaskPriority),
+      screen.getByLabelText(defaultTasksLabels.detailAlarm(1)),
+    ];
+    for (const trigger of triggers) {
+      expect(trigger.classList.contains("collection-ghost-select")).toBe(true);
+      expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
     }
-    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
+    expect(triggers[0]!.textContent).toBe(defaultTasksLabels.stateNeedsAction);
+    expect(triggers[2]!.textContent).toBe(defaultTasksLabels.priorityNone);
   });
 
   it("disables every control when read-only", () => {
@@ -100,7 +105,7 @@ describe("taskFieldControls", () => {
       "disabled",
       true,
     );
-    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toHaveProperty(
+    expect(screen.getByLabelText(defaultTasksLabels.detailAlarm(1))).toHaveProperty(
       "disabled",
       true,
     );

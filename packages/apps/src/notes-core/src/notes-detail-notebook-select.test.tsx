@@ -72,7 +72,7 @@ describe("NotesDetailNotebookSelect", () => {
     expect(move.className).toContain("notes-notebook-select--ghost");
     expect(move.textContent).toBe("Drafts");
     expect(move.style.getPropertyValue("--collection-row-color")).toBe("#f59e0b");
-    expect(move.querySelector(".notes-notebook-select__chevron")).toBeTruthy();
+    expect(move.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
     expect(move.hasAttribute("disabled")).toBe(false);
   });
 
@@ -102,7 +102,7 @@ describe("NotesDetailNotebookSelect", () => {
     const move = screen.getByRole("combobox", { name: "TeamPad" });
     expect(move.textContent).not.toContain("bob");
     expect(move.hasAttribute("disabled")).toBe(true);
-    expect(move.querySelector(".notes-notebook-select__chevron")).toBeNull();
+    expect(move.querySelector(".collection-ghost-select__chevron")).toBeNull();
     fireEvent.click(move);
     expect(onMoveToNotebook).not.toHaveBeenCalled();
     expect(onCreateNotebook).not.toHaveBeenCalled();

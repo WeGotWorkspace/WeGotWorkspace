@@ -5,6 +5,7 @@ import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-ty
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
+import { taskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
@@ -68,7 +69,9 @@ function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): Tas
     patch.workflowStatus = next.workflowStatus;
   }
   if (next.priority !== normalizeTaskPriority(task.priority)) patch.priority = next.priority;
-  if (!taskAlertsEqual(next.alerts, task.alerts)) patch.alerts = next.alerts ?? null;
+  if (!taskAlertsEqual(next.alerts, task.alerts)) {
+    patch.alerts = taskAlertsPatch(task.alerts, next.alerts);
+  }
   return patch;
 }
 

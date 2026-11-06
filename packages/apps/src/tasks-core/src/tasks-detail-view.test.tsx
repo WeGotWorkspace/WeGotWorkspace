@@ -68,7 +68,7 @@ describe("TasksDetailView", () => {
     expect(fieldValue(L.addTaskName)).toBe(task.title);
     expect(fieldValue(L.descriptionLabel)).toBe(task.description ?? "");
     expect(screen.getByRole("combobox", { name: L.addTaskList })).toBeTruthy();
-    for (const label of [L.addTaskStatus, L.dueLabel, L.detailReminder, L.addTaskPriority]) {
+    for (const label of [L.addTaskStatus, L.dueLabel, L.addTaskPriority, L.detailAlarm(1)]) {
       expect(screen.getByText(label, { selector: ".card__row-title, .card__row-title *" }));
     }
   });

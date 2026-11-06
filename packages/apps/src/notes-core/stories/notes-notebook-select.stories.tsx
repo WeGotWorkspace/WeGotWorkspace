@@ -104,7 +104,7 @@ export const Ghost: Story = {
   play: async ({ args, canvasElement }) => {
     const trigger = within(canvasElement).getByRole("combobox", { name: "Drafts" });
     await expect(trigger).toHaveClass("notes-notebook-select--ghost");
-    await expect(trigger.querySelector(".notes-notebook-select__chevron")).toBeTruthy();
+    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
     await expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     await userEvent.click(trigger);
     await userEvent.click(await screen.findByRole("option", { name: "Published" }));
@@ -122,6 +122,6 @@ export const GhostDisabled: Story = {
   play: async ({ canvasElement }) => {
     const trigger = within(canvasElement).getByRole("combobox", { name: "Drafts" });
     await expect(trigger).toBeDisabled();
-    await expect(trigger.querySelector(".notes-notebook-select__chevron")).toBeNull();
+    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
   },
 };

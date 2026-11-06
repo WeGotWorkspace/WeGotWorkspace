@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { Bell, CalendarDays, CircleCheck, Flag, MoreHorizontal, Trash2, Check } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  CircleCheck,
+  Flag,
+  MoreHorizontal,
+  Trash2,
+  Check,
+  Sun,
+} from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { CardRow } from "@/card/src/card-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
@@ -147,12 +156,19 @@ export function TasksDetailView({
         <TasksDetailField icon={<CalendarDays />} title={L.dueLabel}>
           {controls.due}
         </TasksDetailField>
-        <TasksDetailField icon={<Bell />} title={L.detailReminder}>
-          {controls.remind}
-        </TasksDetailField>
+        {controls.allDay ? (
+          <TasksDetailField icon={<Sun />} title={L.dueAllDay}>
+            {controls.allDay}
+          </TasksDetailField>
+        ) : null}
         <TasksDetailField icon={<Flag />} title={L.addTaskPriority}>
           {controls.priority}
         </TasksDetailField>
+        {controls.alarms.map((alarm, index) => (
+          <TasksDetailField key={index} icon={<Bell />} title={L.detailAlarm(index + 1)}>
+            {alarm}
+          </TasksDetailField>
+        ))}
       </div>
     </NoteDetailView>
   );
