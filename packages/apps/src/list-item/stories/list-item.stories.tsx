@@ -95,63 +95,78 @@ function resolvedBackground(host: Element, value: string) {
   return color;
 }
 
-async function expectTintedRoundMarks(canvasElement: HTMLElement) {
-  const [checked, unchecked] = Array.from(
-    canvasElement.querySelectorAll<HTMLElement>(".selection-mark"),
-  );
-  // Round marks.
-  const box = checked.getBoundingClientRect();
-  await expect(
-    Number.parseFloat(getComputedStyle(checked).borderTopLeftRadius),
-  ).toBeGreaterThanOrEqual(box.width / 2);
-  // Checked: the selection wash's tint, stronger; never the old solid ink.
-  const row = checked.closest(".list-item__button") as HTMLElement;
-  await expect(getComputedStyle(checked).backgroundColor).toBe(
-    resolvedBackground(row, "var(--workspace-selected-mark-background)"),
-  );
-  await expect(getComputedStyle(checked).backgroundColor).not.toBe(
-    getComputedStyle(row).backgroundColor,
-  );
-  // One solid fill: the background is the edge colour.
-  await expect(getComputedStyle(checked).backgroundColor).toBe(
-    getComputedStyle(checked).borderTopColor,
-  );
-  // A dark check on it.
-  const icon = checked.querySelector(".selection-mark__icon") as HTMLElement;
-  await expect(icon).toBeTruthy();
-  const lightness = (color: string) => Number(/oklch\(([\d.]+)/.exec(color)?.[1] ?? "1");
-  await expect(lightness(getComputedStyle(icon).color)).toBeLessThan(0.25);
-  // Unchecked: an empty ring.
-  await expect(getComputedStyle(unchecked).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+/** The bar a selected row paints on its leading edge (its `::before`). */
+function selectionBar(row: HTMLElement) {
+  return getComputedStyle(row, "::before");
 }
 
-/** Multi-select: round marks; a checked mark is a solid, stronger selection tint with a dark check. */
+async function expectSelectionBar(canvasElement: HTMLElement) {
+  const [selected, unselected] = Array.from(
+    canvasElement.querySelectorAll<HTMLElement>(".list-item__button"),
+  );
+  // No checkboxes in lists: those are for tasks.
+  await expect(canvasElement.querySelector(".selection-mark")).toBeNull();
+  // Selected: a thick bar on the leading edge, in the selection mark's fill.
+  const bar = selectionBar(selected);
+  await expect(bar.width).toBe("4px");
+  await expect(bar.left).toBe("6px");
+  await expect(bar.backgroundColor).toBe(
+    resolvedBackground(selected, "var(--workspace-selected-mark-background)"),
+  );
+  // Straight: it stops where the corner rounding starts, so it never bends.
+  await expect(bar.top).toBe(getComputedStyle(selected).borderTopLeftRadius);
+  await expect(bar.bottom).toBe(getComputedStyle(selected).borderBottomLeftRadius);
+  // Stronger than the wash it sits on.
+  await expect(bar.backgroundColor).not.toBe(getComputedStyle(selected).backgroundColor);
+  // Not selected: no bar, and the text does not move over in selection mode.
+  await expect(selectionBar(unselected).content).toBe("none");
+  await expect(getComputedStyle(unselected).paddingLeft).toBe(
+    getComputedStyle(unselected).paddingRight,
+  );
+}
+
+/** Multi-select: no checkboxes; a selected row gets a thick bar in the selection tint. */
 export const MultiSelect: Story = {
   tags: ["vitest-ci"],
   args: { ...NoteStyle.args, isActive: false, icons: [] },
   render: multiSelectRows,
-  play: async ({ canvasElement }) => expectTintedRoundMarks(canvasElement),
+  play: async ({ canvasElement }) => expectSelectionBar(canvasElement),
 };
 
-/** Dark: the sky selection, with a brighter, more saturated sky mark. */
+/** Dark: the sky selection, with a brighter, more saturated sky bar. */
 export const MultiSelectDark: Story = {
   ...MultiSelect,
   decorators: [withDarkTheme],
   play: async ({ canvasElement }) => {
-    await expectTintedRoundMarks(canvasElement);
-    const checked = canvasElement.querySelector<HTMLElement>(".selection-mark")!;
-    const row = checked.closest(".list-item__button") as HTMLElement;
+    await expectSelectionBar(canvasElement);
+    const row = canvasElement.querySelector<HTMLElement>(".list-item__button")!;
     const chroma = (color: string) => Number(/oklch\([\d.]+ ([\d.]+)/.exec(color)?.[1] ?? "0");
-    await expect(chroma(getComputedStyle(checked).backgroundColor)).toBeGreaterThan(
+    await expect(chroma(selectionBar(row).backgroundColor)).toBeGreaterThan(
       chroma(getComputedStyle(row).backgroundColor),
     );
+  },
+};
+
+/** A plain click selects one item: the wash only, no bar (the bar means multi-select). */
+export const SelectedWithoutSelectionMode: Story = {
+  tags: ["vitest-ci"],
+  args: { ...NoteStyle.args, isActive: false, icons: [] },
+  render: (args) => (
+    <div className="max-w-md" data-list-selection-mode="false">
+      <ListItem {...args} id="plain" title="Plain click" isSelected />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>(".list-item__button")!;
+    await expect(row).toHaveAttribute("data-selected", "true");
+    await expect(selectionBar(row).content).toBe("none");
   },
 };
 
 /**
  * The focus ring is keyboard-only. Chrome also matches `:focus-visible` after a
  * Cmd/Shift-click (multi-select); the last real input (`data-modality`) decides.
- * During a multi-selection there is no ring: the checks already show the range.
+ * During a multi-selection there is no ring: the bars already show the range.
  */
 export const KeyboardOnlyFocusRing: Story = {
   tags: ["vitest-ci"],

@@ -114,8 +114,7 @@
 .drive-workspace .drive-file-avatar,
 .drive-workspace .drive-folder-tile__text,
 .drive-workspace .drive-file-tile__avatar,
-.drive-workspace .drive-file-tile__footer,
-.drive-workspace .drive-selection-checkbox-wrap {
+.drive-workspace .drive-file-tile__footer {
   pointer-events: none;
 }
 
@@ -167,16 +166,6 @@
   color: var(--color-emerald);
 }
 
-/* Selection mode: the mark sits where the tile content starts at rest (12px),
- * and the content moves over by the mark plus a 12px gap. */
-.drive-workspace :is(.drive-folder-tile--selection-mode, .drive-file-tile--selection-mode) {
-  padding-inline-start: calc(0.75rem + var(--selection-mark-size, 1.125rem) + 0.75rem);
-}
-
-.drive-workspace :is(.drive-folder-tile__checkbox, .drive-file-tile__checkbox) {
-  @apply absolute left-3 top-1/2 z-[1] -translate-y-1/2;
-}
-
 /* Name and details on the left, actions on the right. */
 .drive-workspace .drive-file-tile__footer {
   @apply flex min-w-0 flex-1 items-center gap-2;
@@ -184,22 +173,6 @@
 
 .drive-workspace .drive-file-tile__avatar {
   @apply flex shrink-0;
-}
-
-.drive-workspace .drive-selection-checkbox-wrap {
-  @apply inline-flex items-center justify-center;
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-
-.drive-workspace
-  :is(
-    .drive-folder-tile--selection-mode,
-    .drive-file-tile--selection-mode,
-    .drive-list-row[data-selection-mode="true"]
-  )
-  .drive-selection-checkbox-wrap {
-  opacity: 1;
 }
 
 .drive-workspace
@@ -419,17 +392,6 @@
   transition: padding-inline-start 180ms ease;
 }
 
-/* Selection mode: the mark sits where the row content starts at rest, and the
- * content moves over by the mark plus a 12px gap. */
-.drive-workspace .drive-list-row[data-selection-mode="true"] .drive-list-row__name {
-  padding-inline-start: calc(var(--selection-mark-size, 1.125rem) + 0.75rem);
-}
-
-.drive-workspace .drive-list-row__checkbox {
-  @apply absolute top-1/2 -translate-y-1/2;
-  inset-inline-start: 0;
-}
-
 .drive-workspace .drive-list-row > td {
   height: var(--list-row-height, 3rem);
 }
@@ -495,4 +457,38 @@
 .drive-browser-load-more {
   @apply flex flex-col items-center px-4 pb-8 md:px-6;
   color: var(--workspace-label-color, var(--workspace-foreground));
+}
+
+/* Multi-select: no checkboxes (those are for tasks). A selected tile or row gets a
+ * thick, straight bar just inside its leading edge, in the selection mark's fill (as
+ * list items do), only with multi-select intent: a plain click shows no bar. It stops
+ * before the corners, so it never bends with the rounding. */
+.drive-workspace
+  [data-multi-select="true"]
+  :is(.drive-folder-tile--selected, .drive-file-tile--selected)::before,
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child::before {
+  content: "";
+  position: absolute;
+  left: var(--workspace-selected-bar-inset, 0.375rem);
+  inset-block: var(--control-radius, 0.625rem);
+  z-index: 1;
+  width: var(--workspace-selected-bar-width, 0.25rem);
+  border-radius: 999px;
+  background: var(--workspace-selected-mark-background, var(--workspace-foreground));
+  pointer-events: none;
+}
+
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child {
+  position: relative;
+}
+
+/* Tiles start their content 12px in: the bar sits in the middle of that gap. */
+.drive-workspace
+  [data-multi-select="true"]
+  :is(.drive-folder-tile--selected, .drive-file-tile--selected)::before {
+  left: calc((0.75rem - var(--workspace-selected-bar-width, 0.25rem)) / 2);
+}
+
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child::before {
+  inset-block: var(--list-row-radius, 0.625rem);
 }

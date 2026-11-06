@@ -6,7 +6,6 @@ import { DriveShareIndicators, DriveTileMeta } from "@/drive-core/src/drive-brow
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
 import {
-  DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
@@ -96,11 +95,6 @@ export function DriveFolderTile({
         !isSelected && !folderDropZone.isDropTarget && "drive-folder-tile--idle",
       )}
     >
-      <DriveSelectionCheckbox
-        isSelected={isSelected}
-        selectionMode={selectionMode}
-        className="drive-folder-tile__checkbox"
-      />
       <button
         type="button"
         aria-label={file.title}

@@ -322,7 +322,7 @@
   --scheme-selection: var(--scheme-ink);
   --scheme-selection-strength: 6%;
   --scheme-selection-edge: 0%;
-  /* Selection marks (list multi-select checks): the same colour, stronger. */
+  /* Selection marks (task checks, multi-select bars): the same colour, stronger. */
   --scheme-selection-mark-edge: 40%;
   /* Frosted chrome: ink tint over a translucent paper fill. */
   --scheme-frost-ink: 0%;

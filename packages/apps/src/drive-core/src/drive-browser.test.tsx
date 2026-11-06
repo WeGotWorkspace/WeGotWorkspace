@@ -101,14 +101,34 @@ describe("DriveGridView tile interaction", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("shows a checkbox overlay in selection mode", () => {
+  it("marks selected tiles without a checkbox in selection mode", () => {
     const { container } = render(
       <div className="drive-workspace">
         <DriveGridView {...baseBrowserProps({ selectionMode: true, selectedIds: [FILE.id] })} />
       </div>,
     );
 
-    expect(container.querySelector(".drive-file-tile__checkbox")).toBeTruthy();
+    expect(container.querySelector(".drive-file-tile--selected")).toBeTruthy();
+    expect(container.querySelector(".selection-mark")).toBeNull();
+  });
+
+  it("shows the selection bar only with multi-select intent", () => {
+    const view = (props: { selectionMode: boolean; selectedIds: string[] }) =>
+      render(
+        <div className="drive-workspace">
+          <DriveGridView {...baseBrowserProps(props)} />
+        </div>,
+      ).container.querySelector<HTMLElement>(".drive-grid-layout")!;
+
+    // A plain click selects one item: no bar.
+    expect(view({ selectionMode: false, selectedIds: [FILE.id] }).dataset.multiSelect).toBe(
+      "false",
+    );
+    // Selection mode (long-press, right-click) or Cmd/Shift-click on a second item.
+    expect(view({ selectionMode: true, selectedIds: [FILE.id] }).dataset.multiSelect).toBe("true");
+    expect(
+      view({ selectionMode: false, selectedIds: [FILE.id, "other"] }).dataset.multiSelect,
+    ).toBe("true");
   });
 
   it("enters selection via context menu on desktop", () => {
@@ -180,14 +200,15 @@ describe("DriveListView", () => {
     expect(screen.getByText("Personal")).toBeTruthy();
   });
 
-  it("shows a checkbox in selection mode", () => {
+  it("marks selected rows without a checkbox in selection mode", () => {
     const { container } = render(
       <div className="drive-workspace">
         <DriveListView {...baseBrowserProps({ selectionMode: true, selectedIds: [FILE.id] })} />
       </div>,
     );
 
-    expect(container.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+    expect(container.querySelector(".drive-list-row--selected")).toBeTruthy();
+    expect(container.querySelector(".selection-mark")).toBeNull();
   });
 
   it("does not open on double click while in selection mode", () => {

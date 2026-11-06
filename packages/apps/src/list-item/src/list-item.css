@@ -13,7 +13,7 @@
   padding-block: var(--list-item-padding-y, 1rem);
   /* A little air between rows, so neighbouring highlights stay apart. */
   margin-block-end: var(--list-item-gap, 0.125rem);
-  /* Where the row text (and the select mark) starts, inside the pill. */
+  /* Where the row text starts, inside the pill. */
   --list-item-text-inset: var(--list-item-padding-x, 1.25rem);
   padding-inline: var(--list-item-text-inset);
   border: 0;
@@ -48,26 +48,12 @@
 /* Keyboard focus only. Chrome also matches `:focus-visible` after a Cmd/Shift-click
  * (multi-select), so skip it while the last input was a pointer
  * (`installKeyboardFocusModality`, which ignores modifier keys). No ring during a
- * multi-selection either: the checks and washes already show the range. */
+ * multi-selection either: the bars and washes already show the range. */
 html:not([data-modality="pointer"])
   .list-item__button:focus-visible:not([data-selection-mode="true"]):not(
     [data-list-selection-mode="true"] *
   ) {
   box-shadow: inset 0 0 0 2px var(--list-item-accent-color, var(--color-emerald));
-}
-
-/* Selection mode: the mark sits on the text line and the text moves past it.
- * The list root paints the mode, so memoized rows do not each re-render. */
-.list-item__button[data-selection-mode="true"],
-[data-list-selection-mode="true"] .list-item__button {
-  padding-inline-start: calc(var(--list-item-text-inset) + 1.5rem);
-}
-
-@media (min-width: 768px) {
-  .list-item__button[data-selection-mode="true"],
-  [data-list-selection-mode="true"] .list-item__button {
-    padding-inline-start: calc(var(--list-item-text-inset) + 1.75rem);
-  }
 }
 
 .list-item__button[data-dragging="true"] {
@@ -98,19 +84,20 @@ html:not([data-modality="pointer"])
   );
 }
 
-.list-item__checkbox-wrap {
-  @apply absolute top-1/2 -translate-y-1/2;
-  left: var(--list-item-text-inset);
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-
-.list-item__button[data-selection-mode="true"] .list-item__checkbox-wrap {
-  opacity: 1;
-}
-
-[data-list-selection-mode="true"] .list-item__checkbox-wrap {
-  opacity: 1;
+/* Multi-select: no checkboxes (those are for tasks). In selection mode a selected
+ * item also gets a thick, straight bar just inside its leading edge, in the selection
+ * mark's fill; a plain click shows no bar. It stops before the corners, so it never
+ * bends with the rounding. */
+.list-item__button[data-selection-mode="true"][data-selected="true"]::before,
+[data-list-selection-mode="true"] .list-item__button[data-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: var(--workspace-selected-bar-inset, 0.375rem);
+  inset-block: var(--list-row-radius, 0.625rem);
+  width: var(--workspace-selected-bar-width, 0.25rem);
+  border-radius: 999px;
+  background: var(--workspace-selected-mark-background, var(--workspace-foreground));
+  pointer-events: none;
 }
 
 .list-item__leading {

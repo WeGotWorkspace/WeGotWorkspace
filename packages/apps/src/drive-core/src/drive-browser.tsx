@@ -2,7 +2,6 @@ import { Star } from "lucide-react";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { cn } from "@/lib/utils";
 import {
-  DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
@@ -75,6 +74,14 @@ function DriveFileOfflinePinCell({
 }
 
 /* ---------------- Grid view ---------------- */
+
+/**
+ * Multi-select intent: selection mode (long-press, right-click) or more than one
+ * item (Cmd/Shift-click). A plain click selects one item and shows no bar.
+ */
+function multiSelectAttr(selectionMode: boolean, selectedIds: string[]) {
+  return selectionMode || selectedIds.length > 1 ? "true" : "false";
+}
 
 export function DriveGridView({
   items,
@@ -153,7 +160,10 @@ export function DriveGridView({
   const files = items.filter((i) => i.kind !== "folder");
 
   return (
-    <div className="drive-grid-layout">
+    <div
+      className="drive-grid-layout"
+      data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
+    >
       {folders.length > 0 && (
         <Section title={labels.gridSectionFolders}>
           <div className="drive-grid">
@@ -344,11 +354,6 @@ function FileTile({
         onTouchEnd={pickerChrome ? undefined : lp.cancel}
         onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      <DriveSelectionCheckbox
-        isSelected={isSelected}
-        selectionMode={selectionMode}
-        className="drive-file-tile__checkbox"
-      />
       <span className="drive-file-tile__avatar">
         <DriveFileAvatar file={file} preview={preview} />
       </span>
@@ -505,7 +510,10 @@ export function DriveListView({
     );
   const ariaSort = (key: DriveListSortKey) => (sort ? listSortAria(sort, key) : undefined);
   return (
-    <div className="drive-list-view">
+    <div
+      className="drive-list-view"
+      data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
+    >
       <table className="drive-list-table">
         <thead className="list-head-bar">
           <tr className="drive-list-head">
@@ -615,11 +623,6 @@ export function DriveListView({
                   {...(isFolder && !pickerChrome ? dropZone : {})}
                 >
                   <div className="drive-list-row__name flex items-center gap-2.5 min-w-0">
-                    <DriveSelectionCheckbox
-                      isSelected={isSelected}
-                      selectionMode={selectionMode}
-                      className="drive-list-row__checkbox"
-                    />
                     <DriveFileAvatar file={f} size="sm" />
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <span className="min-w-0 truncate font-medium">{f.title}</span>

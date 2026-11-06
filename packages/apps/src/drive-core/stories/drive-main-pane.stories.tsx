@@ -120,11 +120,13 @@ export const ListViewSelectionMode: Story = {
     if (!row) throw new Error("Expected Studio Assets row");
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
     await expect(row).toHaveAttribute("data-selection-mode", "true");
-    await expect(canvasElement.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+    // No checkboxes (those are for tasks): the selected row gets a bar instead.
+    await expect(canvasElement.querySelector(".selection-mark")).toBeNull();
+    await expect(row).toHaveClass("drive-list-row--selected");
   },
 };
 
-/** The shared selection mark: a bright sky fill in the dark theme, with a dark check on it. */
+/** Dark theme: the selected row's leading bar is the bright sky selection fill. */
 export const ListViewSelectionModeDark: Story = {
   name: "List view selection mode (dark theme)",
   tags: ["vitest-ci"],
@@ -141,22 +143,17 @@ export const ListViewSelectionModeDark: Story = {
     const row = canvas.getByText("Studio Assets").closest("tr");
     if (!row) throw new Error("Expected Studio Assets row");
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
-    const icon = await waitFor(() => {
-      const found = canvasElement.querySelector<SVGElement>(
-        ".selection-mark[data-state='checked'] .selection-mark__icon",
-      );
-      if (!found) throw new Error("Expected a selected checkbox checkmark");
+    const cell = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>(".drive-list-row--selected > td");
+      if (!found) throw new Error("Expected a selected row");
       return found;
     });
-    // Same mark as list rows: round, solid fill (= its edge), dark check.
-    const mark = icon.closest(".selection-mark") as HTMLElement;
-    await expect(getComputedStyle(mark).backgroundColor).toBe(
-      getComputedStyle(mark).borderTopColor,
-    );
-    await expect(Number.parseFloat(getComputedStyle(mark).borderTopLeftRadius)).toBeGreaterThan(
-      mark.getBoundingClientRect().width / 2 - 1,
-    );
-    const lightness = (color: string) => Number(/oklch\(([\d.]+)/.exec(color)?.[1] ?? "1");
-    await expect(lightness(getComputedStyle(icon).color)).toBeLessThan(0.25);
+    const bar = getComputedStyle(cell, "::before");
+    await expect(bar.width).toBe("4px");
+    await expect(bar.left).toBe("6px");
+    // A brighter, more saturated sky than the selected row's wash.
+    const chroma = (color: string) => Number(/oklch\([\d.]+ ([\d.]+)/.exec(color)?.[1] ?? "0");
+    const rowColor = getComputedStyle(cell.closest("tr")!).backgroundColor;
+    await expect(chroma(bar.backgroundColor)).toBeGreaterThan(chroma(rowColor));
   },
 };

@@ -20,7 +20,6 @@ import {
   touchStartPoint,
   type TouchStartPoint,
 } from "@/list-item/src/use-delegated-list-item-events";
-import { SelectionMark } from "@/selection-mark/src/selection-mark";
 import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 import "./list-item.css";
 
@@ -239,10 +238,6 @@ export function ListItem({
       className={`list-item__button${leading ? " list-item__button--with-leading" : ""}`}
       style={themeVars}
     >
-      <span aria-hidden className="list-item__checkbox-wrap">
-        <SelectionMark checked={highlight.isSelected} />
-      </span>
-
       {leading ? <span className="list-item__leading">{leading}</span> : null}
 
       <div className="list-item__content">
