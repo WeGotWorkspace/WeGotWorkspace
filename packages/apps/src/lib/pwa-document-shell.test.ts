@@ -38,6 +38,12 @@ describe("PWA document shell", () => {
     expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
   });
 
+  it("stops the iOS focus zoom from the boot script, on iOS only", () => {
+    expect(themeBootJs).toContain("maximum-scale=1");
+    expect(themeBootJs).toMatch(/if \(!ios\) return;/);
+    expect(indexHtml).not.toContain("maximum-scale");
+  });
+
   it("resolves the theme from a same-origin script the runtime CSP allows", () => {
     expect(indexHtml).toContain('<script src="/assets/theme-boot.js"></script>');
     expect(indexHtml).not.toContain("wgw.theme");
