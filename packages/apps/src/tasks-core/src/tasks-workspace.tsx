@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { Eye, ListTodo } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -9,6 +9,8 @@ import {
 } from "@/collection-sidebar/src/collection-sidebar-row";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { CollectionState } from "@/collection-state/src/collection-state";
+import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
+import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
@@ -41,12 +43,10 @@ import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
 import {
   canWriteTaskList,
   composerDefaultDueForView,
-  filterTasksBySearch,
   taskListDotColor,
 } from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
 
-/** The list search: a task matches on its title or notes. */
 function TasksSidebarRows({
   lists,
   view,
@@ -130,7 +130,6 @@ export function TasksWorkspace({
   const quickAddRef = useRef<HTMLInputElement>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const isTouch = useIsTouch();
-  const [searchQuery, setSearchQuery] = useState("");
 
   const controller = useTasksController({
     data,
@@ -146,20 +145,29 @@ export function TasksWorkspace({
     L,
     view,
     viewLabel,
-    displayTasks,
     canCreateTask,
     workspaceLayoutRef,
     searchInputRef,
     confirmDialog,
-    editDialog,
-    editingTask,
-    closeEditTask,
+    activeId,
+    activeTask,
+    closeTask,
+    selectedIds,
+    selectionMode,
+    handleSelect,
+    enterSelectionFor,
+    selectionBar,
+    selectionBarButtons,
+    moveDialog,
+    setMoveDialog,
+    searchQuery,
+    setSearchQuery,
+    listTasks,
     autosaveTask,
     taskLists,
     selectView,
     createTaskFromForm,
     toggleTaskComplete,
-    editTask,
     requestDeleteTask,
     moveToList,
     createListId,
@@ -184,31 +192,6 @@ export function TasksWorkspace({
     removeSharedList,
     deleteList,
   } = controller;
-
-  const activeId = editDialog?.taskId ?? "";
-  const listTasks = useMemo(
-    () => filterTasksBySearch(displayTasks, searchQuery),
-    [displayTasks, searchQuery],
-  );
-
-  const openTask = useCallback(
-    (taskId: string) => {
-      editTask(taskId);
-      workspaceLayoutRef.current?.openMobileDetail();
-    },
-    [editTask, workspaceLayoutRef],
-  );
-
-  const closeMobileDetail = useCallback(() => {
-    workspaceLayoutRef.current?.closeMobileDetail(() => closeEditTask());
-  }, [closeEditTask, workspaceLayoutRef]);
-
-  // The open task was deleted (here or elsewhere): close the detail.
-  useEffect(() => {
-    if (!editDialog || editingTask) return;
-    closeEditTask();
-    workspaceLayoutRef.current?.closeMobileDetail();
-  }, [closeEditTask, editDialog, editingTask, workspaceLayoutRef]);
 
   const quickAdd = useCallback(
     (title: string) => {
@@ -258,9 +241,30 @@ export function TasksWorkspace({
     [knownSharePrincipals, online, operations, session.user.username],
   );
 
-  const editingTaskWritable = editingTask
-    ? canWriteTaskList(taskLists.find((list) => list.id === editingTask.taskListId))
+  const activeTaskWritable = activeTask
+    ? canWriteTaskList(taskLists.find((list) => list.id === activeTask.taskListId))
     : true;
+  const multiSelected = selectedIds.length > 1;
+  const editingTask = multiSelected ? null : activeTask;
+
+  const moveTargets = useMemo(
+    () =>
+      writableTaskLists.map((list) => ({
+        id: list.id,
+        name: list.name,
+        color: taskListDotColor(list),
+      })),
+    [writableTaskLists],
+  );
+  const moveValue = useMemo(() => {
+    const ids = moveDialog?.ids ?? [];
+    const listIds = new Set(
+      listTasks.filter((task) => ids.includes(task.id)).map((task) => task.taskListId),
+    );
+    // One shared list is the starting value; a mixed selection starts empty.
+    const only = listIds.size === 1 ? moveTargets.find((list) => listIds.has(list.id)) : undefined;
+    return only ?? { name: "" };
+  }, [listTasks, moveDialog, moveTargets]);
 
   useDocumentTitle(viewLabel);
 
@@ -336,6 +340,8 @@ export function TasksWorkspace({
             exitingTaskIds,
             taskLists,
             activeId,
+            selectedIds,
+            selectionMode,
             isTouch,
             searchQuery,
             setSearchQuery,
@@ -349,7 +355,9 @@ export function TasksWorkspace({
             canCreate: canCreateTask,
             quickAddRef,
             onQuickAdd: quickAdd,
-            onOpenTask: openTask,
+            handleSelect,
+            enterSelectionFor,
+            selectionBar,
             onToggleComplete: toggleTaskComplete,
             onDeleteTask: requestDeleteTask,
             onTaskExitAnimationEnd: handleTaskExitAnimationEnd,
@@ -362,25 +370,32 @@ export function TasksWorkspace({
             <TasksDetailActionBar
               task={editingTask}
               L={L}
-              canMutate={editingTaskWritable}
+              canMutate={activeTaskWritable}
               backLabel={viewLabel}
-              closeMobileDetail={closeMobileDetail}
+              closeMobileDetail={closeTask}
               onToggleComplete={toggleTaskComplete}
               onDeleteTask={requestDeleteTask}
             />
           ) : c.detailOpenMobile ? (
-            <ActionBar onBack={closeMobileDetail} backLabel={viewLabel} />
+            <ActionBar onBack={closeTask} backLabel={viewLabel} />
           ) : null
         }
         detail={() =>
-          editingTask ? (
+          multiSelected ? (
+            <MultiSelectionView
+              count={selectedIds.length}
+              label={L.selectionLabel}
+              title={L.selectionTitle}
+              actions={selectionBarButtons}
+            />
+          ) : editingTask ? (
             <TasksDetailView
               key={editingTask.id}
               task={editingTask}
               L={L}
-              taskLists={editingTaskWritable ? writableTaskLists : taskLists}
+              taskLists={activeTaskWritable ? writableTaskLists : taskLists}
               allTaskLists={taskLists}
-              readOnly={!editingTaskWritable}
+              readOnly={!activeTaskWritable}
               onSave={(taskId, value) => {
                 void autosaveTask(taskId, value);
               }}
@@ -394,6 +409,26 @@ export function TasksWorkspace({
         }
       />
       {confirmDialog}
+      <NotesChangeNotebookDialog
+        open={!!moveDialog}
+        notebooks={moveTargets}
+        value={moveValue}
+        title={L.selectionMoveToList}
+        description={L.selectionMoveDescription}
+        confirmLabel={L.moveConfirm}
+        labels={{
+          addNotebook: L.addList,
+          toolbarMoveToNotebook: L.addTaskList,
+          selectionMoveToNotebook: L.selectionMoveToList,
+          changeNotebookConfirm: L.moveConfirm,
+          dialogCancel: L.cancel,
+        }}
+        contentClassName="tasks-dialog-surface"
+        onClose={() => setMoveDialog(null)}
+        onNotebookChange={(target) => {
+          if (moveDialog) moveToList(moveDialog.ids, target.id);
+        }}
+      />
       <TaskProjectDialog
         dialog={projectDialog}
         groups={projectGroups}

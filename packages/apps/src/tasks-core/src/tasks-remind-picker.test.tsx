@@ -148,11 +148,12 @@ describe("TasksRemindIndicator", () => {
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 
-  it("shows the shared offset label next to the bell when one alarm is set", () => {
+  it("names the bell with the shared offset label when one alarm is set", () => {
     const alerts = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
-    expect(screen.getByText("Reminding 30 mins before")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Reminding 30 mins before" })).toBeTruthy();
+    expect(screen.queryByText("Reminding 30 mins before")).toBeNull();
     expect(document.querySelector(".tasks-field__remind--row")).toBeTruthy();
     expect(document.querySelector(".tasks-field__remind-row-chip")).toBeNull();
     expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
@@ -160,15 +161,15 @@ describe("TasksRemindIndicator", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows Remind me for a single absolute alarm", () => {
+  it("names the bell Remind me for a single absolute alarm", () => {
     const alerts = taskAlertsFromList([absoluteReminderAlert("2026-07-08T17:00:00")]);
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
-    expect(screen.getByText(defaultTasksLabels.remindMe)).toBeTruthy();
+    expect(screen.getByRole("img", { name: defaultTasksLabels.remindMe })).toBeTruthy();
     expect(screen.queryByText("No reminders")).toBeNull();
   });
 
-  it("shows the shared count label when more than one alarm is set", () => {
+  it("names the bell with the count and shows it as a badge for several alarms", () => {
     render(
       <TasksRemindIndicator
         labels={defaultTasksLabels}
@@ -179,7 +180,7 @@ describe("TasksRemindIndicator", () => {
       />,
     );
 
-    expect(screen.getByText("2 reminders")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "2 reminders" })).toBeTruthy();
     expect(document.querySelector(".tasks-field__remind-badge")?.textContent).toBe("2");
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });

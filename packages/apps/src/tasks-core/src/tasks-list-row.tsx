@@ -1,5 +1,5 @@
 import { memo, useEffect } from "react";
-import { CalendarDays, Check, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { Checkbox } from "@/ui/checkbox";
@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
-  formatComposerDueLabel,
+  formatTaskDueRelative,
   isTaskCompleted,
   taskListDotColor,
   taskListName,
@@ -15,8 +15,9 @@ import {
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
-import { isTaskPriorityNone, priorityIcon, priorityLabel } from "@/tasks-core/src/tasks-priority";
+import { isTaskPriorityNone, PriorityMark } from "@/tasks-core/src/tasks-priority";
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
+import { taskAlertCount } from "@/tasks-core/src/tasks-alert-mapping";
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -61,7 +62,7 @@ function sameTasksListRowProps(prev: TasksListRowProps, next: TasksListRowProps)
   return ROW_PROP_KEYS.every((key) => Object.is(prev[key], next[key]));
 }
 
-/** The row foot: list dot and name, due, priority, a status other than the default, reminders. */
+/** The row foot: list dot and name, and a status other than the default. */
 function TasksListRowMeta({
   task,
   L,
@@ -70,11 +71,6 @@ function TasksListRowMeta({
 }: Pick<TasksListRowProps, "task" | "L" | "taskList" | "taskLists">) {
   const listName = taskListName(task.taskListId, taskLists);
   const workflowStatus = (task.workflowStatus ?? "needs-action") as TaskWorkflowStatus;
-  const dueLabel = formatComposerDueLabel(task.due, task.showWithoutTime, {
-    dueToday: L.dueToday,
-    dueYesterday: L.dueYesterday,
-    dueTomorrow: L.dueTomorrow,
-  });
   const showStatus = workflowStatus === "in-process" || workflowStatus === "cancelled";
   return (
     <span className="tasks-list-row__meta">
@@ -82,18 +78,6 @@ function TasksListRowMeta({
         <NotesNotebookColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
         <span className="tasks-list-row__meta-text">{listName}</span>
       </span>
-      {dueLabel ? (
-        <span className="tasks-list-row__meta-item">
-          <CalendarDays className="size-3.5" aria-hidden />
-          <span className="tasks-list-row__meta-text">{dueLabel}</span>
-        </span>
-      ) : null}
-      {!isTaskPriorityNone(task.priority) ? (
-        <span className="tasks-list-row__meta-item">
-          {priorityIcon(task.priority)}
-          <span className="tasks-list-row__meta-text">{priorityLabel(task.priority, L)}</span>
-        </span>
-      ) : null}
       {showStatus ? (
         <span className="tasks-list-row__meta-item">
           {workflowStatusIcon(workflowStatus)}
@@ -102,7 +86,16 @@ function TasksListRowMeta({
           </span>
         </span>
       ) : null}
+    </span>
+  );
+}
+
+/** Top right, before the due day: the reminder bell, then the priority flag (icons only). */
+function TasksListRowMarks({ task, L }: Pick<TasksListRowProps, "task" | "L">) {
+  return (
+    <span className="tasks-list-row__marks">
       <TasksRemindIndicator labels={L} alerts={task.alerts} />
+      {isTaskPriorityNone(task.priority) ? null : <PriorityMark priority={task.priority} L={L} />}
     </span>
   );
 }
@@ -131,6 +124,8 @@ export const TasksListRow = memo(function TasksListRow({
     onExitAnimationEnd(task.id);
   }, [isExiting, onExitAnimationEnd, task.id]);
 
+  const dueRelative = formatTaskDueRelative(task.due) ?? "";
+  const hasMarks = taskAlertCount(task.alerts) > 0 || !isTaskPriorityNone(task.priority);
   const completeDisabled = isExiting || !canMutate;
   const checkbox = (
     <Checkbox
@@ -171,7 +166,8 @@ export const TasksListRow = memo(function TasksListRow({
         title={taskListTitle(task, "")}
         emptyTitle={L.untitledTask}
         metaPosition="below"
-        date=""
+        date={dueRelative}
+        dateLeading={hasMarks ? <TasksListRowMarks task={task} L={L} /> : undefined}
         text={task.description?.trim() || null}
         subtitle={<TasksListRowMeta task={task} L={L} taskList={taskList} taskLists={taskLists} />}
         leadingControl={completeControl}

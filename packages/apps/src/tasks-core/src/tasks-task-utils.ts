@@ -1,3 +1,4 @@
+import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
 import {
   isTaskPriorityNone,
@@ -184,6 +185,15 @@ export function formatComposerDueLabel(
   const datePart = formatComposerDueDateLabel(date, labels, now);
   if (taskDueIsDateOnly(due, showWithoutTime)) return datePart;
   return `${datePart}, ${formatDueTime(date)}`;
+}
+
+/** The due day relative to today, for the list row ("Tomorrow", "In 3 days"). */
+export function formatTaskDueRelative(
+  due: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const date = parseDueDateValue(due);
+  return date ? formatRelativeDay(date, now) : null;
 }
 
 function startOfLocalDay(date: Date): Date {

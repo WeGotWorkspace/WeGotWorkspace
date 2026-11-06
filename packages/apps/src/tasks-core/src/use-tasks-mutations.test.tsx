@@ -108,10 +108,6 @@ describe("useTasksMutations reminders", () => {
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
     );
 
-    act(() => {
-      result.current.editTask(reminded!.id);
-    });
-
     await act(async () => {
       await result.current.autosaveTask(reminded!.id, {
         ...taskToFormValue(reminded!, reminded!.taskListId),
@@ -124,10 +120,6 @@ describe("useTasksMutations reminders", () => {
       expect.objectContaining({ alerts: laterReminder }),
       expect.anything(),
     );
-
-    act(() => {
-      result.current.editTask(reminded!.id);
-    });
 
     await act(async () => {
       await result.current.autosaveTask(reminded!.id, {
@@ -162,9 +154,6 @@ describe("useTasksMutations rename and move in one autosave", () => {
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
     );
 
-    act(() => {
-      result.current.editTask(task.id);
-    });
     await act(async () => {
       await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
@@ -194,9 +183,6 @@ describe("useTasksMutations rename and move in one autosave", () => {
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
     );
 
-    act(() => {
-      result.current.editTask(task.id);
-    });
     await act(async () => {
       await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
@@ -205,10 +191,8 @@ describe("useTasksMutations rename and move in one autosave", () => {
       });
     });
 
-    act(() => {
-      result.current.editTask(task.id);
-    });
-    expect(result.current.editingTask).toMatchObject({
+    const saved = result.current.displayTasks.find((item) => item.id === task.id);
+    expect(saved).toMatchObject({
       taskListId: otherList.id,
       title: task.title,
     });
@@ -296,9 +280,6 @@ describe("useTasksMutations due dates (#1821)", () => {
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
     );
 
-    act(() => {
-      result.current.editTask(task.id);
-    });
     await act(async () => {
       await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
@@ -320,9 +301,6 @@ describe("useTasksMutations due dates (#1821)", () => {
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
     );
 
-    act(() => {
-      result.current.editTask(task.id);
-    });
     await act(async () => {
       await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),

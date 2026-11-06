@@ -105,6 +105,54 @@ export const ListAndDetailDark: Story = {
   },
 };
 
+/** Multi-select, as in Notes: Cmd-click adds a row, the detail shows the selection. */
+async function playMultiSelect(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await waitFor(() => expect(canvasElement.querySelector(".tasks-list-row")).toBeTruthy());
+
+  // The quick add field has no box.
+  const quickAdd = canvas.getByLabelText(L.quickAddLabel);
+  expect(getComputedStyle(quickAdd).borderTopColor).toBe("rgba(0, 0, 0, 0)");
+
+  // Reminder bell, then priority flag, then the relative due day: top right, icons only.
+  const marked = rowFor(canvasElement, "Prep launch notes");
+  const corner = marked.querySelector(".list-item__title-trailing")!;
+  expect(corner.querySelector(".tasks-field__remind--row")).toBeTruthy();
+  expect(corner.querySelector(".list-item__date")?.textContent).toBeTruthy();
+
+  const first = rowFor(canvasElement, "Buy milk");
+  const second = rowFor(canvasElement, "Review API spec");
+  // One session, so the held Meta key reaches the second click.
+  const user = userEvent.setup();
+  await user.click(first.querySelector(".list-item__button")!);
+  await user.keyboard("{Meta>}");
+  await user.click(second.querySelector(".list-item__button")!);
+  await user.keyboard("{/Meta}");
+
+  await waitFor(() => expect(canvas.getByText(L.selectionTitle(2))).toBeTruthy());
+  const pane = canvasElement.querySelector<HTMLElement>(".multi-selection-view")!;
+  for (const label of [L.selectionComplete, L.selectionMoveToList, L.delete]) {
+    expect(within(pane).getByRole("button", { name: label })).toBeTruthy();
+  }
+  expect(first.querySelector(".list-item__button")).toHaveAttribute("data-selected", "true");
+  expect(second.querySelector(".list-item__button")).toHaveAttribute("data-selected", "true");
+}
+
+export const MultiSelect: Story = {
+  tags: ["vitest-ci"],
+  play: async ({ canvasElement }) => {
+    await playMultiSelect(canvasElement);
+  },
+};
+
+export const MultiSelectDark: Story = {
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  play: async ({ canvasElement }) => {
+    await playMultiSelect(canvasElement);
+  },
+};
+
 function TasksDetailHarness({ readOnly, onSave }: { readOnly: boolean; onSave: () => void }) {
   const bootstrap = createTasksAppBootstrap();
   const task = bootstrap.data.tasks.find((item) => item.id === "task-review-spec")!;

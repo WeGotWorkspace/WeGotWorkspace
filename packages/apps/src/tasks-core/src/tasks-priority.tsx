@@ -133,6 +133,22 @@ function priorityFlagStyle(priority: number | string | null | undefined): Priori
   };
 }
 
+/** The flag alone, named for screen readers and on hover (list rows). */
+export function PriorityMark({
+  priority,
+  L,
+}: {
+  priority: number | string | null | undefined;
+  L: TasksUILabels;
+}) {
+  const label = priorityLabel(priority, L);
+  return (
+    <span className="tasks-priority-mark" role="img" aria-label={label} title={label}>
+      {priorityIcon(priority)}
+    </span>
+  );
+}
+
 export function priorityIcon(priority: number | string | null | undefined): ReactNode {
   if (priority === TASK_PRIORITY_NONE || priority === 0 || priority === "0") {
     const noneColor = TASK_PRIORITY_FLAG_COLORS.none;

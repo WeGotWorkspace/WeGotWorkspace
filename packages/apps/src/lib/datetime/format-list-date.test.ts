@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatListDateTime, parseTimestamp } from "@/lib/datetime/format-list-date";
+import {
+  formatListDateTime,
+  formatRelativeDay,
+  parseTimestamp,
+} from "@/lib/datetime/format-list-date";
 
 function formatTime(d: Date): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -68,5 +72,29 @@ describe("formatListDateTime", () => {
 
   it("returns raw string when timestamp is invalid", () => {
     expect(formatListDateTime("draft")).toBe("draft");
+  });
+});
+
+describe("formatRelativeDay", () => {
+  const now = new Date(2030, 6, 8, 23, 30);
+  const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const cell = (value: number, unit: Intl.RelativeTimeFormatUnit) => {
+    const label = relative.format(value, unit);
+    return label.charAt(0).toLocaleUpperCase() + label.slice(1);
+  };
+  const day = (offset: number, hour = 9) => new Date(2030, 6, 8 + offset, hour);
+
+  it("counts calendar days, not hours", () => {
+    expect(formatRelativeDay(day(0, 0), now)).toBe(cell(0, "day"));
+    expect(formatRelativeDay(day(1, 0), now)).toBe(cell(1, "day"));
+    expect(formatRelativeDay(day(-1, 23), now)).toBe(cell(-1, "day"));
+  });
+
+  it("uses days, then weeks, months and years", () => {
+    expect(formatRelativeDay(day(6), now)).toBe(cell(6, "day"));
+    expect(formatRelativeDay(day(14), now)).toBe(cell(2, "week"));
+    expect(formatRelativeDay(day(-8), now)).toBe(cell(-1, "week"));
+    expect(formatRelativeDay(day(61), now)).toBe(cell(2, "month"));
+    expect(formatRelativeDay(day(800), now)).toBe(cell(2, "year"));
   });
 });

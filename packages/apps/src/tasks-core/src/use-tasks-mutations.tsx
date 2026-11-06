@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, ListTodo, Plus, Trash2 } from "lucide-react";
+import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
+import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-types";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
@@ -25,9 +27,6 @@ import {
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
-
-/** The task open in the detail pane. */
-export type OpenTaskState = null | { taskId: string };
 
 type UseTasksMutationsArgs = {
   shell: TasksShellState;
@@ -90,7 +89,6 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "tasks-dialog-surface",
   });
-  const [editDialog, setEditDialog] = useState<OpenTaskState>(null);
 
   const patchTask = useCallback(
     async (taskId: string, patch: TaskPatch, opts?: { signal?: AbortSignal; ifMatch?: string }) => {
@@ -180,44 +178,57 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L.toastTaskAdded, operations, setTasks, shell, showMutationError, taskLists],
   );
 
-  const toggleTaskComplete = useCallback(
-    (taskId: string) => {
-      const task = tasks.find((item) => item.id === taskId);
-      if (!task || !operations) return;
-      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
-
-      const beforeStatus = task.workflowStatus ?? "needs-action";
-      const completing = !isTaskCompleted(task);
+  /**
+   * Completes (or reopens) tasks as one undoable write: one task from its circle,
+   * or a selection. Read-only lists are skipped.
+   */
+  const setTasksCompleted = useCallback(
+    (ids: readonly string[], completing: boolean) => {
+      if (!operations) return;
+      const changed = tasks.filter(
+        (task) =>
+          ids.includes(task.id) &&
+          isTaskCompleted(task) !== completing &&
+          canWriteTaskList(taskLists.find((list) => list.id === task.taskListId)),
+      );
+      if (changed.length === 0) return;
       const nextStatus = completing ? "completed" : "needs-action";
-      const toastMessage = tasksCompleteToastMessage(completing, L);
+      const before = new Map(
+        changed.map((task) => [task.id, task.workflowStatus ?? "needs-action"] as const),
+      );
 
-      if (completing) {
-        beginTaskExit(taskId);
-      } else {
-        cancelTaskExit(taskId);
+      for (const task of changed) {
+        if (completing) beginTaskExit(task.id);
+        else cancelTaskExit(task.id);
       }
-
       setTasks((prev) =>
-        prev.map((item) => (item.id === taskId ? { ...item, workflowStatus: nextStatus } : item)),
+        prev.map((item) => (before.has(item.id) ? { ...item, workflowStatus: nextStatus } : item)),
       );
 
       const rollback = () => {
-        cancelTaskExit(taskId);
+        for (const taskId of before.keys()) cancelTaskExit(taskId);
         setTasks((prev) =>
           prev.map((item) =>
-            item.id === taskId ? { ...item, workflowStatus: beforeStatus } : item,
+            before.has(item.id) ? { ...item, workflowStatus: before.get(item.id)! } : item,
           ),
         );
       };
 
+      const changedIds = [...before.keys()];
       queueMutation({
-        key: `tasks:complete:${taskId}`,
-        toastMessage,
+        key: `tasks:complete:${changedIds.slice().sort().join(",")}`,
+        toastMessage: tasksCompleteToastMessage(completing, changed.length, L),
         icon: completing ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />,
         execute: async (signal) => {
-          await patchTask(taskId, { workflowStatus: nextStatus }, { signal });
+          for (const taskId of changedIds) {
+            await patchTask(taskId, { workflowStatus: nextStatus }, { signal });
+          }
         },
-        revert: () => revertTaskStatus(operations, setTasks, taskId, beforeStatus),
+        revert: async () => {
+          for (const [taskId, status] of before) {
+            await revertTaskStatus(operations, setTasks, taskId, status);
+          }
+        },
         undo: rollback,
         undoToastMessage: L.toastCompleteUndone,
       });
@@ -235,18 +246,13 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     ],
   );
 
-  const editTask = useCallback((taskId: string) => {
-    setEditDialog({ taskId });
-  }, []);
-
-  const closeEditTask = useCallback(() => {
-    setEditDialog(null);
-  }, []);
-
-  const editingTask = useMemo(() => {
-    if (!editDialog) return null;
-    return tasks.find((item) => item.id === editDialog.taskId) ?? null;
-  }, [editDialog, tasks]);
+  const toggleTaskComplete = useCallback(
+    (taskId: string) => {
+      const task = tasks.find((item) => item.id === taskId);
+      if (task) setTasksCompleted([taskId], !isTaskCompleted(task));
+    },
+    [setTasksCompleted, tasks],
+  );
 
   // Detail pane autosave. Saves of one task run one after the other, each against
   // the version the previous one produced, or the server refuses the second as a
@@ -345,7 +351,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
 
       queueMutation({
         key: `tasks:delete:${ids.slice().sort().join(",")}`,
-        toastMessage: L.toastDeleted,
+        toastMessage: L.toastTasksDeleted(removed.length),
         icon: <Trash2 className="size-4" />,
         // A delete cannot be taken back on the server: it waits, and Undo cancels it.
         irreversible: true,
@@ -358,16 +364,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         undoToastMessage: L.toastDeleteUndone,
       });
     },
-    [
-      L.toastDeleteUndone,
-      L.toastDeleted,
-      cancelTaskExit,
-      operations,
-      queueMutation,
-      setTasks,
-      taskLists,
-      tasks,
-    ],
+    [L, cancelTaskExit, operations, queueMutation, setTasks, taskLists, tasks],
   );
 
   const requestDeleteTask = useCallback(
@@ -422,6 +419,73 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L, operations, queueMutation, setTasks, taskLists, tasks],
   );
 
+  // --- multi-select: the shared selection bar and the detail pane's actions ---
+  const { selectedIds, selectionMode, exitSelection, activeId } = list;
+  const [moveDialog, setMoveDialog] = useState<{ ids: string[] } | null>(null);
+
+  const selectedTasks = useMemo(
+    () => tasks.filter((task) => selectedIds.includes(task.id)),
+    [selectedIds, tasks],
+  );
+  const selectionWritable = selectedTasks.filter((task) =>
+    canWriteTaskList(taskLists.find((list) => list.id === task.taskListId)),
+  );
+  const allSelectedCompleted =
+    selectionWritable.length > 0 && selectionWritable.every((task) => isTaskCompleted(task));
+
+  const requestDeleteSelected = useCallback(() => {
+    const ids = selectionWritable.map((task) => task.id);
+    if (ids.length === 0) return;
+    requestConfirm({
+      title: L.deleteSelectedTitle(ids.length),
+      description: L.deleteSelectedBody(ids.length),
+      confirmLabel: L.delete,
+      cancelLabel: L.cancel,
+      onConfirm: () => {
+        deleteTasks(ids);
+        exitSelection();
+      },
+    });
+  }, [L, deleteTasks, exitSelection, requestConfirm, selectionWritable]);
+
+  const selectionActionButtons = useMemo<WorkspaceActionButton[]>(
+    () =>
+      selectionWritable.length === 0
+        ? []
+        : [
+            {
+              label: allSelectedCompleted ? L.markIncomplete : L.selectionComplete,
+              icon: <CheckCircle2 className="size-4" />,
+              onClick: () =>
+                setTasksCompleted(
+                  selectionWritable.map((task) => task.id),
+                  !allSelectedCompleted,
+                ),
+              active: allSelectedCompleted,
+            },
+            {
+              label: L.selectionMoveToList,
+              icon: <ListTodo className="size-4" />,
+              onClick: () => setMoveDialog({ ids: selectionWritable.map((task) => task.id) }),
+            },
+            {
+              label: L.delete,
+              icon: <Trash2 className="size-4" />,
+              onClick: requestDeleteSelected,
+              severity: "danger" as const,
+            },
+          ],
+    [L, allSelectedCompleted, requestDeleteSelected, selectionWritable, setTasksCompleted],
+  );
+  const { selectionBarButtons, selectionBar } = useWorkspaceSelectionPresentation({
+    selectedIds,
+    selectionMode,
+    activeId,
+    exitSelection,
+    actionButtons: selectionActionButtons,
+    doneLabel: L.selectionDone,
+  });
+
   const handleTaskExitAnimationEnd = useCallback(
     (taskId: string) => {
       exitAnimation.finishTaskExit(taskId, shouldHideCompletedTaskAfterExit(view));
@@ -432,10 +496,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   return {
     createTaskFromForm,
     toggleTaskComplete,
-    editTask,
-    editDialog,
-    editingTask,
-    closeEditTask,
+    setTasksCompleted,
+    requestDeleteSelected,
+    moveDialog,
+    setMoveDialog,
+    selectionBar,
+    selectionBarButtons,
     autosaveTask,
     requestDeleteTask,
     moveToList,

@@ -35,6 +35,8 @@ export type TasksListPanelProps = {
   exitingTaskIds: ReadonlySet<string>;
   taskLists: TaskList[];
   activeId: string;
+  selectedIds: string[];
+  selectionMode: boolean;
   isTouch: boolean;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
@@ -49,7 +51,12 @@ export type TasksListPanelProps = {
   canCreate: boolean;
   quickAddRef: RefObject<HTMLInputElement | null>;
   onQuickAdd: (title: string) => void;
-  onOpenTask: (taskId: string, event: ReactMouseEvent) => void;
+  /** A click on a row: open it, or with Cmd/Shift (or in selection mode) select it. */
+  handleSelect: (taskId: string, event: ReactMouseEvent) => void;
+  /** A long-press: start selecting from this row. */
+  enterSelectionFor: (taskId: string) => void;
+  /** The shared floating selection bar (phone). */
+  selectionBar?: ReactNode;
   onToggleComplete: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onTaskExitAnimationEnd: (taskId: string) => void;
@@ -70,6 +77,8 @@ export function TasksListPanel({
   exitingTaskIds,
   taskLists,
   activeId,
+  selectedIds,
+  selectionMode,
   isTouch,
   searchQuery,
   setSearchQuery,
@@ -83,14 +92,18 @@ export function TasksListPanel({
   canCreate,
   quickAddRef,
   onQuickAdd,
-  onOpenTask,
+  handleSelect,
+  enterSelectionFor,
+  selectionBar,
   onToggleComplete,
   onDeleteTask,
   onTaskExitAnimationEnd,
   itemDragHandlers,
   isItemDragging,
 }: TasksListPanelProps) {
-  const count = displayTasks.length;
+  const multiSelecting = selectionMode || selectedIds.length > 1;
+  const count = multiSelecting ? selectedIds.length : displayTasks.length;
+  const countLabel = multiSelecting ? L.listSelected(count) : L.listTasks(count);
   return {
     header: (
       <ViewHeader
@@ -98,7 +111,7 @@ export function TasksListPanel({
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
         titleSuffix={
-          <span className="view-header__title-count" aria-label={L.listTasks(count)}>
+          <span className="view-header__title-count" aria-label={countLabel}>
             ({count})
           </span>
         }
@@ -141,6 +154,7 @@ export function TasksListPanel({
         searchValue={searchQuery}
         onSearchInput={setSearchQuery}
         searchInputRef={searchInputRef}
+        searchHidden={multiSelecting}
       />
     ),
     listTop: (
@@ -156,8 +170,11 @@ export function TasksListPanel({
         exitingTaskIds={exitingTaskIds}
         taskLists={taskLists}
         activeId={activeId}
+        selectedIds={selectedIds}
+        selectionMode={selectionMode}
         isTouch={isTouch}
-        onOpenTask={onOpenTask}
+        handleSelect={handleSelect}
+        enterSelectionFor={enterSelectionFor}
         onToggleComplete={onToggleComplete}
         onDeleteTask={onDeleteTask}
         onTaskExitAnimationEnd={onTaskExitAnimationEnd}
@@ -167,6 +184,7 @@ export function TasksListPanel({
     ),
     hasItems: count > 0,
     emptyLabel: L.emptyList,
+    floatingActionBar: selectionBar,
   };
 }
 
@@ -218,8 +236,11 @@ function TasksListRows({
   exitingTaskIds,
   taskLists,
   activeId,
+  selectedIds,
+  selectionMode,
   isTouch,
-  onOpenTask,
+  handleSelect,
+  enterSelectionFor,
   onToggleComplete,
   onDeleteTask,
   onTaskExitAnimationEnd,
@@ -232,8 +253,11 @@ function TasksListRows({
   | "exitingTaskIds"
   | "taskLists"
   | "activeId"
+  | "selectedIds"
+  | "selectionMode"
   | "isTouch"
-  | "onOpenTask"
+  | "handleSelect"
+  | "enterSelectionFor"
   | "onToggleComplete"
   | "onDeleteTask"
   | "onTaskExitAnimationEnd"
@@ -257,7 +281,9 @@ function TasksListRows({
   );
 
   const listsById = useMemo(() => new Map(taskLists.map((list) => [list.id, list])), [taskLists]);
-  const selectedIds = useMemo(() => (activeId ? [activeId] : []), [activeId]);
+  const multiSelect = selectionMode || selectedIds.length > 1;
+  // As in Notes: only the single open task paints as active.
+  const paintActiveId = !multiSelect && selectedIds.includes(activeId) ? activeId : "";
 
   const rows = useMemo(
     () =>
@@ -298,9 +324,11 @@ function TasksListRows({
     <div ref={listRef} className="tasks-list-panel__list">
       <WorkspaceSwipeList
         isTouch={isTouch}
-        activeId={activeId}
+        activeId={paintActiveId}
         selectedIds={selectedIds}
-        onItemClick={onOpenTask}
+        selectionMode={multiSelect}
+        onItemClick={handleSelect}
+        onItemLongPress={enterSelectionFor}
         {...bindItemDragHandlers(itemDragHandlers)}
       >
         {rows}

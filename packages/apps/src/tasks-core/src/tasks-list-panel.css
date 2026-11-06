@@ -28,6 +28,10 @@
 .tasks-list-panel__quick-add-input.input,
 .tasks-list-panel__quick-add-input {
   @apply w-full;
+  /* No box: the field reads as the first row; a keyboard focus ring stays. */
+  border-color: transparent;
+  --input-border-focus: transparent;
+  --input-shadow: none;
   /* Text starts on the row text line: checkbox (20px) plus the row gap (12px). */
   padding-inline-start: calc(var(--list-item-padding-x, 1.25rem) + 2rem);
 }
@@ -43,7 +47,16 @@
   }
 }
 
-/* Row foot: list dot and name, due, priority, status, reminders. */
+/* Top right, before the due day: reminder bell, then the priority flag. */
+.tasks-list-row__marks {
+  @apply inline-flex items-center gap-1.5;
+}
+
+.tasks-priority-mark {
+  @apply inline-flex items-center;
+}
+
+/* Row foot: list dot and name, and a status other than the default. */
 .tasks-list-row__meta {
   @apply flex min-w-0 items-center gap-3 overflow-hidden;
 }

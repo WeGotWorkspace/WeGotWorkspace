@@ -107,9 +107,6 @@ export type TasksUILabels = {
   deleteConfirmBody: string;
   cancel: string;
   toastSaved: string;
-  toastDeleted: string;
-  toastTaskCompleted: string;
-  toastTaskReopened: string;
   toastTaskAdded: string;
   toastTaskUpdated: string;
   toastTaskMoved: (count: number, listName: string) => string;
@@ -132,6 +129,19 @@ export type TasksUILabels = {
   /** Detail pane: the notes field and the field rows. */
   detailNotesPlaceholder: string;
   detailReminder: string;
+  /** Multi-select: the selection bar, the detail pane and the move dialog. */
+  selectionLabel: string;
+  selectionTitle: (count: number) => string;
+  selectionComplete: string;
+  selectionMoveToList: string;
+  selectionMoveDescription: string;
+  selectionDone: string;
+  moveConfirm: string;
+  deleteSelectedTitle: (count: number) => string;
+  deleteSelectedBody: (count: number) => string;
+  toastTasksCompleted: (count: number) => string;
+  toastTasksReopened: (count: number) => string;
+  toastTasksDeleted: (count: number) => string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -277,9 +287,6 @@ export const defaultTasksLabels: TasksUILabels = {
   deleteConfirmBody: "This task will be removed from your list.",
   cancel: "Cancel",
   toastSaved: "Saved",
-  toastDeleted: "Task deleted",
-  toastTaskCompleted: "Task completed",
-  toastTaskReopened: "Marked incomplete",
   toastTaskAdded: "Task added",
   toastTaskUpdated: "Task updated",
   toastTaskMoved: (count, listName) =>
@@ -301,6 +308,22 @@ export const defaultTasksLabels: TasksUILabels = {
   emptyList: "No tasks",
   detailNotesPlaceholder: "Add notes…",
   detailReminder: "Reminder",
+  selectionLabel: "Multiple selection",
+  selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
+  selectionComplete: "Mark complete",
+  selectionMoveToList: "Move to list",
+  selectionMoveDescription: "Choose a list for the selected tasks.",
+  selectionDone: "Done",
+  moveConfirm: "Move",
+  deleteSelectedTitle: (count) => (count === 1 ? "Delete task?" : `Delete ${count} tasks?`),
+  deleteSelectedBody: (count) =>
+    count === 1
+      ? "This task will be removed from your list."
+      : "These tasks will be removed from their lists.",
+  toastTasksCompleted: (count) => (count === 1 ? "Task completed" : `${count} tasks completed`),
+  toastTasksReopened: (count) =>
+    count === 1 ? "Marked incomplete" : `${count} tasks marked incomplete`,
+  toastTasksDeleted: (count) => (count === 1 ? "Task deleted" : `${count} tasks deleted`),
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `Your offline edits to “${title}” conflict with a newer version on the server.`,

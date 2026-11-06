@@ -25,7 +25,7 @@ function TasksRemindVisual({ count, className, label, children }: TasksRemindVis
   return (
     <span
       className={`tasks-field__remind${className ? ` ${className}` : ""}`}
-      {...(label ? { role: "img" as const, "aria-label": label } : {})}
+      {...(label ? { role: "img" as const, "aria-label": label, title: label } : {})}
     >
       {children}
       {count > 1 ? (
@@ -42,7 +42,7 @@ type TasksRemindIndicatorProps = {
   alerts: Task["alerts"] | undefined;
 };
 
-/** Display-only row mark. Hidden when the task has no alarms. */
+/** Display-only row mark: the bell (with a count when several), named for screen readers. */
 export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorProps) {
   const count = taskAlertCount(alerts);
   if (count === 0) return null;
@@ -50,12 +50,9 @@ export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorPro
   const label = remindButtonLabel(labels, alerts);
 
   return (
-    <span className="tasks-list-row__meta-item">
-      <TasksRemindVisual count={count} className="tasks-field__remind--row">
-        <Bell className="size-3.5" aria-hidden />
-      </TasksRemindVisual>
-      <span>{label}</span>
-    </span>
+    <TasksRemindVisual count={count} label={label} className="tasks-field__remind--row">
+      <Bell className="size-3.5" aria-hidden />
+    </TasksRemindVisual>
   );
 }
 

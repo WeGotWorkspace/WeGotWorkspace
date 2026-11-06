@@ -29,11 +29,42 @@ function listDayFormat(withYear: boolean): Intl.DateTimeFormat {
   return dayMonthFormat;
 }
 
+function relativeFormat(): Intl.RelativeTimeFormat {
+  relativeDayFormat ??= new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  return relativeDayFormat;
+}
+
+function capitalise(label: string): string {
+  return label.charAt(0).toLocaleUpperCase() + label.slice(1);
+}
+
 /** "Yesterday" in the viewer's language, capitalised for a list cell. */
 function yesterdayLabel(): string {
-  relativeDayFormat ??= new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  const label = relativeDayFormat.format(-1, "day");
-  return label.charAt(0).toLocaleUpperCase() + label.slice(1);
+  return capitalise(relativeFormat().format(-1, "day"));
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole calendar days from `now` to `date` (local time; DST-safe). */
+function calendarDaysBetween(now: Date, date: Date): number {
+  const from = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const to = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((to - from) / DAY_MS);
+}
+
+/**
+ * A day relative to today, in the viewer's language and capitalised for a list
+ * cell: "Today", "Tomorrow", "In 3 days", "Last week", "In 2 months", "3 years ago".
+ * Counts calendar days, so the time of day does not matter.
+ */
+export function formatRelativeDay(date: Date, now: Date = new Date()): string {
+  const days = calendarDaysBetween(now, date);
+  const size = Math.abs(days);
+  const format = relativeFormat();
+  if (size < 7) return capitalise(format.format(days, "day"));
+  if (size < 30) return capitalise(format.format(Math.trunc(days / 7), "week"));
+  if (size < 365) return capitalise(format.format(Math.trunc(days / 30), "month"));
+  return capitalise(format.format(Math.trunc(days / 365), "year"));
 }
 
 function isSameDay(a: Date, b: Date): boolean {

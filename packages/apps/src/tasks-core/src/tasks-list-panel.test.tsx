@@ -6,6 +6,7 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksListPanel, type TasksListPanelProps } from "@/tasks-core/src/tasks-list-panel";
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
+import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -41,7 +42,12 @@ function renderRow(task: Task, overrides: Partial<React.ComponentProps<typeof Ta
     </TooltipProvider>,
   );
   const row = document.querySelector(".tasks-list-row") as HTMLElement;
-  return { row, meta: row.querySelector(".tasks-list-row__meta") as HTMLElement, onToggleComplete };
+  return {
+    row,
+    meta: row.querySelector(".tasks-list-row__meta") as HTMLElement,
+    corner: row.querySelector(".list-item__title-trailing") as HTMLElement | null,
+    onToggleComplete,
+  };
 }
 
 function PanelHarness(props: Partial<TasksListPanelProps>) {
@@ -54,6 +60,8 @@ function PanelHarness(props: Partial<TasksListPanelProps>) {
     exitingTaskIds: new Set(),
     taskLists: lists,
     activeId: "",
+    selectedIds: [],
+    selectionMode: false,
     isTouch: false,
     searchQuery: "",
     setSearchQuery: vi.fn(),
@@ -65,7 +73,8 @@ function PanelHarness(props: Partial<TasksListPanelProps>) {
     canCreate: true,
     quickAddRef: createRef(),
     onQuickAdd: vi.fn(),
-    onOpenTask: vi.fn(),
+    handleSelect: vi.fn(),
+    enterSelectionFor: vi.fn(),
     onToggleComplete: vi.fn(),
     onDeleteTask: vi.fn(),
     onTaskExitAnimationEnd: vi.fn(),
@@ -134,18 +143,31 @@ describe("TasksListRow", () => {
     );
   });
 
-  it("shows due and priority only when set", () => {
-    const bare = { ...bootstrap.data.tasks[0]!, due: null, priority: null };
-    const { meta } = renderRow(bare);
-    expect(meta.textContent).not.toContain(L.priorityHigh);
-    expect(meta.querySelector(".lucide-calendar-days")).toBeNull();
+  it("shows the due day relative to today in the top right corner", () => {
+    const bare = { ...bootstrap.data.tasks[0]!, due: null, priority: null, alerts: undefined };
+    const { corner } = renderRow(bare);
+    expect(corner).toBeNull();
 
     cleanup();
-    const full = { ...bare, due: "2030-07-08", showWithoutTime: true, priority: 1 };
-    const { meta: fullMeta } = renderRow(full);
-    expect(fullMeta.textContent).toContain(L.priorityHigh);
-    expect(fullMeta.querySelector(".lucide-calendar-days")).toBeTruthy();
-    expect(fullMeta.querySelector(".tasks-priority-flag")).toBeTruthy();
+    const today = new Date();
+    const due = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
+    const { corner: dated } = renderRow({ ...bare, due, showWithoutTime: true });
+    expect(dated?.querySelector(".list-item__date")?.textContent).toBe(
+      formatRelativeDay(today, today),
+    );
+  });
+
+  it("shows priority as an icon only, named for screen readers", () => {
+    const { corner, meta } = renderRow({ ...bootstrap.data.tasks[0]!, priority: 1 });
+
+    const mark = screen.getByRole("img", { name: L.priorityHigh });
+    expect(corner?.contains(mark)).toBe(true);
+    expect(mark.textContent).toBe("");
+    expect(meta.textContent).not.toContain(L.priorityHigh);
   });
 
   it("shows a status only when it is in progress or cancelled", () => {
@@ -160,12 +182,14 @@ describe("TasksListRow", () => {
     expect(busy.textContent).toContain(L.stateInProcess);
   });
 
-  it("puts the reminder mark last", () => {
+  it("puts the reminder bell, then the priority flag, before the due day", () => {
     const task = { ...taskById("task-two-reminders"), priority: 1, due: "2030-07-08" };
-    const { meta } = renderRow(task);
+    const { corner } = renderRow(task);
 
-    expect(meta.lastElementChild?.querySelector(".tasks-field__remind--row")).toBeTruthy();
-    expect(meta.firstElementChild?.querySelector(".tasks-field__remind--row")).toBeNull();
+    const marks = corner?.querySelector(".tasks-list-row__marks");
+    expect(marks?.firstElementChild?.matches(".tasks-field__remind--row")).toBe(true);
+    expect(marks?.lastElementChild?.matches(".tasks-priority-mark")).toBe(true);
+    expect(corner?.lastElementChild?.matches(".list-item__date")).toBe(true);
   });
 });
 
