@@ -148,6 +148,8 @@ export function TasksDetailView({
         aria-label={L.descriptionLabel}
         readOnly={readOnly}
         minRows={2}
+        // Grows with the notes, however long: the pane scrolls, not the field.
+        maxRows={Number.POSITIVE_INFINITY}
       />
       <div className="tasks-detail-view__fields">
         <TasksDetailField icon={<CircleCheck />} title={L.addTaskStatus}>

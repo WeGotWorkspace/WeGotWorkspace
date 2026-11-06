@@ -82,6 +82,15 @@
   @apply truncate;
 }
 
+/* Due today warns, an earlier day is an error (as the detail's due field). */
+.tasks-list-row__due[data-severity="warn"] {
+  color: var(--color-warning);
+}
+
+.tasks-list-row__due[data-severity="error"] {
+  color: var(--color-error);
+}
+
 /* The suite selection mark (as the Notes editor task checks), at the row's leading
    control size: an empty dimmed ring as thick as the title strokes, or one solid
    fill in the multi-selection colour with a contrasting check. */

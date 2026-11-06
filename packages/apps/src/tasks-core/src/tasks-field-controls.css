@@ -29,6 +29,15 @@
   @apply flex min-w-0 flex-wrap items-center gap-x-0 gap-y-1;
 }
 
+/* Due today warns, an earlier day is an error (as the list row). */
+.tasks-field__due[data-severity="warn"] > .collection-ghost-select {
+  color: var(--color-warning);
+}
+
+.tasks-field__due[data-severity="error"] > .collection-ghost-select {
+  color: var(--color-error);
+}
+
 /* The values wrap rather than shrink. The ghost's negative start margin makes this
    box 10px narrower than its values, so a lone ghost capped at 100% would cut its
    value ("Tod…"); the short date and time labels never need to truncate. */

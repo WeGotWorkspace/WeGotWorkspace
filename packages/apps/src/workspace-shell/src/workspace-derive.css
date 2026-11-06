@@ -49,7 +49,8 @@
   .share-access-card,
   .dropdown-menu-ui__content,
   .dropdown-menu-ui__sub-content,
-  .select-ui__content
+  .select-ui__content,
+  .popover-ui--frost
 ) {
   --workspace-accent-strong: color-mix(
     in oklch,

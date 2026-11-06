@@ -122,6 +122,7 @@ export function taskFieldControls({
         timeZone: next.timeZone,
       })),
     disabled,
+    done: value.workflowStatus === "completed" || value.workflowStatus === "cancelled",
   };
   return {
     due: <TasksComposerDuePicker {...dueProps} />,

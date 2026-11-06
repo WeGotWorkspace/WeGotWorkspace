@@ -161,4 +161,20 @@ describe("TasksComposerDuePicker", () => {
     });
     expect(timeField()).toBeNull();
   });
+  it("labels the day relative to today, coloured by how urgent it is", () => {
+    renderDue({ due: "2026-07-11", showWithoutTime: true });
+    const due = () => document.querySelector<HTMLElement>(".tasks-field__due")!;
+    expect(screen.getByLabelText(dueTriggerName).textContent).toBe("In 3 days");
+    expect(due().dataset.severity).toBeUndefined();
+
+    cleanup();
+    renderDue({ due: "2026-07-08T15:00:00", showWithoutTime: false });
+    expect(screen.getByLabelText(dueTriggerName).textContent).toBe("Today");
+    expect(due().dataset.severity).toBe("warn");
+
+    cleanup();
+    renderDue({ due: "2026-07-06", showWithoutTime: true });
+    expect(screen.getByLabelText(dueTriggerName).textContent).toBe("2 days ago");
+    expect(due().dataset.severity).toBe("error");
+  });
 });

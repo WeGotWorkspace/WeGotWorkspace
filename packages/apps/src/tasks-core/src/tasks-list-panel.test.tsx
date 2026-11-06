@@ -166,6 +166,29 @@ describe("TasksListRow", () => {
     expect(dated.firstElementChild?.matches(".list-item__meta-segment")).toBe(true);
   });
 
+  it("colours the due day: today warns, an earlier day is an error, done is plain", () => {
+    const bare = { ...bootstrap.data.tasks[0]!, alerts: undefined, showWithoutTime: true };
+    const day = (offset: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
+    };
+    const severity = (task: Task) => {
+      cleanup();
+      const { meta } = renderRow(task);
+      return meta.querySelector<HTMLElement>(".tasks-list-row__due")?.dataset.severity;
+    };
+
+    expect(severity({ ...bare, due: day(0), workflowStatus: "needs-action" })).toBe("warn");
+    expect(severity({ ...bare, due: day(-2), workflowStatus: "needs-action" })).toBe("error");
+    expect(severity({ ...bare, due: day(3), workflowStatus: "needs-action" })).toBeUndefined();
+    expect(severity({ ...bare, due: day(-2), workflowStatus: "completed" })).toBeUndefined();
+  });
+
   it("always shows the priority flag in the top right corner, icon only", () => {
     const { corner, meta } = renderRow({ ...bootstrap.data.tasks[0]!, priority: 1 });
 

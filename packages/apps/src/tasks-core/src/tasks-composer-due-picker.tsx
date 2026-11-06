@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { CalendarDays, ChevronDown, Clock } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
+import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import { Calendar } from "@/ui/calendar";
 import { Input } from "@/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
@@ -14,9 +15,10 @@ import {
   dueDateTimeToApiValue,
   dueDateToApiValue,
   dueTimeInputValue,
-  formatComposerDueDateLabel,
+  formatDueDateShort,
   parseDueDateValue,
   taskDueIsDateOnly,
+  taskDueSeverity,
   type TaskDueFields,
 } from "@/tasks-core/src/tasks-task-utils";
 
@@ -26,6 +28,8 @@ type TasksDueFieldProps = {
   showWithoutTime?: boolean;
   onChange: (next: TaskDueFields) => void;
   disabled?: boolean;
+  /** A done task's due is not urgent: no warning or error colour. */
+  done?: boolean;
 };
 
 /*
@@ -55,15 +59,18 @@ export function TasksComposerDuePicker({
   showWithoutTime = true,
   onChange,
   disabled,
+  done = false,
 }: TasksDueFieldProps) {
   const [open, setOpen] = useState(false);
   const timeInputRef = useRef<HTMLInputElement>(null);
   const selectedDate = parseDueDateValue(due);
   const dateOnly = taskDueIsDateOnly(due, showWithoutTime);
-  const dateLabel = selectedDate ? formatComposerDueDateLabel(selectedDate, labels) : labels.noDue;
+  // The day relative to today, as the list row ("In 3 days"); the date on hover.
+  const dateLabel = selectedDate ? formatRelativeDay(selectedDate) : labels.noDue;
+  const severity = taskDueSeverity(due, done);
 
   return (
-    <span className="tasks-field__due">
+    <span className="tasks-field__due" data-severity={severity ?? undefined}>
       <Popover
         open={disabled ? false : open}
         onOpenChange={(next) => {
@@ -77,6 +84,7 @@ export function TasksComposerDuePicker({
             // Field name + the visible value, so the name contains what is on screen (WCAG 2.5.3).
             aria-label={`${labels.addTaskDue}: ${dateLabel}`}
             disabled={disabled}
+            title={selectedDate ? formatDueDateShort(selectedDate) : undefined}
             leading={<CalendarDays className="size-3.5" aria-hidden />}
             label={dateLabel}
           />
@@ -84,6 +92,7 @@ export function TasksComposerDuePicker({
         <PopoverContent
           align="start"
           collisionPadding={16}
+          frost
           className="tasks-field__due-popover w-auto p-0"
         >
           <Calendar

@@ -368,9 +368,11 @@ input.input:focus-visible:not(:read-only),
  */
 /*
  * Select lists are frosted floating chrome, like the dropdown menus: frost fill
- * and blur, floating radius, no border, frost shadow.
+ * and blur, floating radius, no border, frost shadow. `PopoverContent frost`
+ * (a date picker) shares it.
  */
-.select-ui__content {
+.select-ui__content,
+.popover-ui--frost {
   background: var(--frost-background);
   -webkit-backdrop-filter: var(--frost-blur);
   backdrop-filter: var(--frost-blur);

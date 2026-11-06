@@ -9,6 +9,7 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formatTaskDueRelative,
   isTaskCompleted,
+  taskDueSeverity,
   taskListDotColor,
   taskListName,
   taskListTitle,
@@ -73,6 +74,7 @@ function TasksListRowMeta({
   const workflowStatus = (task.workflowStatus ?? "needs-action") as TaskWorkflowStatus;
   const showStatus = workflowStatus === "in-process" || workflowStatus === "cancelled";
   const dueRelative = formatTaskDueRelative(task.due, L);
+  const dueSeverity = taskDueSeverity(task.due, isTaskCompleted(task));
   return (
     <span className="tasks-list-row__meta">
       <span className="tasks-list-row__meta-item list-item__meta-segment">
@@ -80,7 +82,10 @@ function TasksListRowMeta({
         <span className="tasks-list-row__meta-text">{listName}</span>
       </span>
       {dueRelative ? (
-        <span className="tasks-list-row__meta-item list-item__meta-segment tasks-list-row__due">
+        <span
+          className="tasks-list-row__meta-item list-item__meta-segment tasks-list-row__due"
+          data-severity={dueSeverity ?? undefined}
+        >
           <span className="tasks-list-row__meta-text">{dueRelative}</span>
         </span>
       ) : null}
