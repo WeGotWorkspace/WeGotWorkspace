@@ -87,7 +87,7 @@ export function TasksComposerDuePicker({
           aria-label={`${labels.addTaskDue}: ${displayLabel}`}
           disabled={disabled}
         >
-          <span className="tasks-main-view__composer-select-option">
+          <span className="tasks-field__select-option">
             <CalendarDays className="size-3.5" aria-hidden />
             <span>{displayLabel}</span>
           </span>
@@ -96,7 +96,7 @@ export function TasksComposerDuePicker({
       <PopoverContent
         align="start"
         collisionPadding={16}
-        className="tasks-main-view__composer-due-popover w-auto p-0"
+        className="tasks-field__due-popover w-auto p-0"
       >
         <Calendar
           mode="single"
@@ -125,7 +125,7 @@ export function TasksComposerDuePicker({
           initialFocus
         />
         {selectedDate ? (
-          <div className="tasks-main-view__composer-due-extras">
+          <div className="tasks-field__due-extras">
             {dateOnly ? (
               <Button
                 type="button"
@@ -140,11 +140,11 @@ export function TasksComposerDuePicker({
                 }
               />
             ) : (
-              <div className="tasks-main-view__composer-due-time-row">
+              <div className="tasks-field__due-time-row">
                 <Input
                   type="time"
                   size="md"
-                  className="tasks-main-view__composer-due-time"
+                  className="tasks-field__due-time"
                   value={dueTimeInputValue(selectedDate)}
                   aria-label={labels.dueTimeLabel}
                   onChange={(event) =>
@@ -159,7 +159,7 @@ export function TasksComposerDuePicker({
                 >
                   <SelectTrigger
                     size="md"
-                    className="tasks-main-view__composer-due-timezone"
+                    className="tasks-field__due-timezone"
                     aria-label={defaultCalendarLabels.eventTimeZoneLabel}
                   >
                     <SelectValue />
@@ -184,12 +184,12 @@ export function TasksComposerDuePicker({
           </div>
         ) : null}
         {selectedDate ? (
-          <div className="tasks-main-view__composer-due-clear">
+          <div className="tasks-field__due-clear">
             <Button
               type="button"
               variant="outline"
               size="md"
-              className="tasks-main-view__composer-due-clear-button"
+              className="tasks-field__due-clear-button"
               label={labels.noDue}
               onClick={() => {
                 onChange({ due: null, showWithoutTime: true, timeZone: null });

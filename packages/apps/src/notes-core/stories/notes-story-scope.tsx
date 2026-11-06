@@ -55,7 +55,7 @@ export function NotesStoryScope({
   if (variant === "detail") {
     return (
       <div
-        className="notes-workspace notes-story-scope notes-story-scope--detail"
+        className="notes-workspace note-detail-desk notes-story-scope notes-story-scope--detail"
         style={notesStoryStyle(detailTint)}
       >
         {children}

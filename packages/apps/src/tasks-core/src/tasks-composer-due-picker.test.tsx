@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { TasksComposerDuePicker } from "@/tasks-core/src/tasks-composer-due-picker";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import { COMPOSER_SELECT_TRIGGER_CLASS } from "@/tasks-core/src/tasks-task-form";
+import { TASK_FIELD_SELECT_TRIGGER_CLASS } from "@/tasks-core/src/tasks-task-form";
 import type { TaskDueFields } from "@/tasks-core/src/tasks-task-utils";
 import { TooltipProvider } from "@/ui/tooltip";
-import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-field-controls.css";
 
 /** The due trigger is named "Due date: <value>"; match on the field-name prefix. */
 const dueTriggerName = new RegExp(`^${defaultTasksLabels.addTaskDue}:`);
@@ -42,7 +42,7 @@ function renderDuePicker(overrides: Partial<ComponentProps<typeof TasksComposerD
         showWithoutTime
         timeZone={null}
         onChange={onChange}
-        triggerClassName={COMPOSER_SELECT_TRIGGER_CLASS}
+        triggerClassName={TASK_FIELD_SELECT_TRIGGER_CLASS}
         {...overrides}
       />
     </TooltipProvider>,

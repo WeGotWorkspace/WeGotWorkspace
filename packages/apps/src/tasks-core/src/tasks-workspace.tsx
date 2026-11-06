@@ -1,22 +1,21 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
-import { CheckCircle2, Eye } from "lucide-react";
-import { Button, IconButton } from "@/button/src/button";
-import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Eye, ListTodo } from "lucide-react";
+import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import {
   CollectionSidebarMark,
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
-import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { ViewHeader } from "@/view-header/src/view-header";
+import { ActionBar } from "@/action-bar/src/action-bar";
+import { CollectionState } from "@/collection-state/src/collection-state";
+import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
-import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
+import { useIsTouch } from "@/hooks/use-is-touch";
 import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -25,7 +24,6 @@ import {
   personalOwnerLabel,
   taskProjectGroupsFromBootstrap,
 } from "@/tasks-core/src/tasks-workspace-props";
-import { TasksMainView, type TasksMainViewHandle } from "@/tasks-core/src/tasks-main-view";
 import {
   TaskProjectDialog,
   taskProjectDialogLabelsFrom,
@@ -36,12 +34,19 @@ import {
   useTasksSidebarModel,
   type TaskListSidebarEntry,
 } from "@/tasks-core/src/use-tasks-sidebar-model";
-import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
-import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
+import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
+import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
+import {
+  canWriteTaskList,
+  composerDefaultDueForView,
+  filterTasksBySearch,
+  taskListDotColor,
+} from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
-import "./tasks-main-view.css";
 
+/** The list search: a task matches on its title or notes. */
 function TasksSidebarRows({
   lists,
   view,
@@ -122,8 +127,10 @@ export function TasksWorkspace({
   onViewChange,
   notice,
 }: TasksWorkspaceProps) {
-  const composerRef = useRef<TasksMainViewHandle>(null);
+  const quickAddRef = useRef<HTMLInputElement>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
+  const isTouch = useIsTouch();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const controller = useTasksController({
     data,
@@ -141,13 +148,13 @@ export function TasksWorkspace({
     viewLabel,
     displayTasks,
     canCreateTask,
-    sidebarOpen,
-    setSidebarOpen,
+    workspaceLayoutRef,
+    searchInputRef,
     confirmDialog,
     editDialog,
     editingTask,
     closeEditTask,
-    saveEditedTask,
+    autosaveTask,
     taskLists,
     selectView,
     createTaskFromForm,
@@ -177,6 +184,42 @@ export function TasksWorkspace({
     removeSharedList,
     deleteList,
   } = controller;
+
+  const activeId = editDialog?.taskId ?? "";
+  const listTasks = useMemo(
+    () => filterTasksBySearch(displayTasks, searchQuery),
+    [displayTasks, searchQuery],
+  );
+
+  const openTask = useCallback(
+    (taskId: string) => {
+      editTask(taskId);
+      workspaceLayoutRef.current?.openMobileDetail();
+    },
+    [editTask, workspaceLayoutRef],
+  );
+
+  const closeMobileDetail = useCallback(() => {
+    workspaceLayoutRef.current?.closeMobileDetail(() => closeEditTask());
+  }, [closeEditTask, workspaceLayoutRef]);
+
+  // The open task was deleted (here or elsewhere): close the detail.
+  useEffect(() => {
+    if (!editDialog || editingTask) return;
+    closeEditTask();
+    workspaceLayoutRef.current?.closeMobileDetail();
+  }, [closeEditTask, editDialog, editingTask, workspaceLayoutRef]);
+
+  const quickAdd = useCallback(
+    (title: string) => {
+      void createTaskFromForm({
+        ...emptyTaskForm(createListId),
+        due: composerDefaultDueForView(view),
+        title,
+      });
+    },
+    [createListId, createTaskFromForm, view],
+  );
 
   const projectGroups = taskProjectGroupsFromBootstrap(data);
   const ownerLabel = personalOwnerLabel(session);
@@ -223,20 +266,23 @@ export function TasksWorkspace({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <WorkspaceAppLayout
-        className={cn("tasks-workspace", className)}
-        mainNotice={notice}
-        sidebar={
+      <WorkspaceApp
+        ref={workspaceLayoutRef}
+        initialDetailOpenMobile={Boolean(initialTaskId)}
+        detailScrollResetKey={activeId}
+        workspaceRoot={{ className: cn("tasks-workspace note-detail-desk", className) }}
+        sidebar={(c) => (
           <AppSidebar
-            open={sidebarOpen}
-            onCloseMobile={() => setSidebarOpen(false)}
+            open={c.sidebarOpen}
+            onCloseMobile={c.closeSidebar}
             primaryButton={
               <TasksNewMenu
                 labels={L}
                 disabled={!canCreateTask}
                 onCreateTask={() => {
-                  composerRef.current?.focusComposerTitle();
-                  setSidebarOpen(false);
+                  c.closeSidebar();
+                  workspaceLayoutRef.current?.closeMobileDetail();
+                  quickAddRef.current?.focus();
                 }}
                 onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               />
@@ -279,102 +325,75 @@ export function TasksWorkspace({
             <SidebarSection title={L.sidebarStatus} items={statusSidebarItems} />
             <SidebarSection title={L.sidebarPriority} items={prioritySidebarItems} />
           </AppSidebar>
+        )}
+        list={(c) =>
+          TasksListPanel({
+            L,
+            sidebarOpen: c.sidebarOpen,
+            onToggleSidebar: c.toggleSidebar,
+            viewLabel,
+            displayTasks: listTasks,
+            exitingTaskIds,
+            taskLists,
+            activeId,
+            isTouch,
+            searchQuery,
+            setSearchQuery,
+            searchInputRef,
+            showCompletedToggle,
+            showCompletedTasks,
+            onToggleShowCompleted: toggleShowCompletedTasks,
+            listRefreshing,
+            onRefreshList,
+            notice,
+            canCreate: canCreateTask,
+            quickAddRef,
+            onQuickAdd: quickAdd,
+            onOpenTask: openTask,
+            onToggleComplete: toggleTaskComplete,
+            onDeleteTask: requestDeleteTask,
+            onTaskExitAnimationEnd: handleTaskExitAnimationEnd,
+            itemDragHandlers,
+            isItemDragging,
+          })
         }
-        mainHeader={
-          <ViewHeader
-            sidebarOpen={sidebarOpen}
-            onToggleSidebar={() => setSidebarOpen((open) => !open)}
-            title={viewLabel}
-            titleSuffix={
-              <span
-                className="view-header__title-count"
-                aria-label={L.listTasks(displayTasks.length)}
-              >
-                ({displayTasks.length})
-              </span>
-            }
-            actions={
-              <div className="tasks-workspace__header-actions flex items-center gap-2">
-                {showCompletedToggle ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        className={cn(
-                          "tasks-workspace__show-completed",
-                          showCompletedTasks && ICON_BUTTON_ACTIVE_CLASSNAME,
-                        )}
-                        label={L.showCompletedTasks}
-                        aria-label={
-                          showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks
-                        }
-                        onClick={toggleShowCompletedTasks}
-                        icon={<CheckCircle2 aria-hidden />}
-                        size="md"
-                        variant="outline"
-                        aria-pressed={showCompletedTasks}
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : null}
-                {onRefreshList ? (
-                  <IconButton
-                    label={L.refreshList}
-                    onClick={onRefreshList}
-                    disabled={listRefreshing}
-                    icon={<RefreshSpinIcon spinning={listRefreshing} />}
-                    size="md"
-                    variant="outline"
-                  />
-                ) : null}
-              </div>
-            }
-          />
+        actionBar={(c) =>
+          editingTask ? (
+            <TasksDetailActionBar
+              task={editingTask}
+              L={L}
+              canMutate={editingTaskWritable}
+              backLabel={viewLabel}
+              closeMobileDetail={closeMobileDetail}
+              onToggleComplete={toggleTaskComplete}
+              onDeleteTask={requestDeleteTask}
+            />
+          ) : c.detailOpenMobile ? (
+            <ActionBar onBack={closeMobileDetail} backLabel={viewLabel} />
+          ) : null
         }
-        main={
-          <TasksMainView
-            ref={composerRef}
-            L={L}
-            displayTasks={displayTasks}
-            exitingTaskIds={exitingTaskIds}
-            taskLists={writableTaskLists}
-            allTaskLists={taskLists}
-            defaultListId={createListId}
-            view={view}
-            canCreate={canCreateTask}
-            onToggleComplete={toggleTaskComplete}
-            onEditTask={editTask}
-            onDeleteTask={requestDeleteTask}
-            onTaskExitAnimationEnd={handleTaskExitAnimationEnd}
-            onCreateTask={(input) => {
-              void createTaskFromForm(input);
-            }}
-            itemDragHandlers={itemDragHandlers}
-            isItemDragging={isItemDragging}
-          />
+        detail={() =>
+          editingTask ? (
+            <TasksDetailView
+              key={editingTask.id}
+              task={editingTask}
+              L={L}
+              taskLists={editingTaskWritable ? writableTaskLists : taskLists}
+              allTaskLists={taskLists}
+              readOnly={!editingTaskWritable}
+              onSave={(taskId, value) => {
+                void autosaveTask(taskId, value);
+              }}
+              onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
+            />
+          ) : (
+            <CollectionState icon={<ListTodo className="size-12" />}>
+              {L.selectTask}
+            </CollectionState>
+          )
         }
       />
       {confirmDialog}
-      <TasksEditDialog
-        dialog={editDialog}
-        task={editingTask}
-        taskLists={editingTaskWritable ? writableTaskLists : taskLists}
-        labels={L}
-        readOnly={!editingTaskWritable}
-        onClose={closeEditTask}
-        onSave={(input) => {
-          void saveEditedTask(input);
-        }}
-        onDelete={
-          editingTaskWritable && editingTask
-            ? () => {
-                requestDeleteTask(editingTask.id);
-              }
-            : undefined
-        }
-      />
       <TaskProjectDialog
         dialog={projectDialog}
         groups={projectGroups}

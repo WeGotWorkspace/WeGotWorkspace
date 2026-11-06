@@ -103,12 +103,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  /*
-   * Detail paper: small cream desk gaps. Min/max height resolve against the
-   * scrollport (minus these pads) so short notes fill the visible desk.
-   */
-  --note-detail-sheet-desk-pad-block-start: 1.5rem;
-  --note-detail-sheet-desk-pad-block-end: 0.75rem;
 
   /*
    * Outline / menu-item / collection-row language.
@@ -118,83 +112,6 @@
    * wash. Selected-hover goes higher still (65%).
    */
   --button-active-color: var(--workspace-foreground);
-}
-
-/* Detail scroll shares the cream desk (card is the notebook sheet). */
-.notes-workspace .workspace-detail-pane__scroll {
-  background-color: var(--notes-detail-body-bg);
-}
-
-/*
- * Note paper sits on the cream desk. Horizontal gutters stay flushed
- * (`padding-inline: 0`) so the sheet owns `--workspace-detail-sheet-padding-x`. Block
- * padding is a modest desk gap under the action-bar and a small gap above
- * the footer — not the pane defaults (`pt-6 pb-10` / `md:pt-12 md:pb-16`).
- * Min-height fills the scrollport (minus desk pads); height grows with
- * content. Overflow scrolls on `.workspace-detail-pane__scroll`, not the sheet.
- */
-.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-  padding-inline: 0;
-  padding-block-start: var(--note-detail-sheet-desk-pad-block-start);
-  padding-block-end: var(--note-detail-sheet-desk-pad-block-end);
-}
-
-.notes-workspace .note-detail-view.paper-sheet {
-  /* Inset comes from note-detail-view.css (`--workspace-detail-sheet-padding-x`).
-   * Scrollport floor via shared `.paper-sheet` + `--paper-sheet-min-height`. */
-  --paper-sheet-min-height: calc(
-    100% - var(--note-detail-sheet-desk-pad-block-start) -
-      var(--note-detail-sheet-desk-pad-block-end)
-  );
-}
-
-/*
- * Sheet measure is `max-w-[680px]` (`.note-detail-view.paper-sheet`). Once the
- * detail pane is that narrow, the sheet's inline edges already meet the pane.
- * Zero desk pads at the same width so full height arrives with the side flush
- * — not later, while a band of viewports still shows cream above and below.
- * Variables live on the scroll (a descendant of container `workspace-detail`)
- * so the shared min-height calc becomes `100%`.
- */
-@container workspace-detail (max-width: 680px) {
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-    --note-detail-sheet-desk-pad-block-start: 0;
-    --note-detail-sheet-desk-pad-block-end: 0;
-    background-color: var(--paper-sheet-bg);
-  }
-
-  .notes-workspace .note-detail-view.paper-sheet {
-    --paper-sheet-shadow: none;
-  }
-}
-
-/*
- * Flush sheet chrome below the sidebar-dock threshold (`--breakpoint-sidebar`
- * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Below that the
- * sidebar overlays, so the pane can still be wider than 680px; `max-w-none`
- * removes the remaining inline inset and the desk pads drop with it. Wider
- * panes keep the cream desk until the 680px container query above.
- */
-@media (max-width: 72.49rem) {
-  .notes-workspace {
-    --note-detail-sheet-desk-pad-block-start: 0;
-    --note-detail-sheet-desk-pad-block-end: 0;
-  }
-
-  .notes-workspace .workspace-detail-pane:has(.note-detail-view.paper-sheet) {
-    background-color: var(--paper-sheet-bg);
-  }
-
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-    padding: 0;
-    background-color: var(--paper-sheet-bg);
-  }
-
-  /* Same element: `class="note-detail-view paper-sheet"`. */
-  .notes-workspace .note-detail-view.paper-sheet {
-    @apply mx-0 max-w-none;
-    --paper-sheet-shadow: none;
-  }
 }
 
 /* Editor task checks: the selection mark shape, filled with the notebook colour
@@ -207,31 +124,6 @@
 /* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */
 :root[data-theme="dark"] .notes-workspace {
   --paper-sheet-shadow: none;
-}
-
-/*
- * Empty detail (“Select a note”): pin CollectionState ~40% down the scroll
- * pane (not dead center). Asymmetric flex spacers 2:3 ≈ 40%/60%; Drive keeps
- * justify-center on its own scroll host.
- */
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::before {
-  content: "";
-  flex: 2 0 0;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::after {
-  content: "";
-  flex: 3 0 0;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) > .collection-state {
-  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
@@ -263,15 +155,6 @@
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
-}
-
-/* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
-.notes-workspace .workspace-detail-pane > .action-bar {
-  background-color: var(--workspace-chrome-footer-bg, var(--workspace-surface));
-  /* Collaborator avatars ring in the bar's own fill (Docs header look). */
-  --collab-presence-header-surface: var(--workspace-chrome-footer-bg, var(--workspace-surface));
-  /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
-  padding-inline: var(--notes-pane-padding-x);
 }
 
 /*

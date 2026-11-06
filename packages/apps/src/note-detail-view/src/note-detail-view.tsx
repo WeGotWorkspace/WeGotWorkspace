@@ -19,10 +19,13 @@ import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import "@/note-detail-view/src/note-detail-view.css";
+import "@/note-detail-view/src/note-detail-desk.css";
 
 function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
   const root = titleEl.closest(".note-detail-view");
-  const body = root?.querySelector<HTMLElement>(".note-text-editor-body [contenteditable='true']");
+  const body = root?.querySelector<HTMLElement>(
+    ".note-text-editor-body [contenteditable='true'], .note-detail-view__body-start",
+  );
   body?.focus();
 }
 
@@ -76,7 +79,12 @@ export type NoteDetailViewProps = {
   onAutoFocusTitleConsumed?: () => void;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
-  body: string[];
+  body?: string[];
+  /**
+   * Replaces the body editor (e.g. a task's notes and fields). Enter in the title moves
+   * to the element with `note-detail-view__body-start`.
+   */
+  children?: ReactNode;
   /**
    * Collab config for the body. When provided, the body uses the Docs Yjs stack
    * (parent {@link NoteCollabSession}). View-only shares keep the surface with
@@ -109,12 +117,13 @@ export function NoteDetailView({
   onAutoFocusTitleConsumed,
   pullQuote,
   body,
+  children,
   collab,
   readOnly = false,
   eyebrow,
   className,
 }: NoteDetailViewProps) {
-  const markdown = noteBodyToMarkdown(body);
+  const markdown = noteBodyToMarkdown(body ?? []);
   // Keep the shared Yjs surface for view-only (presence + live body); TipTap
   // `editable` enforces read-only. Solo editor is for Storybook / no collab.
   const useCollabSurface = collab != null;
@@ -198,7 +207,9 @@ export function NoteDetailView({
         </p>
       ) : null}
 
-      {useCollabSurface ? (
+      {children ? (
+        children
+      ) : useCollabSurface ? (
         <NoteCollabEditorSurface
           editable={!readOnly}
           // Opening a note never puts the caret in the body; click to edit.

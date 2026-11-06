@@ -113,7 +113,7 @@ describe("useTasksMutations reminders", () => {
     });
 
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(reminded!.id, {
         ...taskToFormValue(reminded!, reminded!.taskListId),
         alerts: laterReminder,
       });
@@ -130,7 +130,7 @@ describe("useTasksMutations reminders", () => {
     });
 
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(reminded!.id, {
         ...taskToFormValue(reminded!, reminded!.taskListId),
         alerts: undefined,
       });
@@ -144,7 +144,7 @@ describe("useTasksMutations reminders", () => {
   });
 });
 
-describe("useTasksMutations rename and move in one save", () => {
+describe("useTasksMutations rename and move in one autosave", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -166,7 +166,7 @@ describe("useTasksMutations rename and move in one save", () => {
       result.current.editTask(task.id);
     });
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
         listId: otherList.id,
         title: `${task.title} renamed`,
@@ -198,7 +198,7 @@ describe("useTasksMutations rename and move in one save", () => {
       result.current.editTask(task.id);
     });
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
         listId: otherList.id,
         title: `${task.title} renamed`,
@@ -212,6 +212,66 @@ describe("useTasksMutations rename and move in one save", () => {
       taskListId: otherList.id,
       title: task.title,
     });
+  });
+});
+
+describe("useTasksMutations autosave", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("runs saves of one task one after the other, each on the etag before it", async () => {
+    const task = bootstrap.data.tasks[2]!;
+    let version = 0;
+    mockOperations.patchTask.mockImplementation(async (_id, patch) => ({
+      ...task,
+      ...patch,
+      etag: `v${++version}`,
+    }));
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    await act(async () => {
+      const first = result.current.autosaveTask(task.id, {
+        ...taskToFormValue(task, task.taskListId),
+        title: `${task.title} a`,
+      });
+      const second = result.current.autosaveTask(task.id, {
+        ...taskToFormValue(task, task.taskListId),
+        title: `${task.title} ab`,
+      });
+      await Promise.all([first, second]);
+    });
+
+    expect(mockOperations.patchTask).toHaveBeenCalledTimes(2);
+    expect(mockOperations.patchTask).toHaveBeenLastCalledWith(
+      task.id,
+      { title: `${task.title} ab` },
+      expect.objectContaining({ ifMatch: "v1" }),
+    );
+  });
+
+  it("keeps the stored title when the title field is emptied", async () => {
+    const task = bootstrap.data.tasks[2]!;
+    mockOperations.patchTask.mockImplementation(async (_id, patch) => ({ ...task, ...patch }));
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    await act(async () => {
+      await result.current.autosaveTask(task.id, {
+        ...taskToFormValue(task, task.taskListId),
+        title: "  ",
+        description: "Only the notes changed",
+      });
+    });
+
+    expect(mockOperations.patchTask).toHaveBeenCalledWith(
+      task.id,
+      { description: "Only the notes changed" },
+      expect.anything(),
+    );
   });
 });
 
@@ -230,7 +290,7 @@ describe("useTasksMutations due dates (#1821)", () => {
     return task!;
   }
 
-  it("saves a date added in Edit as all day", async () => {
+  it("saves a date added in the detail pane as all day", async () => {
     const task = taskWithoutDue();
     const { result } = renderHook(() =>
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
@@ -240,7 +300,7 @@ describe("useTasksMutations due dates (#1821)", () => {
       result.current.editTask(task.id);
     });
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
         due: "2026-11-08",
         showWithoutTime: true,
@@ -254,7 +314,7 @@ describe("useTasksMutations due dates (#1821)", () => {
     );
   });
 
-  it("saves a date and time added in Edit as timed", async () => {
+  it("saves a date and time added in the detail pane as timed", async () => {
     const task = taskWithoutDue();
     const { result } = renderHook(() =>
       useTasksController({ data: bootstrap.data, operations: mockOperations }),
@@ -264,7 +324,7 @@ describe("useTasksMutations due dates (#1821)", () => {
       result.current.editTask(task.id);
     });
     await act(async () => {
-      await result.current.saveEditedTask({
+      await result.current.autosaveTask(task.id, {
         ...taskToFormValue(task, task.taskListId),
         due: "2026-11-08T09:30:00",
         showWithoutTime: false,

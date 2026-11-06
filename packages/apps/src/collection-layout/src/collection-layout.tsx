@@ -20,6 +20,8 @@ export function CollectionHeader({ children }: CollectionHeaderProps) {
 
 type CollectionListWorkspaceProps = {
   header: ReactNode;
+  /** Above the scrolling list, shown even when it is empty (e.g. a quick add field). */
+  listTop?: ReactNode;
   listContent: ReactNode;
   hasItems: boolean;
   emptyLabel: string;
@@ -37,6 +39,7 @@ type CollectionListWorkspaceProps = {
 
 export function CollectionListWorkspace({
   header,
+  listTop,
   listContent,
   hasItems,
   emptyLabel,
@@ -77,6 +80,7 @@ export function CollectionListWorkspace({
         onDrop={dropZone?.onDrop}
       >
         {dropZone?.active ? dropZone.overlay : null}
+        {listTop}
         {listBody}
       </div>
     </CollectionListPane>

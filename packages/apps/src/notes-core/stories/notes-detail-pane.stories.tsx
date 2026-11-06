@@ -63,7 +63,7 @@ function NotesDetailPaneHarness({
 
   return (
     <NotesStoryScope variant="detail" detailTint={detailTint}>
-      <div className="notes-workspace flex min-h-dvh flex-col">
+      <div className="notes-workspace note-detail-desk flex min-h-dvh flex-col">
         <div className="workspace-detail-pane__scroll flex-1">
           <NoteDetailView
             noteId={base.noteId}

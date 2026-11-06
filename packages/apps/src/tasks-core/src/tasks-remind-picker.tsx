@@ -24,12 +24,12 @@ type TasksRemindVisualProps = {
 function TasksRemindVisual({ count, className, label, children }: TasksRemindVisualProps) {
   return (
     <span
-      className={`tasks-main-view__remind${className ? ` ${className}` : ""}`}
+      className={`tasks-field__remind${className ? ` ${className}` : ""}`}
       {...(label ? { role: "img" as const, "aria-label": label } : {})}
     >
       {children}
       {count > 1 ? (
-        <span className="tasks-main-view__remind-badge" aria-hidden>
+        <span className="tasks-field__remind-badge" aria-hidden>
           {count}
         </span>
       ) : null}
@@ -50,8 +50,8 @@ export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorPro
   const label = remindButtonLabel(labels, alerts);
 
   return (
-    <span className="tasks-main-view__meta-item">
-      <TasksRemindVisual count={count} className="tasks-main-view__remind--row">
+    <span className="tasks-list-row__meta-item">
+      <TasksRemindVisual count={count} className="tasks-field__remind--row">
         <Bell className="size-3.5" aria-hidden />
       </TasksRemindVisual>
       <span>{label}</span>
@@ -80,16 +80,16 @@ export function TasksRemindPicker({
 
   return (
     <>
-      <TasksRemindVisual count={count} className="tasks-main-view__remind--composer">
+      <TasksRemindVisual count={count} className="tasks-field__remind--composer">
         <button
           type="button"
           disabled={disabled}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`tasks-main-view__composer-select tasks-main-view__remind-button${count > 0 ? " tasks-main-view__remind-button--active" : ""}`}
+          className={`tasks-field__select tasks-field__remind-button${count > 0 ? " tasks-field__remind-button--active" : ""}`}
           onClick={() => setOpen(true)}
         >
-          <span className="tasks-main-view__composer-select-option">
+          <span className="tasks-field__select-option">
             <Bell className="size-3.5" aria-hidden />
             <span>{buttonLabel}</span>
           </span>

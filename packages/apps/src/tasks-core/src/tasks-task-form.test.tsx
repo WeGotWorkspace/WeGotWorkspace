@@ -1,44 +1,38 @@
-import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import {
-  COMPOSER_SELECT_TRIGGER_CLASS,
-  CREATE_WORKFLOW_STATUSES,
   emptyTaskForm,
-  orderedTaskMetaNodes,
-  TASK_META_FIELD_ORDER,
+  TASK_FIELD_SELECT_TRIGGER_CLASS,
+  taskFieldControls,
   taskToFormValue,
-  TasksTaskFormFields,
 } from "@/tasks-core/src/tasks-task-form";
 import { TooltipProvider } from "@/ui/tooltip";
-import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-field-controls.css";
 
 const bootstrap = createTasksAppBootstrap();
 
-function renderFormFields(
-  overrides: Partial<React.ComponentProps<typeof TasksTaskFormFields>> = {},
-) {
-  const value = emptyTaskForm("default");
+function renderControls(disabled = false) {
   const onChange = vi.fn();
+  const controls = taskFieldControls({
+    L: defaultTasksLabels,
+    value: emptyTaskForm("default"),
+    onChange,
+    disabled,
+  });
   render(
     <TooltipProvider>
-      <TasksTaskFormFields
-        L={defaultTasksLabels}
-        value={value}
-        onChange={onChange}
-        taskLists={bootstrap.data.taskLists}
-        mode="create"
-        showDescription
-        {...overrides}
-      />
+      {controls.status}
+      {controls.due}
+      {controls.remind}
+      {controls.priority}
     </TooltipProvider>,
   );
-  return { onChange, value };
+  return { onChange };
 }
 
-describe("TasksTaskFormFields", () => {
+describe("taskFieldControls", () => {
   beforeEach(() => {
     cleanup();
     Element.prototype.scrollIntoView = vi.fn();
@@ -57,26 +51,12 @@ describe("TasksTaskFormFields", () => {
     });
   });
 
-  it("shows only create workflow statuses in create mode", () => {
-    renderFormFields({ mode: "create" });
+  it("offers every workflow status", () => {
+    renderControls();
 
     fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskStatus));
 
     const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(CREATE_WORKFLOW_STATUSES.length);
-    expect(options.map((option) => option.textContent?.trim())).toEqual([
-      defaultTasksLabels.stateNeedsAction,
-      defaultTasksLabels.stateInProcess,
-    ]);
-  });
-
-  it("shows all workflow statuses in edit mode", () => {
-    renderFormFields({ mode: "edit" });
-
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskStatus));
-
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(4);
     expect(options.map((option) => option.textContent?.trim())).toEqual([
       defaultTasksLabels.stateNeedsAction,
       defaultTasksLabels.stateInProcess,
@@ -85,61 +65,45 @@ describe("TasksTaskFormFields", () => {
     ]);
   });
 
-  it("marks list options with a tinted list icon, not a color dot", () => {
-    renderFormFields({ mode: "create" });
+  it("hands a picked priority to onChange as an update", () => {
+    const { onChange } = renderControls();
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskList));
+    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskPriority));
+    fireEvent.click(screen.getByRole("option", { name: defaultTasksLabels.priorityHigh }));
 
-    const options = screen.getAllByRole("option");
-    expect(options.length).toBeGreaterThan(0);
-    for (const option of options) {
-      expect(option.querySelector(".tasks-list-icon")).toBeTruthy();
-      expect(option.querySelector(".tasks-list-icon")?.tagName.toLowerCase()).toBe("svg");
-      expect(option.querySelector(".tasks-list-dot")).toBeNull();
-    }
-
-    const trigger = screen.getByLabelText(defaultTasksLabels.addTaskList);
-    expect(trigger.querySelector(".tasks-list-icon")).toBeTruthy();
-    expect(trigger.querySelector(".tasks-list-dot")).toBeNull();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const update = onChange.mock.calls[0][0] as (
+      previous: ReturnType<typeof emptyTaskForm>,
+    ) => ReturnType<typeof emptyTaskForm>;
+    expect(update(emptyTaskForm("default")).priority).toBe(1);
   });
 
-  it("uses compact md selects on the meta row, not the title field", () => {
-    renderFormFields({ mode: "create" });
+  it("uses the compact md field chips", () => {
+    renderControls();
 
-    const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
-    expect(title.classList.contains("tasks-main-view__composer-title")).toBe(true);
-    expect(title.classList.contains("input--size-md")).toBe(false);
-    expect(title.classList.contains("input")).toBe(false);
-
-    for (const name of [
-      defaultTasksLabels.addTaskList,
-      defaultTasksLabels.addTaskStatus,
-      defaultTasksLabels.addTaskPriority,
-    ]) {
+    for (const name of [defaultTasksLabels.addTaskStatus, defaultTasksLabels.addTaskPriority]) {
       const trigger = screen.getByLabelText(name);
       expect(trigger.classList.contains("select-trigger--size-md")).toBe(true);
-      expect(trigger.classList.contains(COMPOSER_SELECT_TRIGGER_CLASS)).toBe(true);
+      expect(trigger.classList.contains(TASK_FIELD_SELECT_TRIGGER_CLASS)).toBe(true);
     }
-  });
-
-  it("renders the remind picker in create and edit modes", () => {
-    renderFormFields({ mode: "create" });
-    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
-    cleanup();
-    renderFormFields({ mode: "edit" });
     expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
   });
-});
 
-describe("orderedTaskMetaNodes", () => {
-  it("keeps remind last and matches the shared field order", () => {
-    expect(TASK_META_FIELD_ORDER).toEqual(["due", "list", "status", "priority", "remind"]);
-    expect(TASK_META_FIELD_ORDER.at(-1)).toBe("remind");
-    expect(orderedTaskMetaNodes({ remind: "alerts", due: "due", list: "list" })).toEqual([
-      "due",
-      "list",
-      "alerts",
-    ]);
+  it("disables every control when read-only", () => {
+    renderControls(true);
+
+    expect(screen.getByLabelText(defaultTasksLabels.addTaskStatus)).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByLabelText(defaultTasksLabels.addTaskPriority)).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 });
 

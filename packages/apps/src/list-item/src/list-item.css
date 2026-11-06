@@ -104,6 +104,40 @@ html:not([data-modality="pointer"])
   @apply shrink-0;
 }
 
+/* `leadingControl`: the control sits beside the row button, over the reserved slot,
+ * on the title line. Same start as the row text: the pill inset plus its padding. */
+.list-item__frame {
+  position: relative;
+}
+
+.list-item__leading-control-slot {
+  display: block;
+  width: var(--list-item-leading-control-size, 1.25rem);
+  height: var(--list-item-leading-control-size, 1.25rem);
+}
+
+.list-item__button--with-leading:has(.list-item__leading-control-slot) {
+  align-items: flex-start;
+}
+
+.list-item__leading-control {
+  position: absolute;
+  z-index: 1;
+  /* Centred on the title line (15px, snug). */
+  top: calc(
+    var(--list-item-padding-y, 1rem) +
+      (1.2890625rem - var(--list-item-leading-control-size, 1.25rem)) / 2
+  );
+  left: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .list-item__leading-control {
+    left: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.5rem));
+  }
+}
+
 .list-item__content {
   @apply min-w-0;
 }

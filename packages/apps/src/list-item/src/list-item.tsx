@@ -89,6 +89,12 @@ type ListItemProps = {
   theme?: Partial<ListItemTheme>;
   /** Optional leading slot (e.g. avatar) rendered inside the row highlight area. */
   leading?: React.ReactNode;
+  /**
+   * An interactive control at the row start, e.g. a task's complete checkbox. It sits
+   * beside the row button (no control inside a button) over a reserved leading slot,
+   * and moves with the row when it swipes. Stop its clicks from reaching the row.
+   */
+  leadingControl?: React.ReactNode;
 };
 
 const defaultTheme: ListItemTheme = {
@@ -143,8 +149,12 @@ export function ListItem({
   emptyText = "Empty item",
   theme,
   leading,
+  leadingControl,
 }: ListItemProps) {
   const entityId = itemId ?? id;
+  const leadingSlot =
+    leading ??
+    (leadingControl ? <span aria-hidden className="list-item__leading-control-slot" /> : null);
   const delegated = useListItemEventDelegation();
   const cancelDelegatedPress = useCancelDelegatedPress();
   const hasSelectionStore = useHasListSelectionStore();
@@ -235,10 +245,10 @@ export function ListItem({
             }
       }
       onDragEnd={delegated ? undefined : onDragEnd}
-      className={`list-item__button${leading ? " list-item__button--with-leading" : ""}`}
+      className={`list-item__button${leadingSlot ? " list-item__button--with-leading" : ""}`}
       style={themeVars}
     >
-      {leading ? <span className="list-item__leading">{leading}</span> : null}
+      {leadingSlot ? <span className="list-item__leading">{leadingSlot}</span> : null}
 
       <div className="list-item__content">
         {metaPosition === "above" ? (
@@ -313,7 +323,16 @@ export function ListItem({
     </button>
   );
 
-  if (!isTouch) return button;
+  const row = leadingControl ? (
+    <div className="list-item__frame">
+      {button}
+      <span className="list-item__leading-control">{leadingControl}</span>
+    </div>
+  ) : (
+    button
+  );
+
+  if (!isTouch) return row;
 
   // react-swipeable-list calls onClick with no args after a full swipe (setTimeout).
   // Do not touch the event — reading stopPropagation throws and aborts the action.
@@ -345,7 +364,7 @@ export function ListItem({
     </TrailingActions>
   ) : null;
 
-  if (!leadingActions && !trailingActions) return button;
+  if (!leadingActions && !trailingActions) return row;
 
   return (
     <SwipeableListItem
@@ -369,7 +388,7 @@ export function ListItem({
         longPressBlockedBySwipeRef.current = false;
       }}
     >
-      {button}
+      {row}
     </SwipeableListItem>
   );
 }

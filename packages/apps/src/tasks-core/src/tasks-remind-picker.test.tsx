@@ -11,7 +11,7 @@ import {
 } from "@/tasks-core/src/tasks-task-utils";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
-import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-field-controls.css";
 import "@/tasks-core/src/tasks-workspace.css";
 
 function renderPicker(overrides: Partial<ComponentProps<typeof TasksRemindPicker>> = {}) {
@@ -64,8 +64,8 @@ describe("TasksRemindPicker", () => {
 
     const trigger = remindButton();
     expect(trigger.textContent).toContain("No reminders");
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(false);
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(trigger.classList.contains("tasks-field__remind-button--active")).toBe(false);
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
 
     fireEvent.click(trigger);
 
@@ -104,9 +104,9 @@ describe("TasksRemindPicker", () => {
     renderPicker({ alerts });
 
     const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
+    expect(trigger.classList.contains("tasks-field__remind-button--active")).toBe(true);
     expect(trigger.textContent).toContain("2 reminders");
-    expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
+    expect(document.querySelector(".tasks-field__remind-badge")?.textContent).toBe("2");
   });
 
   it("clears the last alarm back to undefined", () => {
@@ -114,9 +114,9 @@ describe("TasksRemindPicker", () => {
     const { onChange } = renderPicker({ alerts });
 
     const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
+    expect(trigger.classList.contains("tasks-field__remind-button--active")).toBe(true);
     expect(trigger.textContent).toContain("Reminding 30 mins before");
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
 
     fireEvent.click(trigger);
     chooseOffset(alarmLabels.eventAlarmNone);
@@ -144,7 +144,7 @@ describe("TasksRemindIndicator", () => {
 
     expect(screen.queryByText("No reminders")).toBeNull();
     expect(screen.queryByRole("img", { name: /Reminding|No reminders/ })).toBeNull();
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 
@@ -153,9 +153,9 @@ describe("TasksRemindIndicator", () => {
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
     expect(screen.getByText("Reminding 30 mins before")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind-row-chip")).toBeNull();
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind--row")).toBeTruthy();
+    expect(document.querySelector(".tasks-field__remind-row-chip")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -180,7 +180,7 @@ describe("TasksRemindIndicator", () => {
     );
 
     expect(screen.getByText("2 reminders")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
+    expect(document.querySelector(".tasks-field__remind-badge")?.textContent).toBe("2");
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 });

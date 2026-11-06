@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
-import { Check, CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
-import type { TaskEditDialogState } from "@/tasks-core/src/tasks-edit-dialog";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
@@ -18,7 +17,6 @@ import {
   tasksCompleteToastMessage,
   tasksMoveToastMessage,
 } from "@/tasks-core/src/tasks-toast-messages";
-import type { TasksCreateInput } from "@/tasks-core/src/tasks-task-form";
 import {
   moveTasksBack,
   moveTasksToList,
@@ -27,6 +25,9 @@ import {
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
+
+/** The task open in the detail pane. */
+export type OpenTaskState = null | { taskId: string };
 
 type UseTasksMutationsArgs = {
   shell: TasksShellState;
@@ -89,7 +90,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "tasks-dialog-surface",
   });
-  const [editDialog, setEditDialog] = useState<TaskEditDialogState>(null);
+  const [editDialog, setEditDialog] = useState<OpenTaskState>(null);
 
   const patchTask = useCallback(
     async (taskId: string, patch: TaskPatch, opts?: { signal?: AbortSignal; ifMatch?: string }) => {
@@ -117,7 +118,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       showWithoutTime,
       timeZone,
       alerts,
-    }: TasksCreateInput) => {
+    }: TasksTaskFormValue) => {
       if (!operations || !title.trim()) return;
       const targetList = taskLists.find((list) => list.id === listId);
       if (!canWriteTaskList(targetList)) return;
@@ -247,61 +248,77 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     return tasks.find((item) => item.id === editDialog.taskId) ?? null;
   }, [editDialog, tasks]);
 
-  const saveEditedTask = useCallback(
-    async (input: TasksTaskFormValue) => {
-      if (!editDialog || !operations) return;
-      const taskId = editDialog.taskId;
-      const task = tasks.find((item) => item.id === taskId);
-      if (!task || !input.title.trim()) return;
-      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
+  // Detail pane autosave. Saves of one task run one after the other, each against
+  // the version the previous one produced, or the server refuses the second as a
+  // conflict. No toast and the pane stays open (like Notes).
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const taskListsRef = useRef(taskLists);
+  taskListsRef.current = taskLists;
+  const savedEtagsRef = useRef(new Map<string, string>());
+  const saveChainsRef = useRef(new Map<string, Promise<void>>());
 
-      const next = taskEditValues(input);
+  const saveTaskNow = useCallback(
+    async (taskId: string, input: TasksTaskFormValue) => {
+      if (!operations) return;
+      const task = tasksRef.current.find((item) => item.id === taskId);
+      if (!task) return;
+      const lists = taskListsRef.current;
+      if (!canWriteTaskList(lists.find((list) => list.id === task.taskListId))) return;
+      // A blank title keeps the stored one: a task always has a title.
+      const title = input.title.trim() || task.title || "";
+      if (!title) return;
+
+      const next = taskEditValues({ ...input, title });
       const listChanged = input.listId !== task.taskListId;
       const patch = taskEditPatch(task, next);
-
       const hasPatch = Object.keys(patch).length > 0;
-      if (!hasPatch && !listChanged) {
-        setEditDialog(null);
-        return;
-      }
+      if (!hasPatch && !listChanged) return;
 
       const snapshot = task;
       const optimistic: Task = { ...task, ...next, taskListId: input.listId };
-
+      tasksRef.current = tasksRef.current.map((item) => (item.id === taskId ? optimistic : item));
       setTasks((prev) => prev.map((item) => (item.id === taskId ? optimistic : item)));
-      setEditDialog(null);
-      shell.show(L.toastTaskUpdated, { icon: <Check className="size-4" /> });
 
-      // A move that landed stays when the patch after it fails.
       let rollback: Task = snapshot;
       try {
-        // The patch starts from the version the move produced, not the one
-        // this dialog opened on, or the server refuses it as a conflict (#1814).
-        const moved = listChanged
-          ? await operations.moveTaskToList(taskId, input.listId)
-          : undefined;
-        if (moved) rollback = moved;
-        if (hasPatch) {
-          await patchTask(taskId, patch, {
-            ifMatch: (moved as (Task & { etag?: string }) | undefined)?.etag,
-          });
+        let etag = savedEtagsRef.current.get(taskId) ?? (task as Task & { etag?: string }).etag;
+        if (listChanged) {
+          // Same as the edit dialog: the move carries no precondition (#1814).
+          const moved = await operations.moveTaskToList(taskId, input.listId);
+          if (moved) {
+            rollback = moved;
+            etag = (moved as Task & { etag?: string }).etag;
+          }
         }
+        if (hasPatch) {
+          const updated = await patchTask(taskId, patch, { ifMatch: etag });
+          etag = (updated as (Task & { etag?: string }) | undefined)?.etag ?? etag;
+        }
+        if (etag) savedEtagsRef.current.set(taskId, etag);
       } catch {
         setTasks((prev) => prev.map((item) => (item.id === taskId ? rollback : item)));
         showMutationError();
       }
     },
-    [
-      editDialog,
-      L.toastTaskUpdated,
-      operations,
-      patchTask,
-      setTasks,
-      shell,
-      showMutationError,
-      taskLists,
-      tasks,
-    ],
+    [operations, patchTask, setTasks, showMutationError],
+  );
+
+  const autosaveTask = useCallback(
+    (taskId: string, input: TasksTaskFormValue): Promise<void> => {
+      const chains = saveChainsRef.current;
+      const run = (chains.get(taskId) ?? Promise.resolve()).then(() => saveTaskNow(taskId, input));
+      const settled = run.catch(() => {});
+      chains.set(taskId, settled);
+      void settled.then(() => {
+        // Idle again: later saves read the etag from the task (it may have synced).
+        if (chains.get(taskId) !== settled) return;
+        chains.delete(taskId);
+        savedEtagsRef.current.delete(taskId);
+      });
+      return run;
+    },
+    [saveTaskNow],
   );
 
   const deleteTasks = useCallback(
@@ -419,7 +436,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     editDialog,
     editingTask,
     closeEditTask,
-    saveEditedTask,
+    autosaveTask,
     requestDeleteTask,
     moveToList,
     confirmDialog,

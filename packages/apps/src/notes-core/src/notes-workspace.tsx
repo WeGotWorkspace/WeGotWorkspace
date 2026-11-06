@@ -407,7 +407,7 @@ export function NotesWorkspace({
         initialDetailOpenMobile={Boolean(initialNoteId)}
         detailScrollResetKey={showSingleNoteDetail && active ? active.id : ""}
         workspaceRoot={{
-          className: cn("notes-workspace", className),
+          className: cn("notes-workspace note-detail-desk", className),
           style: notesDetailTintStyle(notesDetailTint) as CSSProperties | undefined,
         }}
         sidebar={(c) => (

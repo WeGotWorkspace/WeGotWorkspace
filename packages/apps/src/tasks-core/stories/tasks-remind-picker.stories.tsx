@@ -15,7 +15,7 @@ const meta: Meta<typeof TasksRemindPicker> = {
   decorators: [
     (Story) => (
       <TasksStoryScope variant="main">
-        <div className="tasks-main-view__composer-meta">
+        <div className="flex flex-wrap items-center gap-2">
           <Story />
         </div>
       </TasksStoryScope>

@@ -1,0 +1,107 @@
+@import "../../styles.css" reference;
+
+/* Tasks list column: the Notes list (`notes-list-panel.css`) plus a quick add field. */
+
+.tasks-workspace .tasks-list-panel__header-actions {
+  /* Inherit workspace outline accent washes; idle stays ink. */
+  --button-outline-color: var(--workspace-foreground);
+}
+
+.tasks-list-panel__list {
+  min-height: 0;
+  /* A little air between the quick add field and the first (rounded) row. */
+  padding-block: 0.25rem 0.375rem;
+}
+
+/* Quick add: an input on the row inset, a dashed circle where the checkboxes sit. */
+.tasks-list-panel__quick-add {
+  @apply relative shrink-0;
+  margin: 0.75rem var(--list-item-inset, 0.5rem) 0.25rem;
+}
+
+.tasks-list-panel__quick-add-icon {
+  @apply pointer-events-none absolute top-1/2 size-5 -translate-y-1/2;
+  left: calc(var(--list-item-padding-x, 1.25rem) - 0.0625rem);
+  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+}
+
+.tasks-list-panel__quick-add-input.input,
+.tasks-list-panel__quick-add-input {
+  @apply w-full;
+  /* Text starts on the row text line: checkbox (20px) plus the row gap (12px). */
+  padding-inline-start: calc(var(--list-item-padding-x, 1.25rem) + 2rem);
+}
+
+@media (min-width: 768px) {
+  .tasks-list-panel__quick-add-icon {
+    left: calc(var(--list-item-padding-x, 1.5rem) - 0.0625rem);
+  }
+
+  .tasks-list-panel__quick-add-input.input,
+  .tasks-list-panel__quick-add-input {
+    padding-inline-start: calc(var(--list-item-padding-x, 1.5rem) + 2rem);
+  }
+}
+
+/* Row foot: list dot and name, due, priority, status, reminders. */
+.tasks-list-row__meta {
+  @apply flex min-w-0 items-center gap-3 overflow-hidden;
+}
+
+.tasks-list-row__meta-item {
+  @apply inline-flex min-w-0 shrink-0 items-center gap-1.5;
+}
+
+.tasks-list-row__meta-item:first-child {
+  @apply shrink;
+}
+
+.tasks-list-row__meta-text {
+  @apply truncate;
+}
+
+/* The suite tasks checkbox look, at the row's leading control size. */
+.tasks-list-row .tasks-list-row__complete {
+  --checkbox-size: var(--list-item-leading-control-size, 1.25rem);
+  --checkbox-check-size: 0.875rem;
+}
+
+.tasks-list-row__complete-hint {
+  display: inline-flex;
+}
+
+/* Done: a quieter title, struck through. */
+.tasks-list-row[data-completed="true"] .list-item__title {
+  @apply line-through;
+  opacity: 0.6;
+}
+
+/* Completing: the row fades up and out, then leaves the list. */
+.tasks-list-row[data-exiting="true"] {
+  @apply pointer-events-none;
+  animation: tasks-row-exit 220ms ease-out forwards;
+}
+
+.tasks-list-row[data-exiting="true"] .list-item__button {
+  content-visibility: visible;
+}
+
+@keyframes tasks-row-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasks-list-row[data-exiting="true"] {
+    animation: none;
+    opacity: 0;
+  }
+
+  .tasks-list-panel__list [data-list-item-id],
+  .tasks-list-panel__list .swipeable-list-item {
+    transition: none !important;
+    transform: none !important;
+  }
+}

@@ -124,6 +124,14 @@ export type TasksUILabels = {
   tasksDisabledTitle: string;
   tasksDisabledMessage: string;
   pendingSync: string;
+  /** List pane: the quick add field at the top of the list. */
+  quickAddPlaceholder: string;
+  quickAddLabel: string;
+  searchPlaceholder: string;
+  emptyList: string;
+  /** Detail pane: the notes field and the field rows. */
+  detailNotesPlaceholder: string;
+  detailReminder: string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -287,6 +295,12 @@ export const defaultTasksLabels: TasksUILabels = {
   tasksDisabledTitle: "Tasks unavailable",
   tasksDisabledMessage: "Tasks are disabled for this workspace.",
   pendingSync: "Pending sync",
+  quickAddPlaceholder: "Create a task… (Press Enter)",
+  quickAddLabel: "Quick add task",
+  searchPlaceholder: "Search tasks...",
+  emptyList: "No tasks",
+  detailNotesPlaceholder: "Add notes…",
+  detailReminder: "Reminder",
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `Your offline edits to “${title}” conflict with a newer version on the server.`,

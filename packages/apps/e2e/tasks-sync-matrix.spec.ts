@@ -161,9 +161,27 @@ async function seed(id: string, { task = {}, shareA = "write", teammate = false 
 // --- the actor's steps -------------------------------------------------------------------------
 
 function row(tab: Tab, title: string) {
-  return tab.locator(".tasks-main-view__row").filter({
-    has: tab.locator(".tasks-main-view__title").getByText(title, { exact: true }),
+  return tab.locator(".tasks-list-row").filter({
+    has: tab.locator(".list-item__title").getByText(title, { exact: true }),
   });
+}
+
+/** Opens the task in the detail pane; every change there saves itself. */
+async function openTask(tab: Tab, title: string): Promise<Locator> {
+  await row(tab, title).locator(".list-item__button").click();
+  const detail = tab.locator(".tasks-detail-view");
+  await expect(detail.getByRole("textbox", { name: "Task name" })).toHaveValue(title, {
+    timeout: 10_000,
+  });
+  return detail;
+}
+
+/** Quick add: the title only, into the list whose view is open. */
+async function quickAdd(tab: Tab, title: string) {
+  const field = tab.getByRole("textbox", { name: "Quick add task" });
+  await field.fill(title);
+  await field.press("Enter");
+  await row(tab, title).waitFor({ timeout: 15_000 });
 }
 
 function sidebarList(tab: Tab, name: string) {
@@ -183,21 +201,26 @@ async function pick(tab: Tab, scope: Locator, label: string, name: string) {
   await pickOption(tab, scope.getByRole("combobox", { name: label }), name);
 }
 
+/** Quick add in the list's own view; a due date is then set on the open task. */
 async function addTask(tab: Tab, title: string, list: string, dues: Due[] = []) {
+  await sidebarList(tab, list).getByRole("button", { name: list, exact: true }).click();
+  await sleep(300);
+  await quickAdd(tab, title);
+  if (dues.length) {
+    const detail = await openTask(tab, title);
+    for (const due of dues) await setDue(tab, detail, due);
+  }
   await showAllTasks(tab);
-  await tab.getByRole("textbox", { name: "Task name" }).fill(title);
-  await pick(tab, tab.locator("body"), "List", list);
-  for (const due of dues) await setDue(tab, tab.locator("body"), due);
-  await tab.getByRole("button", { name: "Add task" }).click();
-  await row(tab, title).waitFor({ timeout: 15_000 });
   await sleep(2_000);
 }
 
-async function openTaskMenu(tab: Tab, title: string, item: "Edit" | "Delete") {
-  const target = row(tab, title);
-  await target.hover();
-  await target.getByRole("button", { name: "Task actions" }).click();
-  await tab.getByRole("menuitem", { name: item, exact: true }).click();
+/** Delete from the open task's action bar (the confirm follows). */
+async function deleteFromDetail(tab: Tab, title: string) {
+  await openTask(tab, title);
+  await tab
+    .locator(".workspace-detail-pane .action-bar")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
 }
 
 type Due = { date: string } | "none" | "addTime" | "addTimeAmsterdam" | "dateOnly";
@@ -234,7 +257,7 @@ async function pickDay(tab: Tab, popover: Locator, iso: string) {
 
 async function setDue(tab: Tab, dialog: Locator, due: Due) {
   await dialog.getByRole("button", { name: /^Due date:/ }).click();
-  const popover = tab.locator(".tasks-main-view__composer-due-popover");
+  const popover = tab.locator(".tasks-field__due-popover");
   await popover.waitFor({ timeout: 10_000 });
   if (due === "none") {
     // Clearing closes the picker.
@@ -255,7 +278,7 @@ async function setDue(tab: Tab, dialog: Locator, due: Due) {
 }
 
 async function setReminders(tab: Tab, dialog: Locator, remind: Remind) {
-  await dialog.locator(".tasks-main-view__remind-button").click();
+  await dialog.locator(".tasks-field__remind-button").click();
   const remindDialog = tab.getByRole("dialog", { name: "Remind me" });
   await remindDialog.waitFor({ timeout: 10_000 });
   const rows = remindDialog.getByRole("combobox", { name: "Alert time" });
@@ -268,21 +291,18 @@ async function setReminders(tab: Tab, dialog: Locator, remind: Remind) {
   await remindDialog.waitFor({ state: "detached", timeout: 5_000 });
 }
 
+/** Changes the open task in the detail pane. Typing saves after a pause, a pick at once. */
 async function editTask(tab: Tab, title: string, change: Edit) {
-  await openTaskMenu(tab, title, "Edit");
-  const dialog = tab.getByRole("dialog", { name: "Edit task" });
-  await dialog.waitFor({ timeout: 10_000 });
-  if (change.title) await dialog.getByRole("textbox", { name: "Task name" }).fill(change.title);
+  const detail = await openTask(tab, title);
+  if (change.title) await detail.getByRole("textbox", { name: "Task name" }).fill(change.title);
   if (change.description !== undefined) {
-    await dialog.getByRole("textbox", { name: "Notes" }).fill(change.description);
+    await detail.getByRole("textbox", { name: "Notes" }).fill(change.description);
   }
-  if (change.list) await pick(tab, dialog, "List", change.list);
-  if (change.status) await pick(tab, dialog, "Status", change.status);
-  if (change.priority) await pick(tab, dialog, "Priority", change.priority);
-  if (change.due) await setDue(tab, dialog, change.due);
-  if (change.remind) await setReminders(tab, dialog, change.remind);
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await dialog.waitFor({ state: "detached", timeout: 10_000 });
+  if (change.list) await pick(tab, detail, "List", change.list);
+  if (change.status) await pick(tab, detail, "Status", change.status);
+  if (change.priority) await pick(tab, detail, "Priority", change.priority);
+  if (change.due) await setDue(tab, detail, change.due);
+  if (change.remind) await setReminders(tab, detail, change.remind);
   await sleep(2_500);
 }
 
@@ -360,7 +380,7 @@ const ACTIONS = {
   delete: {
     nets: FULL,
     async run(tab, f) {
-      await openTaskMenu(tab, f.task, "Delete");
+      await deleteFromDetail(tab, f.task);
       await tab.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
       // The delete waits out its undo delay (2.5 s) before it is sent or queued.
       await sleep(5_000);
@@ -1052,19 +1072,23 @@ test.describe("sharing", () => {
       // The UI offers no write on the list.
       const target = row(b, f.task);
       await expect(target.getByRole("checkbox", { name: "Mark complete" })).toBeDisabled();
-      await target.hover();
-      const menu = target.getByRole("button", { name: "Task actions" });
-      // The task menu is off, or it offers no edit or delete.
-      if ((await menu.count()) && (await menu.isEnabled())) {
-        await menu.click();
-        for (const item of ["Edit", "Delete"]) {
-          await expect(b.getByRole("menuitem", { name: item, exact: true })).toBeDisabled();
-        }
-        await b.keyboard.press("Escape");
+      // The open task is read-only: no typing, no picks, no complete or delete.
+      const detail = await openTask(b, f.task);
+      await expect(detail.getByRole("textbox", { name: "Task name" })).toHaveAttribute("readonly");
+      await expect(detail.getByRole("textbox", { name: "Notes" })).toHaveAttribute("readonly");
+      for (const name of ["List", "Status", "Priority"]) {
+        await expect(detail.getByRole("combobox", { name })).toBeDisabled();
       }
-      await b.getByRole("combobox", { name: "List" }).click();
-      await expect(b.getByRole("option", { name: f.listA, exact: true })).toHaveCount(0);
-      await b.keyboard.press("Escape");
+      const bar = b.locator(".workspace-detail-pane .action-bar");
+      await expect(bar.getByRole("button", { name: "Delete", exact: true })).toBeDisabled();
+      // Quick add never lands in the read-only list: its view offers no field.
+      // A view-only list's name carries its badge, so match the start only.
+      await b
+        .getByRole("button", { name: new RegExp(`^${f.listA}`) })
+        .first()
+        .click();
+      await expect(b.getByRole("textbox", { name: "Quick add task" })).toBeDisabled();
+      await showAllTasks(b);
 
       // The API refuses a write from them, too.
       const res = await patchTask(f.taskId, { title: `${f.task} mate` }, TEAMMATE);
@@ -1115,9 +1139,7 @@ async function queueCreateOffline(b: Tab, f: Fixture, title: string) {
   await b.getByRole("button", { name: f.listA, exact: true }).click();
   await setTabOffline(b, true);
   await sleep(1_000);
-  await b.getByRole("textbox", { name: "Task name" }).fill(title);
-  await b.getByRole("button", { name: "Add task" }).click();
-  await row(b, title).waitFor({ timeout: 15_000 });
+  await quickAdd(b, title);
   expect((await tabCache(b, f.id)).outbox, `${b.tag} queued the create`).toEqual(["create"]);
 }
 

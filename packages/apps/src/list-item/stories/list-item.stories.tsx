@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 import { Archive, Circle, Star } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
+import { Checkbox } from "@/ui/checkbox";
 import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 
 const meta: Meta<typeof ListItem> = {
@@ -203,5 +204,40 @@ export const KeyboardOnlyFocusRing: Story = {
       else root.dataset.modality = previous;
       (document.activeElement as HTMLElement | null)?.blur();
     }
+  },
+};
+
+/**
+ * A control at the row start (Tasks: the complete circle). It sits beside the row
+ * button, not inside it, level with the title; the text keeps its own column.
+ */
+export const WithLeadingControl: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...NoteStyle.args,
+    isActive: false,
+    icons: [],
+    date: "",
+    metaPosition: "below",
+    title: "Call the dentist",
+    subtitle: "Inbox",
+    text: "Ask about the Thursday slot.",
+  },
+  render: (args) => (
+    <div className="max-w-md">
+      <ListItem {...args} leadingControl={<Checkbox size="md" aria-label="Mark complete" />} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const checkbox = canvasElement.querySelector<HTMLElement>('[aria-label="Mark complete"]')!;
+    await expect(checkbox.closest("button.list-item__button")).toBeNull();
+    const title = canvasElement.querySelector(".list-item__title")!.getBoundingClientRect();
+    const box = checkbox.getBoundingClientRect();
+    await expect(Math.abs(box.top + box.height / 2 - (title.top + title.height / 2))).toBeLessThan(
+      3,
+    );
+    await expect(box.right).toBeLessThan(title.left);
+    const text = canvasElement.querySelector(".list-item__body")!.getBoundingClientRect();
+    await expect(Math.abs(text.left - title.left)).toBeLessThan(1);
   },
 };
