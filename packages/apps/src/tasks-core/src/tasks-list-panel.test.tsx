@@ -7,6 +7,7 @@ import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksListPanel, type TasksListPanelProps } from "@/tasks-core/src/tasks-list-panel";
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
 import { formatRelativeDay } from "@/lib/datetime/format-list-date";
+import { formatTaskDueRelative } from "@/tasks-core/src/tasks-task-utils";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -143,10 +144,10 @@ describe("TasksListRow", () => {
     );
   });
 
-  it("shows the due day relative to today in the top right corner", () => {
-    const bare = { ...bootstrap.data.tasks[0]!, due: null, priority: null, alerts: undefined };
-    const { corner } = renderRow(bare);
-    expect(corner).toBeNull();
+  it("shows the due day relative to today next to the list name", () => {
+    const bare = { ...bootstrap.data.tasks[0]!, due: null, alerts: undefined };
+    const { meta } = renderRow(bare);
+    expect(meta.querySelector(".tasks-list-row__due")).toBeNull();
 
     cleanup();
     const today = new Date();
@@ -155,19 +156,29 @@ describe("TasksListRow", () => {
       String(today.getMonth() + 1).padStart(2, "0"),
       String(today.getDate()).padStart(2, "0"),
     ].join("-");
-    const { corner: dated } = renderRow({ ...bare, due, showWithoutTime: true });
-    expect(dated?.querySelector(".list-item__date")?.textContent).toBe(
-      formatRelativeDay(today, today),
+    const { meta: dated } = renderRow({ ...bare, due, showWithoutTime: true });
+    const dueItem = dated.querySelector(".tasks-list-row__due");
+    expect(dueItem?.previousElementSibling).toBe(dated.firstElementChild);
+    expect(dueItem?.textContent).toBe(
+      `Due ${formatRelativeDay(today, today, { capitalised: false })}`,
     );
+    expect(dueItem?.matches(".list-item__meta-segment")).toBe(true);
+    expect(dated.firstElementChild?.matches(".list-item__meta-segment")).toBe(true);
   });
 
-  it("shows priority as an icon only, named for screen readers", () => {
+  it("always shows the priority flag in the top right corner, icon only", () => {
     const { corner, meta } = renderRow({ ...bootstrap.data.tasks[0]!, priority: 1 });
 
     const mark = screen.getByRole("img", { name: L.priorityHigh });
     expect(corner?.contains(mark)).toBe(true);
     expect(mark.textContent).toBe("");
     expect(meta.textContent).not.toContain(L.priorityHigh);
+
+    cleanup();
+    const { corner: none } = renderRow({ ...bootstrap.data.tasks[0]!, priority: null });
+    const noneMark = screen.getByRole("img", { name: L.priorityNone });
+    expect(none?.contains(noneMark)).toBe(true);
+    expect(noneMark.querySelector("svg")).not.toBeNull();
   });
 
   it("shows a status only when it is in progress or cancelled", () => {
@@ -182,14 +193,17 @@ describe("TasksListRow", () => {
     expect(busy.textContent).toContain(L.stateInProcess);
   });
 
-  it("puts the reminder bell, then the priority flag, before the due day", () => {
+  it("puts the reminder bell before the priority flag in the top right corner", () => {
     const task = { ...taskById("task-two-reminders"), priority: 1, due: "2030-07-08" };
-    const { corner } = renderRow(task);
+    const { meta, corner } = renderRow(task);
 
     const marks = corner?.querySelector(".tasks-list-row__marks");
     expect(marks?.firstElementChild?.matches(".tasks-field__remind--row")).toBe(true);
     expect(marks?.lastElementChild?.matches(".tasks-priority-mark")).toBe(true);
-    expect(corner?.lastElementChild?.matches(".list-item__date")).toBe(true);
+    expect(meta.querySelector(".tasks-field__remind--row")).toBeNull();
+    expect(meta.querySelector(".tasks-list-row__due")?.textContent).toBe(
+      formatTaskDueRelative("2030-07-08", L),
+    );
   });
 });
 

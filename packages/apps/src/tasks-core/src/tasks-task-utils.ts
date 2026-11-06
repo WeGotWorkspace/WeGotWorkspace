@@ -187,13 +187,14 @@ export function formatComposerDueLabel(
   return `${datePart}, ${formatDueTime(date)}`;
 }
 
-/** The due day relative to today, for the list row ("Tomorrow", "In 3 days"). */
+/** The due day relative to today, for the list row ("Due tomorrow", "Due in 3 days"). */
 export function formatTaskDueRelative(
   due: string | null | undefined,
+  labels: { dueRelative: (when: string) => string },
   now: Date = new Date(),
 ): string | null {
   const date = parseDueDateValue(due);
-  return date ? formatRelativeDay(date, now) : null;
+  return date ? labels.dueRelative(formatRelativeDay(date, now, { capitalised: false })) : null;
 }
 
 function startOfLocalDay(date: Date): Date {

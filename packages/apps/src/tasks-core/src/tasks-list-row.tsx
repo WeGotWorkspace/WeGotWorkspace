@@ -15,7 +15,7 @@ import {
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
-import { isTaskPriorityNone, PriorityMark } from "@/tasks-core/src/tasks-priority";
+import { PriorityMark } from "@/tasks-core/src/tasks-priority";
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
 import { taskAlertCount } from "@/tasks-core/src/tasks-alert-mapping";
 
@@ -62,7 +62,7 @@ function sameTasksListRowProps(prev: TasksListRowProps, next: TasksListRowProps)
   return ROW_PROP_KEYS.every((key) => Object.is(prev[key], next[key]));
 }
 
-/** The row foot: list dot and name, and a status other than the default. */
+/** The row foot: list dot and name, the due day relative to today, and a status other than the default. */
 function TasksListRowMeta({
   task,
   L,
@@ -72,14 +72,20 @@ function TasksListRowMeta({
   const listName = taskListName(task.taskListId, taskLists);
   const workflowStatus = (task.workflowStatus ?? "needs-action") as TaskWorkflowStatus;
   const showStatus = workflowStatus === "in-process" || workflowStatus === "cancelled";
+  const dueRelative = formatTaskDueRelative(task.due, L);
   return (
     <span className="tasks-list-row__meta">
-      <span className="tasks-list-row__meta-item">
+      <span className="tasks-list-row__meta-item list-item__meta-segment">
         <NotesNotebookColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
         <span className="tasks-list-row__meta-text">{listName}</span>
       </span>
+      {dueRelative ? (
+        <span className="tasks-list-row__meta-item list-item__meta-segment tasks-list-row__due">
+          <span className="tasks-list-row__meta-text">{dueRelative}</span>
+        </span>
+      ) : null}
       {showStatus ? (
-        <span className="tasks-list-row__meta-item">
+        <span className="tasks-list-row__meta-item list-item__meta-segment">
           {workflowStatusIcon(workflowStatus)}
           <span className="tasks-list-row__meta-text">
             {workflowStatusLabel(workflowStatus, L)}
@@ -90,12 +96,14 @@ function TasksListRowMeta({
   );
 }
 
-/** Top right, before the due day: the reminder bell, then the priority flag (icons only). */
+/** Top right: the reminder bell (when set), then the priority flag (always; grey for none). */
 function TasksListRowMarks({ task, L }: Pick<TasksListRowProps, "task" | "L">) {
   return (
     <span className="tasks-list-row__marks">
-      <TasksRemindIndicator labels={L} alerts={task.alerts} />
-      {isTaskPriorityNone(task.priority) ? null : <PriorityMark priority={task.priority} L={L} />}
+      {taskAlertCount(task.alerts) > 0 ? (
+        <TasksRemindIndicator labels={L} alerts={task.alerts} />
+      ) : null}
+      <PriorityMark priority={task.priority} L={L} />
     </span>
   );
 }
@@ -124,8 +132,6 @@ export const TasksListRow = memo(function TasksListRow({
     onExitAnimationEnd(task.id);
   }, [isExiting, onExitAnimationEnd, task.id]);
 
-  const dueRelative = formatTaskDueRelative(task.due) ?? "";
-  const hasMarks = taskAlertCount(task.alerts) > 0 || !isTaskPriorityNone(task.priority);
   const completeDisabled = isExiting || !canMutate;
   const checkbox = (
     <Checkbox
@@ -166,8 +172,8 @@ export const TasksListRow = memo(function TasksListRow({
         title={taskListTitle(task, "")}
         emptyTitle={L.untitledTask}
         metaPosition="below"
-        date={dueRelative}
-        dateLeading={hasMarks ? <TasksListRowMarks task={task} L={L} /> : undefined}
+        date=""
+        dateLeading={<TasksListRowMarks task={task} L={L} />}
         text={task.description?.trim() || null}
         subtitle={<TasksListRowMeta task={task} L={L} taskList={taskList} taskLists={taskLists} />}
         leadingControl={completeControl}

@@ -97,4 +97,8 @@ describe("formatRelativeDay", () => {
     expect(formatRelativeDay(day(61), now)).toBe(cell(2, "month"));
     expect(formatRelativeDay(day(800), now)).toBe(cell(2, "year"));
   });
+
+  it("keeps the case for use inside a phrase", () => {
+    expect(formatRelativeDay(day(3), now, { capitalised: false })).toBe(relative.format(3, "day"));
+  });
 });

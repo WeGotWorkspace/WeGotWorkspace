@@ -57,6 +57,8 @@ export type TasksUILabels = {
   dueToday: string;
   dueYesterday: string;
   dueTomorrow: string;
+  /** The list row's due day, with `when` relative and mid-sentence ("in 3 days"). */
+  dueRelative: (when: string) => string;
   noDue: string;
   descriptionLabel: string;
   remindMe: string;
@@ -235,6 +237,7 @@ export const defaultTasksLabels: TasksUILabels = {
   dueToday: "Today",
   dueYesterday: "Yesterday",
   dueTomorrow: "Tomorrow",
+  dueRelative: (when) => `Due ${when}`,
   noDue: "No due date",
   descriptionLabel: "Notes",
   remindMe: "Remind me",

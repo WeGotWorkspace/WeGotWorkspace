@@ -47,7 +47,7 @@
   }
 }
 
-/* Top right, before the due day: reminder bell, then the priority flag. */
+/* Top right: the reminder bell, then the priority flag (also for no priority). */
 .tasks-list-row__marks {
   @apply inline-flex items-center gap-1.5;
 }
@@ -56,9 +56,10 @@
   @apply inline-flex items-center;
 }
 
-/* Row foot: list dot and name, and a status other than the default. */
+/* Row foot: list dot and name, the due day, and a status other than the default,
+   joined by the shared middle dot (`.list-item__meta-segment`). */
 .tasks-list-row__meta {
-  @apply flex min-w-0 items-center gap-3 overflow-hidden;
+  @apply flex min-w-0 items-center gap-1.5 overflow-hidden;
 }
 
 .tasks-list-row__meta-item {

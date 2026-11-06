@@ -133,7 +133,7 @@ function priorityFlagStyle(priority: number | string | null | undefined): Priori
   };
 }
 
-/** The flag alone, named for screen readers and on hover (list rows). */
+/** The flag alone, grey for no priority, named for screen readers and on hover (list rows). */
 export function PriorityMark({
   priority,
   L,
@@ -144,7 +144,7 @@ export function PriorityMark({
   const label = priorityLabel(priority, L);
   return (
     <span className="tasks-priority-mark" role="img" aria-label={label} title={label}>
-      {priorityIcon(priority)}
+      {priorityIcon(isTaskPriorityNone(priority) ? TASK_PRIORITY_NONE : priority)}
     </span>
   );
 }

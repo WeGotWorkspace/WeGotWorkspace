@@ -138,8 +138,9 @@ html:not([data-modality="pointer"])
   }
 }
 
+/* Fills the row beside a leading control, so the title row reaches the right edge. */
 .list-item__content {
-  @apply min-w-0;
+  @apply min-w-0 flex-1;
 }
 
 .list-item__header-row {

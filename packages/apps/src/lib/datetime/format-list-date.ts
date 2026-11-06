@@ -55,16 +55,25 @@ function calendarDaysBetween(now: Date, date: Date): number {
 /**
  * A day relative to today, in the viewer's language and capitalised for a list
  * cell: "Today", "Tomorrow", "In 3 days", "Last week", "In 2 months", "3 years ago".
+ * `{ capitalised: false }` keeps the case for use inside a phrase ("Due in 3 days").
  * Counts calendar days, so the time of day does not matter.
  */
-export function formatRelativeDay(date: Date, now: Date = new Date()): string {
-  const days = calendarDaysBetween(now, date);
+export function formatRelativeDay(
+  date: Date,
+  now: Date = new Date(),
+  { capitalised = true }: { capitalised?: boolean } = {},
+): string {
+  const text = relativeDayText(calendarDaysBetween(now, date));
+  return capitalised ? capitalise(text) : text;
+}
+
+function relativeDayText(days: number): string {
   const size = Math.abs(days);
   const format = relativeFormat();
-  if (size < 7) return capitalise(format.format(days, "day"));
-  if (size < 30) return capitalise(format.format(Math.trunc(days / 7), "week"));
-  if (size < 365) return capitalise(format.format(Math.trunc(days / 30), "month"));
-  return capitalise(format.format(Math.trunc(days / 365), "year"));
+  if (size < 7) return format.format(days, "day");
+  if (size < 30) return format.format(Math.trunc(days / 7), "week");
+  if (size < 365) return format.format(Math.trunc(days / 30), "month");
+  return format.format(Math.trunc(days / 365), "year");
 }
 
 function isSameDay(a: Date, b: Date): boolean {
