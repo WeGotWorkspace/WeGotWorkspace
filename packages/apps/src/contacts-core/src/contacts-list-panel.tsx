@@ -367,7 +367,7 @@ function ContactsListRows({
       const letter = sectionLetter || "#";
       blocks.push(
         <section key={letter} aria-labelledby={`contacts-section-${letter}`}>
-          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} />
+          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} variant="frost" />
           {sectionCards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;

@@ -70,27 +70,11 @@
 }
 
 .contacts-list-panel__list .list-sticky-header {
-  /* Calm list: no rule under the letter; frosted pane fill so rows blur past beneath it.
-   * It lines up with the row text. */
-  border-bottom: 0;
-  background-color: color-mix(
-    in oklch,
-    var(--collection-list-pane-fill, var(--workspace-surface)) 72%,
-    transparent
-  );
-  -webkit-backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
-  backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
-  padding-inline: calc(var(--list-item-inset, 0.5rem) + 1.25rem);
+  /* The frost variant draws it; the virtual list needs a fixed row slot. */
   box-sizing: border-box;
   block-size: var(--contacts-list-header-row-size);
   max-block-size: var(--contacts-list-header-row-size);
   overflow: hidden;
-}
-
-@media (min-width: 768px) {
-  .contacts-list-panel__list .list-sticky-header {
-    padding-inline: calc(var(--list-item-inset, 0.5rem) + 1.5rem);
-  }
 }
 
 .contacts-list-panel__spacer {

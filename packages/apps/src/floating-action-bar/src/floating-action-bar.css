@@ -1,27 +1,17 @@
 @import "../../styles.css" reference;
 /**
- * Floating toolbar for batch selection and Meet controls. Same frosted chrome, sizes
- * and steps as the Docs format pill: `--floating-toolbar-*` tokens (styles.css),
- * `lg` controls that step down on narrow screens.
+ * Floating toolbar for batch selection and Meet controls, docked at the pane bottom.
+ * Chrome is the shared `floating-toolbar` utility (styles.css); `lg` controls step
+ * down on narrow screens.
  *
  * Enter/exit: short bottom slide + fade via `data-state` + `@starting-style`
  * (~200ms). Parent keeps the node mounted with `open={false}` until
  * `transitionend` unmounts (see FloatingActionBar).
  */
 .floating-action-bar {
-  @apply absolute left-1/2 z-30 flex items-center whitespace-nowrap;
-  gap: var(--floating-toolbar-gap);
-  padding: var(--floating-toolbar-padding-block) var(--floating-toolbar-padding-inline);
+  @apply floating-toolbar absolute left-1/2 z-30 whitespace-nowrap;
   /* Pin to the non-scrolling pane bottom; safe-area for notched phones. */
   bottom: var(--floating-dock-bottom);
-  border-radius: var(--floating-toolbar-radius);
-  color: var(--workspace-foreground);
-  /* Content scrolls under the bar: frosted glass, like the Docs format bar. */
-  background: var(--frost-background);
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  border: 0;
-  box-shadow: var(--frost-shadow);
   opacity: 1;
   transform: translate(-50%, 0);
   transition:
@@ -78,11 +68,7 @@
 }
 
 .floating-action-bar__spacer {
-  @apply shrink-0 self-center;
-  width: 1px;
-  height: var(--floating-toolbar-separator-height);
-  margin-inline: var(--floating-toolbar-separator-margin);
-  background-color: var(--floating-toolbar-separator-color);
+  @apply floating-toolbar-separator;
 }
 
 /* Same steps as the Docs format pill: slimmer buttons, then md height. */

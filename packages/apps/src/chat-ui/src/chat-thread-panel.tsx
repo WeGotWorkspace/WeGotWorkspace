@@ -5,6 +5,7 @@ import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { omitChatNestedThreadActions } from "@/chat-ui/src/chat-thread-actions";
+import { useChatDock } from "@/chat-ui/src/use-chat-dock";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import type {
   ChatAuthorPresenceMap,
@@ -69,6 +70,7 @@ export function ChatThreadPanel({
       : chatThreadReplyCountLabel(replies.length);
 
   const Root = landmark ? "aside" : "div";
+  const { hostRef, dockRef } = useChatDock<HTMLDivElement, HTMLDivElement>();
 
   return (
     <Root
@@ -88,7 +90,7 @@ export function ChatThreadPanel({
           />
         ) : null}
       </header>
-      <div className="chat-thread-panel__body">
+      <div ref={hostRef} className="chat-thread-panel__body">
         <div className="chat-thread-panel__parent">
           <ChatMessage
             message={parent}
@@ -122,13 +124,12 @@ export function ChatThreadPanel({
         ) : null}
       </div>
       {onSend ? (
-        <div className="chat-thread-panel__composer">
+        <div ref={dockRef} className="chat-thread-panel__composer">
           <ChatComposer
             principals={mentionPrincipals}
             initialContent={composerInitialContent}
             placeholder={composerPlaceholder}
             disabled={composerDisabled}
-            hint={null}
             onSend={onSend}
           />
         </div>

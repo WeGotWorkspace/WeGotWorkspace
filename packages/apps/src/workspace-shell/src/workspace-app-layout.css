@@ -1,7 +1,10 @@
 @import "../../styles.css" reference;
 
 .workspace-columns {
-  @apply flex h-dvh w-full overflow-hidden relative;
+  /* Clip, not hidden: a hidden box still scrolls programmatically, so focusing
+     into a panel that is still sliding in shoved the whole row (sidebar too)
+     sideways, then the scroll snapped back as the panel arrived. */
+  @apply flex h-dvh w-full overflow-clip relative;
   font-family: var(--font-sans);
   background-color: var(--workspace-root-bg, var(--workspace-surface));
   container: workspace-columns / inline-size;

@@ -183,6 +183,7 @@ export const meetLabels = {
   startAudioOnly: "Meet (Audio Only)",
   startCallMenu: "More call options",
   join: "Join",
+  joinAudioOnly: "Join (Audio Only)",
   joined: "Joined",
   leave: "Leave",
   leaveCallStub: "Stop preview call",

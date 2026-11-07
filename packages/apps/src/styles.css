@@ -79,6 +79,40 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Frosted floating chrome, defined once: menus, select lists, frost popovers and
+ * every floating toolbar. Hosts `@apply` it and add only their own position.
+ */
+@utility frost-chrome {
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  border: 0;
+  border-radius: var(--floating-toolbar-radius);
+  box-shadow: var(--frost-shadow);
+}
+
+/*
+ * The suite floating toolbar: Docs format pill, selection bar, call controls and
+ * mini player, chat message actions, emoji picker. Frost chrome, one padding and
+ * gap; its controls are `lg` outline icon buttons.
+ */
+@utility floating-toolbar {
+  @apply frost-chrome flex items-center;
+  gap: var(--floating-toolbar-gap);
+  padding: var(--floating-toolbar-padding-block) var(--floating-toolbar-padding-inline);
+  color: var(--workspace-foreground);
+}
+
+/* Hairline between toolbar groups. */
+@utility floating-toolbar-separator {
+  @apply shrink-0 self-center;
+  width: 1px;
+  height: var(--floating-toolbar-separator-height);
+  margin-inline: var(--floating-toolbar-separator-margin);
+  background-color: var(--floating-toolbar-separator-color);
+}
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
@@ -166,6 +200,18 @@
   --workspace-header-height: calc(
     var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
   );
+  /*
+   * Width of a list or side column beside the main pane: the Notes/Tasks/Contacts
+   * list and Meet's chat and thread rail. Steps up at `xl` (below).
+   */
+  --workspace-list-pane-width: 26rem;
+  /*
+   * Media surface: one dark paper and ink in both themes, for video tiles. A host
+   * that uses it is a derive scope (workspace-derive.css), so its buttons, frost
+   * and tags turn dark with it.
+   */
+  --media-surface: oklch(from #16181d l c h);
+  --media-ink: oklch(from #eef1f5 l c h);
   /* Text inset of a detail sheet (Notes note, Contacts card), phones included. */
   --workspace-detail-sheet-padding-x: 1.5rem;
   /* Detail page title (note, task, event, selection summary): 28px on phones, 36px from md. */
@@ -289,6 +335,12 @@
   --input-font-size-xl: 1rem;
 }
 
+@media (min-width: 80rem) {
+  :root {
+    --workspace-list-pane-width: 28rem;
+  }
+}
+
 /*
  * Tier 1.5 — colour-scheme pair. The only values `[data-theme="dark"]` swaps.
  * Product sheets that pin the ink accent read `--scheme-ink`, not
@@ -389,7 +441,8 @@
   --scheme-selection-edge: 30%;
   --scheme-selection-mark-edge: 80%;
   --scheme-frost-ink: 7%;
-  --scheme-frost-paper: 0%;
+  /* Enough paper that menus stay readable over video and photos, not only on dark paper. */
+  --scheme-frost-paper: 72%;
   --scheme-frost-shadow:
     inset 0 1px 0 color-mix(in oklch, white 7%, transparent),
     inset 0 0 0 1px color-mix(in oklch, white 2%, transparent), 0 1px 2px rgb(0 0 0 / 0.25),

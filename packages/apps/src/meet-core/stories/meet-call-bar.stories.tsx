@@ -3,20 +3,15 @@ import { expect, within } from "storybook/test";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { STORY_MEET_PEERS } from "@/meet-core/stories/meet-pane-stories.fixtures";
-import {
-  meetStoryParameters,
-  STORY_NOOP,
-  storyBooleanControl,
-} from "@/meet-core/stories/meet-story-shared";
+import { meetStoryParameters, storyBooleanControl } from "@/meet-core/stories/meet-story-shared";
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 type MeetCallBarStoryArgs = {
   joined: boolean;
-  invite: "join" | null;
   audioOnly: boolean;
 };
 
-function MeetCallBarStory({ joined, invite, audioOnly }: MeetCallBarStoryArgs) {
+function MeetCallBarStory({ joined, audioOnly }: MeetCallBarStoryArgs) {
   return (
     <MeetStoryScope
       variant="split"
@@ -34,9 +29,7 @@ function MeetCallBarStory({ joined, invite, audioOnly }: MeetCallBarStoryArgs) {
         }))}
         participantCount={joined ? 1 + STORY_MEET_PEERS.length : STORY_MEET_PEERS.length}
         joined={joined}
-        invite={invite}
         audioOnly={audioOnly}
-        onInvite={invite ? STORY_NOOP : undefined}
       />
     </MeetStoryScope>
   );
@@ -50,21 +43,18 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Pre-join call bar: meeting meta, who is already in the call, and a Join button. In-call controls live on the expanded stage.",
+        "Pre-join call bar: a frosted card with the meeting meta and who is already in the call. Join lives in the header; in-call controls on the expanded stage.",
       snippet: `<MeetCallBar
   elapsedLabel="02:14"
   selfId="self"
   selfName="Demo User"
   peers={peers}
   participantCount={2}
-  invite="join"
-  onInvite={join}
 />`,
     }),
   },
   argTypes: {
     joined: storyBooleanControl,
-    invite: { control: "select", options: [null, "join"] as const },
     audioOnly: storyBooleanControl,
   },
 } satisfies Meta<MeetCallBarStoryArgs>;
@@ -72,21 +62,21 @@ const meta = {
 export default meta;
 type Story = StoryObj<MeetCallBarStoryArgs>;
 
-export const InviteToJoin: Story = {
-  name: "Invite to join",
+export const MeetingLive: Story = {
+  name: "Meeting live",
   tags: ["vitest-ci"],
   args: {
     joined: false,
-    invite: "join",
     audioOnly: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const join = canvas.getByRole("button", { name: meetLabels.join });
-    await expect(join).toBeInTheDocument();
-    await expect(join.className).toContain("button--variant-primary");
-    await expect(join.className).not.toContain("button--severity-success");
-    await expect(join.querySelector(".lucide-video")).toBeTruthy();
+    const bar = canvasElement.querySelector<HTMLElement>(".meet-call-bar")!;
+    await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
+    await expect(bar.querySelector(".lucide-video")).toBeTruthy();
+    // Frosted floating card, no edge line.
+    await expect(getComputedStyle(bar).backdropFilter).toContain("blur");
+    await expect(getComputedStyle(bar).borderBottomWidth).toBe("0px");
     await expect(
       canvas.queryByRole("img", { name: "Demo User", hidden: true }),
     ).not.toBeInTheDocument();
@@ -97,19 +87,16 @@ export const InviteToJoin: Story = {
   },
 };
 
-export const InviteToJoinAudioOnly: Story = {
-  name: "Invite to join (audio only)",
+export const MeetingLiveAudioOnly: Story = {
+  name: "Meeting live (audio only)",
   tags: ["vitest-ci"],
   args: {
     joined: false,
-    invite: "join",
     audioOnly: true,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const join = canvas.getByRole("button", { name: meetLabels.join });
-    await expect(join).toBeInTheDocument();
-    await expect(join.querySelector(".lucide-mic")).toBeTruthy();
-    await expect(join.querySelector(".lucide-video")).toBeNull();
+    const bar = canvasElement.querySelector<HTMLElement>(".meet-call-bar")!;
+    await expect(bar.querySelector(".lucide-mic")).toBeTruthy();
+    await expect(bar.querySelector(".lucide-video")).toBeNull();
   },
 };

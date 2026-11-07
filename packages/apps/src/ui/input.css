@@ -373,12 +373,7 @@ input.input:focus-visible:not(:read-only),
  */
 .select-ui__content,
 .popover-ui--frost {
-  background: var(--frost-background);
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  border: 0;
-  border-radius: var(--floating-toolbar-radius);
-  box-shadow: var(--frost-shadow);
+  @apply frost-chrome;
 }
 
 .select-ui__item {

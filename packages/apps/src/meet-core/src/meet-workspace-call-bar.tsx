@@ -4,10 +4,6 @@ import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/meet-call-bar-roster";
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
-import {
-  meetCallInviteStartOptions,
-  type MeetCallInvite,
-} from "@/meet-core/src/meet-call-stage-layout";
 
 export type MeetWorkspaceCallBarProps = {
   visible: boolean;
@@ -19,16 +15,14 @@ export type MeetWorkspaceCallBarProps = {
   /** Mesh `call-active` senders for this conversation — preview roster before joining. */
   previewPeerIds: readonly string[];
   directory?: readonly CollectionSharePrincipal[];
-  invite?: MeetCallInvite | null;
   audioOnly: boolean;
   onLeave: () => void;
-  onInvite: (options?: { video?: boolean }) => void;
 };
 
 /**
  * Pre-join bar above the channel chat. While this user is waiting to be let
- * in, the bar is the knock-wait banner. Device controls and host admit live
- * on the expanded stage.
+ * in, the bar is the knock-wait banner. Join lives in the header; device
+ * controls and host admit live on the expanded stage.
  */
 export function MeetWorkspaceCallBar({
   visible,
@@ -38,10 +32,8 @@ export function MeetWorkspaceCallBar({
   session,
   previewPeerIds,
   directory,
-  invite,
   audioOnly,
   onLeave,
-  onInvite,
 }: MeetWorkspaceCallBarProps) {
   if (!visible) return null;
   if (room?.controller.waitingForAdmission) {
@@ -66,9 +58,7 @@ export function MeetWorkspaceCallBar({
         peerCount: previewPeerIds.length,
       })}
       joined={joined}
-      invite={invite}
       audioOnly={audioOnly}
-      onInvite={() => onInvite(meetCallInviteStartOptions(audioOnly))}
     />
   );
 }

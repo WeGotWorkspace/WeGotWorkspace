@@ -60,6 +60,15 @@
   @apply flex shrink-0 items-center;
 }
 
+/* An edit or rename button on the title (Docs, Meet) stays quiet until hovered. */
+.view-header__title-suffix > .button {
+  opacity: 0.7;
+}
+
+.view-header__title-suffix > .button:hover:not(:disabled) {
+  opacity: 1;
+}
+
 /**
  * List counts beside the title — same face, weight, and color as
  * `.view-header__title`. Font size is inherited. Not a Badge (those read as unread).

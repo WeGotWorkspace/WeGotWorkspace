@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Smile } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
+import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   DOCS_COMMENT_REACTION_EMOJIS,
@@ -111,8 +111,8 @@ export function DocsCollabReactions({
         );
       })}
       {canMutate ? (
-        <Popover>
-          <PopoverTrigger asChild>
+        <ReactionPicker
+          trigger={
             <button
               type="button"
               className="docs-collab-reactions__reaction docs-collab-reactions__reaction--add"
@@ -121,26 +121,11 @@ export function DocsCollabReactions({
             >
               <Smile className="docs-collab-reactions__reaction-add-icon" aria-hidden />
             </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" side="top" className="docs-collab-reactions__picker">
-            <div className="docs-collab-reactions__picker-grid">
-              {DOCS_COMMENT_REACTION_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="docs-collab-reactions__picker-item"
-                  aria-pressed={userReacted(reactions, emoji, currentUserId)}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleReaction(emoji);
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+          emojis={DOCS_COMMENT_REACTION_EMOJIS}
+          isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
+          onPick={onToggleReaction}
+        />
       ) : null}
     </div>
   );

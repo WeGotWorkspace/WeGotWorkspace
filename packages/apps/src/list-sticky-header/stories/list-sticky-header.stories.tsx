@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import "./list-sticky-header.stories.css";
 
@@ -43,7 +44,7 @@ export const ContactsLetters: Story = {
     >
       {LETTERS.map((letter) => (
         <section key={letter} aria-labelledby={`list-sticky-story-${letter}`}>
-          <ListStickyHeader id={`list-sticky-story-${letter}`} emphasis={letter} />
+          <ListStickyHeader id={`list-sticky-story-${letter}`} emphasis={letter} variant="frost" />
           {Array.from({ length: 8 }, (_, index) => (
             <div key={index} className="list-sticky-header-story-row">
               {letter} contact {index + 1}
@@ -55,8 +56,16 @@ export const ContactsLetters: Story = {
   ),
 };
 
+/** Contacts letters and chat days share the frost variant: no rule, a frosted pane fill. */
 export const ChatDays: Story = {
   name: "Chat days",
+  tags: ["vitest-ci"],
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector(".list-sticky-header") as HTMLElement;
+    await expect(header.classList.contains("list-sticky-header--frost")).toBe(true);
+    await expect(getComputedStyle(header).borderBottomWidth).toBe("0px");
+    await expect(getComputedStyle(header).position).toBe("sticky");
+  },
   render: () => (
     <div
       className="list-sticky-header-story-scroll list-sticky-header-story-scroll--chat"
@@ -76,6 +85,7 @@ export const ChatDays: Story = {
             label={`${emphasis} ${rest}`}
             emphasis={emphasis}
             rest={rest}
+            variant="frost"
           />
           {Array.from({ length: 10 }, (_, index) => (
             <div key={index} className="list-sticky-header-story-row">

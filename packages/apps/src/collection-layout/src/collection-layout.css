@@ -5,7 +5,7 @@
  * surface, so sidebar → list → detail read as three planes without lines.
  */
 .collection-list-pane {
-  @apply relative flex min-w-0 flex-1 shrink-0 flex-col md:w-[26rem] md:flex-none xl:w-[28rem];
+  @apply relative flex min-w-0 flex-1 shrink-0 flex-col md:w-(--workspace-list-pane-width) md:flex-none;
   /*
    * Own stacking context: the floating search and selection bar stay under the
    * phone detail pane (z-20) that slides over this column, not on top of it.

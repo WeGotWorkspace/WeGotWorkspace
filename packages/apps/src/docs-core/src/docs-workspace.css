@@ -450,19 +450,12 @@
   }
 
   .docs-workspace__editor .text-editor:not(.text-editor--view-source) > .text-editor-format-bar {
-    position: absolute;
+    @apply floating-toolbar absolute;
     top: 0.875rem;
     left: 50%;
     translate: -50% 0;
     width: max-content;
     max-width: calc(100% - 2rem);
-    padding: var(--floating-toolbar-padding-block) var(--floating-toolbar-padding-inline);
-    border: 0;
-    border-radius: var(--floating-toolbar-radius);
-    background: var(--frost-background);
-    -webkit-backdrop-filter: var(--frost-blur);
-    backdrop-filter: var(--frost-blur);
-    box-shadow: var(--frost-shadow);
   }
 
   /* Clear the pill (40px controls + pads) plus the usual desk gap. */
@@ -546,8 +539,7 @@
 }
 
 .docs-workspace__editor .text-editor-format-bar[data-size="lg"] .text-editor-format-bar__sep {
-  height: var(--floating-toolbar-separator-height);
-  margin-inline: var(--floating-toolbar-separator-margin);
+  @apply floating-toolbar-separator;
 }
 
 .docs-workspace__editor
@@ -654,15 +646,6 @@
 .docs-workspace .text-editor[data-paper="none"] .text-editor-sheet__surface {
   background: transparent;
   box-shadow: none;
-}
-
-/* Rename sits right after the file name. */
-.docs-workspace .docs-workspace__rename {
-  opacity: 0.7;
-}
-
-.docs-workspace .docs-workspace__rename:hover:not(:disabled) {
-  opacity: 1;
 }
 
 .docs-workspace__header-actions-trailing {

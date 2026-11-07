@@ -11,6 +11,11 @@ export type ListStickyHeaderProps = {
   /** Accessible name when emphasis/rest are split (flex gap is not a space). */
   label?: string;
   id?: string;
+  /**
+   * `frost`: the calm list header (Contacts letters, chat days). No rule; the pane fill
+   * frosted so rows blur past beneath it; text on the list row text line.
+   */
+  variant?: "default" | "frost";
   className?: string;
 };
 
@@ -21,10 +26,19 @@ export function ListStickyHeader({
   rest,
   label,
   id,
+  variant = "default",
   className,
 }: ListStickyHeaderProps): ReactNode {
   return (
-    <div id={id} className={cn("list-sticky-header", className)} aria-label={label}>
+    <div
+      id={id}
+      className={cn(
+        "list-sticky-header",
+        variant === "frost" && "list-sticky-header--frost",
+        className,
+      )}
+      aria-label={label}
+    >
       {emphasis != null ? (
         <>
           <span className="list-sticky-header__emphasis">{emphasis}</span>

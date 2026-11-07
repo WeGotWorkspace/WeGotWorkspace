@@ -51,6 +51,12 @@ export const Default: Story = {
     await expect(canvas.getByRole("button", { name: meetLabels.editChannel }).className).toContain(
       "meet-workspace__header-edit",
     );
+    // Edit sits on the channel name, not with the call actions.
+    await expect(
+      canvas
+        .getByRole("button", { name: meetLabels.editChannel })
+        .closest(".view-header__title-suffix"),
+    ).toBeTruthy();
     await expect(canvas.getByText(meetLabels.sidebarMeetings)).toBeInTheDocument();
     await expect(canvas.getByRole("img", { name: meetLabels.liveCall })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
@@ -62,7 +68,15 @@ export const Default: Story = {
     ).not.toBeInTheDocument();
     const join = canvas.getByRole("button", { name: meetLabels.join });
     await expect(join).toBeInTheDocument();
-    await expect(join.className).toContain("meet-call-bar__invite-button");
+    // Join takes the Meet button's place in the header, not the bar.
+    // Join takes Meet's place: the same split button, with the audio-only option.
+    await expect(join.closest(".meet-workspace__header-join")).toBeTruthy();
+    await expect(join.closest(".view-header")).toBeTruthy();
+    await expect(
+      canvas
+        .getByRole("button", { name: meetLabels.startCallMenu })
+        .closest(".meet-workspace__header-join"),
+    ).toBeTruthy();
     await expect(join.textContent).toContain(meetLabels.join);
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
@@ -277,7 +291,7 @@ export const ParkedCallChrome: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "#random" })).toBeInTheDocument();
+    await expect(canvas.getByRole("heading", { name: "random" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
@@ -431,12 +445,12 @@ export const ThreadOpen: Story = {
     ).toBeGreaterThan(0);
     await expect(canvas.queryByLabelText(meetLabels.threadPeopleCount(3))).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.editChannel })).toBeInTheDocument();
-    const channelActions = canvas
+    const channelHeader = canvas
       .getByRole("button", { name: meetLabels.editChannel })
-      .closest(".meet-workspace__header-actions");
-    expect(channelActions).toBeTruthy();
+      .closest(".view-header");
+    expect(channelHeader).toBeTruthy();
     await expect(
-      within(channelActions as HTMLElement).queryByLabelText(/members/),
+      within(channelHeader as HTMLElement).queryByLabelText(/members/),
     ).not.toBeInTheDocument();
   },
 };

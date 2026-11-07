@@ -1,6 +1,4 @@
-import { Button } from "@/button/src/button";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
-import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
 import {
   meetCallBarMeta,
   meetCallBarRoster,
@@ -28,10 +26,7 @@ export type MeetCallBarProps = {
   participantCount: number;
   /** Include this user in the roster and show elapsed time. Device controls live on the stage. */
   joined?: boolean;
-  /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
-  invite?: MeetCallInvite | null;
-  onInvite?: () => void;
-  /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
+  /** Meeting was started as Meet (Audio Only) — the mark uses audio chrome. Join lives in the header. */
   audioOnly?: boolean;
   className?: string;
 };
@@ -51,8 +46,6 @@ export function MeetCallBar({
   peers,
   participantCount,
   joined = false,
-  invite = null,
-  onInvite,
   audioOnly = false,
   className,
 }: MeetCallBarProps) {
@@ -99,18 +92,6 @@ export function MeetCallBar({
             ))}
           </ul>
         </div>
-        {invite === "join" && onInvite ? (
-          <div className="meet-call-bar__invite">
-            <Button
-              className="meet-call-bar__invite-button"
-              label={meetLabels.join}
-              icon={<LiveIcon />}
-              size="md"
-              variant="primary"
-              onClick={onInvite}
-            />
-          </div>
-        ) : null}
       </div>
     </div>
   );

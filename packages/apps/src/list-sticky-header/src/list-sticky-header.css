@@ -19,6 +19,26 @@
   );
 }
 
+/* Calm list header (Contacts letters, chat days): no rule under it; the pane fill
+   frosted so rows blur past beneath it; the label on the list row text line. */
+.list-sticky-header--frost {
+  border-bottom: 0;
+  background-color: color-mix(
+    in oklch,
+    var(--collection-list-pane-fill, var(--workspace-surface)) 72%,
+    transparent
+  );
+  -webkit-backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
+  backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
+  padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
+}
+
+@media (min-width: 768px) {
+  .list-sticky-header--frost {
+    padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.5rem));
+  }
+}
+
 .list-sticky-header__emphasis {
   @apply font-[650] leading-[1.2] tracking-normal;
   font-size: var(--list-sticky-header-emphasis-font-size, 15px);

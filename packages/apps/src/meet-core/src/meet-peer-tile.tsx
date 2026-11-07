@@ -5,6 +5,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { shouldMirrorMeetStream } from "@/meet-core/src/meet-stream-mirror";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
+import { Tag } from "@/tag/src/tag";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { usePeerStreamPresence } from "@/meet-core/src/use-peer-stream-presence";
 import { cn } from "@/lib/utils";
@@ -174,19 +175,22 @@ export function MeetPeerTile({
         </div>
       ) : null}
       {speaking ? (
-        <p className="meet-peer-tile__speaking">
-          <span className="meet-peer-tile__speaking-dot" aria-hidden />
-          {meetLabels.speaking}
-        </p>
+        <Tag
+          label={meetLabels.speaking}
+          size="lg"
+          icon={<span className="meet-peer-tile__speaking-dot" aria-hidden />}
+          colors={{ backgroundColor: "var(--meet-live)", color: "var(--meet-live-foreground)" }}
+          className="meet-peer-tile__speaking"
+        />
       ) : null}
-      <p className="meet-peer-tile__name">{name}</p>
+      <Tag label={name} size="lg" className="meet-peer-tile__name" />
       {canToggleMute ? (
         <IconButton
           className={cn(
             "meet-peer-tile__control meet-peer-tile__mute",
             !micLiveUi && "meet-peer-tile__control--persistent",
           )}
-          size="xs"
+          size="sm"
           variant="outline"
           icon={micLiveUi ? <Mic /> : <MicOff />}
           label={muteLabel}
@@ -209,7 +213,7 @@ export function MeetPeerTile({
           "meet-peer-tile__control meet-peer-tile__pin",
           pinned && "meet-peer-tile__control--persistent",
         )}
-        size="xs"
+        size="sm"
         variant="outline"
         active={pinned}
         icon={<Pin />}

@@ -33,13 +33,7 @@
  */
 .dropdown-menu-ui__sub-content,
 .dropdown-menu-ui__content {
-  @apply z-50 min-w-[8rem] p-1.5 text-popover-foreground;
-  background: var(--frost-background);
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  border: 0;
-  border-radius: var(--floating-toolbar-radius);
-  box-shadow: var(--frost-shadow);
+  @apply frost-chrome z-50 min-w-[8rem] p-1.5 text-popover-foreground;
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
 
