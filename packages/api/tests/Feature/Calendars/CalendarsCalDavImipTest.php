@@ -8,6 +8,7 @@ use App\Dav\SabreServerFactory;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\CalendarRsvpToken;
+use App\Services\Calendars\CalendarDavImipDelivery;
 use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
@@ -21,6 +22,7 @@ use Sabre\DAV\Exception as SabreDavException;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
 use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\ITip\Message;
 use Sabre\VObject\Reader;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -165,6 +167,48 @@ final class CalendarsCalDavImipTest extends WgwDatabaseTestCase
         $this->sabre('DELETE', 'bob', $uid);
 
         $this->assertCount(1, $this->sentMails('CANCEL'));
+    }
+
+    public function test_dav_imip_delivery_sets_the_sent_status_only_when_a_mail_went_out(): void
+    {
+        $delivery = app(CalendarDavImipDelivery::class);
+        $uid = 'caldav-imip-service-'.uniqid();
+
+        $minor = $this->requestMessage($uid, significant: false);
+        $this->assertFalse($delivery->deliver('bob', $minor));
+        $this->assertNotSame(CalendarDavImipDelivery::SENT_STATUS, $minor->scheduleStatus);
+        Mail::assertNothingSent();
+
+        $sent = $this->requestMessage($uid, significant: true);
+        $this->assertTrue($delivery->deliver('bob', $sent));
+        $this->assertSame(CalendarDavImipDelivery::SENT_STATUS, $sent->scheduleStatus);
+        $this->assertCount(1, $this->sentMails('REQUEST'));
+
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+        $skipped = $this->requestMessage('caldav-imip-service-off-'.uniqid(), significant: true);
+        $skipped->scheduleStatus = '3.7;Could not find principal.';
+        $this->assertFalse($delivery->deliver('bob', $skipped));
+        $this->assertSame('3.7;Could not find principal.', $skipped->scheduleStatus);
+        $this->assertCount(1, $this->sentMails('REQUEST'));
+    }
+
+    private function requestMessage(string $uid, bool $significant): Message
+    {
+        $calendar = Reader::read($this->ics($uid, 'Garden plan', [self::GUEST]));
+        $this->assertInstanceOf(VCalendar::class, $calendar);
+        $calendar->add('METHOD', 'REQUEST');
+        $message = new Message;
+        $message->uid = $uid;
+        $message->component = 'VEVENT';
+        $message->method = 'REQUEST';
+        $message->sequence = 0;
+        $message->sender = 'mailto:bob@example.test';
+        $message->senderName = 'Bob';
+        $message->recipient = 'mailto:'.self::GUEST;
+        $message->message = $calendar;
+        $message->significantChange = $significant;
+
+        return $message;
     }
 
     /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
-use App\Services\Calendars\CalendarImipService;
+use App\Services\Calendars\CalendarDavImipDelivery;
 use App\Services\Calendars\CalendarPrincipalAddresses;
 use Sabre\CalDAV\Schedule\IMipPlugin;
 use Sabre\DAV\Auth\Plugin as AuthPlugin;
@@ -14,23 +14,22 @@ use Sabre\VObject\ITip\Message;
 /**
  * iMIP for CalDAV clients (#1929). Sabre's Schedule plugin delivers to local
  * principals only; an invite, update, cancel or reply a native client writes
- * for an address outside the instance went nowhere. This plugin hands that
- * message to {@see CalendarImipService}, the same composer, caps and settings
- * as the web app's scheduling path (external invites setting, per-organiser
- * caps, mail transport). When that service skips the message, the
- * schedule-status stays what Sabre set before (no mail, as before this plugin).
+ * for an address outside the instance went nowhere. This plugin hands a
+ * message for a recipient with no local principal to
+ * {@see CalendarDavImipDelivery}, which applies the web app's iMIP rules
+ * (external invites setting, per-organiser caps, mail transport). When the
+ * message is skipped, the schedule-status stays what Sabre set before (no
+ * mail, as before this plugin).
  *
  * It replaces the stock mail() delivery of Sabre's IMipPlugin and keeps its
  * place on the `schedule` event: priority 120, after local delivery at 100.
  */
 final class CalendarImipDeliveryPlugin extends IMipPlugin
 {
-    public const string SENT_STATUS = '1.1;Scheduling message is sent via iMip';
-
     private ?Server $davServer = null;
 
     public function __construct(
-        private readonly CalendarImipService $imip,
+        private readonly CalendarDavImipDelivery $delivery,
         private readonly CalendarPrincipalAddresses $addresses,
     ) {
         // The sender address comes from the instance mail settings instead.
@@ -50,10 +49,6 @@ final class CalendarImipDeliveryPlugin extends IMipPlugin
 
     public function schedule(Message $iTipMessage): void
     {
-        // Sabre's own rule: an insignificant change sends no mail.
-        if (! $iTipMessage->significantChange) {
-            return;
-        }
         if ($this->deliveredLocally($iTipMessage) || ! $this->isExternalRecipient($iTipMessage)) {
             return;
         }
@@ -61,9 +56,7 @@ final class CalendarImipDeliveryPlugin extends IMipPlugin
         if ($username === null) {
             return;
         }
-        if ($this->imip->deliver($username, $iTipMessage)) {
-            $iTipMessage->scheduleStatus = self::SENT_STATUS;
-        }
+        $this->delivery->deliver($username, $iTipMessage);
     }
 
     private function deliveredLocally(Message $message): bool
