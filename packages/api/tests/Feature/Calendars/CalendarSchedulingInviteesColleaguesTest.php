@@ -47,7 +47,7 @@ final class CalendarSchedulingInviteesColleaguesTest extends WgwDatabaseTestCase
         $this->putInTeam('t3', ['dave', 'carol']);
 
         $this->assertSame(['bob', 'dave'], $this->usernames($this->invitees('bob')['list']));
-        $this->assertSame(['bob', 'carol', 'dave', 'erin'], $this->usernames($this->invitees('dave')['list']));
+        $this->assertSame(['bob', 'carol', 'dave'], $this->usernames($this->invitees('dave')['list']));
     }
 
     public function test_a_user_in_no_team_gets_only_themself(): void

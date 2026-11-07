@@ -33,6 +33,7 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
 
     public function test_invitees_lists_instance_users_with_email(): void
     {
+        $this->shareTeam(['bob', 'carol']);
         $body = $this->asUser('bob')->getJson('/api/v1/calendars/scheduling/invitees')
             ->assertOk()
             ->assertJsonStructure(['list', 'canSubmitEmail']);
@@ -53,6 +54,7 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertNotNull($bare);
         $bare->email = null;
         $bare->save();
+        $this->shareTeam(['bob', 'admin', 'bare']);
 
         $list = $this->asUser('bob')->getJson('/api/v1/calendars/scheduling/invitees')
             ->assertOk()
@@ -760,6 +762,21 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
             'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
             'methodCalls' => $methodCalls,
         ]);
+    }
+
+    /**
+     * Invitees list colleagues only (#1918).
+     *
+     * @param  list<string>  $usernames
+     */
+    private function shareTeam(array $usernames): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/invitees-team', 'Invitees');
+        foreach ($usernames as $username) {
+            $member = Principal::forUsername($username);
+            $this->assertNotNull($member);
+            $this->addPrincipalToGroup($team, $member);
+        }
     }
 
     private function asUser(string $username): self
