@@ -22,6 +22,7 @@ export const liveTierSpecs = [
   "docs-collab-external-write",
   "docs-collab-solo-read",
   "docs-collab-suggest-save",
+  "docs-comments-expired-state",
   "docs-home-browse",
   "docs-inbound-sync",
   "docs-offline-gaps",
