@@ -231,7 +231,7 @@ Decided:
     - limits: 50 ids, 54 weeks, 540 person-weeks; a `utcStart` that is not Monday 00:00 UTC, or a length that is not whole weeks, is `invalidArguments`
     - the caller's own id with the switch off is in `notFound`; ids are usernames
     - the settings route is declared next to `calendars/subscriptions`, above the feed routes
-    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address (`3.7`); with the switch on it returns the calculator's periods without titles, clipped to the requested window; an incomplete result or a window over 54 weeks also answers `3.7`
+    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address (`3.7`); with the switch on it returns the calculator's periods without titles, clipped to the requested window; an incomplete result, or a window whose covering UTC weeks number more than 54 (test an unaligned 54-week window), also answers `3.7`
     - REST: defaults, round trip, 422 for details on a Team calendar and for foreign calendars, choices kept while off
   - OpenAPI contract test is green; `pnpm run check:api-types` is green.
 - **Verify with:** `cmd: pnpm test:api-done-gate`
@@ -260,7 +260,7 @@ Decided:
   - row marker for `complete: false`
   - no growth of `calendar-workspace.tsx` or `use-calendar-controller.ts`
 - **Done when:**
-  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; a 54-week year is one run that the server accepts; a period across Monday 00:00 UTC is stored under both weeks and still shows busy offline in the second week; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
+  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; a 54-week year is one run that the server accepts; a period across Monday 00:00 UTC is stored under both weeks of the run, still shows busy offline in the second week, and is drawn once in a view covering both; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
   - Storybook mock-tier story with 3 and 12 teammates and an offline state; accessibility checks pass (checkbox labels "Show/Hide {name}'s availability").
   - Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`
