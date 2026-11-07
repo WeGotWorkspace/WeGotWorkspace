@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { NoticeBar, type Notice } from "@/notice-bar/src/notice-bar";
+import { NoticeBar, type ActionNotice } from "@/notice-bar/src/notice-bar";
 
-const notice = (id: string, title: string, onAction = vi.fn()): Notice => ({
+const notice = (id: string, title: string, onAction = vi.fn()): ActionNotice => ({
   id,
   title,
   actionLabel: `Act on ${id}`,
@@ -57,5 +57,16 @@ describe("NoticeBar", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Act on sync" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows an info notice without an action", () => {
+    render(
+      <NoticeBar
+        label="Needs your attention"
+        notices={[{ id: "offline", tone: "info", title: "Offline · data updated 5 minutes ago." }]}
+      />,
+    );
+    expect(screen.getByText("Offline · data updated 5 minutes ago.")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

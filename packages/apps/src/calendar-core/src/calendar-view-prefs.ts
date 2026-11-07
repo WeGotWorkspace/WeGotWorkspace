@@ -17,6 +17,10 @@ export type CalendarViewPrefs = {
    * `hiddenTaskListIds`. Default (omitted / empty) = every list shown.
    */
   hiddenOverlayTaskListIds?: string[];
+  /** Teammates ticked in Team availability. Default (omitted) = nobody: rows start hidden. */
+  shownAvailabilityIds?: string[];
+  /** Team availability section folded on this device. */
+  availabilityCollapsed?: boolean;
 };
 
 function hasWindowStorage(): boolean {
@@ -53,6 +57,11 @@ export function parseCalendarViewPrefs(raw: string | null): CalendarViewPrefs | 
     const hiddenOverlayTaskListIds = parseStoredIdList(record.hiddenOverlayTaskListIds);
     if (hiddenOverlayTaskListIds !== undefined) {
       prefs.hiddenOverlayTaskListIds = hiddenOverlayTaskListIds;
+    }
+    const shownAvailabilityIds = parseStoredIdList(record.shownAvailabilityIds);
+    if (shownAvailabilityIds !== undefined) prefs.shownAvailabilityIds = shownAvailabilityIds;
+    if (typeof record.availabilityCollapsed === "boolean") {
+      prefs.availabilityCollapsed = record.availabilityCollapsed;
     }
     return Object.keys(prefs).length > 0 ? prefs : null;
   } catch {
@@ -91,6 +100,12 @@ export function patchCalendarViewPrefs(partial: CalendarViewPrefs): CalendarView
   }
   if (partial.hiddenOverlayTaskListIds !== undefined) {
     next.hiddenOverlayTaskListIds = partial.hiddenOverlayTaskListIds;
+  }
+  if (partial.shownAvailabilityIds !== undefined) {
+    next.shownAvailabilityIds = partial.shownAvailabilityIds;
+  }
+  if (partial.availabilityCollapsed !== undefined) {
+    next.availabilityCollapsed = partial.availabilityCollapsed;
   }
   writeCalendarViewPrefs(next);
   return Object.keys(next).length > 0 ? next : null;

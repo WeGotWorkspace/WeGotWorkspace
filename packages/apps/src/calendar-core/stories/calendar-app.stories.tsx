@@ -13,6 +13,7 @@ import {
 } from "@/calendar-core/src/calendar-search";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
+import { createTeamAvailabilityFixture } from "@/calendar-core/src/calendar-availability-fixture";
 import {
   calendarStaticSurfaceFor,
   calendarStoryOperations,
@@ -379,6 +380,99 @@ export const TaskDueOverlayWeek: Story = {
       expect(summaries).toContain("Buy milk");
       expect(summaries).not.toContain("Review API spec");
     });
+  },
+};
+
+const teamAvailabilityArgs = {
+  ...bootstrap,
+  surface: staticSurface,
+  initialAnchor: MOCK_CALENDAR_ANCHOR,
+  initialView: "week" as const,
+};
+
+/** Team availability (#1910): own row plus two teammates, Ada and Grace ticked. */
+export const TeamAvailabilityThree: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    const rows = within(section).getAllByRole("checkbox");
+    await expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Show your own availability",
+      "Hide Ada Lovelace's availability",
+      "Hide Grace Hopper's availability",
+    ]);
+    await expect(within(section).queryByRole("searchbox")).toBeNull();
+  },
+};
+
+/** Twelve rows: the filter shows; Alan's weeks came back incomplete. */
+export const TeamAvailabilityTwelve: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 12, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace", "alan"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    await expect(within(section).getAllByRole("checkbox")).toHaveLength(12);
+    await expect(
+      within(section).getByRole("img", { name: defaultCalendarLabels.teamAvailabilityIncomplete }),
+    ).toBeTruthy();
+    await userEvent.type(
+      within(section).getByRole("searchbox", {
+        name: defaultCalendarLabels.teamAvailabilityFilter,
+      }),
+      "gr",
+    );
+    await waitFor(() => expect(within(section).getAllByRole("checkbox")).toHaveLength(1));
+  },
+};
+
+/** Rows start hidden: nothing ticked, nothing on the grid. */
+export const TeamAvailabilityHiddenByDefault: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: [],
+    },
+  },
+};
+
+/** Offline in a month view whose later weeks were never fetched. */
+export const TeamAvailabilityOffline: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    initialView: "month",
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({
+        count: 3,
+        anchor: MOCK_CALENDAR_ANCHOR,
+        cachedWeeksAfter: 1,
+        fetchedAt: Date.now() - 2 * 60 * 60 * 1000,
+      }),
+      shownIds: ["ada", "grace"],
+      offline: true,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = canvas.getByRole("region", { name: defaultCalendarLabels.calendarNoticeBarLabel });
+    await expect(bar.textContent).toContain(
+      "Offline · teammates' availability updated 2 hours ago.",
+    );
+    await expect(bar.textContent).toContain(defaultCalendarLabels.teamAvailabilityOfflineUncached);
   },
 };
 

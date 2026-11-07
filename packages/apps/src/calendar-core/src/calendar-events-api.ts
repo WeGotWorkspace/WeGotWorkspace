@@ -19,9 +19,10 @@ import {
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {
-  isTaskDueOverlayEvent,
-  isTaskDueOverlayKey,
-} from "@/calendar-core/src/calendar-task-due-overlay";
+  isRenderOnlyOverlayEvent,
+  isRenderOnlyOverlayKey,
+} from "@/calendar-core/src/calendar-render-overlay";
+import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,
@@ -88,6 +89,8 @@ function blocksCollectionWrite(
   calendars: readonly CalendarInfo[],
 ): boolean {
   return operationCalendarIds(operation, events).some((id) => {
+    // A teammate's virtual availability calendar is read-only and never stored.
+    if (isAvailabilityCalendarId(id)) return true;
     const calendar = calendars.find((entry) => entry.id === id);
     return calendar != null && !canWriteCalendarCollection(calendar);
   });
@@ -400,9 +403,9 @@ export function createCalendarEventsApi(args: CreateCalendarEventsApiArgs): Cale
         ? target.eventId
         : undefined;
     if (
-      isTaskDueOverlayKey(targetKey) ||
-      isTaskDueOverlayKey(targetEventId) ||
-      (target ? isTaskDueOverlayEvent(eventForTarget(currentEvents(), target)) : false)
+      isRenderOnlyOverlayKey(targetKey) ||
+      isRenderOnlyOverlayKey(targetEventId) ||
+      (target ? isRenderOnlyOverlayEvent(eventForTarget(currentEvents(), target)) : false)
     ) {
       return { nextState: currentEvents(), changes: [], effects: [] };
     }

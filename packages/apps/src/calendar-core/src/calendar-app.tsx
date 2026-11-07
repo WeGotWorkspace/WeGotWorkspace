@@ -17,6 +17,7 @@ import { useCalendarRangeLoad } from "@/calendar-core/src/use-calendar-range-loa
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
+import { teamAvailabilitySourceFromJmap } from "@/calendar-core/src/use-team-availability";
 import {
   openCalendarMeetHref,
   type CalendarMeetChannelOption,
@@ -95,6 +96,10 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     reloadFromCache,
   } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict });
   const { online } = useConnectivity();
+  const availabilitySource = useMemo(
+    () => (jmapClient ? teamAvailabilitySourceFromJmap(jmapClient) : null),
+    [jmapClient],
+  );
 
   // The route follows the view, so its view and date are the period on screen.
   useCalendarRangeLoad({
@@ -204,6 +209,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
             onOpenTaskInTasks={(href) => {
               window.location.assign(href);
             }}
+            availabilitySource={availabilitySource}
           />
         )}
       />

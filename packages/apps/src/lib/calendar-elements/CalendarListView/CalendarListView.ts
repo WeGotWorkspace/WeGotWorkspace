@@ -182,7 +182,7 @@ export class CalendarListView extends CalendarViewBase {
               ? event.participationStatus
               : ""
           }
-          .overlay=${event.overlayKind === "task" ? "task" : ""}
+          .overlay=${event.overlayKind ?? ""}
           style=${styleMap(colorStyles)}
         ></event-card>
       </li>

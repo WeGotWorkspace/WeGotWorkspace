@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { isTaskDueOverlayEvent } from "@/calendar-core/src/calendar-task-due-overlay";
+import { isRenderOnlyOverlayEvent } from "@/calendar-core/src/calendar-render-overlay";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
 import {
   isCalendarEventException,
@@ -36,7 +36,7 @@ export type CalendarTimelineEvent = TimelineEvent & {
   exception: boolean;
   rsvp: "" | "needs-action" | "tentative";
   locked?: boolean;
-  overlayKind?: "task";
+  overlayKind?: "task" | "availability";
 };
 
 export function mapTimelineOccurrenceEvents(
@@ -88,8 +88,8 @@ export function mapTimelineOccurrenceEvents(
         event.participationStatus === "needs-action" || event.participationStatus === "tentative"
           ? event.participationStatus
           : "",
-      locked: isTaskDueOverlayEvent(event),
-      overlayKind: event.overlayKind === "task" ? "task" : undefined,
+      locked: isRenderOnlyOverlayEvent(event),
+      overlayKind: event.overlayKind,
     };
   });
 }

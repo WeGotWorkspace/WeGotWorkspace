@@ -4,6 +4,12 @@ import {
   sortCollectionsByName,
 } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
+
+/** A teammate's virtual `availability:{username}` calendar lives in Team availability only. */
+function withoutAvailabilityCalendars<T extends CalendarInfo>(calendars: readonly T[]): T[] {
+  return calendars.filter((calendar) => !isAvailabilityCalendarId(calendar.id));
+}
 
 /** Sidebar display order: `sortOrder` ascending, then name (localeCompare). */
 export function compareCalendarsForSidebar(
@@ -58,11 +64,12 @@ export function isSharedWithMeCalendar(
 export function ownedAndTeamCalendarsForSidebar<T extends CalendarInfo>(
   calendars: readonly T[],
 ): T[] {
-  return partitionOwnedAndShared(calendars, CALENDAR_PARTITION).owned;
+  return partitionOwnedAndShared(withoutAvailabilityCalendars(calendars), CALENDAR_PARTITION).owned;
 }
 
 export function sharedWithMeCalendarsForSidebar<T extends CalendarInfo>(
   calendars: readonly T[],
 ): T[] {
-  return partitionOwnedAndShared(calendars, CALENDAR_PARTITION).shared;
+  return partitionOwnedAndShared(withoutAvailabilityCalendars(calendars), CALENDAR_PARTITION)
+    .shared;
 }

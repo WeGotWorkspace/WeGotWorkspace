@@ -12,7 +12,7 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
-import { isTaskDueOverlayEvent } from "@/calendar-core/src/calendar-task-due-overlay";
+import { isRenderOnlyOverlayEvent } from "@/calendar-core/src/calendar-render-overlay";
 import {
   eventSelectionOriginFromElement,
   type EventCreateRequestDetail,
@@ -922,7 +922,7 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   async #requestDeleteForKey(key: string) {
     const { event: current, recurrenceId } = this.#resolveSourceEvent(key);
-    if (isTaskDueOverlayEvent(current) || current?.overlayKind === "task") return;
+    if (isRenderOnlyOverlayEvent(current) || current?.overlayKind) return;
     const detail: EventDeleteRequestDetail = {
       envelope: {
         accountId: current?.accountId,
@@ -1097,7 +1097,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
         .rsvp=${timelineEvent.rsvp}
-        .overlay=${timelineEvent.overlayKind === "task" ? "task" : ""}
+        .overlay=${timelineEvent.overlayKind ?? ""}
         .summary=${timelineEvent.summary}
         .location=${timelineEvent.location}
         .time=${timeLabel}

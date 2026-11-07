@@ -28,12 +28,16 @@ export type CollectionSidebarRowProps = {
   visible?: boolean;
   /** Independent of `onSelect`. Omit to hide the visibility checkbox. */
   onToggleVisibility?: () => void;
+  /** Checkbox accessible name; default "Show {name}" / "Hide {name}". */
+  visibilityLabel?: string;
   /** Independent of `onToggleVisibility`. Calendar: create-target only. */
   onSelect?: () => void;
   onEdit?: () => void;
   editLabel?: string;
   /** Leading mark in the shared leading column (e.g. a group icon). */
   leading?: ReactNode;
+  /** Inline before the name, inside the select button (e.g. a person's avatar). */
+  nameLeading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
   /** Child under a parent collection (e.g. contacts group under a book). No extra indent. */
@@ -97,10 +101,12 @@ export function CollectionSidebarRow({
   selected = false,
   visible = true,
   onToggleVisibility,
+  visibilityLabel,
   onSelect,
   onEdit,
   editLabel = "Edit",
   leading,
+  nameLeading,
   badges,
   trailing,
   nested = false,
@@ -142,7 +148,7 @@ export function CollectionSidebarRow({
             <Checkbox
               size="sm"
               checked={visible}
-              aria-label={`${visible ? "Hide" : "Show"} ${name}`}
+              aria-label={visibilityLabel ?? `${visible ? "Hide" : "Show"} ${name}`}
               className={bem(blocks, "__visibility")}
               onCheckedChange={() => onToggleVisibility()}
               onClick={(event) => event.stopPropagation()}
@@ -167,6 +173,11 @@ export function CollectionSidebarRow({
         {...(onSelect ? sidebarSelectMarker : undefined)}
       >
         <span className={bem(blocks, "__title")}>
+          {nameLeading ? (
+            <span className={bem(blocks, "__name-leading")} aria-hidden>
+              {nameLeading}
+            </span>
+          ) : null}
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
         </span>

@@ -32,3 +32,8 @@ h4.sidebar-section__title {
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
 }
+
+.sidebar-section .sidebar-section__fold {
+  @apply shrink-0;
+  margin-inline-start: auto;
+}

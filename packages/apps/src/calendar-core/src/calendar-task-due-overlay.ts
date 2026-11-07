@@ -161,10 +161,15 @@ export function taskDueOverlapsRange(
   );
 }
 
+/** Any render-only row (task dues, teammates' busy blocks) — they all carry `overlayKind`. */
+function isRenderOnlyRow(key: string, event: CalendarEvent): boolean {
+  return isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key) || event.overlayKind != null;
+}
+
 export function extractTaskDueOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
   const overlay: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
-    if (isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key)) {
+    if (isRenderOnlyRow(key, event)) {
       overlay.set(key, event);
     }
   }
@@ -175,7 +180,7 @@ export function omitTaskDueOverlayEvents(events: CalendarEventsMap): CalendarEve
   let changed = false;
   const next: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
-    if (isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key)) {
+    if (isRenderOnlyRow(key, event)) {
       changed = true;
       continue;
     }
@@ -218,7 +223,7 @@ export function filterVisibleCalendarEventsKeepingOverlay(
   const allowed = new Set(visibleCalendarIds);
   const filtered: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
-    if (isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key)) {
+    if (isRenderOnlyRow(key, event)) {
       filtered.set(key, event);
       continue;
     }

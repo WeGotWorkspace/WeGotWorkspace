@@ -4,7 +4,7 @@ import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap
 import { getTasksSyncRunner } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { listFailedTaskOutbox } from "@/lib/offline/tasks/tasks-offline-store";
 import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
-import type { Notice } from "@/notice-bar/src/notice-bar";
+import type { ActionNotice } from "@/notice-bar/src/notice-bar";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 
 type UseTasksSyncNoticeArgs = {
@@ -24,7 +24,7 @@ export function useTasksSyncNotice({
   username,
   labels: L,
   reloadFromCache,
-}: UseTasksSyncNoticeArgs): Notice | null {
+}: UseTasksSyncNoticeArgs): ActionNotice | null {
   const { count, refresh } = useFailedOutboxCount(username, listFailedTaskOutbox);
   const [retrying, setRetrying] = useState(false);
 
@@ -52,7 +52,11 @@ export function useTasksSyncNotice({
 }
 
 /** The Tasks stuck-sync row of the notice bar. */
-export function tasksSyncNotice(L: TasksUILabels, onRetry: () => void, retrying = false): Notice {
+export function tasksSyncNotice(
+  L: TasksUILabels,
+  onRetry: () => void,
+  retrying = false,
+): ActionNotice {
   return {
     id: "sync:tasks",
     tone: "error",

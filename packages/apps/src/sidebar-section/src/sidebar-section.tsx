@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { MenuItem, type MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,14 @@ type SidebarSectionProps = {
   items?: MenuItemProps[];
   children?: ReactNode;
   className?: string;
+  /** Fold state; the list is not rendered while collapsed. Needs {@link onToggleCollapsed}. */
+  collapsed?: boolean;
+  /** Shows a fold toggle in the heading. */
+  onToggleCollapsed?: () => void;
+  collapseLabel?: string;
+  expandLabel?: string;
+  /** Under the heading, above the list (e.g. a filter input). Hidden while collapsed. */
+  beforeList?: ReactNode;
 };
 
 function itemListKey(item: MenuItemProps, index: number): string {
@@ -28,8 +36,15 @@ export function SidebarSection({
   items,
   children,
   className,
+  collapsed = false,
+  onToggleCollapsed,
+  collapseLabel,
+  expandLabel,
+  beforeList,
 }: SidebarSectionProps) {
   const titleId = useId();
+  const listId = useId();
+  const folded = Boolean(onToggleCollapsed) && collapsed;
 
   return (
     <section
@@ -41,6 +56,26 @@ export function SidebarSection({
           <h4 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
             {title}
           </h4>
+          {onToggleCollapsed ? (
+            <IconButton
+              label={
+                folded ? (expandLabel ?? `Expand ${title}`) : (collapseLabel ?? `Collapse ${title}`)
+              }
+              icon={
+                folded ? (
+                  <ChevronRight className="size-3.5" aria-hidden />
+                ) : (
+                  <ChevronDown className="size-3.5" aria-hidden />
+                )
+              }
+              size="xs"
+              variant="ghost"
+              aria-expanded={!folded}
+              aria-controls={listId}
+              onClick={onToggleCollapsed}
+              className="sidebar-section__fold"
+            />
+          ) : null}
           {onAdd ? (
             <IconButton
               label={addLabel}
@@ -53,14 +88,17 @@ export function SidebarSection({
           ) : null}
         </div>
       ) : null}
-      <ul className="sidebar-section__list">
-        {items
-          ? items.map((item, index) => (
-              <li key={itemListKey(item, index)}>
-                <MenuItem {...item} />
-              </li>
-            ))
-          : children}
+      {folded ? null : beforeList}
+      <ul className="sidebar-section__list" id={listId} hidden={folded}>
+        {folded
+          ? null
+          : items
+            ? items.map((item, index) => (
+                <li key={itemListKey(item, index)}>
+                  <MenuItem {...item} />
+                </li>
+              ))
+            : children}
       </ul>
     </section>
   );

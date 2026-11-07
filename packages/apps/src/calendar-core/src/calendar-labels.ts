@@ -268,6 +268,23 @@ export type CalendarUILabels = {
   conflictRemaining: (count: number) => string;
   conflictKeepMine: string;
   conflictUseServer: string;
+  /** Team availability sidebar and its offline notice (#1910). */
+  teamAvailabilitySection: string;
+  teamAvailabilitySelf: string;
+  teamAvailabilityShow: (name: string) => string;
+  teamAvailabilityHide: (name: string) => string;
+  teamAvailabilityShowSelf: string;
+  teamAvailabilityHideSelf: string;
+  teamAvailabilityFilter: string;
+  teamAvailabilityNoMatch: string;
+  teamAvailabilityIncomplete: string;
+  teamAvailabilityCollapse: string;
+  teamAvailabilityExpand: string;
+  calendarNoticeBarLabel: string;
+  teamAvailabilityOfflineUpdated: (age: string) => string;
+  teamAvailabilityOfflineUncached: string;
+  teamAvailabilityOfflineNone: string;
+  teamAvailabilityJustNow: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -522,6 +539,23 @@ export const defaultCalendarLabels: CalendarUILabels = {
     count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
   conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
+  teamAvailabilitySection: "Team availability",
+  teamAvailabilitySelf: "You (as teammates see you)",
+  teamAvailabilityShow: (name) => `Show ${name}'s availability`,
+  teamAvailabilityHide: (name) => `Hide ${name}'s availability`,
+  teamAvailabilityShowSelf: "Show your own availability",
+  teamAvailabilityHideSelf: "Hide your own availability",
+  teamAvailabilityFilter: "Filter teammates",
+  teamAvailabilityNoMatch: "No teammates match",
+  teamAvailabilityIncomplete: "Some busy times could not be loaded.",
+  teamAvailabilityCollapse: "Collapse Team availability",
+  teamAvailabilityExpand: "Expand Team availability",
+  calendarNoticeBarLabel: "Calendar notices",
+  teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
+  teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
+  teamAvailabilityOfflineNone:
+    "Offline · teammates' availability for this period is not available offline.",
+  teamAvailabilityJustNow: "just now",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

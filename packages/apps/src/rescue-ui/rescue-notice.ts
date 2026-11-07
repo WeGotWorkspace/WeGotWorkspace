@@ -1,6 +1,6 @@
 import type { ParkedWrite } from "@/lib/offline/core/parked-writes";
 import { groupParkedWrites } from "@/lib/offline/core/rescue-parked-writes";
-import type { Notice } from "@/notice-bar/src/notice-bar";
+import type { ActionNotice } from "@/notice-bar/src/notice-bar";
 import type { RescueContainer, RescueView } from "@/rescue-ui/rescue-adapter";
 
 /**
@@ -12,7 +12,7 @@ export function rescueNotice<C extends RescueContainer>(
   view: Pick<RescueView<C>, "labels" | "noticeIcon">,
   writes: readonly ParkedWrite<unknown>[],
   onReview: () => void,
-): Notice | null {
+): ActionNotice | null {
   const groups = groupParkedWrites([...writes]);
   if (groups.length === 0) return null;
   return {
