@@ -88,6 +88,12 @@ See spec.md, Non-goals.
 - **Review round 2 (2026-11-04), technical choices:**
   - **Cache unredacted, redact after read.** Keying the cache on `excludeUid` would make every invitee-tag request miss; storing redacted output would make exclusion impossible. The cache keeps an internal list with an HMAC of the UID, never the raw UID, for 5 minutes.
   - **Cap the product, not only each dimension.** `ids × weeks ≤ 540` bounds the work; the period cap only bounds the output.
+  - **`complete: false` instead of a silent cut.** A skipped recurrence or a cut list must not read as free.
+  - **Own `TeamMember/get` state with a per-person `version`.** #1917's Team-set fingerprint misses switch, detail and name changes; a detail downgrade must clear cached titles.
+  - **Whole-week runs in one call per batch**, not one call per week and not arbitrary ranges, so cache keys stay canonical and a year view is a few calls.
+  - **60-second availability tick.** Availability does not need the 10-second calendar poll.
+  - **`excludeEventId` only for events the caller may edit or takes part in.** On a read-only shared calendar, comparing results would reveal whether a teammate has that event.
+  - **Offline text in the shared notice bar**, at the product owner's request: one `info` notice instead of lines in the sidebar header and popover. `Notice` gets an optional action for it.
 - **Review loop on PR #1932 (2026-11-04):**
   - **Whole UTC weeks only, one cache entry per owner per week.** Arbitrary ranges let a caller mint unlimited keys and full expansions, and a one-week invitee request never hit a multi-week sidebar entry. The cap is 54 weeks because a calendar year in whole UTC weeks is sometimes 54.
   - **Include, dedupe, exclusion and detail after the read**, with the source calendar id cached per occurrence. Detail is per calendar, so the kind alone was not enough, and unchecking must show on the next fetch.
@@ -98,12 +104,6 @@ See spec.md, Non-goals.
   - **Every skipped object sets `complete: false`**, and CalDAV answers as for an unknown address when incomplete, never with a partial VFREEBUSY.
   - **Switch off covers the owner's own preview.**
   - **Ids are usernames** across the API, cache, virtual calendars and invitee matching.
-  - **`complete: false` instead of a silent cut.** A skipped recurrence or a cut list must not read as free.
-  - **Own `TeamMember/get` state with a per-person `version`.** #1917's Team-set fingerprint misses switch, detail and name changes; a detail downgrade must clear cached titles.
-  - **Whole-week runs in one call per batch**, not one call per week and not arbitrary ranges, so cache keys stay canonical and a year view is a few calls.
-  - **60-second availability tick.** Availability does not need the 10-second calendar poll.
-  - **`excludeEventId` only for events the caller may edit or takes part in.** On a read-only shared calendar, comparing results would reveal whether a teammate has that event.
-  - **Offline text in the shared notice bar**, at the product owner's request: one `info` notice instead of lines in the sidebar header and popover. `Notice` gets an optional action for it.
 - **Server-side clash check for #1914**: no longer needed. `excludeEventId` lets the client ask the same API without its own invite copy counting.
 
 ## Affected packages
@@ -231,7 +231,7 @@ Decided:
     - limits: 50 ids, 54 weeks, 540 person-weeks; a `utcStart` that is not Monday 00:00 UTC, or a length that is not whole weeks, is `invalidArguments`
     - the caller's own id with the switch off is in `notFound`; ids are usernames
     - the settings route is declared next to `calendars/subscriptions`, above the feed routes
-    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address (`3.7`); with the switch on it returns the calculator's periods without titles; an incomplete result or a window over 54 weeks also answers `3.7`
+    - CalDAV outbox VFREEBUSY for a target with the switch off answers as for an unknown address (`3.7`); with the switch on it returns the calculator's periods without titles, clipped to the requested window; an incomplete result or a window over 54 weeks also answers `3.7`
     - REST: defaults, round trip, 422 for details on a Team calendar and for foreign calendars, choices kept while off
   - OpenAPI contract test is green; `pnpm run check:api-types` is green.
 - **Verify with:** `cmd: pnpm test:api-done-gate`
@@ -260,7 +260,7 @@ Decided:
   - row marker for `complete: false`
   - no growth of `calendar-workspace.tsx` or `use-calendar-controller.ts`
 - **Done when:**
-  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; a 54-week year is one run that the server accepts; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
+  - Vitest covers: only ticked people fetched; a jump to next year fetches that range in one call per batch; a 54-week year is one run that the server accepts; a period across Monday 00:00 UTC is stored under both weeks and still shows busy offline in the second week; batching under the budget; prefetch window on the 60-second tick; a `version` change clears that person's weeks; eviction; the offline notice with and without the uncached sentence; the incomplete marker; partitioning never puts a virtual calendar in other sections; hidden by default.
   - Storybook mock-tier story with 3 and 12 teammates and an offline state; accessibility checks pass (checkbox labels "Show/Hide {name}'s availability").
   - Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`

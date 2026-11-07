@@ -5,7 +5,7 @@ Goal: WeGotWorkspace/Product#43
 
 Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
 
-Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised twice on 2026-11-04 after external reviews: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation.
+Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness.
 
 ## Goal
 
@@ -133,7 +133,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - The period shape stays close to the standard `Principal/getAvailability` `BusyPeriod`, so a later move to the standard method is a rename.
 - **CalDAV free/busy.** Today `CalDAV\Schedule\Plugin::getFreeBusyForEmail` checks `schedule-query-freebusy` on the target's **inbox**, and Sabre's `Inbox::getACL` grants `schedule-deliver` (which includes that privilege) to every authenticated user; Sabre also grants `read-free-busy` on every calendar (`Calendar::getACL`). Removing the calendar grant alone would therefore not close the outbox; overriding `getFreeBusyForEmail` does. So the outbox report is live now and ignores the switch, the per-calendar include and the Team rule. This is current behaviour on main that this work helps close, not a new surface. Teams visibility (#1923) adds a `WgwSchedulePlugin` that overrides `getFreeBusyForEmail` and answers as for an unknown address when caller and target share no Team. This Epic extends that override:
   - target's switch off → the same answer as for an unknown address
-  - switch on → busy periods from `AvailabilityCalculator`, time only (no titles over CalDAV), over the whole UTC weeks covering the requested window
+  - switch on → busy periods from `AvailabilityCalculator`, time only (no titles over CalDAV), computed over the whole UTC weeks covering the requested window and then clipped back to the requested DTSTART/DTEND, so the reply holds nothing outside it
   - a window over 54 weeks, or a result with `complete: false`, gets the unknown-address answer (`3.7`) too, never a partial `2.0` VFREEBUSY that a client would read as free in the gaps
   - **Interop change, decided.** The switch is off by default, so external CalDAV clients (Apple Calendar, Thunderbird) stop getting free/busy for a colleague when adding them as attendee, until that colleague opts in. Today they get an answer for everyone. Product owner, 2026-11-04: one rule everywhere.
   - If #1909 is ready before #1923, #1909 adds the subclass with both checks and #1923 adopts it. Either way, #1912 (the settings UI that promises "off means nobody sees anything") does not ship before this holds.
@@ -157,7 +157,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 
 - **Client.** `lib/jmap-client/availability/` wraps both methods.
   - Every request covers a contiguous run of whole UTC weeks (Monday 00:00 UTC), one call per batch of people. The client splits runs longer than 54 weeks, and splits people into batches so `ids × weeks` stays within 540. A year view of 12 ticked teammates is two calls, not 52. A 54-week year is one run.
-  - Responses are split into weeks for the cache. A person's `complete: false` is written to every week of that run.
+  - Responses are split into weeks for the cache. A period is stored under every week it overlaps, so an event that runs past Monday 00:00 UTC keeps both weeks busy offline. A person's `complete: false` is written to every week of that run.
 - **Cache.** A new offline table in the calendars domain: `calendars_availability` keyed by `[username+weekStart]`, holding the periods JSON, `complete`, the person's `version` and `fetchedAt`. The teammates list (`TeamMember/get`) is cached in the same domain. A new schema version adds them.
   - When a person's `version` changes, or they leave the list, all their cached weeks are dropped at once. This matters for privacy: someone who switches from "Title and location" back to "Time only" must not keep showing titles in a viewer's cache.
   - Eviction: weeks outside the prefetch window that were fetched more than 30 days ago are dropped, and at most 60 weeks per person are kept (oldest first).
