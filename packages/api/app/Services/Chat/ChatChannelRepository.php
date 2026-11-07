@@ -11,6 +11,7 @@ use App\Models\ChatChannelMeta;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Calendars\CalendarShareInvites;
@@ -18,9 +19,9 @@ use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\PropPatch;
@@ -50,6 +51,7 @@ final class ChatChannelRepository
         private readonly ChatUnreadCounter $unreadCounter,
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
         private readonly WgwCalendarBackendFactory $backends,
+        private readonly CalDavCollections $collections,
         private readonly ChatChannelIdAllocator $channelIds = new ChatChannelIdAllocator,
     ) {}
 
@@ -121,7 +123,7 @@ final class ChatChannelRepository
                 (string) ($group->displayname ?? $groupSlug),
             );
         } else {
-            $principalUri = $this->principalUri($username);
+            $principalUri = $this->collections->principalUri($username);
         }
 
         // Meetings are identified by the ad-hoc room code, never a name slug.
@@ -201,7 +203,7 @@ final class ChatChannelRepository
 
         return DB::connection('wgw')->transaction(function () use ($caller, $peer, $peerPrincipal, $uri): array {
             Principal::query()
-                ->whereIn('uri', [$this->principalUri($caller), $this->principalUri($peer)])
+                ->whereIn('uri', [$this->collections->principalUri($caller), $this->collections->principalUri($peer)])
                 ->orderBy('uri')
                 ->lockForUpdate()
                 ->get();
@@ -216,7 +218,7 @@ final class ChatChannelRepository
                 throw new ApiHttpException(409, 'DM channel exists but is not accessible.', 'alreadyExists');
             }
 
-            $callerPrincipalUri = $this->principalUri($caller);
+            $callerPrincipalUri = $this->collections->principalUri($caller);
             $this->backends->make()->createCollection(CollectionKind::ChatChannel, $callerPrincipalUri, $uri, [
                 '{DAV:}displayname' => trim((string) ($peerPrincipal->displayname ?? '')) ?: $peer,
                 '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
@@ -255,7 +257,7 @@ final class ChatChannelRepository
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be modified.');
         $this->assertNotGroupDefault($instance, 'Group default channels cannot be modified.');
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+        $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         // Sharees may only rename/recolor their own instance; topic lives in the
         // shared meta row, so it stays owner-side like shareWith and groupSlug.
@@ -280,7 +282,7 @@ final class ChatChannelRepository
         }
         if ($mutations !== []) {
             $propPatch = new PropPatch($mutations);
-            $this->calBackend()->updateCalendar([(int) $instance->calendarid, (int) $instance->id], $propPatch);
+            $this->backends->calBackend()->updateCalendar($this->collections->backendId($instance), $propPatch);
             $propPatch->commit();
         }
 
@@ -323,55 +325,25 @@ final class ChatChannelRepository
         $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
 
         // Channel delete removes messages; chat_channel_meta cascades with it.
-        $this->calBackend()->deleteCalendar([(int) $instance->calendarid, (int) $instance->id]);
+        $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance));
 
         return ['ok' => true];
     }
 
     /**
-     * Collection-level changes across all accessible channels — same
-     * instances-state algorithm as NotebookRepository::changes.
+     * Collection-level changes across all accessible channels, keyed by
+     * channel uri. A user can have no channels, so the empty state `0:` is
+     * a valid state here.
      *
      * @return array{oldState: string, newState: string, created: list<string>, updated: list<string>, destroyed: list<string>}
      */
     public function changes(string $username, ?string $since): array
     {
-        $instances = $this->accessibleChatInstances($username);
-
-        $currentState = $this->computeInstancesState($instances);
-        $previous = $this->parseInstancesState($since);
-
-        if ($since === null || $since === '' || $since === '0') {
-            return ['oldState' => '0', 'newState' => $currentState, 'created' => $this->urisForInstances($instances), 'updated' => [], 'destroyed' => []];
-        }
-        if ($since === $currentState) {
-            return ['oldState' => $since, 'newState' => $currentState, 'created' => [], 'updated' => [], 'destroyed' => []];
-        }
-        if ($previous === null) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
-        }
-
-        $currentMap = [];
-        foreach ($instances as $instance) {
-            $currentMap[(string) $instance->uri] = (int) ($instance->calendar->synctoken ?? 1);
-        }
-        $created = [];
-        $updated = [];
-        foreach ($currentMap as $uri => $token) {
-            if (! array_key_exists($uri, $previous)) {
-                $created[] = $uri;
-            } elseif ($previous[$uri] !== $token) {
-                $updated[] = $uri;
-            }
-        }
-        $destroyed = [];
-        foreach (array_keys($previous) as $uri) {
-            if (! array_key_exists($uri, $currentMap)) {
-                $destroyed[] = $uri;
-            }
-        }
-
-        return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
+        return $this->collections->changes(
+            $this->accessibleChatInstances($username),
+            $since,
+            static fn (CalendarInstance $instance): string => (string) $instance->uri,
+        );
     }
 
     public function findAccessibleChannel(string $username, string $channelId): ?CalendarInstance
@@ -381,7 +353,7 @@ final class ChatChannelRepository
         }
 
         // Personal instance: owner or (uri-normalized) sharee copy.
-        $instance = $this->findChannelInstance($this->principalUri($username), $channelId);
+        $instance = $this->findChannelInstance($this->collections->principalUri($username), $channelId);
         if ($instance !== null) {
             if ($this->shareInvites->isSharee($instance)
                 && $this->shareVisibility->isDismissed($username, (int) $instance->calendarid)) {
@@ -418,7 +390,7 @@ final class ChatChannelRepository
     public function mapChannel(string $username, CalendarInstance $instance, ?ChatChannelMeta $meta): array
     {
         $uri = (string) $instance->uri;
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+        $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
         $isSharee = $this->shareInvites->isSharee($instance);
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
         $mayWrite = ! $this->shareInvites->isReadOnly($instance);
@@ -465,6 +437,9 @@ final class ChatChannelRepository
             $rights['mayDelete'] = false;
         }
         $roster = $this->rosterUsernames($instance, $groupSlug);
+        // The channel's readers: the presence mesh sends message previews to them only.
+        $members = array_values(array_unique(array_map('strtolower', $roster)));
+        sort($members);
 
         return [
             'id' => $uri,
@@ -481,6 +456,7 @@ final class ChatChannelRepository
             'guestRoomCode' => $meta?->room_code,
             'dmPeer' => $kind === ChatChannelMeta::KIND_DM ? $this->dmPeerFromRoster($username, $roster) : null,
             'memberCount' => count($roster),
+            'members' => $members,
             'unreadCount' => $this->unreadCounter->count($username, (int) $instance->calendarid),
         ];
     }
@@ -555,7 +531,7 @@ final class ChatChannelRepository
         }
         $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         if ($newGroupSlug === null) {
-            $principalUri = $this->principalUri($username);
+            $principalUri = $this->collections->principalUri($username);
         } else {
             if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
@@ -659,12 +635,11 @@ final class ChatChannelRepository
             return null;
         }
 
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $principalUri)
-            ->where('uri', $channelUri)
-            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::ChatChannel))
-            ->first();
+        return $this->collections->findInstance(
+            $principalUri,
+            $channelUri,
+            static fn (Builder $query) => $query->ofKind(CollectionKind::ChatChannel),
+        );
     }
 
     /**
@@ -711,7 +686,7 @@ final class ChatChannelRepository
             $usernames[$username] = true;
         }
 
-        foreach ($this->calBackend()->getInvites([(int) $instance->calendarid, (int) $instance->id]) as $sharee) {
+        foreach ($this->backends->calBackend()->getInvites($this->collections->backendId($instance)) as $sharee) {
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER || ! is_string($sharee->principal)) {
                 continue;
             }
@@ -813,82 +788,5 @@ final class ChatChannelRepository
     private function metaForCalendar(int $calendarId): ?ChatChannelMeta
     {
         return ChatChannelMeta::query()->find($calendarId);
-    }
-
-    /**
-     * @param  iterable<CalendarInstance>  $instances
-     */
-    private function computeInstancesState(iterable $instances): string
-    {
-        $parts = [];
-        foreach ($instances as $instance) {
-            $parts[] = (string) $instance->uri.':'.(int) ($instance->calendar->synctoken ?? 1);
-        }
-
-        return (string) count($parts).':'.implode(',', $parts);
-    }
-
-    /**
-     * @return array<string, int>|null
-     */
-    private function parseInstancesState(?string $state): ?array
-    {
-        if ($state === null || $state === '' || $state === '0') {
-            return [];
-        }
-        // Unlike notebooks (notes-general is always provisioned) a user can have
-        // zero channels, so the empty state "0:" must parse.
-        if (! preg_match('/^(\d+):(.*)$/', $state, $matches)) {
-            return null;
-        }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
-        if (count($entries) !== (int) $matches[1]) {
-            return null;
-        }
-        $map = [];
-        foreach ($entries as $entry) {
-            $parts = explode(':', $entry, 2);
-            if (count($parts) !== 2 || $parts[0] === '' || ! ctype_digit($parts[1])) {
-                return null;
-            }
-            $map[$parts[0]] = (int) $parts[1];
-        }
-
-        return $map;
-    }
-
-    /**
-     * @param  iterable<CalendarInstance>  $instances
-     * @return list<string>
-     */
-    private function urisForInstances(iterable $instances): array
-    {
-        $uris = [];
-        foreach ($instances as $instance) {
-            $uris[] = (string) $instance->uri;
-        }
-
-        return $uris;
-    }
-
-    private function groupSlugFromPrincipalUri(string $principalUri): ?string
-    {
-        if (! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
-            return null;
-        }
-
-        $slug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
-
-        return $slug !== '' ? $slug : null;
-    }
-
-    private function principalUri(string $username): string
-    {
-        return 'principals/'.$username;
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

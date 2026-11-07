@@ -4,6 +4,11 @@ import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import {
+  cachedCollectionAudience,
+  cachedItemAudience,
+  checkNowAfterWrite,
+} from "@/lib/offline/core/collection-check-now";
 
 export class NotesVjournalRequestError extends Error {
   status: number;
@@ -240,8 +245,9 @@ export async function createNote(
   },
   opts?: NotesRequestOpts,
 ): Promise<NotesVjournalNote> {
-  const json = await requestNotesJson("/notes/items", "POST", body, opts);
-  return json as NotesVjournalNote;
+  const json = (await requestNotesJson("/notes/items", "POST", body, opts)) as NotesVjournalNote;
+  checkNowAfterWrite([cachedCollectionAudience("notes", [json.notebookId])]);
+  return json;
 }
 
 export async function patchNote(
@@ -257,17 +263,21 @@ export async function patchNote(
   },
   opts?: NotesRequestOpts,
 ): Promise<NotesVjournalNote> {
-  const json = await requestNotesJson(
+  const before = cachedItemAudience("notes", noteId);
+  const json = (await requestNotesJson(
     `/notes/items/${encodeURIComponent(noteId)}`,
     "PATCH",
     patch,
     opts,
-  );
-  return json as NotesVjournalNote;
+  )) as NotesVjournalNote;
+  checkNowAfterWrite([before, cachedCollectionAudience("notes", [json.notebookId])]);
+  return json;
 }
 
 export async function deleteNote(noteId: string, opts?: NotesRequestOpts): Promise<void> {
+  const before = cachedItemAudience("notes", noteId);
   await requestNotesJson(`/notes/items/${encodeURIComponent(noteId)}`, "DELETE", undefined, opts);
+  checkNowAfterWrite([before]);
 }
 
 export async function starNote(noteId: string, opts?: NotesRequestOpts): Promise<void> {
@@ -306,13 +316,15 @@ export async function patchNotebook(
   },
   opts?: NotesRequestOpts,
 ): Promise<NotesVjournalNotebook> {
-  const json = await requestNotesJson(
+  const before = cachedCollectionAudience("notes", [notebookId]);
+  const json = (await requestNotesJson(
     `/notes/notebooks/${encodeURIComponent(notebookId)}`,
     "PATCH",
     patch,
     opts,
-  );
-  return json as NotesVjournalNotebook;
+  )) as NotesVjournalNotebook;
+  checkNowAfterWrite([before], json.shareWith);
+  return json;
 }
 
 export async function deleteNotebook(
@@ -323,12 +335,14 @@ export async function deleteNotebook(
   if (opts?.onDestroyRemoveContents === true) params.set("onDestroyRemoveContents", "1");
   if (opts?.moveNotesTo) params.set("moveNotesTo", opts.moveNotesTo);
   const query = params.size > 0 ? `?${params.toString()}` : "";
+  const before = cachedCollectionAudience("notes", [notebookId]);
   await requestNotesJson(
     `/notes/notebooks/${encodeURIComponent(notebookId)}${query}`,
     "DELETE",
     undefined,
     opts,
   );
+  checkNowAfterWrite([before]);
 }
 
 function wordCountFromText(text: string): number {

@@ -53,6 +53,11 @@ export type MeetChannel = {
   callActive?: boolean;
   /** Optional roster size for header chrome; falls back to shareWith + owner. */
   memberCount?: number;
+  /**
+   * Server roster: usernames who may read the channel (owner side plus
+   * sharees, groups expanded). The presence mesh sends previews only to them.
+   */
+  members?: string[];
 };
 
 export type ChatReaction = {

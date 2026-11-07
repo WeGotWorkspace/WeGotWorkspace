@@ -345,3 +345,25 @@ test("invariant proofs accept stories, phpunit, tests, spec, and e2e paths", () 
 - Line number. Proof: \`path: packages/api/app/ExampleTest.php:12\``);
   assert.deepEqual(evaluatePlans({ plans: [plan(after)], diffPaths: [planPath] }), []);
 });
+
+test("an archived spec is history and is not checked", () => {
+  const unfinished = `# Title
+
+## Chunks
+
+### Chunk A: work
+
+- **Done when:** TBD
+`;
+  const archived = ".agents/specs/archive/2026/1-example/plan.md";
+  assert.deepEqual(
+    evaluatePlans({
+      plans: [
+        { path: archived, before: null, after: unfinished },
+        { path: ".agents/specs/archive/2026/1-example/spec.md", before: "## Gone\n", after: "# Spec\n" },
+      ],
+      diffPaths: [archived],
+    }),
+    [],
+  );
+});

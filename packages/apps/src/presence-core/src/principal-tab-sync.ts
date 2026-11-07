@@ -30,6 +30,8 @@ export type PrincipalTabPresence = {
 export type PrincipalRosterSnapshot = {
   peers: RtcPeerDescriptor[];
   selfPeerId: string | null;
+  /** Peers with an open data channel. Missing from a tab on an older build. */
+  linkedPeerIds?: string[];
 };
 
 /**
@@ -379,6 +381,9 @@ export class PrincipalTabCoordinator {
         this.handlers.onRosterFromLeader({
           peers: data.peers,
           selfPeerId: data.selfPeerId,
+          linkedPeerIds: Array.isArray(data.linkedPeerIds)
+            ? data.linkedPeerIds.filter((id): id is string => typeof id === "string")
+            : undefined,
         });
       }
     }

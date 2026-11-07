@@ -31,6 +31,7 @@ export type JmapChatChannel = {
   topic?: string | null;
   guestRoomCode?: string | null;
   memberCount?: number;
+  members?: string[];
   unreadCount?: number;
 };
 

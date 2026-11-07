@@ -9,11 +9,11 @@ import {
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 import type { PresenceChannelMessage } from "@/presence-core/src/presence-types";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 
 export type MeetMeshChannelAcl = {
   channels?: readonly MeetChannel[];
-  directory?: readonly CollectionSharePrincipal[];
+  /** The receiving user; a payload for a channel they are not a member of is dropped. */
+  self?: string | null;
 };
 
 export function acceptMeetMeshChannel(
@@ -24,7 +24,7 @@ export function acceptMeetMeshChannel(
   return knownChannelIds.has(channelId);
 }
 
-/** Receiver already knows the channel **and** the sender is a local ACL member. */
+/** Receiver already knows the channel, and sender and receiver are both on its roster. */
 export function acceptMeetMeshSender(
   channelId: string,
   senderUsername: string,
@@ -35,8 +35,8 @@ export function acceptMeetMeshSender(
   return meetMeshSenderMayHint({
     channelId,
     senderUsername,
+    selfUsername: acl?.self,
     channels: acl?.channels,
-    directory: acl?.directory,
   });
 }
 

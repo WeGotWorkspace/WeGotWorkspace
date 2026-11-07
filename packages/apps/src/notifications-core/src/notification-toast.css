@@ -1,0 +1,42 @@
+@import "../../styles.css" reference;
+
+/*
+ * Inbox row as a toast (#1669): the whole callout is the button, so the padding
+ * moves from the callout onto it and every pixel of the toast opens the row.
+ */
+[data-sonner-toast] .notification-toast .callout {
+  padding: 0;
+  overflow: hidden;
+}
+
+[data-sonner-toast] .notification-toast .callout .menu-item {
+  @apply cursor-pointer rounded-none p-4;
+}
+
+[data-sonner-toast] .notification-toast .menu-item--interactive:focus-visible {
+  outline: 2px solid var(--workspace-foreground);
+  outline-offset: -4px;
+  border-radius: var(--control-radius-button-pill);
+}
+
+/* App icon spans the title and app-name rows, like the popover row. */
+[data-sonner-toast] .notification-toast .menu-item__main--stacked .menu-item__icon-slot {
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.notification-toast__app-icon {
+  @apply size-8 overflow-hidden rounded-[6px];
+}
+
+[data-sonner-toast] .notification-toast__title-rest {
+  font-weight: 400;
+}
+
+/* Long DM snippets stay a preview; the full text is one click away. */
+[data-sonner-toast] .notification-toast .app-toast-callout__detail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}

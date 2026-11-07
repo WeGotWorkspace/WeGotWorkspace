@@ -89,7 +89,7 @@ function mergeComponentsFromSource(baseDoc, sourceDoc) {
   }
 
   baseDoc.components ??= {};
-  for (const section of ["parameters", "responses"]) {
+  for (const section of ["parameters", "responses", "headers"]) {
     const sourceSection = sourceComponents[section];
     if (!sourceSection || typeof sourceSection !== "object" || Array.isArray(sourceSection)) {
       continue;

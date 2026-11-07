@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
@@ -24,12 +25,12 @@ use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class TaskRepository
 {
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly TaskMapper $mapper,
         private readonly TaskListRepository $taskLists,
         private readonly SearchIndexerService $searchIndexer,
@@ -157,7 +158,7 @@ final class TaskRepository
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
 
-        $this->calBackend()->createCalendarObject(
+        $this->backends->calBackend()->createCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
             $objectUri,
             $ics,
@@ -282,11 +283,11 @@ final class TaskRepository
         $sourceIds = [(int) $instance->calendarid, (int) $instance->id];
         $targetIds = [(int) $target->calendarid, (int) $target->id];
         if ($target === $instance) {
-            $this->calBackend()->updateCalendarObject($sourceIds, $objectUri, $ics);
+            $this->backends->calBackend()->updateCalendarObject($sourceIds, $objectUri, $ics);
         } else {
             DB::connection('wgw')->transaction(function () use ($targetIds, $sourceIds, $objectUri, $ics): void {
-                $this->calBackend()->createCalendarObject($targetIds, $objectUri, $ics);
-                $this->calBackend()->deleteCalendarObject($sourceIds, $objectUri);
+                $this->backends->calBackend()->createCalendarObject($targetIds, $objectUri, $ics);
+                $this->backends->calBackend()->deleteCalendarObject($sourceIds, $objectUri);
             });
             $oldPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
             $this->searchIndexSync->sync(
@@ -401,7 +402,7 @@ final class TaskRepository
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $remaining = $this->mapper->removeVtodoFromIcs($raw, $located['vtodoUid']);
             if ($remaining === null) {
-                $this->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
+                $this->backends->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
                 $this->searchIndexSync->sync(
                     'tasks',
                     fn () => $this->searchIndexer->deleteDavPath($davPath),
@@ -409,7 +410,7 @@ final class TaskRepository
                     $username,
                 );
             } else {
-                $this->calBackend()->updateCalendarObject($calendarIdPair, $objectUri, $remaining);
+                $this->backends->calBackend()->updateCalendarObject($calendarIdPair, $objectUri, $remaining);
                 $this->searchIndexSync->sync(
                     'tasks',
                     fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
@@ -418,7 +419,7 @@ final class TaskRepository
                 );
             }
         } else {
-            $this->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
+            $this->backends->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
             $this->searchIndexSync->sync(
                 'tasks',
                 fn () => $this->searchIndexer->deleteDavPath($davPath),
@@ -695,11 +696,6 @@ final class TaskRepository
             (int) ($object->lastmodified ?? 0),
             $requirePrecondition,
         );
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 
     /**

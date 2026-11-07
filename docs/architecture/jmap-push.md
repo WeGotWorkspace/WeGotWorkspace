@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; the notification inbox uses it since #1668; the other apps and the mesh `check-now` still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; the notification inbox uses it since #1668; the mesh `check-now` since #1662; the other apps still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 
@@ -107,22 +107,22 @@ The `notifications` table has no change column, and `supersede` rewrites rows in
 
 `wgw-api` is 600/min per account, shared by every tab and device (`WgwApiRateLimiters`). The JWT carries no session id (`sub`, `role`, `iat`, `uid`), so the push route gets its own bucket keyed by user plus the browser id the client already sends for presence (`RtcBrowserId`):
 
-- about 60/min per browser: 20/min of regular reconnects plus up to 30/min of check-now reconnects, with margin;
+- about 60/min per browser: 20/min of regular reconnects (12/min while the mesh is linked) plus up to 30/min of check-now reconnects, with margin;
 - a per-account ceiling (for example 300/min), so a client that rotates browser ids cannot escape the limit.
 
 A `429` carries `Retry-After`. The client waits that long and treats push as down meanwhile, so the app polls return to their normal interval. A full bucket never ends in silence. Going offline and back during that wait does not end it early.
 
 ### Cost and measurement
 
-Each request boots Laravel and runs a handful of small indexed reads (one per state source, one for the Drive markers). No writes. Rough budget with 5 FPM children and a 3 s retry:
+Each request boots Laravel and runs a handful of small indexed reads (one per state source, one for the Drive markers). No writes. Measured locally with PHP-FPM and 5 children ([realtime-capacity.md](../realtime-capacity.md#3-s-or-5-s-by-mesh-state-1943), #1943):
 
-| Browsers open | Requests per minute | at 50 ms each | at 200 ms each |
-|---------------|---------------------|---------------|----------------|
-| 5 | 100 | ~2% of the pool | ~7% |
-| 16 | 320 | ~5% | ~21% |
-| 32 | 640 | ~11% | ~43% |
+| Browsers open | 3 s: requests per minute | busy children (average) | 5 s (mesh linked): requests per minute | busy children (average) |
+|---------------|--------------------------|-------------------------|----------------------------------------|-------------------------|
+| 5 | 96 | 0.11 | 57 | 0.12 |
+| 16 | 302 | 0.51 | 180 | 0.32 |
+| 32 | 605 | 0.73 | 363 | 0.32 |
 
-These are estimates, not measurements. The server task extends `tools/load/rtc-shared-hosting.k6.js` with a push scenario and records in `realtime-capacity.md` both sides: the reads (p95 latency split into state resolution per type and the Drive marker read) and the writes (marker upserts on single and batch Drive operations, and after-response Web Push sends), plus the number of busy FPM workers, not only requests per minute. `WGW_JMAP_PUSH_RETRY_MS` is the lever on slow hosts. Once push works, the per-app polls (10 s, chat 4 s, inbox 15 s) can slow down. Their requests are heavier than a push check, so the total can end up lower than today. That is a separate decision after measuring.
+The median push request took 41–48 ms. These are laptop numbers with a near-empty data set; a shared host with MySQL is still to measure. `tools/load/rtc-shared-hosting.k6.js` has the push scenario, with the client interval, several accounts and an FPM busy-children sampler. `WGW_JMAP_PUSH_RETRY_MS` is the lever on slow hosts. Once push works, the per-app polls (10 s, chat 4 s, inbox 15 s) can slow down. Their requests are heavier than a push check, so the total can end up lower than today. That is a separate decision after measuring.
 
 ## Client: one hub, pluggable transports
 
@@ -177,8 +177,8 @@ We write that reader ourselves, about a hundred lines with tests, instead of dep
 Behaviour:
 
 - `types=*`, `closeafter=state`, `ping=0`. The URL comes from the session's `eventSourceUrl`; a guest share session has no push.
-- After the response ends, reconnect after the server's `retry` (visible), or after 30 s when every tab is hidden.
-- A wake reconnects early, but never sooner than 2 s after the previous request.
+- After the response ends, reconnect after the server's `retry` while a tab is visible, or after 30 s when every tab is hidden. While this browser's presence mesh has held a link for 30 s, the visible interval is `retry` × 5/3: 5 s instead of 3 s ([below](#interval-by-mesh-state)).
+- A wake reconnects at once, also right after a regular reconnect. Two early reconnects start at least 2 s apart (`wakeGapMs`).
 - Offline: stop. Online again: reconnect at once. The reconnect flush already syncs the apps.
 - `401`: refresh the token through the shared auth path, then reconnect.
 - `429` or repeated failures: wait `Retry-After` (or back off from `retry`, doubling up to 60 s), and report push as down so the app polls return to their normal interval. A single failure does not count as down; the second in a row does.
@@ -188,7 +188,7 @@ The code is in `packages/apps/src/lib/jmap-client/push/` (reader, transport, hub
 
 ### Leader and fan-out
 
-Only one tab per browser holds the stream. The leader is elected with a Web Locks lock (`navigator.locks`), not the presence leader, so a blocked or failing mesh cannot stop the safety net. The leader publishes each StateChange on a `crossTabTopic` (`lib/offline/core/cross-tab-topic.ts`), so every tab hears it, the leader included. When the leader closes, the next tab takes the lock and reconnects with the id it rebuilds from the confirmed hashes it already holds. A hidden leader gives the lock back while another subscribed tab is visible (Chrome runs the timers of a tab hidden for 5 minutes only once a minute, so it would reconnect late). It checks when it becomes hidden, when it gets the lock, when a tab joins, and when a tab says it became visible. A joining tab says in its first message whether it is visible, because the browser grants its visible lock only later. A visible tab never hands over, so the lock settles there.
+Only one tab per browser holds the stream. The leader is elected with a Web Locks lock (`navigator.locks`), not the presence leader, so a blocked or failing mesh cannot stop the safety net. The leader publishes each StateChange on a `crossTabTopic` (`lib/offline/core/cross-tab-topic.ts`), so every tab hears it, the leader included. When the leader closes, the next tab takes the lock and reconnects with the id it rebuilds from the confirmed hashes it already holds. A hidden leader gives the lock back while another subscribed tab is visible (Chrome runs the timers of a tab hidden for 5 minutes only once a minute, so it would reconnect late). It checks when it becomes hidden, when it gets the lock, when a tab joins, and when a tab says it became visible. A joining tab says in its first message whether it is visible, because the browser grants its visible lock only later. A visible tab never hands over, so the lock settles there. Each tab's message also carries when its window last had focus and the route it shows, and repeats whenever focus, visibility or route changes; `hub.frontTab()` uses them to elect the tab that shows in-app toasts ([notifications.md](notifications.md#active-news-on-the-client), #1669).
 
 Only tabs with a subscriber take part, so an app that does not use push costs nothing. Each such tab also holds a Web Lock while it is open, and another while it is visible. The leader reads them with `navigator.locks.query()`: a tab that crashed without saying goodbye drops out of the confirmed-hash map, and "every tab hidden" needs no heartbeat. Without Web Locks the hub stays off and the apps keep their polls.
 
@@ -208,7 +208,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
 | Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.syncIfStale()` (built, `use-calendar-live-inbound.ts`); the 10 s event poll runs every 60 s while push is connected |
 | Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
-| Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); toast to do ([notifications.md](notifications.md#active-news-on-the-client)) |
+| Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); in-app toast in the front tab (built, `use-notification-toasts.ts`; [notifications.md](notifications.md#active-news-on-the-client)) |
 | Drive, Docs home | `FileNode` | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
 | Tasks | `Task`, `TaskList` | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`) |
 
@@ -216,13 +216,28 @@ The existing polls stay as the fallback. They slow down while push is connected 
 
 ## Mesh "check now"
 
-After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` over the presence data channel, the same mesh that already carries chat acceleration and `notify-hint` (`meet-core/src/meet-mesh-sot.ts`). A peer's `MeshCheckNowTransport` calls `sink.wake()`, and the hub reconnects at once instead of waiting for `retry`. That brings in-suite changes to about 1 s on shared hosting. `channel-changed` and `notify-hint` become `check-now`. Targets, throttles and the preview rule are in [notifications.md](notifications.md#the-mesh-as-messenger).
+After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` over the presence data channel, the same mesh that carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`). A peer's `MeshCheckNowTransport` calls `sink.wake()`, and the hub reconnects at once instead of waiting for `retry`. That brings in-suite changes to well under a second (0.2–0.4 s locally, [notifications.md](notifications.md#measured-1668)). It replaced `channel-changed` and `notify-hint`. Targets, throttles and the preview rule are in [notifications.md](notifications.md#the-mesh-as-messenger).
 
 - It goes only to a targeted set: for active news, the usernames the notifying mutation returns (from #1607); otherwise the peers who share at least one collection with the writer. When the writer does not know, it sends nothing; the event source catches the change within `retry`.
 - Writes that come from an active collab room (Yjs saves) send no check-now. The Yjs channel has delivered the content already, and the event source catches the metadata within its retry.
 - The writer throttles (about one per 2 s); the receiver allows at most one early reconnect per 2 s.
 - Without a mesh (WebRTC blocked, room full at 32 peers), nothing changes: the event source still delivers within `retry`.
-- It needs no server change and no app change.
+- The server names who a request notified in the `X-Wgw-Notified` response header (`NotifiedRecipients`); the client sends `check-now` to exactly them (`lib/api/wgw/notified-header.ts`). The app write paths add the cached `shareWith` users of the collection.
+
+### Interval by mesh state
+
+With a working mesh, colleagues' writes arrive through `check-now`, so the regular reconnect is only the safety net for what the mesh does not carry: external DAV edits, peers without a mesh, your own other devices (they send no `check-now`), and what `check-now` leaves to push on purpose (a sharee who writes, group grants, silent Drive changes). So the visible interval depends on the mesh (#1943):
+
+| This browser's presence mesh | Visible reconnect interval |
+|---|---|
+| An open data channel to another user's peer, held for 30 s | `retry` × 5/3: 5 s at the default 3 s |
+| None (WebRTC blocked, room full, no peers linked yet), or a link younger than 30 s | `retry`: 3 s |
+
+- The server stays the source of the base: the client scales whatever `retry` it sends, so `WGW_JMAP_PUSH_RETRY_MS` still slows every browser on a slow host.
+- "Linked" comes from the presence store (`PresenceStore.meshLinked`). The tab that dials the mesh relays its open peer ids with the roster, so a follower tab that holds the push stream knows it too. The port is `meshLinked` / `subscribeMeshLinked` in `lib/jmap-client/push/mesh-check-now.ts`; the choice is `MeshRetryInterval` (`mesh-retry-interval.ts`).
+- No thrash: a lost link counts at once, and shortens a running 5 s wait to 3 s from its start. A new link counts only after it has held for 30 s, and never lengthens a running wait. A mesh that flaps stays at 3 s.
+- Unchanged: 30 s while every tab is hidden, `Retry-After` on `429`, the failure back-off (doubling from `retry`, not from 5 s), and the 2 s wake gap.
+- Local ack: a visible tab still acks within one interval plus a fetch, about 5.5 s at most, well inside the 20 s grace ([notifications.md](notifications.md#active-news-on-the-client)).
 
 ## Security
 
@@ -243,6 +258,6 @@ After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` ove
 
 ## Open questions
 
-1. **Retry values:** visible vs hidden, and the default for shared hosting. Measure with k6.
+1. **Retry values:** the default stays 3 s; the visible interval is 5 s while the mesh is linked (#1943, [measured](../realtime-capacity.md#jmap-push-event-source)); hidden stays 30 s. Still open: the default for a real shared host, measured there.
 2. **Slower per-app polls once push works:** measure first.
 3. **Body edits:** confirm with k6 that the collab-room rule keeps `/changes` traffic from typing low.

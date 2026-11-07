@@ -87,6 +87,9 @@ class FakeSession implements PresenceMeshSession {
 
   failJoin = false;
 
+  /** Peer ids with an open data channel. */
+  linked = new Set<string>();
+
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
   async join(): Promise<{ peerId: string; superseded?: true }> {
@@ -109,6 +112,10 @@ class FakeSession implements PresenceMeshSession {
 
   getRoomPeers(): RtcPeerDescriptor[] {
     return this.peers;
+  }
+
+  isLinked(peerId: string): boolean {
+    return this.linked.has(peerId);
   }
 
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {
@@ -378,6 +385,55 @@ describe("PresenceStore roster", () => {
     expect(session.sentTo).toEqual([
       { peerId: "bob-aaa111", envelope: { v: 1, kind: "presence", status: "away" } },
     ]);
+  });
+});
+
+describe("PresenceStore mesh linked (#1943)", () => {
+  it("is linked only by an open data channel to another user", async () => {
+    const { session, store } = setup();
+    expect(store.meshLinked()).toBe(false);
+    store.start(SELF);
+    await flushMicrotasks();
+
+    session.peers = [
+      { id: "alice-other-tab", name: "Alice", user: "alice" },
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+    ];
+    session.emit({ type: "roster" });
+    expect(store.meshLinked()).toBe(false);
+
+    // Own other browser: it sends no check-now, so it does not count.
+    session.linked.add("alice-other-tab");
+    session.emit({ type: "dc-open", peerId: "alice-other-tab" });
+    expect(store.meshLinked()).toBe(false);
+
+    session.linked.add("bob-aaa111");
+    session.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    expect(store.meshLinked()).toBe(true);
+
+    await store.stop();
+    expect(store.meshLinked()).toBe(false);
+  });
+
+  it("tells subscribers when the link state changes, not on other snapshot changes", async () => {
+    const { session, store } = setup();
+    store.start(SELF);
+    await flushMicrotasks();
+    const listener = vi.fn();
+    store.subscribeMeshLinked(listener);
+
+    session.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    session.emit({ type: "roster" });
+    expect(listener).not.toHaveBeenCalled();
+
+    session.linked.add("bob-aaa111");
+    session.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    session.emit({ type: "roster" });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    session.linked.delete("bob-aaa111");
+    session.emit({ type: "roster" });
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -754,7 +810,7 @@ describe("PresenceStore Meet fanout", () => {
     });
   });
 
-  it("emits inbound patch, destroy, reaction, and channel-changed", async () => {
+  it("emits inbound patch, destroy, and reaction", async () => {
     const { session, store } = await online();
     const listener = vi.fn();
     store.subscribeMeetFanout(listener);
@@ -787,44 +843,73 @@ describe("PresenceStore Meet fanout", () => {
         on: true,
       },
     });
-    session.emit({
-      type: "envelope",
-      peerId: "bob-aaa111",
-      envelope: { v: 1, kind: "channel-changed", channel: "chat-new" },
-    });
-    expect(listener).toHaveBeenCalledTimes(4);
+    expect(listener).toHaveBeenCalledTimes(3);
     expect(listener.mock.calls.map((call) => call[0].kind)).toEqual([
       "channel-message-patch",
       "channel-message-destroy",
       "channel-reaction",
-      "channel-changed",
     ]);
   });
 
-  it("emits inbound notify-hint with optional tag", async () => {
+  it("emits an inbound check-now from a known peer, never from self or a stranger", async () => {
     const { session, store } = await online();
     const listener = vi.fn();
-    store.subscribeNotifyHint(listener);
+    store.subscribeCheckNow(listener);
+    session.emit({ type: "envelope", peerId: "bob-aaa111", envelope: { v: 1, kind: "check-now" } });
+    session.emit({ type: "envelope", peerId: "ghost-999", envelope: { v: 1, kind: "check-now" } });
+    session.peers.push({ id: "alice-other", name: "Alice", user: "alice" });
     session.emit({
       type: "envelope",
-      peerId: "bob-aaa111",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      peerId: "alice-other",
+      envelope: { v: 1, kind: "check-now" },
     });
-    session.emit({
-      type: "envelope",
-      peerId: "bob-aaa111",
-      envelope: { v: 1, kind: "notify-hint" },
-    });
-    expect(listener).toHaveBeenCalledTimes(2);
-    expect(listener).toHaveBeenNthCalledWith(1, {
-      kind: "notify-hint",
-      senderUsername: "bob",
-      tag: "chat.message_posted",
-    });
-    expect(listener).toHaveBeenNthCalledWith(2, {
-      kind: "notify-hint",
-      senderUsername: "bob",
-    });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PresenceStore check-now send", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sends a targeted check-now to every tab of the users, throttled per user", async () => {
+    vi.useFakeTimers();
+    const { session, store } = setup();
+    store.start(SELF);
+    await vi.advanceTimersByTimeAsync(0);
+    session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "bob-tab222", name: "Bob", user: "bob" },
+      { id: "carol-ccc333", name: "Carol", user: "carol" },
+    ];
+    session.emit({ type: "roster" });
+
+    store.sendCheckNow(["bob", "alice"]);
+    store.sendCheckNow(["bob"]);
+    store.sendCheckNow(["carol"]);
+    expect(session.broadcasts).toEqual([]);
+    expect(session.sentTo.map((row) => row.peerId).sort()).toEqual([
+      "bob-aaa111",
+      "bob-tab222",
+      "carol-ccc333",
+    ]);
+    expect(session.sentTo.every((row) => row.envelope.kind === "check-now")).toBe(true);
+
+    // The second write to bob goes out once the 2 s window ends.
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(session.sentTo.map((row) => row.peerId).sort()).toEqual([
+      "bob-aaa111",
+      "bob-aaa111",
+      "bob-tab222",
+      "bob-tab222",
+      "carol-ccc333",
+    ]);
+  });
+
+  it("sends nothing before the mesh is joined", () => {
+    const { session, store } = setup();
+    store.sendCheckNow(["bob"]);
+    expect(session.sentTo).toEqual([]);
   });
 });
 
@@ -920,6 +1005,77 @@ describe("PresenceStore cross-window leadership", () => {
       body: "from follower",
       isSelf: true,
     });
+  });
+
+  it("sends a follower's check-now through the leader mesh session", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await drain();
+
+    storeB.sendCheckNow(["bob"]);
+    await drain();
+
+    expect(sessions).toHaveLength(1);
+    expect(leaderSession.sentTo).toEqual([
+      { peerId: "bob-aaa111", envelope: { v: 1, kind: "check-now" } },
+    ]);
+  });
+
+  it("a follower window knows whether the leader's mesh is linked (#1943)", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+    const followerListener = vi.fn();
+    storeB.subscribeMeshLinked(followerListener);
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await drain();
+    expect(storeB.meshLinked()).toBe(false);
+
+    leaderSession.linked.add("bob-aaa111");
+    leaderSession.emit({ type: "dc-open", peerId: "bob-aaa111" });
+    await drain();
+    expect(storeA.meshLinked()).toBe(true);
+    expect(storeB.meshLinked()).toBe(true);
+    expect(followerListener).toHaveBeenCalledTimes(1);
+
+    leaderSession.linked.delete("bob-aaa111");
+    leaderSession.emit({ type: "roster" });
+    await drain();
+    expect(storeB.meshLinked()).toBe(false);
+    expect(followerListener).toHaveBeenCalledTimes(2);
+  });
+
+  it("relays an inbound check-now to follower windows", async () => {
+    const { storeA, storeB, sessions } = setupLeaderPair();
+    storeA.start(SELF);
+    storeB.start(SELF);
+    await settle();
+
+    const leaderSession = sessions[0]!;
+    leaderSession.peers = [{ id: "bob-aaa111", name: "Bob", user: "bob" }];
+    leaderSession.emit({ type: "roster" });
+    await drain();
+    const follower = vi.fn();
+    storeB.subscribeCheckNow(follower);
+
+    leaderSession.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "check-now" },
+    });
+    await drain();
+
+    expect(follower).toHaveBeenCalledTimes(1);
   });
 
   it("hands off the dial to a follower when the leader stops", async () => {

@@ -12,10 +12,10 @@ use RecursiveIteratorIterator;
 /**
  * Ratchet: no new class may copy the CalDAV or CardDAV backend factory.
  *
- * The listed classes each build their own Sabre PDO backend today. #1639
- * replaces those copies with one injected backend. Until then this list may
- * only shrink: a new definition fails, and so does a listed class that no
- * longer defines the method (remove it from the list in the same change).
+ * CalDAV: #1639 left one definition, WgwCalendarBackendFactory::calBackend(),
+ * which services inject. CardDAV: the listed classes still build their own
+ * backend. The lists may only shrink: a new definition fails, and so does a
+ * listed class that no longer defines the method (remove it in the same change).
  */
 final class DavBackendCopyAllowlistTest extends TestCase
 {
@@ -23,22 +23,7 @@ final class DavBackendCopyAllowlistTest extends TestCase
 
     /** @var list<string> */
     private const CAL_BACKEND_CLASSES = [
-        'App\Services\Calendars\CalendarEventMutationSupport',
-        'App\Services\Calendars\CalendarRepository',
-        'App\Services\Calendars\CalendarSchedulingService',
-        'App\Services\Calendars\CalendarShareInvites',
-        'App\Services\Calendars\CalendarSubscriptionIcsSync',
-        'App\Services\Chat\ChatChangesFeed',
-        'App\Services\Chat\ChatChannelRepository',
-        'App\Services\Chat\ChatGroupDefaultChannelProvisioner',
-        'App\Services\Chat\ChatMessageRepository',
-        'App\Services\Docs\DocsThreadPathSync',
-        'App\Services\Docs\DocsThreadRepository',
-        'App\Services\Notes\NoteCollaborativeWrite',
-        'App\Services\Notes\NoteRepository',
-        'App\Services\Notes\NotebookRepository',
-        'App\Services\Tasks\TaskListRepository',
-        'App\Services\Tasks\TaskRepository',
+        'App\Dav\Server\WgwCalendarBackendFactory',
     ];
 
     /** @var list<string> */

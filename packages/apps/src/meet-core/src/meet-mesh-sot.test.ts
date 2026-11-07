@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
-import { MeetChatRequestError } from "@/lib/api/wgw/meet-chat";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   ingestRemoteChatChannel,
@@ -11,10 +10,7 @@ import {
   meetChatChannelsTable,
   meetChatMessagesTable,
 } from "@/lib/offline/meet-chat/meet-chat-schema";
-import {
-  getCachedChatMessage,
-  listCachedChatChannels,
-} from "@/lib/offline/meet-chat-offline-store";
+import { getCachedChatMessage } from "@/lib/offline/meet-chat-offline-store";
 import {
   applyMeetMeshFanoutEvent,
   wrapMeetChatOperationsWithMesh,
@@ -262,40 +258,6 @@ describe("applyMeetMeshFanoutEvent", () => {
       [],
     );
   });
-
-  it("fetches a channel-changed ping and drops DMs", async () => {
-    const fetchChannel = vi.fn().mockResolvedValue(wireChannel("chat-new", "New"));
-    const applied = await applyMeetMeshFanoutEvent({
-      username,
-      knownChannelIds: new Set(),
-      fetchChannel,
-      event: { kind: "channel-changed", senderUsername: "bob", channel: "chat-new" },
-    });
-    expect(applied).toBe("applied");
-    expect((await listCachedChatChannels(username)).map((row) => row.id)).toEqual(["chat-new"]);
-
-    const dm = await applyMeetMeshFanoutEvent({
-      username,
-      knownChannelIds: new Set(),
-      fetchChannel,
-      event: { kind: "channel-changed", senderUsername: "bob", channel: "dm:alice" },
-    });
-    expect(dm).toBe("dropped");
-    expect(fetchChannel).toHaveBeenCalledTimes(1);
-  });
-
-  it("destroys a local channel when the ping fetch is gone", async () => {
-    await ingestRemoteChatChannel(username, wireChannel("chat-old"));
-    const fetchChannel = vi.fn().mockRejectedValue(new MeetChatRequestError("gone", 404));
-    const result = await applyMeetMeshFanoutEvent({
-      username,
-      knownChannelIds: new Set(["chat-old"]),
-      fetchChannel,
-      event: { kind: "channel-changed", senderUsername: "bob", channel: "chat-old" },
-    });
-    expect(result).toBe("applied");
-    expect(await listCachedChatChannels(username)).toEqual([]);
-  });
 });
 
 describe("wrapMeetChatOperationsWithMesh", () => {
@@ -309,10 +271,15 @@ describe("wrapMeetChatOperationsWithMesh", () => {
 
   function port() {
     const sent: Array<{ usernames: readonly string[]; envelope: PresenceEnvelope }> = [];
+    const checkNow: Array<readonly string[]> = [];
     return {
       sent,
+      checkNow,
       sendToUsernames: (usernames: readonly string[], envelope: PresenceEnvelope) => {
         sent.push({ usernames, envelope });
+      },
+      sendCheckNow: (usernames: readonly string[]) => {
+        checkNow.push(usernames);
       },
       targetsFor: () => ["bob"],
       resolveMessage: async (id: string) =>
@@ -320,7 +287,7 @@ describe("wrapMeetChatOperationsWithMesh", () => {
     };
   }
 
-  it("fans edit, delete, react, and channel-changed after successful writes", async () => {
+  it("fans edit, delete, react previews and a check-now after every successful write", async () => {
     const ops: MeetChatOperations = {
       editMessage: vi.fn().mockResolvedValue(
         message({
@@ -351,13 +318,13 @@ describe("wrapMeetChatOperationsWithMesh", () => {
     await wrapped.createChannel!({ name: "general", kind: "channel" });
     await wrapped.deleteChannel!("chat-general");
 
+    // Channel create and delete send no preview any more, only check-now (#1662).
     expect(mesh.sent.map((row) => row.envelope.kind)).toEqual([
       "channel-message-patch",
       "channel-message-destroy",
       "channel-reaction",
-      "channel-changed",
-      "channel-changed",
     ]);
+    expect(mesh.checkNow).toEqual([["bob"], ["bob"], ["bob"], ["bob"], ["bob"]]);
     expect(mesh.sent[2]?.envelope).toMatchObject({
       kind: "channel-reaction",
       on: true,
@@ -387,7 +354,7 @@ describe("wrapMeetChatOperationsWithMesh", () => {
     ]);
   });
 
-  it("fans notify-hint after successful sendMessage and reply", async () => {
+  it("fans the message preview and a check-now after sendMessage and reply", async () => {
     const saved = message({ id: "m1", authorId: "alice", authorName: "Alice", body: "hi" });
     const ops: MeetChatOperations = {
       sendMessage: vi.fn().mockResolvedValue(saved),
@@ -401,20 +368,22 @@ describe("wrapMeetChatOperationsWithMesh", () => {
 
     expect(mesh.sent.map((row) => row.envelope.kind)).toEqual([
       "channel-message",
-      "notify-hint",
       "channel-message",
-      "notify-hint",
     ]);
-    expect(mesh.sent[1]?.envelope).toEqual({
-      v: 1,
-      kind: "notify-hint",
-      tag: "chat.message_posted",
-    });
-    expect(mesh.sent.map((row) => [...row.usernames])).toEqual([
-      ["bob"],
-      ["bob"],
-      ["bob"],
-      ["bob"],
-    ]);
+    expect(mesh.sent.map((row) => [...row.usernames])).toEqual([["bob"], ["bob"]]);
+    expect(mesh.checkNow).toEqual([["bob"], ["bob"]]);
+  });
+
+  it("sends no check-now when a write fails", async () => {
+    const ops: MeetChatOperations = {
+      sendMessage: vi.fn().mockRejectedValue(new Error("offline")),
+    };
+    const mesh = port();
+    const wrapped = wrapMeetChatOperationsWithMesh(ops, "alice", null, mesh);
+
+    await expect(wrapped.sendMessage!("chat-general", "hi")).rejects.toThrow("offline");
+
+    expect(mesh.sent).toEqual([]);
+    expect(mesh.checkNow).toEqual([]);
   });
 });

@@ -69,11 +69,11 @@ export type PresenceSnapshot = {
  * (send/blur/cleared composer) instead of waiting for the receiver TTL.
  *
  * Meet acceleration kinds (`channel-message`, `channel-message-patch`,
- * `channel-message-destroy`, `channel-reaction`, `channel-changed`,
- * `call-active`) and suite `notify-hint` are hints — server + poll / VAPID
- * stay authoritative. Senders must `sendTo` members, never workspace-broadcast
- * those kinds. Meet apply lives in `meet-mesh-sot` (SST); notify-hint only
- * wakes the inbox refresh.
+ * `channel-message-destroy`, `channel-reaction`, `call-active`) and the
+ * suite-wide `check-now` are hints — the server stays authoritative. Senders
+ * must `sendTo` members, never workspace-broadcast those kinds. Meet apply
+ * lives in `meet-mesh-sot` (SST). `check-now` carries no ids: the receiver's
+ * push hub only asks the server sooner (#1662, `mesh-check-now.ts`).
  */
 export type PresenceEnvelope =
   | { v: 1; kind: "presence"; status: PresenceUserStatus }
@@ -97,9 +97,8 @@ export type PresenceEnvelope =
       emoji: string;
       on: boolean;
     }
-  | { v: 1; kind: "channel-changed"; channel: string }
   | { v: 1; kind: "call-active"; channel: string; active: boolean; audioOnly?: boolean }
-  | { v: 1; kind: "notify-hint"; tag?: string }
+  | { v: 1; kind: "check-now" }
   | { v: 1; kind: "meet-join-hint"; room: string };
 
 /** Inbound Meet acceleration events (after sender-username checks). */
@@ -127,7 +126,6 @@ export type PresenceMeetFanoutEvent =
       emoji: string;
       on: boolean;
     }
-  | { kind: "channel-changed"; senderUsername: string; channel: string }
   | {
       kind: "call-active";
       senderUsername: string;
@@ -136,11 +134,10 @@ export type PresenceMeetFanoutEvent =
       audioOnly?: boolean;
     };
 
-/** Inbound suite-notify wake signal (payload is not inbox SoT). */
-export type PresenceNotifyHintEvent = {
-  kind: "notify-hint";
+/** Inbound content-free "ask the server now" from a peer who just wrote. */
+export type PresenceCheckNowEvent = {
+  kind: "check-now";
   senderUsername: string;
-  tag?: string;
 };
 
 export type PresenceMeshEvent =
@@ -158,5 +155,7 @@ export type PresenceMeshSession = {
   broadcast(envelope: PresenceEnvelope): void;
   sendTo(peerId: string, envelope: PresenceEnvelope): void;
   getRoomPeers(): RtcPeerDescriptor[];
+  /** True while this peer's data channel is open, so envelopes reach it. */
+  isLinked(peerId: string): boolean;
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void;
 };

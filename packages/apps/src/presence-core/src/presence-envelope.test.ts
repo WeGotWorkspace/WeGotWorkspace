@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parsePresenceEnvelope,
   presenceCallActiveEnvelope,
-  presenceNotifyHintEnvelope,
+  presenceCheckNowEnvelope,
   serializePresenceEnvelope,
 } from "@/presence-core/src/presence-envelope";
 
@@ -114,7 +114,7 @@ describe("presence envelope", () => {
     ).toEqual({ v: 1, kind: "call-active", channel: "c1", active: true });
   });
 
-  it("round-trips Meet patch, destroy, reaction, and channel-changed envelopes", () => {
+  it("round-trips Meet patch, destroy, and reaction envelopes", () => {
     const patch = {
       v: 1 as const,
       kind: "channel-message-patch" as const,
@@ -137,39 +137,31 @@ describe("presence envelope", () => {
       emoji: "👍",
       on: true,
     };
-    const changed = {
-      v: 1 as const,
-      kind: "channel-changed" as const,
-      channel: "chat-general",
-    };
-
     expect(parsePresenceEnvelope(serializePresenceEnvelope(patch))).toEqual(patch);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(destroy))).toEqual(destroy);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(reaction))).toEqual(reaction);
-    expect(parsePresenceEnvelope(serializePresenceEnvelope(changed))).toEqual(changed);
   });
 
-  it("round-trips notify-hint envelopes", () => {
-    const bare = { v: 1 as const, kind: "notify-hint" as const };
-    const tagged = presenceNotifyHintEnvelope("chat.message_posted");
-
-    expect(parsePresenceEnvelope(serializePresenceEnvelope(bare))).toEqual(bare);
-    expect(tagged).toEqual({ v: 1, kind: "notify-hint", tag: "chat.message_posted" });
-    expect(parsePresenceEnvelope(serializePresenceEnvelope(tagged))).toEqual(tagged);
-    expect(presenceNotifyHintEnvelope("  ")).toEqual(bare);
-    expect(presenceNotifyHintEnvelope()).toEqual(bare);
-  });
-
-  it("rejects malformed notify-hint tags and ignores extras", () => {
-    expect(
-      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: "" })),
-    ).toBeNull();
-    expect(parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: 7 }))).toBeNull();
+  it("round-trips check-now and strips anything but the kind", () => {
+    const envelope = presenceCheckNowEnvelope();
+    expect(envelope).toEqual({ v: 1, kind: "check-now" });
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(envelope))).toEqual(envelope);
+    // The message never carries ids or content (#1662).
     expect(
       parsePresenceEnvelope(
-        JSON.stringify({ v: 1, kind: "notify-hint", tag: "docs.shared", extra: true }),
+        JSON.stringify({ v: 1, kind: "check-now", collection: "nb-1", body: "secret" }),
       ),
-    ).toEqual({ v: 1, kind: "notify-hint", tag: "docs.shared" });
+    ).toEqual({ v: 1, kind: "check-now" });
+    expect(parsePresenceEnvelope(JSON.stringify({ v: 2, kind: "check-now" }))).toBeNull();
+  });
+
+  it("drops the retired channel-changed and notify-hint kinds", () => {
+    expect(
+      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "channel-changed", channel: "c1" })),
+    ).toBeNull();
+    expect(
+      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: "docs.shared" })),
+    ).toBeNull();
   });
 
   it("rejects malformed channel-message and call-active payloads", () => {

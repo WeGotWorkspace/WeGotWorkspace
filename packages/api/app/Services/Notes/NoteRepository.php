@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
@@ -23,11 +24,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PDOException;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 final class NoteRepository
 {
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly NotebookRepository $notebooks,
         private readonly NoteJournalConverter $converter,
         private readonly NoteMoveHelper $moveHelper,
@@ -143,7 +144,7 @@ final class NoteRepository
             $uid = DB::connection('wgw')->transaction(function () use ($username, $uid, $instance, $note, $allowStoredTags): string {
                 $uid = $this->createUid->resolve($username, $uid);
                 $this->moveHelper->assertUidAvailable($uid);
-                $this->calBackend()->createCalendarObject(
+                $this->backends->calBackend()->createCalendarObject(
                     [(int) $instance->calendarid, (int) $instance->id],
                     $uid.'.ics',
                     $this->converter->toIcs(['id' => $uid] + $note, $allowStoredTags),
@@ -247,7 +248,7 @@ final class NoteRepository
                     $ics = $this->converter->touchLastModified($ics);
                 }
                 try {
-                    $this->calBackend()->updateCalendarObject(
+                    $this->backends->calBackend()->updateCalendarObject(
                         [(int) $instance->calendarid, (int) $instance->id],
                         (string) $object->uri,
                         $ics,
@@ -306,7 +307,7 @@ final class NoteRepository
             $requirePrecondition,
         );
 
-        $this->calBackend()->deleteCalendarObject(
+        $this->backends->calBackend()->deleteCalendarObject(
             [(int) $located['instance']->calendarid, (int) $located['instance']->id],
             (string) $located['object']->uri,
         );
@@ -372,7 +373,7 @@ final class NoteRepository
 
         $syncToken = $this->normalizeSyncToken($since);
         // Sabre's PDO backend treats a falsy token as the initial sync.
-        $changes = $this->calBackend()->getChangesForCalendar(
+        $changes = $this->backends->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
             $syncToken === null ? '0' : (string) $syncToken,
             1,
@@ -744,11 +745,6 @@ final class NoteRepository
         } catch (\Throwable) {
             // Logging is optional outside the Laravel container (e.g. unit tests).
         }
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 
     /**

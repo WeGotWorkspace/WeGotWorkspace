@@ -3357,6 +3357,7 @@ export interface paths {
                 /** @description Roster */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -3833,6 +3834,7 @@ export interface paths {
                 /** @description Updated task list */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -4021,6 +4023,7 @@ export interface paths {
                 /** @description Updated task */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -4087,6 +4090,7 @@ export interface paths {
                 /** @description Updated task */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -4365,6 +4369,7 @@ export interface paths {
                 /** @description Share created */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -4491,6 +4496,7 @@ export interface paths {
                 /** @description Updated */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -4556,6 +4562,7 @@ export interface paths {
                 /** @description Invite created */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -5178,6 +5185,7 @@ export interface paths {
                 /** @description JMAP response */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -5586,6 +5594,7 @@ export interface paths {
                 /** @description Updated notification after REPLY */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -6119,6 +6128,7 @@ export interface paths {
                 /** @description Updated notebook */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -6693,6 +6703,7 @@ export interface paths {
                 /** @description Created message */
                 201: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -7145,6 +7156,7 @@ export interface paths {
                 /** @description Created thread */
                 201: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -7194,6 +7206,7 @@ export interface paths {
                 /** @description Updated thread */
                 200: {
                     headers: {
+                        "X-Wgw-Notified": components["headers"]["X-Wgw-Notified"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -11880,6 +11893,8 @@ export interface components {
             dmPeer?: string | null;
             /** @description Roster size (owner plus sharees, groups expanded). */
             memberCount?: number;
+            /** @description Usernames on the roster (owner plus sharees, groups expanded), lowercase and sorted. Clients send presence-mesh message previews only to these users. */
+            members?: string[];
             /** @description Unread messages after the caller's read marker, own messages excluded. */
             unreadCount?: number;
         };
@@ -12431,7 +12446,10 @@ export interface components {
     };
     parameters: never;
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Comma-separated usernames whose notification inbox this request's own writes changed (an inbox row created, updated or cleared). Only present when there are any; never names the caller. The writer's browser sends those users a content-free mesh check-now, so their open apps ask the server at once (#1662). */
+        "X-Wgw-Notified": string;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;

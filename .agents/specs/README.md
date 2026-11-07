@@ -101,16 +101,30 @@ grep '^Source:' .agents/specs/<N>-<slug>/spec.md
 
 Full workflow: [verify-issue/SKILL.md](../skills/verify-issue/SKILL.md).
 
-## Archive guidance
+## Archive rule
 
-Completed specs on `main` **stay in place** as living documentation (Spec Kit / BMAD pattern). Do not delete merged feature specs.
+A spec folder moves to `.agents/specs/archive/<year>/<N>-<slug>/` when **both** hold:
 
-When `.agents/specs/` grows large, consider (follow-up tooling, not required today):
+- its linked issue is closed (the `Source:` line of `spec.md`, else the folder number), and
+- the folder has no commit in the last **60 days**.
 
-- Move stale entries to `.agents/specs/archive/<year>/`
-- Or group by year: `.agents/specs/2026/<N>-<slug>/`
+`<year>` is the year of the folder's last commit. Archived specs are history: they keep their content and git history, `check-plan-structure` skips them, and nobody updates them. A spec that is still read as documentation (an architecture doc names it as the current design, say) should be refreshed instead, which also resets its age.
 
-No automatic archive script in v1 — manual moves when the directory becomes hard to navigate.
+Specs stay in place when the rule cannot be applied safely:
+
+- **Ad-hoc specs** (`Source: ad-hoc`) have no issue to close. Re-home them to an issue number, or leave them.
+- **Held back:** a non-markdown file (a code comment, a script) mentions the folder name, or the `plan.md` of a spec that stays in place does. Rewriting that plan would put it through `check-plan-structure`, which an older plan may not pass. Fix the mention first, or archive both specs together.
+- **Number does not resolve:** fix the `Source:` line first. When the number was a Goal that moved to [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), no Task exists: write `Source: ad-hoc` and put the Product issue on the `Goal:` line (a Goal is never `Source:`, see [File roles](#file-roles)). The spec is then ad-hoc and stays in place.
+
+**Cadence:** [`doc-staleness.yml`](../../.github/workflows/doc-staleness.yml) runs on the first day of every month and posts the report as the job summary. Whoever picks up the report applies the rule in a `chore/` PR:
+
+```bash
+pnpm docs:staleness          # the report, as markdown
+pnpm docs:archive-stale      # git mv every candidate, rewrite links that point into moved folders
+pnpm run check:agent-docs    # links still resolve
+```
+
+[`tools/report-doc-staleness.mjs`](../../tools/report-doc-staleness.mjs) also lists every doc under `docs/` and `.agents/plans/` with no commit in 60 days. Those are reviewed by hand: refresh a doc that is still current, move a finished plan to `docs/archive/`.
 
 ## Related
 
