@@ -1,5 +1,6 @@
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
 import { DataChannelOutbound } from "@/lib/rtc/session/data-channel-outbound";
+import { mediaSenderFor, type MediaKind } from "@/lib/rtc/session/media-send-slots";
 import type { IceMode, RtcLinkState } from "@/lib/rtc/types";
 
 export type MeshPeerEntry = {
@@ -151,11 +152,14 @@ export class MeshPeerRegistry {
     this.onSendFailed?.(remoteId, error);
   }
 
-  /** Replace the outbound track of every sender of `kind` that already has one. */
-  async replaceSenderTrack(kind: "audio" | "video", track: MediaStreamTrack): Promise<void> {
+  /**
+   * Put `track` on every peer: on the sender that carries `kind`, or on the empty
+   * send slot an audio-only join left for it.
+   */
+  async replaceSenderTrack(kind: MediaKind, track: MediaStreamTrack): Promise<void> {
     const updates: Promise<void>[] = [];
     for (const entry of this.entries.values()) {
-      const sender = entry.pc.getSenders().find((s) => s.track?.kind === kind);
+      const sender = mediaSenderFor(entry.pc, kind);
       if (!sender) continue;
       updates.push(sender.replaceTrack(track));
     }

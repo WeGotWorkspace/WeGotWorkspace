@@ -239,7 +239,7 @@ export class MeshPeerDialer {
     const entry = this.context.peers.get(remoteId);
     if (!binding || !entry) return;
     if (binding.kind === "media") {
-      entry.remoteStream = binding.attach(pc, remoteId);
+      entry.remoteStream = binding.attach(pc, remoteId, initiator);
       return;
     }
     if (this.context.channel === "meet") return;

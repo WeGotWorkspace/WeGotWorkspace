@@ -391,6 +391,9 @@ export class RtcPeerMesh {
         this.recovery?.onSignaled(id);
       },
       dropPeer: (id) => this.removePeer(id),
+      prepareAnswer: (pc) => {
+        if (this.options.binding?.kind === "media") this.options.binding.prepareAnswer(pc);
+      },
       log: (event, details) => this.log(event, details),
     };
   }
