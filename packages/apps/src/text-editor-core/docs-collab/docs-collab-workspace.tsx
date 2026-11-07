@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { MessageSquare, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -605,6 +605,7 @@ function DocsCollabWorkspaceInner({
     reviewPanelOpen,
     share:
       showShare && onShare ? { label: shareLabel ?? labels.share, onClick: onShare } : undefined,
+    review: { itemCount: reviewItemCount, onToggle: handleToggleReview },
   };
 
   return (
@@ -672,26 +673,7 @@ function DocsCollabWorkspaceInner({
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
                     ) : undefined
                   }
-                  actions={[
-                    ...docsCollabHeaderActions(headerActionsInput),
-                    {
-                      id: "review",
-                      placement: "end",
-                      label: viewSource
-                        ? "Review is disabled in source view"
-                        : reviewPanelOpen
-                          ? labels.reviewToggleHide
-                          : reviewItemCount > 0
-                            ? `${labels.reviewToggleShow} (${reviewItemCount})`
-                            : labels.reviewToggleShow,
-                      icon: <MessageSquare />,
-                      active: reviewPanelOpen,
-                      disabled: viewSource,
-                      className: "docs-workspace__review-toggle",
-                      "data-count": reviewItemCount > 0 ? reviewItemCount : undefined,
-                      onClick: handleToggleReview,
-                    },
-                  ]}
+                  actions={docsCollabHeaderActions(headerActionsInput)}
                 />
               }
             />

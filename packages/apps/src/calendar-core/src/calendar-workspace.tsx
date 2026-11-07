@@ -796,6 +796,22 @@ export function CalendarWorkspace({
     ],
   );
 
+  // Both calendar sections (mine, shared with me) take the same row props.
+  const calendarRowProps = {
+    hiddenCalendarIds,
+    defaultCalendarId,
+    canDeleteCalendars: Boolean(operations?.deleteCalendar),
+    canUnsubscribe: Boolean(operations?.unsubscribeCalendar),
+    editLabel: L.editCalendar,
+    subscribedLabel: L.subscribedCalendarBadge,
+    viewOnlyLabel: L.viewOnlyCalendarBadge,
+    pendingCalendarIds,
+    pendingSyncLabel: L.pendingSync,
+    onToggleVisibility: toggleCalendarVisibility,
+    onSelectDefault: selectDefaultCalendar,
+    onEdit: openEditCalendarDialog,
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
@@ -865,42 +881,13 @@ export function CalendarWorkspace({
               />
             }
           >
-            {/* Settings on top, in its own section: the calendar lists follow. */}
             <WorkspaceAppSettingsSidebarSection appId="calendar" />
             <SidebarSection title={L.myCalendarsSection}>
-              <CalendarSidebarRows
-                calendars={myCalendars}
-                hiddenCalendarIds={hiddenCalendarIds}
-                defaultCalendarId={defaultCalendarId}
-                canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                editLabel={L.editCalendar}
-                subscribedLabel={L.subscribedCalendarBadge}
-                viewOnlyLabel={L.viewOnlyCalendarBadge}
-                pendingCalendarIds={pendingCalendarIds}
-                pendingSyncLabel={L.pendingSync}
-                onToggleVisibility={toggleCalendarVisibility}
-                onSelectDefault={selectDefaultCalendar}
-                onEdit={openEditCalendarDialog}
-              />
+              <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
             </SidebarSection>
             {sharedWithMeCalendars.length > 0 ? (
               <SidebarSection title={L.sharedWithMeSection}>
-                <CalendarSidebarRows
-                  calendars={sharedWithMeCalendars}
-                  hiddenCalendarIds={hiddenCalendarIds}
-                  defaultCalendarId={defaultCalendarId}
-                  canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                  canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                  editLabel={L.editCalendar}
-                  subscribedLabel={L.subscribedCalendarBadge}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  pendingCalendarIds={pendingCalendarIds}
-                  pendingSyncLabel={L.pendingSync}
-                  onToggleVisibility={toggleCalendarVisibility}
-                  onSelectDefault={selectDefaultCalendar}
-                  onEdit={openEditCalendarDialog}
-                />
+                <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
               </SidebarSection>
             ) : null}
             {overlayOwnedLists.length > 0 ? (
