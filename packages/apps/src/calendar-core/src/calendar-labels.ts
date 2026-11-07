@@ -181,6 +181,8 @@ export type CalendarUILabels = {
   eventShowAs: string;
   eventShowAsBusy: string;
   eventShowAsFree: string;
+  /** Under "Show as" while an all-day event is Free (#1927). */
+  eventShowAsAllDayFreeHint: string;
   eventAlarmsLabel: string;
   eventAlarmsNone: string;
   eventAlarmAdd: string;
@@ -436,6 +438,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
+  eventShowAsAllDayFreeHint: "Set to Busy for time off, so teammates see you as away.",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
   eventAlarmAdd: "Add alert",

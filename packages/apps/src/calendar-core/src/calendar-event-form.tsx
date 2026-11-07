@@ -330,6 +330,7 @@ export function CalendarEventForm({
               labels={labels}
               controlSize={controlSize}
               disabled={fieldsDisabled}
+              readOnly={readOnly}
               onFieldChange={set}
             />
           )}
