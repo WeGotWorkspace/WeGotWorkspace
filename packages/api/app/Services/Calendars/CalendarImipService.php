@@ -49,12 +49,15 @@ final class CalendarImipService
         private readonly CalendarPrincipalAddresses $addresses,
     ) {}
 
-    public function deliver(string $organizerUsername, Message $message): void
+    /**
+     * Sends the message by email when the instance rules allow it. True when the
+     * mail transport accepted a mail; false when it was skipped (external invites
+     * off, a cap, no mail transport) or the transport refused it.
+     */
+    public function deliver(string $organizerUsername, Message $message): bool
     {
         if ($this->isSchedulingNotice($message)) {
-            $this->sendComposed($organizerUsername, $message, false);
-
-            return;
+            return $this->sendComposed($organizerUsername, $message, false);
         }
 
         if (! $this->wasPreviouslyInvited($message)) {
@@ -63,7 +66,7 @@ final class CalendarImipService
                     'organizer' => $organizerUsername,
                 ]);
 
-                return;
+                return false;
             }
             if (! $this->withinEventAttendeeCap($message)) {
                 Log::warning('imip.attendee_cap', [
@@ -71,7 +74,7 @@ final class CalendarImipService
                     'cap' => self::EVENT_ATTENDEE_CAP,
                 ]);
 
-                return;
+                return false;
             }
         }
 
@@ -80,10 +83,10 @@ final class CalendarImipService
                 'organizer' => $organizerUsername,
             ]);
 
-            return;
+            return false;
         }
 
-        $this->sendComposed($organizerUsername, $message, true);
+        return $this->sendComposed($organizerUsername, $message, true);
     }
 
     /**
@@ -299,11 +302,11 @@ final class CalendarImipService
         RateLimiter::hit($this->dailyKey($organizerUsername), self::DAILY_DECAY_SECONDS);
     }
 
-    private function sendComposed(string $organizerUsername, Message $message, bool $countTowardLimits): void
+    private function sendComposed(string $organizerUsername, Message $message, bool $countTowardLimits): bool
     {
         $outbound = $this->compose($organizerUsername, $message);
         if ($outbound === null) {
-            return;
+            return false;
         }
         if ($countTowardLimits) {
             $this->recordSend($organizerUsername);
@@ -313,7 +316,8 @@ final class CalendarImipService
             'organizer' => $organizerUsername,
             'to_domain' => $this->recipientDomain($to),
         ]);
-        $this->mail->send($outbound);
+
+        return $this->mail->send($outbound)->accepted;
     }
 
     /**
