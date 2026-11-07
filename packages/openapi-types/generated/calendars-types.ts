@@ -8,6 +8,18 @@ export type CalendarsPaths = {
 };
 
 export type Calendar = components["schemas"]["Calendar"];
+export type CalendarAvailabilityAccountCapability = components["schemas"]["CalendarAvailabilityAccountCapability"];
+export type CalendarAvailabilityBusyPeriod = components["schemas"]["CalendarAvailabilityBusyPeriod"];
+export type CalendarAvailabilityCalendar = components["schemas"]["CalendarAvailabilityCalendar"];
+export type CalendarAvailabilityGetRequest = components["schemas"]["CalendarAvailabilityGetRequest"];
+export type CalendarAvailabilityGetResponse = components["schemas"]["CalendarAvailabilityGetResponse"];
+export type CalendarAvailabilityPerson = components["schemas"]["CalendarAvailabilityPerson"];
+export type CalendarAvailabilitySettings = components["schemas"]["CalendarAvailabilitySettings"];
+export type CalendarAvailabilitySettingsUpdate = components["schemas"]["CalendarAvailabilitySettingsUpdate"];
+export type CalendarAvailabilityTeam = components["schemas"]["CalendarAvailabilityTeam"];
+export type CalendarAvailabilityTeamMember = components["schemas"]["CalendarAvailabilityTeamMember"];
+export type CalendarAvailabilityTeamMemberGetRequest = components["schemas"]["CalendarAvailabilityTeamMemberGetRequest"];
+export type CalendarAvailabilityTeamMemberGetResponse = components["schemas"]["CalendarAvailabilityTeamMemberGetResponse"];
 export type CalendarCreate = components["schemas"]["CalendarCreate"];
 export type CalendarDeleteOptions = components["schemas"]["CalendarDeleteOptions"];
 export type CalendarEvent = components["schemas"]["CalendarEvent"];

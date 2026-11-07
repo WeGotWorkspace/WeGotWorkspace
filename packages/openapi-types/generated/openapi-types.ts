@@ -8509,6 +8509,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read my Team availability settings
+         * @description The switch, the Teams that can see the caller's availability, and one row per own personal event calendar and Team event calendar. ICS subscriptions and calendars shared with the caller are never listed. No push or /changes: clients read it when the settings pane opens.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The caller's settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilitySettings"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /**
+         * Change my Team availability settings
+         * @description Partial update of the switch and per-calendar choices; returns the full settings. Every calendarId must be one of the caller's own personal or Team event calendars, and `details` is only allowed on a personal calendar, otherwise 422 and nothing is written. Choices are kept while the switch is off.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarAvailabilitySettingsUpdate"];
+                };
+            };
+            responses: {
+                /** @description The caller's settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilitySettings"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                /** @description A calendarId that is not the caller's own personal or Team event calendar, or `details` on a Team calendar */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11532,7 +11610,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. The vendor capability `urn:wgw:jmap:availability` (Team availability: TeamMember/get and TeamMember/getAvailability, schemas CalendarAvailabilityTeamMember* and CalendarAvailabilityGet*) is an empty object here; its account object is CalendarAvailabilityAccountCapability. It is advertised while calendars are enabled. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -12386,6 +12464,117 @@ export interface components {
         };
         DriveFileNodeLocationDataResponse: {
             data: components["schemas"]["DriveFileNodeLocation"];
+        };
+        /** @description A Team that can see the owner's availability while the switch is on. */
+        CalendarAvailabilityTeam: {
+            slug: string;
+            name: string;
+        };
+        /** @description One of the owner's own personal event calendars or one of their Team event calendars. ICS subscriptions and calendars shared with the owner are never listed. A calendar without a stored choice is included and `busy`. */
+        CalendarAvailabilityCalendar: {
+            /** @description The JMAP Calendar id. */
+            calendarId: string;
+            name: string;
+            color: string | null;
+            /** @enum {string} */
+            source: "personal" | "team";
+            /** @description Whether the calendar counts toward the owner's availability. */
+            include: boolean;
+            /**
+             * @description `busy`: teammates see the time only. `details`: also the title and location. Team calendars are always `busy`.
+             * @enum {string}
+             */
+            detail: "busy" | "details";
+        };
+        /** @description The caller's Team availability settings. While `enabled` is false nobody gets anything for the caller, the caller included; choices are kept and come back when it is turned on again. */
+        CalendarAvailabilitySettings: {
+            /** @description Share my availability with my Teams. Off by default. */
+            enabled: boolean;
+            teams: components["schemas"]["CalendarAvailabilityTeam"][];
+            calendars: components["schemas"]["CalendarAvailabilityCalendar"][];
+        };
+        /** @description Partial update. Omitted fields keep their value. Every `calendarId` must be one of the caller's own personal or Team event calendars, and `details` is only allowed on a personal calendar; otherwise 422 and nothing is written. */
+        CalendarAvailabilitySettingsUpdate: {
+            enabled?: boolean;
+            calendars?: {
+                calendarId: string;
+                include?: boolean;
+                /** @enum {string} */
+                detail?: "busy" | "details";
+            }[];
+        };
+        /** @description Account-level object of the vendor capability `urn:wgw:jmap:availability` (the session-level value is the empty object). Limits of TeamMember/getAvailability; a larger request is `invalidArguments` before any read. */
+        CalendarAvailabilityAccountCapability: {
+            /** @constant */
+            maxIdsPerCall: 50;
+            /** @constant */
+            maxWeeksPerCall: 54;
+            /**
+             * @description ids × weeks.
+             * @constant
+             */
+            maxPersonWeeksPerCall: 540;
+        };
+        /** @description TeamMember (urn:wgw:jmap:availability): someone whose availability the caller may read. Listed only while their switch is on, they are not disabled, and they share at least one Team with the caller (the admin role gives no extra access); the caller is listed as themselves (`isSelf`) while their own switch is on. */
+        CalendarAvailabilityTeamMember: {
+            /** @description The person's username, the same string as their JMAP accountId. */
+            id: string;
+            name: string;
+            isSelf: boolean;
+            /** @description Changes when the person renames or changes their switch, which calendars count, or how much detail they share. A client drops every cached week of this person when it changes. */
+            version: string;
+        };
+        /** @description TeamMember/get arguments. `ids: null` returns everyone the caller may see. */
+        CalendarAvailabilityTeamMemberGetRequest: {
+            accountId: string;
+            ids?: string[] | null;
+            properties?: string[] | null;
+        };
+        /** @description TeamMember/get response. `state` is a hash of every visible (id, version); there is no TeamMember/changes. Unknown people, people with the switch off, disabled people and people who share no Team with the caller all come back in `notFound` alike. */
+        CalendarAvailabilityTeamMemberGetResponse: {
+            accountId: string;
+            state: string;
+            list: components["schemas"]["CalendarAvailabilityTeamMember"][];
+            notFound: string[];
+        };
+        /** @description One busy occurrence, close to the standard Principal/getAvailability BusyPeriod. Time fields are read like the same fields of a CalendarEvent: `start` is a UTC date-time with `Z` (timeZone null), a local date-time with an IANA `timeZone`, a floating local date-time (timeZone null), or a bare date when `showWithoutTime`. `title` and `location` appear only for an event on a personal calendar the owner shares with `details` that is not private or confidential; a location holding a URL is dropped and the title is cut at 200 characters. */
+        CalendarAvailabilityBusyPeriod: {
+            start: string;
+            timeZone: string | null;
+            /** @description ISO 8601 duration, e.g. PT1H or P1D. */
+            duration: string;
+            showWithoutTime: boolean;
+            title?: string;
+            location?: string;
+        };
+        /** @description TeamMember/getAvailability arguments. The range is whole UTC weeks: `utcStart` a Monday 00:00:00Z and `utcEnd` a whole number of weeks later, at most 54 weeks, at most 50 ids, and ids × weeks at most 540. Anything else is `invalidArguments`. */
+        CalendarAvailabilityGetRequest: {
+            accountId: string;
+            ids: string[];
+            /**
+             * Format: date-time
+             * @example 2030-01-07T00:00:00Z
+             */
+            utcStart: string;
+            /**
+             * Format: date-time
+             * @example 2030-01-14T00:00:00Z
+             */
+            utcEnd: string;
+            /** @description A CalendarEvent id. Every occurrence of that event's UID is left out, so an invitee is not busy with the event being edited. It must be an event the caller may edit, or one the caller organizes or attends; any other id is `invalidArguments`. */
+            excludeEventId?: string;
+        };
+        CalendarAvailabilityPerson: {
+            id: string;
+            periods: components["schemas"]["CalendarAvailabilityBusyPeriod"][];
+            /** @description False when some busy time in the range could not be worked out (an unreadable event, a recurrence over the limit, or more than 2000 periods in a week). A gap is then not proof of free time. */
+            complete: boolean;
+        };
+        /** @description TeamMember/getAvailability response. Periods are sorted by start and include every occurrence that overlaps the range, also ones that start before it. */
+        CalendarAvailabilityGetResponse: {
+            accountId: string;
+            list: components["schemas"]["CalendarAvailabilityPerson"][];
+            notFound: string[];
         };
     };
     responses: {
