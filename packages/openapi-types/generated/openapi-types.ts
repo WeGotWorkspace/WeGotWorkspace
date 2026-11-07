@@ -8711,6 +8711,8 @@ export interface components {
             password?: string;
             groups?: components["schemas"]["AdminUserGroupList"];
             enabled?: boolean;
+            /** @description Grant or remove the admin role. Changing it signs the user out everywhere. An admin cannot remove their own role, and the last admin cannot lose it. */
+            isAdmin?: boolean;
         };
         /**
          * @example {
@@ -8759,6 +8761,8 @@ export interface components {
             groups: components["schemas"]["AdminUserGroupList"];
             createdAt: string;
             enabled: boolean;
+            /** @description Whether the user has the admin role. */
+            isAdmin: boolean;
         };
         AdminGroupSummary: {
             id: string;
@@ -8932,6 +8936,8 @@ export interface components {
         SettingsStateResponse: {
             user: components["schemas"]["SettingsUserProfile"];
             groups: components["schemas"]["SettingsUserGroupList"];
+            /** @description Whether the caller has the admin role. Admin is a role per user, not membership of a Team. */
+            isAdmin: boolean;
             logoutUrl: string;
             /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
             mcpEnabled: boolean;

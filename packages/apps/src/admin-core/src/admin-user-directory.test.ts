@@ -47,6 +47,7 @@ describe("local user list edits", () => {
         displayName: " Bob ",
         email: " bob@example.test ",
         createdAt: "2026-09-25T00:00:00.000Z",
+        isAdmin: false,
       }),
     ).toEqual({
       id: "bob",
@@ -56,6 +57,7 @@ describe("local user list edits", () => {
       groups: [],
       createdAt: "2026-09-25T00:00:00.000Z",
       enabled: true,
+      isAdmin: false,
     });
   });
 

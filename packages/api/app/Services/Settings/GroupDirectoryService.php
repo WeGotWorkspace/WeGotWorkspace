@@ -6,7 +6,6 @@ namespace App\Services\Settings;
 
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
-use App\Services\Auth\UserSessionRevoker;
 use Illuminate\Support\Facades\DB;
 use Sabre\DAVACL\PrincipalBackend\PDO as PrincipalBackend;
 
@@ -14,7 +13,6 @@ final class GroupDirectoryService
 {
     public function __construct(
         private readonly GroupMembershipResolver $membership,
-        private readonly UserSessionRevoker $sessions,
     ) {}
 
     /**
@@ -94,23 +92,8 @@ final class GroupDirectoryService
     /**
      * @param  list<string>  $memberUsernames  Principal URIs or bare usernames
      */
-    public function replaceMembers(string $groupUri, array $memberUsernames, string $actingAdmin): void
+    public function replaceMembers(string $groupUri, array $memberUsernames): void
     {
-        if ($groupUri === AdminConstants::ADMIN_GROUP_URI) {
-            $actingPrincipal = 'principals/'.$actingAdmin;
-            $hasActing = false;
-            foreach ($memberUsernames as $entry) {
-                $uri = $this->toMemberPrincipalUri((string) $entry);
-                if ($uri === $actingPrincipal) {
-                    $hasActing = true;
-                    break;
-                }
-            }
-            if (! $hasActing) {
-                throw new \InvalidArgumentException('You cannot remove your own administrator access.');
-            }
-        }
-
         $uris = [];
         foreach ($memberUsernames as $entry) {
             $uri = $this->toMemberPrincipalUri((string) $entry);
@@ -119,23 +102,11 @@ final class GroupDirectoryService
             }
         }
 
-        $before = $this->memberUris($groupUri);
         $this->writeMembers($groupUri, array_keys($uris));
-        $after = array_keys($uris);
-        $changed = array_merge(array_diff($before, $after), array_diff($after, $before));
-        foreach ($changed as $uri) {
-            if (str_starts_with($uri, 'principals/')) {
-                $this->revokeAdminSessions($groupUri, substr($uri, strlen('principals/')));
-            }
-        }
     }
 
-    public function setMembership(string $groupUri, string $username, bool $enabled, string $actingAdmin): void
+    public function setMembership(string $groupUri, string $username, bool $enabled): void
     {
-        if ($groupUri === AdminConstants::ADMIN_GROUP_URI && $username === $actingAdmin && ! $enabled) {
-            throw new \InvalidArgumentException('You cannot remove your own administrator access.');
-        }
-
         $principal = 'principals/'.$username;
         $members = $this->memberUris($groupUri);
         $isMember = in_array($principal, $members, true);
@@ -143,7 +114,6 @@ final class GroupDirectoryService
         if ($enabled && ! $isMember) {
             $members[] = $principal;
             $this->writeMembers($groupUri, $members);
-            $this->revokeAdminSessions($groupUri, $username);
 
             return;
         }
@@ -151,7 +121,6 @@ final class GroupDirectoryService
         if (! $enabled && $isMember) {
             $members = array_values(array_filter($members, static fn (string $m): bool => $m !== $principal));
             $this->writeMembers($groupUri, $members);
-            $this->revokeAdminSessions($groupUri, $username);
         }
     }
 
@@ -174,13 +143,6 @@ final class GroupDirectoryService
         }
 
         return $groups;
-    }
-
-    private function revokeAdminSessions(string $groupUri, string $username): void
-    {
-        if ($groupUri === AdminConstants::ADMIN_GROUP_URI) {
-            $this->sessions->revokeAll($username);
-        }
     }
 
     /**

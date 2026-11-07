@@ -66,7 +66,7 @@ final class AdminGroupManagementService
     /**
      * @param  list<string>|null  $members  Usernames or principal URIs
      */
-    public function update(string $groupSlug, ?string $displayName, ?array $members, string $actingAdmin): void
+    public function update(string $groupSlug, ?string $displayName, ?array $members): void
     {
         $uri = $this->groupUriFromSlug($groupSlug);
         $principal = Principal::query()->where('uri', $uri)->first();
@@ -81,17 +81,13 @@ final class AdminGroupManagementService
         }
 
         if ($members !== null) {
-            $this->groups->replaceMembers($uri, $members, $actingAdmin);
+            $this->groups->replaceMembers($uri, $members);
         }
     }
 
     public function delete(string $groupSlug): void
     {
         $uri = $this->groupUriFromSlug($groupSlug);
-        if ($uri === AdminConstants::ADMIN_GROUP_URI) {
-            throw new \InvalidArgumentException('The administrators group cannot be deleted.');
-        }
-
         $principal = Principal::query()->where('uri', $uri)->first();
         if ($principal === null) {
             throw new \InvalidArgumentException('Group not found.');

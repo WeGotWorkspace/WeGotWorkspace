@@ -14,6 +14,7 @@ use App\Services\Chat\ChatCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -39,8 +40,9 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertNotNull($alice);
         $this->assertNotNull($bob);
 
-        $admins = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($admins, $alice);
+        $this->grantAdminRole($alice);
         $crew = $this->seedWgwGroup('principals/groups/'.self::GROUP, 'Crew');
         $this->addPrincipalToGroup($crew, $alice);
         $this->addPrincipalToGroup($crew, $bob);

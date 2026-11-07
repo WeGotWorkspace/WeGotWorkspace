@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
+use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\SabreCredentialValidator;
 use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
@@ -49,9 +50,14 @@ final class WgwServiceProvider extends ServiceProvider
         // instances in Octane and queue workers, and route-cached controllers keep the instance
         // they were built with, so the cache is also cleared in place whenever a request starts.
         $this->app->scoped(DriveShareOwnerReach::class);
+        // The admin role (#1925) is cached the same way: a role change must count on the next request.
+        $this->app->scoped(AdminRoleResolver::class);
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(DriveShareOwnerReach::class)) {
                 $app->make(DriveShareOwnerReach::class)->forgetOwnerState();
+            }
+            if ($app->resolved(AdminRoleResolver::class)) {
+                $app->make(AdminRoleResolver::class)->forget();
             }
         });
 
