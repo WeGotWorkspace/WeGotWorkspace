@@ -3,7 +3,8 @@
 /*
  * Ghost collection switcher (suite norm), above a detail title: the collection's
  * dot and name in its own colour, a chevron, no chrome, at small-button size.
- * Notes uses it for the notebook, Contacts for the address book. The negative
+ * Notes uses it for the notebook, Contacts for the address book. The name mixes
+ * its colour 55% into the ink so even yellow reads at 4.5:1. The negative
  * inline margin keeps the dot in line with the title while the hover wash has room.
  */
 .collection-ghost-select {
@@ -16,7 +17,7 @@
   background: transparent;
   color: color-mix(
     in oklch,
-    var(--collection-row-color, var(--workspace-foreground)) 80%,
+    var(--collection-row-color, var(--workspace-foreground)) 55%,
     var(--workspace-foreground)
   );
   cursor: pointer;

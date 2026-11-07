@@ -84,11 +84,11 @@
 
 /* Due today warns, an earlier day is an error (as the detail's due field). */
 .tasks-list-row__due[data-severity="warn"] {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .tasks-list-row__due[data-severity="error"] {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* The suite selection mark (as the Notes editor task checks), at the row's leading

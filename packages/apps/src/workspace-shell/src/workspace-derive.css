@@ -138,6 +138,11 @@
   /* Quiet labels: sidebar section titles and list/table column headers. */
   --workspace-label-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
 
+  /* Status colours as text (a due day, a note): the status hue pulled toward the ink,
+     so it reads at 4.5:1 on the paper in both themes. */
+  --color-warning-text: color-mix(in oklab, var(--color-warning) 65%, var(--workspace-foreground));
+  --color-error-text: color-mix(in oklab, var(--color-error) 65%, var(--workspace-foreground));
+
   /* Frosted floating chrome: ink tint over translucent paper, theme shadow. */
   --frost-background: color-mix(
     in oklch,

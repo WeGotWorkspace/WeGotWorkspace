@@ -3,7 +3,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { pushWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
-import { WorkspaceAppSettingsSidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
+import {
+  WorkspaceAppPrimarySidebarSection,
+  WorkspaceAppSettingsSidebarSection,
+} from "@/settings-core/src/workspace-app-settings-sidebar";
 
 registerBuiltinSettings();
 
@@ -45,6 +48,40 @@ export const VisibleForCalendar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
+  },
+};
+
+/** An app's first sidebar section: its own rows, then Settings as the last row. */
+export const PrimarySectionWithSettings: Story = {
+  args: { appId: "tasks" },
+  render: ({ appId }) => (
+    <WorkspaceAppPrimarySidebarSection
+      appId={appId}
+      items={[
+        { label: "All Tasks", onClick: () => {} },
+        { label: "Today", onClick: () => {} },
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const rows = within(canvasElement).getAllByRole("button");
+    await expect(rows.map((row) => row.textContent)).toEqual(["All Tasks", "Today", "Settings"]);
+  },
+};
+
+/** No Settings row for an app without a settings panel. */
+export const PrimarySectionWithoutSettings: Story = {
+  args: { appId: "drive" },
+  render: ({ appId }) => (
+    <WorkspaceAppPrimarySidebarSection
+      appId={appId}
+      items={[{ label: "My Drive", onClick: () => {} }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "My Drive" })).toBeTruthy();
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
   },
 };
 

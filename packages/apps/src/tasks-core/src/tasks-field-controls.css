@@ -31,11 +31,11 @@
 
 /* Due today warns, an earlier day is an error (as the list row). */
 .tasks-field__due[data-severity="warn"] > .collection-ghost-select {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .tasks-field__due[data-severity="error"] > .collection-ghost-select {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* The values wrap rather than shrink. The ghost's negative start margin makes this

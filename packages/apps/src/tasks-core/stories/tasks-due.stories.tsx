@@ -74,7 +74,7 @@ export const Upcoming: Story = {
   play: async ({ canvasElement }) => {
     await expect(dueTrigger(canvasElement).textContent).toBe("In 3 days");
     await expect(getComputedStyle(dueTrigger(canvasElement)).color).not.toBe(
-      tokenColor(canvasElement, "--color-warning"),
+      tokenColor(canvasElement, "--color-warning-text"),
     );
   },
 };
@@ -85,7 +85,7 @@ export const Today: Story = {
   play: async ({ canvasElement }) => {
     await expect(dueTrigger(canvasElement).textContent).toBe("Today");
     await expect(getComputedStyle(dueTrigger(canvasElement)).color).toBe(
-      tokenColor(canvasElement, "--color-warning"),
+      tokenColor(canvasElement, "--color-warning-text"),
     );
   },
 };
@@ -94,7 +94,7 @@ export const Today: Story = {
 export const Overdue: Story = {
   args: { due: `${dayFromToday(-2)}T09:00:00`, showWithoutTime: false },
   play: async ({ canvasElement }) => {
-    const error = tokenColor(canvasElement, "--color-error");
+    const error = tokenColor(canvasElement, "--color-error-text");
     await expect(dueTrigger(canvasElement).textContent).toBe("2 days ago");
     await expect(getComputedStyle(dueTrigger(canvasElement)).color).toBe(error);
     const time = within(canvasElement).getByLabelText<HTMLInputElement>(L.dueTimeLabel);
