@@ -13,7 +13,12 @@ import {
 } from "@/calendar-core/src/calendar-search";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
-import { createTeamAvailabilityFixture } from "@/calendar-core/src/calendar-availability-fixture";
+import {
+  createTeamAvailabilityFixture,
+  seedMockTeamAvailability,
+} from "@/calendar-core/src/calendar-availability-fixture";
+import { teamAvailabilitySourceFromJmap } from "@/calendar-core/src/use-team-availability";
+import { JmapClient, MockJmapServer } from "@/lib/jmap-client";
 import {
   calendarStaticSurfaceFor,
   calendarStoryOperations,
@@ -473,6 +478,38 @@ export const TeamAvailabilityOffline: Story = {
       "Offline · teammates' availability updated 2 hours ago.",
     );
     await expect(bar.textContent).toContain(defaultCalendarLabels.teamAvailabilityOfflineUncached);
+  },
+};
+
+/** A JMAP server with the contract's TeamMember methods behind the section. */
+function mockTeamAvailabilitySource() {
+  const server = new MockJmapServer();
+  seedMockTeamAvailability(
+    server.availability,
+    createTeamAvailabilityFixture({
+      count: 12,
+      anchor: MOCK_CALENDAR_ANCHOR,
+      cachedWeeksBefore: 26,
+      cachedWeeksAfter: 26,
+    }),
+  );
+  return teamAvailabilitySourceFromJmap(
+    new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch }),
+  );
+}
+
+/**
+ * The live path against the mock JMAP server: ticks, fetches, the Dexie cache
+ * and the device prefs all run, so ticked rows and cached weeks survive a reload.
+ */
+export const TeamAvailabilityMockServer: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    session: {
+      ...bootstrap.session,
+      user: { ...bootstrap.session.user, username: "me", displayName: "Morgan Reed" },
+    },
+    availabilitySource: mockTeamAvailabilitySource(),
   },
 };
 

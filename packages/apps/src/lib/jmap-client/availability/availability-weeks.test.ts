@@ -47,7 +47,7 @@ describe("availability weeks", () => {
     ]);
   });
 
-  it("covers a 54-week year in one run the server accepts", () => {
+  it("a 54-week year is one run", () => {
     // 1 Jan 2029 is a Monday: the day before reaches back into the previous week.
     const weeks = yearWeeks(2029);
     expect(weeks).toHaveLength(54);

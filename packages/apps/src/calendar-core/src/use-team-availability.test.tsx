@@ -146,7 +146,7 @@ describe("useTeamAvailability", () => {
     );
   });
 
-  it("fetches a year view next year at once, in one call per batch", async () => {
+  it("a jump to next year fetches at once, in one call per batch", async () => {
     const twelve = Array.from({ length: 12 }, (_, index) => member(`user${index + 10}`));
     shown(twelve.map((entry) => entry.id));
     const { source, getAvailability } = fakeSource(twelve);
@@ -208,7 +208,7 @@ describe("useTeamAvailability", () => {
     );
   });
 
-  it("paints cached weeks offline, a cross-week period included, and says what is missing", async () => {
+  it("a cross-week period stays busy offline, and the notice says what is missing", async () => {
     shown(["alice"]);
     await writeCachedTeamMembers(viewer, { state: "s1", list: [member("alice")] });
     await writeAvailabilityWeeks(viewer, [

@@ -261,12 +261,17 @@ describe("createCalendarEventsApi", () => {
 
   it("blocks create, move, resize, and remove on a teammate's availability blocks", () => {
     const operations = operationsStub();
-    const busy = availabilityPeriodEvent("alice", 0, {
-      start: "2033-01-12T09:00:00",
-      timeZone: "Europe/Amsterdam",
-      duration: "PT1H",
-      showWithoutTime: false,
-    })!;
+    const busy = availabilityPeriodEvent(
+      "alice",
+      0,
+      {
+        start: "2033-01-12T09:00:00",
+        timeZone: "Europe/Amsterdam",
+        duration: "PT1H",
+        showWithoutTime: false,
+      },
+      "Busy",
+    )!;
     const events = new Map<string, CalendarEvent>([
       ["availability:alice#0", busy],
       ["standup", engineEvent("standup")],

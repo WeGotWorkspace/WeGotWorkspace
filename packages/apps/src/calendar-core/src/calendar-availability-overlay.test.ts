@@ -23,14 +23,19 @@ describe("availability overlay", () => {
   });
 
   it("keeps a zoned period in its own zone and pins a Z start to UTC", () => {
-    const zoned = availabilityPeriodEvent("alice", 0, {
-      start: "2026-11-12T09:00:00",
-      timeZone: "Europe/Amsterdam",
-      duration: "PT1H",
-      showWithoutTime: false,
-      title: "Roadmap",
-      location: "Room 2",
-    })!;
+    const zoned = availabilityPeriodEvent(
+      "alice",
+      0,
+      {
+        start: "2026-11-12T09:00:00",
+        timeZone: "Europe/Amsterdam",
+        duration: "PT1H",
+        showWithoutTime: false,
+        title: "Roadmap",
+        location: "Room 2",
+      },
+      "Busy",
+    )!;
     expect(zoned).toMatchObject({
       overlayKind: "availability",
       calendarId: "availability:alice",
@@ -40,23 +45,34 @@ describe("availability overlay", () => {
     expect(zoned.data.summary).toBe("Roadmap");
     expect(zoned.data.location).toBe("Room 2");
 
-    const utc = availabilityPeriodEvent("alice", 1, {
-      start: "2026-11-12T08:00:00Z",
-      timeZone: null,
-      duration: "PT30M",
-      showWithoutTime: false,
-    })!;
+    const utc = availabilityPeriodEvent(
+      "alice",
+      1,
+      {
+        start: "2026-11-12T08:00:00Z",
+        timeZone: null,
+        duration: "PT30M",
+        showWithoutTime: false,
+      },
+      "Busy",
+    )!;
     expect(utc.data.timeZone).toBe("Etc/UTC");
+    expect(utc.data.summary).toBe("Busy");
     expect(utc.data.start.toString()).toBe("2026-11-12T08:00:00");
   });
 
   it("keeps all-day periods on their dates without a zone", () => {
-    const allDay = availabilityPeriodEvent("bob", 0, {
-      start: "2026-11-12",
-      timeZone: null,
-      duration: "P2D",
-      showWithoutTime: true,
-    })!;
+    const allDay = availabilityPeriodEvent(
+      "bob",
+      0,
+      {
+        start: "2026-11-12",
+        timeZone: null,
+        duration: "P2D",
+        showWithoutTime: true,
+      },
+      "Busy",
+    )!;
     expect(allDay.data.allDay).toBe(true);
     expect(allDay.data.timeZone).toBeUndefined();
     expect(allDay.data.start.toString()).toBe("2026-11-12T00:00:00");
@@ -78,6 +94,7 @@ describe("availability overlay", () => {
           ],
         ],
       ]),
+      "Busy",
     );
     expect([...events.keys()]).toEqual(["availability:alice#0"]);
   });

@@ -285,6 +285,8 @@ export type CalendarUILabels = {
   teamAvailabilityOfflineUncached: string;
   teamAvailabilityOfflineNone: string;
   teamAvailabilityJustNow: string;
+  /** Title of a busy block whose owner shares no details. */
+  teamAvailabilityBusy: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -556,6 +558,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityOfflineNone:
     "Offline · teammates' availability for this period is not available offline.",
   teamAvailabilityJustNow: "just now",
+  teamAvailabilityBusy: "Busy",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

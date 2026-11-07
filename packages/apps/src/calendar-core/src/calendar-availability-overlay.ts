@@ -73,6 +73,7 @@ export function availabilityPeriodEvent(
   username: string,
   index: number,
   period: JmapBusyPeriod,
+  busyLabel: string,
 ): CalendarEvent | null {
   let start: Temporal.PlainDateTime;
   let duration: Temporal.Duration;
@@ -91,7 +92,8 @@ export function availabilityPeriodEvent(
       : isInstantOrOffset(period.start.trim())
         ? UTC_TIMEZONE
         : null;
-  const title = period.title?.trim() ?? "";
+  // Untitled periods read "Busy", so every block has an accessible name.
+  const title = period.title?.trim() || busyLabel;
   const location = period.location?.trim() ?? "";
   return {
     overlayKind: AVAILABILITY_OVERLAY_KIND,
@@ -112,11 +114,12 @@ export function availabilityPeriodEvent(
 /** Grid events for every shown teammate, keyed `availability:{username}#{index}`. */
 export function buildAvailabilityOverlayEvents(
   periodsByUser: ReadonlyMap<string, readonly JmapBusyPeriod[]>,
+  busyLabel: string,
 ): CalendarEventsMap {
   const events: CalendarEventsMap = new Map();
   for (const [username, periods] of periodsByUser) {
     periods.forEach((period, index) => {
-      const event = availabilityPeriodEvent(username, index, period);
+      const event = availabilityPeriodEvent(username, index, period, busyLabel);
       if (event) events.set(availabilityOverlayKey(username, index), event);
     });
   }

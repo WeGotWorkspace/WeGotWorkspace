@@ -282,6 +282,7 @@ export function CalendarWorkspace({
     anchor,
     weekStart: surfaceDisplay.weekStart,
     online,
+    busyLabel: L.teamAvailabilityBusy,
   });
   const editCalendar =
     calendarDialog?.mode === "edit"

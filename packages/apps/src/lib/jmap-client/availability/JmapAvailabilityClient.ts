@@ -1,10 +1,9 @@
 import type { JmapClient } from "../core/JmapClient.js";
-import { CORE_CAPABILITY, type JmapId } from "../core/types.js";
-import {
-  AVAILABILITY_CAPABILITY,
-  type JmapTeamMemberGetAvailabilityArgs,
-  type JmapTeamMemberGetAvailabilityResponse,
-  type JmapTeamMemberGetResponse,
+import { AVAILABILITY_CAPABILITY, CORE_CAPABILITY, type JmapId } from "../core/types.js";
+import type {
+  JmapTeamMemberGetAvailabilityArgs,
+  JmapTeamMemberGetAvailabilityResponse,
+  JmapTeamMemberGetResponse,
 } from "./types.js";
 
 export const AVAILABILITY_USING = [CORE_CAPABILITY, AVAILABILITY_CAPABILITY];

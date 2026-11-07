@@ -1,10 +1,12 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
   addUtcWeeks,
+  mergeWeekPeriods,
   splitBusyPeriodsByWeek,
   utcWeekStartOfInstant,
 } from "@/lib/jmap-client/availability/availability-weeks";
 import type { JmapBusyPeriod, JmapTeamMember } from "@/lib/jmap-client/availability/types";
+import type { MockAvailability } from "@/lib/jmap-client/mock/MockAvailability";
 import type { AvailabilityWeek } from "@/lib/offline/calendars/availability-cache";
 import type { TeamAvailabilityPreset } from "@/calendar-core/src/use-team-availability";
 
@@ -117,4 +119,23 @@ export function createTeamAvailabilityFixture({
     }
   });
   return { members, weeks: rows };
+}
+
+/**
+ * Seeds a mock JMAP server's `TeamMember` methods with a fixture, so a story
+ * runs the real client, Dexie cache and tick against it.
+ */
+export function seedMockTeamAvailability(
+  availability: MockAvailability,
+  { members, weeks }: TeamAvailabilityPreset,
+): void {
+  for (const member of members) {
+    availability.seedTeamMember(member);
+    const own = weeks.filter((week) => week.username === member.id);
+    availability.seedBusyPeriods(
+      member.id,
+      mergeWeekPeriods(own),
+      own.every((week) => week.complete),
+    );
+  }
 }

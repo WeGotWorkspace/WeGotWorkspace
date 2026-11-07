@@ -31,6 +31,7 @@ import {
 import { viewDateRange } from "@/calendar-core/src/calendar-event-model";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { buildAvailabilityOverlayEvents } from "@/calendar-core/src/calendar-availability-overlay";
+import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { TeamAvailabilityCoverage } from "@/calendar-core/src/calendar-availability-notice";
 import {
   patchCalendarViewPrefs,
@@ -84,6 +85,8 @@ export type UseTeamAvailabilityArgs = {
   preset?: TeamAvailabilityPreset | null;
   now?: () => number;
   tickMs?: number;
+  /** Title of untitled busy blocks. */
+  busyLabel?: string;
 };
 
 export type TeamAvailabilityState = {
@@ -170,6 +173,7 @@ export function useTeamAvailability({
   preset,
   now = Date.now,
   tickMs = TEAM_AVAILABILITY_TICK_MS,
+  busyLabel = defaultCalendarLabels.teamAvailabilityBusy,
 }: UseTeamAvailabilityArgs): TeamAvailabilityState {
   const presetMode = preset != null;
   const live = !presetMode && Boolean(source) && Boolean(viewer);
@@ -339,8 +343,8 @@ export function useTeamAvailability({
   }, [preset, presetMode, rows, shownList, visibleWeeks]);
 
   const overlayEvents = useMemo(
-    () => buildAvailabilityOverlayEvents(summary.periodsByUser),
-    [summary.periodsByUser],
+    () => buildAvailabilityOverlayEvents(summary.periodsByUser, busyLabel),
+    [busyLabel, summary.periodsByUser],
   );
 
   const orderedMembers = useMemo(
