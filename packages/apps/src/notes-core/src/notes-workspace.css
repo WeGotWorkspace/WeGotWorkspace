@@ -50,6 +50,11 @@
   --sidebar-logo-close-button-color: var(--workspace-foreground);
 
   --notes-list-star-color: var(--workspace-accent);
+  /* Quiet text (row foot, edited date, add tag): the Notes ink is a light green,
+   * so it needs 68% (not the suite's 60–62%) to read at 4.5:1 on the paper. */
+  --notes-quiet-text-color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
+  --list-item-muted-color: var(--notes-quiet-text-color);
+  --tag-group-add-button-fg: var(--notes-quiet-text-color);
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);

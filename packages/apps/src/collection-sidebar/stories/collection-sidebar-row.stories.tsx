@@ -73,8 +73,14 @@ export const Hidden: Story = {
     await expect(getComputedStyle(dot).backgroundColor).not.toBe(
       getComputedStyle(row).getPropertyValue("--collection-row-color"),
     );
+    // The name dims to the quiet label ink (still 4.5:1), not to a faded opacity.
     const title = row.querySelector(".collection-sidebar-row__title") as HTMLElement;
-    await expect(Number(getComputedStyle(title).opacity)).toBeLessThan(1);
+    const label = document.createElement("span");
+    label.style.color = "var(--workspace-label-color)";
+    row.appendChild(label);
+    await expect(getComputedStyle(title).color).toBe(getComputedStyle(label).color);
+    label.remove();
+    await expect(Number(getComputedStyle(title).opacity)).toBe(1);
   },
 };
 

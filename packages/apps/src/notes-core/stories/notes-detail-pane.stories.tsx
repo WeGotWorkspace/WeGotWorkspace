@@ -181,8 +181,9 @@ export const Editable: Story = {
     ).toBe("");
     const accentProbe = document.createElement("span");
     accentProbe.style.color = "var(--workspace-accent)";
+    // The suite norm: the accent is the scheme ink, not the Notes brand green.
     const darkProbe = document.createElement("span");
-    darkProbe.style.color = "var(--color-we-got-dark)";
+    darkProbe.style.color = "var(--scheme-ink)";
     workspace!.appendChild(accentProbe);
     workspace!.appendChild(darkProbe);
     expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(darkProbe).color);

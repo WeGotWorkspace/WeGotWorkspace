@@ -31,7 +31,12 @@
 }
 
 .destination-picker__scroll {
-  @apply min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden;
+  @apply min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden outline-none;
+  border-radius: var(--control-radius);
+}
+
+.destination-picker__scroll:focus-visible {
+  @apply ring-2 ring-inset ring-ring;
 }
 
 .destination-picker__scroll .destination-list-table {

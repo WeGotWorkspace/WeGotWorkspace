@@ -7,10 +7,9 @@
 .notes-detail-last-edited {
   @apply inline-flex min-w-0 shrink-0 items-center text-sm whitespace-nowrap;
   gap: 0.625rem;
-  color: color-mix(
-    in oklch,
-    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 60%,
-    transparent
+  color: var(
+    --notes-quiet-text-color,
+    color-mix(in oklab, var(--workspace-foreground) 68%, transparent)
   );
 }
 

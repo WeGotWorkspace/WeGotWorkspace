@@ -92,8 +92,12 @@
 }
 
 .docs-collab-sidebar-panel__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto py-5;
+  @apply min-h-0 flex-1 overflow-y-auto py-5 outline-none;
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
+}
+
+.docs-collab-sidebar-panel__scroll:focus-visible {
+  @apply ring-2 ring-inset ring-ring;
 }
 
 /* No extra horizontal inset — scroll already matches header title inset. */
