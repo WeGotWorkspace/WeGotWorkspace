@@ -15,7 +15,6 @@ export type MeetWorkspaceCallBarProps = {
   /** Mesh `call-active` senders for this conversation — preview roster before joining. */
   previewPeerIds: readonly string[];
   directory?: readonly CollectionSharePrincipal[];
-  audioOnly: boolean;
   onLeave: () => void;
 };
 
@@ -32,7 +31,6 @@ export function MeetWorkspaceCallBar({
   session,
   previewPeerIds,
   directory,
-  audioOnly,
   onLeave,
 }: MeetWorkspaceCallBarProps) {
   if (!visible) return null;
@@ -58,7 +56,6 @@ export function MeetWorkspaceCallBar({
         peerCount: previewPeerIds.length,
       })}
       joined={joined}
-      audioOnly={audioOnly}
     />
   );
 }

@@ -57,7 +57,7 @@
  */
 .contacts-list-panel__list {
   --contacts-list-card-row-size: 6.75rem;
-  --contacts-list-header-row-size: 2.25rem;
+  --contacts-list-header-row-size: var(--list-sticky-header-height);
   --list-item-intrinsic-block-size: var(--contacts-list-card-row-size);
 }
 
@@ -71,7 +71,6 @@
 
 .contacts-list-panel__list .list-sticky-header {
   /* The frost variant draws it; the virtual list needs a fixed row slot. */
-  box-sizing: border-box;
   block-size: var(--contacts-list-header-row-size);
   max-block-size: var(--contacts-list-header-row-size);
   overflow: hidden;

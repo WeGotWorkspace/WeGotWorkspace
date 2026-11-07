@@ -22,6 +22,11 @@
   /* The composer floats over the list (`--chat-dock-height`, published by its
      host): the last message scrolls clear of it. */
   padding-bottom: calc(var(--chat-dock-height, 0px) + 0.75rem);
+  /* Chrome may float over the top too (Meet's call band, `--chat-top-dock-height`):
+     the first line starts below it, and so do the sticky day labels (sticky
+     offsets count from the padding edge). */
+  padding-top: var(--chat-top-dock-height, 0px);
+  scroll-padding-top: var(--chat-top-dock-height, 0px);
 }
 
 .chat-message-list__jump {

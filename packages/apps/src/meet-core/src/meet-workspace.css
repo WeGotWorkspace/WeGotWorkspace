@@ -668,7 +668,7 @@
   border-color: var(--meet-border);
 }
 
-.meet-workspace__chat-main > .meet-call-knock-wait {
+.meet-workspace__chat-top-dock > .meet-call-knock-wait {
   @apply mx-3 mt-2;
 }
 
@@ -914,56 +914,15 @@
 }
 
 /*
- * "Meeting started": a frosted card over the top of the chat, the composer's
- * mirror. Same edges (avatar edge to text end, capped with the conversation),
- * same inner padding, tinted with the selection wash (sky in dark, ink in light).
+ * "Meeting started": the sticky list header in its selection variant, stuck to
+ * the header and floating over the messages; the day labels stick right under it.
  */
 .meet-call-bar {
-  @apply relative z-10 mt-3 shrink-0;
   container: meet-call-bar / inline-size;
-  margin-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
-  max-width: calc(var(--chat-max-width, 100%) - 2 * var(--list-item-padding-x, 1.25rem));
-  border-radius: var(--floating-toolbar-radius);
-  background: color-mix(
-    in oklch,
-    var(--scheme-selection) var(--scheme-selection-strength),
-    var(--frost-background)
-  );
-  -webkit-backdrop-filter: var(--frost-blur);
-  backdrop-filter: var(--frost-blur);
-  box-shadow: var(--workspace-selected-shadow), var(--frost-shadow);
-  color: var(--workspace-foreground);
-}
-
-.meet-call-bar__row {
-  @apply flex min-h-12 flex-wrap items-center justify-between gap-3 py-1.5 ps-4 pe-1.5;
-}
-
-.meet-call-bar__start {
-  @apply flex min-w-0 items-center gap-3;
-}
-
-.meet-call-bar__mark {
-  @apply flex size-4 shrink-0 items-center justify-center;
-  color: var(--workspace-accent);
-}
-
-.meet-call-bar__copy {
-  @apply min-w-0;
-}
-
-.meet-call-bar__title {
-  @apply truncate text-sm font-semibold;
-  color: inherit;
-}
-
-.meet-call-bar__meta {
-  @apply truncate text-xs tabular-nums;
-  color: color-mix(in oklch, currentColor 72%, transparent);
 }
 
 .meet-call-bar__avatars {
-  @apply flex list-none items-center pl-1;
+  @apply flex list-none items-center;
 }
 
 .meet-call-bar__avatars > li + li {
@@ -1103,6 +1062,7 @@
    icon. It is capped so the hover actions and the reaction picker stay close to
    the text. */
 .meet-workspace__chat-main {
+  @apply relative;
   --chat-header-padding-x: 1rem;
   --chat-content-start: calc(
     var(--chat-header-padding-x) + (var(--workspace-header-control-height, 2.5rem) - 0.875rem) / 2
@@ -1115,6 +1075,12 @@
   .meet-workspace__chat-main {
     --chat-header-padding-x: 1.5rem;
   }
+}
+
+/* The call band floats over the top of the messages, the composer's mirror: it
+   publishes `--chat-top-dock-height` and the list keeps its first line clear. */
+.meet-workspace__chat-top-dock {
+  @apply absolute inset-x-0 top-0 z-10;
 }
 
 /* Floats over the messages (they scroll on beneath it): the typing line, then the

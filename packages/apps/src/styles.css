@@ -196,6 +196,8 @@
    * Header and sidebar controls are 40px (`lg`); see the scope rule below.
    */
   --workspace-header-control-height: var(--control-height-lg, 2.5rem);
+  /* Sticky list section rows (Contacts letters, chat days, Meet's call band): 36px. */
+  --list-sticky-header-height: 2.25rem;
   --workspace-header-padding-y: 0.875rem;
   --workspace-header-height: calc(
     var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px

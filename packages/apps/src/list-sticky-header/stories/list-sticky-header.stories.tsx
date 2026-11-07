@@ -65,6 +65,8 @@ export const ChatDays: Story = {
     await expect(header.classList.contains("list-sticky-header--frost")).toBe(true);
     await expect(getComputedStyle(header).borderBottomWidth).toBe("0px");
     await expect(getComputedStyle(header).position).toBe("sticky");
+    // One row height everywhere (Contacts letters, chat days).
+    await expect(header.getBoundingClientRect().height).toBe(36);
   },
   render: () => (
     <div
@@ -96,4 +98,26 @@ export const ChatDays: Story = {
       ))}
     </div>
   ),
+};
+
+/** Meet's "Meeting started" band: the frost variant tinted with the selection wash. */
+export const Selection: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    variant: "selection",
+    emphasis: "Meeting started",
+    rest: "2 people in call",
+    end: <span data-testid="end">AB</span>,
+  },
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector(".list-sticky-header") as HTMLElement;
+    await expect(header.classList.contains("list-sticky-header--frost")).toBe(true);
+    await expect(header.classList.contains("list-sticky-header--selection")).toBe(true);
+    await expect(header.getBoundingClientRect().height).toBe(36);
+    const end = header.querySelector(".list-sticky-header__end") as HTMLElement;
+    await expect(end.getBoundingClientRect().right).toBeCloseTo(
+      header.getBoundingClientRect().right - parseFloat(getComputedStyle(header).paddingRight),
+      0,
+    );
+  },
 };

@@ -654,7 +654,6 @@ export function MeetWorkspace({
                 session={session}
                 previewPeerIds={selectedId ? (callParticipantsByChannel?.[selectedId] ?? []) : []}
                 directory={data.directory}
-                audioOnly={callAudioOnly}
                 onLeave={visitCallToggle}
               />
             }
