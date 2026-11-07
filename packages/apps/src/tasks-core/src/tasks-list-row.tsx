@@ -151,14 +151,18 @@ export const TasksListRow = memo(function TasksListRow({
       onCheckedChange={() => onToggleComplete(task.id)}
     />
   );
-  const completeControl = canMutate ? (
-    checkbox
-  ) : (
+  // The tooltip names what a click does; a read-only list says why it cannot. The
+  // trigger is a span around the box: on the box itself the tooltip's `data-state`
+  // would replace the checked state the box is styled by (and a disabled box takes
+  // no hover).
+  const completeControl = (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="tasks-list-row__complete-hint">{checkbox}</span>
       </TooltipTrigger>
-      <TooltipContent>{L.viewOnlyListBadge}</TooltipContent>
+      <TooltipContent>
+        {canMutate ? (completed ? L.markIncomplete : L.markComplete) : L.viewOnlyListBadge}
+      </TooltipContent>
     </Tooltip>
   );
 

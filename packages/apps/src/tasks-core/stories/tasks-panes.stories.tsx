@@ -217,3 +217,23 @@ export const DetailReadOnly: StoryObj<typeof TasksDetailHarness> = {
     }
   },
 };
+
+/**
+ * The complete circle says what a click does in a tooltip. (Its hover look is CSS
+ * `:hover`, which a scripted hover does not set; the app e2e checks that.)
+ */
+export const CompleteCheckboxTooltip: Story = {
+  tags: ["vitest-ci"],
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelector(".tasks-list-row")).toBeTruthy());
+    const circle = rowFor(canvasElement, "Buy milk").querySelector<HTMLElement>(
+      ".tasks-list-row__complete",
+    )!;
+    // The box keeps its own checked state; the tooltip trigger is the span around it.
+    await expect(circle.dataset.state).toBe("unchecked");
+    await userEvent.hover(circle);
+    const tooltip = await within(document.body).findByRole("tooltip");
+    await expect(tooltip.textContent).toBe(L.markComplete);
+    await userEvent.unhover(circle);
+  },
+};

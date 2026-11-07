@@ -104,6 +104,38 @@
   --checkbox-checked-bg: var(--workspace-selected-mark-background, var(--workspace-foreground));
   --checkbox-checked-border: var(--checkbox-checked-bg);
   --checkbox-checked-fg: var(--workspace-selected-mark-color, var(--workspace-surface));
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+/* Hover, as the sidebar visibility toggles: the mark grows a little; an empty ring
+   also darkens with a faint wash. A press sinks it. */
+@media (hover: hover) {
+  .tasks-list-row .tasks-list-row__complete:not(:disabled):hover {
+    transform: scale(1.1);
+  }
+
+  .tasks-list-row .tasks-list-row__complete[data-state="unchecked"]:not(:disabled):hover {
+    --checkbox-border-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
+    background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  }
+}
+
+.tasks-list-row .tasks-list-row__complete:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasks-list-row .tasks-list-row__complete {
+    transition: none;
+  }
+
+  .tasks-list-row .tasks-list-row__complete:not(:disabled):is(:hover, :active) {
+    transform: none;
+  }
 }
 
 /* Browsers round a 1.5px border down to 1px; the inner half pixel is a shadow. */
