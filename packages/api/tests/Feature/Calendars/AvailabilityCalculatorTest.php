@@ -188,6 +188,18 @@ final class AvailabilityCalculatorTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_the_team_copy_wins_over_a_time_only_personal_copy(): void
+    {
+        // The personal pref stays at the default (time only); the Team copy is longer.
+        $this->seedEventViaPdo('bob', 'copy.ics', $this->eventIcs('shared-uid', ':20300107T100000Z', ':20300107T110000Z', ['SUMMARY:Planning']));
+        $this->seedEventViaPdo('groups/eng', 'orig.ics', $this->eventIcs('shared-uid', ':20300107T100000Z', ':20300107T120000Z', ['SUMMARY:Planning']), 'eng');
+
+        $this->assertSame(
+            [['start' => '2030-01-07T10:00:00Z', 'timeZone' => null, 'duration' => 'PT2H', 'showWithoutTime' => false]],
+            $this->busy()->periods(),
+        );
+    }
+
     public function test_exclude_uid_drops_that_event(): void
     {
         $this->seedEventViaPdo('bob', 'keep.ics', $this->eventIcs('keep', ':20300107T100000Z', ':20300107T110000Z'));
