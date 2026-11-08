@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
-import { shareLabels } from "@/share-ui/share-labels";
+import { shareLabels, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { cn } from "@/lib/utils";
 import "@/unified-search-dropdown/src/unified-search-results-dropdown.css";
@@ -31,7 +31,7 @@ export function SharePrincipalSearchDropdown({
   searching = false,
   results,
   className,
-  emptyLabel = "No people or groups found",
+  emptyLabel = sharePrincipalCopy.searchEmpty,
   listLabel = shareLabels.teamSectionTitle,
   minQueryLength = 2,
   children,

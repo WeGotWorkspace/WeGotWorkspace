@@ -87,7 +87,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $this->withBearer($this->adminBearerToken())
             ->deleteJson('/api/v1/admin/groups/administrators')
             ->assertBadRequest()
-            ->assertJsonPath('error', 'The administrators group cannot be deleted.');
+            ->assertJsonPath('error', 'The administrators team cannot be deleted.');
     }
 
     public function test_patch_administrators_members_revokes_removed_member_refresh_token(): void

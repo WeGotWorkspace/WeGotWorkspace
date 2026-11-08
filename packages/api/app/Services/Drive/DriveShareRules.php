@@ -245,7 +245,7 @@ final class DriveShareRules
             ->exists();
 
         if (! $exists) {
-            throw new ApiHttpException(400, 'Unknown group.', 'bad_request');
+            throw new ApiHttpException(400, 'Unknown team.', 'bad_request');
         }
     }
 

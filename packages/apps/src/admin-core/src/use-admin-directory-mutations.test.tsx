@@ -55,7 +55,7 @@ describe("useAdminGroupMutations", () => {
     });
     expect(result.current.groups).toHaveLength(1);
     expect(result.current.users.find((user) => user.id === "carol")?.groups).toEqual([]);
-    expect(showSuccess).toHaveBeenCalledWith("Group deleted");
+    expect(showSuccess).toHaveBeenCalledWith("Team deleted");
   });
 
   it("protects the administrators group and passes member usernames to the API", async () => {
@@ -74,13 +74,13 @@ describe("useAdminGroupMutations", () => {
     });
 
     expect(showError).toHaveBeenCalledWith(
-      "The administrators group is protected and cannot be deleted.",
+      "The administrators team is protected and cannot be deleted.",
     );
     expect(updateGroup).toHaveBeenCalledWith("principals/groups/administrators", {
       displayName: "Admins",
       members: ["alice", "carol"],
     });
     expect(result.current.applyAdminData).toHaveBeenCalledWith(data);
-    expect(showSuccess).toHaveBeenCalledWith("Group saved");
+    expect(showSuccess).toHaveBeenCalledWith("Team saved");
   });
 });

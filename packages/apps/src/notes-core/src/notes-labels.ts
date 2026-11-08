@@ -1,4 +1,5 @@
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import { sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
 
 /**
@@ -239,7 +240,7 @@ export const defaultNotesLabels: NotesUILabels = {
     `“${title}” was archived elsewhere. Your changes to it were not saved.`,
   shareNotebookTitle: "Share notebook",
   shareNotebookHint: "People you add can open this notebook in Notes.",
-  shareNotebookPlaceholder: "Add people or groups",
+  shareNotebookPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareNotebookEmpty: "No matches",
   shareNotebookOffline: "Sharing is unavailable offline.",
   removeNotebookShareTitle: "Remove access?",
@@ -254,7 +255,7 @@ export const defaultNotesLabels: NotesUILabels = {
   notebookOwnerReadOnly: "Owner cannot be changed for this notebook.",
   changeNotebookOwnerConfirmTitle: "Change notebook owner?",
   changeNotebookOwnerConfirmToGroup: (groupName) =>
-    `This notebook will move to ${groupName}. Members of that group will see it.`,
+    `This notebook will move to ${groupName}. Members of that team will see it.`,
   changeNotebookOwnerConfirmToPersonal: "This notebook will move to your personal notebooks.",
   changeNotebookOwnerConfirm: "Change owner",
   createNotebookButton: "Create",

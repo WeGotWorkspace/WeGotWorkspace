@@ -123,9 +123,9 @@ export function AdminUsersPane({
         </ul>
       </Card>
       <Card
-        title="Groups"
+        title="Teams"
         action={
-          <IconActionButton label="New group" onClick={onNewGroup}>
+          <IconActionButton label="New team" onClick={onNewGroup}>
             <Plus className="size-4" />
           </IconActionButton>
         }

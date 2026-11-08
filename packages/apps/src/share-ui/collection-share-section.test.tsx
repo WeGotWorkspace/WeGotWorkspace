@@ -6,12 +6,12 @@ import { CollectionShareSection } from "@/share-ui/collection-share-section";
 
 const COPY = {
   title: "Team access",
-  hint: "Grant read or read-and-write access to people or groups.",
-  placeholder: "Add people or groups…",
-  empty: "No people or groups found",
+  hint: "Grant read or read-and-write access to people or teams.",
+  placeholder: "Add people or teams…",
+  empty: "No people or teams found",
   offline: "Sharing changes require a connection.",
   removeTitle: "Remove access?",
-  removeConfirm: "This person or group will lose access. Continue?",
+  removeConfirm: "This person or team will lose access. Continue?",
 };
 
 function renderShare(ui: ReactElement) {
@@ -30,7 +30,7 @@ describe("CollectionShareSection", () => {
       />,
     );
     expect(screen.getByText("Team access")).toBeTruthy();
-    expect(screen.getByPlaceholderText("Add people or groups…")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Add people or teams…")).toBeTruthy();
     expect(screen.queryByText(/calendar/i)).toBeNull();
   });
 

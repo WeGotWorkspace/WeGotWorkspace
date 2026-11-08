@@ -20,7 +20,7 @@ final class GroupsController
     {
         $slugRaw = $request->slugValue();
         if ($slugRaw === '') {
-            throw new ApiHttpException(400, 'Group name is required.', 'bad_request');
+            throw new ApiHttpException(400, 'Team name is required.', 'bad_request');
         }
 
         try {

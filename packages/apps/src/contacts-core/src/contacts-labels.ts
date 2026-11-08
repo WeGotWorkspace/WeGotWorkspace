@@ -1,4 +1,5 @@
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
 /**
  * User-visible copy for the contacts workspace (sidebar, list chrome, dialogs, toasts).
@@ -299,7 +300,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   addressBookDialogDone: "Done",
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",
-  shareAddressBookPlaceholder: "Add people or groups",
+  shareAddressBookPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareAddressBookEmpty: "No matches",
   shareAddressBookOffline: "Sharing is unavailable offline.",
   removeAddressBookShareTitle: "Remove access?",

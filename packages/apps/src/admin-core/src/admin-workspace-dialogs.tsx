@@ -138,7 +138,7 @@ export function UserDialog({
             <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
               {initial
-                ? `${initial.displayName} (@${initial.username}) will be permanently removed and unassigned from all groups.`
+                ? `${initial.displayName} (@${initial.username}) will be permanently removed and unassigned from all teams.`
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -279,11 +279,11 @@ export function GroupDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {initial ? "Rename and assign members." : "Create a new group."}
+            {initial ? "Rename and assign members." : "Create a new team."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <FormField label="Group name">
+          <FormField label="Team name">
             <Input
               size="sm"
               value={name}
@@ -308,7 +308,7 @@ export function GroupDialog({
                         user.username === currentUsername
                       }
                       onCheckedChange={() => toggleMember(user.id)}
-                      aria-label={`${user.displayName} group member`}
+                      aria-label={`${user.displayName} team member`}
                     />
                   </li>
                 ))}

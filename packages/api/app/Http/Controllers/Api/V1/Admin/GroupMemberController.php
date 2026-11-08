@@ -28,7 +28,7 @@ final class GroupMemberController
     private function mutate(Request $request, string $group, string $username, bool $enabled): JsonResponse
     {
         if (! preg_match('/^[a-z0-9_-]{2,63}$/', $group) || ! preg_match('/^[a-z0-9_-]{2,63}$/', $username)) {
-            throw new ApiHttpException(400, 'Invalid group or username.', 'bad_request');
+            throw new ApiHttpException(400, 'Invalid team or username.', 'bad_request');
         }
 
         /** @var array{username: string} $principal */

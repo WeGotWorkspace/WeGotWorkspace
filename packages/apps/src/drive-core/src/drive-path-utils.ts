@@ -4,7 +4,16 @@ export const DRIVE_TRASH_UI_PATH = "Trash";
 /** Virtual root for the Shared with me browse view (not a filesystem directory). */
 export const SHARED_WITH_ME_UI_ROOT = "Shared with me";
 
-const GROUPS_UI_ROOT = "Groups";
+/**
+ * UI path segment for Team drives (`Groups/{slug}`), used in paths, URLs and offline keys.
+ * It is not a label: the visible root label is `filesBrowserSidebarLabels.teamsRoot`.
+ */
+export const DRIVE_GROUPS_UI_ROOT = "Groups";
+
+/** UI path of a Team drive root (`Groups/{slug}`). */
+export function driveGroupUiPath(slug: string): string {
+  return `${DRIVE_GROUPS_UI_ROOT}/${slug}`;
+}
 const MY_DRIVE_UI_ROOT = "My Drive";
 /** Foreign personal drives opened from Shared with me (`/users/{other}/…`). */
 const USERS_UI_ROOT = "Users";
@@ -16,8 +25,8 @@ export function normalizeDriveFolderUiPath(path: string): string {
   if (
     trimmed === MY_DRIVE_UI_ROOT ||
     trimmed.startsWith(`${MY_DRIVE_UI_ROOT}/`) ||
-    trimmed === GROUPS_UI_ROOT ||
-    trimmed.startsWith(`${GROUPS_UI_ROOT}/`) ||
+    trimmed === DRIVE_GROUPS_UI_ROOT ||
+    trimmed.startsWith(`${DRIVE_GROUPS_UI_ROOT}/`) ||
     trimmed === USERS_UI_ROOT ||
     trimmed.startsWith(`${USERS_UI_ROOT}/`) ||
     trimmed === DRIVE_TRASH_UI_PATH ||
@@ -84,10 +93,10 @@ export function uiPathFromApiPath(path: string, username: string): string {
   const normalized = normalizeApiVirtualPath(path);
   const userRoot = `/users/${username}`;
   if (normalized === "/groups") {
-    return "Groups";
+    return DRIVE_GROUPS_UI_ROOT;
   }
   if (normalized.startsWith("/groups/")) {
-    return normalized.replace(/^\/groups/, "Groups");
+    return normalized.replace(/^\/groups/, DRIVE_GROUPS_UI_ROOT);
   }
   if (normalized === userRoot) {
     return "My Drive";
@@ -119,11 +128,11 @@ export function apiPathFromUiPath(path: string, username: string, groupRoots: Se
   if (normalized === "My Drive") {
     return userRoot;
   }
-  if (normalized === "Groups") {
+  if (normalized === DRIVE_GROUPS_UI_ROOT) {
     return "/groups";
   }
-  if (normalized.startsWith("Groups/")) {
-    const relative = normalized.slice("Groups/".length);
+  if (normalized.startsWith(`${DRIVE_GROUPS_UI_ROOT}/`)) {
+    const relative = normalized.slice(`${DRIVE_GROUPS_UI_ROOT}/`.length);
     return `/groups/${relative}`;
   }
   if (normalized === USERS_UI_ROOT || normalized.startsWith(`${USERS_UI_ROOT}/`)) {

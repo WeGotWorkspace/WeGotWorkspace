@@ -10,12 +10,12 @@ import { CollectionShareSection } from "@/share-ui/collection-share-section";
 
 const COPY = {
   title: "Team access",
-  hint: "Grant read or read-and-write access to people or groups.",
-  placeholder: "Add people or groups…",
-  empty: "No people or groups found",
+  hint: "Grant read or read-and-write access to people or teams.",
+  placeholder: "Add people or teams…",
+  empty: "No people or teams found",
   offline: "Sharing changes require a connection.",
   removeTitle: "Remove access?",
-  removeConfirm: "This person or group will lose access. Continue?",
+  removeConfirm: "This person or team will lose access. Continue?",
 };
 
 const PRINCIPALS: CollectionSharePrincipal[] = [

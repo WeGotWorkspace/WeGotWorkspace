@@ -8,7 +8,7 @@ export type SettingsMembershipsPaneProps = {
 
 export function SettingsMembershipsPane({ groups }: SettingsMembershipsPaneProps) {
   return (
-    <Card title="Groups">
+    <Card title="Your teams">
       <ul className="settings-group-list">
         {groups.map((group) => (
           <li key={group.id} className="settings-group-row">
