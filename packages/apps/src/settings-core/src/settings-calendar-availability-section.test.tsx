@@ -163,13 +163,16 @@ describe("SettingsCalendarAvailabilitySection", () => {
     // Keyboard focus opens it.
     act(() => tag.focus());
     expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
+    // The description stays on the tag while the tooltip is open.
+    const openDescribedBy = (tag.getAttribute("aria-describedby") ?? "").split(/\s+/);
+    expect(openDescribedBy).toContain(describedBy);
+    expect(document.getElementById(describedBy)?.textContent).toBe(labels.teamHint);
     fireEvent.keyDown(tag, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
     act(() => tag.blur());
 
-    // A tap (touch pointer, then click) opens it too.
+    // A tap opens it too: a cancelled touch pointerdown fires no click.
     fireEvent.pointerDown(tag, { pointerType: "touch" });
-    fireEvent.click(tag);
     expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
   });
 

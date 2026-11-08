@@ -221,11 +221,13 @@ function TeamCalendarTag() {
         <button
           type="button"
           className="settings-availability__team-tag"
-          // While open, Radix points the description at the tooltip itself.
-          aria-describedby={open ? undefined : hintId}
+          aria-describedby={hintId}
           onPointerDown={(event) => {
-            // Keep Radix from closing the tooltip on a tap; the click below opens it.
-            if (event.pointerType !== "mouse") event.preventDefault();
+            // Cancelling a touch pointerdown suppresses the click and focus, so open here.
+            if (event.pointerType !== "mouse") {
+              event.preventDefault();
+              setOpen(true);
+            }
           }}
           onClick={(event) => {
             event.preventDefault();
