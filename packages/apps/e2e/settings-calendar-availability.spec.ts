@@ -3,9 +3,8 @@
 // - A save in one tab reaches another open tab without a reload (BroadcastChannel).
 // - The state comes back from the server after a reload.
 // - Save while offline shows the offline toast and sends no PUT.
-import { expect, test } from "./helpers/live-test";
+import { expect, test, type Locator, type Page } from "./helpers/live-test";
 import { openCalendarWeek } from "./helpers/calendar-live";
-import type { Locator, Page } from "@playwright/test";
 
 const SWITCH_LABEL = "Share my availability with my Teams";
 const SAVED_TOAST = "Availability settings saved";
