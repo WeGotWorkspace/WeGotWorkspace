@@ -91,7 +91,44 @@ final class CalendarShareInvites
             return;
         }
 
-        $this->backends->calBackend()->updateInvites($this->collections->backendId($instance), $sharees);
+        $backend = $this->backends->calBackend();
+        $backendId = $this->collections->backendId($instance);
+        $stale = $this->principalLessHrefsBeingGranted($currentInvites, $sharees);
+        if ($stale !== []) {
+            // Sabre updates a principal-less row in place and keeps it principal-less. Drop it
+            // first so the grant below inserts a fresh row carrying the principal.
+            $backend->updateInvites($backendId, array_map(
+                static fn (string $href): Sharee => new Sharee(['href' => $href, 'access' => SharingPlugin::ACCESS_NOACCESS]),
+                $stale,
+            ));
+        }
+        $backend->updateInvites($backendId, $sharees);
+    }
+
+    /**
+     * @param  list<Sharee>  $currentInvites
+     * @param  list<Sharee>  $sharees
+     * @return list<string>
+     */
+    private function principalLessHrefsBeingGranted(array $currentInvites, array $sharees): array
+    {
+        $granted = [];
+        foreach ($sharees as $sharee) {
+            if ((int) $sharee->access !== SharingPlugin::ACCESS_NOACCESS && is_string($sharee->principal)) {
+                $granted[(string) $sharee->href] = true;
+            }
+        }
+
+        $stale = [];
+        foreach ($currentInvites as $invite) {
+            $href = (string) $invite->href;
+            if (isset($granted[$href]) && (int) $invite->access !== SharingPlugin::ACCESS_SHAREDOWNER
+                && (! is_string($invite->principal) || $invite->principal === '')) {
+                $stale[$href] = $href;
+            }
+        }
+
+        return array_values($stale);
     }
 
     /**

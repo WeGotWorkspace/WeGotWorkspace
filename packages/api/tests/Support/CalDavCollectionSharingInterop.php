@@ -197,6 +197,79 @@ trait CalDavCollectionSharingInterop
         $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
     }
 
+    /**
+     * A CalDAV share Epic #1915 refused leaves a principal-less row. Once that person joins
+     * the owner's Team, a real share must replace it rather than update it in place.
+     */
+    public function test_app_share_after_a_refused_caldav_share_gives_the_colleague_access(): void
+    {
+        $this->assertRefusedCalDavShareThenRealShare(viaCalDav: false);
+    }
+
+    public function test_caldav_share_after_a_refused_caldav_share_gives_the_colleague_access(): void
+    {
+        $this->assertRefusedCalDavShareThenRealShare(viaCalDav: true);
+    }
+
+    private function assertRefusedCalDavShareThenRealShare(bool $viaCalDav): void
+    {
+        $this->seedWgwUser('erin', email: 'erin@example.test', displayName: 'Erin');
+        $name = 'Refused Then Real '.($viaCalDav ? 'Dav' : 'App');
+        $collectionId = $this->createSharingCollection('bob', $name, 'refused-then-real-'.($viaCalDav ? 'dav' : 'app'));
+        $mailto = 'mailto:erin@example.test';
+
+        $first = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: false), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $first['status'], $first['body']);
+        $this->assertNull(CalendarInstance::query()->where('share_href', $mailto)->firstOrFail()->principaluri);
+
+        $this->seedSharedTeam('colleagues', 'bob', 'erin');
+        $this->app->instance('request', Request::create('/'));
+
+        if ($viaCalDav) {
+            $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: false), [
+                'Content-Type' => 'application/xml',
+            ]);
+            $this->assertSame(200, $again['status'], $again['body']);
+        } else {
+            $this->shareCollectionViaApp('bob', $collectionId, 'erin', write: false);
+        }
+
+        $rows = CalendarInstance::query()->where('share_href', $mailto)->get();
+        $this->assertCount(1, $rows);
+        $this->assertSame('principals/erin', $rows->first()?->principaluri);
+        $this->assertContains($name, $this->collectionNamesForViewer('erin'));
+    }
+
+    /**
+     * A Team grant is stored as `mailto:groups/{slug}`, which no principal lookup resolves.
+     * A CalDAV re-share of it must not rewrite the existing row.
+     */
+    public function test_caldav_re_share_of_an_existing_team_grant_leaves_it_untouched(): void
+    {
+        $collectionId = $this->createSharingCollection('bob', 'Team Grant', 'team-grant');
+        $this->shareCollectionViaApp('bob', $collectionId, 'groups/colleagues', write: false);
+        $teamInstance = static fn (): ?CalendarInstance => CalendarInstance::query()
+            ->where('share_href', 'mailto:groups/colleagues')
+            ->first();
+        $before = $teamInstance()?->getAttributes();
+        $this->assertNotNull($before);
+        $shareWithBefore = $this->ownerCollectionShareWith('bob', $collectionId);
+        $this->assertIsArray($shareWithBefore['groups/colleagues'] ?? null);
+
+        GroupMember::query()->where('member_id', Principal::forUsername('bob')?->id)->delete();
+        $this->app->instance('request', Request::create('/'));
+
+        $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml('mailto:groups/colleagues', write: true), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $again['status'], $again['body']);
+
+        $this->assertSame($before, $teamInstance()?->getAttributes());
+        $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
+    }
+
     public function test_caldav_dav_share_resource_appears_in_app_share_with(): void
     {
         $collectionId = $this->createSharingCollection('bob', 'Dav Sharing', 'dav-sharing');

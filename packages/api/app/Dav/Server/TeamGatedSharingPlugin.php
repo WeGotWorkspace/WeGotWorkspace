@@ -38,26 +38,44 @@ final class TeamGatedSharingPlugin extends SharingPlugin
         }
         $caller = $this->callerUsername($acl instanceof AclPlugin ? $acl : null);
 
-        $existingHrefs = [];
+        // href => whether that invite already carries a principal.
+        $existing = [];
         foreach ($node->getInvites() as $invite) {
-            $existingHrefs[(string) $invite->href] = true;
+            $existing[(string) $invite->href] = is_string($invite->principal) && $invite->principal !== '';
         }
 
         $forwarded = [];
+        $stale = [];
         foreach ($sharees as $sharee) {
+            $href = (string) $sharee->href;
             // Sabre resolves the href through the ACL plugin's getPrincipalByUri listener.
-            $principal = $acl instanceof AclPlugin ? $acl->getPrincipalByUri((string) $sharee->href) : null;
-            if ($principal !== null && $caller !== null && $this->grantsAccess($sharee)
+            $principal = $acl instanceof AclPlugin ? $acl->getPrincipalByUri($href) : null;
+            $grants = $this->grantsAccess($sharee);
+            if ($principal !== null && $caller !== null && $grants
                 && ! $this->colleagues->mayShareWithPrincipalUri($caller, $principal)) {
+                $principal = null;
+            }
+            if ($grants && isset($existing[$href])) {
                 // Sabre updates an existing invite in place and keeps its principal, so a
-                // refused re-share must not reach it: the existing grant stays as it is.
-                if (isset($existingHrefs[(string) $sharee->href])) {
+                // grant that would be stored without one must not reach it (a refused
+                // re-share, or a Team href no principal lookup resolves): the grant stays.
+                if ($principal === null && $existing[$href]) {
                     continue;
                 }
-                $principal = null;
+                // A principal-less row left by a refused share would stay principal-less
+                // when updated in place; drop it so Sabre inserts a fresh row.
+                if ($principal !== null && ! $existing[$href]) {
+                    $stale[$href] = true;
+                }
             }
             $sharee->principal = $principal;
             $forwarded[] = $sharee;
+        }
+        if ($stale !== []) {
+            $node->updateInvites(array_map(
+                static fn (string $href): Sharee => new Sharee(['href' => $href, 'access' => self::ACCESS_NOACCESS]),
+                array_keys($stale),
+            ));
         }
         if ($forwarded !== []) {
             $node->updateInvites($forwarded);
