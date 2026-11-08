@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Calendars\CalendarDavImipDelivery;
 use App\Services\Calendars\CalendarSchedulingDeliveryPolicy;
 use App\Services\Calendars\CalendarSchedulingObjects;
 use App\Services\Calendars\CalendarSchedulingReach;
@@ -26,11 +27,12 @@ use Sabre\VObject\ITip\Message;
  * authority, RFC 5546) and the skip is logged.
  *
  * It also stops local delivery to someone outside the sender's Teams
- * ({@see CalendarSchedulingReach}, #1923). That recipient gets exactly the
- * schedule status of an external address, which Sabre's local delivery sets
- * when it cannot find a principal. Nothing is sent: DAV has no iMIP route yet
- * (#1929). Principal lookup goes through the unfiltered principal backend, so
- * this runs before Sabre reaches the recipient through the node tree.
+ * ({@see CalendarSchedulingReach}, #1923) and treats them like an external
+ * address: the message goes out by email ({@see CalendarDavImipDelivery},
+ * #1929, schedule status 1.1), and when no mail goes out the status is the one
+ * Sabre's local delivery sets when it cannot find a principal. Principal
+ * lookup goes through the unfiltered principal backend, so this runs before
+ * Sabre reaches the recipient through the node tree.
  */
 final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
 {
@@ -46,6 +48,7 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $policy,
         private readonly CalendarSchedulingReach $reach,
+        private readonly CalendarDavImipDelivery $imip,
     ) {}
 
     public function initialize(Server $server): void
@@ -69,8 +72,10 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         if (! is_string($principalUri) || $principalUri === '') {
             return null;
         }
-        if (! $this->reachesLocally($message, $principalUri)) {
+        $sender = $this->currentUsername();
+        if ($sender !== null && ! $this->reachesLocally($sender, $message, $principalUri)) {
             $message->scheduleStatus = self::EXTERNAL_ADDRESS_STATUS;
+            $this->imip->deliver($sender, $message);
 
             return false;
         }
@@ -87,18 +92,29 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         return null;
     }
 
-    private function reachesLocally(Message $message, string $recipientUri): bool
+    private function reachesLocally(string $sender, Message $message, string $recipientUri): bool
     {
-        $auth = $this->server?->getPlugin('auth');
-        $sender = $auth instanceof AuthPlugin ? $auth->getCurrentPrincipal() : null;
-        if (! is_string($sender) || ! str_starts_with($sender, 'principals/') || ! str_starts_with($recipientUri, 'principals/')) {
+        if (! str_starts_with($recipientUri, 'principals/')) {
             return true;
         }
 
         return $this->reach->deliversLocally(
-            substr($sender, strlen('principals/')),
+            $sender,
             substr($recipientUri, strlen('principals/')),
             (string) $message->method,
         );
+    }
+
+    /** The signed-in DAV user, who sends the message and whose iMIP caps count. */
+    private function currentUsername(): ?string
+    {
+        $auth = $this->server?->getPlugin('auth');
+        $principal = $auth instanceof AuthPlugin ? $auth->getCurrentPrincipal() : null;
+        if (! is_string($principal) || ! str_starts_with($principal, 'principals/')) {
+            return null;
+        }
+        $username = substr($principal, strlen('principals/'));
+
+        return $username === '' || str_contains($username, '/') ? null : $username;
     }
 }

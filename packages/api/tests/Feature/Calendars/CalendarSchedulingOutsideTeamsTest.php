@@ -25,7 +25,7 @@ use Tests\Support\WgwDatabaseTestCase;
 
 /**
  * Someone outside your Teams is scheduled like an external guest (Task #1923):
- * JMAP sends iMIP instead of a local copy, CalDAV gives the same
+ * JMAP and CalDAV send iMIP instead of a local copy, with the same
  * schedule-status as an external address, and VFREEBUSY answers like an
  * unknown address. Admins invite everyone locally, but free/busy follows real
  * Team membership for them too.
@@ -121,7 +121,7 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
 
     // ---- CalDAV -------------------------------------------------------------
 
-    public function test_caldav_invite_to_a_non_colleague_gets_the_same_schedule_status_as_an_external_address(): void
+    public function test_caldav_invite_to_a_non_colleague_goes_out_by_email_like_an_external_address(): void
     {
         $uid = 'caldav-outside-'.uniqid();
         $status = $this->sabre('bob', 'PUT', '/calendars/bob/default/outside.ics', $this->inviteIcs(
@@ -137,6 +137,27 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
 
         $scheduleStatus = $this->attendeeScheduleStatuses('bob', $uid);
         $this->assertStringStartsWith('1.2', (string) $scheduleStatus['dave@example.test']);
+        $this->assertStringStartsWith('1.1', (string) $scheduleStatus['carol@example.test']);
+        $this->assertSame($scheduleStatus['guest@elsewhere.test'], $scheduleStatus['carol@example.test']);
+        $recipients = $this->imipRecipients('REQUEST');
+        sort($recipients);
+        $this->assertSame(['carol@example.test', 'guest@elsewhere.test'], $recipients, 'one email each, none for the colleague');
+    }
+
+    public function test_caldav_invite_to_a_non_colleague_is_not_sent_when_external_invites_are_off(): void
+    {
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+        $uid = 'caldav-outside-off-'.uniqid();
+        $this->sabre('bob', 'PUT', '/calendars/bob/default/outside-off.ics', $this->inviteIcs(
+            $uid,
+            'bob@example.test',
+            ['carol@example.test', 'guest@elsewhere.test'],
+        ), ['Content-Type' => 'text/calendar']);
+
+        $this->assertSame([], $this->ownedUids('carol'));
+        $this->assertSame([], $this->imipRecipients('REQUEST'));
+        $scheduleStatus = $this->attendeeScheduleStatuses('bob', $uid);
+        $this->assertStringStartsWith('3.7', (string) $scheduleStatus['carol@example.test']);
         $this->assertSame($scheduleStatus['guest@elsewhere.test'], $scheduleStatus['carol@example.test']);
     }
 
