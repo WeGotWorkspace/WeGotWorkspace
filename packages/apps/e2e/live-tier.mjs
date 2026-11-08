@@ -65,6 +65,7 @@ export const liveTierSpecs = [
   "presence-offline-start",
   "push-mesh-interval",
   "queued-write-reload",
+  "settings-calendar-availability",
   "tasks-inbound-sync",
   "tasks-push",
   "undo-offline",
