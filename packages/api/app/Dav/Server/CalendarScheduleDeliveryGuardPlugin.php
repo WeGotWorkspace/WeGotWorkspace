@@ -49,6 +49,7 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         private readonly CalendarSchedulingDeliveryPolicy $policy,
         private readonly CalendarSchedulingReach $reach,
         private readonly CalendarDavImipDelivery $imip,
+        private readonly CalDavDeliveryRecipients $deliveryRecipients,
     ) {}
 
     public function initialize(Server $server): void
@@ -79,6 +80,10 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
 
             return false;
         }
+        // Sabre's local delivery reaches the inbox through principals/{user}, which
+        // resolves colleagues only (#1922). A reply to an admin's invite is let
+        // through above, so open that one principal for this request.
+        $this->deliveryRecipients->allow($principalUri);
 
         foreach ($this->objects->ownedByPrincipal($principalUri, (string) $message->uid) as $candidate) {
             if (! $this->policy->allows($message, $principalUri, $this->objects->parse($candidate['object']))) {

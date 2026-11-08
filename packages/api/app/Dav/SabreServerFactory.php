@@ -10,6 +10,7 @@ use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
+use App\Dav\Server\CalDavDeliveryRecipients;
 use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
@@ -31,6 +32,7 @@ use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Search\SearchIndexerService;
+use App\Services\Teams\TeamColleagues;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +75,12 @@ final class SabreServerFactory
 
         $nodes = [];
         if ($cal || $card) {
-            $nodes[] = new AppCalDAVPrincipalCollection($principalBackend, $authPlugin);
+            $nodes[] = new AppCalDAVPrincipalCollection(
+                $principalBackend,
+                $authPlugin,
+                app(TeamColleagues::class),
+                app(CalDavDeliveryRecipients::class),
+            );
         }
         if ($cal) {
             // Collections whose kind is davHidden() are API-only: hidden from
