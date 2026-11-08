@@ -15,7 +15,7 @@ export type TeamRoomSession = PresenceMeshSession & {
 
 export type TeamPresenceSessionOptions = {
   createRoomSession: (room: string) => TeamRoomSession;
-  /** Called after a room was left for good (Team left, session stopped). */
+  /** Called when a room is given up for good (Team left, session stopped), before its leave resolves. */
   onRoomRemoved?: (room: string) => void;
 };
 
@@ -109,6 +109,19 @@ export class TeamPresenceSession implements PresenceMeshSession {
     return [...this.rooms.values()].flatMap(({ session }) => session.getRoomPeers());
   }
 
+  /** The user's peers in the first room (by name) that has any: one copy per tab. */
+  peersForUsername(username: string): RtcPeerDescriptor[] {
+    const key = username.trim().toLowerCase();
+    for (const room of this.roomNames()) {
+      const peers = this.rooms
+        .get(room)!
+        .session.getRoomPeers()
+        .filter((peer) => (peer.user ?? "").trim().toLowerCase() === key);
+      if (peers.length > 0) return peers;
+    }
+    return [];
+  }
+
   isLinked(peerId: string): boolean {
     return this.roomOfPeer(peerId)?.isLinked(peerId) ?? false;
   }
@@ -146,11 +159,9 @@ export class TeamPresenceSession implements PresenceMeshSession {
     if (!entry) return;
     this.rooms.delete(room);
     entry.unsubscribe();
-    try {
-      await entry.session.leave();
-    } finally {
-      this.options.onRoomRemoved?.(room);
-    }
+    // Before the await: a room re-added meanwhile must not lose its fresh links to this call.
+    this.options.onRoomRemoved?.(room);
+    await entry.session.leave();
   }
 
   private applySteadyScale(): void {

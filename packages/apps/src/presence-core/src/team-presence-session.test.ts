@@ -134,6 +134,39 @@ describe("TeamPresenceSession", () => {
     expect(rooms.get("groups.sales")?.broadcasts).toHaveLength(1);
   });
 
+  it("sends a targeted envelope to one room per remote user, one copy per tab", async () => {
+    const { session, rooms } = setup();
+    session.setRooms(["groups.engineering", "groups.team"]);
+    await session.join("Alice");
+    rooms.get("groups.engineering")!.peers = [peer("bob-eng-1", "bob"), peer("bob-eng-2", "bob")];
+    rooms.get("groups.team")!.peers = [peer("bob-team-1", "bob"), peer("bob-team-2", "bob")];
+    expect(session.peersForUsername("Bob").map((p) => p.id)).toEqual(["bob-eng-1", "bob-eng-2"]);
+
+    expect(session.peersForUsername("carol")).toEqual([]);
+
+    rooms.get("groups.engineering")!.peers = [];
+    expect(session.peersForUsername("bob").map((p) => p.id)).toEqual(["bob-team-1", "bob-team-2"]);
+  });
+
+  it("sendToUsernames reaches a tab once although it shares two Teams", async () => {
+    const { session, rooms } = setup();
+    session.setRooms(["groups.engineering", "groups.team"]);
+    const store = createPresenceStore({
+      createSession: () => session,
+      joinMode: "eager",
+      visibility: null,
+    });
+    store.start({ username: "alice", displayName: "Alice" });
+    await vi.waitFor(() => expect(store.getSnapshot().status).toBe("online"));
+    rooms.get("groups.engineering")!.peers = [peer("bob-eng", "bob")];
+    rooms.get("groups.team")!.peers = [peer("bob-team", "bob")];
+
+    store.sendToUsernames(["bob"], { v: 1, kind: "check-now" });
+    expect(rooms.get("groups.engineering")?.sentTo.map((row) => row.peerId)).toEqual(["bob-eng"]);
+    expect(rooms.get("groups.team")?.sentTo).toEqual([]);
+    await store.stop();
+  });
+
   it("joins a Team added later and leaves a Team that is gone", async () => {
     const { session, rooms, removed } = setup();
     const events: PresenceMeshEvent[] = [];

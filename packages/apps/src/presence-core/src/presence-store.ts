@@ -381,10 +381,17 @@ export class PresenceStore implements MeshCheckNowPort {
       usernames.map((name) => name.trim().toLowerCase()).filter((name) => name && name !== selfKey),
     );
     if (targets.size === 0) return;
-    for (const peer of this.session.getRoomPeers()) {
+    const { session } = this;
+    if (session.peersForUsername) {
+      for (const username of targets) {
+        for (const peer of session.peersForUsername(username)) session.sendTo(peer.id, envelope);
+      }
+      return;
+    }
+    for (const peer of session.getRoomPeers()) {
       const username = (peer.user ?? "").trim().toLowerCase();
       if (!targets.has(username)) continue;
-      this.session.sendTo(peer.id, envelope);
+      session.sendTo(peer.id, envelope);
     }
   }
 

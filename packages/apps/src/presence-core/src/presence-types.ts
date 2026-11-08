@@ -155,6 +155,11 @@ export type PresenceMeshSession = {
   broadcast(envelope: PresenceEnvelope): void;
   sendTo(peerId: string, envelope: PresenceEnvelope): void;
   getRoomPeers(): RtcPeerDescriptor[];
+  /**
+   * Peers to send a targeted envelope to for one lower-cased username. A multi-room
+   * session answers from one room only, so a tab sharing several rooms gets one copy.
+   */
+  peersForUsername?(username: string): RtcPeerDescriptor[];
   /** True while this peer's data channel is open, so envelopes reach it. */
   isLinked(peerId: string): boolean;
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void;
