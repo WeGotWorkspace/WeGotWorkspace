@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
+import {
+  CALENDARS_DOMAIN,
+  calendarsEventsTable,
+  calendarsGroupsTable,
+} from "@/lib/offline/calendars/calendars-schema";
 import {
   enqueueOutboxMutation,
   listOutboxMutations,
@@ -437,5 +441,50 @@ describe("events outside the bootstrap window (#1675)", () => {
 
     expect(fetchCalendarEventsInRangeLive).toHaveBeenCalledTimes(1);
     expect(await cachedIds()).toEqual(expect.arrayContaining(["ev-now", "ev-far-back"]));
+  });
+});
+
+describe("Teams when the settings load fails", () => {
+  const team = { slug: "engineering", displayName: "Engineering" };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await db.meta.clear();
+    await calendarsGroupsTable(db).clear();
+  });
+
+  it("keeps unknown Teams unknown across reads when none were stored", async () => {
+    fetchCalendarLiveBootstrap.mockResolvedValue(bootstrap);
+
+    const first = await fetchCalendarHybridBootstrap();
+    expect(first.data.groups).toBeUndefined();
+    const second = await fetchCalendarHybridBootstrap();
+    expect(second.data.groups).toBeUndefined();
+    expect((await readCalendarBootstrapFromCache(username))?.data.groups).toBeUndefined();
+  });
+
+  it("keeps stored Teams through a failed settings response", async () => {
+    await writeCalendarBootstrapToCache(username, {
+      ...bootstrap,
+      data: { ...bootstrap.data, groups: [team] },
+    });
+    fetchCalendarLiveBootstrap.mockResolvedValue(bootstrap);
+
+    const next = await fetchCalendarHybridBootstrap();
+    expect(next.data.groups).toEqual([team]);
+  });
+
+  it("reads a successful empty Team list back as []", async () => {
+    fetchCalendarLiveBootstrap.mockResolvedValue({
+      ...bootstrap,
+      data: { ...bootstrap.data, groups: [] },
+    });
+
+    const next = await fetchCalendarHybridBootstrap();
+    expect(next.data.groups).toEqual([]);
+    expect((await readCalendarBootstrapFromCache(username))?.data.groups).toEqual([]);
   });
 });
