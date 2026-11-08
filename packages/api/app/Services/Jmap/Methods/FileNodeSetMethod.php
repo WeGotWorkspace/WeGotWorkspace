@@ -12,7 +12,7 @@ use App\Services\Jmap\Methods\Concerns\ValidatesSetArguments;
 
 /**
  * FileNode/set (draft-ietf-jmap-filenode-14 §3.2.3, #450) with genuine
- * top-level ifInState against the global sequence state, plus the draft's
+ * top-level ifInState against the `<seq>.<grantHash>` state, plus the draft's
  * extra arguments: onExists (null/replace/rename/newest),
  * onDestroyRemoveChildren, and compareCaseInsensitively.
  */
