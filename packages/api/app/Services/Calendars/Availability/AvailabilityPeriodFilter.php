@@ -24,7 +24,7 @@ final class AvailabilityPeriodFilter
      */
     public function apply(array $weeks, array $prefs, ?string $excludeUidHmac): AvailabilityResult
     {
-        /** @var array<string, array{occurrence: Occurrence, details: bool}> $chosen */
+        /** @var array<string, array{occurrence: Occurrence, details: bool, team: bool}> $chosen */
         $chosen = [];
         $completeByWeek = [];
         foreach ($weeks as $weekStart => $week) {
@@ -39,9 +39,12 @@ final class AvailabilityPeriodFilter
                     && AvailabilitySettings::detail($prefs, $calendarId) === AvailabilitySettings::DETAIL_DETAILS
                     && ! $occurrence['private'];
                 $key = $occurrence['uid'].'|'.$occurrence['utcStart'];
-                // A Team copy or a time-only copy is never beaten by a details copy.
-                if (! isset($chosen[$key]) || ($chosen[$key]['details'] && ! $details)) {
-                    $chosen[$key] = ['occurrence' => $occurrence, 'details' => $details];
+                $team = $occurrence['kind'] !== AvailabilityOccurrenceReader::KIND_PERSONAL;
+                // A Team copy always wins; otherwise a time-only copy is never beaten by a details copy.
+                if (! isset($chosen[$key])
+                    || ($team && ! $chosen[$key]['team'])
+                    || ($team === $chosen[$key]['team'] && $chosen[$key]['details'] && ! $details)) {
+                    $chosen[$key] = ['occurrence' => $occurrence, 'details' => $details, 'team' => $team];
                 }
             }
         }
