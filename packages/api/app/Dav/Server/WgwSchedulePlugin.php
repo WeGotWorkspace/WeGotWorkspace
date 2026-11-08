@@ -4,214 +4,163 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Calendars\Availability\AvailabilityAudience;
+use App\Services\Calendars\Availability\AvailabilityCalculator;
+use App\Services\Calendars\CalendarPrincipalAddresses;
 use App\Services\Teams\TeamColleagues;
+use DateTimeImmutable;
+use DateTimeInterface;
 use DateTimeZone;
-use Sabre\CalDAV\ICalendar;
 use Sabre\CalDAV\Schedule\Plugin as SchedulePlugin;
-use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\DAV\Auth\Plugin as AuthPlugin;
-use Sabre\DAV\ICollection;
-use Sabre\DAV\IFile;
-use Sabre\DAV\IProperties;
-use Sabre\DAVACL\Plugin as AclPlugin;
-use Sabre\VObject;
+use Sabre\VObject\Component;
+use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Property;
 
 /**
- * RFC 6638 scheduling with the Team rule on free/busy (Task #1923).
- *
- * A VFREEBUSY request to the outbox answers for the caller and for people who
- * share a Team with them ({@see TeamColleagues::sharesTeamIgnoringAdminRole}, so
- * admins too). Anyone else gets exactly the answer of an unknown address.
- *
- * Sabre resolves an attendee through a principal-property-search, which this
- * server limits to the signed-in account ({@see AppCalDAVPrincipalCollection::searchPrincipals}),
- * so stock free/busy only ever answered for yourself. The address is resolved
- * here through the principal backend instead; the rest follows Sabre's
- * `getFreeBusyForEmail` (sabre/dav 4.x) step by step. Team availability (#1614)
- * builds on this class.
+ * RFC 6638 scheduling with the outbox free/busy report under the Team rule
+ * (#1923) and the Team availability rules (#1907). Sabre answers for every
+ * principal; here the target is answered only when the caller may read their
+ * availability: self or a shared Team ({@see TeamColleagues::sharesTeamIgnoringAdminRole},
+ * so admins too), the target's switch on, and the target enabled. The busy time comes from the calculator
+ * over the whole UTC weeks covering the window, clipped back to it, without
+ * titles. Anything else, a window over 54 covering weeks, or an incomplete
+ * result answers as for an unknown address, so a client never reads a gap
+ * as free time.
  */
 final class WgwSchedulePlugin extends SchedulePlugin
 {
     /** Sabre's answer for an address it cannot resolve. */
     public const UNKNOWN_ADDRESS_STATUS = '3.7;Could not find principal';
 
-    public function __construct(private readonly TeamColleagues $colleagues) {}
+    private const WEEK_SECONDS = 604800;
+
+    public function __construct(
+        private readonly CalendarPrincipalAddresses $addresses,
+        private readonly AvailabilityAudience $audience,
+        private readonly AvailabilityCalculator $calculator,
+    ) {}
 
     /**
-     * @return array{request-status: string, href: string, calendar-data?: VObject\Component\VCalendar}
+     * @param  string  $email
+     * @return array<string, mixed>
      */
-    protected function getFreeBusyForEmail($email, \DateTimeInterface $start, \DateTimeInterface $end, VObject\Component $request)
+    protected function getFreeBusyForEmail($email, DateTimeInterface $start, DateTimeInterface $end, Component $request)
     {
-        if (str_starts_with($email, 'mailto:')) {
-            $email = substr($email, 7);
-        }
-        $unknown = ['request-status' => self::UNKNOWN_ADDRESS_STATUS, 'href' => 'mailto:'.$email];
+        $mailto = str_starts_with(strtolower($email), 'mailto:') ? $email : 'mailto:'.$email;
+        $unknown = ['request-status' => self::UNKNOWN_ADDRESS_STATUS, 'href' => $mailto];
 
-        $principalUri = $this->visiblePrincipalUri($email);
-        if ($principalUri === null) {
+        $caller = $this->username($this->currentPrincipal());
+        $target = $this->username($this->addresses->principalForMailto($mailto)?->uri);
+        if ($caller === null || $target === null || ! $this->audience->mayRead($caller, $target)) {
             return $unknown;
         }
 
-        $caldavNS = '{'.self::NS_CALDAV.'}';
-        $props = $this->principalPropertiesWithoutAcl($principalUri, [$caldavNS.'calendar-home-set', $caldavNS.'schedule-inbox-URL']);
-        if (! isset($props[$caldavNS.'calendar-home-set'])) {
-            return ['request-status' => '3.7;No calendar-home-set property found', 'href' => 'mailto:'.$email];
+        $from = $start->getTimestamp();
+        $until = $end->getTimestamp();
+        $weekStarts = self::coveringWeeks($from, $until);
+        if ($weekStarts === [] || count($weekStarts) > AvailabilityCalculator::MAX_WEEKS) {
+            return $unknown;
         }
-        if (! isset($props[$caldavNS.'schedule-inbox-URL'])) {
-            return ['request-status' => '3.7;No schedule-inbox-URL property found', 'href' => 'mailto:'.$email];
-        }
-        $homeSet = $props[$caldavNS.'calendar-home-set']->getHref();
-        $inboxUrl = $props[$caldavNS.'schedule-inbox-URL']->getHref();
-
-        $acl = $this->server->getPlugin('acl');
-        if ($acl instanceof AclPlugin) {
-            $acl->checkPrivileges($inboxUrl, $caldavNS.'schedule-query-freebusy');
+        $result = $this->calculator->busyPeriods($target, $weekStarts);
+        if ($result === null || ! $result->complete()) {
+            return $unknown;
         }
 
-        [$objects, $timeZone] = $this->busyObjects($homeSet, $start, $end);
-
-        $inboxProps = $this->server->getProperties($inboxUrl, [$caldavNS.'calendar-availability']);
-
-        $vcalendar = new VObject\Component\VCalendar;
-        $vcalendar->add('METHOD', 'REPLY');
-
-        $generator = new VObject\FreeBusyGenerator;
-        $generator->setObjects($objects);
-        $generator->setTimeRange($start, $end);
-        $generator->setBaseObject($vcalendar);
-        $generator->setTimeZone($timeZone);
-        if (isset($inboxProps[$caldavNS.'calendar-availability'])) {
-            $generator->setVAvailability(VObject\Reader::read($inboxProps[$caldavNS.'calendar-availability']));
-        }
-        // The generator fills the base object: $vcalendar now holds the VFREEBUSY.
-        $generator->getResult();
-
-        $freeBusy = $vcalendar->VFREEBUSY;
-        $requested = $request->select('VFREEBUSY')[0] ?? null;
-        if ($freeBusy instanceof VObject\Component && $requested instanceof VObject\Component) {
-            $freeBusy->add('ATTENDEE', 'mailto:'.$email);
-            foreach (['UID', 'ORGANIZER'] as $name) {
-                foreach ($requested->select($name) as $property) {
-                    if ($property instanceof VObject\Property) {
-                        $freeBusy->add(clone $property);
-                    }
-                }
+        $busy = [];
+        foreach ($result->entries as $entry) {
+            $busyStart = max($entry['utcStart'], $from);
+            $busyEnd = min($entry['utcEnd'], $until);
+            if ($busyEnd > $busyStart) {
+                $busy[] = [$busyStart, $busyEnd];
             }
+        }
+
+        $vcalendar = new VCalendar;
+        $vcalendar->add('METHOD', 'REPLY');
+        $freeBusy = $vcalendar->add('VFREEBUSY', [
+            'DTSTART' => self::utc($from),
+            'DTEND' => self::utc($until),
+            'DTSTAMP' => new DateTimeImmutable('now', new DateTimeZone('UTC')),
+        ]);
+        foreach (self::merged($busy) as [$busyStart, $busyEnd]) {
+            $freeBusy->add('FREEBUSY', self::utc($busyStart)->format('Ymd\\THis\\Z').'/'.self::utc($busyEnd)->format('Ymd\\THis\\Z'));
+        }
+        $freeBusy->add('ATTENDEE', $mailto);
+        $asked = $request->select('VFREEBUSY')[0] ?? null;
+        $uid = $asked instanceof Component ? ($asked->select('UID')[0] ?? null) : null;
+        $freeBusy->add('UID', $uid instanceof Property ? (string) $uid : '');
+        $organizer = $asked instanceof Component ? ($asked->select('ORGANIZER')[0] ?? null) : null;
+        if ($organizer instanceof Property) {
+            $freeBusy->add(clone $organizer);
         }
 
         return [
             'calendar-data' => $vcalendar,
             'request-status' => '2.0;Success',
-            'href' => 'mailto:'.$email,
+            'href' => $mailto,
         ];
     }
 
     /**
-     * Another user's principal properties are not readable to the caller. Sabre's
-     * own lookup (a principal search) and local delivery read them with the ACL
-     * property filter off; this does the same for a visible principal only.
+     * Monday 00:00 UTC of every week that overlaps [from, until).
      *
-     * @param  list<string>  $properties
-     * @return array<string, mixed>
+     * @return list<int>
      */
-    private function principalPropertiesWithoutAcl(string $principalUri, array $properties): array
+    public static function coveringWeeks(int $from, int $until): array
     {
-        $acl = $this->server->getPlugin('acl');
-        if (! $acl instanceof AclPlugin) {
-            return $this->server->getProperties($principalUri, $properties);
+        if ($until <= $from) {
+            return [];
         }
-        $this->server->removeListener('propFind', [$acl, 'propFind']);
-        try {
-            return $this->server->getProperties($principalUri, $properties);
-        } finally {
-            $this->server->on('propFind', [$acl, 'propFind'], 20);
+        // 1970-01-05 (Unix 345600) was a Monday.
+        $first = $from - (($from - 345600) % self::WEEK_SECONDS + self::WEEK_SECONDS) % self::WEEK_SECONDS;
+        $weeks = [];
+        for ($week = $first; $week < $until && count($weeks) <= AvailabilityCalculator::MAX_WEEKS; $week += self::WEEK_SECONDS) {
+            $weeks[] = $week;
         }
+
+        return $weeks;
     }
 
     /**
-     * The principal URI for an address when it is the caller or someone who shares
-     * a Team with them; null otherwise, including for an unknown address.
+     * @param  list<array{0: int, 1: int}>  $busy
+     * @return list<array{0: int, 1: int}>
      */
-    private function visiblePrincipalUri(string $email): ?string
+    private static function merged(array $busy): array
     {
-        $acl = $this->server->getPlugin('acl');
+        usort($busy, static fn (array $a, array $b): int => $a[0] <=> $b[0] ?: $a[1] <=> $b[1]);
+        $merged = [];
+        foreach ($busy as $period) {
+            $last = array_key_last($merged);
+            if ($last !== null && $period[0] <= $merged[$last][1]) {
+                $merged[$last][1] = max($merged[$last][1], $period[1]);
+
+                continue;
+            }
+            $merged[] = $period;
+        }
+
+        return $merged;
+    }
+
+    private function currentPrincipal(): ?string
+    {
         $auth = $this->server->getPlugin('auth');
-        if (! $acl instanceof AclPlugin || ! $auth instanceof AuthPlugin) {
-            return null;
-        }
-        $caller = $auth->getCurrentPrincipal();
-        $principalUri = $acl->getPrincipalByUri('mailto:'.$email);
-        if (! is_string($caller) || ! is_string($principalUri) || $principalUri === '') {
-            return null;
-        }
-        if ($principalUri === $caller) {
-            return $principalUri;
-        }
-        $prefix = 'principals/';
-        if (! str_starts_with($caller, $prefix) || ! str_starts_with($principalUri, $prefix)) {
-            return null;
-        }
 
-        return $this->colleagues->sharesTeamIgnoringAdminRole(substr($caller, strlen($prefix)), substr($principalUri, strlen($prefix)))
-            ? $principalUri
-            : null;
+        return $auth instanceof AuthPlugin ? $auth->getCurrentPrincipal() : null;
     }
 
-    /**
-     * Events in the time range from every opaque calendar in the home, and the
-     * timezone of the last calendar that sets one (as Sabre does).
-     *
-     * @return array{0: list<string>, 1: DateTimeZone}
-     */
-    private function busyObjects(string $homeSet, \DateTimeInterface $start, \DateTimeInterface $end): array
+    private function username(?string $principalUri): ?string
     {
-        $caldavNS = '{'.self::NS_CALDAV.'}';
-        $timeZone = new DateTimeZone('UTC');
-        $objects = [];
-
-        $home = $this->server->tree->getNodeForPath($homeSet);
-        if (! $home instanceof ICollection) {
-            return [$objects, $timeZone];
-        }
-        foreach ($home->getChildren() as $node) {
-            if (! $node instanceof ICalendar || ! $node instanceof IProperties) {
-                continue;
-            }
-            $props = $node->getProperties([$caldavNS.'schedule-calendar-transp', $caldavNS.'calendar-timezone']);
-            $transp = $props[$caldavNS.'schedule-calendar-transp'] ?? null;
-            if ($transp instanceof ScheduleCalendarTransp && $transp->getValue() === ScheduleCalendarTransp::TRANSPARENT) {
-                continue;
-            }
-            if (isset($props[$caldavNS.'calendar-timezone'])) {
-                $document = VObject\Reader::read($props[$caldavNS.'calendar-timezone']);
-                $vtimezone = $document instanceof VObject\Component\VCalendar ? $document->VTIMEZONE : null;
-                if ($vtimezone !== null) {
-                    $timeZone = $vtimezone->getTimeZone();
-                }
-                $document->destroy();
-            }
-
-            $urls = $node->calendarQuery([
-                'name' => 'VCALENDAR',
-                'comp-filters' => [[
-                    'name' => 'VEVENT',
-                    'comp-filters' => [],
-                    'prop-filters' => [],
-                    'is-not-defined' => false,
-                    'time-range' => ['start' => $start, 'end' => $end],
-                ]],
-                'prop-filters' => [],
-                'is-not-defined' => false,
-                'time-range' => null,
-            ]);
-            foreach ($urls as $url) {
-                $child = $node->getChild($url);
-                if ($child instanceof IFile) {
-                    $objects[] = (string) $child->get();
-                }
-            }
+        if ($principalUri === null || ! preg_match('#^principals/([^/]+)$#', $principalUri, $matches)) {
+            return null;
         }
 
-        return [$objects, $timeZone];
+        return $matches[1];
+    }
+
+    private static function utc(int $timestamp): DateTimeImmutable
+    {
+        return (new DateTimeImmutable('@'.$timestamp))->setTimezone(new DateTimeZone('UTC'));
     }
 }

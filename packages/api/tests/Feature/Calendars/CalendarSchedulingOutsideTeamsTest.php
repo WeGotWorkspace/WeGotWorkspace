@@ -6,6 +6,7 @@ namespace Tests\Feature\Calendars;
 
 use App\Dav\SabreServerFactory;
 use App\Models\Principal;
+use App\Services\Calendars\Availability\AvailabilitySettings;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
@@ -31,7 +32,8 @@ use Tests\Support\WgwDatabaseTestCase;
  * Team membership for them too.
  *
  * bob and dave share Team t1. carol is in no Team with bob. alice is the admin
- * and in no Team with carol.
+ * and in no Team with carol. dave and carol share their availability (#1907),
+ * so free/busy turns on the Team rule alone.
  */
 final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
 {
@@ -40,6 +42,8 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
     private const UNKNOWN = 'nobody@unknown.test';
 
     private ?string $sabreDataDir = null;
+
+    private string $availabilityCacheDir = '';
 
     protected function calendarFixtureUsersShareATeam(): bool
     {
@@ -57,10 +61,17 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
         Mail::fake();
         Cache::flush();
         $this->enableMailSubmit();
+        $this->availabilityCacheDir = sys_get_temp_dir().'/wgw-scheduling-availability-'.uniqid('', true);
+        config(['cache.stores.availability.path' => $this->availabilityCacheDir]);
+        Cache::purge('availability');
+        foreach (['dave', 'carol'] as $username) {
+            app(AvailabilitySettings::class)->setEnabled($username, true);
+        }
     }
 
     protected function tearDown(): void
     {
+        File::deleteDirectory($this->availabilityCacheDir);
         if ($this->sabreDataDir !== null) {
             File::deleteDirectory($this->sabreDataDir);
             $this->sabreDataDir = null;
