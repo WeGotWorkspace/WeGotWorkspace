@@ -50,6 +50,7 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
     public function test_jscalendar_owner_role_map_and_localhost_organizer_deliver(): void
     {
         $this->seedWgwUser('admin', email: 'admin@localhost', displayName: 'Admin');
+        $this->joinCalendarFixtureTeam('admin');
         $this->seedDefaultCalendarFor('admin');
 
         $this->jmapAs('admin', [
@@ -128,6 +129,7 @@ final class CalendarsSchedulingItipTest extends WgwDatabaseTestCase
     ): void {
         $this->seedWgwUser('wouter', email: 'wouter@woutervroege.nl', displayName: 'Wouter');
         $this->seedWgwUser('admin', displayName: 'Admin');
+        $this->joinCalendarFixtureTeam('wouter', 'admin');
         $this->seedDefaultCalendarFor('wouter');
         $this->seedDefaultCalendarFor('admin');
         $admin = Principal::forUsername('admin');
