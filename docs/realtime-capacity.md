@@ -16,7 +16,7 @@ Clients do not post session samples. The budget below is signaling polls only.
 
 `tools/load/rtc-shared-hosting.k6.js` drives that mix over HTTP:
 
-- N presence peers on `p_workspace` (default N = 8)
+- N presence peers in one Team room `p_groups.capacity` (default N = 8). Presence has one room per Team (#1921); a user in several Teams polls each of their rooms.
 - two Docs rooms, two peers each
 - one 4-person call
 - a join burst of 10 peers
