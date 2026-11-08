@@ -243,9 +243,8 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
-  /** Invitee availability tag (#1614): teammate free or busy at the event's time. */
-  eventAttendeesAvailabilityFree: string;
-  eventAttendeesAvailabilityBusy: string;
+  /** Busy invited teammate (#1614): appended to the participant tag's accessible name. */
+  eventAttendeesAvailabilityBusyStatus: string;
   /** Busy tooltip heading. */
   eventAttendeesAvailabilityBusyWith: string;
   /** Busy tooltip row for a period without a title (owner shares the time only). */
@@ -504,8 +503,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
-  eventAttendeesAvailabilityFree: "Free",
-  eventAttendeesAvailabilityBusy: "Busy",
+  eventAttendeesAvailabilityBusyStatus: "busy at this time",
   eventAttendeesAvailabilityBusyWith: "Busy at this time",
   eventAttendeesAvailabilityBusyUntitled: "Busy",
   eventAttendeesAvailabilityAllDay: "All day",

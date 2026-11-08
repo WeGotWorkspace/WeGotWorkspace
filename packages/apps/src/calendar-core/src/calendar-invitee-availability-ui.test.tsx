@@ -127,11 +127,26 @@ async function settle() {
   }
 }
 
-function tagFor(name: string): string | null {
-  const chip = screen.getByRole("group", { name: new RegExp(`^${name},`) });
-  const wrapper = chip.closest(".calendar-invitees-card__invitee");
-  return wrapper?.querySelector(".tag__label")?.textContent ?? null;
+function chipFor(name: string): HTMLElement {
+  return screen.getByRole("group", { name: new RegExp(`^${name},`) });
 }
+
+/** Busy = the participant tag itself carries the warning wash, icon and status. */
+function isBusy(name: string): boolean {
+  const chip = chipFor(name);
+  const busy = chip.classList.contains("calendar-invitees-card__chip--busy");
+  const named = /, busy at this time$/.test(chip.getAttribute("aria-label") ?? "");
+  const icon = chip.querySelector(".user-chip__adornment svg") != null;
+  if (busy !== named || busy !== icon) throw new Error(`${name}: inconsistent busy state`);
+  return busy;
+}
+
+function descriptionOf(name: string): string {
+  const id = chipFor(name).getAttribute("aria-describedby");
+  return id ? (document.getElementById(id)?.textContent ?? "") : "";
+}
+
+const busyChips = () => document.querySelectorAll(".calendar-invitees-card__chip--busy");
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -143,17 +158,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("invitee Free/Busy tags (#1614)", () => {
-  it("shows Busy and Free for teammates, and no tag for others or partial data", async () => {
+describe("busy invitee participant tags (#1614)", () => {
+  it("marks only busy teammates; free, partial data and others keep a plain tag", async () => {
     const source = fakeSource();
     renderSecondary(source, baseForm());
     await settle();
 
-    expect(tagFor("Ann")).toBe("Busy");
-    expect(tagFor("Cy")).toBe("Free");
-    expect(tagFor("Dee")).toBeNull(); // complete: false
-    expect(tagFor("Bob")).toBeNull(); // not a teammate sharing availability
-    expect(tagFor("Guest")).toBeNull(); // external guest
+    expect(isBusy("Ann")).toBe(true);
+    expect(chipFor("Ann").getAttribute("aria-label")).toBe(
+      "Ann, Needs response, busy at this time",
+    );
+    expect(isBusy("Cy")).toBe(false); // free: no label at all
+    expect(isBusy("Dee")).toBe(false); // complete: false
+    expect(isBusy("Bob")).toBe(false); // not a teammate sharing availability
+    expect(isBusy("Guest")).toBe(false); // external guest
+    expect(busyChips()).toHaveLength(1);
+    expect(document.querySelector(".tag__label")).toBeNull(); // no separate Free/Busy tags
     expect(source.availability).toHaveBeenCalledWith({
       ids: ["ann", "cy", "dee"],
       utcStart: "2030-01-07T00:00:00Z",
@@ -164,8 +184,13 @@ describe("invitee Free/Busy tags (#1614)", () => {
   it("explains Busy with the overlapping time and title", async () => {
     renderSecondary(fakeSource(), baseForm());
     await settle();
-    const trigger = screen.getByLabelText(/^Busy:/);
-    expect(trigger.getAttribute("aria-label")).toMatch(/10:30.*11:30 · Design review/);
+    expect(descriptionOf("Ann")).toMatch(/10:30.*11:30 · Design review/);
+    expect(descriptionOf("Cy")).toBe("");
+    fireEvent.pointerMove(chipFor("Ann"));
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toMatch(
+      /Needs response.*Busy at this time.*10:30.*11:30 · Design review/,
+    );
   });
 
   it("passes the saved event as excludeEventId when editing", async () => {
@@ -177,21 +202,26 @@ describe("invitee Free/Busy tags (#1614)", () => {
     );
   });
 
-  it("debounces time changes and moving to a free slot turns Busy into Free", async () => {
+  it("debounces time changes and moving to a free slot clears the warning", async () => {
     const source = fakeSource();
     const { update } = renderSecondary(source, baseForm());
     await settle();
     expect(source.availability).toHaveBeenCalledTimes(1);
 
-    update({ ...baseForm(), startTime: "12:00", endTime: "13:00" });
+    update({ ...baseForm(), startTime: "10:45", endTime: "11:15" });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100);
     });
-    expect(tagFor("Ann")).toBeNull(); // the old answer never shows for a new time
-    update({ ...baseForm(), startTime: "14:00", endTime: "15:00" });
+    expect(isBusy("Ann")).toBe(false); // the old answer never shows for a new time
+    update({ ...baseForm(), startTime: "11:00", endTime: "12:00" });
     await settle();
     expect(source.availability).toHaveBeenCalledTimes(2);
-    expect(tagFor("Ann")).toBe("Free");
+    expect(isBusy("Ann")).toBe(true);
+
+    update({ ...baseForm(), startTime: "14:00", endTime: "15:00" });
+    await settle();
+    expect(source.availability).toHaveBeenCalledTimes(3);
+    expect(isBusy("Ann")).toBe(false);
   });
 
   it("an all-day busy period on the event's date makes the invitee Busy", async () => {
@@ -208,8 +238,8 @@ describe("invitee Free/Busy tags (#1614)", () => {
     );
     renderSecondary(source, baseForm());
     await settle();
-    expect(tagFor("Cy")).toBe("Busy");
-    expect(screen.getByLabelText(/^Busy:/).getAttribute("aria-label")).toMatch(/All day · Busy/);
+    expect(isBusy("Cy")).toBe(true);
+    expect(descriptionOf("Cy")).toMatch(/All day · Busy/);
   });
 
   it("asks nothing and shows nothing offline", async () => {
@@ -219,7 +249,7 @@ describe("invitee Free/Busy tags (#1614)", () => {
     await settle();
     expect(source.teamMembers).not.toHaveBeenCalled();
     expect(source.availability).not.toHaveBeenCalled();
-    expect(document.querySelector(".calendar-invitee-availability-tag")).toBeNull();
+    expect(busyChips()).toHaveLength(0);
   });
 
   it("shows no tags when the request fails and never blocks the form", async () => {
@@ -227,7 +257,7 @@ describe("invitee Free/Busy tags (#1614)", () => {
     source.availability.mockRejectedValue(new Error("invalidArguments"));
     renderSecondary(source, baseForm());
     await settle();
-    expect(document.querySelector(".calendar-invitee-availability-tag")).toBeNull();
+    expect(busyChips()).toHaveLength(0);
     const notes = screen.getByRole("textbox", { name: labels.eventNotesLabel });
     fireEvent.change(notes, { target: { value: "Agenda" } });
     expect(notes).toBeTruthy();

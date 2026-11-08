@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Clock, Crown, Users, type LucideIcon } from "lucide-react";
+import { Clock, Crown, TriangleAlert, Users, type LucideIcon } from "lucide-react";
 import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   attendeesReferToSamePerson,
@@ -18,8 +18,12 @@ import {
   type CalendarInviteeSearchRow,
 } from "@/calendar-core/src/calendar-contact-attendee";
 import type { InviteeAvailabilityMap } from "@/calendar-core/src/calendar-invitee-availability";
-import { CalendarInviteeAvailabilityTag } from "@/calendar-core/src/calendar-invitee-availability-tag";
+import {
+  CalendarInviteeBusyTooltip,
+  inviteeBusyRows,
+} from "@/calendar-core/src/calendar-invitee-availability-tag";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
@@ -58,7 +62,10 @@ export type CalendarInviteesCardProps = {
   onChange: (attendees: CalendarAttendee[]) => void;
   /** Live JMAP refresh; cache remains the first paint. */
   onRefreshContactCards?: () => void;
-  /** Free/Busy per invited teammate (#1614), keyed by normalized address. No entry → no tag. */
+  /**
+   * Free/Busy per invited teammate (#1614), keyed by normalized address. Busy washes that
+   * person's tag in the warning colour; free or no entry leaves the tag as it is.
+   */
   availability?: InviteeAvailabilityMap;
 };
 
@@ -128,6 +135,8 @@ function ParticipantChip({
   removable,
   removeLabel,
   onRemove,
+  busyRows,
+  labels,
 }: {
   title: string;
   statusLabel: string;
@@ -137,14 +146,31 @@ function ParticipantChip({
   removable?: boolean;
   removeLabel: string;
   onRemove?: () => void;
+  /** Overlapping periods when this teammate is busy at the event's time (#1614). */
+  busyRows?: string[] | null;
+  labels: CalendarUILabels;
 }) {
+  const busy = busyRows != null;
   return (
     <UserChip
       label={title}
-      statusLabel={statusLabel}
+      statusLabel={
+        busy ? `${statusLabel}, ${labels.eventAttendeesAvailabilityBusyStatus}` : statusLabel
+      }
+      tooltipContent={
+        busy ? (
+          <CalendarInviteeBusyTooltip rsvpLabel={statusLabel} rows={busyRows} labels={labels} />
+        ) : undefined
+      }
+      description={busy ? busyRows.join("; ") : undefined}
+      adornment={busy ? <TriangleAlert /> : undefined}
       markIcon={<Icon aria-hidden />}
       size={size}
-      className={cn("calendar-invitees-card__chip", toneClass)}
+      className={cn(
+        "calendar-invitees-card__chip",
+        toneClass,
+        busy && "calendar-invitees-card__chip--busy",
+      )}
       removable={removable && !!onRemove}
       onRemove={onRemove}
       removeAriaLabel={removeLabel}
@@ -171,6 +197,7 @@ export function CalendarInviteesCard({
   availability,
 }: CalendarInviteesCardProps) {
   const locked = busy || readOnly;
+  const { locale, timeZone } = useCalendarDisplayPrefs();
   const [query, setQuery] = useState("");
   const organizer = organizerAttendeeForList(attendees, invitees, sessionEmail);
   const listed = listedInviteeAttendees(attendees, invitees);
@@ -273,6 +300,7 @@ export function CalendarInviteesCard({
           size={controlSize}
           removable={false}
           removeLabel={labels.eventAttendeesRemove}
+          labels={labels}
         />
       ) : null}
       {listed.map((attendee) => {
@@ -282,9 +310,12 @@ export function CalendarInviteesCard({
         const toneClass = rsvpToneClass(attendee.participationStatus);
         const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus) ?? Clock;
 
-        const inviteeAvailability = availability?.get(normalizeParticipantAddress(attendee.email));
+        const busyRows = inviteeBusyRows(
+          availability?.get(normalizeParticipantAddress(attendee.email)),
+          { labels, locale, timeZone },
+        );
 
-        const chip = (
+        return (
           <ParticipantChip
             key={attendee.email}
             title={title}
@@ -304,14 +335,9 @@ export function CalendarInviteesCard({
                       ),
                     )
             }
+            busyRows={busyRows}
+            labels={labels}
           />
-        );
-        if (!inviteeAvailability) return chip;
-        return (
-          <span key={attendee.email} className="calendar-invitees-card__invitee">
-            {chip}
-            <CalendarInviteeAvailabilityTag availability={inviteeAvailability} labels={labels} />
-          </span>
         );
       })}
     </div>

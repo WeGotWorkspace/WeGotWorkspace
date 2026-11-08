@@ -318,7 +318,7 @@ export const WithInvitees: Story = {
   },
 };
 
-/** Mock JMAP (`urn:wgw:jmap:availability`) for the invitee Free/Busy story (#1614). */
+/** Mock JMAP (`urn:wgw:jmap:availability`) for the busy invitee story (#1614). */
 function inviteeAvailabilitySource() {
   const server = new MockJmapServer();
   const team = [
@@ -336,14 +336,17 @@ function inviteeAvailabilitySource() {
       title: "Design review",
     },
   ]);
-  // Dana's calendar could not be read in full: no tag, never "Free".
+  // Dana's calendar could not be read in full: plain tag, never a warning.
   server.availability.seedBusyPeriods("dana", [], false);
   return jmapTeamAvailabilitySource(
     new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch }),
   );
 }
 
-/** #1614: Free/Busy next to invited teammates; none for Dana (partial data) or the guest. */
+/**
+ * #1614: Wouter is busy, so his participant tag takes the warning wash and icon.
+ * Carol (free), Dana (partial data) and guests keep plain tags.
+ */
 export const WithInviteeAvailability: Story = {
   tags: ["vitest-ci"],
   decorators: [
@@ -376,17 +379,21 @@ export const WithInviteeAvailability: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = canvasElement.ownerDocument.body;
-    const tagLabels = () =>
-      [...body.querySelectorAll(".calendar-invitee-availability-tag .tag__label")].map(
-        (node) => node.textContent,
+    const busyNames = () =>
+      [...body.querySelectorAll(".calendar-invitees-card__chip--busy")].map((node) =>
+        node.getAttribute("aria-label"),
       );
+    const busyStatus = defaultCalendarLabels.eventAttendeesAvailabilityBusyStatus;
     await waitFor(
-      () =>
-        expect(tagLabels()).toEqual([
-          defaultCalendarLabels.eventAttendeesAvailabilityBusy,
-          defaultCalendarLabels.eventAttendeesAvailabilityFree,
-        ]),
+      () => {
+        const names = busyNames();
+        expect(names).toHaveLength(1);
+        expect(names[0]).toMatch(new RegExp(`^Wouter, .*, ${busyStatus}$`));
+      },
       { timeout: 4000 },
     );
+    expect(
+      body.querySelector(".calendar-invitees-card__chip--busy .user-chip__adornment svg"),
+    ).not.toBeNull();
   },
 };

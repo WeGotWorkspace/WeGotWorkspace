@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -28,6 +28,12 @@ export type UserChipProps = {
   removable?: boolean;
   onRemove?: () => void;
   removeAriaLabel?: string;
+  /** Decorative icon after the name (e.g. a warning). State it in `statusLabel` too. */
+  adornment?: ReactNode;
+  /** Richer tooltip body; defaults to `statusLabel`. Only shown when `statusLabel` is set. */
+  tooltipContent?: ReactNode;
+  /** Extra screen-reader detail, linked with `aria-describedby`. */
+  description?: string;
 };
 
 /**
@@ -43,7 +49,11 @@ export function UserChip({
   removable = false,
   onRemove,
   removeAriaLabel,
+  adornment,
+  tooltipContent,
+  description,
 }: UserChipProps) {
+  const descriptionId = useId();
   const removeLabel = removeAriaLabel ?? `Remove ${label}`;
   const a11yName = statusLabel ? `${label}, ${statusLabel}` : label;
 
@@ -52,6 +62,7 @@ export function UserChip({
       role="group"
       className={cn("user-chip", controlSizeClassName("user-chip", size), className)}
       aria-label={a11yName}
+      aria-describedby={description ? descriptionId : undefined}
       tabIndex={statusLabel ? 0 : undefined}
     >
       <span className="user-chip__main">
@@ -67,6 +78,16 @@ export function UserChip({
         <span className="user-chip__label" aria-hidden>
           {label}
         </span>
+        {adornment ? (
+          <span aria-hidden className="user-chip__adornment">
+            {adornment}
+          </span>
+        ) : null}
+        {description ? (
+          <span id={descriptionId} className="sr-only">
+            {description}
+          </span>
+        ) : null}
       </span>
       {removable && onRemove ? (
         <Tooltip>
@@ -95,7 +116,7 @@ export function UserChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{chip}</TooltipTrigger>
-      <TooltipContent>{statusLabel}</TooltipContent>
+      <TooltipContent>{tooltipContent ?? statusLabel}</TooltipContent>
     </Tooltip>
   );
 }

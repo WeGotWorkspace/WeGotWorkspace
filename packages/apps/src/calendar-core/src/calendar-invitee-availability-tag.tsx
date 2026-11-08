@@ -1,18 +1,9 @@
-import { Circle, CircleDot } from "lucide-react";
 import {
   periodInstants,
   type InviteeAvailability,
   type TeamAvailabilityPeriod,
 } from "@/calendar-core/src/calendar-invitee-availability";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
-import { Tag } from "@/tag/src/tag";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-
-export type CalendarInviteeAvailabilityTagProps = {
-  availability: InviteeAvailability;
-  labels: CalendarUILabels;
-};
 
 /** "10:00 – 11:00 · Design review" or "All day · Vacation", in the viewer's zone. */
 export function formatAvailabilityOverlap(
@@ -35,50 +26,39 @@ export function formatAvailabilityOverlap(
   return `${when} · ${title}`;
 }
 
-/** Free/Busy tag beside an invitee's RSVP chip. "Busy" lists the overlapping times. */
-export function CalendarInviteeAvailabilityTag({
-  availability,
-  labels,
-}: CalendarInviteeAvailabilityTagProps) {
-  const { locale, timeZone } = useCalendarDisplayPrefs();
-  if (availability.status === "free") {
-    return (
-      <Tag
-        label={labels.eventAttendeesAvailabilityFree}
-        icon={<Circle aria-hidden />}
-        className="calendar-invitee-availability-tag calendar-invitee-availability-tag--free"
-      />
-    );
-  }
+/**
+ * Tooltip rows for a busy invitee (#1614), or `null` when there is nothing to warn about
+ * (free, or no availability for this person). Free invitees keep a plain participant tag.
+ */
+export function inviteeBusyRows(
+  availability: InviteeAvailability | undefined,
+  options: { labels: CalendarUILabels; locale: string; timeZone: string },
+): string[] | null {
+  if (availability?.status !== "busy") return null;
+  return availability.overlaps.map((period) => formatAvailabilityOverlap(period, options));
+}
 
-  const rows = availability.overlaps.map((period) =>
-    formatAvailabilityOverlap(period, { labels, locale, timeZone }),
-  );
+/** Busy participant tag tooltip: RSVP status, "Busy at this time", then the overlaps. */
+export function CalendarInviteeBusyTooltip({
+  rsvpLabel,
+  rows,
+  labels,
+}: {
+  rsvpLabel: string;
+  rows: string[];
+  labels: CalendarUILabels;
+}) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className="calendar-invitee-availability-tag__trigger"
-          tabIndex={0}
-          aria-label={`${labels.eventAttendeesAvailabilityBusy}: ${rows.join("; ")}`}
-        >
-          <Tag
-            label={labels.eventAttendeesAvailabilityBusy}
-            icon={<CircleDot aria-hidden />}
-            className="calendar-invitee-availability-tag calendar-invitee-availability-tag--busy"
-          />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="calendar-invitee-availability-tag__tooltip">
-        <p className="calendar-invitee-availability-tag__tooltip-title">
-          {labels.eventAttendeesAvailabilityBusyWith}
-        </p>
-        <ul>
-          {rows.map((row, index) => (
-            <li key={`${index}:${row}`}>{row}</li>
-          ))}
-        </ul>
-      </TooltipContent>
-    </Tooltip>
+    <div className="calendar-invitee-busy-tooltip">
+      <p>{rsvpLabel}</p>
+      <p className="calendar-invitee-busy-tooltip__title">
+        {labels.eventAttendeesAvailabilityBusyWith}
+      </p>
+      <ul>
+        {rows.map((row, index) => (
+          <li key={`${index}:${row}`}>{row}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
