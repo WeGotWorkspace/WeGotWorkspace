@@ -41,6 +41,11 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
 
     private ?string $sabreDataDir = null;
 
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -290,8 +295,8 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
             if ($mail->outbound->calendarMethod !== $method) {
                 continue;
             }
-            foreach ($mail->to as $to) {
-                $recipients[] = strtolower((string) $to['address']);
+            foreach ($mail->outbound->to as $to) {
+                $recipients[] = strtolower(is_array($to) ? (string) ($to['address'] ?? '') : (string) $to);
             }
         }
         sort($recipients);
@@ -431,6 +436,8 @@ final class CalendarSchedulingOutsideTeamsTest extends WgwDatabaseTestCase
         }
         $auth = 'Basic '.base64_encode($username.':secret');
         $_SERVER['HTTP_AUTHORIZATION'] = $auth;
+        // A new DAV request: request-scoped state (the colleague memo) starts empty.
+        $this->app->forgetScopedInstances();
 
         $server = app(SabreServerFactory::class)->create();
         $request = new SabreRequest($method, $path, ['Authorization' => $auth] + $headers, $body);

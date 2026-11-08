@@ -25,6 +25,7 @@ use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
 use App\Dav\Server\WgwCardBackend;
+use App\Dav\Server\WgwSchedulePlugin;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Contacts\MemberUriSanitizer;
@@ -125,7 +126,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalendarPropfindReadPlugin);
             $server->addPlugin(new CalDAV\Plugin);
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
-            $server->addPlugin(new CalDAV\Schedule\Plugin);
+            $server->addPlugin(app(WgwSchedulePlugin::class));
             $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);

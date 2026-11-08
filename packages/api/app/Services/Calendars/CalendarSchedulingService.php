@@ -38,6 +38,7 @@ final class CalendarSchedulingService
         private readonly CalendarImipService $imip,
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
+        private readonly CalendarSchedulingReach $reach,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -81,7 +82,7 @@ final class CalendarSchedulingService
      */
     public function withOrganizer(string $username, array $event): array
     {
-        $event = $this->canonicalizeLocalParticipants($event);
+        $event = $this->canonicalizeLocalParticipants($username, $event);
         $participants = $event['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
             return $event;
@@ -121,12 +122,13 @@ final class CalendarSchedulingService
     /**
      * Rewrite local participants to a stable calendar-user address (usable
      * email or username) so Broker + inbox matching do not depend on a
-     * valid mailbox.
+     * valid mailbox. A typed address of someone outside the writer's Teams
+     * stays as typed: that person is invited like an external guest (#1923).
      *
      * @param  array<string, mixed>  $event
      * @return array<string, mixed>
      */
-    private function canonicalizeLocalParticipants(array $event): array
+    private function canonicalizeLocalParticipants(string $username, array $event): array
     {
         $participants = $event['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
@@ -142,7 +144,7 @@ final class CalendarSchedulingService
                 continue;
             }
             $principal = $this->addresses->principalForMailto($email);
-            if ($principal === null) {
+            if ($principal === null || ! $this->reach->mayCanonicalise($username, $this->usernameOf($principal))) {
                 continue;
             }
             $canonical = $this->addresses->canonicalCalendarUserAddress($principal);
@@ -315,7 +317,8 @@ final class CalendarSchedulingService
     private function deliver(string $username, Message $message): void
     {
         $recipient = $this->addresses->principalForMailto((string) $message->recipient);
-        if ($recipient === null) {
+        if ($recipient === null
+            || ! $this->reach->deliversLocally($username, $this->usernameOf($recipient), (string) $message->method)) {
             $this->imip->deliver($username, $message);
 
             return;
@@ -326,6 +329,13 @@ final class CalendarSchedulingService
         }
 
         $this->deliverLocal($username, $message, (string) $recipient->uri);
+    }
+
+    private function usernameOf(Principal $principal): string
+    {
+        $uri = (string) $principal->uri;
+
+        return str_starts_with($uri, 'principals/') ? substr($uri, strlen('principals/')) : $uri;
     }
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
