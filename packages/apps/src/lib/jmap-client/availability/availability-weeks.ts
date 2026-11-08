@@ -170,7 +170,8 @@ export function busyPeriodUtcWeeks(period: JmapBusyPeriod): UtcWeekStart[] {
 /**
  * Files a run's periods under every week of the run they overlap, so a period
  * past Monday 00:00 UTC keeps both weeks busy offline. Weeks with nothing are
- * present with an empty list: fetched and free.
+ * present with an empty list: fetched and free. Weeks outside the run get no
+ * entry, so they still read as never fetched.
  */
 export function splitBusyPeriodsByWeek(
   periods: readonly JmapBusyPeriod[],
@@ -185,20 +186,34 @@ export function splitBusyPeriodsByWeek(
   return byWeek;
 }
 
+/** What makes two cached periods the same block on the grid. */
+function busyPeriodIdentity(period: JmapBusyPeriod): string {
+  return JSON.stringify([
+    period.start,
+    period.timeZone ?? null,
+    period.duration,
+    period.showWithoutTime,
+    period.title ?? null,
+    period.location ?? null,
+  ]);
+}
+
 /**
- * Joins cached weeks into one period list. A period stored under several weeks
- * comes once: from the first of those weeks that is in `weeks`. Two different
- * periods with the same times both stay.
+ * Joins cached weeks into one period list, oldest week first. Identical
+ * periods (same start, zone, duration, all-day flag, title and location) come
+ * once, so a period stored under two weeks is drawn once.
  */
 export function mergeWeekPeriods(
   weeks: readonly { weekStart: UtcWeekStart; periods: readonly JmapBusyPeriod[] }[],
 ): JmapBusyPeriod[] {
-  const present = new Set(weeks.map((week) => week.weekStart));
+  const seen = new Set<string>();
   const merged: JmapBusyPeriod[] = [];
   for (const week of [...weeks].sort((a, b) => a.weekStart.localeCompare(b.weekStart))) {
     for (const period of week.periods) {
-      const owner = busyPeriodUtcWeeks(period).find((candidate) => present.has(candidate));
-      if (owner === undefined || owner === week.weekStart) merged.push(period);
+      const identity = busyPeriodIdentity(period);
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      merged.push(period);
     }
   }
   return merged;

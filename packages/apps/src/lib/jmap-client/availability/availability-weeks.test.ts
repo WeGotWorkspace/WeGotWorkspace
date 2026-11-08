@@ -107,6 +107,18 @@ describe("availability weeks", () => {
     expect(byWeek.get("2026-11-23")).toEqual([]);
   });
 
+  it("files a period only under weeks of the fetched run", () => {
+    const overnight: JmapBusyPeriod = {
+      start: "2026-11-15T22:00:00",
+      timeZone: "UTC",
+      duration: "PT4H",
+      showWithoutTime: false,
+    };
+    const byWeek = splitBusyPeriodsByWeek([overnight], ["2026-11-09"]);
+    expect([...byWeek.keys()]).toEqual(["2026-11-09"]);
+    expect(byWeek.has("2026-11-16")).toBe(false);
+  });
+
   it("reads a UTC start with Z as an exact instant", () => {
     expect(
       busyPeriodUtcWeeks({
@@ -141,7 +153,7 @@ describe("availability weeks", () => {
     ).toEqual(["2026-11-09", "2026-11-16"]);
   });
 
-  it("merges cached weeks without repeating a period stored under two weeks", () => {
+  it("merges cached weeks and draws identical periods once", () => {
     const overnight: JmapBusyPeriod = {
       start: "2026-11-15T22:00:00",
       timeZone: "UTC",
@@ -149,12 +161,14 @@ describe("availability weeks", () => {
       showWithoutTime: false,
     };
     const twin = { ...overnight };
+    const titled: JmapBusyPeriod = { ...overnight, title: "Release night" };
     const later: JmapBusyPeriod = { ...overnight, start: "2026-11-17T09:00:00", duration: "PT1H" };
     const weeks = [
       { weekStart: "2026-11-16", periods: [overnight, later] },
-      { weekStart: "2026-11-09", periods: [overnight, twin] },
+      { weekStart: "2026-11-09", periods: [twin, titled] },
     ];
-    expect(mergeWeekPeriods(weeks)).toEqual([overnight, twin, later]);
+    // The overnight period sits in both weeks and comes once; the titled one differs.
+    expect(mergeWeekPeriods(weeks)).toEqual([twin, titled, later]);
     // Offline with only the second week cached, the period still shows.
     expect(mergeWeekPeriods([weeks[0]!])).toEqual([overnight, later]);
   });
