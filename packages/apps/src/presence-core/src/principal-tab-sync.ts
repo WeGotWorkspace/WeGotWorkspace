@@ -32,6 +32,8 @@ export type PrincipalRosterSnapshot = {
   selfPeerId: string | null;
   /** Peers with an open data channel. Missing from a tab on an older build. */
   linkedPeerIds?: string[];
+  /** Per lower-cased username: the peer ids the leader sends a targeted envelope to. */
+  targetPeerIds?: Record<string, string[]>;
 };
 
 /**

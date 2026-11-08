@@ -109,17 +109,23 @@ export class TeamPresenceSession implements PresenceMeshSession {
     return [...this.rooms.values()].flatMap(({ session }) => session.getRoomPeers());
   }
 
-  /** The user's peers in the first room (by name) that has any: one copy per tab. */
+  /**
+   * The user's peers in the first room (by name) where one is linked, else in the
+   * first room that lists any: one copy per tab, over a channel that is open.
+   */
   peersForUsername(username: string): RtcPeerDescriptor[] {
     const key = username.trim().toLowerCase();
+    let fallback: RtcPeerDescriptor[] = [];
     for (const room of this.roomNames()) {
-      const peers = this.rooms
-        .get(room)!
-        .session.getRoomPeers()
+      const session = this.rooms.get(room)!.session;
+      const peers = session
+        .getRoomPeers()
         .filter((peer) => (peer.user ?? "").trim().toLowerCase() === key);
-      if (peers.length > 0) return peers;
+      if (peers.length === 0) continue;
+      if (peers.some((peer) => session.isLinked(peer.id))) return peers;
+      if (fallback.length === 0) fallback = peers;
     }
-    return [];
+    return fallback;
   }
 
   isLinked(peerId: string): boolean {

@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
+import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
 import { createPresenceStore } from "@/presence-core/src/presence-store";
 import type { PresenceEnvelope, PresenceMeshEvent } from "@/presence-core/src/presence-types";
 import {
@@ -146,6 +147,41 @@ describe("TeamPresenceSession", () => {
 
     rooms.get("groups.engineering")!.peers = [];
     expect(session.peersForUsername("bob").map((p) => p.id)).toEqual(["bob-team-1", "bob-team-2"]);
+  });
+
+  it("prefers the room where the user's channel is open", async () => {
+    const { session, rooms } = setup();
+    session.setRooms(["groups.engineering", "groups.team"]);
+    await session.join("Alice");
+    rooms.get("groups.engineering")!.peers = [peer("bob-eng", "bob")];
+    rooms.get("groups.team")!.peers = [peer("bob-team", "bob")];
+    rooms.get("groups.team")!.linked.add("bob-team");
+    expect(session.peersForUsername("bob").map((p) => p.id)).toEqual(["bob-team"]);
+
+    rooms.get("groups.team")!.linked.clear();
+    expect(session.peersForUsername("bob").map((p) => p.id)).toEqual(["bob-eng"]);
+  });
+
+  it("a follower window sends a targeted envelope once, to the peers the leader chose", async () => {
+    const out: Array<{ envelope: PresenceEnvelope; peerId?: string }> = [];
+    const follower = new FollowerPresenceSession((envelope, peerId) =>
+      out.push({ envelope, peerId }),
+    );
+    follower.applyRoster({
+      peers: [peer("bob-eng", "bob"), peer("bob-team", "bob")],
+      selfPeerId: null,
+      linkedPeerIds: ["bob-team"],
+      targetPeerIds: { bob: ["bob-team"] },
+    });
+    const store = createPresenceStore({
+      createSession: () => follower,
+      joinMode: "eager",
+      visibility: null,
+    });
+    store.start({ username: "alice", displayName: "Alice" });
+    await vi.waitFor(() => expect(store.getSnapshot().status).toBe("online"));
+    store.sendToUsernames(["bob"], { v: 1, kind: "check-now" });
+    expect(out.map((row) => row.peerId)).toEqual(["bob-team"]);
   });
 
   it("sendToUsernames reaches a tab once although it shares two Teams", async () => {

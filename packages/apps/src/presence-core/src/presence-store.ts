@@ -477,10 +477,21 @@ export class PresenceStore implements MeshCheckNowPort {
     const session = this.session;
     if (!this.isMeshLeader || !session) return;
     const peers = session.getRoomPeers();
+    let targetPeerIds: Record<string, string[]> | undefined;
+    if (session.peersForUsername) {
+      targetPeerIds = {};
+      for (const peer of peers) {
+        const key = (peer.user ?? "").trim().toLowerCase();
+        if (key && !(key in targetPeerIds)) {
+          targetPeerIds[key] = session.peersForUsername(key).map((target) => target.id);
+        }
+      }
+    }
     this.coordinator?.publishRosterState({
       peers,
       selfPeerId: null,
       linkedPeerIds: peers.filter((peer) => session.isLinked(peer.id)).map((peer) => peer.id),
+      targetPeerIds,
     });
   }
 
