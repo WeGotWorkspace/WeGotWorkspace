@@ -29,8 +29,7 @@ final class GroupMemberPrincipal extends DAVACL\Principal
     /**
      * Sabre resolves every parent group while it builds a user's privileges. A Team nested
      * in a Team the viewer may not see must not send that walk to a hidden node (#1922).
-     */
-    /**
+     *
      * @return list<string>
      */
     public function getGroupMembership()
