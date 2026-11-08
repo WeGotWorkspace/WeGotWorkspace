@@ -46,9 +46,21 @@ final class CalendarCollectionAccess
             }
         }
 
-        return $this->shareVisibility->rejectInvisibleSharees(
+        return $this->visibleHighestAccess($username, $instances);
+    }
+
+    /**
+     * Hidden shares go first, so a hidden higher-ranked Team grant cannot displace a
+     * visible direct grant; then highest access per calendar; then dismissed shares.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function visibleHighestAccess(string $username, $instances)
+    {
+        return $this->shareVisibility->rejectDismissedSharees(
             $username,
-            $this->preferHighestAccessPerCalendar($instances),
+            $this->preferHighestAccessPerCalendar($this->shareVisibility->rejectHiddenSharees($username, $instances)),
         );
     }
 

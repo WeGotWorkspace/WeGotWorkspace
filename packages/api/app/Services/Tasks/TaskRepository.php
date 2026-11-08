@@ -626,14 +626,12 @@ final class TaskRepository
         $calendarId = (int) $object->calendarid;
         $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
             ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
-            ?? $this->collectionAccess->withoutDismissedOrHidden(
+            ?? $this->collectionAccess->visibleHighestAccess(
                 $username,
-                $this->collectionAccess->preferHighestAccessPerCalendar(
-                    CalendarInstance::query()
-                        ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
-                        ->orderBy('id')
-                        ->get(),
-                ),
+                CalendarInstance::query()
+                    ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
+                    ->orderBy('id')
+                    ->get(),
             )->first();
         if ($instance === null) {
             return null;

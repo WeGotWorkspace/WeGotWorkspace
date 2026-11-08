@@ -8,6 +8,7 @@ use App\Dav\Server\WgwCalendarBackend;
 use App\Models\AddressBookShare;
 use App\Models\CalendarInstance;
 use App\Models\GroupMember;
+use App\Models\Notification;
 use App\Models\Principal;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatChannelRepository;
@@ -232,6 +233,73 @@ final class TeamHiddenSharesTest extends WgwDatabaseTestCase
 
         $this->join('dave', 't1');
         $this->assertNull($this->ownerShareWith('bob', 'default'));
+    }
+
+    public function test_a_direct_grant_survives_when_a_higher_ranked_team_grant_is_hidden(): void
+    {
+        $this->join('dave', 't2');
+        $baseline = $this->calendarIds('dave');
+        $this->jmap('bob', JmapCapabilities::CALENDARS, [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => ['shareWith' => [
+                'dave' => ['mayReadItems' => true],
+                'groups/t2' => ['mayWriteAll' => true],
+            ]]]], 'c0'],
+        ]);
+        $this->assertCount(count($baseline) + 1, $this->calendarIds('dave'));
+        $rows = $this->grantRowSnapshot();
+
+        $this->leave('bob', 't2');
+
+        // The direct read-only grant still shows (under its own id) once the Team grant is hidden.
+        $this->assertCount(count($baseline) + 1, $this->calendarIds('dave'));
+        $this->assertSame($rows, $this->grantRowSnapshot());
+    }
+
+    public function test_chat_notifications_skip_a_hidden_sharee_until_the_team_returns(): void
+    {
+        $channel = $this->sharedCollection(
+            '/api/v1/chat/channels/',
+            (string) app(ChatChannelRepository::class)->create('bob', ['name' => 'Notified', 'kind' => 'channel'])['id'],
+            ['dave' => ['mayWriteAll' => true], 'carol' => ['mayWriteAll' => true]],
+        );
+        $this->leave('dave', 't1');
+
+        $this->asUser('bob')->postJson('/api/v1/chat/channels/'.$channel.'/messages', [
+            'id' => '01J6Y6M0R2V9GKJ4W1T8Q3ZBAA',
+            'body' => 'hey @dave',
+            'mentions' => [['id' => 'dave', 'displayName' => 'Dave']],
+        ])->assertCreated();
+
+        $this->assertSame(0, Notification::query()->where('principal', 'dave')->count());
+        $this->assertSame(1, Notification::query()->where('principal', 'carol')->count());
+
+        $this->join('dave', 't1');
+        $this->asUser('bob')->postJson('/api/v1/chat/channels/'.$channel.'/messages', [
+            'id' => '01J6Y6M0R2V9GKJ4W1T8Q3ZBAB',
+            'body' => 'hey again @dave',
+            'mentions' => [['id' => 'dave', 'displayName' => 'Dave']],
+        ])->assertCreated();
+
+        $this->assertSame(1, Notification::query()->where('principal', 'dave')->count());
+    }
+
+    public function test_a_client_unshare_revokes_hidden_grants_too(): void
+    {
+        $this->shareCalendar('bob', 'default', 'dave');
+        $this->leave('dave', 't1');
+        $calendarId = (int) CalendarInstance::query()->where('principaluri', 'principals/bob')->where('uri', 'default')->value('calendarid');
+        $ownerInstance = (int) CalendarInstance::query()->where('principaluri', 'principals/bob')->where('uri', 'default')->value('id');
+        $backend = new WgwCalendarBackend(DB::connection('wgw')->getPdo());
+
+        // What Sabre's SharingPlugin does when a client drops shared-owner: read the invites the
+        // owner sees and set each to NOACCESS.
+        $invites = $backend->getInvites([$calendarId, $ownerInstance]);
+        foreach ($invites as $invite) {
+            $invite->access = SharingPlugin::ACCESS_NOACCESS;
+        }
+        $backend->updateInvites([$calendarId, $ownerInstance], $invites);
+
+        $this->assertSame(0, CalendarInstance::query()->where('calendarid', $calendarId)->where('principaluri', 'principals/dave')->count());
     }
 
     public function test_address_book_revoke_all_removes_hidden_grants(): void

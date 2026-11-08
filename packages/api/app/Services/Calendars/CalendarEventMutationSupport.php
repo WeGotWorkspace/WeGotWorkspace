@@ -629,15 +629,13 @@ final class CalendarEventMutationSupport
         $calendarId = (int) $object->calendarid;
         $instance = $this->calendars->accessibleVeventInstances($username)
             ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
-            ?? $this->collectionAccess->withoutDismissedOrHidden(
+            ?? $this->collectionAccess->visibleHighestAccess(
                 $username,
-                $this->collectionAccess->preferHighestAccessPerCalendar(
-                    CalendarInstance::query()
-                        ->where('calendarid', $calendarId)
-                        ->whereIn('principaluri', $principalUris)
-                        ->orderBy('id')
-                        ->get(),
-                ),
+                CalendarInstance::query()
+                    ->where('calendarid', $calendarId)
+                    ->whereIn('principaluri', $principalUris)
+                    ->orderBy('id')
+                    ->get(),
             )->first();
 
         if ($instance === null) {

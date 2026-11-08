@@ -244,9 +244,24 @@ final class WgwCalendarBackend extends CalPDO
         $this->writingInvites = true;
         try {
             $resolved = [];
-            foreach ($this->getInvites($calendarId) as $invite) {
+            $current = $this->getInvites($calendarId);
+            $ownerHref = null;
+            foreach ($current as $invite) {
                 if (is_string($invite->principal)) {
                     $resolved[$invite->href] = true;
+                }
+                if ((int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER) {
+                    $ownerHref = $invite->href;
+                }
+            }
+            // Unsharing from a client (PROPPATCH dropping shared-owner) reads the filtered
+            // invite list and sets NOACCESS on it plus the owner's own href. Treat the owner
+            // going NOACCESS as revoke-all, so hidden grants go too.
+            foreach ($sharees as $sharee) {
+                if ($ownerHref !== null && $sharee->href === $ownerHref
+                    && (int) $sharee->access === SharingPlugin::ACCESS_NOACCESS) {
+                    $sharees = $this->revokeAll($current, $sharees);
+                    break;
                 }
             }
             parent::updateInvites($calendarId, array_values(array_filter(
@@ -258,6 +273,30 @@ final class WgwCalendarBackend extends CalPDO
         } finally {
             $this->writingInvites = false;
         }
+    }
+
+    /**
+     * @param  list<Sharee>  $current  every invite row, hidden ones included
+     * @param  list<Sharee>  $sharees
+     * @return list<Sharee>
+     */
+    private function revokeAll(array $current, array $sharees): array
+    {
+        $listed = [];
+        foreach ($sharees as $sharee) {
+            $listed[$sharee->href] = true;
+        }
+        foreach ($current as $invite) {
+            if ((int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER || isset($listed[$invite->href])) {
+                continue;
+            }
+            $revoked = new Sharee;
+            $revoked->href = $invite->href;
+            $revoked->access = SharingPlugin::ACCESS_NOACCESS;
+            $sharees[] = $revoked;
+        }
+
+        return array_values($sharees);
     }
 
     /** @return array<mixed> */
