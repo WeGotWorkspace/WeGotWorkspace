@@ -144,6 +144,8 @@ final class TaskListShareDismissTest extends WgwDatabaseTestCase
             $this->assertNotNull($principal);
             $this->addPrincipalToGroup($team, $principal);
         }
+        // Epic #1915: only a member of a Team may share with it.
+        $this->seedSharedTeam(self::TEAM, 'bob');
         $listId = $this->createPersonalList('bob', 'Team Share');
         $this->asUser('bob')
             ->patchJson('/api/v1/tasks/tasklists/'.$listId, ['shareWith' => ['groups/'.self::TEAM => ['mayReadItems' => true]]])
