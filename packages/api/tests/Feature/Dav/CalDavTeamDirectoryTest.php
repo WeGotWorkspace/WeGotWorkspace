@@ -85,6 +85,17 @@ final class CalDavTeamDirectoryTest extends WgwDatabaseTestCase
         $this->assertSame($this->withoutName($unknown, 'no-such-team'), $this->withoutName($foreign, 't2'));
     }
 
+    public function test_a_team_nested_in_a_hidden_team_does_not_break_the_members_requests(): void
+    {
+        $t1 = Principal::query()->where('uri', 'principals/groups/t1')->firstOrFail();
+        $t2 = Principal::query()->where('uri', 'principals/groups/t2')->firstOrFail();
+        $this->addPrincipalToGroup($t1, $t2);
+
+        $this->assertSame(207, $this->propfind('carol', '/principals/carol/', $this->displayNameBody(), '0')['status']);
+        $this->assertSame(['t2'], $this->listedTeams('carol'));
+        $this->assertSame(404, $this->propfind('carol', '/principals/groups/t1/', $this->memberSetBody(), '0')['status']);
+    }
+
     // ---- principals/{user} ----------------------------------------------------
 
     public function test_a_non_colleague_principal_answers_like_an_unknown_account(): void

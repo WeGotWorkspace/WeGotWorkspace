@@ -49,7 +49,7 @@ final class GroupPrincipalContainer extends User
             return new ProxyWrite($this->principalBackend, $this->principalProperties);
         }
 
-        return new GroupMemberPrincipal($this->principalBackend, $principal);
+        return new GroupMemberPrincipal($this->principalBackend, $principal, $this->visibleTeam);
     }
 
     /**
@@ -67,7 +67,7 @@ final class GroupPrincipalContainer extends User
         foreach ($this->principalBackend->getPrincipalsByPrefix($this->getPrincipalURL()) as $info) {
             [, $slug] = Uri\split((string) $info['uri']);
             if (($this->visibleTeam)((string) $slug)) {
-                $r[] = new GroupMemberPrincipal($this->principalBackend, $info);
+                $r[] = new GroupMemberPrincipal($this->principalBackend, $info, $this->visibleTeam);
             }
         }
 
