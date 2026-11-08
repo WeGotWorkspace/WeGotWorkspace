@@ -6,7 +6,7 @@
 // back from the server. Saving while offline shows an error toast and sends
 // nothing, so the offline edit is not stored.
 import { openCalendarWeek } from "./helpers/calendar-live";
-import { expect, test, type Page } from "./helpers/live-test";
+import { expect, test, type Locator, type Page } from "./helpers/live-test";
 import { api, openUser, OWNER, setTabOffline, type Tab } from "./helpers/live-matrix";
 
 type AvailabilityCalendar = {
@@ -18,6 +18,8 @@ type AvailabilityCalendar = {
 const SWITCH = "Share my availability with my Teams";
 const SAVED = "Availability settings saved";
 const SAVE_OFFLINE = "Availability settings need a connection. Try again when you are online.";
+const DO_NOT_ADD = "Do not add";
+const TIME_ONLY = "Time only";
 
 async function loadSettings(): Promise<{ enabled: boolean; calendars: AvailabilityCalendar[] }> {
   const res = await api(OWNER, "GET", "/calendars/availability");
@@ -32,6 +34,12 @@ async function resetSettings(calendarId: string): Promise<void> {
     calendars: [{ calendarId, include: true, detail: "busy" }],
   });
   expect(res.status, "PUT /calendars/availability").toBe(200);
+}
+
+/** Picks an option in a calendar row's dropdown (named after the calendar). */
+async function choose(scope: Locator, page: Page, calendar: string, option: string) {
+  await scope.getByRole("combobox", { name: calendar, exact: true }).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
 }
 
 async function openCalendarSettingsDialog(page: Page) {
@@ -63,8 +71,7 @@ test.describe("Availability settings in two tabs and offline", () => {
     const context = await openUser(browser, OWNER);
     const tabA = (await context.newPage()) as Tab;
     const tabB = (await context.newPage()) as Tab;
-    const include = `Counts toward my availability ${calendar.name}`;
-    const detail = `Teammates see ${calendar.name}`;
+    const row = { name: calendar.name, exact: true } as const;
 
     // Tab B: Settings → Calendar, switch off.
     await tabB.goto("/settings/calendar");
@@ -73,11 +80,11 @@ test.describe("Availability settings in two tabs and offline", () => {
       "false",
     );
 
-    // Tab A: turn on, uncheck the calendar, save with the dialog footer.
+    // Tab A: turn on, set the calendar to "Do not add", save with the dialog footer.
     let dialog = await openCalendarSettingsDialog(tabA);
     await dialog.getByRole("switch", { name: SWITCH }).click();
-    await dialog.getByRole("checkbox", { name: include }).click();
-    await expect(dialog.getByRole("combobox", { name: detail })).toBeDisabled();
+    await choose(dialog, tabA, calendar.name, DO_NOT_ADD);
+    await expect(dialog.getByRole("combobox", row)).toHaveText(DO_NOT_ADD);
     await dialog.getByRole("button", { name: "Save" }).last().click();
     await expect(tabA.getByText(SAVED).first()).toBeVisible();
 
@@ -86,11 +93,7 @@ test.describe("Availability settings in two tabs and offline", () => {
       "aria-checked",
       "true",
     );
-    await expect(tabB.getByRole("checkbox", { name: include })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
-    await expect(tabB.getByRole("combobox", { name: detail })).toBeDisabled();
+    await expect(tabB.getByRole("combobox", row)).toHaveText(DO_NOT_ADD);
 
     // A reload reads the same state back from the server.
     dialog = await openCalendarSettingsDialog(tabA);
@@ -98,10 +101,7 @@ test.describe("Availability settings in two tabs and offline", () => {
       "aria-checked",
       "true",
     );
-    await expect(dialog.getByRole("checkbox", { name: include })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
+    await expect(dialog.getByRole("combobox", row)).toHaveText(DO_NOT_ADD);
 
     // Offline: Save shows the error toast and sends no write.
     const writes: string[] = [];
@@ -111,7 +111,7 @@ test.describe("Availability settings in two tabs and offline", () => {
       }
     });
     await setTabOffline(tabA, true);
-    await dialog.getByRole("checkbox", { name: include }).click();
+    await choose(dialog, tabA, calendar.name, TIME_ONLY);
     await dialog.getByRole("button", { name: "Save" }).last().click();
     await expect(tabA.getByText(SAVE_OFFLINE).first()).toBeVisible();
     expect(writes, "no availability write while offline").toEqual([]);
@@ -119,10 +119,7 @@ test.describe("Availability settings in two tabs and offline", () => {
     // Back online, a reload shows the offline edit was not stored.
     await setTabOffline(tabA, false);
     dialog = await openCalendarSettingsDialog(tabA);
-    await expect(dialog.getByRole("checkbox", { name: include })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
+    await expect(dialog.getByRole("combobox", row)).toHaveText(DO_NOT_ADD);
     const stored = await loadSettings();
     expect(stored.enabled).toBe(true);
     expect(stored.calendars.find((c) => c.calendarId === calendar.calendarId)).toMatchObject({

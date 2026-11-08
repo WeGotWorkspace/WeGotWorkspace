@@ -48,6 +48,19 @@ function calendarRow(name: string): HTMLElement {
   return row.closest("li")!;
 }
 
+/** Picks one option in a calendar row's dropdown (Radix Select). */
+function choose(calendar: string, option: string): void {
+  fireEvent.click(screen.getByRole("combobox", { name: calendar }));
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
+
+function optionNames(calendar: string): string[] {
+  fireEvent.click(screen.getByRole("combobox", { name: calendar }));
+  const names = screen.getAllByRole("option").map((option) => option.textContent ?? "");
+  fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
+  return names;
+}
+
 beforeEach(() => {
   setOnline(true);
   toast.success.mockClear();
@@ -62,62 +75,62 @@ afterEach(() => {
 });
 
 describe("SettingsCalendarAvailabilitySection", () => {
-  it("starts off with one explanatory line and no Teams or calendars", async () => {
+  it("starts off with one explanatory line and no calendars", async () => {
     renderSection(createMockCalendarAvailabilitySettingsOperations());
     const toggle = await screen.findByRole("switch", { name: labels.switch });
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText(labels.offHint)).toBeTruthy();
-    expect(screen.queryByText(labels.teamsHeading)).toBeNull();
     expect(screen.queryByText(labels.calendarsHeading)).toBeNull();
     expect(screen.queryByText(labels.footer)).toBeNull();
   });
 
-  it("shows Teams, calendars with their defaults and the footer once on", async () => {
+  it("shows the calendars with their defaults and the footer once on, without a Teams list", async () => {
     renderSection(createMockCalendarAvailabilitySettingsOperations());
     fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
 
-    expect(screen.getByText("Design")).toBeTruthy();
     expect(screen.queryByText(labels.offHint)).toBeNull();
     expect(screen.getByText(labels.footer)).toBeTruthy();
+    expect(screen.queryByText("Design")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
     const personal = calendarRow("Personal");
-    expect(within(personal).getByRole("checkbox").getAttribute("aria-checked")).toBe("true");
     expect(within(personal).getByRole("combobox").textContent).toContain(labels.detailBusy);
     expect(screen.queryByText("US Holidays")).toBeNull();
   });
 
-  it("names each control after its calendar", async () => {
+  it("names each dropdown after its calendar", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    expect(await screen.findByRole("checkbox", { name: `${labels.include} Work` })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: `${labels.detail} Work` })).toBeTruthy();
+    expect(await screen.findByRole("combobox", { name: "Work" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Editorial" })).toBeTruthy();
   });
 
-  it("notes when the owner is in no Team yet", async () => {
-    renderSection(
-      createMockCalendarAvailabilitySettingsOperations(
-        mockCalendarAvailabilitySettings({ enabled: true, teams: [] }),
-      ),
-    );
-    expect(await screen.findByText(labels.teamsNone)).toBeTruthy();
-  });
-
-  it("disables the detail select while the calendar does not count", async () => {
+  it("offers Do not add and both detail levels on a personal calendar", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
     await screen.findByText(labels.footer);
-    const work = calendarRow("Work");
-    expect((within(work).getByRole("combobox") as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(within(work).getByRole("checkbox"));
-    expect((within(work).getByRole("combobox") as HTMLButtonElement).disabled).toBe(true);
+    expect(optionNames("Work")).toEqual([labels.exclude, labels.detailBusy, labels.detailDetails]);
   });
 
-  it("shows a Team calendar with a fixed Time only and the whole-Team hint", async () => {
+  it("shows Do not add for a calendar that does not count", async () => {
+    const seed = mockCalendarAvailabilitySettings({ enabled: true });
+    seed.calendars = seed.calendars.map((calendar) =>
+      calendar.calendarId === "work"
+        ? { ...calendar, include: false, detail: "details" }
+        : calendar,
+    );
+    renderSection(createMockCalendarAvailabilitySettingsOperations(seed));
+    const work = await screen.findByRole("combobox", { name: "Work" });
+    expect(work.textContent).toContain(labels.exclude);
+    expect(calendarRow("Work").dataset.included).toBe("false");
+  });
+
+  it("offers a Team calendar Do not add and Time only, with the whole-Team hint", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
@@ -125,10 +138,9 @@ describe("SettingsCalendarAvailabilitySection", () => {
     );
     await screen.findByText(labels.footer);
     const team = calendarRow("Editorial");
-    expect(within(team).queryByRole("combobox")).toBeNull();
-    expect(within(team).getByText(labels.detailBusy)).toBeTruthy();
+    expect(within(team).getByRole("combobox").textContent).toContain(labels.detailBusy);
     expect(within(team).getByText(labels.teamHint)).toBeTruthy();
-    expect(within(team).getByRole("checkbox").getAttribute("aria-checked")).toBe("true");
+    expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
   });
 
   it("saves the switch and changed calendars through the REST operations", async () => {
@@ -138,14 +150,16 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect((save as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByRole("switch", { name: labels.switch }));
-    fireEvent.click(within(calendarRow("Work")).getByRole("checkbox"));
-    fireEvent.click(within(calendarRow("Editorial")).getByRole("checkbox"));
+    choose("Personal", labels.detailDetails);
+    choose("Work", labels.exclude);
+    choose("Editorial", labels.exclude);
     fireEvent.click(save);
 
     await waitFor(() => expect(operations.save).toHaveBeenCalledTimes(1));
     expect(operations.save).toHaveBeenCalledWith({
       enabled: true,
       calendars: [
+        { calendarId: "default", detail: "details" },
         { calendarId: "work", include: false },
         { calendarId: "group-editorial", include: false },
       ],
@@ -225,7 +239,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
     await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
 
     // A local edit is not overwritten by a later read.
-    fireEvent.click(within(calendarRow("Work")).getByRole("checkbox"));
+    choose("Work", labels.exclude);
     await operations.save({ enabled: false });
     act(() => document.dispatchEvent(new Event("visibilitychange")));
     await new Promise((resolve) => setTimeout(resolve, 20));

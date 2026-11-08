@@ -4,12 +4,9 @@ export const calendarAvailabilityLabels = {
   switch: "Share my availability with my Teams",
   offHint:
     "When this is on, people in your Teams can see when you are busy. While it is off, nobody sees your availability.",
-  teamsHeading: "Who can see it",
-  teamsNone: "You are not in a Team yet. Once you are, its members can see when you are busy.",
   calendarsHeading: "Calendars",
   calendarsNone: "You have no calendars that can count toward your availability yet.",
-  include: "Counts toward my availability",
-  detail: "Teammates see",
+  exclude: "Do not add",
   detailBusy: "Time only",
   detailDetails: "Title and location",
   teamBadge: "Team",

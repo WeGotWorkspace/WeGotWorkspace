@@ -24,10 +24,6 @@
   color: var(--workspace-foreground);
 }
 
-.settings-availability__teams {
-  @apply m-0 flex list-none flex-wrap gap-2 p-0;
-}
-
 .settings-availability__calendars {
   @apply m-0 list-none p-0;
 }
@@ -59,30 +55,10 @@
   @apply size-2.5 shrink-0 rounded-full;
 }
 
-.settings-availability__calendar-controls {
-  @apply flex flex-wrap items-center gap-x-6 gap-y-2;
-}
-
-.settings-availability__include,
-.settings-availability__detail {
-  @apply flex items-center gap-2 text-sm;
-}
-
-.settings-availability__detail-label {
-  @apply text-muted-foreground;
-}
-
 .settings-availability__detail-select {
   @apply w-44;
 }
 
-.settings-availability__detail-fixed {
-  @apply inline-flex w-44 items-center;
-  min-height: var(--input-height, var(--control-height-md, 2.25rem));
-  color: var(--workspace-foreground);
-}
-
-.settings-availability__calendar[data-included="false"] .settings-availability__detail-fixed,
-.settings-availability__calendar[data-included="false"] .settings-availability__detail-label {
-  @apply opacity-50;
+.settings-availability__calendar[data-included="false"] .settings-availability__calendar-name {
+  @apply text-muted-foreground;
 }

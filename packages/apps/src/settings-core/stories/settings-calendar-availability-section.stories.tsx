@@ -28,7 +28,7 @@ function story(operations: CalendarAvailabilitySettingsOperations): Story["rende
   );
 }
 
-const twoTeamsThreeCalendars = mockCalendarAvailabilitySettings({
+const threeCalendars = mockCalendarAvailabilitySettings({
   enabled: true,
   calendars: [
     {
@@ -58,7 +58,7 @@ const twoTeamsThreeCalendars = mockCalendarAvailabilitySettings({
   ],
 });
 
-/** Off by default: one explanatory line, no Teams or calendars. */
+/** Off by default: one explanatory line, no calendars. */
 export const SwitchOff: Story = {
   render: story(createMockCalendarAvailabilitySettingsOperations()),
   play: async ({ canvasElement }) => {
@@ -66,38 +66,39 @@ export const SwitchOff: Story = {
     const toggle = await canvas.findByRole("switch", { name: labels.switch });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(canvas.getByText(labels.offHint)).toBeInTheDocument();
-    await expect(canvas.queryByText(labels.teamsHeading)).toBeNull();
+    await expect(canvas.queryByText(labels.calendarsHeading)).toBeNull();
     await expect(canvas.queryByText(labels.footer)).toBeNull();
   },
 };
 
-/** On, but the owner is in no Team yet. */
-export const OnWithoutTeams: Story = {
+/** On, but the owner has no calendar that can count yet. */
+export const OnWithoutCalendars: Story = {
   render: story(
     createMockCalendarAvailabilitySettingsOperations(
-      mockCalendarAvailabilitySettings({ enabled: true, teams: [] }),
+      mockCalendarAvailabilitySettings({ enabled: true, calendars: [] }),
     ),
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(labels.teamsNone)).toBeInTheDocument();
+    await expect(await canvas.findByText(labels.calendarsNone)).toBeInTheDocument();
     await expect(canvas.getByText(labels.footer)).toBeInTheDocument();
   },
 };
 
-/** Two Teams, two personal calendars (Work unchecked) and one Team calendar. */
-export const OnWithTwoTeamsAndThreeCalendars: Story = {
-  render: story(createMockCalendarAvailabilitySettingsOperations(twoTeamsThreeCalendars)),
+/** Personal with title and location, Work set to "Do not add", and one Team calendar. */
+export const OnWithThreeCalendars: Story = {
+  render: story(createMockCalendarAvailabilitySettingsOperations(threeCalendars)),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("Design")).toBeInTheDocument();
-    const work = canvas.getByRole("combobox", { name: `${labels.detail} Work` });
-    await expect(work).toBeDisabled();
-    const personal = canvas.getByRole("combobox", { name: `${labels.detail} Personal` });
-    await expect(personal).toBeEnabled();
+    const personal = await canvas.findByRole("combobox", { name: "Personal" });
     await expect(personal.textContent).toContain(labels.detailDetails);
+    const work = canvas.getByRole("combobox", { name: "Work" });
+    await expect(work.textContent).toContain(labels.exclude);
+    const editorial = canvas.getByRole("combobox", { name: "Editorial" });
+    await expect(editorial.textContent).toContain(labels.detailBusy);
     await expect(canvas.getByText(labels.teamHint)).toBeInTheDocument();
-    await expect(canvas.queryByRole("combobox", { name: `${labels.detail} Editorial` })).toBeNull();
+    await expect(canvas.queryByRole("checkbox")).toBeNull();
+    await expect(canvas.queryByText("Design")).toBeNull();
   },
 };
 
