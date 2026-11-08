@@ -58,6 +58,12 @@ final class CalendarShareInvites
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER) {
                 continue;
             }
+            // A grant hidden by Epic #1915 (the sharee no longer shares a Team with the owner)
+            // is left out; the row stays, and only revoke-all removes it.
+            if (is_string($sharee->principal)
+                && ! $this->colleagues->grantIsVisible((string) $instance->principaluri, $sharee->principal)) {
+                continue;
+            }
             // An invite no principal matched grants nothing (Sabre marks it invalid).
             if ((int) $sharee->inviteStatus === SharingPlugin::INVITE_INVALID) {
                 continue;

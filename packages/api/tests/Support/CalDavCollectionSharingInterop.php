@@ -9,6 +9,7 @@ use App\Models\CalendarInstance;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use Closure;
 use Illuminate\Http\Request;
 use Sabre\CalDAV\Plugin as CalDavPlugin;
 use Sabre\DAV\Exception as SabreDavException;
@@ -185,8 +186,7 @@ trait CalDavCollectionSharingInterop
         $this->assertIsArray($shareWithBefore['alice'] ?? null);
 
         // alice leaves every Team; the next request must not reuse the memoised colleagues.
-        GroupMember::query()->where('member_id', Principal::forUsername('alice')?->id)->delete();
-        $this->app->instance('request', Request::create('/'));
+        $restore = $this->removeFromEveryTeam('alice');
 
         $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml(self::CALDAV_SHARE_ALICE_MAILTO, write: true), [
             'Content-Type' => 'application/xml',
@@ -194,7 +194,30 @@ trait CalDavCollectionSharingInterop
         $this->assertSame(200, $again['status'], $again['body']);
 
         $this->assertSame($before, $aliceInstance()?->getAttributes());
+        // #1920: the grant is hidden from the owner while they share no Team, and comes back as it was.
+        $this->assertArrayNotHasKey('alice', $this->ownerCollectionShareWith('bob', $collectionId) ?? []);
+        $restore();
         $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
+    }
+
+    /**
+     * Removes the user from every Team and starts a new request, so memoised colleagues are
+     * dropped. The returned callback puts the memberships back the same way.
+     *
+     * @return Closure(): void
+     */
+    private function removeFromEveryTeam(string $username): Closure
+    {
+        $memberId = Principal::forUsername($username)?->id;
+        $rows = GroupMember::query()->where('member_id', $memberId)->get()
+            ->map(static fn (GroupMember $row): array => $row->getAttributes())->all();
+        GroupMember::query()->where('member_id', $memberId)->delete();
+        $this->app->instance('request', Request::create('/'));
+
+        return function () use ($rows): void {
+            GroupMember::query()->insert($rows);
+            $this->app->instance('request', Request::create('/'));
+        };
     }
 
     /**
@@ -258,8 +281,7 @@ trait CalDavCollectionSharingInterop
         $shareWithBefore = $this->ownerCollectionShareWith('bob', $collectionId);
         $this->assertIsArray($shareWithBefore['groups/colleagues'] ?? null);
 
-        GroupMember::query()->where('member_id', Principal::forUsername('bob')?->id)->delete();
-        $this->app->instance('request', Request::create('/'));
+        $restore = $this->removeFromEveryTeam('bob');
 
         $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml('mailto:groups/colleagues', write: true), [
             'Content-Type' => 'application/xml',
@@ -267,6 +289,9 @@ trait CalDavCollectionSharingInterop
         $this->assertSame(200, $again['status'], $again['body']);
 
         $this->assertSame($before, $teamInstance()?->getAttributes());
+        // #1920: a share to a Team its owner left is hidden from the owner, and comes back as it was.
+        $this->assertArrayNotHasKey('groups/colleagues', $this->ownerCollectionShareWith('bob', $collectionId) ?? []);
+        $restore();
         $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
     }
 

@@ -9400,7 +9400,7 @@ export interface components {
             isDefault: boolean;
             /** @description Whether the book is shown in client UI. */
             isSubscribed: boolean;
-            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. */
+            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
@@ -10382,7 +10382,7 @@ export interface components {
             description?: string | null;
             /** @description Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored. */
             isSubscribed?: boolean;
-            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
+            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
@@ -10722,7 +10722,7 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal calendars. */
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -10777,7 +10777,7 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal task lists. */
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -10966,7 +10966,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11000,7 +11000,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11843,7 +11843,7 @@ export interface components {
             /** @enum {string} */
             scope: "personal" | "group";
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -11868,7 +11868,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11888,7 +11888,7 @@ export interface components {
             /** @enum {string} */
             scope: "personal" | "group";
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -11933,7 +11933,7 @@ export interface components {
             topic?: string | null;
             /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;

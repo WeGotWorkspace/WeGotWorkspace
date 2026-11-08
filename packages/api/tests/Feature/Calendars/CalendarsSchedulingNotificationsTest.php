@@ -340,6 +340,7 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
     {
         $this->seedWgwUser('admin', email: 'admin@localhost', displayName: 'Admin');
         $this->seedWgwUser('wouter', email: 'wouter@example.test', displayName: 'Wouter');
+        $this->joinCalendarFixtureTeam('admin', 'wouter');
         $this->seedDefaultCalendarFor('admin');
         $this->seedDefaultCalendarFor('wouter');
 
