@@ -41,7 +41,7 @@ type UserDialogProps = {
 function adminRoleHint(lockedOn: boolean): string {
   return lockedOn
     ? "You cannot remove your own administrator access."
-    : "Can manage users, Teams and settings. Changing this signs them out on every device.";
+    : "Can manage users, Teams and settings.";
 }
 
 export function UserDialog({

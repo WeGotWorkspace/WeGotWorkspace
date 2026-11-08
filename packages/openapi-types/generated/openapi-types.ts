@@ -8711,7 +8711,7 @@ export interface components {
             password?: string;
             groups?: components["schemas"]["AdminUserGroupList"];
             enabled?: boolean;
-            /** @description Grant or remove the admin role. Changing it signs the user out everywhere. An admin cannot remove their own role, and the last admin cannot lose it. */
+            /** @description Grant or remove the admin role. A change revokes the user's refresh tokens. An admin cannot remove their own role, and the last admin cannot lose it. */
             isAdmin?: boolean;
         };
         /**
