@@ -49,7 +49,7 @@ See [ics-conversion-matrix.md](ics-conversion-matrix.md) for field mapping.
 | PUT | `/calendars/events/{eventId}` | Replace event |
 | PATCH | `/calendars/events/{eventId}` | Partial update |
 | DELETE | `/calendars/events/{eventId}` | Delete event |
-| GET | `/calendars/scheduling/invitees` | Instance users plus `canSubmitEmail` |
+| GET | `/calendars/scheduling/invitees` | Colleagues (admins: every user), each with `sharesTeam`, plus `canSubmitEmail` |
 | GET | `/calendars/scheduling/notifications` | Own iTIP inbox |
 | POST | `/calendars/scheduling/notifications/{id}/respond` | RSVP (sends REPLY) |
 | DELETE | `/calendars/scheduling/notifications/{id}` | Dismiss without REPLY |

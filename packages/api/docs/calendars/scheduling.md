@@ -24,7 +24,7 @@ SEQUENCE follows the iTIP Broker `significantChange` flag (RFC 5546). Descriptio
 
 | Method | Path | Access |
 |--------|------|--------|
-| GET | `/calendars/scheduling/invitees` | User — instance users plus `canSubmitEmail` |
+| GET | `/calendars/scheduling/invitees` | User — colleagues (admins: every user), each with `sharesTeam`, plus `canSubmitEmail` |
 | GET | `/calendar/rsvp/{token}` | Guest |
 | POST | `/calendar/rsvp/{token}` | Guest — `{ participationStatus }` |
 
