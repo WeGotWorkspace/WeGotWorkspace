@@ -97,6 +97,8 @@ export type CalendarCalendarDialogShare = {
   calendar: CalendarInfo;
   knownPrincipals?: readonly CalendarSharePrincipal[];
   online?: boolean;
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
   onSearchPrincipals: (query: string) => Promise<CalendarSharePrincipal[]>;
   onPatchShareWith: (calendarId: string, shareWith: CalendarShareWith) => Promise<void>;
 };
@@ -339,6 +341,7 @@ export function CalendarCalendarDialog({
                   knownPrincipals={share.knownPrincipals}
                   disabled={busy}
                   online={share.online}
+                  noTeam={share.noTeam}
                   onSearchPrincipals={share.onSearchPrincipals}
                   onPatchShareWith={share.onPatchShareWith}
                 />

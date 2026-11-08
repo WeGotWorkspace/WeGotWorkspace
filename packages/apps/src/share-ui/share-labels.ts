@@ -1,5 +1,8 @@
 import type { ShareUIPermission } from "@/share-ui/share-access-map";
 
+/** Wherever people are picked, for a viewer who is in no Team (#1924). */
+export const noTeamYetCopy = "You're not in a Team yet. Ask your admin to add you.";
+
 export const shareLabels = {
   dialogDescription: "Share a public link or invite teammates.",
   publicSectionTitle: "Anyone with the link",

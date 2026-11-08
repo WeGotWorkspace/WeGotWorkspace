@@ -27,6 +27,14 @@ export function sharesTeamWithViewer(principal: { sharesTeam?: boolean }): boole
   return principal.sharesTeam !== false;
 }
 
+/**
+ * The viewer's own Teams were loaded and there are none. A list that never
+ * loaded (undefined) is not "no Team", so mock data and loading states stay quiet.
+ */
+export function viewerHasNoTeam(ownTeams: readonly unknown[] | null | undefined): boolean {
+  return Array.isArray(ownTeams) && ownTeams.length === 0;
+}
+
 export function shareRightsAllowWrite(rights?: CollectionShareRights | null): boolean {
   if (!rights) return true;
   if (typeof rights.mayWriteAll === "boolean") return rights.mayWriteAll;

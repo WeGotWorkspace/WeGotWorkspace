@@ -113,6 +113,8 @@ export function MeetDeleteConfirmDialog({
 export type MeetChannelDialogShare = {
   knownPrincipals?: readonly CollectionSharePrincipal[];
   online?: boolean;
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
   onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   onPatchShareWith: (channelId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
@@ -296,6 +298,7 @@ export function MeetChannelDialog({
                   shareWith={dialog.shareWith}
                   knownPrincipals={share.knownPrincipals}
                   online={share.online}
+                  noTeam={share.noTeam}
                   dialogClassName={contentClassName}
                   accessSelect={false}
                   copy={{
