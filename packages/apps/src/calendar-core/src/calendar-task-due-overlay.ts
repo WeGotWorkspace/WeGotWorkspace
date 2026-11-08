@@ -166,7 +166,7 @@ function isRenderOnlyRow(key: string, event: CalendarEvent): boolean {
   return isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key) || event.overlayKind != null;
 }
 
-export function extractTaskDueOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
+export function extractRenderOnlyOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
   const overlay: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
     if (isRenderOnlyRow(key, event)) {
@@ -176,7 +176,7 @@ export function extractTaskDueOverlayEvents(events: CalendarEventsMap): Calendar
   return overlay;
 }
 
-export function omitTaskDueOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
+export function omitRenderOnlyOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
   let changed = false;
   const next: CalendarEventsMap = new Map();
   for (const [key, event] of events) {
@@ -189,23 +189,23 @@ export function omitTaskDueOverlayEvents(events: CalendarEventsMap): CalendarEve
   return changed ? next : events;
 }
 
-export function mergeTaskDueOverlayEvents(
+export function mergeRenderOnlyOverlayEvents(
   events: CalendarEventsMap,
   overlay: CalendarEventsMap,
 ): CalendarEventsMap {
   if (overlay.size === 0) return events;
-  const next: CalendarEventsMap = new Map(omitTaskDueOverlayEvents(events));
+  const next: CalendarEventsMap = new Map(omitRenderOnlyOverlayEvents(events));
   for (const [key, event] of overlay) next.set(key, event);
   return next;
 }
 
-export function preserveTaskDueOverlayEvents(
+export function preserveRenderOnlyOverlayEvents(
   previous: CalendarEventsMap | undefined,
   next: CalendarEventsMap,
 ): CalendarEventsMap {
-  return mergeTaskDueOverlayEvents(
-    omitTaskDueOverlayEvents(next),
-    extractTaskDueOverlayEvents(previous ?? new Map()),
+  return mergeRenderOnlyOverlayEvents(
+    omitRenderOnlyOverlayEvents(next),
+    extractRenderOnlyOverlayEvents(previous ?? new Map()),
   );
 }
 

@@ -44,6 +44,19 @@ function week(username: string, weekStart: string, extra: Partial<AvailabilityWe
   } satisfies AvailabilityWeek;
 }
 
+/** The teammates list a fetch was made against: week writes are checked against it. */
+async function seedMembers(versions: Record<string, string> = { alice: "v1", bob: "v1" }) {
+  await writeCachedTeamMembers(viewer, {
+    state: `seed-${JSON.stringify(versions)}`,
+    list: Object.entries(versions).map(([id, version]) => ({
+      id,
+      name: id,
+      isSelf: false,
+      version,
+    })),
+  });
+}
+
 async function clearAll() {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(viewer));
   await calendarsAvailabilityTable(db).clear();
@@ -78,6 +91,7 @@ describe("availability cache", () => {
   });
 
   it("drops a person's weeks when their version changes, so titles do not linger", async () => {
+    await seedMembers();
     await writeAvailabilityWeeks(viewer, [
       week("alice", "2026-11-09", { periods: [titled] }),
       week("alice", "2026-11-16", { periods: [titled] }),
@@ -99,7 +113,26 @@ describe("availability cache", () => {
     expect(rows.map((row) => `${row.username}@${row.weekStart}`)).toEqual(["bob@2026-11-09"]);
   });
 
+  it("ignores a response that lands after a version change", async () => {
+    // A fetch for alice@v1 is in flight when she switches to "Time only" (v2).
+    await seedMembers({ alice: "v2", bob: "v1" });
+    const written = await writeAvailabilityWeeks(viewer, [
+      week("alice", "2026-11-09", { periods: [titled] }),
+      week("bob", "2026-11-09"),
+    ]);
+    expect(written).toBe(1);
+    const rows = await readAvailabilityWeeks(viewer, ["alice", "bob"], ["2026-11-09"]);
+    expect(rows.map((row) => row.username)).toEqual(["bob"]);
+  });
+
+  it("ignores a response for someone who left the list meanwhile", async () => {
+    await seedMembers({ bob: "v1" });
+    expect(await writeAvailabilityWeeks(viewer, [week("alice", "2026-11-09")])).toBe(0);
+    expect(await readAvailabilityWeeks(viewer, ["alice"], ["2026-11-09"])).toEqual([]);
+  });
+
   it("drops a person's weeks when they leave the list", async () => {
+    await seedMembers();
     await writeAvailabilityWeeks(viewer, [week("alice", "2026-11-09"), week("bob", "2026-11-09")]);
     const dropped = await writeCachedTeamMembers(viewer, {
       state: "s3",
@@ -145,6 +178,7 @@ describe("availability cache", () => {
       showWithoutTime: false,
     };
     const [plan] = planAvailabilityCalls(["alice"], ["2026-11-09", "2026-11-16"]);
+    await seedMembers();
     await writeAvailabilityWeeks(
       viewer,
       availabilityWeeksFromResponse(
@@ -171,6 +205,7 @@ describe("availability cache", () => {
       showWithoutTime: false,
     };
     const [plan] = planAvailabilityCalls(["alice"], ["2026-11-09"]);
+    await seedMembers();
     await writeAvailabilityWeeks(
       viewer,
       availabilityWeeksFromResponse(
@@ -186,6 +221,7 @@ describe("availability cache", () => {
 
   it("evicts old weeks outside the prefetch window, keeps the window", async () => {
     const old = NOW - AVAILABILITY_CACHE_MAX_AGE_MS - 1;
+    await seedMembers();
     await writeAvailabilityWeeks(viewer, [
       week("alice", "2026-01-05", { fetchedAt: old }),
       week("alice", "2026-11-09", { fetchedAt: old }),
@@ -205,6 +241,7 @@ describe("availability cache", () => {
     const rows = Array.from({ length: 63 }, (_, index) =>
       week("alice", addUtcWeeks("2025-01-06", index), { fetchedAt: NOW - (63 - index) * 1000 }),
     );
+    await seedMembers();
     await writeAvailabilityWeeks(viewer, [...rows, week("bob", "2026-11-09")]);
     await evictAvailabilityWeeks(viewer, { now: NOW, keepWeeks: [] });
     const left = await readAvailabilityWeeks(

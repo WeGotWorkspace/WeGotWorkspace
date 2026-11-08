@@ -41,7 +41,7 @@ import {
   isCalendarEventException,
   isCalendarEventRecurring,
 } from "../types/calendarEventSemantics.js";
-import { preserveTaskDueOverlayEvents } from "@/calendar-core/src/calendar-task-due-overlay";
+import { preserveRenderOnlyOverlayEvents } from "@/calendar-core/src/calendar-task-due-overlay";
 import { isRenderOnlyOverlayKey } from "@/calendar-core/src/calendar-render-overlay";
 
 type EventsMap = CalendarEventsMap;
@@ -752,7 +752,7 @@ export abstract class CalendarViewBase extends BaseElement {
       return { nextState: this.events ?? new Map(), changes: [], effects: [] };
     }
     const result = this.#eventsAPI.apply(operation);
-    this.events = preserveTaskDueOverlayEvents(this.events, result.nextState);
+    this.events = preserveRenderOnlyOverlayEvents(this.events, result.nextState);
     return { ...result, nextState: this.events };
   }
 

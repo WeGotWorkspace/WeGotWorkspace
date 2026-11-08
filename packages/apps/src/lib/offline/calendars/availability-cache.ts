@@ -75,13 +75,14 @@ export async function writeCachedTeamMembers(
   const weeks = calendarsAvailabilityTable(database);
   const current = new Map(members.list.map((member) => [member.id, member.version]));
   const stale = new Set<string>();
-  await weeks.each((row) => {
-    if (current.get(row.username) !== row.version) stale.add(row.username);
-  });
   await database.transaction(
     "rw",
     [calendarsTeamMembersTable(database), weeks, database.meta],
     async () => {
+      // Scan inside the transaction, so no week lands between the scan and the delete.
+      await weeks.each((row) => {
+        if (current.get(row.username) !== row.version) stale.add(row.username);
+      });
       const table = calendarsTeamMembersTable(database);
       await table.clear();
       await table.bulkPut(
@@ -129,12 +130,30 @@ export function availabilityWeeksFromResponse(
   return weeks;
 }
 
+/**
+ * Stores fetched weeks, but only for people still in the cached teammates
+ * list at the `version` the request was made with. A response that lands after
+ * a version change or after someone left is dropped, so a switch back to
+ * "Time only" can't bring titles back. Returns how many weeks were written.
+ */
 export async function writeAvailabilityWeeks(
   viewer: string,
   weeks: readonly AvailabilityWeek[],
-): Promise<void> {
-  if (weeks.length === 0) return;
-  await calendarsAvailabilityTable(db(viewer)).bulkPut(weeks.map(toRow));
+): Promise<number> {
+  if (weeks.length === 0) return 0;
+  const database = db(viewer);
+  const table = calendarsAvailabilityTable(database);
+  const membersTable = calendarsTeamMembersTable(database);
+  return database.transaction("rw", [membersTable, table], async () => {
+    const listed = new Map<string, string>();
+    await membersTable.each((row) => {
+      const member = JSON.parse(row.data) as JmapTeamMember;
+      listed.set(member.id, member.version);
+    });
+    const current = weeks.filter((week) => listed.get(week.username) === week.version);
+    if (current.length > 0) await table.bulkPut(current.map(toRow));
+    return current.length;
+  });
 }
 
 /** Drops every cached week of these people (no longer visible to the viewer). */
