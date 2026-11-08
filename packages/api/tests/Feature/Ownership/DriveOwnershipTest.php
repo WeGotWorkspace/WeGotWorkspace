@@ -235,9 +235,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
             // The share dialog directory: the actor's own group is listed; principals it shares nothing with are not.
             $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OwnGroup, Outcome::Allowed);
-            // The share directory lists every user and group of the instance.
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::Allowed);
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::Allowed);
+            // The share directory lists Team mates and the actor's own Teams only, admins included.
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::NotFound);
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::NotFound);
 
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OwnUser, Outcome::Allowed);
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound);
