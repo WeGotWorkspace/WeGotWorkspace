@@ -255,6 +255,31 @@ final class TeamHiddenSharesTest extends WgwDatabaseTestCase
         $this->assertSame($rows, $this->grantRowSnapshot());
     }
 
+    public function test_a_team_grant_is_hidden_when_its_owner_leaves_that_team_even_for_a_member_who_shares_another_team(): void
+    {
+        // Carol shares T2 (the Team the calendar goes to) and T1 with bob. The grant is judged
+        // per grant: once bob leaves T2 it is hidden for every T2 member, carol included.
+        $this->join('carol', 't1');
+        $sharedId = $this->newCalendarId('carol', fn () => $this->jmap('bob', JmapCapabilities::CALENDARS, [
+            ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => ['shareWith' => [
+                'groups/t2' => ['mayReadItems' => true],
+            ]]]], 'c0'],
+        ]));
+        $rows = $this->grantRowSnapshot();
+
+        $this->leave('bob', 't2');
+
+        $this->assertNotContains($sharedId, $this->calendarIds('carol'));
+        $this->assertArrayNotHasKey('groups/t2', (array) $this->ownerShareWith('bob', 'default'));
+        $this->assertSame($rows, $this->grantRowSnapshot());
+
+        $this->join('bob', 't2');
+
+        $this->assertContains($sharedId, $this->calendarIds('carol'));
+        $this->assertArrayHasKey('groups/t2', (array) $this->ownerShareWith('bob', 'default'));
+        $this->assertSame($rows, $this->grantRowSnapshot());
+    }
+
     public function test_chat_notifications_skip_a_hidden_sharee_until_the_team_returns(): void
     {
         $channel = $this->sharedCollection(
