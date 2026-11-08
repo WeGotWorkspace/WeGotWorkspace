@@ -20,6 +20,12 @@ final class CalendarSchedulingInviteesColleaguesTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
 
+    /** These tests set up their own Teams; the fixture Team would make bob and carol colleagues. */
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
