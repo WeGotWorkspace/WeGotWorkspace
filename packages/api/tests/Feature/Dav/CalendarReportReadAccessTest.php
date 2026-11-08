@@ -222,10 +222,11 @@ final class CalendarReportReadAccessTest extends WgwDatabaseTestCase
     public function test_principal_lookups_keep_working(): void
     {
         $search = $this->dav('REPORT', '/principals/', 'carol', '<d:principal-property-search xmlns:d="DAV:">'
-            .'<d:property-search><d:prop><d:displayname/></d:prop><d:match>Ali</d:match></d:property-search>'
+            .'<d:property-search><d:prop><d:displayname/></d:prop><d:match>carol</d:match></d:property-search>'
             .'<d:prop><d:displayname/></d:prop></d:principal-property-search>', depth: '0');
         $search->assertStatus(207);
-        $this->assertStringContainsString('/principals/alice/', (string) $search->getContent());
+        // Directory search returns only the caller; the REPORT still has to answer.
+        $this->assertStringContainsString('/principals/carol/', (string) $search->getContent());
 
         foreach (['alice' => '/principals/alice/', 'carol' => '/principals/alice/'] as $user => $path) {
             $this->dav('REPORT', $path, $user, '<d:expand-property xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">'
