@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Methods;
 
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeSetService;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 use App\Services\Jmap\Methods\Concerns\ValidatesSetArguments;
@@ -21,8 +21,8 @@ final class FileNodeSetMethod implements JmapMethodInterface
     use ValidatesSetArguments;
 
     public function __construct(
-        private readonly FileNodeIndexService $index,
         private readonly FileNodeSetService $set,
+        private readonly FileNodeSyncState $syncState,
     ) {}
 
     public function name(): string
@@ -42,7 +42,7 @@ final class FileNodeSetMethod implements JmapMethodInterface
 
     public function handle(string $username, array $args): array
     {
-        $oldState = (string) $this->index->currentSeq();
+        $oldState = $this->syncState->current($username);
         $this->guardIfInState($args, $oldState);
         [$create, $update, $destroy] = $this->setOperations($args);
 
@@ -66,7 +66,7 @@ final class FileNodeSetMethod implements JmapMethodInterface
         return [
             'accountId' => $username,
             'oldState' => $oldState,
-            'newState' => (string) $this->index->currentSeq(),
+            'newState' => $this->syncState->current($username),
         ] + $result;
     }
 }

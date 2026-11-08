@@ -36,6 +36,7 @@ final class DriveShareService
         private FileNodeIndexService $fileNodes,
         private DriveShareOwnerReach $ownerReach,
         private DriveShareRevoker $revoker,
+        private DriveShareGrantVisibility $grantVisibility,
     ) {}
 
     /**
@@ -402,6 +403,11 @@ final class DriveShareService
                 ->whereIn('grantee_group', $groupSlugs)
                 ->where('status', 'active')
                 ->get();
+
+        // Grants hidden because the owner no longer shares a Team with this user (Epic #1915)
+        // drop out of "shared with me" like revoked ones; the rows stay.
+        $userGrants = $userGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
+        $groupGrants = $groupGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
 
         $directByShareId = [];
         foreach ($userGrants as $grant) {
