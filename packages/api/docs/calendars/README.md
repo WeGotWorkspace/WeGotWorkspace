@@ -65,7 +65,7 @@ Composite event ids in paths must be URL-encoded (`#` → `%23`). Scheduling inb
 | GET | `/calendars/availability` | The caller's availability switch, Teams and per-calendar choices |
 | PUT | `/calendars/availability` | Partial update of those settings |
 
-Busy periods themselves are JMAP only (`urn:wgw:jmap:availability`: `TeamMember/get`, `TeamMember/getAvailability`). See [availability.md](availability.md).
+Busy periods are served over JMAP (`urn:wgw:jmap:availability`: `TeamMember/get`, `TeamMember/getAvailability`) and the CalDAV outbox free/busy report (no titles). See [availability.md](availability.md).
 
 ## Published feeds
 

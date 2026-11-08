@@ -15,7 +15,7 @@ API reference: [packages/api/docs/calendars/availability.md](../../packages/api/
 5. **Each calendar can be left out**, and a personal calendar can share `details` (title and location) instead of `busy`. Team calendars are always `busy`.
 6. **"Show as: Free" and cancelled never count.** A decline frees the time only on a personal calendar; a Team calendar event counts for every member.
 7. **Never falsely free.** When the server could not work out all busy time in a week, that week is `complete: false`. CalDAV answers `3.7` instead of a partial reply.
-8. **Nothing is copied per viewer.** The server reads the owner's calendars when someone asks; a change shows on the next fetch.
+8. **Nothing is copied per viewer.** The server reads the owner's calendars when someone asks; a change shows on the next fetch. Why there is no projected calendar is under "Not built here".
 
 ## Flow
 
@@ -47,7 +47,7 @@ API reference: [packages/api/docs/calendars/availability.md](../../packages/api/
 | Settings storage | `calendar_availability_owners`, `calendar_availability_prefs`; `AvailabilitySettings` | Switch per person; `include` and `detail` per (person, calendar id). No row means off / included and `busy`. Rows for a deleted calendar cascade with it. |
 | Sources | `CalendarCollectionAccess::availabilitySourceInstances` | Read-only list of the owner's own personal and Team event calendars. Never provisions. |
 | Reader | `AvailabilityOccurrenceReader` | Reads one UTC week: candidate objects in lazy chunks, payload size guard, recurrence expansion with overrides, the busy rules. Skipped objects, a series over the instance limit or more than 2000 periods make the week incomplete. |
-| Cache | `AvailabilityWeekCache`, file store `availability` | One entry per (owner, week start, fingerprint) for 5 minutes, holding unredacted occurrences with HMAC'd UIDs. |
+| Cache | `AvailabilityWeekCache`, file store `availability` | One entry per (owner, week start, fingerprint) for 5 minutes, holding unredacted occurrences with HMAC'd UIDs and that week's `complete` flag, so a hit cannot turn an incomplete week complete. The entries are plaintext (unencrypted) files on the dedicated `availability` store (`file` driver, separate from the default cache store) under `storage/framework/cache/availability`. Titles and locations sit there unredacted, but no raw UIDs, and nothing the calendar tables in the same data directory do not already hold. |
 | Filter | `AvailabilityPeriodFilter` | Applies `include`, `excludeUid`, dedupe by UID and start (time-only wins), and the `busy` or `details` output. |
 | Calculator | `AvailabilityCalculator` | Validates weeks (Monday 00:00 UTC, at most 54), returns `null` while the switch is off, logs reads over 500 ms. |
 | Audience | `AvailabilityAudience`, `AvailabilityTeamMembers` | Who the viewer may read; `version` and `state` for `TeamMember/get`. |
@@ -59,8 +59,19 @@ API reference: [packages/api/docs/calendars/availability.md](../../packages/api/
 
 - **Fingerprint.** sha256 of every source calendar's id and `synctoken`, plus a hash of the app key. Sabre bumps the synctoken on every write over CalDAV, JMAP or REST, so any write misses the cache on the next call.
 - **Read before and after.** The fingerprint is read before the objects and again after. When it moved during the read, the result is returned but not stored, so a half-old week is never cached.
-- **Settings are applied after the cache.** The cache holds every occurrence of every source, so a change to `include` or `detail` takes effect on the next call without a miss.
+- **Settings are applied after the cache.** The cache holds every occurrence of every source, so a change to `include` or `detail` takes effect on the next call without a miss. This also keeps the entry independent of the viewer: the key is owner, week and fingerprint, and `detail` is per calendar, so it applies to every teammate who can see the person. A per-Team (per-viewer) detail level would put the viewer in the cache key. Do not add one casually.
 - **Version and state.** A person's `version` is a hash of their name and settings stamp (the latest `updated_at` of their switch and calendar choices, with microseconds). `TeamMember/get` `state` is a hash of every visible (id, version), so joining, leaving, a switch, include, detail or name change all move it. A client drops a person's cached weeks when their `version` changes.
+
+## Period fields
+
+The list is closed. A period is built from `start`, `timeZone`, `duration` and `showWithoutTime`, plus `title` and `location` only when that occurrence's calendar is personal, its detail is `details`, and the event is not private or confidential. A location that contains a URL is dropped, and a title is cut at 200 characters. uid, description, attendees, organizer, alarms and every other property are omitted.
+
+## `excludeEventId`
+
+`TeamMember/getAvailability` takes `excludeEventId` (for "is this person free for this event?"). `AvailabilityExcludedEvent::uidFor` turns it into the event's UID, which the filter applies as `excludeUid`.
+
+- Only a `CalendarEvent` the caller may edit (not on a subscription), or one the caller takes part in (organizer or attendee), qualifies. Any other id is `invalidArguments`.
+- **Why:** on a read-only shared calendar, comparing results with and without the exclusion would tell the caller whether a teammate holds that event.
 
 ## Time fields
 
@@ -94,3 +105,4 @@ Every JMAP limit is checked before anything is read, so a request that is too la
 
 - No `/changes` and no push for settings or availability. Clients poll `TeamMember/get` `state` on their availability tick.
 - Search and MCP do not see availability.
+- **No projected calendar.** Busy time is computed when someone asks, and nothing is stored per viewer, so a Team removal or switching off applies on the next fetch and any range, including next year, is fetched online. A materialized availability calendar was rejected (confirmed with the product owner on 2026-11-04): it would add one push-state part per teammate, load people whose rows are unticked, and still leave the invitee list and the clash check needing a range query. The longer history is in the spec and plan.

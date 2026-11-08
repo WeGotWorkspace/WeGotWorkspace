@@ -41,7 +41,7 @@ The response `state` is a hash of every visible (id, version). There is no `Team
 | `utcEnd` | A whole number of weeks after `utcStart`, at most 54 |
 | `excludeEventId` | Optional. A `CalendarEvent` id the caller may edit, organizes or attends; its UID is left out of every result (for "is this person free for this event?") |
 
-`ids × weeks` may not exceed 540. Any broken rule is `invalidArguments` before anything is read; so is an `excludeEventId` on a read-only shared or subscribed calendar.
+`ids × weeks` may not exceed 540. Any broken rule is `invalidArguments` before anything is read; so is an `excludeEventId` the caller can neither edit nor takes part in.
 
 Response: `{ accountId, list: [{ id, periods, complete }], notFound }`.
 
@@ -91,4 +91,4 @@ The outbox free/busy report (`POST` a `VFREEBUSY` `METHOD:REQUEST` to `/calendar
 
 - Cache: file store `availability` under `storage/framework/cache/availability`, one entry per (owner, week, fingerprint), 5 minutes.
 - `php artisan wgw:availability:prune-cache` deletes expired entries; the scheduler runs it hourly.
-- Logs: `calendar.availability.object_skipped` (an object that could not be read), `calendar.recurrence_limit`, `calendar.availability.slow` (a call over 500 ms).
+- Logs: `calendar.availability.object_skipped` (an object that could not be read; `reason` `recurrence_limit` for a series over the instance limit), `calendar.availability.slow` (a call over 500 ms).
