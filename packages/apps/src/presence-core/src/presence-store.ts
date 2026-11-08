@@ -12,7 +12,6 @@ import {
 } from "@/presence-core/src/presence-fanout-events";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
 import {
-  PRESENCE_WORKSPACE_ROOM,
   type PresenceChatMessage,
   type PresenceCoworker,
   type PresenceEnvelope,
@@ -80,8 +79,9 @@ function createInitialSnapshot(): PresenceSnapshot {
 
 /**
  * Suite-level principal presence store (framework-free; `subscribe`/`getSnapshot`
- * are `useSyncExternalStore`-compatible). One mesh session on the workspace-wide
- * principal room carries presence, chat, and typing envelopes over data channels.
+ * are `useSyncExternalStore`-compatible). One mesh session carries presence, chat,
+ * and typing envelopes over data channels. Live, that session spans one room per
+ * own Team (`TeamPresenceSession`, #1921); the roster merges peers by username.
  *
  * Join timing: `eager` joins on `start()`; `lazy` (mobile) waits until the tab is
  * visible and retries on every resume until joined — the mesh itself already
@@ -131,9 +131,6 @@ export class PresenceStore implements MeshCheckNowPort {
   ) => PrincipalTabCoordinator;
 
   private selfUsername = "";
-
-  /** Signaling peer id of the session this tab joined. Null on followers. */
-  private selfPeerId: string | null = null;
 
   private selfDisplayName = "";
 
@@ -466,7 +463,6 @@ export class PresenceStore implements MeshCheckNowPort {
     this.followerSession = null;
     this.joined = false;
     this.joinInFlight = false;
-    this.selfPeerId = null;
     if (session) await session.leave();
   }
 
@@ -497,15 +493,13 @@ export class PresenceStore implements MeshCheckNowPort {
     return (this.visibility?.getState() ?? "visible") === "visible";
   }
 
-  /** Keepalive leave from the tab that owns the principal session. */
+  /** Keepalive leave from the tab that owns the principal session, one per Team room. */
   private sendOwnerLeaveBeacon(): void {
-    const peerId = this.selfPeerId;
-    if (!peerId) return;
-    sendPresenceLeaveBeacon({
-      roomId: encodePrincipalRoomId(PRESENCE_WORKSPACE_ROOM),
-      peerId,
-      bearerToken: wgwCurrentAccessToken(),
-    });
+    if (!this.joined) return;
+    const bearerToken = wgwCurrentAccessToken();
+    for (const { room, peerId } of this.session?.ownPeers?.() ?? []) {
+      sendPresenceLeaveBeacon({ roomId: encodePrincipalRoomId(room), peerId, bearerToken });
+    }
   }
 
   private async joinNow(): Promise<void> {
@@ -521,7 +515,6 @@ export class PresenceStore implements MeshCheckNowPort {
         this.update({ status: "waiting" });
         return;
       }
-      this.selfPeerId = joined.peerId;
       this.joined = true;
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       this.update({ status: "online" });
