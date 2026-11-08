@@ -296,7 +296,7 @@ final class WgwCalendarBackend extends CalPDO
             $sharees[] = $revoked;
         }
 
-        return array_values($sharees);
+        return $sharees;
     }
 
     /** @return array<mixed> */
