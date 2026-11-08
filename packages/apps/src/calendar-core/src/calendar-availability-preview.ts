@@ -3,6 +3,7 @@ import {
   availabilityPeriodTiming,
   parseAvailabilityOverlayKey,
 } from "@/calendar-core/src/calendar-availability-overlay";
+import { wallClockInTimeZone } from "@/lib/calendar-elements/utils/event-display-time";
 import type { JmapBusyPeriod, JmapTeamMember } from "@/lib/jmap-client/availability/types";
 
 /** What the busy-block popover shows: whose time, and the period as the server sent it. */
@@ -72,9 +73,22 @@ export function formatAvailabilityPeriodWhen(
   }
   const zone = viewerTimeZone || Temporal.Now.timeZoneId();
   // Like the grid: the end is the start's wall clock plus the duration, in the
-  // period's own zone; only then do both ends convert to the viewer's zone.
-  const toViewer = (wall: Temporal.PlainDateTime) =>
-    new Date(wall.toZonedDateTime(timeZone ?? zone).epochMilliseconds);
-  const format = new Intl.DateTimeFormat(locale, { ...TIME_FORMAT, timeZone: zone });
-  return format.formatRange(toViewer(start), toViewer(start.add(duration)));
+  // period's own zone; only then do both ends convert to the viewer's zone with
+  // the grid's rule, and the resulting wall clocks print as they are.
+  const toViewerWall = (wall: Temporal.PlainDateTime) => {
+    const shown = wallClockInTimeZone(wall, timeZone, zone);
+    return new Date(
+      Date.UTC(
+        shown.year,
+        shown.month - 1,
+        shown.day,
+        shown.hour,
+        shown.minute,
+        shown.second,
+        shown.millisecond,
+      ),
+    );
+  };
+  const format = new Intl.DateTimeFormat(locale, { ...TIME_FORMAT, timeZone: "UTC" });
+  return format.formatRange(toViewerWall(start), toViewerWall(start.add(duration)));
 }

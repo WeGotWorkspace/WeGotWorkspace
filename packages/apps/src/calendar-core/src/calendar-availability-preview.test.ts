@@ -148,4 +148,25 @@ describe("formatAvailabilityPeriodWhen", () => {
       /^Sat 28 Mar, 05:00\s*–\s*Sun 29 Mar, 04:00$/,
     );
   });
+
+  it("keeps a wall clock the grid leaves unchanged, also inside a spring-forward gap", () => {
+    const sameZone: JmapBusyPeriod = {
+      start: "2026-03-08T01:30:00",
+      timeZone: "America/New_York",
+      duration: "PT1H",
+      showWithoutTime: false,
+    };
+    expect(formatAvailabilityPeriodWhen(sameZone, "en-GB", "America/New_York")).toMatch(
+      /^Sun 8 Mar, 01:30\s*–\s*02:30$/,
+    );
+    const floating: JmapBusyPeriod = {
+      start: "2026-03-08T02:30:00",
+      timeZone: null,
+      duration: "PT30M",
+      showWithoutTime: false,
+    };
+    expect(formatAvailabilityPeriodWhen(floating, "en-GB", "America/New_York")).toMatch(
+      /^Sun 8 Mar, 02:30\s*–\s*03:00$/,
+    );
+  });
 });
