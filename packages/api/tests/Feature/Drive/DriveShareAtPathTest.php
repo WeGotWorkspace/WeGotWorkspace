@@ -28,6 +28,8 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
         $this->createDriveDirectory('/users/bob', 'projects');
         $this->createDriveDirectory('/users/bob/projects', 'q3');
         $this->createDriveFile($this->ownerToken, '/users/bob/projects/q3', 'draft.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -359,6 +361,8 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
             $this->assertNotNull($member);
             $this->addPrincipalToGroup($staffGroup, $member);
         }
+        // Epic #1915: the owner may only share with a Team they are in.
+        $this->seedSharedTeam('staff', 'bob');
 
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
             'path' => '/users/bob/projects',

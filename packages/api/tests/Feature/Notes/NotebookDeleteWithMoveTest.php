@@ -27,6 +27,8 @@ final class NotebookDeleteWithMoveTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_delete_with_move_relocates_every_note_and_removes_the_notebook(): void

@@ -22,6 +22,7 @@ use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
+use App\Dav\Server\TeamGatedSharingPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
 use App\Dav\Server\WgwCardBackend;
@@ -116,7 +117,7 @@ final class SabreServerFactory
         $server->addPlugin(new DAV\Sync\Plugin);
 
         if ($cal || $card) {
-            $server->addPlugin(new DAV\Sharing\Plugin);
+            $server->addPlugin(app(TeamGatedSharingPlugin::class));
         }
         if ($cal || $card || $files) {
             $server->addPlugin(new DAVACL\Plugin);

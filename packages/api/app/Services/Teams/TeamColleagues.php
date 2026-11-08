@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Teams;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use Closure;
 
@@ -76,6 +77,24 @@ final class TeamColleagues
     public function isOwnTeam(string $viewer, string $groupSlug): bool
     {
         return in_array(trim($groupSlug), $this->teamSlugsOf($viewer), true);
+    }
+
+    /**
+     * Share-write gate for a principal uri: a user who shares a Team with the viewer, or one of
+     * the viewer's own Teams. Admins included. Any other uri (unknown shapes, the groups
+     * container) is refused.
+     */
+    public function mayShareWithPrincipalUri(string $viewer, string $principalUri): bool
+    {
+        $principalUri = trim($principalUri);
+        if (str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
+            return $this->isOwnTeam($viewer, substr($principalUri, strlen(AdminConstants::GROUP_PREFIX)));
+        }
+        if (preg_match('#^principals/([^/]+)$#', $principalUri, $matches) !== 1 || $matches[1] === 'groups') {
+            return false;
+        }
+
+        return $this->sharesTeamIgnoringAdminRole($viewer, $matches[1]);
     }
 
     /**

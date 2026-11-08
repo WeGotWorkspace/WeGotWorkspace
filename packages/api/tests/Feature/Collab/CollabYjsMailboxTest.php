@@ -26,6 +26,8 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
         $this->setUpDriveFixtures();
         $this->createDriveDirectory('/users/bob', 'workspace');
         $this->createDriveFile($this->userBearerToken(), '/users/bob/workspace', 'plan.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -52,6 +54,7 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
     public function test_star_fans_out_one_row_per_other_peer(): void
     {
         $this->seedWgwUser('dave', displayName: 'Dave');
+        $this->seedSharedTeam('colleagues', 'dave');
         $this->withBearer($this->userBearerToken())->postJson('/api/v1/files/shares', [
             'path' => self::DOC_PATH,
             'kind' => 'member',

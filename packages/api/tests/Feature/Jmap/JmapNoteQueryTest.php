@@ -29,6 +29,8 @@ final class JmapNoteQueryTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_lists_more_notes_than_max_objects_in_get_across_pages(): void
