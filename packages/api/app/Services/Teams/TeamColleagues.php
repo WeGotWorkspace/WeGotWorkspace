@@ -98,6 +98,23 @@ final class TeamColleagues
     }
 
     /**
+     * Read side of the share gate (#1920): an existing grant from `$ownerPrincipalUri` to
+     * `$granteePrincipalUri` counts only while the write gate would still allow it. A
+     * Team-owned collection is never hidden. A user owner's grant to a user needs a shared
+     * Team; to a Team, the owner must be in it. The answer is the same for the owner and for
+     * the sharee, so a hidden grant is gone on both sides, admins included.
+     */
+    public function grantIsVisible(?string $ownerPrincipalUri, string $granteePrincipalUri): bool
+    {
+        if ($ownerPrincipalUri === null || preg_match('#^principals/([^/]+)$#', trim($ownerPrincipalUri), $matches) !== 1
+            || $matches[1] === 'groups') {
+            return true;
+        }
+
+        return $this->mayShareWithPrincipalUri($matches[1], $granteePrincipalUri);
+    }
+
+    /**
      * Refuses a sharee who shares no Team with the viewer exactly like an unknown principal,
      * so the response does not reveal that the account exists. Callers whose unknown case
      * throws a different exception pass that exception.

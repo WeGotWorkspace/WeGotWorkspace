@@ -10,6 +10,7 @@ use App\Models\AddressBookShare;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarPrincipalAddresses;
 use App\Services\Teams\TeamColleagues;
+use Illuminate\Database\Eloquent\Collection;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -35,6 +36,11 @@ final class AddressBookShareInvites
     {
         $grants = [];
         foreach ($this->grantsForBook((int) $book->id) as $share) {
+            // A grant hidden by Epic #1915 (the sharee no longer shares a Team with the owner)
+            // is left out; the row stays, and only revoke-all removes it.
+            if (! $this->colleagues->grantIsVisible((string) $book->principaluri, (string) $share->principaluri)) {
+                continue;
+            }
             $id = $this->addresses->jmapIdForPrincipalUri((string) $share->principaluri);
             if ($id === null) {
                 continue;
@@ -170,19 +176,31 @@ final class AddressBookShareInvites
     }
 
     /**
-     * Highest access per address book for the given principal URIs (user + groups).
+     * Inbound grants held by any of `$principalUris` (the user and their Teams), every row,
+     * hidden ones included; {@see AddressBookShareVisibility::rejectHiddenSharees} filters them.
      *
      * @param  list<string>  $principalUris
-     * @return array<int, int> addressbookid → access
+     * @return Collection<int, AddressBookShare>
      */
-    public function highestAccessByBook(array $principalUris): array
+    public function grantsHeldBy(array $principalUris): Collection
     {
         if ($principalUris === []) {
-            return [];
+            return new Collection;
         }
 
+        return AddressBookShare::query()->with('addressbook')->whereIn('principaluri', $principalUris)->get();
+    }
+
+    /**
+     * Highest access per address book id across `$grants`.
+     *
+     * @param  Collection<int, AddressBookShare>  $grants
+     * @return array<int, int>
+     */
+    public function highestAccessByBook(Collection $grants): array
+    {
         $best = [];
-        foreach (AddressBookShare::query()->whereIn('principaluri', $principalUris)->get() as $share) {
+        foreach ($grants as $share) {
             $bookId = (int) $share->addressbookid;
             $access = (int) $share->access;
             if (! isset($best[$bookId]) || $access > $best[$bookId]) {

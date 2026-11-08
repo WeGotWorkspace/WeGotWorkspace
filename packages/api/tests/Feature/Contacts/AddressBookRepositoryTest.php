@@ -10,7 +10,6 @@ use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Contacts\AddressBookCollectionUris;
 use App\Services\Contacts\AddressBookRepository;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -247,96 +246,6 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
         $this->assertNotNull(Addressbook::query()->find((int) $this->bookRow('bob')->id), 'dismissing keeps the owner book');
 
         $this->assertApiError(403, 'forbidden', fn () => $this->books->delete('bob', 'default'));
-    }
-
-    public function test_initial_changes_list_every_visible_book(): void
-    {
-        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
-        $sharedId = $this->shareBobsBookWith('carol');
-
-        $changes = $this->books->changes('carol', null);
-
-        $this->assertSame('0', $changes['oldState']);
-        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT, $sharedId], $this->withoutTeamBook($changes['created']));
-        $this->assertSame([], $changes['updated']);
-        $this->assertSame([], $changes['destroyed']);
-        $this->assertSame($changes, $this->books->changes('carol', ''));
-        $this->assertSame($changes, $this->books->changes('carol', '0'));
-    }
-
-    public function test_state_is_count_then_id_token_pairs(): void
-    {
-        $state = $this->books->changes('bob', null)['newState'];
-
-        $this->assertSame('1:default:'.(int) $this->bookRow('bob')->synctoken, $state);
-    }
-
-    public function test_unchanged_state_reports_nothing(): void
-    {
-        $state = $this->books->changes('bob', null)['newState'];
-
-        $this->assertSame(
-            ['oldState' => $state, 'newState' => $state, 'created' => [], 'updated' => [], 'destroyed' => []],
-            $this->books->changes('bob', $state),
-        );
-    }
-
-    public function test_a_card_write_reports_the_book_as_updated(): void
-    {
-        $state = $this->books->changes('bob', null)['newState'];
-        $this->seedCardViaPdo('bob', 'jane.vcf', $this->sampleVcard());
-
-        $changes = $this->books->changes('bob', $state);
-
-        $this->assertSame($state, $changes['oldState']);
-        $this->assertNotSame($state, $changes['newState']);
-        $this->assertSame([], $changes['created']);
-        $this->assertSame(['default'], $changes['updated']);
-        $this->assertSame([], $changes['destroyed']);
-    }
-
-    public function test_a_new_share_is_created_and_a_dismissed_one_destroyed(): void
-    {
-        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
-        $state = $this->books->changes('carol', null)['newState'];
-        $sharedId = $this->shareBobsBookWith('carol');
-
-        $afterShare = $this->books->changes('carol', $state);
-        $this->assertSame([$sharedId], $afterShare['created']);
-        $this->assertSame([], $afterShare['destroyed']);
-
-        $this->books->delete('carol', $sharedId);
-        $afterDismiss = $this->books->changes('carol', $afterShare['newState']);
-        $this->assertSame([], $afterDismiss['created']);
-        $this->assertSame([$sharedId], $afterDismiss['destroyed']);
-    }
-
-    /**
-     * @return iterable<string, array{0: string}>
-     */
-    public static function malformedStates(): iterable
-    {
-        yield 'no separator' => ['garbage'];
-        yield 'count mismatch' => ['2:default:1'];
-        yield 'missing token' => ['1:default'];
-        yield 'non-numeric token' => ['1:default:x'];
-        yield 'empty id' => ['1::4'];
-        yield 'empty entry list' => ['0:'];
-    }
-
-    #[DataProvider('malformedStates')]
-    public function test_a_malformed_state_cannot_calculate_changes(string $state): void
-    {
-        $this->assertApiError(400, 'cannotCalculateChanges', fn () => $this->books->changes('bob', $state));
-    }
-
-    public function test_a_well_formed_state_for_a_gone_book_reports_it_destroyed(): void
-    {
-        $state = $this->books->changes('bob', null)['newState'];
-
-        $changes = $this->books->changes('bob', '2:'.substr($state, 2).',shared-999:1');
-
-        $this->assertSame(['shared-999'], $changes['destroyed']);
     }
 
     public function test_sync_tokens_key_each_visible_book_by_its_api_id(): void

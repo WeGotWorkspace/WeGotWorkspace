@@ -114,83 +114,6 @@ final class AddressBookRepository
     }
 
     /**
-     * @return array{
-     *     oldState: string,
-     *     newState: string,
-     *     created: list<string>,
-     *     updated: list<string>,
-     *     destroyed: list<string>
-     * }
-     */
-    public function changes(string $username, ?string $since): array
-    {
-        $listings = $this->collectionAccess->accessibleListings($username);
-
-        $currentState = $this->computeBooksState($listings);
-        $previous = $this->parseBooksState($since);
-
-        if ($since === null || $since === '' || $since === '0') {
-            return [
-                'oldState' => '0',
-                'newState' => $currentState,
-                'created' => array_map(
-                    fn (AddressBookListing $listing): string => $this->collectionAccess->apiIdForListing($listing),
-                    $listings,
-                ),
-                'updated' => [],
-                'destroyed' => [],
-            ];
-        }
-
-        if ($since === $currentState) {
-            return [
-                'oldState' => $since,
-                'newState' => $currentState,
-                'created' => [],
-                'updated' => [],
-                'destroyed' => [],
-            ];
-        }
-
-        if ($previous === null) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
-        }
-
-        $currentMap = [];
-        foreach ($listings as $listing) {
-            $currentMap[$this->collectionAccess->apiIdForListing($listing)] = (int) $listing->book->synctoken;
-        }
-
-        $created = [];
-        $updated = [];
-        foreach ($currentMap as $uri => $token) {
-            if (! array_key_exists($uri, $previous)) {
-                $created[] = $uri;
-
-                continue;
-            }
-            if ($previous[$uri] !== $token) {
-                $updated[] = $uri;
-            }
-        }
-
-        $destroyed = [];
-        foreach (array_keys($previous) as $uri) {
-            if (! array_key_exists($uri, $currentMap)) {
-                $destroyed[] = $uri;
-            }
-        }
-
-        return [
-            'oldState' => $since,
-            'newState' => $currentState,
-            'created' => $created,
-            'updated' => $updated,
-            'destroyed' => $destroyed,
-        ];
-    }
-
-    /**
      * Current Sabre sync token per visible address book JMAP id — the contacts
      * analog of CalendarEventRepository::calendarSyncTokens(), feeding the
      * JMAP envelope's account-wide state codec.
@@ -260,50 +183,6 @@ final class AddressBookRepository
         if ($disallowed !== []) {
             throw new ApiHttpException(403, 'Sharees cannot change owner address book fields.', 'forbidden');
         }
-    }
-
-    /**
-     * @param  list<AddressBookListing>  $listings
-     */
-    private function computeBooksState(array $listings): string
-    {
-        $parts = [];
-        foreach ($listings as $listing) {
-            $parts[] = $this->collectionAccess->apiIdForListing($listing).':'.(int) $listing->book->synctoken;
-        }
-
-        return (string) count($parts).':'.implode(',', $parts);
-    }
-
-    /**
-     * @return array<string, int>|null
-     */
-    private function parseBooksState(?string $state): ?array
-    {
-        if ($state === null || $state === '' || $state === '0') {
-            return [];
-        }
-
-        if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
-            return null;
-        }
-
-        $expectedCount = (int) $matches[1];
-        $entries = explode(',', $matches[2]);
-        if (count($entries) !== $expectedCount) {
-            return null;
-        }
-
-        $map = [];
-        foreach ($entries as $entry) {
-            $parts = explode(':', $entry, 2);
-            if (count($parts) !== 2 || $parts[0] === '' || ! ctype_digit($parts[1])) {
-                return null;
-            }
-            $map[$parts[0]] = (int) $parts[1];
-        }
-
-        return $map;
     }
 
     /**
