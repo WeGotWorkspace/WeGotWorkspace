@@ -4,8 +4,10 @@ import { api, openUser, OWNER, passwordFor, TEAMMATE } from "./helpers/live-matr
 /**
  * Chat previews on the presence mesh go to the channel's readers only.
  *
- * The owner and the teammate share a Team channel. A third coworker is online
- * in the same presence room but is not in the Team. When the owner posts, the
+ * The owner and the teammate share a Team channel. A third coworker shares a
+ * different Team with both, so all three are in one presence room (presence has
+ * one room per Team, #1921), but the coworker is not in the channel's Team. When
+ * the owner posts, the
  * teammate's data channel carries the message (so the mesh is up and the
  * preview path ran) and the outsider's data channels carry no trace of it,
  * not even the content-free check-now that follows the post.
@@ -71,7 +73,10 @@ test("a Team channel message reaches the Team on the mesh and no coworker outsid
   }
 });
 
-/** The outsider account, a fresh Team of owner + teammate, and a channel in it. */
+/**
+ * The outsider account, a fresh Team of owner + teammate with a channel in it, and a
+ * second fresh Team of all three, so they meet in that Team's presence room.
+ */
 async function setUp(group: string): Promise<string> {
   await ensureCreated(
     await api(OWNER, "POST", "/admin/users", {
@@ -86,6 +91,13 @@ async function setUp(group: string): Promise<string> {
   );
   for (const member of [OWNER, TEAMMATE]) {
     await ensureCreated(await api(OWNER, "PUT", `/admin/groups/${group}/members/${member}`));
+  }
+  const shared = `${group}-room`;
+  await ensureCreated(
+    await api(OWNER, "POST", "/admin/groups", { slug: shared, displayName: shared }),
+  );
+  for (const member of [OWNER, TEAMMATE, OUTSIDER]) {
+    await ensureCreated(await api(OWNER, "PUT", `/admin/groups/${shared}/members/${member}`));
   }
   const created = await api(OWNER, "POST", "/chat/channels", {
     name: group,
