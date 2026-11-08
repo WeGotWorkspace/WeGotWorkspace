@@ -12,6 +12,8 @@ Clients poll their own signaling route. After a room is connected the cadence ba
 
 Clients do not post session samples. The budget below is signaling polls only.
 
+Presence has one room per own Team (#1921). With more than two Teams, each room's slow intervals (alone, idle) are stretched by `rooms / 2`, so a user in 4 Teams polls 2× one room, never more. Measured for one tab: 14.9 /min alone in one room, 30.0 /min alone in 4 Team rooms; 3.0 /min and 5.3 /min with a linked colleague.
+
 ## Scenario
 
 `tools/load/rtc-shared-hosting.k6.js` drives that mix over HTTP:
