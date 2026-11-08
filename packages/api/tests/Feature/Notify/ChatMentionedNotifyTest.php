@@ -25,6 +25,8 @@ final class ChatMentionedNotifyTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
         $this->seedWgwUser('carol', displayName: 'Carol');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_mentioned_user_gets_mentioned_only_not_message_posted(): void

@@ -134,6 +134,35 @@ trait CalDavCollectionSharingInterop
         $this->assertNull($shared['shareWith']);
     }
 
+    /**
+     * Epic #1915: a CalDAV client sharing with someone outside the owner's Teams gets the
+     * answer an unknown address gets. The invite is stored without a principal, so nobody
+     * gains access and the owner's shareWith does not list it.
+     */
+    public function test_caldav_share_with_a_non_colleague_is_stored_like_an_unknown_address(): void
+    {
+        $this->seedWgwUser('erin', email: 'erin@example.test', displayName: 'Erin');
+        $results = [];
+        foreach (['mailto:erin@example.test' => 'erin', 'mailto:ghost@example.test' => 'ghost'] as $mailto => $name) {
+            $collectionId = $this->createSharingCollection('bob', 'Gate '.$name, 'gate-'.$name);
+            $posted = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: true), [
+                'Content-Type' => 'application/xml',
+            ]);
+            $invite = CalendarInstance::query()->where('share_href', $mailto)->firstOrFail();
+            $results[$name] = [
+                'status' => $posted['status'],
+                'body' => $posted['body'],
+                'principaluri' => $invite->principaluri,
+                'invitestatus' => $invite->share_invitestatus,
+                'shareWith' => $this->ownerCollectionShareWith('bob', $collectionId),
+            ];
+        }
+
+        $this->assertSame($results['ghost'], $results['erin']);
+        $this->assertNull($results['erin']['principaluri']);
+        $this->assertSame(0, CalendarInstance::query()->where('principaluri', 'principals/erin')->where('access', '!=', SharingPlugin::ACCESS_SHAREDOWNER)->count());
+    }
+
     public function test_caldav_dav_share_resource_appears_in_app_share_with(): void
     {
         $collectionId = $this->createSharingCollection('bob', 'Dav Sharing', 'dav-sharing');

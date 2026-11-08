@@ -28,6 +28,8 @@ final class McpCalendarToolsTest extends WgwDatabaseTestCase
         $this->setUpCalendarsFixtures();
         $this->enableMcp();
         config(['app.url' => 'https://workspace.test']);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_calendar_events_accepts_read_scope_and_denies_write(): void

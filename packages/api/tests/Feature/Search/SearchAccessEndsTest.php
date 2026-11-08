@@ -67,6 +67,8 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
             WgwSettings::TASKS_ENABLED => true,
             WgwSettings::NOTES_ENABLED => true,
         ]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

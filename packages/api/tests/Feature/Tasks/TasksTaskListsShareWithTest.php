@@ -32,6 +32,7 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
     }
 
     public function test_owner_can_share_personal_list_read_only(): void
@@ -371,6 +372,8 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
     #[DataProvider('overlappingSharesProvider')]
     public function test_task_resolves_through_the_strongest_of_overlapping_shares(bool $directWrite, bool $groupFirst): void
     {
+        // The owner shares with a Team, so must be in it (Epic #1915).
+        $this->seedSharedTeam(self::TEAM, 'carol');
         $listId = $this->createPersonalList('carol', 'Overlap');
         $grants = [
             'groups/'.self::TEAM => ! $directWrite,
@@ -412,6 +415,8 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
 
     public function test_task_resolves_through_the_listed_instance_when_equal_shares_overlap(): void
     {
+        // The owner shares with a Team, so must be in it (Epic #1915).
+        $this->seedSharedTeam(self::TEAM, 'carol');
         $listId = $this->createPersonalList('carol', 'Equal');
         $this->shareList('carol', $listId, 'groups/'.self::TEAM, write: true);
         $this->shareList('carol', $listId, 'bob', write: true);
