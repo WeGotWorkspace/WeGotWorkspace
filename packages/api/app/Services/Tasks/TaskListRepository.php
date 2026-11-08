@@ -373,6 +373,7 @@ final class TaskListRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;

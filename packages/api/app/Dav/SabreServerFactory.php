@@ -10,6 +10,7 @@ use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
+use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
@@ -21,6 +22,7 @@ use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
+use App\Dav\Server\TeamGatedSharingPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
 use App\Dav\Server\WgwCardBackend;
@@ -114,7 +116,7 @@ final class SabreServerFactory
         $server->addPlugin(new DAV\Sync\Plugin);
 
         if ($cal || $card) {
-            $server->addPlugin(new DAV\Sharing\Plugin);
+            $server->addPlugin(app(TeamGatedSharingPlugin::class));
         }
         if ($cal || $card || $files) {
             $server->addPlugin(new DAVACL\Plugin);
@@ -130,6 +132,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
             $server->addPlugin(new RecurrenceGuardPlugin);
+            $server->addPlugin(app(CalendarImipDeliveryPlugin::class));
         }
 
         if ($card) {

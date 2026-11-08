@@ -75,7 +75,7 @@ final class AddressBookRepository
                 if (! $this->shareInvites->canShare($listing)) {
                     throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
                 }
-                $this->shareInvites->apply($listing->book, $payload['shareWith']);
+                $this->shareInvites->apply($listing->book, $payload['shareWith'], $username);
             }
 
             $mutations = [];

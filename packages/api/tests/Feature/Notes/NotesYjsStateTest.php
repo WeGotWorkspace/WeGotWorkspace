@@ -41,6 +41,8 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $provisioner = app(UserCalendarCollectionsProvisioner::class);
         $provisioner->ensureForPrincipal('principals/bob');
         $provisioner->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_patch_stores_yjs_and_get_returns_the_same_bytes(): void
