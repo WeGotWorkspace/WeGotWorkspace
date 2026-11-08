@@ -31,12 +31,16 @@ test("comments added after the sync state expired still appear", async ({ page }
 
   // A poll on a state the test marks as forgotten reaches the real API with a
   // state it cannot read, so the API answers `cannotCalculateChanges` itself.
+  // The mark ends at the client's resync (a poll without `since`).
   const forgotten = new Set<string>();
   let lastSince: string | null = null;
   let expiredAnswers = 0;
   await page.route("**/api/v1/files/threads/changes?*", async (route) => {
     const url = new URL(route.request().url());
     const since = url.searchParams.get("since");
+    // A poll without `since` is the client's resync: the state is forgotten
+    // only until then, so a fresh state that equals the old token works again.
+    if (!since) forgotten.clear();
     if (since && forgotten.has(since)) {
       url.searchParams.set("since", `expired-${since}`);
       const response = await route.fetch({ url: url.toString() });
