@@ -121,14 +121,17 @@ export async function writeCalendarBootstrapToCache(
       data: JSON.stringify(calendar),
     })),
   );
-  await groups.clear();
-  await groups.bulkPut(
-    (bootstrap.data.groups ?? []).map((group, sortOrder) => ({
-      slug: group.slug,
-      sortOrder,
-      data: JSON.stringify(group),
-    })),
-  );
+  // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
+  if (bootstrap.data.groups !== undefined) {
+    await groups.clear();
+    await groups.bulkPut(
+      bootstrap.data.groups.map((group, sortOrder) => ({
+        slug: group.slug,
+        sortOrder,
+        data: JSON.stringify(group),
+      })),
+    );
+  }
   // One transaction: a period loaded on demand must not land between the read
   // and the clear and then be lost.
   await db.transaction("rw", events, async () => {

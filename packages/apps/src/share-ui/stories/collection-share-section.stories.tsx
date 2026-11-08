@@ -7,13 +7,13 @@ import {
   type CollectionShareWith,
 } from "@/share-ui/collection-share";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
-import { noTeamYetCopy } from "@/share-ui/share-labels";
+import { noPeopleOrTeamsFoundCopy, noTeamYetCopy } from "@/share-ui/share-labels";
 
 const COPY = {
   title: "Team access",
   hint: "Grant read or read-and-write access to people or groups.",
   placeholder: "Add people or groups…",
-  empty: "No people or groups found",
+  empty: noPeopleOrTeamsFoundCopy,
   offline: "Sharing changes require a connection.",
   removeTitle: "Remove access?",
   removeConfirm: "This person or group will lose access. Continue?",

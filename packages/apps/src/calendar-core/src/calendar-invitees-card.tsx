@@ -224,11 +224,13 @@ export function CalendarInviteesCard({
     if (row) selectSearchRow(row);
   };
 
+  const showNoTeam = !readOnly && noTeam;
+
   const addControl = readOnly ? undefined : (
     <SharePrincipalSearchDropdown
       query={query}
       results={searchResults}
-      emptyLabel={labels.eventAttendeesSearchEmpty}
+      emptyLabel={showNoTeam ? noTeamYetCopy : labels.eventAttendeesSearchEmpty}
       listLabel={labels.eventAttendeesLabel}
       minQueryLength={1}
       onSelect={selectSearchOption}
@@ -250,15 +252,21 @@ export function CalendarInviteesCard({
     </SharePrincipalSearchDropdown>
   );
 
+  // The card states the no-Team sentence as its description; the flat field has none.
+  const footerNoTeam = showNoTeam && presentation === "field";
   const footer =
-    !readOnly && !canSubmitEmail ? (
-      <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
-    ) : !readOnly && noTeam ? (
-      <p className="share-access-card__hint">{noTeamYetCopy}</p>
-    ) : meetEmailGuestHint ? (
-      <p className="share-access-card__hint calendar-invitees-card__meet-email-hint">
-        {meetEmailGuestHint}
-      </p>
+    (!readOnly && !canSubmitEmail) || footerNoTeam || meetEmailGuestHint ? (
+      <>
+        {!readOnly && !canSubmitEmail ? (
+          <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
+        ) : null}
+        {footerNoTeam ? <p className="share-access-card__hint">{noTeamYetCopy}</p> : null}
+        {meetEmailGuestHint && !(footerNoTeam || (!readOnly && !canSubmitEmail)) ? (
+          <p className="share-access-card__hint calendar-invitees-card__meet-email-hint">
+            {meetEmailGuestHint}
+          </p>
+        ) : null}
+      </>
     ) : null;
 
   const chips = (
@@ -332,7 +340,7 @@ export function CalendarInviteesCard({
       className={cn("calendar-event-dialog__card calendar-invitees-card", className)}
       titleIcon={<Users className="size-4" />}
       title={labels.eventAttendeesLabel}
-      description={labels.eventAttendeesHint}
+      description={showNoTeam ? noTeamYetCopy : labels.eventAttendeesHint}
       footer={footer}
       addControl={addControl}
     >

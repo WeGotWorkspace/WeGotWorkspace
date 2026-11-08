@@ -636,7 +636,8 @@ export async function fetchNotesHybridBootstrap(): Promise<
     cached.data.notebooks = bootstrap.data.notebooks;
     cached.data.sharedNotebooks = bootstrap.data.sharedNotebooks ?? [];
     cached.data.notebookCollections = bootstrap.data.notebookCollections ?? [];
-    cached.data.groups = bootstrap.data.groups ?? [];
+    // An unknown Teams list (failed load) keeps the cached one.
+    if (bootstrap.data.groups !== undefined) cached.data.groups = bootstrap.data.groups;
     if (!hadOutbox) {
       // Server is source of truth for membership/metadata, but body lives in
       // collab — keep a non-empty cached preview when the API body is still empty.

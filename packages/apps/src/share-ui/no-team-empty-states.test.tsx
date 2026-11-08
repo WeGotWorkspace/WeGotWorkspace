@@ -91,7 +91,7 @@ describe("Drive share section without a Team", () => {
 });
 
 describe("attendee picker without a Team", () => {
-  it("shows the note under the field", () => {
+  it("says it in the description and the empty dropdown", () => {
     renderWithTooltips(
       <CalendarInviteesCard
         attendees={[]}
@@ -102,6 +102,21 @@ describe("attendee picker without a Team", () => {
       />,
     );
     expect(screen.getByText(noTeamYetCopy)).toBeTruthy();
+  });
+
+  it("keeps the email-unavailable hint next to the sentence", () => {
+    renderWithTooltips(
+      <CalendarInviteesCard
+        attendees={[]}
+        invitees={[]}
+        labels={defaultCalendarLabels}
+        noTeam
+        canSubmitEmail={false}
+        onChange={() => undefined}
+      />,
+    );
+    expect(screen.getByText(noTeamYetCopy)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventAttendeesEmailUnavailable)).toBeTruthy();
   });
 
   it("shows no note for an invitee who only reads the event", () => {
