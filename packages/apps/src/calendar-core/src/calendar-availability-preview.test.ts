@@ -127,4 +127,25 @@ describe("formatAvailabilityPeriodWhen", () => {
       formatAvailabilityPeriodWhen({ ...roadmap, duration: "soon" }, "en-GB", "Europe/London"),
     ).toBe("");
   });
+
+  it("ends at the same wall clock as the block across a daylight-saving change", () => {
+    const springForward: JmapBusyPeriod = {
+      start: "2026-03-08T01:30:00",
+      timeZone: "America/New_York",
+      duration: "PT2H",
+      showWithoutTime: false,
+    };
+    expect(formatAvailabilityPeriodWhen(springForward, "en-GB", "America/New_York")).toMatch(
+      /^Sun 8 Mar, 01:30\s*–\s*03:30$/,
+    );
+    const dayAcross: JmapBusyPeriod = {
+      start: "2026-03-28T10:00:00",
+      timeZone: "Europe/Amsterdam",
+      duration: "P1D",
+      showWithoutTime: false,
+    };
+    expect(formatAvailabilityPeriodWhen(dayAcross, "en-GB", "America/New_York")).toMatch(
+      /^Sat 28 Mar, 05:00\s*–\s*Sun 29 Mar, 04:00$/,
+    );
+  });
 });

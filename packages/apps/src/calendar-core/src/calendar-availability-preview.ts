@@ -71,8 +71,10 @@ export function formatAvailabilityPeriodWhen(
       : format.formatRange(noonUtc(first), noonUtc(last));
   }
   const zone = viewerTimeZone || Temporal.Now.timeZoneId();
-  const zoned = start.toZonedDateTime(timeZone ?? zone).withTimeZone(zone);
-  const end = zoned.add(duration);
+  // Like the grid: the end is the start's wall clock plus the duration, in the
+  // period's own zone; only then do both ends convert to the viewer's zone.
+  const toViewer = (wall: Temporal.PlainDateTime) =>
+    new Date(wall.toZonedDateTime(timeZone ?? zone).epochMilliseconds);
   const format = new Intl.DateTimeFormat(locale, { ...TIME_FORMAT, timeZone: zone });
-  return format.formatRange(new Date(zoned.epochMilliseconds), new Date(end.epochMilliseconds));
+  return format.formatRange(toViewer(start), toViewer(start.add(duration)));
 }
