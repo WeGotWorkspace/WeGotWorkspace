@@ -49,7 +49,10 @@ export class FollowerPresenceSession implements PresenceMeshSession {
   /** The peers the leader picked for this user; all matching peers from a leader that sent none. */
   peersForUsername(username: string): RtcPeerDescriptor[] {
     const key = username.trim().toLowerCase();
-    const picked = this.targetPeerIds?.[key];
+    const picked =
+      this.targetPeerIds && Object.prototype.hasOwnProperty.call(this.targetPeerIds, key)
+        ? this.targetPeerIds[key]
+        : undefined;
     return this.peers.filter((peer) =>
       picked ? picked.includes(peer.id) : (peer.user ?? "").trim().toLowerCase() === key,
     );
