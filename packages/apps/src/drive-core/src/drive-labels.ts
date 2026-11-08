@@ -173,6 +173,7 @@ export const driveLabels = {
   accessFilterPublic: "Public links",
   accessFilterGroups: "Teams",
   accessVia: "via",
+  accessViaTeam: (name: string) => `Team: ${name}`,
   accessExternalBadge: "External",
   accessExpiredBadge: "Expired",
   accessPendingBadge: "Pending",

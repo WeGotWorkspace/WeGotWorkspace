@@ -81,7 +81,7 @@ export function buildDriveFolderBreadcrumbs(
 
 export function buildDriveFolderPickerBreadcrumbs(
   browsePath: string,
-  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive">,
+  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive" | "teamsRoot">,
   /** Optional UI-path → display label (e.g. Docs "Personal" / principal group names). */
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
@@ -110,6 +110,10 @@ export function buildDriveFolderPickerBreadcrumbs(
         path: `My Drive/${relativeParts.slice(0, index + 1).join("/")}`,
       })),
     ];
+  }
+
+  if (browsePath === GROUPS_ROOT) {
+    return [drivesRoot, { label: labels.teamsRoot, path: GROUPS_ROOT }];
   }
 
   if (browsePath.startsWith(`${GROUPS_ROOT}/`)) {

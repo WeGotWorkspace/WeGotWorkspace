@@ -10,13 +10,14 @@ export const SHARED_WITH_ME_UI_ROOT = "Shared with me";
  */
 export const DRIVE_GROUPS_UI_ROOT = "Groups";
 
+const MY_DRIVE_UI_ROOT = "My Drive";
+/** Foreign personal drives opened from Shared with me (`/users/{other}/…`). */
+const USERS_UI_ROOT = "Users";
+
 /** UI path of a Team drive root (`Groups/{slug}`). */
 export function driveGroupUiPath(slug: string): string {
   return `${DRIVE_GROUPS_UI_ROOT}/${slug}`;
 }
-const MY_DRIVE_UI_ROOT = "My Drive";
-/** Foreign personal drives opened from Shared with me (`/users/{other}/…`). */
-const USERS_UI_ROOT = "Users";
 
 /** Ensure folder UI paths use a known top-level prefix (relative paths default to My Drive). */
 export function normalizeDriveFolderUiPath(path: string): string {
