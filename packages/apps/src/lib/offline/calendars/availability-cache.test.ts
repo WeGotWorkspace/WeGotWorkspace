@@ -137,7 +137,7 @@ describe("availability cache", () => {
     ]);
   });
 
-  it("keeps a cross-week period busy offline in the second week", async () => {
+  it("keeps a cross-week period busy offline in the second week and draws it once", async () => {
     const overnight: JmapBusyPeriod = {
       start: "2026-11-15T22:00:00",
       timeZone: "UTC",
@@ -157,6 +157,31 @@ describe("availability cache", () => {
     // Offline, looking at the second week only.
     const cached = await readAvailabilityWeeks(viewer, ["alice"], ["2026-11-16"]);
     expect(mergeWeekPeriods(cached)).toEqual([overnight]);
+    // A view covering both weeks draws it once.
+    const both = await readAvailabilityWeeks(viewer, ["alice"], ["2026-11-09", "2026-11-16"]);
+    expect(both).toHaveLength(2);
+    expect(mergeWeekPeriods(both)).toEqual([overnight]);
+  });
+
+  it("writes no row for a week outside the fetched run", async () => {
+    const overnight: JmapBusyPeriod = {
+      start: "2026-11-15T22:00:00",
+      timeZone: "UTC",
+      duration: "PT4H",
+      showWithoutTime: false,
+    };
+    const [plan] = planAvailabilityCalls(["alice"], ["2026-11-09"]);
+    await writeAvailabilityWeeks(
+      viewer,
+      availabilityWeeksFromResponse(
+        plan!,
+        { list: [{ id: "alice", periods: [overnight], complete: true }], notFound: [] },
+        new Map([["alice", "v1"]]),
+        NOW,
+      ),
+    );
+    // The next week was never fetched, so it stays missing rather than empty.
+    expect(await readAvailabilityWeeks(viewer, ["alice"], ["2026-11-16"])).toEqual([]);
   });
 
   it("evicts old weeks outside the prefetch window, keeps the window", async () => {

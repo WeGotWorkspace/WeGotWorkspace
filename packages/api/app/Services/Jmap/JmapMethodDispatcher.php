@@ -54,6 +54,8 @@ use App\Services\Jmap\Methods\QuotaChangesMethod;
 use App\Services\Jmap\Methods\QuotaGetMethod;
 use App\Services\Jmap\Methods\QuotaQueryChangesMethod;
 use App\Services\Jmap\Methods\QuotaQueryMethod;
+use App\Services\Jmap\Methods\TeamMemberGetAvailabilityMethod;
+use App\Services\Jmap\Methods\TeamMemberGetMethod;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -122,6 +124,9 @@ final class JmapMethodDispatcher
         ChatMessageChangesMethod::class,
         ChatMessageQueryMethod::class,
         ChatMessageQueryChangesMethod::class,
+        // urn:wgw:jmap:availability (vendor Team availability, #1909)
+        TeamMemberGetMethod::class,
+        TeamMemberGetAvailabilityMethod::class,
         // urn:ietf:params:jmap:quota (RFC 9425; one Drive quota per writable root)
         QuotaGetMethod::class,
         QuotaChangesMethod::class,
