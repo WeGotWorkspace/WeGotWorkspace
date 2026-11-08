@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
+use App\Models\CalendarSubscription;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
@@ -293,6 +294,59 @@ final class CalendarCollectionAccess
         }
 
         return $payload['isSubscribed'];
+    }
+
+    /**
+     * Read-only: the event calendars that count toward $username's Team
+     * availability, as they exist now. Personal ones are the owner's own
+     * (`ACCESS_SHAREDOWNER` under their principal); Team ones are owned by a
+     * Team they belong to. Shared-in copies and ICS subscriptions never count.
+     * Unlike {@see accessibleInstances()} this never provisions a missing Team
+     * collection, so a busy-period read inserts nothing.
+     *
+     * @return array{personal: list<CalendarInstance>, team: list<CalendarInstance>}
+     */
+    public function availabilitySourceInstances(string $username): array
+    {
+        $teamUris = array_map(
+            static fn (string $slug): string => AdminConstants::GROUP_PREFIX.$slug,
+            $this->groups->allowedGroupSlugs($username),
+        );
+        $owned = fn (array $principalUris) => CalendarInstance::query()
+            ->with('calendar')
+            ->whereIn('principaluri', $principalUris)
+            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::EventCalendar))
+            ->orderBy('calendarorder')
+            ->orderBy('id')
+            ->get();
+
+        $personalSubscriptions = CalendarSubscription::query()->where('username', $username)->pluck('calendar_uri')->all();
+        $personal = $owned([$this->principalUri($username)])
+            ->reject(fn (CalendarInstance $instance): bool => in_array((string) $instance->uri, $personalSubscriptions, true));
+        $team = $teamUris === [] ? new Collection : $owned($teamUris)
+            ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->uri));
+
+        return ['personal' => array_values($personal->all()), 'team' => array_values($team->all())];
+    }
+
+    /**
+     * A subscription made into a Team lives under the Team principal; its row
+     * names the member who added it, who has no personal instance of that uri.
+     */
+    private function isTeamSubscription(string $calendarUri): bool
+    {
+        foreach (CalendarSubscription::query()->where('calendar_uri', $calendarUri)->pluck('username') as $subscriber) {
+            $personalCopy = CalendarInstance::query()
+                ->where('principaluri', $this->principalUri((string) $subscriber))
+                ->where('uri', $calendarUri)
+                ->exists();
+            if (! $personalCopy) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
