@@ -80,6 +80,14 @@ describe("CalendarAvailabilityPopover", () => {
     ).toBeNull();
   });
 
+  it("shows a location without a title, and no hint", () => {
+    const { title: _title, ...placeOnly } = withDetails.period;
+    renderPopover({ ...withDetails, period: placeOnly });
+    expect(screen.getByText(defaultCalendarLabels.teamAvailabilityBusy)).toBeTruthy();
+    expect(screen.getByText("Room Babbage")).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.teamAvailabilityPreviewNoDetails)).toBeNull();
+  });
+
   it("opens a dialog titled with the person on phones", () => {
     isMobileRef.current = true;
     renderPopover(withDetails);

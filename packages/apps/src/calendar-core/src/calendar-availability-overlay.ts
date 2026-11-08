@@ -4,6 +4,7 @@ import {
   UTC_TIMEZONE,
   type CalendarEvent,
   type CalendarEventsMap,
+  type IANATimeZone,
 } from "@/lib/calendar-engine";
 import { isInstantOrOffset, localToPlainDateTime } from "@/lib/jmap-client/mapping/datetime";
 import type { JmapBusyPeriod } from "@/lib/jmap-client/availability/types";
@@ -64,17 +65,23 @@ export function availabilityColor(username: string): string {
   return AVATAR_HEX[avatarColorForUserId(username)];
 }
 
+/** When a busy period happens, read the way the grid draws it. */
+export type AvailabilityPeriodTiming = {
+  /** Wall-clock start; midnight for all-day periods. */
+  start: Temporal.PlainDateTime;
+  duration: Temporal.Duration;
+  allDay: boolean;
+  /** IANA zone, `UTC` for a `…Z` start, or null when floating (also for unknown TZIDs). */
+  timeZone: IANATimeZone | null;
+};
+
 /**
- * One read-only grid event for a busy period. Periods keep their own zone,
- * so the views convert them like normal events. All-day periods cover their
- * dates in the viewer's zone, like all-day events.
+ * One reading of a period's time for the grid and the popover, so they never
+ * disagree. A zone `toIANATimeZone` doesn't know (an Outlook-style TZID) is
+ * read as floating, like the server's calculator does. Null when the start or
+ * duration doesn't parse; such a period isn't drawn.
  */
-export function availabilityPeriodEvent(
-  username: string,
-  index: number,
-  period: JmapBusyPeriod,
-  busyLabel: string,
-): CalendarEvent | null {
+export function availabilityPeriodTiming(period: JmapBusyPeriod): AvailabilityPeriodTiming | null {
   let start: Temporal.PlainDateTime;
   let duration: Temporal.Duration;
   try {
@@ -92,6 +99,28 @@ export function availabilityPeriodEvent(
       : isInstantOrOffset(period.start.trim())
         ? UTC_TIMEZONE
         : null;
+  return {
+    start: allDay ? start.with({ hour: 0, minute: 0, second: 0 }) : start,
+    duration,
+    allDay,
+    timeZone,
+  };
+}
+
+/**
+ * One read-only grid event for a busy period. Periods keep their own zone,
+ * so the views convert them like normal events. All-day periods cover their
+ * dates in the viewer's zone, like all-day events.
+ */
+export function availabilityPeriodEvent(
+  username: string,
+  index: number,
+  period: JmapBusyPeriod,
+  busyLabel: string,
+): CalendarEvent | null {
+  const timing = availabilityPeriodTiming(period);
+  if (!timing) return null;
+  const { start, duration, allDay, timeZone } = timing;
   // Untitled periods read "Busy", so every block has an accessible name.
   const title = period.title?.trim() || busyLabel;
   const location = period.location?.trim() ?? "";
@@ -100,7 +129,7 @@ export function availabilityPeriodEvent(
     calendarId: availabilityCalendarId(username),
     eventId: availabilityOverlayKey(username, index),
     data: {
-      start: allDay ? start.with({ hour: 0, minute: 0, second: 0 }) : start,
+      start,
       allDay,
       ...(timeZone ? { timeZone } : {}),
       summary: title,

@@ -96,4 +96,35 @@ describe("formatAvailabilityPeriodWhen", () => {
       formatAvailabilityPeriodWhen({ ...oneDay, duration: "P3D" }, "en-GB", "Pacific/Auckland"),
     ).toMatch(/^Fri 14( Jan)?\s*–\s*Sun 16 Jan$/);
   });
+
+  it("keeps the wall clock of a zone it doesn't know, like the grid", () => {
+    const outlook: JmapBusyPeriod = {
+      start: "2033-01-12T10:00:00",
+      timeZone: "W. Europe Standard Time",
+      duration: "PT1H",
+      showWithoutTime: false,
+    };
+    expect(formatAvailabilityPeriodWhen(outlook, "en-GB", "America/New_York")).toMatch(
+      /^Wed 12 Jan, 10:00\s*–\s*11:00$/,
+    );
+  });
+
+  it("reads an all-day period with a time duration without throwing", () => {
+    const allDay: JmapBusyPeriod = {
+      start: "2033-01-14",
+      timeZone: null,
+      duration: "PT24H",
+      showWithoutTime: true,
+    };
+    expect(formatAvailabilityPeriodWhen(allDay, "en-GB", "Europe/Amsterdam")).toBe("Fri 14 Jan");
+    expect(
+      formatAvailabilityPeriodWhen({ ...allDay, duration: "PT36H" }, "en-GB", "Europe/Amsterdam"),
+    ).toMatch(/^Fri 14( Jan)?\s*–\s*Sat 15 Jan$/);
+  });
+
+  it("returns an empty string for a period that doesn't parse", () => {
+    expect(
+      formatAvailabilityPeriodWhen({ ...roadmap, duration: "soon" }, "en-GB", "Europe/London"),
+    ).toBe("");
+  });
 });

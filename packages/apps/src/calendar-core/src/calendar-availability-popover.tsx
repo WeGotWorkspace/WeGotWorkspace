@@ -68,7 +68,7 @@ export function CalendarAvailabilityPopover({
           </span>
         </p>
       ) : null}
-      {title ? null : (
+      {title || location ? null : (
         <p className="calendar-availability-popover__hint">
           {labels.teamAvailabilityPreviewNoDetails}
         </p>
