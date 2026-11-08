@@ -86,6 +86,18 @@ final class TeamHiddenDriveSharesTest extends WgwDatabaseTestCase
         $this->assertSame($rows, $this->grantRowSnapshot());
     }
 
+    public function test_the_owners_listing_drops_the_shared_badge_while_the_only_grant_is_hidden(): void
+    {
+        $this->share('bob', self::FOLDER, ['carol' => 'view']);
+        $this->assertSame(['hasShares' => true, 'hasTeamShare' => true], $this->shareBadges('bob'));
+
+        $this->leave('carol', 't1');
+        $this->assertSame(['hasShares' => false, 'hasTeamShare' => false], $this->shareBadges('bob'));
+
+        $this->join('carol', 't1');
+        $this->assertSame(['hasShares' => true, 'hasTeamShare' => true], $this->shareBadges('bob'));
+    }
+
     public function test_a_file_an_admin_shared_with_someone_outside_the_admins_teams_is_hidden_for_both(): void
     {
         $this->createDriveDirectory('/users/alice', 'Board');
@@ -285,6 +297,21 @@ final class TeamHiddenDriveSharesTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.shareWith.carol.access', 'view');
         $this->assertContains('carol', $this->effectiveGrantees('bob', self::FILE));
         $this->assertSame([self::FOLDER], $this->byPrincipalPaths('bob', 'carol'));
+    }
+
+    /**
+     * @return array{hasShares: bool, hasTeamShare: bool}
+     */
+    private function shareBadges(string $owner): array
+    {
+        $entry = collect((array) $this->asUser($owner)->getJson('/api/v1/files/children?path=/users/bob')
+            ->assertOk()->json('data.files'))->firstWhere('name', 'Projects');
+        $this->assertIsArray($entry);
+
+        return [
+            'hasShares' => (bool) ($entry['hasShares'] ?? false),
+            'hasTeamShare' => (bool) ($entry['hasTeamShare'] ?? false),
+        ];
     }
 
     /**
