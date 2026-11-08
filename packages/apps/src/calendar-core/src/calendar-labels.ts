@@ -287,6 +287,11 @@ export type CalendarUILabels = {
   teamAvailabilityJustNow: string;
   /** Title of a busy block whose owner shares no details. */
   teamAvailabilityBusy: string;
+  // Busy-block popover (#1911).
+  teamAvailabilityPreviewTitle: (name: string) => string;
+  teamAvailabilityPreviewNoDetails: string;
+  teamAvailabilityPreviewTime: string;
+  teamAvailabilityPreviewLocation: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -559,6 +564,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
     "Offline · teammates' availability for this period is not available offline.",
   teamAvailabilityJustNow: "just now",
   teamAvailabilityBusy: "Busy",
+  teamAvailabilityPreviewTitle: (name) => `${name}'s availability`,
+  teamAvailabilityPreviewNoDetails: "Only busy times are shared.",
+  teamAvailabilityPreviewTime: "Time",
+  teamAvailabilityPreviewLocation: "Location",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {

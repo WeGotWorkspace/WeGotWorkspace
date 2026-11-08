@@ -156,6 +156,32 @@ function summarize(
   return { periodsByUser, incompleteIds, coverage: { oldestFetchedAt, uncachedWeeks } };
 }
 
+/** Ticked rows and the folded state, stored per device in the calendar view prefs. */
+function useTeamAvailabilityPrefs(presetShownIds: readonly string[] | undefined) {
+  const [shownIds, setShownIds] = useState<ReadonlySet<string>>(() =>
+    presetShownIds ? new Set(presetShownIds) : readShownIds(),
+  );
+  const [collapsed, setCollapsed] = useState(
+    () => readCalendarViewPrefs()?.availabilityCollapsed === true,
+  );
+  const toggleShown = useCallback((id: string) => {
+    setShownIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
+      return next;
+    });
+  }, []);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((current) => {
+      patchCalendarViewPrefs({ availabilityCollapsed: !current });
+      return !current;
+    });
+  }, []);
+  return { shownIds, toggleShown, collapsed, toggleCollapsed };
+}
+
 /**
  * Team availability for the Calendar sidebar and grid (#1910). Only ticked
  * teammates are fetched: the weeks in view at once on every range change,
@@ -181,11 +207,8 @@ export function useTeamAvailability({
   const membersRef = useRef<CachedTeamMembers | null>(null);
   const [rows, setRows] = useState<AvailabilityWeek[]>([]);
   const [revision, bumpRevision] = useReducer((value: number) => value + 1, 0);
-  const [shownIds, setShownIds] = useState<ReadonlySet<string>>(() =>
-    preset?.shownIds ? new Set(preset.shownIds) : readShownIds(),
-  );
-  const [collapsed, setCollapsed] = useState(
-    () => readCalendarViewPrefs()?.availabilityCollapsed === true,
+  const { shownIds, toggleShown, collapsed, toggleCollapsed } = useTeamAvailabilityPrefs(
+    preset?.shownIds,
   );
   const nowRef = useRef(now);
   nowRef.current = now;
@@ -316,23 +339,6 @@ export function useTeamAvailability({
     };
   }, [presetMode, revision, shownKey, viewer, visibleKey]);
 
-  const toggleShown = useCallback((id: string) => {
-    setShownIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
-      return next;
-    });
-  }, []);
-
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((current) => {
-      patchCalendarViewPrefs({ availabilityCollapsed: !current });
-      return !current;
-    });
-  }, []);
-
   const summary = useMemo(() => {
     const weekSet = new Set(visibleWeeks);
     const shownSet = new Set(shownList);
@@ -352,16 +358,29 @@ export function useTeamAvailability({
     [memberList],
   );
 
-  return {
-    online: presetMode && preset.offline ? false : online,
-    members: orderedMembers,
-    shownIds,
-    toggleShown,
-    collapsed,
-    toggleCollapsed,
-    incompleteIds: summary.incompleteIds,
-    periodsByUser: summary.periodsByUser,
-    overlayEvents,
-    coverage: summary.coverage,
-  };
+  const effectiveOnline = presetMode && preset.offline ? false : online;
+  return useMemo(
+    () => ({
+      online: effectiveOnline,
+      members: orderedMembers,
+      shownIds,
+      toggleShown,
+      collapsed,
+      toggleCollapsed,
+      incompleteIds: summary.incompleteIds,
+      periodsByUser: summary.periodsByUser,
+      overlayEvents,
+      coverage: summary.coverage,
+    }),
+    [
+      collapsed,
+      effectiveOnline,
+      orderedMembers,
+      overlayEvents,
+      shownIds,
+      summary,
+      toggleCollapsed,
+      toggleShown,
+    ],
+  );
 }

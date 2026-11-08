@@ -6,4 +6,6 @@ export type DayOverflowPopoverEvent = {
   color: string;
   hidden: boolean;
   rsvp?: "" | "needs-action" | "tentative";
+  /** Render-only overlay kind (`task`, `availability`), passed to the card. */
+  overlay?: string;
 };

@@ -1,0 +1,29 @@
+@import "../../styles.css" reference;
+
+.calendar-availability-popover__body {
+  @apply relative z-10 flex flex-col gap-1.5 p-1;
+}
+
+.calendar-availability-popover__heading {
+  @apply m-0 font-light leading-snug;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}
+
+.calendar-availability-popover__person {
+  @apply inline-flex min-w-0 items-center gap-2;
+}
+
+.calendar-availability-popover__title {
+  @apply m-0 font-medium leading-snug;
+  font-size: 0.875rem;
+}
+
+.calendar-availability-popover__row {
+  @apply m-0 flex min-w-0 items-center gap-2 font-light leading-snug;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}
+
+.calendar-availability-popover__hint {
+  @apply m-0 mt-1 leading-snug text-muted-foreground;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}

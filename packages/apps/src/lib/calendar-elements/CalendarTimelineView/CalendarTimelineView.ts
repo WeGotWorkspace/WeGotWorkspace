@@ -65,7 +65,13 @@ import {
   yearGridWindow,
   yearMonthStarts,
 } from "./CalendarTimelineScale.js";
-import { mapTimelineOccurrenceEvents, type CalendarTimelineEvent } from "./map-timeline-events.js";
+import {
+  dayOverflowPopoverEvents,
+  mapTimelineOccurrenceEvents,
+  timelineRsvp,
+  type CalendarTimelineEvent,
+  type YearDayChip,
+} from "./map-timeline-events.js";
 import {
   pendingCreateRetention,
   pendingOccurrenceRetention,
@@ -128,11 +134,6 @@ const MODE_PRESETS: Record<Exclude<CalendarTimelineViewMode, "year">, ModePreset
   },
   gantt: { numDays: 7, columns: "days", flow: "horizontal", layout: "timeline", variant: "timed" },
 };
-
-type YearDayChip = Pick<
-  CalendarTimelineEvent,
-  "key" | "summary" | "color" | "displayStart" | "displayEnd" | "allDay" | "rsvp"
->;
 
 /* Header/footer/event templates render inside <time-line>'s shadow root, out of reach of this
  * component's plain selectors. The rendered elements carry `part` attributes instead and all
@@ -1360,19 +1361,6 @@ export class CalendarTimelineView extends CalendarViewBase {
     }
   }
 
-  /** Popover payload for a day's events (shared by the overflow footer and compact header). */
-  #popoverEventsFor(events: YearDayChip[]): DayOverflowPopoverEvent[] {
-    return events.map((ev) => ({
-      id: ev.key,
-      start: ev.allDay ? ev.displayStart.toPlainDate().toString() : ev.displayStart.toString(),
-      end: ev.allDay ? ev.displayEnd.toPlainDate().toString() : ev.displayEnd.toString(),
-      summary: ev.summary,
-      color: ev.color,
-      hidden: false,
-      rsvp: ev.rsvp,
-    }));
-  }
-
   /** Keep edge-column popovers on screen: anchor them towards the grid instead of centering. */
   #popoverInlineAlign(cellIndex: number): "start" | "end" | undefined {
     const columns = this.#resolvedColumns;
@@ -1503,7 +1491,7 @@ export class CalendarTimelineView extends CalendarViewBase {
                 ?is-current-day=${isToday}
                 ?outside-visible-month=${outsideMonth}
                 ?is-weekend=${isWeekend}
-                .events=${active ? this.#popoverEventsFor(dayEvents) : []}
+                .events=${active ? dayOverflowPopoverEvents(dayEvents) : []}
                 @day-label-selection=${(event: Event) =>
                   this.#handlePopoverDaySelection(day, cellIndex, event)}
                 @toggle=${(event: Event) => this.#handleHeaderPopoverToggle(cellIndex, event)}
@@ -1535,7 +1523,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     const anchorName = `--timeline-day-overflow-anchor-${cellIndex}`;
     const active = this.#activeOverflowCellIndex === cellIndex;
     const popoverEvents: DayOverflowPopoverEvent[] = active
-      ? this.#popoverEventsFor(allCellEvents as CalendarTimelineEvent[])
+      ? dayOverflowPopoverEvents(allCellEvents as CalendarTimelineEvent[])
       : [];
     const fullDateLabel = new Intl.DateTimeFormat(this.#locale, { dateStyle: "full" }).format(
       new Date(Date.UTC(day.year, day.month - 1, day.day)),
@@ -2137,10 +2125,8 @@ export class CalendarTimelineView extends CalendarViewBase {
         displayStart,
         displayEnd,
         allDay: event.data.allDay === true,
-        rsvp:
-          event.participationStatus === "needs-action" || event.participationStatus === "tentative"
-            ? event.participationStatus
-            : "",
+        rsvp: timelineRsvp(event),
+        overlayKind: event.overlayKind,
       };
       for (const dayKey of occurrenceDayKeys(displayStart, displayEnd)) {
         const bucket = byDay.get(dayKey);
@@ -2290,7 +2276,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
         ?is-current-day=${isToday}
         ?is-weekend=${isWeekend}
-        .events=${this.#popoverEventsFor(dayEvents)}
+        .events=${dayOverflowPopoverEvents(dayEvents)}
         @day-label-selection=${(event: Event) => this.#handlePopoverDaySelection(day, 0, event)}
         @toggle=${(event: Event) => this.#handleYearPopoverToggle(dayIso, monthKey, event)}
         @select=${this.#handleOverflowPopoverSelect}
