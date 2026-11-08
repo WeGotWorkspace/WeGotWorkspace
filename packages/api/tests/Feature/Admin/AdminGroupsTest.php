@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\ApiRefreshToken;
+use App\Models\User;
 use App\Services\Admin\AdminRoleWriter;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\LegacyAdministratorsTeam;
@@ -175,7 +176,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
     {
         $this->grantAdminRole('bob');
         $token = $this->adminBearerToken();
-        \App\Models\User::query()->where('username', 'bob')->update(['enabled' => false]);
+        User::query()->where('username', 'bob')->update(['enabled' => false]);
 
         $this->withBearer($token)
             ->deleteJson('/api/v1/admin/users/alice')
