@@ -51,6 +51,13 @@ final class JmapCapabilities
     public const CHAT = 'urn:wgw:jmap:chat';
 
     /**
+     * Vendor Team availability (#1909): TeamMember/get and
+     * TeamMember/getAvailability, computed on request. Close to the standard
+     * Principal/getAvailability so a later move is a rename.
+     */
+    public const AVAILABILITY = 'urn:wgw:jmap:availability';
+
+    /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
      * constant plus a digest of the enabled capability URNs, so a feature
@@ -174,6 +181,21 @@ final class JmapCapabilities
         return [
             'maxChannelsPerMessage' => 1,
             'mayCreateChannel' => true,
+        ];
+    }
+
+    /**
+     * Limits of TeamMember/getAvailability; a larger request is
+     * `invalidArguments` before any read.
+     *
+     * @return array{maxIdsPerCall: int, maxWeeksPerCall: int, maxPersonWeeksPerCall: int}
+     */
+    public static function availabilityAccountCapability(): array
+    {
+        return [
+            'maxIdsPerCall' => 50,
+            'maxWeeksPerCall' => 54,
+            'maxPersonWeeksPerCall' => 540,
         ];
     }
 
