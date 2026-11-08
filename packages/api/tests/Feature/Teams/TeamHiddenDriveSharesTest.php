@@ -86,6 +86,38 @@ final class TeamHiddenDriveSharesTest extends WgwDatabaseTestCase
         $this->assertSame($rows, $this->grantRowSnapshot());
     }
 
+    public function test_a_team_grant_is_hidden_when_its_owner_leaves_that_team_even_for_a_member_who_shares_another_team(): void
+    {
+        // Bob and carol share T1 and T3; the folder goes to T3. The grant is judged per grant:
+        // once bob leaves T3 carol loses it although she still shares T1 with him.
+        $this->seedSharedTeam('t3', 'bob', 'carol');
+        $this->forgetRequestState();
+        $shareId = $this->share('bob', self::FOLDER, ['groups/t3' => 'view']);
+        $this->assertSame([self::FOLDER], $this->sharedWithMePaths('carol'));
+        $this->asUser('carol')->get('/api/v1/files/content?path='.urlencode(self::FILE))->assertOk();
+        $this->asUser('bob')->getJson('/api/v1/files/shares/'.$shareId)->assertOk()
+            ->assertJsonPath('data.shareWith.groups/t3.access', 'view');
+        $rows = $this->grantRowSnapshot();
+
+        $this->leave('bob', 't3');
+
+        $this->assertTeamGrantHidden($shareId);
+        $this->assertSame($rows, $this->grantRowSnapshot());
+
+        // Sharing yet another Team does not bring it back; only bob rejoining T3 does.
+        $this->seedSharedTeam('t4', 'bob', 'carol');
+        $this->forgetRequestState();
+        $this->assertTeamGrantHidden($shareId);
+
+        $this->join('bob', 't3');
+
+        $this->assertSame([self::FOLDER], $this->sharedWithMePaths('carol'));
+        $this->asUser('carol')->get('/api/v1/files/content?path='.urlencode(self::FILE))->assertOk();
+        $this->asUser('bob')->getJson('/api/v1/files/shares/'.$shareId)->assertOk()
+            ->assertJsonPath('data.shareWith.groups/t3.access', 'view');
+        $this->assertSame($rows, $this->grantRowSnapshot());
+    }
+
     public function test_the_owners_listing_drops_the_shared_badge_while_the_only_grant_is_hidden(): void
     {
         $this->share('bob', self::FOLDER, ['carol' => 'view']);
@@ -297,6 +329,14 @@ final class TeamHiddenDriveSharesTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.shareWith.carol.access', 'view');
         $this->assertContains('carol', $this->effectiveGrantees('bob', self::FILE));
         $this->assertSame([self::FOLDER], $this->byPrincipalPaths('bob', 'carol'));
+    }
+
+    private function assertTeamGrantHidden(string $shareId): void
+    {
+        $this->assertSame([], $this->sharedWithMePaths('carol'));
+        $this->asUser('carol')->get('/api/v1/files/content?path='.urlencode(self::FILE))->assertNotFound();
+        $this->asUser('bob')->getJson('/api/v1/files/shares/'.$shareId)->assertOk()
+            ->assertJsonMissingPath('data.shareWith.groups/t3');
     }
 
     /**
