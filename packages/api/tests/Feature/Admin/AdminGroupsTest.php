@@ -171,6 +171,24 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
     }
 
+    public function test_a_disabled_admin_does_not_count_as_another_administrator(): void
+    {
+        $this->grantAdminRole('bob');
+        $token = $this->adminBearerToken();
+        \App\Models\User::query()->where('username', 'bob')->update(['enabled' => false]);
+
+        $this->withBearer($token)
+            ->deleteJson('/api/v1/admin/users/alice')
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'The last administrator cannot be removed.');
+        $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/bob', ['isAdmin' => false])
+            ->assertOk();
+        $this->assertDatabaseHas('users', ['username' => 'bob', 'is_admin' => false], 'wgw');
+    }
+
     public function test_admin_grants_the_role_and_it_takes_effect_on_the_next_sign_in(): void
     {
         $bob = $this->login('bob');
