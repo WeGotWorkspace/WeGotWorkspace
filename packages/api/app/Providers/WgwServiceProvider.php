@@ -22,6 +22,8 @@ use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Teams\TeamColleagues;
+use App\Services\Teams\TeamMembershipReader;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -58,6 +60,17 @@ final class WgwServiceProvider extends ServiceProvider
             }
             if ($app->resolved(AdminRoleResolver::class)) {
                 $app->make(AdminRoleResolver::class)->forget();
+            }
+        });
+
+        // Colleague sets (Epic #1915), memoised for one request and cleared in place the same way.
+        $this->app->scoped(TeamColleagues::class, static fn ($app): TeamColleagues => new TeamColleagues(
+            $app->make(TeamMembershipReader::class),
+            static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
+        ));
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(TeamColleagues::class)) {
+                $app->make(TeamColleagues::class)->forgetRequestState();
             }
         });
 
