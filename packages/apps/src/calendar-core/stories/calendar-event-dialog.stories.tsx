@@ -347,11 +347,14 @@ function inviteeAvailabilitySource() {
 export const WithInviteeAvailability: Story = {
   tags: ["vitest-ci"],
   decorators: [
-    (StoryComponent) => (
-      <TeamAvailabilityProvider source={inviteeAvailabilitySource()}>
-        <StoryComponent />
-      </TeamAvailabilityProvider>
-    ),
+    function WithTeamAvailability(StoryComponent) {
+      const [source] = useState(inviteeAvailabilitySource);
+      return (
+        <TeamAvailabilityProvider source={source}>
+          <StoryComponent />
+        </TeamAvailabilityProvider>
+      );
+    },
   ],
   args: {
     ...WithInvitees.args,
@@ -366,6 +369,10 @@ export const WithInviteeAvailability: Story = {
       title: "Planning",
       attendees: WithInvitees.args!.form!.attendees,
     },
+  },
+  render: function Render(args) {
+    const [form, setForm] = useState<CalendarEventFormValue>(args.form);
+    return <CalendarEventDialog {...args} form={form} onChange={setForm} />;
   },
   play: async ({ canvasElement }) => {
     const body = canvasElement.ownerDocument.body;
