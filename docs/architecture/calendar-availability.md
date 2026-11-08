@@ -9,7 +9,7 @@ API reference: [packages/api/docs/calendars/availability.md](../../packages/api/
 ## Rules
 
 1. **Off by default.** "Share my availability with my Teams" is off until the person turns it on. While it is off nobody gets anything, the person included.
-2. **Teams decide who sees whom.** A viewer reads a person only when they share a Team (or are that person), the person's switch is on, and the person is not disabled. The admin role gives no extra access.
+2. **Teams decide who sees whom.** A viewer reads a person only when they share a Team (or are that person), the person's switch is on, and the person is not disabled. The admin role gives no extra access. `AvailabilityAudience` asks `TeamColleagues::sharesTeamIgnoringAdminRole` (#1917), the same Team check the rest of the suite uses.
 3. **Every refusal looks the same.** Unknown, switched off, disabled and "no shared Team" all come back as `notFound` over JMAP and as `3.7;Could not find principal` over CalDAV.
 4. **Own calendars only.** A person's own personal event calendars and the event calendars their Teams own count. ICS subscriptions, calendars shared with the person and other kinds (tasks, notes) never count.
 5. **Each calendar can be left out**, and a personal calendar can share `details` (title and location) instead of `busy`. Team calendars are always `busy`.
@@ -92,6 +92,5 @@ Every JMAP limit is checked before anything is read, so a request that is too la
 
 ## Not built here
 
-- The Team check uses a `groupmembers` self-join in `AvailabilityAudience::sharesTeam` until `TeamColleagues::sharesTeamIgnoringAdminRole` (#1917) is on `main`; then it calls that.
 - No `/changes` and no push for settings or availability. Clients poll `TeamMember/get` `state` on their availability tick.
 - Search and MCP do not see availability.
