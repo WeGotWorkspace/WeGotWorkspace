@@ -406,6 +406,7 @@ final class DriveShareService
 
         // Grants hidden because the owner no longer shares a Team with this user (Epic #1915)
         // drop out of "shared with me" like revoked ones; the rows stay.
+        $this->grantVisibility->checkFromGrantee($user);
         $userGrants = $userGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
         $groupGrants = $groupGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
 

@@ -20,6 +20,15 @@ final class DriveShareGrantVisibility
 {
     public function __construct(private readonly TeamColleagues $colleagues) {}
 
+    /**
+     * Call before checking many grants held by one user ("shared with me", path access): every
+     * owner is then checked against that user's Team mates instead of loading each owner's.
+     */
+    public function checkFromGrantee(string $username): void
+    {
+        $this->colleagues->loadTeamMatesOf($username);
+    }
+
     public function isVisible(DriveShareGrant $grant, ?DriveShare $share = null): bool
     {
         $share ??= $grant->share;

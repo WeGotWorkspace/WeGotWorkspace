@@ -70,7 +70,20 @@ final class TeamColleagues
     /** Real Team membership, admins included: DMs, shares, hiding, presence, free/busy. */
     public function sharesTeamIgnoringAdminRole(string $viewer, string $username): bool
     {
+        // Sharing a Team is symmetric: answer from whichever side is already loaded, so a
+        // reader who checks many owners against themselves costs one membership query.
+        $other = TeamMembershipReader::normalise($username);
+        if (! isset($this->teamMates[TeamMembershipReader::normalise($viewer)]) && isset($this->teamMates[$other])) {
+            return ColleagueSet::restricted($this->teamMates[$other])->contains($viewer);
+        }
+
         return ColleagueSet::restricted($this->teamMatesOf($viewer))->contains($username);
+    }
+
+    /** Loads the user's Team mates now, so later checks against them reuse this one query. */
+    public function loadTeamMatesOf(string $username): void
+    {
+        $this->teamMatesOf($username);
     }
 
     /** Real membership of `principals/groups/{groupSlug}`, admins included. */

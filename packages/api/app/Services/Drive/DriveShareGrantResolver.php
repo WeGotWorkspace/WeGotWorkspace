@@ -215,6 +215,9 @@ final class DriveShareGrantResolver
             ->get();
 
         $live = [];
+        if ($grants->isNotEmpty()) {
+            $this->visibility->checkFromGrantee($user);
+        }
         foreach ($grants as $grant) {
             $share = $grant->share;
             if ($share === null || $share->revoked_at !== null || ! $this->visibility->isVisible($grant, $share)) {
