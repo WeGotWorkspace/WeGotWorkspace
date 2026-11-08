@@ -15,6 +15,7 @@ import {
 import { SettingsAboutPane } from "@/settings-core/src/settings-about-pane";
 import { SettingsAppearancePane } from "@/settings-core/src/settings-appearance-pane";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
+import { SettingsCalendarAvailabilitySection } from "@/settings-core/src/settings-calendar-availability-section";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
@@ -80,7 +81,7 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "calendar",
     label: "Calendar",
-    description: "Default calendar, timezone, and first day of week",
+    description: "Default calendar, timezone, first day of week, and availability",
     icon: <CalendarDays className="size-3.5" />,
     group: "apps",
     appId: "calendar",
@@ -162,6 +163,11 @@ export function registerBuiltinSettings(): void {
     id: "calendar-display",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarPane />,
+  });
+  registerSlice({
+    id: "calendar-availability",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarAvailabilitySection />,
   });
   registerSlice({
     id: "tasks-default-collection",

@@ -1,0 +1,25 @@
+/** Copy of the Availability section in Settings → Calendar (#1912, spec "Owner settings"). */
+export const calendarAvailabilityLabels = {
+  title: "Availability",
+  switch: "Share my availability with my Teams",
+  offHint:
+    "When this is on, people in your Teams can see when you are busy. While it is off, nobody sees your availability.",
+  teamsHeading: "Who can see it",
+  teamsNone: "You are not in a Team yet. Once you are, its members can see when you are busy.",
+  calendarsHeading: "Calendars",
+  calendarsNone: "You have no calendars that can count toward your availability yet.",
+  include: "Counts toward my availability",
+  detail: "Teammates see",
+  detailBusy: "Time only",
+  detailDetails: "Title and location",
+  teamBadge: "Team",
+  teamHint: "Every event on this Team calendar counts for the whole Team, also if you decline it.",
+  footer: "Events marked “Show as: Free” never count.",
+  loading: "Loading availability settings…",
+  offline: "Availability settings need a connection. They load again when you are back online.",
+  loadError: "Could not load availability settings.",
+  retry: "Try again",
+  saved: "Availability settings saved",
+  saveError: "Could not save availability settings",
+  saveOffline: "Availability settings need a connection. Try again when you are online.",
+} as const;
