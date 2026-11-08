@@ -1,4 +1,4 @@
-Source: #1915 (body-hash: e6d890e5)
+Source: #1915 (body-hash: dd04b865)
 Goal: WeGotWorkspace/Product#114
 
 # Teams: rename Groups, and see only colleagues you share a Team with
@@ -129,7 +129,7 @@ Existing grants are not touched by these gates.
 - A user added back to a Team sees the hidden shares again, unchanged.
 - Admin role removed: everything that was visible only because the user was admin disappears on the next request.
 - A user who is both sharee and member of the owner's Team: visible. The membership makes them colleagues.
-- A personal collection shared with a Team the owner belongs to: every member is a colleague of the owner, so it stays visible. Shares to a Team the owner left are covered by the same rule: members who no longer share a Team with the owner stop seeing it.
+- A personal collection shared with a Team the owner belongs to: every member is a colleague of the owner, so it stays visible. A share to a Team counts only while its owner is a member of that Team. When the owner leaves, it is hidden for every member, also for members who still share another Team with the owner, so all members of a Team see the same (decided 2026-11-08).
 - Chat channel with several members, some of whom are not the viewer's colleagues: the viewer sees their names and messages, but cannot start a DM with them from the member list.
 - An owner shares a calendar with B, then stops sharing a Team with B, then edits the share list to add C. B's grant survives the save and returns when they share a Team again.
 - An owner deletes an item that has hidden shares: the hidden grants go with it, as for any share today.
