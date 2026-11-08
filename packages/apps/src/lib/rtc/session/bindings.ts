@@ -1,4 +1,5 @@
 import { FrameReassembler, ingestDataChannelData } from "@/lib/rtc/session/data-channel-frames";
+import { openIdleMediaSendSlots, reserveMediaSendSlots } from "@/lib/rtc/session/media-send-slots";
 import type { RtcLinkState } from "@/lib/rtc/types";
 
 export type MediaBindingOptions = {
@@ -9,13 +10,16 @@ export type MediaBindingOptions = {
 export function createMediaBinding(options: MediaBindingOptions) {
   return {
     kind: "media" as const,
-    attach(pc: RTCPeerConnection, remoteId: string): MediaStream {
+    attach(pc: RTCPeerConnection, remoteId: string, initiator = false): MediaStream {
       const localStream = options.getLocalStream();
       if (localStream) {
         for (const track of localStream.getTracks()) {
           pc.addTrack(track, localStream);
         }
       }
+      // The answerer opens its slots in `prepareAnswer`: an offer only reuses
+      // transceivers that `addTrack` created.
+      if (initiator) reserveMediaSendSlots(pc, localStream);
       const remoteStream = new MediaStream();
       pc.ontrack = (event) => {
         const track = event.track;
@@ -30,6 +34,10 @@ export function createMediaBinding(options: MediaBindingOptions) {
         options.onRemoteStream?.(remoteId, remoteStream);
       };
       return remoteStream;
+    },
+    /** Runs after the remote offer is applied, before the answer is created. */
+    prepareAnswer(pc: RTCPeerConnection): void {
+      openIdleMediaSendSlots(pc);
     },
   };
 }
