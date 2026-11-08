@@ -53,6 +53,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpCalendarsFixtures();
         $this->seedWgwUser('dave', displayName: 'Dave');
+        $this->joinCalendarFixtureTeam('dave');
         $this->seedDefaultCalendarFor('dave');
         Mail::fake();
         Log::listen(function (MessageLogged $event): void {

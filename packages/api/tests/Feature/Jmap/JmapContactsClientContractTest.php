@@ -23,6 +23,11 @@ final class JmapContactsClientContractTest extends WgwDatabaseTestCase
     use CalendarsTestFixtures;
     use ContactsTestFixtures;
 
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
