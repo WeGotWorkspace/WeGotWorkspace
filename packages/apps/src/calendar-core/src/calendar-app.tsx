@@ -191,7 +191,6 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
         render={(key) => (
           <TeamAvailabilityProvider key={key} source={teamAvailability}>
             <CalendarWorkspace
-              key={key}
               data={data}
               session={session}
               operations={operations}
