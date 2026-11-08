@@ -48,6 +48,12 @@ function calendarRow(name: string): HTMLElement {
   return row.closest("li")!;
 }
 
+/** The texts an element's `aria-describedby` points at, in order. */
+function descriptions(element: HTMLElement): string[] {
+  const ids = (element.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+  return ids.map((id) => document.getElementById(id)?.textContent ?? `missing #${id}`);
+}
+
 /** Picks one option in a calendar row's dropdown (Radix Select). */
 function choose(calendar: string, option: string): void {
   fireEvent.click(screen.getByRole("combobox", { name: calendar }));
@@ -156,17 +162,16 @@ describe("SettingsCalendarAvailabilitySection", () => {
     ).toBeNull();
 
     const tag = within(team).getByRole("button", { name: labels.teamBadge });
-    const describedBy = tag.getAttribute("aria-describedby") ?? "";
-    expect(document.getElementById(describedBy)?.textContent).toBe(labels.teamHint);
+    expect(descriptions(tag)).toEqual([labels.teamHint]);
+    // Not also part of the reading order: only the description carries the hint.
+    expect(screen.getAllByText(labels.teamHint).every((el) => el.hidden)).toBe(true);
     expect(screen.queryByRole("tooltip")).toBeNull();
 
     // Keyboard focus opens it.
     act(() => tag.focus());
     expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
-    // The description stays on the tag while the tooltip is open.
-    const openDescribedBy = (tag.getAttribute("aria-describedby") ?? "").split(/\s+/);
-    expect(openDescribedBy).toContain(describedBy);
-    expect(document.getElementById(describedBy)?.textContent).toBe(labels.teamHint);
+    // While open the tag is still described by the hint, but only once.
+    expect(descriptions(tag)).toEqual([labels.teamHint]);
     fireEvent.keyDown(tag, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
     act(() => tag.blur());
@@ -174,6 +179,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
     // A tap opens it too: a cancelled touch pointerdown fires no click.
     fireEvent.pointerDown(tag, { pointerType: "touch" });
     expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
+    expect(descriptions(tag)).toEqual([labels.teamHint]);
   });
 
   it("saves the switch and changed calendars through the REST operations", async () => {

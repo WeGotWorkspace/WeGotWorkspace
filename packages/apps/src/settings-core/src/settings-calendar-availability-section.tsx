@@ -210,20 +210,21 @@ function AvailabilityCalendarRow({
 /**
  * The "Team" tag of a Team calendar row. Its hint opens as a tooltip on hover, on keyboard focus
  * and on tap (Radix tooltips ignore taps, hence the controlled `open`). Screen readers get the
- * hint as the tag's description, also while the tooltip is closed.
+ * hint once as the tag's description, whether the tooltip is open or closed.
  */
 function TeamCalendarTag() {
   const hintId = useId();
   const [open, setOpen] = useState(false);
   return (
     <Tooltip open={open} onOpenChange={setOpen}>
-      <TooltipTrigger asChild>
+      {/* One description at a time: the hidden hint while closed; while open, Radix adds the
+          tooltip itself, so the hint would be read twice. */}
+      <TooltipTrigger asChild aria-describedby={open ? undefined : hintId}>
         <button
           type="button"
           className="settings-availability__team-tag"
-          aria-describedby={hintId}
           onPointerDown={(event) => {
-            // Cancelling a touch pointerdown suppresses the click and focus, so open here.
+            // A cancelled touch pointerdown may be followed by no click, so open here.
             if (event.pointerType !== "mouse") {
               event.preventDefault();
               setOpen(true);
@@ -237,7 +238,8 @@ function TeamCalendarTag() {
           <Badge variant="outline">{labels.teamBadge}</Badge>
         </button>
       </TooltipTrigger>
-      <span id={hintId} className="sr-only">
+      {/* Hidden: only a description target, so it is not read again in the reading order. */}
+      <span id={hintId} hidden>
         {labels.teamHint}
       </span>
       <TooltipContent side="top" className="settings-availability__team-tooltip">
