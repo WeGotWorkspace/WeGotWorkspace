@@ -28,6 +28,8 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'plan.md');
         $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'notes.txt');
         $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'report.pdf');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

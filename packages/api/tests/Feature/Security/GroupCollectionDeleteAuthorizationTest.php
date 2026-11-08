@@ -44,6 +44,8 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $crew = $this->seedWgwGroup('principals/groups/'.self::GROUP, 'Crew');
         $this->addPrincipalToGroup($crew, $alice);
         $this->addPrincipalToGroup($crew, $bob);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_group_channel_delete_is_admin_only(): void

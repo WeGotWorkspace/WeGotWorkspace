@@ -391,6 +391,7 @@ export class RtcPeerMesh {
         this.recovery?.onSignaled(id);
       },
       dropPeer: (id) => this.removePeer(id),
+      prepareAnswer: (pc) => this.peers.prepareAnswer(pc),
       log: (event, details) => this.log(event, details),
     };
   }

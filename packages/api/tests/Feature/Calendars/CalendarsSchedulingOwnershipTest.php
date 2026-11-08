@@ -60,6 +60,8 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
                 $this->skippedDeliveries[] = array_intersect_key($event->context, array_flip(['uid', 'recipient', 'method']));
             }
         });
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

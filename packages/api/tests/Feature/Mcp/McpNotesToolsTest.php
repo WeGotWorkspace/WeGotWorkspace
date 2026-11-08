@@ -38,6 +38,8 @@ final class McpNotesToolsTest extends WgwDatabaseTestCase
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/carol');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_notes_search_stays_notes_only(): void

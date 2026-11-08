@@ -489,6 +489,7 @@ final class CalendarRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;

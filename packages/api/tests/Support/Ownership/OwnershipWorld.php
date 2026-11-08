@@ -47,6 +47,10 @@ trait OwnershipWorld
             }
         }
 
+        // Carol shares with the actors in the grant scopes; Epic #1915 only lets colleagues
+        // share, so every fixture user also shares this Team (outside crew/outsiders/alumni).
+        $this->seedSharedTeamForEveryone();
+
         $this->ownershipTokens = [];
         $this->ownershipGuestToken = null;
         foreach (Actor::signedIn() as $actor) {

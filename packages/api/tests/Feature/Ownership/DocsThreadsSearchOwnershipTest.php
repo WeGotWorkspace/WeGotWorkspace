@@ -289,6 +289,8 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             Scope::OwnGroup => [OwnershipPrincipals::DAVE, '/groups/'.OwnershipPrincipals::CREW],
             Scope::OtherGroup, Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite => [$carol, '/groups/'.OwnershipPrincipals::OUTSIDERS],
             Scope::FormerGroup => [$otherActor, '/groups/'.OwnershipPrincipals::ALUMNI],
+            // Epic #1915: a Team share needs an owner in that Team; dave is in crew.
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, '/users/'.OwnershipPrincipals::DAVE],
             default => [$carol, '/users/'.$carol],
         };
         $path = $root.'/'.$name;
@@ -629,6 +631,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
             Scope::OwnGroup => [OwnershipPrincipals::DAVE, OwnershipPrincipals::CREW],
             Scope::OtherGroup, Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite => [OwnershipPrincipals::CAROL, OwnershipPrincipals::OUTSIDERS],
             Scope::FormerGroup => [$otherActor, OwnershipPrincipals::ALUMNI],
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, null],
             default => [OwnershipPrincipals::CAROL, null],
         };
 

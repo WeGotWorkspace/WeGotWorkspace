@@ -67,6 +67,8 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
             WgwSettings::TASKS_ENABLED => true,
             WgwSettings::NOTES_ENABLED => true,
         ]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -138,6 +140,8 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
     public function test_a_revoked_group_share_leaves_every_members_results(string $source): void
     {
         $marker = 'zqgroupshare'.$source;
+        // Epic #1915: only a member of a Team may share with it.
+        $this->seedSharedTeam(self::GROUP, self::OWNER);
         $collection = $this->createCollection($source, $marker);
         $this->share($source, $collection, 'groups/'.self::GROUP, ['mayReadItems' => true]);
         $this->reindex();

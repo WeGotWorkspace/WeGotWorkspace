@@ -23,6 +23,8 @@ final class JmapContactsShareDismissTest extends WgwDatabaseTestCase
         $this->setUpContactsFixtures();
         $this->seedDefaultAddressBookFor('alice');
         Addressbook::query()->where('principaluri', 'principals/bob')->update(['displayname' => 'Bob']);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_dismissed_book_no_longer_resolves_by_id(): void

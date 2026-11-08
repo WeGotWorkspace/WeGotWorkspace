@@ -36,6 +36,8 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
         $this->addPrincipalToGroup($team, $alice);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**

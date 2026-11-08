@@ -245,8 +245,13 @@ final class DriveShareRules
             ->exists();
 
         if (! $exists) {
-            throw new ApiHttpException(400, 'Unknown team.', 'bad_request');
+            throw self::unknownGroup();
         }
+    }
+
+    public static function unknownGroup(): ApiHttpException
+    {
+        return new ApiHttpException(400, 'Unknown team.', 'bad_request');
     }
 
     public function parseGroupPrincipalKey(string $principalId): ?string

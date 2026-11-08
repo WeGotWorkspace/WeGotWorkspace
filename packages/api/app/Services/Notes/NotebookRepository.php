@@ -460,6 +460,7 @@ final class NotebookRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;

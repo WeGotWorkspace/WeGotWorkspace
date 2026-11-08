@@ -19,6 +19,7 @@ use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Teams\TeamColleagues;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ final class ChatChannelRepository
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
         private readonly WgwCalendarBackendFactory $backends,
         private readonly CalDavCollections $collections,
+        private readonly TeamColleagues $colleagues,
         private readonly ChatChannelIdAllocator $channelIds = new ChatChannelIdAllocator,
     ) {}
 
@@ -195,9 +197,12 @@ final class ChatChannelRepository
         // Internal workspace users only: guests have no principal row and
         // groups/externals are excluded by the username shape above.
         $peerPrincipal = Principal::forUsername($peer);
+        $unknown = new ApiHttpException(400, 'Unknown or invalid DM principal.', 'invalidProperties', ['principal']);
         if ($peerPrincipal === null) {
-            throw new ApiHttpException(400, 'Unknown or invalid DM principal.', 'invalidProperties', ['principal']);
+            throw $unknown;
         }
+        // Someone outside the caller's Teams (admins included) answers like an unknown user.
+        $this->colleagues->assertMayShareWith($caller, $peer, $unknown);
 
         $uri = ChatCollectionUris::dmUri($caller, $peer);
 
@@ -235,7 +240,7 @@ final class ChatChannelRepository
 
             // Both members write: the peer joins through the standard sharing
             // machinery (invite + normalized uri), exactly like channel sharees.
-            $this->shareInvites->apply($instance, null, [$peer => ['mayWrite' => true]]);
+            $this->shareInvites->apply($instance, null, [$peer => ['mayWrite' => true]], $caller);
             $this->normalizeShareeInstanceUris($instance);
             $this->nameDmShareeInstancesAfterOwner($instance, $caller);
 
@@ -295,7 +300,7 @@ final class ChatChannelRepository
         }
 
         if (array_key_exists('shareWith', $payload)) {
-            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith'], $username);
             $this->normalizeShareeInstanceUris($instance);
         }
 

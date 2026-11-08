@@ -400,6 +400,8 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             // The other actor creates it and stays in alumni, so the owner's
             // view still works after this actor leaves.
             Scope::FormerGroup => [$this->usernameFor($actor === Actor::Admin ? Actor::Member : Actor::Admin), OwnershipPrincipals::ALUMNI],
+            // Epic #1915: a Team share needs an owner in that Team; dave is in crew.
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, null],
             default => [$carol, null],
         };
 
@@ -931,8 +933,9 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             $owner = OwnershipPrincipals::DAVE;
             [$calendarId, $eventId] = $this->createCalendarWithEvent($owner, 'target-double', 'double grant', OwnershipPrincipals::CREW, [$self => ['mayReadItems' => true]]);
         } else {
-            // carol's calendar, shared read-write with crew and read-only with the actor.
-            $owner = OwnershipPrincipals::CAROL;
+            // dave's calendar, shared read-write with crew and read-only with the actor.
+            // Epic #1915: a Team share needs an owner in that Team.
+            $owner = OwnershipPrincipals::DAVE;
             [$calendarId, $eventId] = $this->createCalendarWithEvent($owner, 'target-double', 'double grant', null, [
                 'groups/'.OwnershipPrincipals::CREW => ['mayWriteAll' => true],
                 $self => ['mayReadItems' => true],
