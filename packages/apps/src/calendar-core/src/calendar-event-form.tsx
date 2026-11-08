@@ -68,6 +68,8 @@ export type CalendarEventFormProps = {
   onClose: () => void;
   onSave: (scope?: RecurrenceEditScope) => void;
   onDelete?: () => void;
+  /** Saved event being edited (master id): its own copies never make an invitee busy. */
+  availabilityEventId?: string;
   recurrenceId?: string;
   recurrenceSaveScope?: RecurrenceEditScope;
   thisInstanceLocked?: boolean;
@@ -123,6 +125,7 @@ export function CalendarEventForm({
   sessionEmail,
   onRsvp,
   recurrenceId,
+  availabilityEventId,
   recurrenceSaveScope,
   thisInstanceLocked = false,
   meetOperations,
@@ -352,6 +355,7 @@ export function CalendarEventForm({
             hideInvitees={layout?.hideInvitees}
             hideAlarms={layout?.hideAlarms}
             hideNotes={layout?.hideNotes}
+            availabilityEventId={availabilityEventId}
             onFieldChange={set}
           />
         </div>

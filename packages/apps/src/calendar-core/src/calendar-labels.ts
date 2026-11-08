@@ -243,6 +243,15 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
+  /** Invitee availability tag (#1614): teammate free or busy at the event's time. */
+  eventAttendeesAvailabilityFree: string;
+  eventAttendeesAvailabilityBusy: string;
+  /** Busy tooltip heading. */
+  eventAttendeesAvailabilityBusyWith: string;
+  /** Busy tooltip row for a period without a title (owner shares the time only). */
+  eventAttendeesAvailabilityBusyUntitled: string;
+  /** Busy tooltip time for an all-day period. */
+  eventAttendeesAvailabilityAllDay: string;
   rsvpAccept: string;
   rsvpMaybe: string;
   rsvpDecline: string;
@@ -495,6 +504,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
+  eventAttendeesAvailabilityFree: "Free",
+  eventAttendeesAvailabilityBusy: "Busy",
+  eventAttendeesAvailabilityBusyWith: "Busy at this time",
+  eventAttendeesAvailabilityBusyUntitled: "Busy",
+  eventAttendeesAvailabilityAllDay: "All day",
   rsvpAccept: "Accept",
   rsvpMaybe: "Maybe",
   rsvpDecline: "Decline",

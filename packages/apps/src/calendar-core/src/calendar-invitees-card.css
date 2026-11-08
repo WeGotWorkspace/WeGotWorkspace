@@ -13,6 +13,33 @@
   @apply flex min-w-0 flex-wrap items-center gap-1.5;
 }
 
+/* Invitee chip + Free/Busy tag (#1614) stay together when the row wraps. */
+.calendar-invitees-card__invitee {
+  @apply inline-flex min-w-0 items-center gap-1;
+}
+
+.calendar-invitee-availability-tag__trigger {
+  @apply inline-flex rounded-[length:var(--control-radius)] outline-none;
+}
+
+.calendar-invitee-availability-tag__trigger:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.calendar-invitee-availability-tag--busy {
+  /* Amber: a clash the organizer should notice, not an error. */
+  --tag-fg: color-mix(in oklab, var(--color-warning) 60%, var(--workspace-foreground));
+  --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
+}
+
+.calendar-invitee-availability-tag__tooltip-title {
+  @apply font-medium;
+}
+
+.calendar-invitee-availability-tag__tooltip ul {
+  @apply mt-1 flex flex-col gap-0.5;
+}
+
 .calendar-invitees-card__add {
   @apply min-w-0;
 }

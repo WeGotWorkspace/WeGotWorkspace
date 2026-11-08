@@ -4,6 +4,7 @@ import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-action
 import {
   attendeesReferToSamePerson,
   listedInviteeAttendees,
+  normalizeParticipantAddress,
   organizerAttendeeForList,
   type CalendarAttendee,
   type CalendarInvitee,
@@ -16,6 +17,8 @@ import {
   type CalendarInviteeContactContext,
   type CalendarInviteeSearchRow,
 } from "@/calendar-core/src/calendar-contact-attendee";
+import type { InviteeAvailabilityMap } from "@/calendar-core/src/calendar-invitee-availability";
+import { CalendarInviteeAvailabilityTag } from "@/calendar-core/src/calendar-invitee-availability-tag";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
@@ -55,6 +58,8 @@ export type CalendarInviteesCardProps = {
   onChange: (attendees: CalendarAttendee[]) => void;
   /** Live JMAP refresh; cache remains the first paint. */
   onRefreshContactCards?: () => void;
+  /** Free/Busy per invited teammate (#1614), keyed by normalized address. No entry → no tag. */
+  availability?: InviteeAvailabilityMap;
 };
 
 function contactContextLabel(
@@ -163,6 +168,7 @@ export function CalendarInviteesCard({
   controlSize = "sm",
   onChange,
   onRefreshContactCards,
+  availability,
 }: CalendarInviteesCardProps) {
   const locked = busy || readOnly;
   const [query, setQuery] = useState("");
@@ -276,7 +282,9 @@ export function CalendarInviteesCard({
         const toneClass = rsvpToneClass(attendee.participationStatus);
         const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus) ?? Clock;
 
-        return (
+        const inviteeAvailability = availability?.get(normalizeParticipantAddress(attendee.email));
+
+        const chip = (
           <ParticipantChip
             key={attendee.email}
             title={title}
@@ -297,6 +305,13 @@ export function CalendarInviteesCard({
                     )
             }
           />
+        );
+        if (!inviteeAvailability) return chip;
+        return (
+          <span key={attendee.email} className="calendar-invitees-card__invitee">
+            {chip}
+            <CalendarInviteeAvailabilityTag availability={inviteeAvailability} labels={labels} />
+          </span>
         );
       })}
     </div>
