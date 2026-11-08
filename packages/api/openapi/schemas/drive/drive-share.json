@@ -41,7 +41,7 @@
         { "type": "null" }
       ]
     },
-    "description": "Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path)."
+    "description": "Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path). A user or Team grant whose owner no longer shares a Team with the grantee (or left the Team the share went to) is hidden on read for both of them, admins included, and left out here; nothing is deleted, and it shows again when they share a Team again."
   },
   "DriveShare": {
     "type": "object",

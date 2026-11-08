@@ -1055,10 +1055,19 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             return;
         }
         $response->assertOk();
-        $changed = array_map('strval', array_merge(
-            (array) $response->json('methodResponses.0.1.created'),
-            (array) $response->json('methodResponses.0.1.updated'),
-        ));
+        if ($response->json('methodResponses.0.0') === 'error') {
+            // #1926: a grant that reaches the actor changes the grant hash in the FileNode
+            // state, so the client resyncs instead of getting a delta; check the full tree.
+            $this->assertSame('cannotCalculateChanges', $response->json('methodResponses.0.1.type'), $case->key());
+            $changed = array_map('strval', array_column((array) $this->jmap($case->actor, [
+                ['FileNode/get', ['accountId' => $self, 'ids' => null, 'properties' => ['id']], 'c0'],
+            ])->assertOk()->json('methodResponses.0.1.list'), 'id'));
+        } else {
+            $changed = array_map('strval', array_merge(
+                (array) $response->json('methodResponses.0.1.created'),
+                (array) $response->json('methodResponses.0.1.updated'),
+            ));
+        }
         if ($case->outcome === Outcome::Allowed) {
             $this->assertContains($docId, $changed, $case->key());
 

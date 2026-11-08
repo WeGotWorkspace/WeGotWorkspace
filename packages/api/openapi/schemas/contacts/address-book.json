@@ -66,7 +66,7 @@
           },
           { "type": "null" }
         ],
-        "description": "Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes."
+        "description": "Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change."
       },
       "isSharee": {
         "type": "boolean",
