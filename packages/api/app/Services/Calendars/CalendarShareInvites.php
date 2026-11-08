@@ -141,7 +141,9 @@ final class CalendarShareInvites
             if ((string) $principal->uri === (string) $instance->principaluri) {
                 continue;
             }
-            if (! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
+            // An owner can always take access away from a sharee who already holds a grant.
+            $revokesExisting = $grant === null && $this->holdsInvite($currentInvites, (string) $principal->uri);
+            if (! $revokesExisting && ! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
                 $invalid[] = 'shareWith/'.$id;
 
                 continue;
@@ -175,6 +177,20 @@ final class CalendarShareInvites
         }
 
         return $sharees;
+    }
+
+    /**
+     * @param  list<Sharee>  $currentInvites
+     */
+    private function holdsInvite(array $currentInvites, string $principalUri): bool
+    {
+        foreach ($currentInvites as $invite) {
+            if ((string) $invite->principal === $principalUri) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

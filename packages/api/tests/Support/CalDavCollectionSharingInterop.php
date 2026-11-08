@@ -6,8 +6,10 @@ namespace Tests\Support;
 
 use App\Dav\SabreServerFactory;
 use App\Models\CalendarInstance;
+use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use Illuminate\Http\Request;
 use Sabre\CalDAV\Plugin as CalDavPlugin;
 use Sabre\DAV\Exception as SabreDavException;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -161,6 +163,38 @@ trait CalDavCollectionSharingInterop
         $this->assertSame($results['ghost'], $results['erin']);
         $this->assertNull($results['erin']['principaluri']);
         $this->assertSame(0, CalendarInstance::query()->where('principaluri', 'principals/erin')->where('access', '!=', SharingPlugin::ACCESS_SHAREDOWNER)->count());
+    }
+
+    /**
+     * A refused re-share must not reach Sabre's in-place update of an existing invite: the
+     * former colleague's grant keeps its access, status and principal, and stays listed.
+     */
+    public function test_caldav_re_share_with_a_former_colleague_leaves_the_grant_untouched(): void
+    {
+        $collectionId = $this->createSharingCollection('bob', 'Former Colleague', 'former-colleague');
+        $first = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml(self::CALDAV_SHARE_ALICE_MAILTO, write: false), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $first['status'], $first['body']);
+        $aliceInstance = static fn (): ?CalendarInstance => CalendarInstance::query()
+            ->where('share_href', self::CALDAV_SHARE_ALICE_MAILTO)
+            ->first();
+        $before = $aliceInstance()?->getAttributes();
+        $this->assertNotNull($before);
+        $shareWithBefore = $this->ownerCollectionShareWith('bob', $collectionId);
+        $this->assertIsArray($shareWithBefore['alice'] ?? null);
+
+        // alice leaves every Team; the next request must not reuse the memoised colleagues.
+        GroupMember::query()->where('member_id', Principal::forUsername('alice')?->id)->delete();
+        $this->app->instance('request', Request::create('/'));
+
+        $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml(self::CALDAV_SHARE_ALICE_MAILTO, write: true), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $again['status'], $again['body']);
+
+        $this->assertSame($before, $aliceInstance()?->getAttributes());
+        $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
     }
 
     public function test_caldav_dav_share_resource_appears_in_app_share_with(): void

@@ -82,7 +82,12 @@ final class AddressBookShareInvites
             if ((string) $principal->uri === (string) $book->principaluri) {
                 continue;
             }
-            if (! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
+            // An owner can always take access away from a sharee who already holds a grant.
+            $revokesExisting = $grant === null && AddressBookShare::query()
+                ->where('addressbookid', $bookId)
+                ->where('principaluri', (string) $principal->uri)
+                ->exists();
+            if (! $revokesExisting && ! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
                 $invalid[] = 'shareWith/'.$id;
 
                 continue;

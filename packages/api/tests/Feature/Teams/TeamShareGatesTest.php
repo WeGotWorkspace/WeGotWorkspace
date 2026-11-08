@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Teams;
 
+use App\Models\AddressBookShare;
 use App\Models\CalendarInstance;
 use App\Models\GroupMember;
 use App\Models\Principal;
@@ -156,6 +157,28 @@ final class TeamShareGatesTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_address_book_owner_can_revoke_a_former_colleague_by_name(): void
+    {
+        $book = AddressBookCollectionUris::PERSONAL_DEFAULT;
+        $share = fn (?array $grant): TestResponse => $this->jmap('bob', JmapCapabilities::CONTACTS, [
+            ['AddressBook/get', ['accountId' => 'bob', 'ids' => [$book]], 'c0'],
+            ['AddressBook/set', ['accountId' => 'bob', 'update' => [$book => [
+                'shareWith' => ['dave' => $grant],
+            ]]], 'c1'],
+        ]);
+        $this->assertEmpty($share(['mayRead' => true])->json('methodResponses.1.1.notUpdated'));
+        $this->assertSame(1, AddressBookShare::query()->where('principaluri', 'principals/dave')->count());
+
+        GroupMember::query()
+            ->where('principal_id', Principal::query()->where('uri', 'principals/groups/t1')->value('id'))
+            ->where('member_id', $this->principal('dave')->id)
+            ->delete();
+        $this->app->instance('request', Request::create('/'));
+
+        $this->assertEmpty($share(null)->json('methodResponses.1.1.notUpdated'));
+        $this->assertSame(0, AddressBookShare::query()->where('principaluri', 'principals/dave')->count());
+    }
+
     public function test_an_admin_shares_and_opens_dms_inside_their_own_teams(): void
     {
         $this->addPrincipalToGroup(
@@ -192,12 +215,17 @@ final class TeamShareGatesTest extends WgwDatabaseTestCase
         $this->app->instance('request', Request::create('/'));
         $rows = CalendarInstance::query()->count();
 
-        foreach ([['dave' => ['mayWriteAll' => true]], ['dave' => null], ['carol' => ['mayReadItems' => true]]] as $patch) {
+        foreach ([['dave' => ['mayWriteAll' => true]], ['carol' => ['mayReadItems' => true]]] as $patch) {
             $this->assertNotNull($share($patch)->json('methodResponses.0.1.notUpdated.default'));
         }
 
         $this->assertSame($rows, CalendarInstance::query()->count());
         $this->assertSame($before, $daveInstance()?->getAttributes());
+
+        // An owner can still take access away from the former colleague, by name.
+        $this->assertEmpty($share(['dave' => null])->json('methodResponses.0.1.notUpdated'));
+        $this->assertNull($daveInstance());
+        $this->assertSame($rows - 1, CalendarInstance::query()->count());
     }
 
     /**

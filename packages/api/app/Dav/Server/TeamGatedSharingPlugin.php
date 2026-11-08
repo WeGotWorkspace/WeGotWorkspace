@@ -38,16 +38,30 @@ final class TeamGatedSharingPlugin extends SharingPlugin
         }
         $caller = $this->callerUsername($acl instanceof AclPlugin ? $acl : null);
 
+        $existingHrefs = [];
+        foreach ($node->getInvites() as $invite) {
+            $existingHrefs[(string) $invite->href] = true;
+        }
+
+        $forwarded = [];
         foreach ($sharees as $sharee) {
             // Sabre resolves the href through the ACL plugin's getPrincipalByUri listener.
             $principal = $acl instanceof AclPlugin ? $acl->getPrincipalByUri((string) $sharee->href) : null;
             if ($principal !== null && $caller !== null && $this->grantsAccess($sharee)
                 && ! $this->colleagues->mayShareWithPrincipalUri($caller, $principal)) {
+                // Sabre updates an existing invite in place and keeps its principal, so a
+                // refused re-share must not reach it: the existing grant stays as it is.
+                if (isset($existingHrefs[(string) $sharee->href])) {
+                    continue;
+                }
                 $principal = null;
             }
             $sharee->principal = $principal;
+            $forwarded[] = $sharee;
         }
-        $node->updateInvites($sharees);
+        if ($forwarded !== []) {
+            $node->updateInvites($forwarded);
+        }
     }
 
     private function grantsAccess(Sharee $sharee): bool
