@@ -10,6 +10,7 @@ use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
+use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
@@ -130,6 +131,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
             $server->addPlugin(new RecurrenceGuardPlugin);
+            $server->addPlugin(app(CalendarImipDeliveryPlugin::class));
         }
 
         if ($card) {
