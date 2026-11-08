@@ -6,6 +6,7 @@ namespace App\Services\Settings;
 
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Teams\TeamMembershipReader;
 use Illuminate\Support\Facades\DB;
 use Sabre\DAVACL\PrincipalBackend\PDO as PrincipalBackend;
 
@@ -13,6 +14,7 @@ final class GroupDirectoryService
 {
     public function __construct(
         private readonly GroupMembershipResolver $membership,
+        private readonly TeamMembershipReader $teams,
     ) {}
 
     /**
@@ -129,16 +131,11 @@ final class GroupDirectoryService
      */
     public function groupsForUser(string $username): array
     {
-        $principalUri = 'principals/'.$username;
         $groups = [];
-        foreach ($this->listGroupCollections() as $group) {
-            $members = $this->memberUris((string) $group['uri']);
-            if (! in_array($principalUri, $members, true)) {
-                continue;
-            }
+        foreach ($this->teams->teamsOf($username) as $team) {
             $groups[] = [
-                'id' => (string) $group['uri'],
-                'displayName' => (string) $group['title'],
+                'id' => $team['uri'],
+                'displayName' => $team['displayName'] !== '' ? $team['displayName'] : basename($team['uri']),
             ];
         }
 
