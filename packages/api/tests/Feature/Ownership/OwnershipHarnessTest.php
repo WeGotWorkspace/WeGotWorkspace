@@ -67,10 +67,11 @@ final class OwnershipHarnessTest extends WgwDatabaseTestCase
     {
         $groups = app(DriveGroupResolver::class);
 
-        $this->assertEqualsCanonicalizing(['administrators', 'crew', 'alumni'], $groups->allowedGroupSlugs(OwnershipPrincipals::ADMIN));
-        $this->assertEqualsCanonicalizing(['crew', 'alumni'], $groups->allowedGroupSlugs(OwnershipPrincipals::MEMBER));
-        $this->assertEqualsCanonicalizing(['outsiders'], $groups->allowedGroupSlugs(OwnershipPrincipals::CAROL));
-        $this->assertEqualsCanonicalizing(['crew'], $groups->allowedGroupSlugs(OwnershipPrincipals::DAVE));
+        // `colleagues` holds every fixture user, so they may share with each other (Epic #1915).
+        $this->assertEqualsCanonicalizing(['administrators', 'crew', 'alumni', 'colleagues'], $groups->allowedGroupSlugs(OwnershipPrincipals::ADMIN));
+        $this->assertEqualsCanonicalizing(['crew', 'alumni', 'colleagues'], $groups->allowedGroupSlugs(OwnershipPrincipals::MEMBER));
+        $this->assertEqualsCanonicalizing(['outsiders', 'colleagues'], $groups->allowedGroupSlugs(OwnershipPrincipals::CAROL));
+        $this->assertEqualsCanonicalizing(['crew', 'colleagues'], $groups->allowedGroupSlugs(OwnershipPrincipals::DAVE));
     }
 
     public function test_leaving_the_former_group_keeps_the_token_valid(): void

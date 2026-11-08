@@ -38,6 +38,8 @@ final class NotesShareeStarTest extends WgwDatabaseTestCase
             'title' => 'Plan',
             'body' => 'body',
         ])->assertCreated()->json('id');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_a_view_only_sharee_can_star_and_unstar_for_themselves(): void

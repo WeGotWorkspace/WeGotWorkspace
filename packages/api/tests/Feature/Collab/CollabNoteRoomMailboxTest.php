@@ -28,6 +28,7 @@ final class CollabNoteRoomMailboxTest extends WgwDatabaseTestCase
         $provisioner = app(UserCalendarCollectionsProvisioner::class);
         $provisioner->ensureForPrincipal('principals/bob');
         $provisioner->ensureForPrincipal('principals/carol');
+        $this->seedSharedTeamForEveryone();
 
         $notebookId = (string) $this->withBearer($this->userBearerToken())
             ->postJson('/api/v1/notes/notebooks', ['name' => 'Mailbox'])

@@ -9,6 +9,7 @@ use App\Models\Addressbook;
 use App\Models\AddressBookShare;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarPrincipalAddresses;
+use App\Services\Teams\TeamColleagues;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -19,6 +20,7 @@ final class AddressBookShareInvites
 {
     public function __construct(
         private readonly CalendarPrincipalAddresses $addresses,
+        private readonly TeamColleagues $colleagues,
     ) {}
 
     public function canShare(AddressBookListing $listing): bool
@@ -43,7 +45,11 @@ final class AddressBookShareInvites
         return $grants === [] ? null : $grants;
     }
 
-    public function apply(Addressbook $book, mixed $shareWith): void
+    /**
+     * `$caller` is the signed-in user. A sharee who shares no Team with the caller, or a Team
+     * the caller is not in, is refused exactly like an unknown principal (Epic #1915).
+     */
+    public function apply(Addressbook $book, mixed $shareWith, string $caller): void
     {
         $bookId = (int) $book->id;
         if ($shareWith === null) {
@@ -74,6 +80,16 @@ final class AddressBookShareInvites
                 continue;
             }
             if ((string) $principal->uri === (string) $book->principaluri) {
+                continue;
+            }
+            // An owner can always take access away from a sharee who already holds a grant.
+            $revokesExisting = $grant === null && AddressBookShare::query()
+                ->where('addressbookid', $bookId)
+                ->where('principaluri', (string) $principal->uri)
+                ->exists();
+            if (! $revokesExisting && ! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
+                $invalid[] = 'shareWith/'.$id;
+
                 continue;
             }
             if ($grant === null) {

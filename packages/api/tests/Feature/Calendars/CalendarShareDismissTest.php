@@ -36,6 +36,8 @@ final class CalendarShareDismissTest extends WgwDatabaseTestCase
         $dataDir = sys_get_temp_dir().'/wgw-calendar-dismiss-'.uniqid('', true);
         mkdir($dataDir, 0775, true);
         config(['wgw.data_dir' => $dataDir]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_dismissed_calendar_no_longer_resolves_by_id(): void

@@ -23,6 +23,8 @@ final class DriveShareTopLevelExclusionTest extends WgwDatabaseTestCase
         $this->ownerToken = $this->userBearerToken();
         $this->createDriveFile($this->ownerToken, '/users/bob', 'nested.md');
         $this->createDriveFile($this->ownerToken, '/groups/team', 'group-note.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

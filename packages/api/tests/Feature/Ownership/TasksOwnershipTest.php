@@ -240,6 +240,8 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             // The other actor creates it and stays in alumni, so the owner's
             // view still works after this actor leaves.
             Scope::FormerGroup => [$this->usernameFor($actor === Actor::Admin ? Actor::Member : Actor::Admin), OwnershipPrincipals::ALUMNI],
+            // Epic #1915: a Team share needs an owner in that Team; dave is in crew.
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, null],
             default => [$carol, null],
         };
         if ($owner === null) {

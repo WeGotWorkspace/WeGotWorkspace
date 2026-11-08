@@ -33,6 +33,7 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
     }
 
     /**
@@ -421,6 +422,8 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
     #[DataProvider('overlappingSharesProvider')]
     public function test_event_resolves_through_the_strongest_of_overlapping_shares(bool $directWrite, bool $groupFirst): void
     {
+        // The owner shares with a Team, so must be in it (Epic #1915).
+        $this->seedSharedTeam(self::TEAM, 'carol');
         $calendarId = $this->createPersonalCalendar('carol', 'Overlap', 'overlap');
         $grants = [
             'groups/'.self::TEAM => ! $directWrite,
@@ -439,6 +442,8 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
 
     public function test_event_resolves_through_the_listed_instance_when_equal_shares_overlap(): void
     {
+        // The owner shares with a Team, so must be in it (Epic #1915).
+        $this->seedSharedTeam(self::TEAM, 'carol');
         $calendarId = $this->createPersonalCalendar('carol', 'Equal', 'equal');
         $this->shareCalendar('carol', $calendarId, 'groups/'.self::TEAM, write: true);
         $this->shareCalendar('carol', $calendarId, 'bob', write: true);
