@@ -4717,7 +4717,7 @@ export interface paths {
         };
         /**
          * Search share principals
-         * @description Principal picker for the share panel — searchable users and grantable groups with display names.
+         * @description Principal picker for the share panel. Returns only users who share at least one Team with the caller, and the caller's own Teams, with display names. This applies to admins too: an admin may share only within their own Teams. A user outside the caller's Teams is never listed, so a search for them answers like a search for an unknown name.
          */
         get: {
             parameters: {
@@ -5466,7 +5466,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List instance users who can be invited */
+        /**
+         * List people the caller can invite
+         * @description Colleagues of the caller: users who share at least one Team with them. Admins get every user. Each entry carries `sharesTeam`, true when the user shares a real Team with the caller (always true for non-admins). The attendee picker and mentions offer every entry; the DM rail and share dialogs offer only entries with `sharesTeam: true`, because DMs and shares follow real Team membership for admins too. `canSubmitEmail` does not depend on the caller.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -11758,6 +11761,8 @@ export interface components {
             username: string;
             email: string;
             name: string;
+            /** @description True when this user shares at least one Team with the caller. Always true for non-admins. Only entries with true may be offered for DMs and shares. */
+            sharesTeam: boolean;
         };
         CalendarSchedulingInviteeListResponse: {
             list: components["schemas"]["CalendarSchedulingInvitee"][];

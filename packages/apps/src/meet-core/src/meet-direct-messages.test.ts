@@ -46,6 +46,21 @@ describe("meetDirectMessagePeople", () => {
       },
     ]);
   });
+
+  it("offers a DM only to people who share a Team (an admin's directory lists everyone)", () => {
+    const adminDirectory: CollectionSharePrincipal[] = [
+      { id: "ada.lovelace", displayName: "Ada Lovelace", principalType: "user", sharesTeam: true },
+      {
+        id: "outsider",
+        displayName: "Outside Person",
+        principalType: "user",
+        sharesTeam: false,
+      },
+    ];
+    expect(meetDirectMessagePeople(adminDirectory).map((person) => person.id)).toEqual([
+      "ada.lovelace",
+    ]);
+  });
 });
 
 describe("findMeetDirectMessagePerson", () => {

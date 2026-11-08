@@ -1129,7 +1129,7 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             $this->assertIsArray($row);
             $keys = array_keys($row);
             sort($keys);
-            $this->assertSame(['email', 'name', 'username'], $keys, $case->key().': invitee rows carry more than a name and an address.');
+            $this->assertSame(['email', 'name', 'sharesTeam', 'username'], $keys, $case->key().': invitee rows carry more than a name, an address and the Team flag.');
         }
         $this->assertNotContains(OwnershipPrincipals::CREW, array_column($rows, 'username'), $case->key());
     }

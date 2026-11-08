@@ -235,9 +235,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
             // The share dialog directory: the actor's own group is listed; principals it shares nothing with are not.
             $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OwnGroup, Outcome::Allowed);
-            // The share directory lists every user and group of the instance.
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::Allowed);
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::Allowed);
+            // The share directory lists Team mates and the actor's own Teams only, admins included.
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::NotFound);
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::NotFound);
 
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OwnUser, Outcome::Allowed);
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound);
@@ -972,10 +972,15 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
     {
         [$query, $principal] = match ($case->scope) {
             Scope::OwnGroup => ['crew', 'groups/crew'],
-            Scope::OtherUser => ['carol', 'carol'],
+            // Every fixture user shares a Team with the actors, so the other user is
+            // seeded here, after the world, in no Team at all.
+            Scope::OtherUser => ['erin', 'erin'],
             Scope::OtherGroup => ['outsiders', 'groups/outsiders'],
             default => throw new LogicException('No principal for '.$case->scope->value),
         };
+        if ($case->scope === Scope::OtherUser) {
+            $this->seedWgwUser('erin', displayName: 'Erin');
+        }
         $response = $this->requestAs($case->actor, 'GET', '/files/shares/principals?query='.$query);
         $response->assertOk();
         $listed = array_map('strval', array_column((array) $response->json('data'), 'principal'));
