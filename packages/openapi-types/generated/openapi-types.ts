@@ -4352,7 +4352,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create share */
+        /**
+         * Create share
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -4477,7 +4480,10 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Update share */
+        /**
+         * Update share
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -6941,7 +6947,7 @@ export interface paths {
         put?: never;
         /**
          * Open (find-or-create) a direct message channel
-         * @description Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.
+         * @description Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel. A user who shares no Team with the caller is refused exactly like an unknown user (400 invalidProperties), admins included.
          */
         post: {
             parameters: {
@@ -10943,7 +10949,7 @@ export interface components {
             id?: components["schemas"]["JmapId"];
             /** @description When set, create the calendar on this group principal (groups/{slug}). Omit for personal scope. */
             groupSlug?: string | null;
-            /** @description Initial share grants. Same shape as Calendar.shareWith. Allowed for personal owners and group-collection managers. */
+            /** @description Initial share grants. Same shape as Calendar.shareWith. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -10957,7 +10963,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -10991,7 +10997,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11857,7 +11863,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11922,7 +11928,7 @@ export interface components {
             topic?: string | null;
             /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;

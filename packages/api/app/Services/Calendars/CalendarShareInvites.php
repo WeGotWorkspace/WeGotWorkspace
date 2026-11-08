@@ -8,6 +8,7 @@ use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
+use App\Services\Teams\TeamColleagues;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\DAV\Xml\Element\Sharee;
 
@@ -20,6 +21,7 @@ final class CalendarShareInvites
         private readonly CalDavCollections $collections,
         private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarPrincipalAddresses $addresses,
+        private readonly TeamColleagues $colleagues,
     ) {}
 
     public function canShare(CalendarInstance $instance, ?string $groupSlug): bool
@@ -56,6 +58,10 @@ final class CalendarShareInvites
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER) {
                 continue;
             }
+            // An invite no principal matched grants nothing (Sabre marks it invalid).
+            if ((int) $sharee->inviteStatus === SharingPlugin::INVITE_INVALID) {
+                continue;
+            }
             $id = $this->jmapIdForSharee($sharee);
             if ($id === null) {
                 continue;
@@ -66,7 +72,11 @@ final class CalendarShareInvites
         return $grants === [] ? null : $grants;
     }
 
-    public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith): void
+    /**
+     * `$caller` is the signed-in user. A sharee who shares no Team with the caller, or a Team
+     * the caller is not in, is refused exactly like an unknown principal (Epic #1915).
+     */
+    public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith, string $caller): void
     {
         if (! $this->canShare($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
@@ -75,7 +85,7 @@ final class CalendarShareInvites
         $currentInvites = array_values($this->backends->calBackend()->getInvites($this->collections->backendId($instance)));
         $sharees = $shareWith === null
             ? $this->revokeAllSharees($currentInvites)
-            : $this->shareesFromPatch($instance, $shareWith, $currentInvites);
+            : $this->shareesFromPatch($instance, $shareWith, $currentInvites, $caller);
 
         if ($sharees === []) {
             return;
@@ -108,7 +118,7 @@ final class CalendarShareInvites
      * @param  list<Sharee>  $currentInvites
      * @return list<Sharee>
      */
-    private function shareesFromPatch(CalendarInstance $instance, mixed $shareWith, array $currentInvites): array
+    private function shareesFromPatch(CalendarInstance $instance, mixed $shareWith, array $currentInvites, string $caller): array
     {
         if (! is_array($shareWith)) {
             throw new ApiHttpException(400, 'shareWith must be an object or null.', 'invalidProperties', ['shareWith']);
@@ -129,6 +139,11 @@ final class CalendarShareInvites
                 continue;
             }
             if ((string) $principal->uri === (string) $instance->principaluri) {
+                continue;
+            }
+            if (! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
+                $invalid[] = 'shareWith/'.$id;
+
                 continue;
             }
             if ($grant === null) {

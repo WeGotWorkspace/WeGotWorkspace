@@ -155,7 +155,7 @@ final class DriveShareService
             $share->save();
 
             if ($shareWith !== null) {
-                $this->grantWriter->mergeShareWith($share, $shareWith);
+                $this->grantWriter->mergeShareWith($share, $shareWith, $owner);
             }
 
             $share->refresh();
@@ -219,7 +219,7 @@ final class DriveShareService
                 $beforeSharees = $this->notifier->shareeUsernames($share);
                 /** @var array<string, mixed> $shareWith */
                 $shareWith = $input['shareWith'];
-                $this->grantWriter->mergeShareWith($share, $shareWith);
+                $this->grantWriter->mergeShareWith($share, $shareWith, $username);
                 $share->refresh();
                 $addedSharees = array_values(array_diff($this->notifier->shareeUsernames($share), $beforeSharees));
             } else {
