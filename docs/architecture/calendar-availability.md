@@ -68,10 +68,10 @@ Periods carry the same time fields as a JMAP `CalendarEvent` in this codebase: a
 
 ## CalDAV free/busy
 
-Before this work, Sabre answered the outbox free/busy report for every principal: `Inbox::getACL` grants `schedule-deliver` to every authenticated user. `WgwSchedulePlugin` overrides `getFreeBusyForEmail`:
+Stock Sabre answers the outbox free/busy report for every principal: `Inbox::getACL` grants `schedule-deliver` to every authenticated user. #1923 added `WgwSchedulePlugin` with the Team rule; #1909 replaced its answer with the calculator and added the switch. `getFreeBusyForEmail` now works like this:
 
 - The caller comes from the auth plugin, the target from `CalendarPrincipalAddresses::principalForMailto`.
-- No access → `3.7;Could not find principal`.
+- No access (no shared Team, switch off, or disabled) → `3.7;Could not find principal` (`UNKNOWN_ADDRESS_STATUS`).
 - The calculator runs over the whole UTC weeks covering DTSTART–DTEND. More than 54 covering weeks (an unaligned 54-week window covers 55), or an incomplete result → `3.7`.
 - Otherwise a `METHOD:REPLY` VFREEBUSY: busy periods clipped to the window, merged, as plain `FREEBUSY` lines, with no titles. `schedule-calendar-transp` and the inbox `calendar-availability` are no longer read; the per-calendar include replaces them.
 
