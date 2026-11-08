@@ -7,6 +7,7 @@ namespace App\Services\Drive;
 use App\Exceptions\ApiHttpException;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
+use App\Services\Teams\TeamColleagues;
 use App\Storage\StoragePaths;
 use Illuminate\Support\Str;
 
@@ -18,12 +19,18 @@ final class DriveShareGrantWriter
     public function __construct(
         private StoragePaths $paths,
         private DriveShareRules $rules,
+        private TeamColleagues $colleagues,
     ) {}
 
     /**
+     * `$caller` is the signed-in user. A user who shares no Team with the caller, or a Team the
+     * caller is not in, is refused like an unknown user or Team (Epic #1915), admins included.
+     * Revoking by name (`null`) is not gated: it answers the same for anyone, as it does today
+     * for an unknown name, and an owner can always take access away.
+     *
      * @param  array<string, mixed>  $shareWith
      */
-    public function mergeShareWith(DriveShare $share, array $shareWith): void
+    public function mergeShareWith(DriveShare $share, array $shareWith, string $caller): void
     {
         $isNotePath = $this->paths->isNotePath((string) $share->path);
 
@@ -84,9 +91,16 @@ final class DriveShareGrantWriter
 
             if ($groupSlug !== null) {
                 $this->rules->assertGroupExists($groupSlug);
+                if (! $this->colleagues->isOwnTeam($caller, $groupSlug)) {
+                    throw DriveShareRules::unknownGroup();
+                }
                 $this->upsertGroupGrant($share, $groupSlug, $access);
 
                 continue;
+            }
+
+            if (! $this->colleagues->sharesTeamIgnoringAdminRole($caller, $principalId)) {
+                throw new ApiHttpException(400, 'Unknown user.', 'bad_request');
             }
 
             /** @var DriveShareGrant|null $grant */

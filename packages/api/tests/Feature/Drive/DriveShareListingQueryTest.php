@@ -23,6 +23,8 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
         for ($i = 0; $i < 25; $i++) {
             $this->createDriveFile($this->ownerToken, '/users/bob/bulk', 'bulk-'.$i.'.md');
         }
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -58,7 +60,9 @@ final class DriveShareListingQueryTest extends WgwDatabaseTestCase
             }
         }
 
-        $this->assertLessThanOrEqual(1, $grantQueries, 'Expected at most one drive_share_grants query for listing');
+        // One query for the viewer's own grants and one for their Teams' grants (the viewer is
+        // in a Team since Epic #1915), never one per entry.
+        $this->assertLessThanOrEqual(2, $grantQueries, 'Expected at most two drive_share_grants queries for listing');
     }
 
     public function test_children_listing_marks_paths_with_outgoing_shares(): void

@@ -38,6 +38,8 @@ final class CollectionSharedNotifyTest extends WgwDatabaseTestCase
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/bob');
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/alice');
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/carol');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**

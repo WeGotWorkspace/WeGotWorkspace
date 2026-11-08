@@ -27,6 +27,8 @@ final class McpTasksToolsTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpTasksFixtures();
         $this->enableMcp();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_task_write_denies_read_scope(): void

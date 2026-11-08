@@ -29,9 +29,10 @@ final class CollectionSharedNotify
         CalendarInstance $instance,
         ?string $groupSlug,
         mixed $shareWith,
+        string $caller,
     ): array {
         $before = self::shareeUsernames($shareInvites, $instance, $groupSlug);
-        $shareInvites->apply($instance, $groupSlug, $shareWith);
+        $shareInvites->apply($instance, $groupSlug, $shareWith, $caller);
         $instance->refresh();
         $after = self::shareeUsernames($shareInvites, $instance, $groupSlug);
 

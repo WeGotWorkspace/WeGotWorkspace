@@ -44,6 +44,8 @@ final class JmapEventSourceSharingTest extends WgwDatabaseTestCase
         mkdir($this->davDataDir, 0775, true);
         config(['wgw.data_dir' => $this->davDataDir]);
         Cache::flush();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

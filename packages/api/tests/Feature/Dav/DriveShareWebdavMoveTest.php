@@ -45,6 +45,8 @@ final class DriveShareWebdavMoveTest extends WgwDatabaseTestCase
         WgwTestDisks::refresh($this->dataDir);
 
         $this->seedWgwUser('alice', displayName: 'Alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_webdav_move_rewrites_member_and_public_share_paths(): void

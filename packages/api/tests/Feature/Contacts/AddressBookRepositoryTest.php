@@ -130,6 +130,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_owner_shares_the_book_and_reads_the_grants_back(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $updated = $this->books->update('bob', 'default', [
             'shareWith' => ['carol' => ['mayRead' => true, 'mayWrite' => true]],
         ]);
@@ -142,12 +143,13 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_share_with_null_removes_every_grant(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $this->shareBobsBookWith('carol');
 
         $updated = $this->books->update('bob', 'default', ['shareWith' => null]);
 
         $this->assertNull($updated['shareWith']);
-        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT], array_column($this->books->list('carol')['list'], 'id'));
+        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT], $this->withoutTeamBook(array_column($this->books->list('carol')['list'], 'id')));
     }
 
     public function test_share_with_an_unknown_principal_is_rejected(): void
@@ -159,6 +161,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sharee_sees_the_book_read_only_under_a_shared_id(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $entry = $this->books->show('carol', $sharedId);
@@ -172,6 +175,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sharee_with_write_access_gets_may_write(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol', mayWrite: true);
 
         $this->assertTrue($this->books->show('carol', $sharedId)['myRights']['mayWrite']);
@@ -179,6 +183,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_assert_writable_rejects_a_read_only_sharee(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $this->shareBobsBookWith('carol');
         $book = $this->bookRow('bob');
 
@@ -193,6 +198,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sharee_cannot_change_owner_fields(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol', mayWrite: true);
 
         $this->assertApiError(403, 'forbidden', fn () => $this->books->update('carol', $sharedId, ['description' => 'Mine now']));
@@ -202,6 +208,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sharee_unsubscribes_and_resubscribes(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $this->books->update('carol', $sharedId, ['isSubscribed' => false]);
@@ -214,6 +221,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_is_subscribed_must_be_a_boolean(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $this->assertApiError(400, 'invalidProperties', fn () => $this->books->update('carol', $sharedId, ['isSubscribed' => 'no']));
@@ -221,6 +229,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_resubscribing_after_the_grant_is_gone_finds_nothing(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
         $this->books->delete('carol', $sharedId);
         $this->books->update('bob', 'default', ['shareWith' => null]);
@@ -230,6 +239,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sharee_delete_dismisses_and_owner_delete_is_forbidden(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $this->assertSame(['ok' => true], $this->books->delete('carol', $sharedId));
@@ -241,12 +251,13 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_initial_changes_list_every_visible_book(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $changes = $this->books->changes('carol', null);
 
         $this->assertSame('0', $changes['oldState']);
-        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT, $sharedId], $changes['created']);
+        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT, $sharedId], $this->withoutTeamBook($changes['created']));
         $this->assertSame([], $changes['updated']);
         $this->assertSame([], $changes['destroyed']);
         $this->assertSame($changes, $this->books->changes('carol', ''));
@@ -286,6 +297,7 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_a_new_share_is_created_and_a_dismissed_one_destroyed(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $state = $this->books->changes('carol', null)['newState'];
         $sharedId = $this->shareBobsBookWith('carol');
 
@@ -329,16 +341,18 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
 
     public function test_sync_tokens_key_each_visible_book_by_its_api_id(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
 
         $tokens = $this->books->syncTokens('carol');
 
-        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT, $sharedId], array_keys($tokens));
+        $this->assertSame([AddressBookCollectionUris::PERSONAL_DEFAULT, $sharedId], $this->withoutTeamBook(array_keys($tokens)));
         $this->assertSame((string) (int) $this->bookRow('bob')->synctoken, $tokens[$sharedId]);
     }
 
     public function test_api_ids_follow_the_viewer(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $sharedId = $this->shareBobsBookWith('carol');
         $book = $this->bookRow('bob');
 
@@ -404,5 +418,16 @@ final class AddressBookRepositoryTest extends WgwDatabaseTestCase
             return;
         }
         $this->fail("Expected ApiHttpException {$status} {$code}.");
+    }
+
+    /**
+     * Sharing needs a shared Team (Epic #1915), and that Team brings its own book.
+     *
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
+    private function withoutTeamBook(array $ids): array
+    {
+        return array_values(array_diff($ids, [AddressBookCollectionUris::groupApiId('colleagues')]));
     }
 }
