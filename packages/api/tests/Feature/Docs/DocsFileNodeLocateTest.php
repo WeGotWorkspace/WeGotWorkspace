@@ -22,6 +22,8 @@ final class DocsFileNodeLocateTest extends WgwDatabaseTestCase
     {
         parent::setUp();
         $this->setUpDriveFixtures();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

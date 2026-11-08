@@ -1,4 +1,5 @@
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { docsThreadsRequestError } from "./docs-threads-errors";
 import type {
   DocsFileThread,
   DocsFileThreadChanges,
@@ -9,9 +10,7 @@ import type {
 import { threadsQuery } from "./docs-threads-types";
 
 async function readThread(res: Response): Promise<DocsFileThread> {
-  if (!res.ok) {
-    throw new Error(`Docs threads request failed (${res.status})`);
-  }
+  if (!res.ok) throw await docsThreadsRequestError(res, "Docs threads request");
   return (await wgwReadJson(res)) as DocsFileThread;
 }
 
@@ -19,7 +18,7 @@ export function createDocsThreadsLiveClient(): DocsThreadsClient {
   return {
     async list(path) {
       const res = await wgwFetch(`/files/threads?${threadsQuery(path)}`);
-      if (!res.ok) throw new Error(`GET /files/threads failed (${res.status})`);
+      if (!res.ok) throw await docsThreadsRequestError(res, "GET /files/threads");
       const payload = (await wgwReadJson(res)) as { list?: DocsFileThread[] };
       return Array.isArray(payload.list) ? payload.list : [];
     },
@@ -68,7 +67,7 @@ export function createDocsThreadsLiveClient(): DocsThreadsClient {
     async changes(path, since) {
       const extra = since ? `&since=${encodeURIComponent(since)}` : "";
       const res = await wgwFetch(`/files/threads/changes?${threadsQuery(path)}${extra}`);
-      if (!res.ok) throw new Error(`GET /files/threads/changes failed (${res.status})`);
+      if (!res.ok) throw await docsThreadsRequestError(res, "GET /files/threads/changes");
       return (await wgwReadJson(res)) as DocsFileThreadChanges;
     },
   };

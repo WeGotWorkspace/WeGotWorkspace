@@ -175,6 +175,29 @@ describe("acceptMeshOffer", () => {
     expect(answers).toEqual(["answer"]);
   });
 
+  it("lets the binding open send slots after the offer and before the answer", async () => {
+    const { exchange, peers } = offerExchange("ok");
+    const steps: string[] = [];
+    const pc = answerablePc();
+    const applyOffer = pc.setRemoteDescription.bind(pc);
+    pc.setRemoteDescription = async (desc) => {
+      steps.push("offer");
+      await applyOffer(desc);
+    };
+    pc.createAnswer = (async () => {
+      steps.push("answer");
+      return { type: "answer", sdp: "v=0\r\n" };
+    }) as RTCPeerConnection["createAnswer"];
+    exchange.prepareAnswer = async (target) => {
+      expect(target).toBe(pc);
+      await Promise.resolve();
+      steps.push("prepare");
+    };
+    peers.add("peer-z", peerEntry(pc));
+    await acceptMeshOffer(exchange, "peer-z", "Ada", offer);
+    expect(steps).toEqual(["offer", "prepare", "answer"]);
+  });
+
   it("arms the recovery timer when setRemoteDescription fails", async () => {
     const { exchange, peers } = offerExchange("ok");
     const signaled: string[] = [];

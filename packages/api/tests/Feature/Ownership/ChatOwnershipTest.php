@@ -470,6 +470,8 @@ final class ChatOwnershipTest extends WgwDatabaseTestCase implements OwnershipSu
             Scope::OwnGroup => [OwnershipPrincipals::DAVE, OwnershipPrincipals::CREW],
             Scope::OtherGroup, Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite => [$carol, OwnershipPrincipals::OUTSIDERS],
             Scope::FormerGroup => [$otherActor, OwnershipPrincipals::ALUMNI],
+            // Epic #1915: a Team share needs an owner in that Team; dave is in crew.
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, null],
             default => [$carol, null],
         };
 

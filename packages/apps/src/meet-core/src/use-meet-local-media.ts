@@ -102,20 +102,6 @@ export function useMeetLocalMedia({
     setSelectedCamIdState(deviceId);
   }, []);
 
-  const replaceAudioTrackOnAllPeers = useCallback(
-    async (track: MediaStreamTrack) => {
-      await meetRtc.replaceAudioTrack(track);
-    },
-    [meetRtc],
-  );
-
-  const replaceVideoTrackOnAllPeers = useCallback(
-    async (track: MediaStreamTrack) => {
-      await meetRtc.replaceVideoTrack(track);
-    },
-    [meetRtc],
-  );
-
   const cameraAllowed = useCallback(() => cameraBlockedRef?.current !== true, [cameraBlockedRef]);
 
   /**
@@ -130,22 +116,30 @@ export function useMeetLocalMedia({
   const ensureLocalMedia = useCallback(async () => {
     const mic = micOnRef.current;
     const video = videoOnRef.current && cameraAllowed();
-    if (localStreamRef.current) {
-      if (video && localStreamRef.current.getVideoTracks().length === 0) {
+    const current = localStreamRef.current;
+    if (current) {
+      if (video && current.getVideoTracks().length === 0) {
         const updated = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: buildMeetVideoConstraints(selectedCamId ?? undefined),
         });
         const track = updated.getVideoTracks()[0];
-        if (track && !localStreamRef.current.getVideoTracks().includes(track)) {
-          localStreamRef.current.addTrack(track);
+        // The toggle and the shell's mount effect can both open a camera, and the
+        // call may have ended during the prompt: keep at most one camera track.
+        const stale = localStreamRef.current !== current || current.getVideoTracks().length > 0;
+        if (track && stale) track.stop();
+        else if (track) {
+          current.addTrack(track);
           cameraTrackRef.current = track;
-          if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-          await replaceVideoTrackOnAllPeers(track);
+          // A live screen share keeps the video slot; `stopScreenShare` restores the camera.
+          if (!screenStreamRef.current) {
+            if (localVideoRef.current) localVideoRef.current.srcObject = current;
+            await meetRtc.replaceVideoTrack(track);
+          }
         }
       }
-      syncMeetLocalTrackEnabled(localStreamRef.current, currentMediaWanted());
-      return localStreamRef.current;
+      syncMeetLocalTrackEnabled(current, currentMediaWanted());
+      return current;
     }
     const stream = await navigator.mediaDevices.getUserMedia(
       meetLocalMediaGumConstraints({
@@ -168,7 +162,8 @@ export function useMeetLocalMedia({
     localStreamRef,
     micOnRef,
     refreshDeviceList,
-    replaceVideoTrackOnAllPeers,
+    meetRtc,
+    screenStreamRef,
     selectedCamId,
     selectedMicId,
     videoOnRef,
@@ -214,23 +209,29 @@ export function useMeetLocalMedia({
   const unmuteMic = useCallback((): boolean => false, []);
 
   const toggleVideo = useCallback(() => {
-    setVideoOn((prev) => {
-      if (!prev && !cameraAllowed()) return prev;
-      const next = !prev;
-      if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
-        void ensureLocalMedia().then((stream) => {
+    const next = !videoOnRef.current;
+    if (next && !cameraAllowed()) return;
+    // Write the toggle first: `ensureLocalMedia` reads `videoOnRef` to decide
+    // whether to open the camera (an audio-only join has no camera track yet).
+    setVideoOn(next);
+    if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
+      void ensureLocalMedia().then(
+        (stream) => {
           const wanted = currentMediaWanted();
           syncMeetLocalTrackEnabled(stream, wanted);
           void announceMediaPresence(wanted.mic, wanted.video);
-        });
-        return next;
-      }
-      localStreamRef.current?.getVideoTracks().forEach((track) => {
-        track.enabled = next;
-      });
-      void announceMediaPresence(micOnRef.current, next);
-      return next;
+        },
+        (e: unknown) => {
+          setVideoOn(false);
+          setError(e instanceof Error ? e.message : "Could not turn the camera on.");
+        },
+      );
+      return;
+    }
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = next;
     });
+    void announceMediaPresence(micOnRef.current, next);
   }, [
     announceMediaPresence,
     cameraAllowed,
@@ -238,7 +239,9 @@ export function useMeetLocalMedia({
     ensureLocalMedia,
     localStreamRef,
     micOnRef,
+    setError,
     setVideoOn,
+    videoOnRef,
   ]);
 
   const publishScreen = useCallback(
@@ -255,7 +258,7 @@ export function useMeetLocalMedia({
     screenStreamRef.current = null;
     setScreenPreviewStream(null);
     const cameraTrack = cameraTrackRef.current;
-    if (cameraTrack) await replaceVideoTrackOnAllPeers(cameraTrack);
+    if (cameraTrack) await meetRtc.replaceVideoTrack(cameraTrack);
     setScreenOn(false);
     publishScreen("text", null);
     void announceMediaPresence(micOnRef.current, videoOnRef.current, false);
@@ -264,7 +267,7 @@ export function useMeetLocalMedia({
     cameraTrackRef,
     micOnRef,
     publishScreen,
-    replaceVideoTrackOnAllPeers,
+    meetRtc,
     screenStreamRef,
     setScreenOn,
     videoOnRef,
@@ -300,7 +303,7 @@ export function useMeetLocalMedia({
         if (!track) return;
         track.contentHint = screenContentHint(mode);
         publishScreen(mode, track.id);
-        await replaceVideoTrackOnAllPeers(track);
+        await meetRtc.replaceVideoTrack(track);
         track.onended = () => {
           void stopScreenShare();
         };
@@ -319,7 +322,7 @@ export function useMeetLocalMedia({
       announceMediaPresence,
       micOnRef,
       publishScreen,
-      replaceVideoTrackOnAllPeers,
+      meetRtc,
       screenStreamRef,
       setError,
       setScreenOn,
@@ -361,20 +364,13 @@ export function useMeetLocalMedia({
           previous.stop();
         }
         if (!stream.getAudioTracks().includes(track)) stream.addTrack(track);
-        await replaceAudioTrackOnAllPeers(track);
+        await meetRtc.replaceAudioTrack(track);
         await refreshDeviceList();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not switch microphone.");
       }
     },
-    [
-      localStreamRef,
-      micOnRef,
-      refreshDeviceList,
-      replaceAudioTrackOnAllPeers,
-      setError,
-      setSelectedMicId,
-    ],
+    [localStreamRef, micOnRef, refreshDeviceList, meetRtc, setError, setSelectedMicId],
   );
 
   const switchCamera = useCallback(
@@ -398,7 +394,7 @@ export function useMeetLocalMedia({
         if (!stream.getVideoTracks().includes(track)) stream.addTrack(track);
         cameraTrackRef.current = track;
         if (!screenOn) {
-          await replaceVideoTrackOnAllPeers(track);
+          await meetRtc.replaceVideoTrack(track);
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
         }
         await refreshDeviceList();
@@ -411,7 +407,7 @@ export function useMeetLocalMedia({
       currentMediaWanted,
       localStreamRef,
       refreshDeviceList,
-      replaceVideoTrackOnAllPeers,
+      meetRtc,
       screenOn,
       setError,
       setSelectedCamId,

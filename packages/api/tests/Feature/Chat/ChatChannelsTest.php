@@ -171,6 +171,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
     public function test_client_supplied_id_is_validated_and_conflicts_only_within_reach(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $id = 'chat-'.strtolower((string) Str::ulid());
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'General', 'kind' => 'channel', 'id' => $id,
@@ -231,6 +232,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
     public function test_share_matrix_owner_sharee_and_non_member(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Team', 'kind' => 'channel',
         ])->assertCreated()->json('id');
@@ -275,6 +277,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
     public function test_read_only_sharee_rights(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Announcements', 'kind' => 'channel',
         ])->assertCreated()->json('id');
@@ -290,6 +293,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
     public function test_sharee_delete_dismisses_but_channel_survives_for_owner(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Team', 'kind' => 'channel',
         ])->assertCreated()->json('id');
@@ -302,7 +306,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
         // Dismissal hides it from the sharee everywhere…
         $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$channelId)->assertNotFound();
-        $this->assertSame([], $this->asUser('bob')->getJson('/api/v1/chat/channels')->json('list'));
+        $this->assertSame([], $this->nonTeamChannels('bob'));
 
         // …while the owner keeps the channel and the grant.
         $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$channelId)->assertOk();
@@ -382,5 +386,19 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
     private function asUser(string $username)
     {
         return $this->withBearer($this->issueBearerTokenFor($username));
+    }
+
+    /**
+     * Channels outside Team scope. Opening a DM or sharing needs a shared Team (Epic #1915),
+     * and that Team brings its own default channel.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function nonTeamChannels(string $username): array
+    {
+        return array_values(array_filter(
+            (array) $this->asUser($username)->getJson('/api/v1/chat/channels')->json('list'),
+            static fn (array $channel): bool => ($channel['scope'] ?? null) !== 'group',
+        ));
     }
 }

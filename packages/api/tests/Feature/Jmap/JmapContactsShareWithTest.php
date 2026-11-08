@@ -38,6 +38,8 @@ final class JmapContactsShareWithTest extends WgwDatabaseTestCase
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**

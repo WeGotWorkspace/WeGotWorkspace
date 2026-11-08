@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Calendars\Availability;
 
 use App\Models\CalendarAvailabilityOwner;
-use App\Models\GroupMember;
-use App\Models\Principal;
 use App\Models\User;
-use App\Services\Admin\AdminConstants;
+use App\Services\Teams\TeamColleagues;
 
 /**
  * Who may see whose availability. A viewer reads a person only when the
@@ -19,6 +17,10 @@ use App\Services\Admin\AdminConstants;
  */
 final class AvailabilityAudience
 {
+    public function __construct(
+        private readonly TeamColleagues $colleagues,
+    ) {}
+
     /**
      * Everyone the viewer may read, the viewer included while their own
      * switch is on, sorted by username.
@@ -42,10 +44,10 @@ final class AvailabilityAudience
         return $this->sharing([$owner]) === [$owner];
     }
 
-    /** Real Team membership, admins included (#1917's `sharesTeamIgnoringAdminRole`). */
+    /** Real Team membership, admins included: the free/busy row of {@see TeamColleagues}. */
     public function sharesTeam(string $viewer, string $owner): bool
     {
-        return in_array($owner, $this->teamMates($viewer), true);
+        return $this->colleagues->sharesTeamIgnoringAdminRole($viewer, $owner);
     }
 
     /**
@@ -78,34 +80,16 @@ final class AvailabilityAudience
     }
 
     /**
-     * Users who share a Team (`principals/groups/*`) with the viewer.
+     * Users who share a Team with the viewer through real membership, the
+     * viewer left out. An admin's set is still only their real Team mates.
      *
      * @return list<string>
      */
     private function teamMates(string $viewer): array
     {
-        $viewerPrincipal = Principal::forUsername($viewer);
-        if ($viewerPrincipal === null) {
-            return [];
-        }
-
-        $uris = GroupMember::query()
-            ->from('groupmembers as mine')
-            ->join('principals as team', 'team.id', '=', 'mine.principal_id')
-            ->join('groupmembers as theirs', 'theirs.principal_id', '=', 'mine.principal_id')
-            ->join('principals as mate', 'mate.id', '=', 'theirs.member_id')
-            ->where('mine.member_id', $viewerPrincipal->id)
-            ->where('team.uri', 'like', AdminConstants::GROUP_PREFIX.'%')
-            ->distinct()
-            ->pluck('mate.uri');
-
-        $mates = [];
-        foreach ($uris as $uri) {
-            if (preg_match('#^principals/([^/]+)$#', (string) $uri, $matches) === 1 && $matches[1] !== $viewer) {
-                $mates[] = $matches[1];
-            }
-        }
-
-        return $mates;
+        return array_values(array_filter(
+            $this->colleagues->colleagues($viewer)->usernames(),
+            static fn (string $username): bool => $username !== $viewer,
+        ));
     }
 }
