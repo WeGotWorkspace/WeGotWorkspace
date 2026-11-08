@@ -479,18 +479,18 @@ export class PresenceStore implements MeshCheckNowPort {
     const peers = session.getRoomPeers();
     let targetPeerIds: Record<string, string[]> | undefined;
     if (session.peersForUsername) {
-      targetPeerIds = {};
+      // A Map, so a username such as "__proto__" or "constructor" is an ordinary key.
+      const picked = new Map<string, string[]>();
       for (const peer of peers) {
         const key = (peer.user ?? "").trim().toLowerCase();
-        if (key && !Object.prototype.hasOwnProperty.call(targetPeerIds, key)) {
-          Object.defineProperty(targetPeerIds, key, {
-            value: session.peersForUsername(key).map((target) => target.id),
-            enumerable: true,
-            writable: true,
-            configurable: true,
-          });
+        if (key && !picked.has(key)) {
+          picked.set(
+            key,
+            session.peersForUsername(key).map((target) => target.id),
+          );
         }
       }
+      targetPeerIds = Object.fromEntries(picked);
     }
     this.coordinator?.publishRosterState({
       peers,
