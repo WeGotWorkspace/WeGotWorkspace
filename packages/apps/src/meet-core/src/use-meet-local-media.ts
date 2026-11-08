@@ -131,8 +131,11 @@ export function useMeetLocalMedia({
         else if (track) {
           current.addTrack(track);
           cameraTrackRef.current = track;
-          if (localVideoRef.current) localVideoRef.current.srcObject = current;
-          await meetRtc.replaceVideoTrack(track);
+          // A live screen share keeps the video slot; `stopScreenShare` restores the camera.
+          if (!screenStreamRef.current) {
+            if (localVideoRef.current) localVideoRef.current.srcObject = current;
+            await meetRtc.replaceVideoTrack(track);
+          }
         }
       }
       syncMeetLocalTrackEnabled(current, currentMediaWanted());
@@ -160,6 +163,7 @@ export function useMeetLocalMedia({
     micOnRef,
     refreshDeviceList,
     meetRtc,
+    screenStreamRef,
     selectedCamId,
     selectedMicId,
     videoOnRef,

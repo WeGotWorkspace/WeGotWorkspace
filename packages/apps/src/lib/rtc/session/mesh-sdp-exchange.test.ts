@@ -188,8 +188,9 @@ describe("acceptMeshOffer", () => {
       steps.push("answer");
       return { type: "answer", sdp: "v=0\r\n" };
     }) as RTCPeerConnection["createAnswer"];
-    exchange.prepareAnswer = (target) => {
+    exchange.prepareAnswer = async (target) => {
       expect(target).toBe(pc);
+      await Promise.resolve();
       steps.push("prepare");
     };
     peers.add("peer-z", peerEntry(pc));

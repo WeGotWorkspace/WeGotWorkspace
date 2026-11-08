@@ -248,4 +248,31 @@ describe("useMeetLocalMedia camera state", () => {
     expect(second.stop).toHaveBeenCalled();
     expect(spies.replaceVideoTrack).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps a live screen share on the peers when the camera turns on, and restores the camera after", async () => {
+    const camera = fakeTrack("video", "cam");
+    stubMediaDevices(async () => fakeStream(camera));
+    const mediaHolders = holders(fakeStream(fakeTrack("audio", "mic")));
+    const screen = fakeTrack("video", "screen");
+    mediaHolders.screenStream.current = fakeStream(screen);
+    const spies = harnessSpies();
+    const { result } = renderHook(() =>
+      useHarness({ mic: true, video: false }, mediaHolders, spies),
+    );
+
+    await act(async () => {
+      result.current.media.toggleVideo();
+      await Promise.resolve();
+    });
+
+    expect(mediaHolders.cameraTrack.current).toBe(camera);
+    expect(spies.replaceVideoTrack).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.media.stopScreenShare();
+    });
+
+    expect(screen.stop).toHaveBeenCalled();
+    expect(spies.replaceVideoTrack).toHaveBeenCalledWith(camera);
+  });
 });

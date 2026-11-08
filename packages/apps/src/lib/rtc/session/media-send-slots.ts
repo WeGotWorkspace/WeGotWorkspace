@@ -60,3 +60,18 @@ export function mediaSenderFor(pc: RTCPeerConnection, kind: MediaKind): RTCRtpSe
   );
   return slot?.sender ?? null;
 }
+
+/**
+ * Answerer, right after `openIdleMediaSendSlots`: a camera, mic or screen share
+ * turned on before the offer arrived had no slot to go to. Put it on the slot now.
+ */
+export async function fillEmptyMediaSendSlots(
+  pc: RTCPeerConnection,
+  tracks: ReadonlyMap<MediaKind, MediaStreamTrack>,
+): Promise<void> {
+  for (const [kind, track] of tracks) {
+    if (track.readyState === "ended") continue;
+    const sender = mediaSenderFor(pc, kind);
+    if (sender && !sender.track) await sender.replaceTrack(track);
+  }
+}
