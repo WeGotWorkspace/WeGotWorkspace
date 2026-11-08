@@ -273,6 +273,13 @@ final class TeamHiddenSharesTest extends WgwDatabaseTestCase
         $this->assertArrayNotHasKey('groups/t2', (array) $this->ownerShareWith('bob', 'default'));
         $this->assertSame($rows, $this->grantRowSnapshot());
 
+        // Sharing yet another Team does not bring it back; only the owner rejoining T2 does.
+        $this->seedSharedTeam('t4', 'bob', 'carol');
+        $this->forgetRequestState();
+        $this->assertNotContains($sharedId, $this->calendarIds('carol'));
+        $this->assertArrayNotHasKey('groups/t2', (array) $this->ownerShareWith('bob', 'default'));
+        $rows = $this->grantRowSnapshot(); // T4 brings its own Team calendar.
+
         $this->join('bob', 't2');
 
         $this->assertContains($sharedId, $this->calendarIds('carol'));

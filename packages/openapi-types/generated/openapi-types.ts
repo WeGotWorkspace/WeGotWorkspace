@@ -4288,7 +4288,7 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.
+         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API. A grant from an owner who shares no Team with the caller (or to a Team the owner left) is left out until they share a Team again, admins included; FileNode and path access follow the same rule.
          */
         get: {
             parameters: {
@@ -4482,7 +4482,7 @@ export interface paths {
         head?: never;
         /**
          * Update share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
          */
         patch: {
             parameters: {
@@ -4676,7 +4676,7 @@ export interface paths {
         };
         /**
          * Share grants overview at path
-         * @description Owner context: direct, ancestor, and nested shares plus grantSources (raw), resolved effectiveGrants, memberAccess (per-user expansion), and publicShares for the sharing panel.
+         * @description Owner context: direct, ancestor, and nested shares plus grantSources (raw), resolved effectiveGrants, memberAccess (per-user expansion), and publicShares for the sharing panel. Grants to users who share no Team with the owner, and to Teams the owner left, are left out (admins too); email grants and public links are unchanged.
          */
         get: {
             parameters: {
@@ -4799,7 +4799,7 @@ export interface paths {
         };
         /**
          * List grants for a principal
-         * @description Owner-scoped audit of all grant rows for a queried principal (user, group, or email) across owned shares. Optional scope limits to a subtree.
+         * @description Owner-scoped audit of all grant rows for a queried principal (user, group, or email) across owned shares. Optional scope limits to a subtree. Grants to users who share no Team with the owner, and to Teams the owner left, are left out (admins too); email grants and public links are unchanged.
          */
         get: {
             parameters: {
@@ -11157,7 +11157,7 @@ export interface components {
         DriveShareGrantEntry: {
             access: components["schemas"]["DriveShareAccess"];
         };
-        /** @description Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path). */
+        /** @description Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path). A user or Team grant whose owner no longer shares a Team with the grantee (or left the Team the share went to) is hidden on read for both of them, admins included, and left out here; nothing is deleted, and it shows again when they share a Team again. */
         DriveShareShareWithMap: {
             [key: string]: components["schemas"]["DriveShareGrantEntry"] | null;
         };

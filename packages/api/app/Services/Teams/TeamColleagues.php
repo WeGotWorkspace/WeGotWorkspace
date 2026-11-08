@@ -18,16 +18,16 @@ use Closure;
  * shares, presence and free/busy an admin follows real Team membership like any user,
  * because hiding is checked on the recipient's side.
  *
- * | Surface                                                         | Check                                                  |
- * |-----------------------------------------------------------------|--------------------------------------------------------|
- * | Scheduling invitees: attendee picker, mentions                  | `isColleague`                                          |
- * | DM rail and share dialogs (`sharesTeam` flag), Drive principals | `sharesTeamIgnoringAdminRole`                          |
- * | DM open, share writes, group sharee                             | `assertMayShareWith`, `isOwnTeam` (admins too)         |
- * | Hidden shares, owner share lists                                | `sharesTeamIgnoringAdminRole`                          |
- * | Presence rooms                                                  | own Teams only (admins too)                            |
- * | `principals/groups/`, `group-member-set`, `principals/{user}`   | `isColleague` / own Teams (admins: all)                |
- * | iTIP: JMAP → iMIP; DAV → same result as an external address     | `isColleague`                                          |
- * | VFREEBUSY, availability, #1614                                  | `sharesTeamIgnoringAdminRole`                          |
+ * | Surface                                                         | Check                                                                                    |
+ * |-----------------------------------------------------------------|------------------------------------------------------------------------------------------|
+ * | Scheduling invitees: attendee picker, mentions                  | `isColleague`                                                                            |
+ * | DM rail and share dialogs (`sharesTeam` flag), Drive principals | `sharesTeamIgnoringAdminRole`                                                            |
+ * | DM open, share writes, group sharee                             | `assertMayShareWith`, `isOwnTeam` (admins too)                                           |
+ * | Hidden shares, owner share lists                                | `grantIsVisible`: user grant `sharesTeamIgnoringAdminRole`, Team grant owner `isOwnTeam` |
+ * | Presence rooms                                                  | own Teams only (admins too)                                                              |
+ * | `principals/groups/`, `group-member-set`, `principals/{user}`   | `isColleague` / own Teams (admins: all)                                                  |
+ * | iTIP: JMAP → iMIP; DAV → same result as an external address     | `isColleague`                                                                            |
+ * | VFREEBUSY, availability, #1614                                  | `sharesTeamIgnoringAdminRole`                                                            |
  *
  * No other variant exists. The set comes from one self-join on `groupmembers` and is memoised
  * for one request only (scoped binding, cleared in place when a request starts); nothing is
@@ -70,7 +70,20 @@ final class TeamColleagues
     /** Real Team membership, admins included: DMs, shares, hiding, presence, free/busy. */
     public function sharesTeamIgnoringAdminRole(string $viewer, string $username): bool
     {
+        // Sharing a Team is symmetric: answer from whichever side is already loaded, so a
+        // reader who checks many owners against themselves costs one membership query.
+        $other = TeamMembershipReader::normalise($username);
+        if (! isset($this->teamMates[TeamMembershipReader::normalise($viewer)]) && isset($this->teamMates[$other])) {
+            return ColleagueSet::restricted($this->teamMates[$other])->contains($viewer);
+        }
+
         return ColleagueSet::restricted($this->teamMatesOf($viewer))->contains($username);
+    }
+
+    /** Loads the user's Team mates now, so later checks against them reuse this one query. */
+    public function loadTeamMatesOf(string $username): void
+    {
+        $this->teamMatesOf($username);
     }
 
     /** Real membership of `principals/groups/{groupSlug}`, admins included. */
