@@ -135,7 +135,7 @@ final class CalendarCollectionAccess
 
     public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
     {
-        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a group collection.');
+        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a team collection.');
     }
 
     /**
@@ -148,7 +148,7 @@ final class CalendarCollectionAccess
         $this->assertGroupOwnedAdmin(
             $username,
             $instance,
-            'Only an instance admin can move a group collection out of its group.',
+            'Only an instance admin can move a team collection out of its team.',
         );
     }
 

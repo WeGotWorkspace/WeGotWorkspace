@@ -22,7 +22,7 @@ trait GroupCollectionOwnerMoves
 
     protected const MOVE_OTHER_GROUP = 'alumni';
 
-    protected const MOVE_ADMIN_ONLY = 'Only an instance admin can move a group collection out of its group.';
+    protected const MOVE_ADMIN_ONLY = 'Only an instance admin can move a team collection out of its team.';
 
     protected function seedGroupCollectionOwnerMoves(): void
     {

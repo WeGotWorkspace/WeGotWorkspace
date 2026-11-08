@@ -24,7 +24,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
 {
     private const GROUP = 'crew';
 
-    private const ADMIN_ONLY = 'Only an instance admin can delete a group collection.';
+    private const ADMIN_ONLY = 'Only an instance admin can delete a team collection.';
 
     protected function setUp(): void
     {
