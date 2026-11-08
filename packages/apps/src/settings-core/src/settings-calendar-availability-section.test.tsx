@@ -130,7 +130,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(calendarRow("Work").dataset.included).toBe("false");
   });
 
-  it("offers a Team calendar Do not add and Time only, with the whole-Team hint", async () => {
+  it("offers a Team calendar Do not add and Time only", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
@@ -139,8 +139,38 @@ describe("SettingsCalendarAvailabilitySection", () => {
     await screen.findByText(labels.footer);
     const team = calendarRow("Editorial");
     expect(within(team).getByRole("combobox").textContent).toContain(labels.detailBusy);
-    expect(within(team).getByText(labels.teamHint)).toBeTruthy();
     expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
+  });
+
+  it("puts the whole-Team hint in a tooltip on the Team tag, described for screen readers", async () => {
+    renderSection(
+      createMockCalendarAvailabilitySettingsOperations(
+        mockCalendarAvailabilitySettings({ enabled: true }),
+      ),
+    );
+    await screen.findByText(labels.footer);
+    const team = calendarRow("Editorial");
+    expect(within(team).queryByText(labels.teamHint, { selector: "p" })).toBeNull();
+    expect(
+      within(calendarRow("Work")).queryByRole("button", { name: labels.teamBadge }),
+    ).toBeNull();
+
+    const tag = within(team).getByRole("button", { name: labels.teamBadge });
+    const describedBy = tag.getAttribute("aria-describedby") ?? "";
+    expect(document.getElementById(describedBy)?.textContent).toBe(labels.teamHint);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    // Keyboard focus opens it.
+    act(() => tag.focus());
+    expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
+    fireEvent.keyDown(tag, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    act(() => tag.blur());
+
+    // A tap (touch pointer, then click) opens it too.
+    fireEvent.pointerDown(tag, { pointerType: "touch" });
+    fireEvent.click(tag);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
   });
 
   it("saves the switch and changed calendars through the REST operations", async () => {

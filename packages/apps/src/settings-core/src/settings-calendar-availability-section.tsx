@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useWatch, type Control } from "react-hook-form";
 import { Button } from "@/button/src/button";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
@@ -19,6 +19,7 @@ import { FormSaveActionRow } from "@/ui/form-save-action-row";
 import { Label } from "@/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { CalendarAvailabilityCalendar } from "@wgw/openapi-types/calendars-types";
 import "./settings-calendar-availability-section.css";
 
@@ -167,7 +168,7 @@ function AvailabilityCalendarRow({
           <span id={nameId} className="settings-availability__calendar-label">
             {calendar.name}
           </span>
-          {isTeam ? <Badge variant="outline">{labels.teamBadge}</Badge> : null}
+          {isTeam ? <TeamCalendarTag /> : null}
         </div>
         <FormField
           control={control}
@@ -202,7 +203,44 @@ function AvailabilityCalendarRow({
           )}
         />
       </div>
-      {isTeam ? <p className="settings-availability__hint">{labels.teamHint}</p> : null}
     </li>
+  );
+}
+
+/**
+ * The "Team" tag of a Team calendar row. Its hint opens as a tooltip on hover, on keyboard focus
+ * and on tap (Radix tooltips ignore taps, hence the controlled `open`). Screen readers get the
+ * hint as the tag's description, also while the tooltip is closed.
+ */
+function TeamCalendarTag() {
+  const hintId = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="settings-availability__team-tag"
+          // While open, Radix points the description at the tooltip itself.
+          aria-describedby={open ? undefined : hintId}
+          onPointerDown={(event) => {
+            // Keep Radix from closing the tooltip on a tap; the click below opens it.
+            if (event.pointerType !== "mouse") event.preventDefault();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            setOpen(true);
+          }}
+        >
+          <Badge variant="outline">{labels.teamBadge}</Badge>
+        </button>
+      </TooltipTrigger>
+      <span id={hintId} className="sr-only">
+        {labels.teamHint}
+      </span>
+      <TooltipContent side="top" className="settings-availability__team-tooltip">
+        {labels.teamHint}
+      </TooltipContent>
+    </Tooltip>
   );
 }

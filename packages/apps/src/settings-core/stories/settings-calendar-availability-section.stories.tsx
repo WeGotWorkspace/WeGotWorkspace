@@ -96,7 +96,6 @@ export const OnWithThreeCalendars: Story = {
     await expect(work.textContent).toContain(labels.exclude);
     const editorial = canvas.getByRole("combobox", { name: "Editorial" });
     await expect(editorial.textContent).toContain(labels.detailBusy);
-    await expect(canvas.getByText(labels.teamHint)).toBeInTheDocument();
     await expect(canvas.queryByRole("checkbox")).toBeNull();
     await expect(canvas.queryByText("Design")).toBeNull();
   },
@@ -142,5 +141,18 @@ export const LoadError: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(labels.loadError)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: labels.retry })).toBeInTheDocument();
+  },
+};
+
+/** The whole-Team hint opens as a tooltip on the "Team" tag (hover, focus or tap). */
+export const TeamTagTooltip: Story = {
+  render: story(createMockCalendarAvailabilitySettingsOperations(threeCalendars)),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const tag = await canvas.findByRole("button", { name: labels.teamBadge });
+    await expect(tag).toHaveAccessibleDescription(labels.teamHint);
+    await userEvent.click(tag);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(await body.findByRole("tooltip")).toHaveTextContent(labels.teamHint);
   },
 };

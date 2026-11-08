@@ -62,3 +62,12 @@
 .settings-availability__calendar[data-included="false"] .settings-availability__calendar-name {
   @apply text-muted-foreground;
 }
+
+.settings-availability__team-tag {
+  @apply inline-flex shrink-0 cursor-help appearance-none rounded-md border-0 bg-transparent p-0;
+  @apply focus-visible:outline-none focus-visible:ring-1;
+}
+
+.settings-availability__team-tooltip {
+  @apply max-w-64;
+}
