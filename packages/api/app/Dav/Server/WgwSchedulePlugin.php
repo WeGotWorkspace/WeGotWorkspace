@@ -7,6 +7,7 @@ namespace App\Dav\Server;
 use App\Services\Calendars\Availability\AvailabilityAudience;
 use App\Services\Calendars\Availability\AvailabilityCalculator;
 use App\Services\Calendars\CalendarPrincipalAddresses;
+use App\Services\Teams\TeamColleagues;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -17,10 +18,11 @@ use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Property;
 
 /**
- * CalDAV scheduling with the outbox free/busy report under the Team
- * availability rules (#1907). Sabre answers for every principal; here the
- * target is answered only when the caller may read their availability (shared
- * Team or self, switch on, enabled). The busy time comes from the calculator
+ * RFC 6638 scheduling with the outbox free/busy report under the Team rule
+ * (#1923) and the Team availability rules (#1907). Sabre answers for every
+ * principal; here the target is answered only when the caller may read their
+ * availability: self or a shared Team ({@see TeamColleagues::sharesTeamIgnoringAdminRole},
+ * so admins too), the target's switch on, and the target enabled. The busy time comes from the calculator
  * over the whole UTC weeks covering the window, clipped back to it, without
  * titles. Anything else, a window over 54 covering weeks, or an incomplete
  * result answers as for an unknown address, so a client never reads a gap
@@ -28,7 +30,8 @@ use Sabre\VObject\Property;
  */
 final class WgwSchedulePlugin extends SchedulePlugin
 {
-    private const UNKNOWN = '3.7;Could not find principal';
+    /** Sabre's answer for an address it cannot resolve. */
+    public const UNKNOWN_ADDRESS_STATUS = '3.7;Could not find principal';
 
     private const WEEK_SECONDS = 604800;
 
@@ -45,7 +48,7 @@ final class WgwSchedulePlugin extends SchedulePlugin
     protected function getFreeBusyForEmail($email, DateTimeInterface $start, DateTimeInterface $end, Component $request)
     {
         $mailto = str_starts_with(strtolower($email), 'mailto:') ? $email : 'mailto:'.$email;
-        $unknown = ['request-status' => self::UNKNOWN, 'href' => $mailto];
+        $unknown = ['request-status' => self::UNKNOWN_ADDRESS_STATUS, 'href' => $mailto];
 
         $caller = $this->username($this->currentPrincipal());
         $target = $this->username($this->addresses->principalForMailto($mailto)?->uri);

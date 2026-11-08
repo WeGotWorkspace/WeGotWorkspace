@@ -36,6 +36,12 @@ final class TeamMcpShareGatesTest extends WgwDatabaseTestCase
     use CalendarsTestFixtures;
     use ConfiguresMcp;
 
+    /** These tests set up their own Teams; the fixture Team would make every fixture user a colleague. */
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     private const UNKNOWN_PRINCIPAL = 'Unknown or invalid share principal.';
 
     /** @var array<string, list<array{0: string, 1: class-string, 2: array<string, mixed>, 3: array<string, bool>}>> */

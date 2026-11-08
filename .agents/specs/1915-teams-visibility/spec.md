@@ -110,7 +110,7 @@ Existing grants are not touched by these gates.
 
 ### Scheduling and free/busy
 
-- An invite or update from organiser A to an internal attendee B who is not A's colleague is treated as if B were external. It is not delivered into B's calendar. From the web app (JMAP) it goes through iMIP. From a native client (DAV) B gets exactly what an external address gets today, which is no mail: DAV has no iMIP route yet (Bug #1929). When external invites are off or the instance cannot send mail, the result is the same as for any external address.
+- An invite or update from organiser A to an internal attendee B who is not A's colleague is treated as if B were external. It is not delivered into B's calendar. From the web app (JMAP) it goes through iMIP. From a native client (DAV) B gets exactly what an external address gets: an iMIP mail since Bug #1929 (schedule status 1.1). When external invites are off or the instance cannot send mail, the result is the same as for any external address.
 - When A types B's address, the event keeps the address as typed. It is not canonicalised to B's principal, because that would reveal that B exists on this instance.
 - A CalDAV outbox VFREEBUSY request for a user who shares no Team with the caller returns the same response as for an unknown address. This holds for admins too (`sharesTeamIgnoringAdminRole`). There is no free/busy code of our own today, so this is new code: a subclass of Sabre's schedule plugin that overrides `getFreeBusyForEmail` and answers `3.7;Could not find principal`.
 - Sabre reaches an attendee's inbox through the principal node tree. When `principals/{user}` starts returning 404 for non-colleagues, delivery to them must already go to iMIP before Sabre's local delivery runs.
