@@ -141,6 +141,7 @@ export const TasksListRow = memo(function TasksListRow({
   const checkbox = (
     <Checkbox
       size="md"
+      mark
       className="tasks-list-row__complete"
       checked={completed}
       aria-label={completed ? L.markIncomplete : L.markComplete}

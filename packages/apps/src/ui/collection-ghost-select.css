@@ -26,7 +26,7 @@
 
 .collection-ghost-select:hover:not(:disabled),
 .collection-ghost-select[data-state="open"] {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  background-color: var(--workspace-ghost-hover-background);
 }
 
 .collection-ghost-select:focus-visible {

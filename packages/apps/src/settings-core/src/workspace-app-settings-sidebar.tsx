@@ -26,3 +26,20 @@ export function useWorkspaceAppSettingsMenuItem(
     [entry.visible, entry.label, entry.onClick],
   );
 }
+
+/**
+ * `items` with the app's Settings as the last row: for a sidebar section when the
+ * sidebar has no primary button whose menu could hold it. Pass `enabled` false
+ * when that menu is there.
+ */
+export function useItemsWithAppSettingsRow<T extends MenuItemProps>(
+  appId: WorkspaceAppId,
+  items: T[],
+  enabled = true,
+): (T | (MenuItemProps & { id: string }))[] {
+  const settingsItem = useWorkspaceAppSettingsMenuItem(appId);
+  return useMemo(
+    () => (enabled && settingsItem ? [...items, settingsItem] : items),
+    [enabled, items, settingsItem],
+  );
+}

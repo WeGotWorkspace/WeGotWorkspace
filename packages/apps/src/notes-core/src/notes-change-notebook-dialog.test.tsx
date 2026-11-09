@@ -79,7 +79,7 @@ describe("NotesChangeNotebookDialog", () => {
       "Field Observations",
       defaultNotesLabels.addNotebook,
     ]);
-    expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
+    expect(document.querySelector(".collection-select__separator")).toBeTruthy();
     expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-dot')).toHaveLength(3);
     expect(document.querySelector('[role="listbox"] .collection-sidebar-row__dot')).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(

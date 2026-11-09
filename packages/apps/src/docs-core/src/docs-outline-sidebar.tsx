@@ -6,7 +6,7 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { DocsOutlineItem } from "@/docs-core/src/docs-outline";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { cn } from "@/lib/utils";
-import { useWorkspaceAppSettingsMenuItem } from "@/settings-core/src/workspace-app-settings-sidebar";
+import { useItemsWithAppSettingsRow } from "@/settings-core/src/workspace-app-settings-sidebar";
 
 import "@/docs-core/src/docs-outline-sidebar.css";
 
@@ -21,6 +21,8 @@ type DocsOutlineSidebarProps = {
   showOutline?: boolean;
 };
 
+const NO_ITEMS: MenuItemProps[] = [];
+
 export function DocsOutlineSidebar({
   labels,
   items,
@@ -30,8 +32,6 @@ export function DocsOutlineSidebar({
   showOutline = true,
 }: DocsOutlineSidebarProps) {
   const navigate = useNavigate();
-  // The editor sidebar has no primary button (no menu): Settings is a row here.
-  const settingsItem = useWorkspaceAppSettingsMenuItem("docs");
 
   const homeItems = useMemo(
     (): MenuItemProps[] => [
@@ -39,6 +39,7 @@ export function DocsOutlineSidebar({
         label: labels.sidebarBackToHome,
         icon: <ArrowLeft className="size-4" aria-hidden />,
         onClick: () => void navigate({ to: "/docs" }),
+        className: "docs-outline-sidebar__back",
       },
     ],
     [labels.sidebarBackToHome, navigate],
@@ -71,16 +72,14 @@ export function DocsOutlineSidebar({
     });
   }, [activeIndex, items, labels.outlineEmpty, onSelect]);
 
-  // First section: the way back to the documents, then Settings.
-  const firstItems = [
-    ...(showBackToHome ? homeItems : []),
-    ...(settingsItem ? [settingsItem] : []),
-  ];
+  // First section: the way back to the documents, then Settings (the editor
+  // sidebar has no primary button whose menu could hold it).
+  const firstItems = useItemsWithAppSettingsRow("docs", showBackToHome ? homeItems : NO_ITEMS);
 
   return (
     <>
       {firstItems.length > 0 ? (
-        <SidebarSection className="docs-outline-sidebar__back" items={firstItems} />
+        <SidebarSection className="docs-outline-sidebar__first" items={firstItems} />
       ) : null}
       {showOutline ? <SidebarSection title={labels.sidebarOutline} items={menuItems} /> : null}
     </>

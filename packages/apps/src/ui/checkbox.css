@@ -1,7 +1,8 @@
 @import "../styles.css" reference;
 
 /**
- * Shared checkbox tokens. Parents override `--checkbox-*` (Notes gold, Docs blue).
+ * Shared checkbox tokens. Parents override `--checkbox-*`; `.checkbox--mark` (below)
+ * sets them to the suite selection mark.
  *
  * Checked fill defaults to a slightly stronger wash than calendar event-card
  * `surfaceTint(accent, 11)` — 14% accent into the surface
@@ -46,6 +47,20 @@
   /* Matches sidebar leading icons (`size-3.5`). */
   --_checkbox-size: 0.875rem;
   --_checkbox-check-size: 0.5rem;
+}
+
+/*
+ * The suite selection mark: an empty dimmed ring, or checked one solid fill in the
+ * selection-mark colour with a contrasting check. The Tasks done boxes
+ * (`<Checkbox mark>`) and the editor's task checks (TextEditorTaskItem puts this
+ * class on its painted box) share it. A host colours the checked mark with
+ * `--checkbox-mark-fill` / `--checkbox-mark-check` (Notes: the text colour).
+ */
+.checkbox--mark {
+  --checkbox-border-color: var(--workspace-selection-mark-ring);
+  --checkbox-checked-bg: var(--checkbox-mark-fill, var(--workspace-selected-mark-background));
+  --checkbox-checked-border: var(--checkbox-mark-fill, var(--workspace-selected-mark-border));
+  --checkbox-checked-fg: var(--checkbox-mark-check, var(--workspace-selected-mark-color));
 }
 
 .checkbox:disabled {

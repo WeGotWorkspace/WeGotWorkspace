@@ -26,17 +26,20 @@
 }
 
 /* Calm list header (Contacts letters, chat days): no rule under it; the pane fill
-   frosted so rows blur past beneath it; the label on the list row text line. */
+   frosted so rows blur past beneath it; the label on the list row text line. The
+   same glass as the floating chrome (`--frost-blur`, `--scheme-frost-paper`), but
+   over the list pane's own fill and without the ink tint: it lies flush, it does
+   not float. */
 .list-sticky-header--frost {
   --list-sticky-header-frost: color-mix(
     in oklch,
-    var(--collection-list-pane-fill, var(--workspace-surface)) 72%,
+    var(--collection-list-pane-fill, var(--workspace-surface)) var(--scheme-frost-paper),
     transparent
   );
   border-bottom: 0;
   background-color: var(--list-sticky-header-frost);
-  -webkit-backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
-  backdrop-filter: var(--frost-blur, blur(16px) saturate(1.4));
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
   padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
 }
 

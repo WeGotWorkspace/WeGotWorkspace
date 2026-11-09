@@ -18,6 +18,7 @@ import { NoteTitleCaretsLayer } from "@/note-detail-view/src/note-title-carets";
 import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets";
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";
 import "@/note-detail-view/src/note-detail-desk.css";
 
@@ -187,7 +188,7 @@ export function NoteDetailView({
 
   return (
     <article className={cn("note-detail-view paper-sheet", className)}>
-      {eyebrow ? <div className="note-detail-view__eyebrow">{eyebrow}</div> : null}
+      <NoteDetailEyebrow>{eyebrow}</NoteDetailEyebrow>
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>

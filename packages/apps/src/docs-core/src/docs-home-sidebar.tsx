@@ -1,5 +1,5 @@
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
-import { useWorkspaceAppSettingsMenuItem } from "@/settings-core/src/workspace-app-settings-sidebar";
+import { useItemsWithAppSettingsRow } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
@@ -35,10 +35,8 @@ export function DocsHomeSidebar({
   driveItems,
   drivesSectionLabel,
 }: DocsHomeSidebarProps) {
-  const settingsItem = useWorkspaceAppSettingsMenuItem("docs");
   // Without a primary button there is no menu for Settings: it is the first section's last row.
-  const firstItems =
-    !showNewDocument && settingsItem ? [...primaryItems, settingsItem] : primaryItems;
+  const firstItems = useItemsWithAppSettingsRow("docs", primaryItems, !showNewDocument);
   return (
     <AppSidebar
       settingsAppId="docs"

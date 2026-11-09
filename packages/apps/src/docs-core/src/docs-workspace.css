@@ -51,8 +51,6 @@
   --workspace-main-content-max-width: none;
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --checkbox-border-color: var(--workspace-accent);
-  --checkbox-checked-border: var(--workspace-accent);
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
   /* Quiet menu washes: shared `workspace-derive.css`.

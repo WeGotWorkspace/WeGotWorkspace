@@ -54,6 +54,7 @@ import {
 } from "@/contacts-core/src/contacts-edit-utils";
 import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";
 
 type ContactsDetailViewProps = {
@@ -438,7 +439,7 @@ export function ContactsDetailView({
           className="contacts-detail-view__avatar"
         />
         <div className="contacts-detail-view__heading">
-          {eyebrow ? <div className="note-detail-view__eyebrow">{eyebrow}</div> : null}
+          <NoteDetailEyebrow>{eyebrow}</NoteDetailEyebrow>
           {title}
           {groupTags && tags ? (
             <TagGroup

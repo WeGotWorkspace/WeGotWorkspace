@@ -441,8 +441,8 @@ input.input:focus-visible:not(:read-only),
 
 /*
  * Ghost field (suite norm): the detail-sheet value you can type in, the text twin
- * of `.collection-ghost-select`. No border or fill at rest; the same 6% ink wash on
- * hover and while typing. The negative inline margin keeps the text in line with
+ * of `.collection-ghost-select`. No border or fill at rest; the same ink wash
+ * (`--workspace-ghost-hover-background`) on hover and while typing. The negative inline margin keeps the text in line with
  * the label column while the wash has room.
  */
 .input.input--ghost,
@@ -459,7 +459,7 @@ input.input:focus-visible:not(:read-only),
 .input.input--ghost:focus:not(:read-only),
 .textarea.textarea--ghost:hover:not(:disabled):not(:read-only),
 .textarea.textarea--ghost:focus:not(:read-only) {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  background-color: var(--workspace-ghost-hover-background);
 }
 
 html[data-modality="pointer"] .input.input--ghost:focus-visible,

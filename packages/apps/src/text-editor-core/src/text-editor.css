@@ -612,34 +612,22 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label span {
-  /* The suite selection mark (`.selection-mark`): an empty ring, or checked one
-   * solid fill with a contrasting check. A host can colour the checked mark with
-   * `--text-editor-task-check-fill` / `-color` (Notes: the notebook colour). */
+  /* The suite selection mark: TextEditorTaskItem gives the box `.checkbox--mark`
+   * (`ui/checkbox.css`), which sets the `--checkbox-*` colours read here. A host
+   * colours the checked mark with `--checkbox-mark-fill` / `-check` (Notes). */
   @apply relative grid shrink-0 place-content-center border shadow-none;
   width: var(--checkbox-size, 1.5rem);
   height: var(--checkbox-size, 1.5rem);
   border-radius: var(--control-radius-pill);
-  border-color: var(
-    --workspace-selection-mark-ring,
-    color-mix(in oklab, var(--workspace-foreground) 30%, transparent)
-  );
+  border-color: var(--checkbox-border-color);
   background-color: transparent;
-  color: var(
-    --text-editor-task-check-color,
-    var(--workspace-selected-mark-color, var(--workspace-surface))
-  );
+  color: var(--checkbox-checked-fg);
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span {
-  background-color: var(
-    --text-editor-task-check-fill,
-    var(--workspace-selected-mark-background, var(--workspace-foreground))
-  );
-  border-color: var(
-    --text-editor-task-check-fill,
-    var(--workspace-selected-mark-border, var(--workspace-foreground))
-  );
+  background-color: var(--checkbox-checked-bg);
+  border-color: var(--checkbox-checked-border);
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span::after,
@@ -648,7 +636,7 @@
   width: var(--checkbox-check-size, 1rem);
   height: var(--checkbox-check-size, 1rem);
   background-color: currentColor;
-  /* Lucide `Check` path — stroke 2.75 matches `SelectionMark`. */
+  /* Lucide `Check` path — stroke 2.75, as the `.selection-mark` check. */
   --checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
   -webkit-mask-image: var(--checkbox-check-mask);
   -webkit-mask-position: center;
@@ -1213,18 +1201,9 @@
     li[data-checked="true"]
     > label
     span {
-    border-color: var(
-      --text-editor-task-check-fill,
-      var(--workspace-selected-mark-border, var(--workspace-foreground))
-    ) !important;
-    background: var(
-      --text-editor-task-check-fill,
-      var(--workspace-selected-mark-background, var(--workspace-foreground))
-    ) !important;
-    color: var(
-      --text-editor-task-check-color,
-      var(--workspace-selected-mark-color, var(--workspace-surface))
-    ) !important;
+    border-color: var(--checkbox-checked-border) !important;
+    background: var(--checkbox-checked-bg) !important;
+    color: var(--checkbox-checked-fg) !important;
     box-shadow: none !important;
   }
 

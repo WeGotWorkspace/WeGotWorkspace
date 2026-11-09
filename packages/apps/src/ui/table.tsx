@@ -50,8 +50,9 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        // Rounded like sidebar rows, no separators (suite list norm).
-        "transition-colors [&:not(:last-child)>td]:border-b [&:not(:last-child)>td]:border-[color:var(--workspace-divider-color)] [clip-path:inset(0_round_var(--list-row-radius,0.625rem))] hover:bg-muted/50 data-[state=selected]:[background:var(--workspace-selected-background)]",
+        // Rounded like sidebar rows (suite list norm). Hover is the list rows' light sky
+        // step; a selected row keeps its selected wash under the pointer.
+        "transition-colors [&:not(:last-child)>td]:border-b [&:not(:last-child)>td]:border-[color:var(--workspace-divider-color)] [clip-path:inset(0_round_var(--list-row-radius,0.625rem))] [&:not([data-state=selected]):hover]:[background:var(--workspace-hover-background)] data-[state=selected]:[background:var(--workspace-selected-background)]",
         className,
       )}
       {...props}

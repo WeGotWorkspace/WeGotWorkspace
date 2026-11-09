@@ -58,12 +58,6 @@
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
-  /* Workspace-level — sidebar collection rows override with row color.
-   * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph
-   * uses the shared Dark-mixed default. Editor task checks take the notebook
-   * colour (`.note-text-editor-body` below). */
-  --checkbox-checked-border: var(--workspace-accent);
   /* Tags are the Tag primitive's chip. Idle sidebar chips keep its neutral wash;
    * an active tag (selected in the sidebar, set on the open note) is this pair:
    * the ink dimmed a little into the surface, with a surface label. Nested
@@ -87,7 +81,7 @@
   --note-detail-tag-border: var(--notes-detail-accent);
   /* The open note sits on the plain pane surface: no notebook wash, no sheet
    * shadow. The notebook colour lives in the eyebrow above the title
-   * (`--notes-detail-accent`). */
+   * (`--notes-detail-accent`); task checks follow the text, not the notebook. */
   --paper-sheet-bg: var(--workspace-surface);
   --paper-sheet-shadow: none;
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
@@ -122,8 +116,8 @@
 /* Editor task checks follow the text, not the notebook: a ring in the body ink,
  * and when checked the inverse — filled with the ink, the check in the sheet colour. */
 .notes-workspace .note-text-editor-body {
-  --text-editor-task-check-fill: var(--notes-detail-contrast-fg, var(--workspace-foreground));
-  --text-editor-task-check-color: var(--workspace-surface);
+  --checkbox-mark-fill: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+  --checkbox-mark-check: var(--workspace-surface);
 }
 
 /* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */

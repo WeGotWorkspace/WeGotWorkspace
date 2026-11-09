@@ -31,8 +31,9 @@
   padding-inline-start: calc(var(--app-sidebar-item-padding-x) + 3rem + 0.5rem) !important;
 }
 
-/* Back to documents: a filled chip row instead of a bare nav link. */
-.docs-outline-sidebar__back .menu-item {
+/* Back to documents: a filled chip row instead of a bare nav link. Settings,
+   below it, stays a plain row. */
+.menu-item.docs-outline-sidebar__back {
   border-radius: var(--docs-chip-radius, 0.625rem);
   background-color: var(
     --docs-chip-bg,
@@ -41,10 +42,10 @@
   color: var(--workspace-foreground);
 }
 
-.docs-outline-sidebar__back .menu-item .menu-item__icon-slot {
+.menu-item.docs-outline-sidebar__back .menu-item__icon-slot {
   opacity: 0.9;
 }
 
-.docs-outline-sidebar__back + .sidebar-section {
+.docs-outline-sidebar__first + .sidebar-section {
   border-top: 0 !important;
 }

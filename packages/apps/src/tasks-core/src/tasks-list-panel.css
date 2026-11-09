@@ -91,19 +91,11 @@
   color: var(--color-error-text);
 }
 
-/* The suite selection mark (as the Notes editor task checks), at the row's leading
-   control size: an empty dimmed ring as thick as the title strokes, or one solid
-   fill in the multi-selection colour with a contrasting check. */
+/* The suite selection mark (`<Checkbox mark>`, `ui/checkbox.css`) at the row's
+   leading control size. */
 :is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete) {
   --checkbox-size: var(--list-item-leading-control-size, 1.25rem);
   --checkbox-check-size: 0.875rem;
-  --checkbox-border-color: var(
-    --workspace-selection-mark-ring,
-    color-mix(in oklab, var(--workspace-foreground) 30%, transparent)
-  );
-  --checkbox-checked-bg: var(--workspace-selected-mark-background, var(--workspace-foreground));
-  --checkbox-checked-border: var(--checkbox-checked-bg);
-  --checkbox-checked-fg: var(--workspace-selected-mark-color, var(--workspace-surface));
   transition:
     background-color 150ms ease,
     border-color 150ms ease,
@@ -125,7 +117,7 @@
       .tasks-detail-view__complete
     )[data-state="unchecked"]:not(:disabled):hover {
     --checkbox-border-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
-    background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+    background-color: var(--workspace-ghost-hover-background);
   }
 }
 

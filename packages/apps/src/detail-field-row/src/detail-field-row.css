@@ -123,7 +123,7 @@
 }
 
 .detail-field-row__add:hover {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  background-color: var(--workspace-ghost-hover-background);
   color: var(--workspace-foreground);
 }
 

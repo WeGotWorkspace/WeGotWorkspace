@@ -108,6 +108,7 @@ export function TasksDetailView({
       <TooltipTrigger asChild>
         <span className="tasks-detail-view__complete-hint">
           <Checkbox
+            mark
             className="tasks-detail-view__complete"
             checked={completed}
             aria-label={completeLabel}

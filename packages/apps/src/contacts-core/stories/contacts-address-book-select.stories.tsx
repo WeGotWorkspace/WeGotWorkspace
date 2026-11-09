@@ -76,7 +76,7 @@ export const Toolbar: Story = {
       "Engineering",
       "Bob",
     ]);
-    await expect(document.querySelector(".contacts-address-book-select__separator")).toBeNull();
+    await expect(document.querySelector(".collection-select__separator")).toBeNull();
     await expect(document.querySelectorAll(".notes-notebook-color-dot").length).toBeGreaterThan(0);
     await expect(document.querySelector(".contacts-group-icon")).toBeNull();
 
@@ -96,7 +96,7 @@ export const Swatch: Story = {
     await expect(trigger.className).toContain("color-swatch-trigger");
     await expect(trigger.className).toContain("contacts-address-book-select--swatch");
     await expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    await expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
+    await expect(trigger.querySelector(".collection-select__name")).toBeNull();
 
     await userEvent.click(trigger);
     await userEvent.click(screen.getByRole("option", { name: "Engineering" }));

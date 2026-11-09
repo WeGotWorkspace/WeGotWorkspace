@@ -21,8 +21,6 @@
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --checkbox-border-color: var(--workspace-accent);
-  --checkbox-checked-border: var(--workspace-accent);
 }
 
 /*
