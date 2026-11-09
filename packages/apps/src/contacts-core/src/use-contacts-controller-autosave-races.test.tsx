@@ -327,5 +327,30 @@ describe("contacts autosave: creates and failed saves", () => {
     const jane = result.current.cards.find((row) => row.id === "card-jane")!;
     expect(contactCardToEditDraft(jane).notes).toBe("Met at the fair");
     expect(result.current.editDraft?.notes).toBe("Met at the fair");
+    expect(result.current.editDraft?.nameGiven).toBe("Janet");
+  });
+
+  it("keeps the name being sent when another device's change arrives mid-save", async () => {
+    const { operations, patchCard } = fakeOperations();
+    const { result, rerender } = renderController(operations);
+
+    clickSelect(result, "card-jane");
+    act(() => result.current.updateEditDraft({ nameGiven: "Janet" }));
+    const release = holdNextPatch(patchCard);
+    await advance(PAUSE);
+    expect(patchCard).toHaveBeenCalledOnce();
+    rerender({
+      cards: withJane(remoteJane({ notes: { n1: { "@type": "Note", note: "Met at the fair" } } })),
+    });
+    await settle();
+    expect(result.current.editDraft?.nameGiven).toBe("Janet");
+    expect(result.current.editDraft?.notes).toBe("Met at the fair");
+
+    await release();
+    await advance(PAUSE * 2);
+    for (const call of patchCard.mock.calls) {
+      expect(patchedNames(call[1])).not.toContain("Jane");
+    }
+    expect(result.current.editDraft?.nameGiven).toBe("Janet");
   });
 });

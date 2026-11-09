@@ -130,12 +130,13 @@ const groupTouched = (
  */
 export function rebaseContactDraft(
   draft: ContactEditDraft,
-  synced: ContactEditDraft,
+  synced: ContactEditDraft | ContactEditDraft[],
   fresh: ContactEditDraft,
 ): ContactEditDraft {
+  const bases = Array.isArray(synced) ? synced : [synced];
   const next: Record<string, unknown> = { ...withBlankRowsFrom(fresh, draft) };
   for (const group of DRAFT_FIELD_GROUPS) {
-    if (!groupTouched(group, draft, synced)) continue;
+    if (!bases.some((base) => groupTouched(group, draft, base))) continue;
     for (const key of group) next[key] = draft[key];
   }
   return next as ContactEditDraft;
