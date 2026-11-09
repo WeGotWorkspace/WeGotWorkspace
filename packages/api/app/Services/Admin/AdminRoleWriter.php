@@ -41,8 +41,8 @@ final class AdminRoleWriter
      */
     public function assertNotLastAdmin(string $username): void
     {
-        $isAdmin = User::query()->where('username', $username)->where('is_admin', true)->exists();
-        if ($isAdmin && User::query()->where('is_admin', true)->count() <= 1) {
+        $isEnabledAdmin = User::query()->where('username', $username)->where('is_admin', true)->where('enabled', true)->exists();
+        if ($isEnabledAdmin && User::query()->where('is_admin', true)->where('enabled', true)->count() <= 1) {
             throw new \InvalidArgumentException('The last administrator cannot be removed.');
         }
     }

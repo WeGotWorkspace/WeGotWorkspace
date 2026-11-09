@@ -175,6 +175,9 @@ export const AdminRole: Story = {
     await expect(ownSwitch).toBeDisabled();
     await expect(ownDialog).toHaveTextContent("You cannot remove your own administrator access.");
     await userEvent.click(within(ownDialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => {
+      expect(body.queryByRole("dialog")).toBeNull();
+    });
 
     await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
     const bobDialog = await body.findByRole("dialog", { name: "Edit user" });
@@ -184,6 +187,7 @@ export const AdminRole: Story = {
     await userEvent.click(bobSwitch);
     await userEvent.click(within(bobDialog).getByRole("button", { name: "Save" }));
     await waitFor(() => {
+      expect(body.queryByRole("dialog")).toBeNull();
       expect(canvas.getAllByText("Admin")).toHaveLength(2);
     });
     toast.dismiss();

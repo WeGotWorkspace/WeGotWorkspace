@@ -4,7 +4,7 @@ import { fetchWeGotWorkspaceHomeState } from "@/wegotworkspace/src/wegotworkspac
 
 /**
  * Whether the Admin app should appear in chrome (home grid + app switch).
- * Reuses {@link fetchWeGotWorkspaceHomeState}'s `showAdmin` (administrators group).
+ * Reuses {@link fetchWeGotWorkspaceHomeState}'s `showAdmin` (the admin role, `isAdmin`).
  * Live API: fail closed until the fetch resolves; mock mode: visible immediately.
  */
 export function useShowAdminApp(): boolean {

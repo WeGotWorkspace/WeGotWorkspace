@@ -60,6 +60,7 @@ export {
   NOTES_CAPABILITY,
   QUOTA_CAPABILITY,
   CHAT_CAPABILITY,
+  AVAILABILITY_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

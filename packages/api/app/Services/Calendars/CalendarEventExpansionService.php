@@ -30,10 +30,40 @@ final class CalendarEventExpansionService
     ) {}
 
     /**
+     * A series over the instance limit is logged and yields no occurrences.
+     *
      * @param  array<string, mixed>  $masterEvent
      * @return list<array<string, mixed>>
      */
     public function expandInWindow(
+        array $masterEvent,
+        string $ics,
+        string $calendarUri,
+        string $after,
+        string $before,
+    ): array {
+        try {
+            return $this->expandInWindowOrFail($masterEvent, $ics, $calendarUri, $after, $before);
+        } catch (MaxInstancesExceededException) {
+            Log::warning('calendar.recurrence_limit', [
+                'uid' => $masterEvent['uid'] ?? null,
+                'calendarUri' => $calendarUri,
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Same as {@see expandInWindow()}, but a series over the instance limit
+     * throws, so a caller can tell "skipped" from "no occurrences".
+     *
+     * @param  array<string, mixed>  $masterEvent
+     * @return list<array<string, mixed>>
+     *
+     * @throws MaxInstancesExceededException
+     */
+    public function expandInWindowOrFail(
         array $masterEvent,
         string $ics,
         string $calendarUri,
@@ -96,13 +126,6 @@ final class CalendarEventExpansionService
 
             return $instances;
         } catch (NoInstancesException) {
-            return [];
-        } catch (MaxInstancesExceededException) {
-            Log::warning('calendar.recurrence_limit', [
-                'uid' => $uid,
-                'calendarUri' => $calendarUri,
-            ]);
-
             return [];
         }
     }

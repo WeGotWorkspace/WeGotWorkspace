@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\ApiRefreshToken;
+use App\Models\User;
 use App\Services\Admin\AdminRoleWriter;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\LegacyAdministratorsTeam;
@@ -169,6 +170,24 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             $this->assertSame('The last administrator cannot be removed.', $e->getMessage());
         }
         $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+    }
+
+    public function test_a_disabled_admin_does_not_count_as_another_administrator(): void
+    {
+        $this->grantAdminRole('bob');
+        $token = $this->adminBearerToken();
+        User::query()->where('username', 'bob')->update(['enabled' => false]);
+
+        $this->withBearer($token)
+            ->deleteJson('/api/v1/admin/users/alice')
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'The last administrator cannot be removed.');
+        $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/bob', ['isAdmin' => false])
+            ->assertOk();
+        $this->assertDatabaseHas('users', ['username' => 'bob', 'is_admin' => false], 'wgw');
     }
 
     public function test_admin_grants_the_role_and_it_takes_effect_on_the_next_sign_in(): void

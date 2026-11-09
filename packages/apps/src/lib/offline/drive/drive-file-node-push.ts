@@ -54,7 +54,7 @@ export async function driveOutboxHasPending(username: string): Promise<boolean> 
 
 /**
  * Push entry point for Drive and the Docs home (#1663). The pushed `FileNode`
- * value is the global sequence `FileNode/changes` takes as `sinceState`, so a
+ * value is the FileNode state (`<seq>.<grantHash>`) `FileNode/changes` takes as `sinceState`, so a
  * value equal to the stored token needs no call. A differing one runs one
  * `FileNode/changes` through the inbound path. Resolves false when the sync
  * failed or the browser is offline, so the hub sends the type again.
