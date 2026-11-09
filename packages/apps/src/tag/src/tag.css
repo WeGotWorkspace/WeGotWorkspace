@@ -154,6 +154,13 @@
   --tag-add-width: 8.5rem;
 }
 
+/* No chips yet: the add control's text lines up with the content above it (a title),
+ * its padding hanging outside like a ghost button's. */
+.tag-group > .tag-group__add-button:first-child,
+.tag-group > .tag-group__add:first-child {
+  margin-inline-start: calc(var(--tag-padding-inline, 0.625rem) * -1);
+}
+
 .tag-group__add-button {
   @apply relative inline-flex shrink-0 items-center;
   color: var(
