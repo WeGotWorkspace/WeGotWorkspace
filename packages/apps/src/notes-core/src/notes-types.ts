@@ -101,4 +101,36 @@ export type NotesAPIOperations = {
     action: DeleteNotebookAction,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
+  /** Markdown import (#1623). Online only; absent hides the menu item. */
+  markdownImport?: NotesMarkdownImportOperations;
+};
+
+/**
+ * Direct writes for the Markdown import (#1623) — not the outbox, which only
+ * creates empty notes. Each call writes the created or saved note to the cache.
+ */
+export type NotesMarkdownImportOperations = {
+  /** `POST /notes/items` with a client uid; a repeat with the same uid returns the same note. */
+  createNote: (
+    input: {
+      notebook: NotesNotebookCollection;
+      uid: string;
+      title: string;
+      categories: string[];
+    },
+    opts?: { signal?: AbortSignal },
+  ) => Promise<Note>;
+  /** Store one image in the note's hidden Drive folder. */
+  uploadImage: (
+    note: Pick<Note, "id" | "groupSlug">,
+    file: File,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ nodeId: string }>;
+  /** One body write with `If-Match` from the create. */
+  writeBody: (
+    note: Note,
+    body: string,
+    notebook: NotesNotebookCollection,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<Note>;
 };

@@ -49,6 +49,40 @@ describe("NotesNewMenu", () => {
     expect(main.getAttribute("aria-label")).toBe(L.newNote);
   });
 
+  it("opens the Markdown import from the chevron (#1623)", () => {
+    const onImportMarkdown = vi.fn();
+    render(<NotesNewMenu labels={L} onCreateNote={vi.fn()} onImportMarkdown={onImportMarkdown} />);
+
+    const chevron = screen.getByRole("button", { name: L.newNoteMenu });
+    fireEvent.pointerDown(chevron);
+    fireEvent.click(chevron);
+    fireEvent.click(screen.getByRole("menuitem", { name: L.importMarkdown }));
+    expect(onImportMarkdown).toHaveBeenCalledOnce();
+  });
+
+  it("disables the Markdown import offline with a reason", () => {
+    const onImportMarkdown = vi.fn();
+    render(
+      <NotesNewMenu
+        labels={L}
+        onCreateNote={vi.fn()}
+        onImportMarkdown={onImportMarkdown}
+        importOffline
+      />,
+    );
+
+    const chevron = screen.getByRole("button", { name: L.newNoteMenu });
+    fireEvent.pointerDown(chevron);
+    fireEvent.click(chevron);
+    const item = screen.getByRole("menuitem", { name: new RegExp(L.importMarkdown) });
+    expect(item.getAttribute("aria-disabled") === "true" || item.hasAttribute("disabled")).toBe(
+      true,
+    );
+    expect(item.textContent).toContain(L.importNeedsConnection);
+    fireEvent.click(item);
+    expect(onImportMarkdown).not.toHaveBeenCalled();
+  });
+
   it("disables New note only when disabled is set", () => {
     render(<NotesNewMenu labels={L} onCreateNote={vi.fn()} disabled />);
     const main = screen.getByRole("button", { name: L.newNote });

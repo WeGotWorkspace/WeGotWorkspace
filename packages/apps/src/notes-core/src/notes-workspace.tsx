@@ -61,12 +61,17 @@ import {
 } from "@/notes-core/src/use-notes-sidebar-model";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { Note } from "@/lib/models/note";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import { useNoteBodyCollab } from "@/notes-core/src/use-note-body-collab";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
+import {
+  NotesMarkdownImportHost,
+  type NotesMarkdownImportHostHandle,
+} from "@/notes-core/src/notes-markdown-import-host";
 import {
   notebookDisplayColor,
   notebookDotColor,
@@ -298,6 +303,15 @@ export function NotesWorkspace({
       ),
     [ownedNotebooks, sharedNotebookRows],
   );
+  const importHostRef = useRef<NotesMarkdownImportHostHandle>(null);
+  const onMarkdownImported = useCallback(
+    (notebook: NotesNotebookCollection, imported: Note[]) => {
+      const ids = new Set(imported.map((note) => note.id));
+      setNotes((prev) => [...imported, ...prev.filter((note) => !ids.has(note.id))]);
+      selectViewClearingTitleFocus(notebookViewKey(notebook.id));
+    },
+    [selectViewClearingTitleFocus, setNotes],
+  );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
   const [createdMoveDraft, setCreatedMoveDraft] = useState<NotesNotebookSelectItem | null>(null);
   const openCreateNotebook = useCallback(
@@ -426,6 +440,15 @@ export function NotesWorkspace({
                   dismissSidebarOverlay(c.closeSidebar);
                 }}
                 onCreateNotebook={canManageNotebooks ? () => openCreateNotebook() : undefined}
+                onImportMarkdown={
+                  operations?.markdownImport
+                    ? () => {
+                        importHostRef.current?.openPicker();
+                        dismissSidebarOverlay(c.closeSidebar);
+                      }
+                    : undefined
+                }
+                importOffline={!online}
               />
             }
           >
@@ -715,6 +738,15 @@ export function NotesWorkspace({
         onRename={(next) => {
           if (renameTagDialog) renameTag(renameTagDialog.tag, next);
         }}
+      />
+      <NotesMarkdownImportHost
+        ref={importHostRef}
+        operations={operations}
+        labels={L}
+        notebooks={selectNotebooks}
+        currentNotebookId={view.startsWith("nb:") ? view.slice(3) : null}
+        createNotebook={(name) => createNotebookCollection({ name, color: null })}
+        onImported={onMarkdownImported}
       />
       {confirmDialog}
     </TooltipProvider>

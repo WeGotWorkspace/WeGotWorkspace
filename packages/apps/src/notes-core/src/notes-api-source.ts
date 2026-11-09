@@ -7,6 +7,7 @@ import {
 } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import { createWgwNotesMarkdownImport } from "@/notes-core/src/notes-markdown-import-wgw";
 
 export type NotesApiSource = {
   loadBootstrap: () => Promise<NotesAppBootstrap>;
@@ -19,7 +20,11 @@ export function createHybridNotesApiSource(): NotesApiSource {
     createOperations: (bootstrap) => {
       const username = resolveNotesOfflineUsername(bootstrap?.session.user.username);
       if (!username) return undefined;
-      return createHybridNotesOperations(username);
+      // Markdown import (#1623) writes straight to the API, so only the live source has it.
+      return {
+        ...createHybridNotesOperations(username),
+        markdownImport: createWgwNotesMarkdownImport(username),
+      };
     },
   };
 }

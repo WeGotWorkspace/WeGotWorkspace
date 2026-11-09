@@ -48,6 +48,8 @@ export type NotesNotebookSelectProps = {
   size?: ControlSize;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
   onCreateNotebook?: () => void;
+  /** Show *Create notebook* as the chosen value (import dialog create mode). */
+  createSelected?: boolean;
 };
 
 export function notebookSelectValueForNotes(
@@ -141,9 +143,13 @@ export function NotesNotebookSelect({
   size = "md",
   onNotebookChange,
   onCreateNotebook,
+  createSelected = false,
 }: NotesNotebookSelectProps): ReactElement {
   const items = notebooksWithCurrent(notebooks, value);
-  const selected = resolveNotebookSelectValue(items, value);
+  const selected =
+    createSelected && onCreateNotebook
+      ? NOTES_CREATE_NOTEBOOK_VALUE
+      : resolveNotebookSelectValue(items, value);
   // Prefer the notebook name so swatch chrome stays labeled for AT / tooltip.
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
   const swatch = triggerVariant === "swatch";
