@@ -144,15 +144,15 @@ export const LoadError: Story = {
   },
 };
 
-/** The whole-Team hint opens as a tooltip on the "Team" tag (hover, focus or tap). */
+/** The whole-Team hint opens as the suite tooltip on the "Team" tag (hover or keyboard focus). */
 export const TeamTagTooltip: Story = {
   render: story(createMockCalendarAvailabilitySettingsOperations(threeCalendars)),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const tag = await canvas.findByRole("button", { name: labels.teamBadge });
-    await expect(tag).toHaveAccessibleDescription(labels.teamHint);
-    await userEvent.click(tag);
+    const tag = await canvas.findByText(labels.teamBadge);
+    await userEvent.hover(tag);
     const body = within(canvasElement.ownerDocument.body);
     await expect(await body.findByRole("tooltip")).toHaveTextContent(labels.teamHint);
+    await expect(tag).toHaveAccessibleDescription(labels.teamHint);
   },
 };

@@ -148,7 +148,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
   });
 
-  it("puts the whole-Team hint in a tooltip on the Team tag, described for screen readers", async () => {
+  it("puts the whole-Team hint in the suite tooltip on the Team tag", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
@@ -156,30 +156,21 @@ describe("SettingsCalendarAvailabilitySection", () => {
     );
     await screen.findByText(labels.footer);
     const team = calendarRow("Editorial");
-    expect(within(team).queryByText(labels.teamHint, { selector: "p" })).toBeNull();
-    expect(
-      within(calendarRow("Work")).queryByRole("button", { name: labels.teamBadge }),
-    ).toBeNull();
+    expect(within(calendarRow("Work")).queryByText(labels.teamBadge)).toBeNull();
+    // Only in the tooltip, not as a line in the row.
+    expect(screen.queryByText(labels.teamHint)).toBeNull();
 
-    const tag = within(team).getByRole("button", { name: labels.teamBadge });
-    expect(descriptions(tag)).toEqual([labels.teamHint]);
-    // Not also part of the reading order: only the description carries the hint.
-    expect(screen.getAllByText(labels.teamHint).every((el) => el.hidden)).toBe(true);
+    // The tag can take keyboard focus, and focus opens the tooltip.
+    const tag = within(team).getByText(labels.teamBadge);
+    expect(tag.tabIndex).toBe(0);
     expect(screen.queryByRole("tooltip")).toBeNull();
-
-    // Keyboard focus opens it.
     act(() => tag.focus());
     expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
-    // While open the tag is still described by the hint, but only once.
+    // Radix describes the tag by the tooltip once, not twice.
     expect(descriptions(tag)).toEqual([labels.teamHint]);
+
     fireEvent.keyDown(tag, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
-    act(() => tag.blur());
-
-    // A tap opens it too: a cancelled touch pointerdown fires no click.
-    fireEvent.pointerDown(tag, { pointerType: "touch" });
-    expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
-    expect(descriptions(tag)).toEqual([labels.teamHint]);
   });
 
   it("saves the switch and changed calendars through the REST operations", async () => {
