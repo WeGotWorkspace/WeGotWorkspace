@@ -22,6 +22,45 @@ export function withDriveRootLocation(
   return label ? { ...file, location: label } : file;
 }
 
+/** Changes the All Files rows in place (no-op outside All Files). */
+export type DriveAllFilesPatch = (update: (rows: DriveFile[]) => DriveFile[]) => void;
+
+/**
+ * Shows a write on the All Files rows at once (`update`) and returns the undo: the
+ * rows as they were, then a reload. Outside All Files both are no-ops.
+ */
+export function patchAllFilesRows(
+  view: ViewKey,
+  patch: DriveAllFilesPatch | undefined,
+  reload: (() => void) | undefined,
+  update: (rows: DriveFile[]) => DriveFile[],
+): () => void {
+  if (view.type !== "all" || !patch) return () => undefined;
+  let before: DriveFile[] | null = null;
+  patch((rows) => {
+    before ??= rows;
+    return update(rows);
+  });
+  return () => {
+    const rows = before;
+    if (rows) patch(() => rows);
+    reload?.();
+  };
+}
+
+/** The rows `ids` name, from any view (All Files, Starred, Shared, the open folder). */
+export function driveRowsById(
+  ids: readonly string[],
+  fileById: (id: string) => DriveFile | null,
+): DriveFile[] {
+  const rows = new Map<string, DriveFile>();
+  for (const id of ids) {
+    const row = fileById(id);
+    if (row) rows.set(row.id, row);
+  }
+  return [...rows.values()];
+}
+
 export type UseDriveAllFilesArgs = {
   operations?: DriveAPIOperations;
   view: ViewKey;
@@ -107,6 +146,10 @@ export function useDriveAllFiles({
       });
   }, [hasMore, loadPage, loadingMore]);
 
+  const patchAllFiles = useCallback<DriveAllFilesPatch>((update) => {
+    setItems((previous) => (previous ? update(previous) : previous));
+  }, []);
+
   const labeledItems = useMemo(
     () => items?.map((file) => withDriveRootLocation(file, rootLabels)) ?? null,
     [items, rootLabels],
@@ -121,5 +164,6 @@ export function useDriveAllFiles({
     allLoadingMore: loadingMore,
     loadMoreAll: loadMore,
     reloadAllFiles: reload,
+    patchAllFiles,
   };
 }

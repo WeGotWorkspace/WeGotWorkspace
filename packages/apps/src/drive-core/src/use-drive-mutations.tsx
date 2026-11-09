@@ -139,8 +139,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     beginOptimisticUpdate,
     reloadStarredFromServer,
     view,
-    viewType: view.type,
     fileById,
+    allFiles: shell,
   });
 
   const toggleStar = (id: string) => {
