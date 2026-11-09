@@ -373,7 +373,6 @@ export function TasksWorkspace({
               canMutate={activeTaskWritable}
               backLabel={viewLabel}
               closeMobileDetail={closeTask}
-              onToggleComplete={toggleTaskComplete}
               onDeleteTask={requestDeleteTask}
             />
           ) : c.detailOpenMobile ? (

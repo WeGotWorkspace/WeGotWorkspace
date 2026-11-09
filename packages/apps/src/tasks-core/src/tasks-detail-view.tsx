@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import {
-  Bell,
-  CalendarDays,
-  CircleCheck,
-  Flag,
-  MoreHorizontal,
-  Trash2,
-  Check,
-  Sun,
-} from "lucide-react";
+import { Bell, CalendarDays, CircleCheck, Flag, MoreHorizontal, Trash2, Sun } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
@@ -232,35 +223,27 @@ type TasksDetailActionBarProps = {
   /** List / view title shown on the mobile back control. */
   backLabel: string;
   closeMobileDetail: () => void;
-  onToggleComplete: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
 };
 
-/** Like `NotesDetailActionBar`: back on phones, then complete and delete. */
+/**
+ * Like `NotesDetailActionBar`: back on phones, then delete. Done is the box left
+ * of the title, so the bar has no complete action.
+ */
 export function TasksDetailActionBar({
   task,
   L,
   canMutate,
   backLabel,
   closeMobileDetail,
-  onToggleComplete,
   onDeleteTask,
 }: TasksDetailActionBarProps) {
   if (!task) return null;
-  const completed = isTaskCompleted(task);
   return (
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
       rightActions={[
-        {
-          id: "toggle-complete",
-          label: completed ? L.markIncomplete : L.markComplete,
-          onClick: canMutate ? () => onToggleComplete(task.id) : undefined,
-          active: completed,
-          icon: <Check />,
-          disabled: !canMutate,
-        },
         {
           id: "delete",
           label: L.delete,

@@ -159,10 +159,10 @@
   display: inline-flex;
 }
 
-/* The open task's done box: the same mark, at the height of the title's capitals
- * (0.7em of the title), its ring as thick as the title strokes. */
+/* The open task's done box: the same mark, a little taller than the title's
+ * capitals (0.7em) so the round shape reads as large as the letters. */
 .tasks-detail-view .tasks-detail-view__complete {
-  --checkbox-size: calc(var(--workspace-detail-title-size, 2.25rem) * 0.7);
+  --checkbox-size: calc(var(--workspace-detail-title-size, 2.25rem) * 0.85);
   --checkbox-check-size: calc(var(--checkbox-size) * 0.6);
   border-width: 2px;
 }
