@@ -17,7 +17,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - **(b) detail:** for personal calendars, whether teammates see only the time (`busy`, the default) or also the title and location (`details`). Team calendars are always time only.
   - Both choices are one select per calendar: "Do not add", "Time only" or (personal calendars only) "Title and location". Product owner, 2026-11-09.
 - ICS subscriptions are never listed and never count.
-- **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can uncheck a Team calendar for themselves.
+- **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can set a Team calendar to "Do not add" for themselves.
 - **"Show as: Free" always wins**, in personal and Team calendars, for a series or one occurrence.
 - **Calendar sidebar.** A **Team availability** section lists teammates who share with the user. Rows are hidden by default. Ticking one shows that person's busy blocks for whatever range the user is looking at, including months or a year ahead.
 - **Invitee list.** In the event editor, an invitee who is a teammate sharing availability and is busy at the event's time gets a warning on their participant tag.

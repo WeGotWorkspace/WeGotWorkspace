@@ -296,7 +296,7 @@ Decided:
   - REST client for `/calendars/availability` with typed errors
   - Availability section in `settings-calendar-availability-section.tsx` per spec.md, Owner settings, including the switch-off line, the Team tag tooltip and the footer line
   - save, then `notifySettingsSliceSaved`; offline error toast
-- **Done when:** Vitest covers row defaults, the disabled select, the fixed "Time only" on Team rows, the save mapping and the offline rejection. Storybook covers switch off, on with 0 Teams, and on with 2 Teams and 3 calendars, one unchecked. Screenshots reviewed with the product owner before merge.
+- **Done when:** Vitest covers row defaults, "Do not add", the Team row's limited select and tooltip, the save mapping and the offline rejection. Storybook covers switch off, on with no calendars, and on with personal and Team calendars, one set to "Do not add". Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`
 - **Parallel with:** `chunk-c-availability-sidebar`, `chunk-d-availability-render`, `chunk-h-invitee-availability`
 
