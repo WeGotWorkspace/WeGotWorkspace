@@ -134,7 +134,8 @@ export function DocsSuggestionCard({
         </div>
       ) : null}
 
-      {(suggestion.reactions?.length ?? 0) > 0 ? (
+      {/* An editor needs the row for its add button, also before the first reaction. */}
+      {canMutate || (suggestion.reactions?.length ?? 0) > 0 ? (
         <DocsCollabReactions
           className="docs-suggestion-card__reactions"
           reactions={suggestion.reactions}

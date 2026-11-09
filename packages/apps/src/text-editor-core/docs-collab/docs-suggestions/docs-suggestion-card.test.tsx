@@ -24,6 +24,48 @@ function renderCard(ui: ReactElement) {
 }
 
 describe("DocsSuggestionCard", () => {
+  it("lets an editor add the first reaction to a suggestion without any", () => {
+    const onToggleReaction = vi.fn();
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={onToggleReaction}
+      />,
+    );
+
+    expect(insertSuggestion.reactions ?? []).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Add reaction" }));
+    fireEvent.click(screen.getByRole("button", { name: "👍" }));
+    expect(onToggleReaction).toHaveBeenCalledWith("👍");
+  });
+
+  it("shows no reaction row to a reader when there are no reactions", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        canMutate={false}
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("group", { name: "Reactions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+  });
+
   it("shows the reply composer when the card is active", () => {
     renderCard(
       <DocsSuggestionCard
