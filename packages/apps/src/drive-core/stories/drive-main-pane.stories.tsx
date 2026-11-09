@@ -152,7 +152,13 @@ export const ListViewSelectionModeDark: Story = {
     await expect(bar.width).toBe("4px");
     await expect(bar.left).toBe("6px");
     // A brighter, more saturated sky than the selected row's wash.
-    const chroma = (color: string) => Number(/oklch\([\d.]+ ([\d.]+)/.exec(color)?.[1] ?? "0");
+    // Washes mix in oklab (white paper has no hue), so read chroma from either form.
+    const chroma = (color: string) => {
+      const lch = /oklch\([\d.]+ ([\d.]+)/.exec(color);
+      if (lch) return Number(lch[1]);
+      const lab = /oklab\([\d.]+ (-?[\d.]+) (-?[\d.]+)/.exec(color);
+      return lab ? Math.hypot(Number(lab[1]), Number(lab[2])) : 0;
+    };
     const rowColor = getComputedStyle(cell.closest("tr")!).backgroundColor;
     await expect(chroma(bar.backgroundColor)).toBeGreaterThan(chroma(rowColor));
   },

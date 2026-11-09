@@ -244,7 +244,8 @@ export const GroupsSection: Story = {
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     await expect(
-      canvas.getByRole("button", { name: "Alice" }).compareDocumentPosition(colleagues) &
+      // "Alice View only": the shared book's name carries its view-only badge.
+      canvas.getByRole("button", { name: /^Alice\b/ }).compareDocumentPosition(colleagues) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     await expect(friends.closest(".collection-sidebar-row")).toHaveClass(
