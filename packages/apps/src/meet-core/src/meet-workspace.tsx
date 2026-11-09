@@ -8,6 +8,7 @@ import {
   filterSharePrincipals,
   sharePrincipalsFromDirectory,
   sharesTeamWithViewer,
+  viewerHasNoTeam,
 } from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
@@ -269,6 +270,7 @@ export function MeetWorkspace({
       ? selectedDm.displayName
       : (visitMeeting?.title ?? meetLabels.productName);
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
+  const noTeam = viewerHasNoTeam(data.groups);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
     () =>
@@ -600,6 +602,7 @@ export function MeetWorkspace({
             todayMeetings={todayMeetings}
             leftoverUpcoming={leftoverUpcoming}
             directMessagePeople={dmPeople}
+            noTeam={noTeam}
             selectedId={selectedId}
             onSelect={setSelectedId}
             authorPresence={data.authorPresence}
@@ -651,6 +654,7 @@ export function MeetWorkspace({
         }
       />
       <MeetWorkspaceDialogs
+        noTeam={noTeam}
         dialogs={dialogs}
         actions={channelActions}
         session={session}

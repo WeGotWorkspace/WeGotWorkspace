@@ -20,6 +20,8 @@ export type MeetWorkspaceDialogsProps = {
   groups: MeetDirectoryGroup[];
   personalOwnerLabel: string;
   knownSharePrincipals: readonly CollectionSharePrincipal[];
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
   onSearchSharePrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   directory?: readonly CollectionSharePrincipal[];
   onSelectChannel: (channelId: string) => void;
@@ -37,6 +39,7 @@ export function MeetWorkspaceDialogs({
   groups,
   personalOwnerLabel,
   knownSharePrincipals,
+  noTeam = false,
   onSearchSharePrincipals,
   directory,
   onSelectChannel,
@@ -59,6 +62,7 @@ export function MeetWorkspaceDialogs({
             ? {
                 knownPrincipals: knownSharePrincipals,
                 online: true,
+                noTeam,
                 onSearchPrincipals: onSearchSharePrincipals,
                 onPatchShareWith: actions.patchShareWith,
               }

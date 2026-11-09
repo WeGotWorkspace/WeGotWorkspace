@@ -445,7 +445,10 @@ export function meetChatBootstrapFromCached(cached: MeetChatCachedBootstrap): Me
 
 function cachedDirectorySnapshot(cached: MeetChatCachedBootstrap | null): MeetChatDirectory | null {
   if (!cached || cached.directory === undefined) return null;
-  return { directory: cached.directory, groups: cached.groups ?? [] };
+  return {
+    directory: cached.directory,
+    ...(cached.groups !== undefined ? { groups: cached.groups } : {}),
+  };
 }
 
 /**

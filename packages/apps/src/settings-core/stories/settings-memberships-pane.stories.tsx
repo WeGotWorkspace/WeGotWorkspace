@@ -35,3 +35,10 @@ export const SingleGroup: Story = {
     ]),
   },
 };
+
+/** The viewer is in no Team (#1924). */
+export const NoTeam: Story = {
+  args: {
+    groups: [],
+  },
+};
