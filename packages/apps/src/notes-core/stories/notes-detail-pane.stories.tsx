@@ -296,14 +296,14 @@ export const NotebookTintDark: Story = {
   },
 };
 
-/** Task checks: the selection mark shape, filled with the notebook colour when checked. */
+/** Task checks: the selection mark shape, filled with the text colour when checked. */
 export const TaskChecks: Story = {
   tags: ["vitest-ci"],
   args: { withTasks: true },
   play: async ({ canvasElement }) => expectInkTaskChecks(canvasElement),
 };
 
-/** Dark: same notebook fill and contrast check. */
+/** Dark: the same text-colour fill with a surface-coloured check. */
 export const TaskChecksDark: Story = {
   ...TaskChecks,
   decorators: [withDarkTheme],

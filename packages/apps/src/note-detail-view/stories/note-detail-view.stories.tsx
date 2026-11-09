@@ -165,3 +165,29 @@ export const CollabChromePreview: Story = {
     await expect(canvasElement.querySelector(".workspace-detail-footer")).toBeNull();
   },
 };
+
+/**
+ * A control before the title (Tasks puts its done box here): it sits left of the
+ * title, on the title's first line, and the title keeps the rest of the width.
+ */
+export const WithTitleLeading: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...base,
+    pullQuote: undefined,
+    titleLeading: <input type="checkbox" aria-label="Done" className="size-6" />,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const leading = canvas.getByRole("checkbox", { name: "Done" });
+    const title = canvas.getByRole("textbox", { name: "Title" });
+    const leadingRect = leading.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    await expect(leadingRect.right).toBeLessThanOrEqual(titleRect.left);
+    await expect(leadingRect.top).toBeGreaterThanOrEqual(titleRect.top);
+    await expect(leadingRect.bottom).toBeLessThanOrEqual(
+      titleRect.top + parseFloat(getComputedStyle(title).lineHeight),
+    );
+    await expect(title.closest(".note-detail-view__title-row")).toBeTruthy();
+  },
+};

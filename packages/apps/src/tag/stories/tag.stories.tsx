@@ -39,6 +39,7 @@ export const Editable: Story = {
 
 export const Large: Story = {
   name: "Large (notes density)",
+  tags: ["vitest-ci"],
   render: function LargeTagGroup() {
     const [tags, setTags] = useState(["research", "ideas", "draft"]);
     return (
@@ -60,6 +61,8 @@ export const Large: Story = {
     const canvas = within(canvasElement);
     const group = canvasElement.querySelector(".tag-group") as HTMLElement;
     const chips = () => Array.from(group.querySelectorAll<HTMLElement>(".tag"));
+    // Measure after the web font is in, or chips shift when it lands mid-test.
+    await canvasElement.ownerDocument.fonts.ready;
 
     // Chips A–Z, then Add tag last: no border, no fill.
     await expect(chips().map((chip) => chip.textContent)).toEqual(["draft", "ideas", "research"]);

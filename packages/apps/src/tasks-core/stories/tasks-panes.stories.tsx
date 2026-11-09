@@ -171,13 +171,15 @@ function TasksDetailHarness({
   readOnly,
   onSave,
   onToggleComplete = () => {},
+  taskId = "task-review-spec",
 }: {
   readOnly: boolean;
   onSave: () => void;
   onToggleComplete?: (taskId: string) => void;
+  taskId?: string;
 }) {
   const bootstrap = createTasksAppBootstrap();
-  const task = bootstrap.data.tasks.find((item) => item.id === "task-review-spec")!;
+  const task = bootstrap.data.tasks.find((item) => item.id === taskId)!;
   return (
     <TasksStoryScope>
       <div className="tasks-workspace note-detail-desk flex min-h-dvh flex-col">
@@ -236,6 +238,38 @@ export const DetailReadOnly: StoryObj<typeof TasksDetailHarness> = {
     for (const name of [L.addTaskStatus, L.addTaskPriority, L.addTaskList]) {
       expect(canvas.getByRole("combobox", { name })).toHaveProperty("disabled", true);
     }
+    // The done box is there but cannot be ticked.
+    expect(canvas.getByRole("checkbox", { name: L.markComplete })).toBeDisabled();
+  },
+};
+
+/** A done task: the box is ticked, and a click marks it incomplete again. */
+async function playDetailCompleted(canvasElement: HTMLElement, onToggle: unknown) {
+  const canvas = within(canvasElement);
+  const box = canvas.getByRole("checkbox", { name: L.markIncomplete });
+  await expect(box).toHaveAttribute("data-state", "checked");
+  // Ticked, the box is filled with the selection mark, not left as a ring.
+  await expect(getComputedStyle(box).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+  await userEvent.click(box);
+  await expect(onToggle).toHaveBeenCalledWith("task-done");
+}
+
+export const DetailCompleted: StoryObj<typeof TasksDetailHarness> = {
+  tags: ["vitest-ci"],
+  render: (args) => <TasksDetailHarness {...args} />,
+  args: { readOnly: false, onSave: fn(), onToggleComplete: fn(), taskId: "task-done" },
+  play: async ({ canvasElement, args }) => {
+    await playDetailCompleted(canvasElement, args.onToggleComplete);
+  },
+};
+
+export const DetailCompletedDark: StoryObj<typeof TasksDetailHarness> = {
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: (args) => <TasksDetailHarness {...args} />,
+  args: { readOnly: false, onSave: fn(), onToggleComplete: fn(), taskId: "task-done" },
+  play: async ({ canvasElement, args }) => {
+    await playDetailCompleted(canvasElement, args.onToggleComplete);
   },
 };
 

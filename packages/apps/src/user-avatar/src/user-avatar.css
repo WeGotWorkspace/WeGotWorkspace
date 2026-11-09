@@ -117,7 +117,7 @@
 }
 
 /* Tint: the usual rounded square without the hairline, washed in the selection
-   colour (sky in dark, the ink in light) at a soft mix, the same for every person.
+   colour (the suite sky, both themes) at a soft mix, the same for every person.
    Ink initials on it. */
 .user-avatar--tint .user-avatar__mark {
   border-width: 0;

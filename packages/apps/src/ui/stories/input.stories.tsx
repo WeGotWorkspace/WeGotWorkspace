@@ -20,7 +20,7 @@ const meta = {
   tags: ["autodocs", "vitest-ci"],
   argTypes: {
     size: { control: "radio", options: [...CONTROL_SIZE_OPTIONS] },
-    variant: { control: "radio", options: ["default", "search", "password"] },
+    variant: { control: "radio", options: ["default", "search", "password", "ghost"] },
   },
 } satisfies Meta<typeof Input>;
 
@@ -111,6 +111,36 @@ export const SearchWithValue: Story = {
     placeholder: "Search…",
     "aria-label": "Search…",
     defaultValue: "client call",
+  },
+};
+
+function GhostPlayHarness() {
+  const [value, setValue] = React.useState("");
+  return (
+    <Input
+      variant="ghost"
+      size="sm"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      placeholder="Add location"
+      aria-label="Location"
+    />
+  );
+}
+
+/** Ghost field (detail rows): no chrome at rest, a quiet wash on hover and while typing. */
+export const Ghost: Story = {
+  render: () => <GhostPlayHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("textbox", { name: "Location" });
+    await expect(input).toHaveClass("input--ghost");
+    await expect(getComputedStyle(input).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(getComputedStyle(input).borderTopColor).toBe("rgba(0, 0, 0, 0)");
+    await userEvent.click(input);
+    await userEvent.type(input, "Room 4");
+    await expect(input).toHaveValue("Room 4");
+    await expect(getComputedStyle(input).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
   },
 };
 

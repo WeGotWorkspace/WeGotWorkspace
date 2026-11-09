@@ -57,6 +57,7 @@ type Story = StoryObj<typeof ContactsDetailActionBarHarness>;
 
 /** An open contact: no Edit action (the sheet is always editable), just download and delete. */
 export const Open: Story = {
+  tags: ["vitest-ci"],
   args: {},
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
@@ -89,11 +90,14 @@ export const Open: Story = {
 };
 
 export const CreateMode: Story = {
+  tags: ["vitest-ci"],
   args: { createMode: true },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.save }));
     await expect(args.onSave).toHaveBeenCalled();
+    await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.cancel }));
+    await expect(args.onCancel).toHaveBeenCalled();
     await expect(
       canvas.queryByRole("button", { name: defaultContactsLabels.downloadVCard }),
     ).toBeNull();
