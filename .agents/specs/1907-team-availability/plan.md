@@ -134,6 +134,7 @@ Decided:
 - New all-day events default to "Show as: Free" and stay editable. 2026-11-04.
 - Privacy first: the switch is off by default; when on, every own personal and Team calendar starts included, time only. 2026-11-04.
 - Admins get no extra availability visibility. 2026-11-04.
+- Teammate colours in Team availability are distinct: avatar colour first, the next free avatar colour on a clash (username order, all teammates). 2026-11-09.
 - Subscriptions never count. "Details" is title and location only. 2026-11-04.
 - Offline: cache what was fetched, prefetch the current week plus 4 weeks for ticked teammates, show "Offline · updated …". 2026-11-04.
 - The offline clash notice is #1914, not built here. 2026-11-04.
