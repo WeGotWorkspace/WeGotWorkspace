@@ -57,5 +57,10 @@ export function createContactSaveDebouncer(delayMs: number) {
     pending.clear();
   }
 
-  return { schedule, cancel, flush, flushAll };
+  /** Whether a save of this contact is waiting for its pause. */
+  function has(contactId: string): boolean {
+    return pending.has(contactId);
+  }
+
+  return { schedule, cancel, flush, flushAll, has };
 }

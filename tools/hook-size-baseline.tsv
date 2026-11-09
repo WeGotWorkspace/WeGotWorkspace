@@ -1,5 +1,5 @@
 packages/apps/src/calendar-core/src/use-calendar-controller.ts#useCalendarController	1297	3	grandfathered
-packages/apps/src/contacts-core/src/use-contacts-controller.tsx#useContactsController	1333	9	grandfathered
+packages/apps/src/contacts-core/src/use-contacts-controller.tsx#useContactsController	1300	9	grandfathered
 packages/apps/src/docs-core/src/use-docs-controller.tsx#useDocsController	251	3	grandfathered
 packages/apps/src/docs-core/src/use-docs-home-actions.tsx#useDocsHomeActions	402	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-access-controller.ts#useDriveAccessController	232	1	grandfathered

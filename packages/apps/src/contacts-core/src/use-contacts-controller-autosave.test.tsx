@@ -1,18 +1,18 @@
 /** @vitest-environment jsdom */
-import { act, renderHook } from "@testing-library/react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppToastShowOptions } from "@/hooks/use-app-toast";
-import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { CONTACTS_AUTOSAVE_DEBOUNCE_MS } from "./contacts-edit-autosave";
-import { mergeContactFromPatch } from "./contacts-patch-merge";
-import type {
-  ContactCard,
-  ContactCardCreate,
-  ContactCardPatch,
-  ContactsAPIOperations,
-} from "./contacts-types";
-import { useContactsController } from "./use-contacts-controller";
+import type { ContactCard } from "./contacts-types";
+import {
+  advance,
+  card,
+  clickSelect,
+  data,
+  fakeOperations,
+  pressUndo,
+  renderController,
+  settle,
+} from "./test-utils/contacts-controller-harness";
 
 const { mockShow } = vi.hoisted(() => ({ mockShow: vi.fn() }));
 
@@ -36,134 +36,6 @@ vi.mock("@/hooks/use-is-touch", () => ({
   useIsTouch: () => false,
 }));
 
-const bootstrap = createContactsAppBootstrap();
-
-/** A name with a title and a credential (vCard `N:Doe;Jane;Q;Dr.;PhD`). */
-const DOCTOR: ContactCard = {
-  "@type": "Card",
-  version: "1.0",
-  id: "card-doctor",
-  uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440090",
-  addressBookIds: { default: true as const },
-  name: {
-    "@type": "Name",
-    isOrdered: false,
-    full: "Dr. Jane Q Doe, PhD",
-    components: [
-      { "@type": "NameComponent", kind: "title", value: "Dr." },
-      { "@type": "NameComponent", kind: "given", value: "Jane" },
-      { "@type": "NameComponent", kind: "given2", value: "Q" },
-      { "@type": "NameComponent", kind: "surname", value: "Doe" },
-      { "@type": "NameComponent", kind: "credential", value: "PhD" },
-    ],
-  },
-} as unknown as ContactCard;
-
-const data = { ...bootstrap.data, cards: [...bootstrap.data.cards, DOCTOR] };
-
-function card(id: string): ContactCard {
-  return data.cards.find((row) => row.id === id)!;
-}
-
-/** Server stub: applies patches to its own copy of each card and bumps its etag. */
-function fakeOperations() {
-  const server = new Map(data.cards.map((row) => [row.id, row]));
-  let version = 0;
-  const patchCard = vi.fn(async (id: string, patch: ContactCardPatch) => {
-    const current = server.get(id);
-    if (!current) throw new Error(`no card ${id}`);
-    version += 1;
-    const next = { ...mergeContactFromPatch(current, patch), etag: `"v${version}"` };
-    server.set(id, next);
-    return next;
-  });
-  const createCard = vi.fn(async (body: ContactCardCreate) => {
-    const created = {
-      "@type": "Card",
-      version: "1.0",
-      id: "card-created",
-      uid: "urn:uuid:550e8400-e29b-41d4-a716-446655440091",
-      etag: '"c1"',
-      ...body,
-    } as ContactCard;
-    server.set(created.id, created);
-    return created;
-  });
-  const order: string[] = [];
-  patchCard.mockImplementation(async (id: string, patch: ContactCardPatch) => {
-    order.push(`patch:${id}`);
-    const current = server.get(id);
-    if (!current) throw new Error(`no card ${id}`);
-    version += 1;
-    const next = { ...mergeContactFromPatch(current, patch), etag: `"v${version}"` };
-    server.set(id, next);
-    return next;
-  });
-  const downloadCardVcf = vi.fn(async (id: string) => {
-    order.push(`download:${id}`);
-    return "BEGIN:VCARD\nEND:VCARD";
-  });
-  const operations = {
-    listAddressBooks: vi.fn(),
-    listCards: vi.fn(),
-    getCard: vi.fn(async (id: string) => server.get(id)!),
-    createCard,
-    patchCard,
-    deleteCard: vi.fn(async () => undefined),
-    downloadCardVcf,
-  } as unknown as ContactsAPIOperations;
-  return { operations, server, patchCard, createCard, downloadCardVcf, order };
-}
-
-type Props = { cards: ContactCard[] };
-
-function renderController(operations: ContactsAPIOperations) {
-  return renderHook(
-    ({ cards }: Props) =>
-      useContactsController({
-        data: { ...data, cards },
-        listLoading: false,
-        operations,
-      }),
-    { initialProps: { cards: data.cards } },
-  );
-}
-
-type Result = { current: ReturnType<typeof useContactsController> };
-
-function clickSelect(result: Result, id: string) {
-  act(() => {
-    result.current.handleSelect(id, {
-      detail: 1,
-      metaKey: false,
-      ctrlKey: false,
-      shiftKey: false,
-    } as ReactMouseEvent);
-  });
-}
-
-function pressUndo() {
-  const options = mockShow.mock.calls
-    .map((call) => call[1] as AppToastShowOptions | undefined)
-    .filter((option) => option?.canUndo)
-    .at(-1);
-  if (!options?.onUndo) throw new Error("no undo toast shown");
-  act(() => options.onUndo!());
-}
-
-async function advance(ms: number) {
-  await act(async () => {
-    vi.advanceTimersByTime(ms);
-    for (let i = 0; i < 10; i += 1) await Promise.resolve();
-  });
-}
-
-async function settle() {
-  await act(async () => {
-    for (let i = 0; i < 10; i += 1) await Promise.resolve();
-  });
-}
-
 beforeEach(() => {
   mockShow.mockClear();
   vi.useFakeTimers();
@@ -183,7 +55,7 @@ describe("contacts autosave keeps every draft on its own contact", () => {
     clickSelect(result, "card-joe");
     expect(result.current.editDraft?.nameGiven).toBe("Joe");
 
-    pressUndo();
+    pressUndo(mockShow);
     await settle();
 
     expect(result.current.activeId).toBe("card-jane");

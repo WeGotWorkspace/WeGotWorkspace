@@ -27,6 +27,8 @@ type UseContactsEditPersistArgs = {
   markSynced: (contactId: string, draft: ContactEditDraft, card: ContactCard) => void;
   markOwnCard: (card: ContactCard) => void;
   showMutationError: () => void;
+  /** Saved cards of contacts that left the list meanwhile (a delete that can be undone). */
+  offListCardsRef: MutableRefObject<Map<string, ContactCard>>;
 };
 
 /** Drop a stashed draft only when it is the one just saved, never newer typing. */
@@ -57,6 +59,7 @@ export function useContactsEditPersist({
   markSynced,
   markOwnCard,
   showMutationError,
+  offListCardsRef,
 }: UseContactsEditPersistArgs) {
   const abortControllersRef = useRef(new Map<string, AbortController>());
 
@@ -64,7 +67,9 @@ export function useContactsEditPersist({
     async (contactId: string, draft: ContactEditDraft) => {
       if (mutationsLocked) return;
       const card = cardsRef.current.find((row) => row.id === contactId);
-      if (!card || !contactEditDraftHasChanges(draft, card)) {
+      // A contact deleted (undo still possible) keeps its draft for the undo.
+      if (!card) return;
+      if (!contactEditDraftHasChanges(draft, card)) {
         dropStashIfSaved(contactDraftsRef.current, contactId, draft);
         return;
       }
@@ -76,6 +81,10 @@ export function useContactsEditPersist({
       abortControllersRef.current.set(contactId, controller);
 
       const putCard = (next: ContactCard) => {
+        if (!cardsRef.current.some((row) => row.id === contactId)) {
+          offListCardsRef.current.set(contactId, next);
+          return;
+        }
         cardsRef.current = cardsRef.current.map((row) => (row.id === contactId ? next : row));
         setCards((prev) => prev.map((row) => (row.id === contactId ? next : row)));
       };
@@ -107,7 +116,9 @@ export function useContactsEditPersist({
       } catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof DOMException && error.name === "AbortError") return;
-        putCard(card);
+        // Put the card back, unless a newer one (another device's change) replaced ours.
+        const current = cardsRef.current.find((row) => row.id === contactId);
+        if (!current || current === merged) putCard(card);
         showMutationError();
       } finally {
         if (abortControllersRef.current.get(contactId) === controller) {
@@ -122,6 +133,7 @@ export function useContactsEditPersist({
       markOwnCard,
       markSynced,
       mutationsLocked,
+      offListCardsRef,
       operations,
       setCards,
       setEditDraft,

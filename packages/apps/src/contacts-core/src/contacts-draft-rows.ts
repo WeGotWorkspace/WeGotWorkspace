@@ -45,29 +45,43 @@ export function useContactDraftRowAdders(
   };
 }
 
+/** A row as "Add phone" and friends leave it: nothing filled in yet. */
+const isBlankRow: { [K in RowList]: (row: ContactEditDraft[K][number]) => boolean } = {
+  phones: (row) => !row.number.trim(),
+  emails: (row) => !row.address.trim(),
+  urls: (row) => !row.uri.trim(),
+  addresses: (row) =>
+    [row.street, row.postalCode, row.locality, row.region, row.country].every(
+      (part) => !part.trim(),
+    ),
+};
+
+const ROW_LISTS = Object.keys(isBlankRow) as RowList[];
+
+type Row = { id: string };
+const rowsOf = (draft: ContactEditDraft, list: RowList) => draft[list] as Row[];
+const isBlank = (list: RowList) => isBlankRow[list] as (row: Row) => boolean;
+
 /**
- * `next` with the rows of `prev` that are still empty (just added with "Add phone"),
- * so a save does not take away a row someone is about to fill in.
+ * `next` with what `prev` shows that no card holds: rows just added and not filled in
+ * ("Add phone"), and a revealed middle name field. A save or a merge keeps them.
  */
 export function withBlankRowsFrom(
   next: ContactEditDraft,
   prev: ContactEditDraft,
 ): ContactEditDraft {
-  const keep = <T extends { id: string }>(rows: T[], prevRows: T[], blank: (row: T) => boolean) => [
-    ...rows,
-    ...prevRows.filter((row) => blank(row) && !rows.some((saved) => saved.id === row.id)),
-  ];
-  return {
+  const merged: Record<string, unknown> = {
     ...next,
-    phones: keep(next.phones, prev.phones, (row) => !row.number.trim()),
-    emails: keep(next.emails, prev.emails, (row) => !row.address.trim()),
-    urls: keep(next.urls, prev.urls, (row) => !row.uri.trim()),
-    addresses: keep(next.addresses, prev.addresses, (row) =>
-      [row.street, row.postalCode, row.locality, row.region, row.country].every(
-        (part) => !part.trim(),
-      ),
-    ),
+    showGiven2: next.showGiven2 || prev.showGiven2,
   };
+  for (const list of ROW_LISTS) {
+    const rows = rowsOf(next, list);
+    const blank = rowsOf(prev, list).filter(
+      (row) => isBlank(list)(row) && !rows.some((saved) => saved.id === row.id),
+    );
+    merged[list] = [...rows, ...blank];
+  }
+  return merged as ContactEditDraft;
 }
 
 /** Draft fields that change together: a merge never mixes a name or a company from two versions. */
@@ -84,21 +98,45 @@ const DRAFT_FIELD_GROUPS: (keyof ContactEditDraft)[][] = [
   ["birthday", "birthdayId"],
 ];
 
+/** Shown or hidden only: never a change to the card. */
+const DISPLAY_ONLY = new Set<keyof ContactEditDraft>(["showGiven2"]);
+
+/** What a field holds for the card: empty rows and display flags left out. */
+function cardValue(draft: ContactEditDraft, key: keyof ContactEditDraft) {
+  if (DISPLAY_ONLY.has(key)) return undefined;
+  if ((ROW_LISTS as string[]).includes(key)) {
+    const list = key as RowList;
+    return rowsOf(draft, list).filter((row) => !isBlank(list)(row));
+  }
+  return draft[key];
+}
+
+const groupTouched = (
+  group: (keyof ContactEditDraft)[],
+  draft: ContactEditDraft,
+  synced: ContactEditDraft,
+) =>
+  group.some(
+    (key) => JSON.stringify(cardValue(draft, key)) !== JSON.stringify(cardValue(synced, key)),
+  );
+
 /**
  * The open draft on top of a card another device changed. Each field the person did
  * not touch since `synced` (the draft the card last matched) takes the fresh card's
- * value; a field they did touch keeps theirs, so their next save sends only that.
+ * value; a field they did touch keeps theirs, so their next save sends only that. An
+ * empty row or a revealed field is not a touch: it stays, beside the fresh values.
+ * With no touched field the result is `withBlankRowsFrom(fresh, draft)`, which is
+ * what the merge marks as synced, so nothing is saved.
  */
 export function rebaseContactDraft(
   draft: ContactEditDraft,
   synced: ContactEditDraft,
   fresh: ContactEditDraft,
 ): ContactEditDraft {
-  const next: Record<string, unknown> = { ...draft };
+  const next: Record<string, unknown> = { ...withBlankRowsFrom(fresh, draft) };
   for (const group of DRAFT_FIELD_GROUPS) {
-    const touched = group.some((key) => JSON.stringify(draft[key]) !== JSON.stringify(synced[key]));
-    if (touched) continue;
-    for (const key of group) next[key] = fresh[key];
+    if (!groupTouched(group, draft, synced)) continue;
+    for (const key of group) next[key] = draft[key];
   }
-  return withBlankRowsFrom(next as ContactEditDraft, draft);
+  return next as ContactEditDraft;
 }

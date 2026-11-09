@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   type Dispatch,
   type MutableRefObject,
@@ -14,18 +13,19 @@ import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,
   createContactSaveDebouncer,
 } from "@/contacts-core/src/contacts-edit-autosave";
-import { rebaseContactDraft, withBlankRowsFrom } from "@/contacts-core/src/contacts-draft-rows";
 import {
   CONTACTS_CREATE_ID,
-  contactCardToEditDraft,
   contactEditDraftHasChanges,
   type ContactEditDraft,
 } from "@/contacts-core/src/contacts-edit-utils";
+import { useContactsAutosaveLifecycle } from "@/contacts-core/src/use-contacts-autosave-lifecycle";
+import {
+  cardDraftJson,
+  useContactsRemoteMerge,
+  type ContactSynced,
+} from "@/contacts-core/src/use-contacts-remote-merge";
 
 type Persist = (contactId: string, draft: ContactEditDraft) => Promise<void>;
-
-/** What a contact's card is known to hold: the draft it matches, and the card it came from. */
-type Synced = { json: string; base: string };
 
 type UseContactsEditAutosaveArgs = {
   activeId: string;
@@ -41,10 +41,24 @@ type UseContactsEditAutosaveArgs = {
   contactDraftsRef: MutableRefObject<Map<string, ContactEditDraft>>;
 };
 
-const cardDraftJson = (card: ContactCard) => JSON.stringify(contactCardToEditDraft(card));
+type Latest = {
+  activeId: string;
+  createMode: boolean;
+  editMode: boolean;
+  editDraft: ContactEditDraft | null;
+};
 
-const matchesSynced = (synced: Map<string, Synced>, contactId: string, draft: ContactEditDraft) =>
-  synced.get(contactId)?.json === JSON.stringify(draft);
+const matchesSynced = (
+  synced: Map<string, ContactSynced>,
+  contactId: string,
+  draft: ContactEditDraft,
+) => synced.get(contactId)?.json === JSON.stringify(draft);
+
+/** A contact's newest draft: the open one, else its stash. */
+function newestDraft(latest: Latest, drafts: Map<string, ContactEditDraft>, contactId: string) {
+  const open = latest.activeId === contactId && latest.editMode && !latest.createMode;
+  return (open ? latest.editDraft : null) ?? drafts.get(contactId) ?? null;
+}
 
 /**
  * The open contact saves itself: each change is saved after a typing pause, and on
@@ -53,7 +67,9 @@ const matchesSynced = (synced: Map<string, Synced>, contactId: string, draft: Co
  * Every switch of the open contact goes through `switchEditDraftTo`, which stashes an
  * unsaved draft and brings back the next contact's. A card changed on another device
  * is merged into the open draft field by field. Saves of one contact run one after
- * another. The caller sets `persistRef` to the function that sends a draft.
+ * another; when one lands and the draft has moved on (even back to what the card held
+ * before), the newest draft is saved too. The caller sets `persistRef` to the function
+ * that sends a draft.
  */
 export function useContactsEditAutosave({
   activeId,
@@ -68,14 +84,14 @@ export function useContactsEditAutosave({
 }: UseContactsEditAutosaveArgs) {
   const debouncerRef = useRef(createContactSaveDebouncer(CONTACTS_AUTOSAVE_DEBOUNCE_MS));
   const persistRef = useRef<Persist>(async () => {});
-  const syncedRef = useRef(new Map<string, Synced>());
-  // Cards this tab set itself (an optimistic save): not a change from elsewhere.
+  const syncedRef = useRef(new Map<string, ContactSynced>());
   const ownCardsRef = useRef(new WeakSet<ContactCard>());
   const inFlightRef = useRef(new Map<string, Promise<void>>());
+  // The draft each contact's save is sending now: what its card will hold.
+  const sendingRef = useRef(new Map<string, ContactEditDraft>());
   // Contacts still being created: their saves wait for the real id.
   const heldRef = useRef(new Set<string>());
-  const latestRef = useRef({ activeId, createMode, editMode, editDraft });
-  // The draft autosave last saw, with the contact it was open on.
+  const latestRef = useRef<Latest>({ activeId, createMode, editMode, editDraft });
   const seenRef = useRef<{ contactId: string; draft: ContactEditDraft | null }>({
     contactId: "",
     draft: null,
@@ -97,19 +113,46 @@ export function useContactsEditAutosave({
   }, []);
 
   const run = useCallback(
-    (contactId: string, draft: ContactEditDraft) => {
+    function run(contactId: string, draft: ContactEditDraft) {
       if (heldRef.current.has(contactId)) {
         contactDraftsRef.current.set(contactId, draft);
         return;
       }
+      // The save landed but the draft moved on meanwhile: save the newest one too,
+      // unless a later save (waiting or queued behind this one) already carries it.
+      const saveNewest = () => {
+        if (inFlightRef.current.get(contactId) !== next) return;
+        const latest = newestDraft(latestRef.current, contactDraftsRef.current, contactId);
+        if (!latest || debouncerRef.current.has(contactId)) return;
+        if (JSON.stringify(latest) === JSON.stringify(draft)) return;
+        if (matchesSynced(syncedRef.current, contactId, latest)) {
+          contactDraftsRef.current.delete(contactId);
+          return;
+        }
+        const card = cardsRef.current.find((row) => row.id === contactId);
+        if (!card || !contactEditDraftHasChanges(latest, card)) return;
+        contactDraftsRef.current.set(contactId, latest);
+        debouncerRef.current.schedule(contactId, latest, run);
+      };
       const previous = inFlightRef.current.get(contactId) ?? Promise.resolve();
-      const next = previous.then(() => persistRef.current(contactId, draft)).catch(() => {});
+      const send = async () => {
+        sendingRef.current.set(contactId, draft);
+        try {
+          await persistRef.current(contactId, draft);
+        } finally {
+          if (sendingRef.current.get(contactId) === draft) sendingRef.current.delete(contactId);
+        }
+      };
+      const next = previous
+        .then(send)
+        .then(saveNewest)
+        .catch(() => {});
       inFlightRef.current.set(contactId, next);
       void next.then(() => {
         if (inFlightRef.current.get(contactId) === next) inFlightRef.current.delete(contactId);
       });
     },
-    [contactDraftsRef],
+    [cardsRef, contactDraftsRef],
   );
 
   const flushAll = useCallback(() => debouncerRef.current.flushAll(run), [run]);
@@ -130,9 +173,12 @@ export function useContactsEditAutosave({
       if (current.createMode || contactId === current.activeId) return;
       const leaving = current.activeId;
       if (current.editMode && current.editDraft && leaving && leaving !== CONTACTS_CREATE_ID) {
-        if (matchesSynced(syncedRef.current, leaving, current.editDraft))
-          contactDraftsRef.current.delete(leaving);
-        else contactDraftsRef.current.set(leaving, current.editDraft);
+        // A save on its way may still need the draft (see `saveNewest` in `run`).
+        const unsaved =
+          !matchesSynced(syncedRef.current, leaving, current.editDraft) ||
+          inFlightRef.current.has(leaving);
+        if (unsaved) contactDraftsRef.current.set(leaving, current.editDraft);
+        else contactDraftsRef.current.delete(leaving);
       }
       const stashed = contactDraftsRef.current.get(contactId);
       // Drop the previous contact's draft now: the next one lands in a transition, and
@@ -144,63 +190,29 @@ export function useContactsEditAutosave({
     [contactDraftsRef, setEditDraft, setEditMode],
   );
 
-  /** Saves of a contact still being created wait until it has its real id. */
-  const holdUntilCreated = useCallback((contactId: string) => {
-    heldRef.current.add(contactId);
-  }, []);
+  const lifecycle = useContactsAutosaveLifecycle({
+    debouncerRef,
+    syncedRef,
+    seenRef,
+    heldRef,
+    inFlightRef,
+    contactDraftsRef,
+    run,
+  });
 
-  /** The created contact got its real id: carry its draft, state and pending edit over. */
-  const rekeyContact = useCallback(
-    (fromId: string, toId: string) => {
-      heldRef.current.delete(fromId);
-      debouncerRef.current.cancel(fromId);
-      const synced = syncedRef.current.get(fromId);
-      syncedRef.current.delete(fromId);
-      if (synced) syncedRef.current.set(toId, synced);
-      if (seenRef.current.contactId === fromId) seenRef.current.contactId = toId;
-      const stashed = contactDraftsRef.current.get(fromId);
-      contactDraftsRef.current.delete(fromId);
-      if (!stashed) return;
-      contactDraftsRef.current.set(toId, stashed);
-      debouncerRef.current.schedule(toId, stashed, run);
-    },
-    [contactDraftsRef, run],
-  );
-
-  /** A contact that is gone (a create undone): forget its draft and pending edit. */
-  const forgetContact = useCallback(
-    (contactId: string) => {
-      heldRef.current.delete(contactId);
-      debouncerRef.current.cancel(contactId);
-      syncedRef.current.delete(contactId);
-      contactDraftsRef.current.delete(contactId);
-    },
-    [contactDraftsRef],
-  );
-
-  const activeCardJson = useMemo(() => (activeCard ? cardDraftJson(activeCard) : ""), [activeCard]);
-
-  // Another device changed the open card: merge it into the draft, field by field.
-  useEffect(() => {
-    if (!activeCard || activeCard.id !== activeId || createMode || !editMode || !editDraft) return;
-    const seen = seenRef.current;
-    if (seen.draft === editDraft && seen.contactId !== activeId) return;
-    if (ownCardsRef.current.has(activeCard)) return;
-    const synced = syncedRef.current.get(activeId);
-    if (!synced || synced.base === activeCardJson) return;
-    const fresh = contactCardToEditDraft(activeCard);
-    markSynced(activeId, withBlankRowsFrom(fresh, editDraft), activeCard);
-    setEditDraft(rebaseContactDraft(editDraft, JSON.parse(synced.json), fresh));
-  }, [
-    activeCard,
-    activeCardJson,
+  useContactsRemoteMerge({
     activeId,
+    activeCard,
     createMode,
-    editDraft,
     editMode,
-    markSynced,
+    editDraft,
     setEditDraft,
-  ]);
+    syncedRef,
+    sendingRef,
+    ownCardsRef,
+    seenRef,
+    markSynced,
+  });
 
   useEffect(() => {
     const seen = seenRef.current;
@@ -219,8 +231,14 @@ export function useContactsEditAutosave({
 
     contactDraftsRef.current.set(activeId, editDraft);
 
+    // A card not in `cardsRef` yet (just created) keeps its waiting save.
     const card = cardsRef.current.find((row) => row.id === activeId);
-    if (!card || !contactEditDraftHasChanges(editDraft, card)) return;
+    if (!card) return;
+    // Back to what the card holds, or only an empty row added: a waiting save is stale.
+    if (!contactEditDraftHasChanges(editDraft, card)) {
+      debouncerRef.current.cancel(activeId);
+      return;
+    }
 
     debouncerRef.current.schedule(activeId, editDraft, run);
   }, [activeId, cardsRef, contactDraftsRef, createMode, editDraft, editMode, run]);
@@ -235,8 +253,6 @@ export function useContactsEditAutosave({
     flushAll,
     flushContact,
     switchEditDraftTo,
-    holdUntilCreated,
-    rekeyContact,
-    forgetContact,
+    ...lifecycle,
   };
 }
