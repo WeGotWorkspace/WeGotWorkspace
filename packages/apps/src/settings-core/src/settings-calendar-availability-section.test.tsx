@@ -148,7 +148,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
   });
 
-  it("puts the whole-Team hint in the suite tooltip on the Team tag", async () => {
+  it("puts a short whole-Team label in the suite tooltip on the Team tag", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
@@ -165,7 +165,8 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(tag.tabIndex).toBe(0);
     expect(screen.queryByRole("tooltip")).toBeNull();
     act(() => tag.focus());
-    expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
+    // A short label, like the suite's other tooltips.
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Counts for the whole Team");
     // Radix describes the tag by the tooltip once, not twice.
     expect(descriptions(tag)).toEqual([labels.teamHint]);
 

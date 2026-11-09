@@ -10,7 +10,7 @@ export const calendarAvailabilityLabels = {
   detailBusy: "Time only",
   detailDetails: "Title and location",
   teamBadge: "Team",
-  teamHint: "Every event on this Team calendar counts for the whole Team, also if you decline it.",
+  teamHint: "Counts for the whole Team",
   footer: "Events marked “Show as: Free” never count.",
   loading: "Loading availability settings…",
   offline: "Availability settings need a connection. They load again when you are back online.",
