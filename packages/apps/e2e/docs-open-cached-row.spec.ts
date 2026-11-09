@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "./helpers/live-test";
 import {
+  cachedDocsViews,
   docsHomeRow,
   gotoDocsHome,
   loginToDocs,
@@ -32,7 +33,14 @@ test.describe("Docs home cached row (live app)", () => {
     await gotoDocsHome(page);
     await expect(docsHomeRow(page, fileName)).toBeVisible({ timeout: 30_000 });
     // Let the live listing finish writing the offline cache.
-    await page.waitForLoadState("networkidle");
+    await expect
+      .poll(
+        async () => (await cachedDocsViews(page)).some((view) => view.includes(apiPath.slice(1))),
+        {
+          timeout: 30_000,
+        },
+      )
+      .toBe(true);
     const oldId = await nodeIdAtPath(page, apiPath);
 
     await deleteDriveFile(apiPath);
