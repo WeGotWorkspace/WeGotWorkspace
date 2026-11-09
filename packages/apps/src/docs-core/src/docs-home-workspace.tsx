@@ -68,8 +68,11 @@ export type DocsHomeWorkspaceProps = {
   operations?: DriveAPIOperations;
   /** When set, enables Share in docs home row action menus. */
   shareOperations?: DriveShareOperations;
-  /** Called with the drive API path when a row is opened (route navigation lives in `*App`). */
-  onOpenFile?: (apiPath: string) => void;
+  /**
+   * Called with the drive API path when a row is opened (route navigation lives in `*App`),
+   * plus the FileNode id when the row names one, so Docs opens `?id=` directly (#1976).
+   */
+  onOpenFile?: (apiPath: string, nodeId?: string) => void;
   /**
    * Called with the new document's drive API path when "New document" is clicked.
    * The `*App` layer owns creating the file and navigating to the Docs editor.
@@ -364,7 +367,7 @@ export function DocsHomeWorkspace({
   const handleOpenFile = useCallback(
     (file: DriveFile) => {
       if (!canOpenOffline(file)) return;
-      if (file.apiPath) onOpenFile?.(file.apiPath);
+      if (file.apiPath) onOpenFile?.(file.apiPath, file.nodeId);
     },
     [canOpenOffline, onOpenFile],
   );

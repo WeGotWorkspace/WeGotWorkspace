@@ -104,6 +104,8 @@ export type DriveUnifiedSearchResult = {
   modifiedAt?: number;
   /** Optional browse metadata (e.g. `hasShares` for shared indicators). */
   metadata?: Record<string, unknown>;
+  /** FileNode id for a file result the server has indexed (#1976). */
+  nodeId?: string;
 };
 
 export type DriveUnifiedSearchDownloadInput = {

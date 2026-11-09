@@ -69,6 +69,7 @@ export function driveFileFromSearchResult(
     kind,
     size: result.size > 0 ? formatBytesCompact(result.size) : "—",
     apiPath: apiPath || undefined,
+    ...(result.nodeId ? { nodeId: result.nodeId } : {}),
     location: driveLocationLabel(result.sourceKey, viewerUsername) ?? undefined,
     ...driveShareFlagsFromListing({
       hasShares: result.metadata?.hasShares === true,
