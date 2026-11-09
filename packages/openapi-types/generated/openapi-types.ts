@@ -11167,6 +11167,8 @@ export interface components {
             modifiedAt: number;
             snippet?: string | null;
             tokenScore: number;
+            /** @description FileNode id (fn-…) for a file result with a live FileNode; omitted otherwise. */
+            nodeId?: string;
             metadata: {
                 [key: string]: unknown;
             };
