@@ -67,6 +67,7 @@ export const docsLabels = {
   },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
+  homeNewDocumentMenu: "More create options",
   homeCreateError: "Could not create a new document.",
   /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "All Files"). */
   homeAllDocs: filesBrowserSidebarLabels.homeDocs,

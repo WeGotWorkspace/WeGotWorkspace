@@ -13,7 +13,6 @@ import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-v
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -277,6 +276,7 @@ export function TasksWorkspace({
         workspaceRoot={{ className: cn("tasks-workspace note-detail-desk", className) }}
         sidebar={(c) => (
           <AppSidebar
+            settingsAppId="tasks"
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
             primaryButton={
@@ -293,7 +293,7 @@ export function TasksWorkspace({
             }
             footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
           >
-            <WorkspaceAppPrimarySidebarSection appId="tasks" items={topSidebarItems} />
+            <SidebarSection items={topSidebarItems} />
             {ownedLists.length > 0 ? (
               <SidebarSection title={L.sidebarProjects}>
                 <TasksSidebarRows

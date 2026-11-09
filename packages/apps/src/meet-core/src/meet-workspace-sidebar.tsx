@@ -3,7 +3,6 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppSettingsSidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
@@ -65,6 +64,7 @@ export function MeetWorkspaceSidebar({
 }: MeetWorkspaceSidebarProps) {
   return (
     <AppSidebar
+      settingsAppId="meet"
       open={open}
       onCloseMobile={onClose}
       appSwitchSubtitle={meetLabels.productName}
@@ -86,8 +86,6 @@ export function MeetWorkspaceSidebar({
       }
       footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
     >
-      {/* Settings on top, in its own section: every list below is labelled. */}
-      <WorkspaceAppSettingsSidebarSection appId="meet" />
       {sections.channels.length > 0 ? (
         <SidebarSection title={meetLabels.sidebarChannels}>
           <MeetSidebarRows

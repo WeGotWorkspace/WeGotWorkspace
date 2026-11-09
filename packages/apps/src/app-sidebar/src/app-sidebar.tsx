@@ -10,6 +10,8 @@ import { NotificationInboxTray } from "@/notifications-core/src/notification-inb
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
 import { publishElementHeight } from "@/lib/publish-element-height";
+import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
+import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";
 
 export type AppSidebarProps = {
   open: boolean;
@@ -20,6 +22,11 @@ export type AppSidebarProps = {
   footer?: ReactNode;
   /** Primary CTA under the header (e.g. Compose, New). */
   primaryButton?: ReactNode;
+  /**
+   * The app whose Settings is the last option in the primary button's menu (a
+   * `SidebarSegmentedNewMenu`, which turns into a split button for it).
+   */
+  settingsAppId?: WorkspaceAppId;
   /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-we-got-dark` override. */
   scrollSurfaceStyle?: CSSProperties;
   /** Passed to `AppSwitchButton` (e.g. install shell). */
@@ -58,6 +65,7 @@ export function AppSidebar({
   children,
   footer,
   primaryButton,
+  settingsAppId,
   scrollSurfaceStyle,
   appSwitchDisabled = false,
   appSwitchSubtitle,
@@ -97,7 +105,11 @@ export function AppSidebar({
         <div className="app-sidebar__scroll">
           <div className="app-sidebar__scroll-surface" style={scrollSurfaceStyle}>
             {primaryButton != null ? (
-              <div className="app-sidebar__primary-button">{primaryButton}</div>
+              <div className="app-sidebar__primary-button">
+                <AppSidebarPrimaryProvider settingsAppId={settingsAppId}>
+                  {primaryButton}
+                </AppSidebarPrimaryProvider>
+              </div>
             ) : null}
             <div className="app-sidebar__sections">{children}</div>
           </div>

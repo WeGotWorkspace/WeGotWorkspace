@@ -31,7 +31,6 @@ import {
   sidebarSelectMarker,
 } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
@@ -412,6 +411,7 @@ export function NotesWorkspace({
         }}
         sidebar={(c) => (
           <AppSidebar
+            settingsAppId="notes"
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
             footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
@@ -427,7 +427,7 @@ export function NotesWorkspace({
               />
             }
           >
-            <WorkspaceAppPrimarySidebarSection appId="notes" items={primarySidebarItems} />
+            <SidebarSection items={primarySidebarItems} />
             {ownedNotebooks.length > 0 ? (
               <SidebarSection title={L.sectionNotebooks}>
                 <NotesSidebarRows

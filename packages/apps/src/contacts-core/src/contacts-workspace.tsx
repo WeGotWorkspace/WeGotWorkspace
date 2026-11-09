@@ -5,7 +5,6 @@ import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-v
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -316,6 +315,7 @@ export function ContactsWorkspace({
         sidebar={(c) => (
           <TooltipProvider delayDuration={0}>
             <AppSidebar
+              settingsAppId="contacts"
               open={c.sidebarOpen}
               onCloseMobile={c.closeSidebar}
               footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
@@ -332,7 +332,7 @@ export function ContactsWorkspace({
                 />
               }
             >
-              <WorkspaceAppPrimarySidebarSection appId="contacts" items={primarySidebarItems} />
+              <SidebarSection items={primarySidebarItems} />
               {ownedAddressBooks.length > 0 ? (
                 <SidebarSection title={L.sectionAddressBooks}>
                   <ContactsSidebarBookRows

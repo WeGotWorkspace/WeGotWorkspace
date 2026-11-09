@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { Folder, Settings } from "lucide-react";
+import { Folder } from "lucide-react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -73,8 +73,9 @@ export const Default: Story = {
   ),
 };
 
-/** Suite norm: Settings is the last row of the first section; the footer is the account only. */
-export const SettingsInFirstSection: Story = {
+/** Suite norm: no Settings row in the sections (it is an icon button by the primary
+ * button); the footer is the account only. */
+export const SectionsAndAccountFooter: Story = {
   parameters: {
     layout: "fullscreen",
     routerPath: "/notes",
@@ -94,7 +95,6 @@ export const SettingsInFirstSection: Story = {
               selected: true,
               onClick: () => {},
             },
-            { label: "Settings", icon: <Settings className="size-4" />, onClick: () => {} },
           ]}
         />
         <SidebarSection
@@ -106,8 +106,8 @@ export const SettingsInFirstSection: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const settings = canvas.getByRole("button", { name: "Settings" });
-    await expect(settings.closest(".workspace-sidebar-account-footer")).toBeNull();
+    // Settings is an icon button beside the primary button, never a row or footer item.
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };

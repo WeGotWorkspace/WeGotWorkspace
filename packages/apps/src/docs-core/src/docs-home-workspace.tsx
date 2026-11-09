@@ -403,6 +403,7 @@ export function DocsHomeWorkspace({
             showNewDocument={Boolean(onCreateDocument)}
             onNewDocument={handleNewDocument}
             newDocumentLabel={labels.homeNewDocument}
+            newDocumentMenuLabel={labels.homeNewDocumentMenu}
             session={session}
             onLogout={onLogout}
             primaryItems={primaryItems}

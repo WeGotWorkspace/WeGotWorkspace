@@ -16,7 +16,6 @@ import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppPrimarySidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
 import { SideDrawer } from "@/ui/side-drawer";
@@ -499,6 +498,7 @@ function DriveSidebar({
 
   return (
     <AppSidebar
+      settingsAppId="drive"
       open={sidebarOpen}
       onCloseMobile={() => setSidebarOpen(false)}
       appSwitchDisabled={wgwIsGuestSession()}
@@ -525,7 +525,7 @@ function DriveSidebar({
         ) : null
       }
     >
-      <WorkspaceAppPrimarySidebarSection appId="drive" items={primarySidebarItems} />
+      <SidebarSection items={primarySidebarItems} />
       {groupSidebarItems.length > 0 ? (
         <SidebarSection title={labels.sidebarSharedDrives} items={groupSidebarItems} />
       ) : null}

@@ -11,7 +11,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Button, IconButton } from "@/button/src/button";
+import { IconButton } from "@/button/src/button";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import {
   CollectionSidebarMark,
@@ -32,7 +33,6 @@ import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-ke
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceAppSettingsSidebarSection } from "@/settings-core/src/workspace-app-settings-sidebar";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -822,6 +822,7 @@ export function CalendarWorkspace({
         )}
         sidebar={
           <AppSidebar
+            settingsAppId="calendar"
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
             primaryButton={
@@ -860,16 +861,14 @@ export function CalendarWorkspace({
                   }
                 />
               ) : (
-                <Button
-                  label={L.today}
+                <SidebarSegmentedNewMenu
+                  mainLabel={L.today}
+                  menuLabel={L.newEventMenu}
                   icon={<CalendarDays />}
-                  onClick={() => {
+                  onMainAction={() => {
                     goToday();
                     dismissSidebarOverlay(() => setSidebarOpen(false));
                   }}
-                  size="md"
-                  pill
-                  variant="primary"
                 />
               )
             }
@@ -881,7 +880,6 @@ export function CalendarWorkspace({
               />
             }
           >
-            <WorkspaceAppSettingsSidebarSection appId="calendar" />
             <SidebarSection title={L.myCalendarsSection}>
               <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
             </SidebarSection>
