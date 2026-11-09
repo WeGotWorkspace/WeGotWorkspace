@@ -194,13 +194,11 @@ export function DriveWorkspaceModals({
       <DriveMoveToDialog
         open={!!moveDialog}
         labels={controller.labels}
-        files={files}
+        files={moveDialog?.rows ?? files}
         groupPaths={sidebarGroupPaths}
         moveIds={moveDialog?.ids ?? []}
         view={view}
-        singleItemParent={
-          moveDialog?.ids.length === 1 ? fileById(moveDialog.ids[0]!)?.parent : undefined
-        }
+        singleItemParent={moveDialog?.ids.length === 1 ? moveDialog.rows[0]?.parent : undefined}
         operations={operations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
+import { driveRowsById } from "@/drive-core/src/use-drive-all-files";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
@@ -104,7 +105,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [confirmDelete, setConfirmDelete] = useState<null | { ids: string[]; permanent: boolean }>(
     null,
   );
-  const [moveDialog, setMoveDialog] = useState<{ ids: string[] } | null>(null);
+  const [moveDialog, setMoveDialog] = useState<{ ids: string[]; rows: DriveFile[] } | null>(null);
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false);
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
@@ -187,10 +188,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const commitMoveToFolder = useCallback(
     (ids: string[], destinationPath: string) => {
       if (!structureEnabled) return;
-      const movable = canMoveDriveItemsToFolder(files, ids, destinationPath);
+      const movable = canMoveDriveItemsToFolder(driveRowsById(ids, fileById), ids, destinationPath);
       if (movable.length > 0) moveToFolder(movable, destinationPath);
     },
-    [files, moveToFolder, structureEnabled],
+    [fileById, moveToFolder, structureEnabled],
   );
 
   const folderDropZoneProps = useCallback(
@@ -220,9 +221,9 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const openMoveDialog = useCallback(
     (ids: string[]) => {
       if (!structureEnabled || ids.length === 0) return;
-      setMoveDialog({ ids });
+      setMoveDialog({ ids, rows: driveRowsById(ids, fileById) });
     },
-    [structureEnabled],
+    [fileById, structureEnabled],
   );
   const requestMoveSelected = () => openMoveDialog(selectedIds);
   const requestMoveItem = (file: DriveFile) => openMoveDialog([file.id]);
@@ -406,7 +407,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
 
   const { selectionBar, selectionBarButtons } = useDriveSelectionBar({
     labels,
-    files,
+    files: driveRowsById(selectedIds, fileById),
     selectedIds,
     selectionMode,
     activeId,

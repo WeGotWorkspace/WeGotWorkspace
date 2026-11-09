@@ -61,6 +61,34 @@ export function driveRowsById(
   return [...rows.values()];
 }
 
+type DriveAllFilesPage = Awaited<ReturnType<NonNullable<DriveAPIOperations["listAllFiles"]>>>;
+
+/** Index pages one call may read past while they hold folders only. */
+const DRIVE_ALL_FILES_MAX_EMPTY_PAGES = 10;
+
+/**
+ * One page of All Files with at least one file. The index pages over folders
+ * too, so a page can hold no files while more follow: read on, or the view
+ * would show "empty" with files still to come.
+ */
+export async function fetchDriveAllFilesPage(
+  listAllFiles: NonNullable<DriveAPIOperations["listAllFiles"]>,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<DriveAllFilesPage> {
+  let page = await listAllFiles({ offset, limit: DRIVE_ALL_FILES_PAGE_SIZE }, { signal });
+  const entries = [...page.entries];
+  for (let read = 1; read < DRIVE_ALL_FILES_MAX_EMPTY_PAGES; read += 1) {
+    if (entries.length > 0 || !page.hasMore || signal?.aborted) break;
+    const at = page.nextOffset;
+    page = await listAllFiles({ offset: at, limit: DRIVE_ALL_FILES_PAGE_SIZE }, { signal });
+    // The index did not move on: stop instead of asking for the same page again.
+    if (page.nextOffset <= at) return { entries, nextOffset: at, hasMore: false };
+    entries.push(...page.entries);
+  }
+  return { entries, nextOffset: page.nextOffset, hasMore: page.hasMore };
+}
+
 export type UseDriveAllFilesArgs = {
   operations?: DriveAPIOperations;
   view: ViewKey;
@@ -97,7 +125,7 @@ export function useDriveAllFiles({
   const loadPage = useCallback(
     async (offset: number, version: number, signal?: AbortSignal) => {
       if (!listAllFiles) return;
-      const page = await listAllFiles({ offset, limit: DRIVE_ALL_FILES_PAGE_SIZE }, { signal });
+      const page = await fetchDriveAllFilesPage(listAllFiles, offset, signal);
       if (version !== versionRef.current) return;
       const files = page.entries.map((entry) => driveFileFromEntry(entry, currentUsername));
       nextOffsetRef.current = page.nextOffset;
@@ -115,6 +143,10 @@ export function useDriveAllFiles({
     (signal?: AbortSignal) => {
       const version = versionRef.current + 1;
       versionRef.current = version;
+      // Load more waits for the new first page: an offset from the old listing
+      // would add a later page to it and skip the rows between.
+      nextOffsetRef.current = 0;
+      setHasMore(false);
       setLoadingMore(false);
       void loadPage(0, version, signal).catch((error: unknown) => {
         if (signal?.aborted || version !== versionRef.current) return;
@@ -133,7 +165,7 @@ export function useDriveAllFiles({
   }, [active, reload]);
 
   const loadMore = useCallback(() => {
-    if (!hasMore || loadingMore) return;
+    if (!hasMore || loadingMore || nextOffsetRef.current === 0) return;
     const version = versionRef.current;
     setLoadingMore(true);
     void loadPage(nextOffsetRef.current, version)
