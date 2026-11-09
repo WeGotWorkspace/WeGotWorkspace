@@ -21,7 +21,8 @@ export type CalendarOverlayPreview = { key: string; origin?: CalendarEventSelect
 
 export type CalendarOverlayPreviewSources = {
   taskDueMarkers: readonly TaskDueOverlayMarker[];
-  availability: Pick<TeamAvailabilityState, "periodsByUser" | "members">;
+  availability: Pick<TeamAvailabilityState, "periodsByUser" | "members"> &
+    Partial<Pick<TeamAvailabilityState, "colors">>;
 };
 
 /**
@@ -45,6 +46,7 @@ export function resolveCalendarOverlayPreview(
       key,
       availability.periodsByUser,
       availability.members,
+      availability.colors,
     );
     return preview ? { kind: "availability", key, preview, origin } : null;
   }

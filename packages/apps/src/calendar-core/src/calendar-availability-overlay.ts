@@ -8,7 +8,11 @@ import {
 } from "@/lib/calendar-engine";
 import { isInstantOrOffset, localToPlainDateTime } from "@/lib/jmap-client/mapping/datetime";
 import type { JmapBusyPeriod } from "@/lib/jmap-client/availability/types";
-import { avatarColorForUserId, type UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
+import {
+  avatarColorForUserId,
+  USER_AVATAR_COLORS,
+  type UserAvatarColor,
+} from "@/user-avatar/src/user-avatar-color";
 
 /** Prefix of a teammate's virtual, read-only calendar and of its grid keys. */
 export const AVAILABILITY_CALENDAR_PREFIX = "availability:";
@@ -61,8 +65,54 @@ export function isAvailabilityOverlayEvent(
   );
 }
 
-export function availabilityColor(username: string): string {
-  return AVATAR_HEX[avatarColorForUserId(username)];
+/** Each teammate's colour in Team availability, resolved over the whole list. */
+export type AvailabilityColors = ReadonlyMap<string, UserAvatarColor>;
+
+/**
+ * Distinct colours for the Team availability list. Usernames are walked in
+ * sorted order, so list order, filters and ticks never recolour anyone. Each
+ * keeps their avatar colour while it is free, else takes the next free colour
+ * in palette order. Colours repeat only once all of them are taken. Pass the
+ * whole list, ticked or not.
+ */
+export function resolveAvailabilityColors(
+  usernames: Iterable<string>,
+): Map<string, UserAvatarColor> {
+  const sorted = [...new Set(usernames)].sort((left, right) =>
+    left < right ? -1 : left > right ? 1 : 0,
+  );
+  const taken = new Set<UserAvatarColor>();
+  const colors = new Map<string, UserAvatarColor>();
+  for (const username of sorted) {
+    const own = avatarColorForUserId(username);
+    let color = own;
+    if (taken.size < USER_AVATAR_COLORS.length) {
+      const first = USER_AVATAR_COLORS.indexOf(own);
+      for (let step = 0; step < USER_AVATAR_COLORS.length; step += 1) {
+        const candidate = USER_AVATAR_COLORS[(first + step) % USER_AVATAR_COLORS.length]!;
+        if (!taken.has(candidate)) {
+          color = candidate;
+          break;
+        }
+      }
+    }
+    taken.add(color);
+    colors.set(username, color);
+  }
+  return colors;
+}
+
+/** A teammate's resolved colour; their avatar colour when not in the list. */
+export function availabilityColorToken(
+  username: string,
+  colors?: AvailabilityColors,
+): UserAvatarColor {
+  return colors?.get(username) ?? avatarColorForUserId(username);
+}
+
+/** The hex of a teammate's resolved colour, for checkboxes and blocks. */
+export function availabilityColor(username: string, colors?: AvailabilityColors): string {
+  return AVATAR_HEX[availabilityColorToken(username, colors)];
 }
 
 /** When a busy period happens, read the way the grid draws it. */
@@ -117,6 +167,7 @@ export function availabilityPeriodEvent(
   index: number,
   period: JmapBusyPeriod,
   busyLabel: string,
+  colors?: AvailabilityColors,
 ): CalendarEvent | null {
   const timing = availabilityPeriodTiming(period);
   if (!timing) return null;
@@ -134,7 +185,7 @@ export function availabilityPeriodEvent(
       ...(timeZone ? { timeZone } : {}),
       summary: title,
       ...(location ? { location } : {}),
-      color: availabilityColor(username),
+      color: availabilityColor(username, colors),
       duration,
     },
   };
@@ -144,11 +195,12 @@ export function availabilityPeriodEvent(
 export function buildAvailabilityOverlayEvents(
   periodsByUser: ReadonlyMap<string, readonly JmapBusyPeriod[]>,
   busyLabel: string,
+  colors?: AvailabilityColors,
 ): CalendarEventsMap {
   const events: CalendarEventsMap = new Map();
   for (const [username, periods] of periodsByUser) {
     periods.forEach((period, index) => {
-      const event = availabilityPeriodEvent(username, index, period, busyLabel);
+      const event = availabilityPeriodEvent(username, index, period, busyLabel, colors);
       if (event) events.set(availabilityOverlayKey(username, index), event);
     });
   }

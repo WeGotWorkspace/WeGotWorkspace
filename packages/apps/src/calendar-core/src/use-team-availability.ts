@@ -30,7 +30,11 @@ import {
 } from "@/lib/offline/calendars/availability-cache";
 import { viewDateRange } from "@/calendar-core/src/calendar-event-model";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
-import { buildAvailabilityOverlayEvents } from "@/calendar-core/src/calendar-availability-overlay";
+import {
+  buildAvailabilityOverlayEvents,
+  resolveAvailabilityColors,
+  type AvailabilityColors,
+} from "@/calendar-core/src/calendar-availability-overlay";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { TeamAvailabilityCoverage } from "@/calendar-core/src/calendar-availability-notice";
 import {
@@ -101,6 +105,8 @@ export type TeamAvailabilityState = {
   /** Teammates whose weeks in view came back `complete: false`. */
   incompleteIds: ReadonlySet<string>;
   periodsByUser: ReadonlyMap<string, JmapBusyPeriod[]>;
+  /** One distinct colour per listed person (ticked or not), for rows, blocks and popovers. */
+  colors: AvailabilityColors;
   overlayEvents: CalendarEventsMap;
   coverage: TeamAvailabilityCoverage;
 };
@@ -348,9 +354,14 @@ export function useTeamAvailability({
     return summarize(source, shownList, visibleWeeks);
   }, [preset, presetMode, rows, shownList, visibleWeeks]);
 
+  const colors = useMemo(
+    () => resolveAvailabilityColors((memberList ?? []).map((member) => member.id)),
+    [memberList],
+  );
+
   const overlayEvents = useMemo(
-    () => buildAvailabilityOverlayEvents(summary.periodsByUser, busyLabel),
-    [busyLabel, summary.periodsByUser],
+    () => buildAvailabilityOverlayEvents(summary.periodsByUser, busyLabel, colors),
+    [busyLabel, colors, summary.periodsByUser],
   );
 
   const orderedMembers = useMemo(
@@ -369,11 +380,13 @@ export function useTeamAvailability({
       toggleCollapsed,
       incompleteIds: summary.incompleteIds,
       periodsByUser: summary.periodsByUser,
+      colors,
       overlayEvents,
       coverage: summary.coverage,
     }),
     [
       collapsed,
+      colors,
       effectiveOnline,
       orderedMembers,
       overlayEvents,

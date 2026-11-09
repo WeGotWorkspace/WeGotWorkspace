@@ -7,7 +7,6 @@ import {
   type AvailabilityPreview,
 } from "@/calendar-core/src/calendar-availability-preview";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import "./calendar-availability-popover.css";
 
 export type CalendarAvailabilityPopoverProps = {
@@ -31,7 +30,7 @@ export function CalendarAvailabilityPopover({
   origin,
   onClose,
 }: CalendarAvailabilityPopoverProps) {
-  const { period, name, username } = preview;
+  const { period, name, color } = preview;
   const title = period.title?.trim() ?? "";
   const location = period.location?.trim() ?? "";
   return (
@@ -41,7 +40,7 @@ export function CalendarAvailabilityPopover({
       origin={origin}
       title={
         <span className="calendar-availability-popover__person">
-          <UserAvatar displayName={name} compact size="xs" color={avatarColorForUserId(username)} />
+          <UserAvatar displayName={name} compact size="xs" color={color} />
           <span>{name}</span>
         </span>
       }

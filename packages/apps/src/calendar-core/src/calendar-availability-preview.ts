@@ -1,10 +1,13 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
+  availabilityColorToken,
   availabilityPeriodTiming,
   parseAvailabilityOverlayKey,
+  type AvailabilityColors,
 } from "@/calendar-core/src/calendar-availability-overlay";
 import { wallClockInTimeZone } from "@/lib/calendar-elements/utils/event-display-time";
 import type { JmapBusyPeriod, JmapTeamMember } from "@/lib/jmap-client/availability/types";
+import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
 
 /** What the busy-block popover shows: whose time, and the period as the server sent it. */
 export type AvailabilityPreview = {
@@ -12,6 +15,8 @@ export type AvailabilityPreview = {
   username: string;
   /** Display name; the username when the teammate is no longer listed. */
   name: string;
+  /** The same resolved colour as the teammate's row and blocks. */
+  color: UserAvatarColor;
   period: JmapBusyPeriod;
 };
 
@@ -23,13 +28,20 @@ export function resolveAvailabilityPreview(
   key: string,
   periodsByUser: ReadonlyMap<string, readonly JmapBusyPeriod[]>,
   members: readonly JmapTeamMember[] | null,
+  colors?: AvailabilityColors,
 ): AvailabilityPreview | null {
   const parsed = parseAvailabilityOverlayKey(key);
   if (!parsed) return null;
   const period = periodsByUser.get(parsed.username)?.[parsed.index];
   if (!period) return null;
   const member = members?.find((entry) => entry.id === parsed.username);
-  return { key, username: parsed.username, name: member?.name ?? parsed.username, period };
+  return {
+    key,
+    username: parsed.username,
+    name: member?.name ?? parsed.username,
+    color: availabilityColorToken(parsed.username, colors),
+    period,
+  };
 }
 
 const DAY_FORMAT: Intl.DateTimeFormatOptions = {

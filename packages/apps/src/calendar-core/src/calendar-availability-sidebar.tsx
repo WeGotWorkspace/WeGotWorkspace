@@ -7,10 +7,12 @@ import {
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Input } from "@/ui/input";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import type { JmapTeamMember } from "@/lib/jmap-client/availability/types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import { availabilityColor } from "@/calendar-core/src/calendar-availability-overlay";
+import {
+  availabilityColor,
+  availabilityColorToken,
+} from "@/calendar-core/src/calendar-availability-overlay";
 import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availability";
 import "./calendar-availability-sidebar.css";
 
@@ -37,7 +39,8 @@ export type CalendarAvailabilitySidebarProps = {
   availability: Pick<
     TeamAvailabilityState,
     "members" | "shownIds" | "incompleteIds" | "collapsed" | "toggleShown" | "toggleCollapsed"
-  >;
+  > &
+    Partial<Pick<TeamAvailabilityState, "colors">>;
   labels: SidebarLabels;
 };
 
@@ -64,7 +67,7 @@ export function CalendarAvailabilitySidebar({
   availability,
   labels,
 }: CalendarAvailabilitySidebarProps) {
-  const { members, shownIds, incompleteIds, collapsed } = availability;
+  const { members, shownIds, incompleteIds, collapsed, colors } = availability;
   const onToggleShown = availability.toggleShown;
   const [filter, setFilter] = useState("");
   const showFilter = (members?.length ?? 0) > TEAM_AVAILABILITY_FILTER_THRESHOLD;
@@ -114,7 +117,7 @@ export function CalendarAvailabilitySidebar({
             blockName="calendar-sidebar-row"
             className="calendar-availability-sidebar__row"
             name={name}
-            color={availabilityColor(member.id)}
+            color={availabilityColor(member.id, colors)}
             visible={shown}
             visibilityLabel={visibilityLabel(member, shown, labels)}
             onToggleVisibility={() => onToggleShown(member.id)}
@@ -123,7 +126,7 @@ export function CalendarAvailabilitySidebar({
                 displayName={member.name}
                 compact
                 size="xs"
-                color={avatarColorForUserId(member.id)}
+                color={availabilityColorToken(member.id, colors)}
                 className="calendar-availability-sidebar__avatar"
               />
             }

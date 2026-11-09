@@ -3,6 +3,7 @@ import {
   formatAvailabilityPeriodWhen,
   resolveAvailabilityPreview,
 } from "@/calendar-core/src/calendar-availability-preview";
+import { resolveAvailabilityColors } from "@/calendar-core/src/calendar-availability-overlay";
 import { resolveCalendarOverlayPreview } from "@/calendar-core/src/calendar-overlay-preview";
 import type { JmapBusyPeriod } from "@/lib/jmap-client/availability/types";
 
@@ -23,8 +24,17 @@ describe("resolveAvailabilityPreview", () => {
       key: "availability:ada#0",
       username: "ada",
       name: "Ada Lovelace",
+      color: "violet",
       period: roadmap,
     });
+  });
+
+  it("carries the teammate's resolved colour, not just their avatar colour", () => {
+    const graceRoadmap = new Map([["grace", [roadmap]]]);
+    const colors = resolveAvailabilityColors(["ada", "grace"]);
+    expect(
+      resolveAvailabilityPreview("availability:grace#0", graceRoadmap, [], colors)?.color,
+    ).toBe("rose");
   });
 
   it("falls back to the username when the teammate is no longer listed", () => {

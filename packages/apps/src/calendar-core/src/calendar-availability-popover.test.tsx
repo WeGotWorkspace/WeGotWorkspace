@@ -17,6 +17,7 @@ const withDetails: AvailabilityPreview = {
   key: "availability:ada#0",
   username: "ada",
   name: "Ada Lovelace",
+  color: "violet",
   period: {
     start: "2033-01-12T10:00:00",
     timeZone: "Europe/Amsterdam",
@@ -31,6 +32,7 @@ const timeOnly: AvailabilityPreview = {
   key: "availability:grace#1",
   username: "grace",
   name: "Grace Hopper",
+  color: "rose",
   period: { start: "2033-01-14", timeZone: null, duration: "P1D", showWithoutTime: true },
 };
 
@@ -72,6 +74,8 @@ describe("CalendarAvailabilityPopover", () => {
   it("shows Busy, the dates and a hint when only busy times are shared", () => {
     renderPopover(timeOnly);
     expect(screen.getByText("Grace Hopper")).toBeTruthy();
+    // The resolved colour (rose), not Grace's own avatar colour (violet).
+    expect(document.querySelector(".user-avatar--color-rose")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.teamAvailabilityBusy)).toBeTruthy();
     expect(screen.getByText("Fri 14 Jan")).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.teamAvailabilityPreviewNoDetails)).toBeTruthy();

@@ -5,7 +5,9 @@ import {
   buildAvailabilityOverlayEvents,
   isAvailabilityCalendarId,
   parseAvailabilityOverlayKey,
+  resolveAvailabilityColors,
 } from "@/calendar-core/src/calendar-availability-overlay";
+import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import { isRenderOnlyOverlayKey } from "@/calendar-core/src/calendar-render-overlay";
 
 describe("availability overlay", () => {
@@ -97,5 +99,45 @@ describe("availability overlay", () => {
       "Busy",
     );
     expect([...events.keys()]).toEqual(["availability:alice#0"]);
+  });
+
+  it("builds blocks in the teammate's resolved colour", () => {
+    const period = {
+      start: "2026-11-12T09:00:00",
+      timeZone: null,
+      duration: "PT1H",
+      showWithoutTime: false,
+    };
+    const colors = resolveAvailabilityColors(["ada", "grace"]);
+    const events = buildAvailabilityOverlayEvents(new Map([["grace", [period]]]), "Busy", colors);
+    expect(events.get("availability:grace#0")?.data.color).toBe("#f43f5e");
+  });
+});
+
+describe("resolveAvailabilityColors", () => {
+  const team = ["member", "grace", "alan", "ada"];
+
+  it("gives colliding teammates distinct colours; the first by username keeps theirs", () => {
+    // ada, grace and member all hash to violet; alan to sky.
+    expect(team.map(avatarColorForUserId)).toEqual(["violet", "violet", "sky", "violet"]);
+    const colors = resolveAvailabilityColors(team);
+    expect(colors.get("ada")).toBe("violet");
+    expect(colors.get("alan")).toBe("sky");
+    expect(colors.get("grace")).toBe("rose");
+    expect(colors.get("member")).toBe("lime");
+    expect(new Set(colors.values()).size).toBe(4);
+  });
+
+  it("does not depend on input order", () => {
+    const forward = resolveAvailabilityColors(team);
+    const reversed = resolveAvailabilityColors([...team].reverse());
+    expect([...reversed.entries()].sort()).toEqual([...forward.entries()].sort());
+  });
+
+  it("uses all eight colours before any repeats", () => {
+    const many = Array.from({ length: 9 }, (_, index) => `user${index}`);
+    const colors = resolveAvailabilityColors(many);
+    expect(new Set([...colors.values()].slice(0, 8)).size).toBe(8);
+    expect(colors.size).toBe(9);
   });
 });
