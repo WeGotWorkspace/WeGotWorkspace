@@ -37,6 +37,7 @@ import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
+import { viewerHasNoTeam } from "@/share-ui/collection-share";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
@@ -680,6 +681,7 @@ export function NotesWorkspace({
           notebookDialog?.mode === "edit" && notebookDialog.mayShare
             ? {
                 online,
+                noTeam: viewerHasNoTeam(data.groups),
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchNotebookShareWith,
               }

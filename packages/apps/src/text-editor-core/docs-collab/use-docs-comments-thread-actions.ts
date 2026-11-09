@@ -19,6 +19,8 @@ type UseDocsCommentsThreadActionsOptions = {
   currentUser: DocsCommentAuthor;
   openThreads: DocsCommentThread[];
   openThreadIds: Set<string>;
+  /** True once `openThreads` is the server's list for this Doc. */
+  threadsLoaded: boolean;
   activeThreadIdRef: MutableRefObject<string | null>;
   dismissedSelectionRef: MutableRefObject<{ from: number; to: number } | null>;
   draftThreadRef: MutableRefObject<DocsCommentThread | null>;
@@ -33,6 +35,7 @@ export function useDocsCommentsThreadActions({
   currentUser,
   openThreads,
   openThreadIds,
+  threadsLoaded,
   activeThreadIdRef,
   dismissedSelectionRef,
   draftThreadRef,
@@ -41,6 +44,8 @@ export function useDocsCommentsThreadActions({
   cancelDraft,
   canMutateComments = true,
 }: UseDocsCommentsThreadActionsOptions) {
+  // Null until loaded, so a click on a mark never strips the other marks.
+  const syncThreads = threadsLoaded ? openThreads : null;
   const activateThreadFromMark = useCallback(
     (threadId: string, clickPos?: number) => {
       markCommentThreadActive(
@@ -50,9 +55,9 @@ export function useDocsCommentsThreadActions({
         setActiveThreadId,
       );
       if (!editor) return;
-      activateCommentThreadInEditor(editor, threadId, openThreads, clickPos);
+      activateCommentThreadInEditor(editor, threadId, syncThreads, clickPos);
     },
-    [activeThreadIdRef, dismissedSelectionRef, editor, openThreads, setActiveThreadId],
+    [activeThreadIdRef, dismissedSelectionRef, editor, setActiveThreadId, syncThreads],
   );
 
   const selectThread = useCallback(
@@ -64,15 +69,15 @@ export function useDocsCommentsThreadActions({
         setActiveThreadId,
       );
       if (!editor) return;
-      selectCommentThreadInEditor(editor, threadId, openThreads, openThreadIds);
+      selectCommentThreadInEditor(editor, threadId, syncThreads, openThreadIds);
     },
     [
       activeThreadIdRef,
       dismissedSelectionRef,
       editor,
       openThreadIds,
-      openThreads,
       setActiveThreadId,
+      syncThreads,
     ],
   );
 
