@@ -128,6 +128,26 @@ describe("useTeamAvailability", () => {
     });
   });
 
+  it("gives colliding teammates distinct colours that ticking never changes", async () => {
+    // ada, grace and member share the violet avatar colour; alan is sky.
+    shown(["ada", "grace", "member"]);
+    const team = ["member", "grace", "alan", "ada"].map((id) => member(id));
+    const { source } = fakeSource(team);
+    const { result } = renderAvailability({ source });
+    await waitFor(() => expect(result.current.overlayEvents.size).toBeGreaterThan(0));
+    const before = new Map(result.current.colors);
+    expect(new Set(before.values()).size).toBe(4);
+    expect(before.get("ada")).toBe("violet");
+
+    act(() => result.current.toggleShown("ada"));
+    await waitFor(() => expect(result.current.shownIds.has("ada")).toBe(false));
+    expect(new Map(result.current.colors)).toEqual(before);
+    const graceBlock = [...result.current.overlayEvents.values()].find(
+      (event) => event.calendarId === "availability:grace",
+    );
+    expect(graceBlock?.data.color).toBe("#f43f5e");
+  });
+
   it("fetches the visible range at once when ticking a teammate", async () => {
     const { source, getAvailability } = fakeSource([member("alice")]);
     const { result } = renderAvailability({ source });
