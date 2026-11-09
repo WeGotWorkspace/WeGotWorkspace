@@ -241,7 +241,8 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
   const session = await wgwFetchPrincipal();
 
   const settingsRes = await wgwFetch("/settings/state");
-  let groups: TaskProjectGroupOption[] = [];
+  // Stays undefined when the Teams could not be loaded: not the same as "no Team".
+  let groups: TaskProjectGroupOption[] | undefined;
   if (settingsRes.ok) {
     const settings = (await wgwReadJson(settingsRes)) as {
       apps?: { tasks?: boolean };

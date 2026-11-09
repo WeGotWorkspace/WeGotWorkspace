@@ -15,6 +15,7 @@ use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
+use App\Dav\Server\CollectionReportReadPlugin;
 use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
@@ -128,6 +129,7 @@ final class SabreServerFactory
         }
         if ($cal || $card || $files) {
             $server->addPlugin(new DAVACL\Plugin);
+            $server->addPlugin(new CollectionReportReadPlugin);
         }
 
         if ($cal) {

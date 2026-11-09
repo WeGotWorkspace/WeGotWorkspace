@@ -127,16 +127,17 @@ export async function fetchCalendarBootstrapForClient(
   };
 }
 
-async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[]> {
+/** `undefined` when the Teams could not be loaded: not the same as "no Team". */
+export async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[] | undefined> {
   try {
     const settingsRes = await wgwFetch("/settings/state");
-    if (!settingsRes.ok) return [];
+    if (!settingsRes.ok) return undefined;
     const settings = (await wgwReadJson(settingsRes)) as {
       groups?: { id: string; displayName: string }[];
     };
-    return Array.isArray(settings.groups) ? mapCalendarDirectoryGroups(settings.groups) : [];
+    return Array.isArray(settings.groups) ? mapCalendarDirectoryGroups(settings.groups) : undefined;
   } catch {
-    return [];
+    return undefined;
   }
 }
 
@@ -300,7 +301,7 @@ export async function searchCalendarSharePrincipalsLive(
     query,
     calendarSharePrincipalsFromDirectory({
       invitees: invitees.list,
-      groups,
+      groups: groups ?? [],
       excludeUsername,
     }),
   );

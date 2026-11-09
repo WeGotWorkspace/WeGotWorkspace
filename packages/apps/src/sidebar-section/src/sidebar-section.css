@@ -32,3 +32,9 @@ h4.sidebar-section__title {
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
 }
+
+/* A short note in place of a section's rows (for example "not in a Team yet"). */
+.sidebar-section__note {
+  @apply text-sm text-muted-foreground;
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+}

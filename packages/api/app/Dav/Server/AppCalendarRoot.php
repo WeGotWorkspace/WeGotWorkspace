@@ -47,6 +47,14 @@ final class AppCalendarRoot extends CalendarRoot
         return [$this->getChildForPrincipal($principalInfo)];
     }
 
+    /**
+     * @param  array<string, mixed>  $principal
+     */
+    public function getChildForPrincipal(array $principal): AppCalendarHome
+    {
+        return new AppCalendarHome($this->caldavBackend, $principal);
+    }
+
     public function getChild($name): DAV\INode
     {
         $principalInfo = $this->principalBackend->getPrincipalByPath($this->principalPrefix.'/'.$name);
