@@ -32,17 +32,27 @@
 }
 
 /*
- * One inset on all four sides. The sticky head bars stick at that same inset,
- * so they never ride above where they start.
+ * One inset on the sides and bottom. On top, less: the first head bar's middle
+ * lines up with the sidebar's primary button (its pt-2 plus half of its 40px
+ * height, less half the bar and the pane header's 1px hairline, which the sidebar
+ * header has not). The sticky head bars stick at that same top, so they never
+ * ride above where they start.
  */
 .drive-workspace :is(.drive-grid-layout, .drive-list-view) {
   --drive-browser-inset: 1rem;
-  --list-head-sticky-gap: var(--drive-browser-inset);
+  --drive-browser-inset-top: calc(0.5rem + (2.5rem - var(--list-row-height, 3rem)) / 2 - 1px);
+  --list-head-sticky-gap: var(--drive-browser-inset-top);
   padding: var(--drive-browser-inset);
+  padding-top: var(--drive-browser-inset-top);
 
   @media (min-width: 48rem) {
     --drive-browser-inset: 1.5rem;
   }
+}
+
+/* A table's row spacing (0.125rem) sits above its header too: start that much higher. */
+.drive-workspace .drive-list-view {
+  padding-top: calc(var(--drive-browser-inset-top) - 0.125rem);
 }
 
 .drive-workspace .drive-grid-layout {
@@ -304,9 +314,9 @@
   @apply min-w-0 max-w-full;
 }
 
-/* The table's row spacing sits above the header too: stick where it starts. */
+/* The header starts at the top inset (the view starts the row spacing higher): stick there. */
 .drive-workspace .drive-list-table thead {
-  --list-head-sticky-gap: calc(var(--drive-browser-inset) + 0.125rem);
+  --list-head-sticky-gap: var(--drive-browser-inset-top);
 }
 
 .drive-workspace .drive-list-table {
