@@ -34,7 +34,9 @@ export const WorkspaceInteractions: Story = {
     expect(janeListItem).toBeTruthy();
     await userEvent.click(janeListItem as HTMLElement);
     await waitFor(() => {
-      expect(canvas.getByRole("heading", { level: 1, name: "Jane Doe" })).toBeInTheDocument();
+      // The title is the name itself, as first and last name fields.
+      expect(canvas.getByLabelText("First name")).toHaveValue("Jane");
+      expect(canvas.getByLabelText("Last name")).toHaveValue("Doe");
     });
 
     await userEvent.click(canvas.getByRole("button", { name: "Friends" }));
@@ -50,11 +52,18 @@ export const WorkspaceInteractions: Story = {
       canvasElement.querySelector('[data-list-item-id="card-jane"]') as HTMLElement,
     );
     await waitFor(() => {
-      expect(canvas.getByRole("heading", { level: 1, name: "Jane Doe" })).toBeInTheDocument();
+      // The title is the name itself, as first and last name fields.
+      expect(canvas.getByLabelText("First name")).toHaveValue("Jane");
+      expect(canvas.getByLabelText("Last name")).toHaveValue("Doe");
     });
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit" }));
-    const phoneInput = canvas.getByDisplayValue("+1-555-0101");
+    // No Edit button: a contact you may write opens editable.
+    expect(canvas.queryByRole("button", { name: "Edit" })).toBeNull();
+    const phoneInput = await waitFor(() => {
+      const input = canvas.getByDisplayValue("+1-555-0101");
+      expect(input).not.toHaveAttribute("readonly");
+      return input;
+    });
     await userEvent.clear(phoneInput);
     await userEvent.type(phoneInput, "+1-555-0199");
 

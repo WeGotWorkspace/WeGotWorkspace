@@ -4,6 +4,8 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-book-rows";
+import { ContactsSidebarGroupRows } from "@/contacts-core/src/contacts-sidebar-group-rows";
+import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { sortOwnedSidebarAddressBooks } from "@/contacts-core/src/use-contacts-sidebar-model";
@@ -89,7 +91,10 @@ const viewOnlySharee: ContactsAddressBookRow = {
   myRights: { mayRead: true, mayWrite: false, mayShare: false, mayDelete: true },
 };
 
-const sidebarGroups = [friendsGroup, standupsGroup, aliceColleagues];
+// Groups get their own section in name order, like the workspace sidebar.
+const sidebarGroups = [friendsGroup, standupsGroup, aliceColleagues].sort((a, b) =>
+  contactDisplayName(a).localeCompare(contactDisplayName(b), undefined, { sensitivity: "base" }),
+);
 const ownedSidebarBooks = sortOwnedSidebarAddressBooks([teamBook, alphaBook, ownerBook]);
 
 function ContactsSidebarHarness({
@@ -113,16 +118,6 @@ function ContactsSidebarHarness({
     window.localStorage.removeItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
     return true;
   });
-  const groupRowProps = {
-    groups: sidebarGroups,
-    groupEditLabel: defaultContactsLabels.renameGroup,
-    expandGroupsLabel: defaultContactsLabels.expandAddressBookGroups,
-    collapseGroupsLabel: defaultContactsLabels.collapseAddressBookGroups,
-    canEditGroup: () => true,
-    onSelectGroup,
-    onEditGroup,
-    groupDropZoneProps: () => ({ isDropTarget: false }),
-  };
   return (
     <ContactsStoryScope>
       <TooltipProvider delayDuration={0}>
@@ -138,7 +133,6 @@ function ContactsSidebarHarness({
               onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
               onEdit={onEdit}
-              {...groupRowProps}
             />
           </SidebarSection>
           <SidebarSection title={defaultContactsLabels.sidebarSharedWithMe}>
@@ -152,7 +146,17 @@ function ContactsSidebarHarness({
               onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
               onEdit={onEdit}
-              {...groupRowProps}
+            />
+          </SidebarSection>
+          <SidebarSection title={defaultContactsLabels.sectionGroups}>
+            <ContactsSidebarGroupRows
+              groups={sidebarGroups}
+              view={view}
+              editLabel={defaultContactsLabels.renameGroup}
+              canEditGroup={() => true}
+              onSelect={onSelectGroup}
+              onEdit={onEditGroup}
+              dropZoneProps={() => ({ isDropTarget: false })}
             />
           </SidebarSection>
         </div>
@@ -184,7 +188,7 @@ export const OwnedAndShared: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(defaultContactsLabels.sectionAddressBooks)).toBeInTheDocument();
     await expect(canvas.getByText(defaultContactsLabels.sidebarSharedWithMe)).toBeInTheDocument();
-    await expect(canvas.queryByText(defaultContactsLabels.sectionGroups)).toBeNull();
+    await expect(canvas.getByText(defaultContactsLabels.sectionGroups)).toBeInTheDocument();
     const personal = canvas.getByRole("button", { name: "Personal" });
     const alpha = canvas.getByRole("button", { name: "Alpha" });
     const engineering = canvas.getByRole("button", { name: "Engineering" });
@@ -197,7 +201,8 @@ export const OwnedAndShared: Story = {
     await expect(canvas.getByRole("button", { name: "Friends" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Standups" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Colleagues" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Collapse Alice" })).toBeInTheDocument();
+    // Groups are a flat section of their own: no fold under an address book.
+    await expect(canvas.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
     await expect(canvas.getByRole("checkbox", { name: "Hide Personal" })).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("checkbox", { name: "Hide Personal" }));
     await expect(args.onToggleVisibility).toHaveBeenCalledWith("default");
@@ -219,28 +224,43 @@ export const ViewOnlyEyeMark: Story = {
   },
 };
 
-export const GroupsUnderBooks: Story = {
+export const GroupsSection: Story = {
   tags: ["vitest-ci"],
   args: {
     view: "group:group-friends",
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByText(defaultContactsLabels.sectionGroups)).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Friends" })).toBeInTheDocument();
+    const groupsTitle = canvas.getByText(defaultContactsLabels.sectionGroups);
+    await expect(groupsTitle).toBeInTheDocument();
+    const friends = canvas.getByRole("button", { name: "Friends" });
+    const colleagues = canvas.getByRole("button", { name: "Colleagues" });
+    const standups = canvas.getByRole("button", { name: "Standups" });
+    // In name order, all below the Groups title, after every address book.
+    await expect(
+      colleagues.compareDocumentPosition(friends) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await expect(friends.compareDocumentPosition(standups) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Alice" }).compareDocumentPosition(colleagues) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await expect(friends.closest(".collection-sidebar-row")).toHaveClass(
+      "collection-sidebar-row--selected",
+    );
+    // Each group icon wears its address book's colour.
+    const icon = friends
+      .closest(".collection-sidebar-row")
+      ?.querySelector<HTMLElement>(".contacts-group-icon");
+    await expect(icon?.style.getPropertyValue("--collection-row-color")).not.toBe("");
+    await expect(canvas.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
     await userEvent.click(
       canvas.getAllByRole("button", { name: defaultContactsLabels.renameGroup })[0]!,
     );
     await expect(args.onEditGroup).toHaveBeenCalled();
-    await userEvent.click(canvas.getByRole("button", { name: "Friends" }));
+    await userEvent.click(friends);
     await expect(args.onSelectGroup).toHaveBeenCalledWith("group-friends");
-    await userEvent.click(canvas.getByRole("button", { name: "Collapse Personal" }));
-    await expect(canvas.queryByRole("button", { name: "Friends" })).toBeNull();
-    await userEvent.click(canvas.getByRole("button", { name: "Expand Personal" }));
-    await expect(canvas.getByRole("button", { name: "Friends" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Collapse Alice" }));
-    await expect(canvas.queryByRole("button", { name: "Colleagues" })).toBeNull();
-    await userEvent.click(canvas.getByRole("button", { name: "Expand Alice" }));
-    await expect(canvas.getByRole("button", { name: "Colleagues" })).toBeInTheDocument();
   },
 };

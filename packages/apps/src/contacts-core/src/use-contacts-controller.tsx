@@ -40,6 +40,7 @@ import {
 } from "@/contacts-core/src/contact-channel-commit";
 import {
   CONTACTS_CREATE_ID,
+  CONTACT_CHANNEL_DEFAULT_CONTEXT,
   canCreateContactInView,
   contactCardToEditDraft,
   contactEditDraftHasChanges,
@@ -50,6 +51,7 @@ import {
   newContactMapId,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
+  withBlankRowsFrom,
   type ContactChannelContext,
   type ContactPhoneType,
   type ContactEditDraft,
@@ -175,6 +177,9 @@ export function useContactsController({
   const cardsRef = useRef(cards);
   const activeIdRef = useRef(activeId);
   const contactDraftsRef = useRef<Map<string, ContactEditDraft>>(new Map());
+  // The draft the open card is known to match (as loaded, or as last saved).
+  // Autosave writes only a draft that differs from it: opening a contact never writes.
+  const syncedDraftRef = useRef<{ contactId: string; json: string } | null>(null);
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const debouncerRef = useRef(createContactSaveDebouncer(CONTACTS_AUTOSAVE_DEBOUNCE_MS));
   const persistContactEditRef = useRef<
@@ -267,6 +272,9 @@ export function useContactsController({
     const stashed = contactDraftsRef.current.get(contactId);
     if (stashed) {
       setEditMode(true);
+      // Drop the previous contact's draft now: the next one lands in a transition, and
+      // until then autosave must not see the old draft beside the new contact.
+      setEditDraft(null);
       startTransition(() => {
         setEditDraft(stashed);
       });
@@ -295,7 +303,15 @@ export function useContactsController({
     setItems: setCards,
     visibleIds,
     activeId,
-    setActiveId,
+    // Arrow keys and "next item after delete" switch the open contact too: carry the
+    // draft over as a click does, or the old contact's draft would be saved onto it.
+    setActiveId: (id) => {
+      if (!createMode && id !== activeId) {
+        stashActiveEditDraft();
+        restoreEditDraftForContact(id);
+      }
+      setActiveId(id);
+    },
     onPrimarySelect: (id) => {
       if (createMode) return;
       stashActiveEditDraft();
@@ -447,6 +463,80 @@ export function useContactsController({
       setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
     });
   }, [active, canEdit, createMode]);
+
+  // No edit mode to switch on: an open contact you may write is editable as is.
+  useEffect(() => {
+    if (createMode || editMode || !active || !canEdit || isContactGroupCard(active)) return;
+    const stashed = contactDraftsRef.current.get(active.id);
+    const draft = stashed ?? contactCardToEditDraft(active);
+    if (!stashed) syncedDraftRef.current = { contactId: active.id, json: JSON.stringify(draft) };
+    setEditMode(true);
+    startTransition(() => {
+      setEditDraft(draft);
+    });
+  }, [active, canEdit, createMode, editMode]);
+
+  /** "Add phone" and friends: an empty row at the end; returns its id for focus. */
+  const addPhone = useCallback(() => {
+    const id = newContactMapId();
+    setEditDraft((prev) =>
+      prev ? { ...prev, phones: [...prev.phones, { id, number: "", phoneType: "mobile" }] } : prev,
+    );
+    return id;
+  }, []);
+
+  const addEmail = useCallback(() => {
+    const id = newContactMapId();
+    setEditDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            emails: [
+              ...prev.emails,
+              { id, address: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT },
+            ],
+          }
+        : prev,
+    );
+    return id;
+  }, []);
+
+  const addAddress = useCallback(() => {
+    const id = newContactMapId();
+    setEditDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            addresses: [
+              ...prev.addresses,
+              {
+                id,
+                street: "",
+                locality: "",
+                region: "",
+                postalCode: "",
+                country: "",
+                contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT,
+              },
+            ],
+          }
+        : prev,
+    );
+    return id;
+  }, []);
+
+  const addUrl = useCallback(() => {
+    const id = newContactMapId();
+    setEditDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            urls: [...prev.urls, { id, uri: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT }],
+          }
+        : prev,
+    );
+    return id;
+  }, []);
 
   const cancelEdit = useCallback(() => {
     if (createMode) {
@@ -1237,7 +1327,9 @@ export function useContactsController({
         if (!operations) {
           contactDraftsRef.current.delete(contactId);
           if (activeIdRef.current === contactId) {
-            setEditDraft(contactCardToEditDraft(merged));
+            const next = withBlankRowsFrom(contactCardToEditDraft(merged), draft);
+            syncedDraftRef.current = { contactId, json: JSON.stringify(next) };
+            setEditDraft((prev) => (prev === draft ? next : prev));
           }
           return;
         }
@@ -1247,7 +1339,11 @@ export function useContactsController({
         contactDraftsRef.current.delete(contactId);
         setCards((prev) => prev.map((row) => (row.id === contactId ? saved : row)));
         if (activeIdRef.current === contactId) {
-          setEditDraft(contactCardToEditDraft(saved));
+          // Typing went on during the save: keep it, the next save sends it. Otherwise
+          // take the saved values, keeping rows just added and not filled in yet.
+          const next = withBlankRowsFrom(contactCardToEditDraft(saved), draft);
+          syncedDraftRef.current = { contactId, json: JSON.stringify(next) };
+          setEditDraft((prev) => (prev === draft ? next : prev));
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -1267,9 +1363,27 @@ export function useContactsController({
     persistContactEditRef.current = persistContactEdit;
   }, [persistContactEdit]);
 
+  // The draft autosave last saw, with the contact it was open on.
+  const autosaveSeenRef = useRef<{ contactId: string; draft: ContactEditDraft | null }>({
+    contactId: "",
+    draft: null,
+  });
+
   useEffect(() => {
+    const seen = autosaveSeenRef.current;
+    autosaveSeenRef.current = { contactId: activeId, draft: editDraft };
     if (!editMode || createMode || !editDraft || !activeId || activeId === CONTACTS_CREATE_ID)
       return;
+    // Another contact opened but the draft is still the previous one's: never save
+    // (or stash) it under the new contact. Its own draft follows.
+    if (seen.draft === editDraft && seen.contactId !== activeId) return;
+
+    const synced = syncedDraftRef.current;
+    if (synced?.contactId === activeId && synced.json === JSON.stringify(editDraft)) {
+      debouncerRef.current.cancel(activeId);
+      contactDraftsRef.current.delete(activeId);
+      return;
+    }
 
     contactDraftsRef.current.set(activeId, editDraft);
 
@@ -1473,6 +1587,10 @@ export function useContactsController({
     fileInputRef,
     startEdit,
     cancelEdit,
+    addPhone,
+    addEmail,
+    addAddress,
+    addUrl,
     saveEdit,
     deleteActive,
     downloadActive,

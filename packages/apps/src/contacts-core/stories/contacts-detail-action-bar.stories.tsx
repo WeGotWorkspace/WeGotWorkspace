@@ -1,34 +1,37 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 function ContactsDetailActionBarHarness({
-  editMode: initialEditMode = false,
   createMode = false,
+  canSaveCreate = true,
+  onDownload = fn(),
+  onDelete = fn(),
+  onSave = fn(),
+  onCancel = fn(),
 }: {
-  editMode?: boolean;
   createMode?: boolean;
+  canSaveCreate?: boolean;
+  onDownload?: () => void;
+  onDelete?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }) {
-  const [editMode, setEditMode] = useState(initialEditMode);
-
   return (
     <ContactsStoryScope variant="detail">
       <div className="sticky top-0 z-10 border-b px-2 py-2">
         <ContactsDetailActionBar
           labels={defaultContactsLabels}
-          canEdit
-          editMode={editMode}
           createMode={createMode}
+          canSaveCreate={canSaveCreate}
           closeMobileDetail={() => {}}
           backLabel="All Contacts"
-          onEdit={() => setEditMode(true)}
-          onDelete={() => {}}
-          onDownload={() => {}}
-          onSave={() => {}}
-          onCancel={() => setEditMode(false)}
+          onDelete={onDelete}
+          onDownload={onDownload}
+          onSave={onSave}
+          onCancel={onCancel}
         />
       </div>
     </ContactsStoryScope>
@@ -41,14 +44,21 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
+  args: {
+    onDownload: fn(),
+    onDelete: fn(),
+    onSave: fn(),
+    onCancel: fn(),
+  },
 } satisfies Meta<typeof ContactsDetailActionBarHarness>;
 
 export default meta;
 type Story = StoryObj<typeof ContactsDetailActionBarHarness>;
 
-export const ReadMode: Story = {
+/** An open contact: no Edit action (the sheet is always editable), just download and delete. */
+export const Open: Story = {
   args: {},
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const right = canvasElement.querySelector(".action-bar__right");
     await expect(right).toBeTruthy();
@@ -59,33 +69,33 @@ export const ReadMode: Story = {
     await expect(rightChildren.some((name) => name.includes("action-bar__right-leading"))).toBe(
       false,
     );
-    const buttons = within(right as HTMLElement).getAllByRole("button");
+    const buttons = within(right as HTMLElement)
+      .getAllByRole("button")
+      .filter((button) => !button.closest(".action-bar__menu"));
     await expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      defaultContactsLabels.edit,
       defaultContactsLabels.downloadVCard,
       defaultContactsLabels.delete,
     ]);
-    await expect(buttons[0].textContent).toContain(defaultContactsLabels.edit);
-    await expect(
-      canvas.getByRole("button", { name: defaultContactsLabels.edit }).className,
-    ).toContain("action-bar__action--labeled");
+    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.edit })).toBeNull();
     await expect(
       canvas.getByRole("button", { name: defaultContactsLabels.delete }).className,
     ).toContain("button--severity-danger");
     await expect(canvas.queryByRole("combobox")).toBeNull();
-  },
-};
-
-export const EditMode: Story = {
-  args: { editMode: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const editButton = canvas.getByRole("button", { name: defaultContactsLabels.edit });
-    await userEvent.click(editButton);
-    await expect(editButton.className).not.toContain("icon-button--active");
+    const download = canvas.getByRole("button", { name: defaultContactsLabels.downloadVCard });
+    await expect(download).toBeEnabled();
+    await userEvent.click(download);
+    await expect(args.onDownload).toHaveBeenCalled();
   },
 };
 
 export const CreateMode: Story = {
-  args: { createMode: true, editMode: true },
+  args: { createMode: true },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.save }));
+    await expect(args.onSave).toHaveBeenCalled();
+    await expect(
+      canvas.queryByRole("button", { name: defaultContactsLabels.downloadVCard }),
+    ).toBeNull();
+  },
 };

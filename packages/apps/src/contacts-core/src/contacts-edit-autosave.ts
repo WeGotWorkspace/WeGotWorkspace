@@ -31,6 +31,14 @@ export function createContactSaveDebouncer(delayMs: number) {
     timers.set(contactId, timer);
   }
 
+  /** Drop a pending save (the draft is back to what the card already holds). */
+  function cancel(contactId: string): void {
+    const timer = timers.get(contactId);
+    if (timer) clearTimeout(timer);
+    timers.delete(contactId);
+    pending.delete(contactId);
+  }
+
   function flushAll(persist: PersistFn): void {
     for (const timer of timers.values()) {
       clearTimeout(timer);
@@ -42,5 +50,5 @@ export function createContactSaveDebouncer(delayMs: number) {
     pending.clear();
   }
 
-  return { schedule, flushAll };
+  return { schedule, cancel, flushAll };
 }

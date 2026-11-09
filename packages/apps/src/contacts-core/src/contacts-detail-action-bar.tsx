@@ -1,17 +1,14 @@
-import { Check, Download, Pencil, Trash2, X } from "lucide-react";
+import { Check, Download, Trash2, X } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 
 type ContactsDetailActionBarProps = {
   labels: ContactsUILabels;
-  canEdit: boolean;
-  editMode: boolean;
   createMode: boolean;
   canSaveCreate?: boolean;
   closeMobileDetail: () => void;
   /** List / view title shown on the mobile back control. */
   backLabel?: string;
-  onEdit: () => void;
   onDelete: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -19,15 +16,13 @@ type ContactsDetailActionBarProps = {
 };
 
 // The address book switcher lives above the name (ContactsDetailAddressBookSelect).
+// No Edit action: an open contact is editable as is (like a task or a note).
 export function ContactsDetailActionBar({
   labels,
-  canEdit,
-  editMode,
   createMode,
   canSaveCreate = true,
   closeMobileDetail,
   backLabel,
-  onEdit,
   onDelete,
   onSave,
   onCancel,
@@ -58,25 +53,11 @@ export function ContactsDetailActionBar({
   }
 
   const rightActions = [
-    ...(canEdit
-      ? [
-          {
-            id: "edit",
-            label: labels.edit,
-            onClick: editMode ? onCancel : onEdit,
-            icon: <Pencil className="size-4" />,
-            active: editMode,
-            showLabel: true,
-            iconOnlyOnNarrow: true,
-          },
-        ]
-      : []),
     {
       id: "download",
       label: labels.downloadVCard,
       onClick: onDownload,
       icon: <Download className="size-4" />,
-      disabled: editMode,
       collapseOnNarrow: true,
     },
     {
