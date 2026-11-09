@@ -32,6 +32,10 @@ See [spec.md](./spec.md#non-goals).
 - App mail (calendar invites, share mail) goes through `MailDeliveryService` with the instance's SMTP settings, not Laravel's `MAIL_MAILER`; the settings are written through `PUT admin/settings`. `path: packages/api/app/Services/MailDelivery/MailDeliveryService.php:37`; `path: packages/api/routes/api.php:405`
 - Guests reach Meet rooms, share sessions and download tickets without an account. `path: packages/api/routes/api.php:118`; `path: packages/api/routes/api.php:390`
 - The nightly CI job runs the live, chaos and relay suites on a fresh database and opens a public issue on failure. `path: .github/workflows/nightly-live-e2e.yml:94`; `path: .github/workflows/nightly-live-e2e.yml:222`
+- The preview and dev servers read the API proxy target from `WGW_PROXY_TARGET`, so a fault proxy can sit between them and the API. `path: packages/apps/scripts/wgw-proxy-target.ts:16`
+- The OpenAPI contract lists every REST path template for coverage matching. `path: packages/api/openapi/openapi.json:1`
+- Playwright `^1.64` is in use; its clock API can run one browser context's time off. `path: packages/apps/package.json:108`
+- Drive quota is exposed through the JMAP quota capability. `path: packages/api/app/Services/Jmap/JmapCapabilities.php:27`
 - `tools/api-e2e` is the precedent for a Playwright workspace package under `tools/`. `path: pnpm-workspace.yaml:5`
 
 ## Considered
@@ -45,6 +49,12 @@ Considered: LLM-driven personas that decide each click. Rejected: costly per nig
 Considered: faking the server clock to run a month in one night. Rejected: the server, CalDAV clients, push and browser all read real time, and a faked clock tests a state no user reaches. Real time also makes the workspace age the way a customer's does.
 
 Considered: letting the harness file Bugs itself from oracle failures. Rejected: a failure that does not reproduce on replay would become a public issue, duplicates would pile up night after night, and a visibility finding could slip into a public body. Triage files reproduced bugs directly; the harness only writes the report.
+
+Considered: shrinking by bisecting the night (replay the first half, then the first quarter), versus delta debugging with dependency edges. Rejected plain bisection: most failures need an early setup action plus a late trigger, and bisecting the prefix keeps everything in between. ddmin removes unrelated actions anywhere; the dependency edges keep candidates valid.
+
+Considered: fault injection inside the API (a test-only middleware), versus outside it (process restart, proxy, browser clock, real quota). Rejected the middleware: it adds a test path to production code, which the non-goals rule out, and outside faults are what users hit.
+
+Considered: coverage from PHP code coverage (Xdebug or PCOV), versus route and screen coverage. Rejected code coverage for nightly use: it slows the API several times over and distorts the timing oracle. Route and screen coverage comes from logs the harness already keeps.
 
 Considered: one fresh world per night (seed, act, discard). Rejected: it removes the aged-data and upgrade-on-old-data coverage that is the main reason for the harness.
 
@@ -61,12 +71,15 @@ Considered: one fresh world per night (seed, act, discard). Rejected: it removes
 3. `sim-api-actors` and `sim-ui-actors` after `sim-world-planner` and `sim-bootstrap`; in parallel with each other.
 4. `sim-oracles` after `sim-api-actors` (oracles read through the same API client).
 5. `sim-report-replay` after `sim-oracles`.
-6. `sim-schedule-skill` after `sim-report-replay`.
-7. `sim-verify` last.
+6. `sim-faults` after `sim-instance`, `sim-api-actors` and `sim-ui-actors`; in parallel with `sim-oracles`.
+7. `sim-shrink` after `sim-report-replay`.
+8. `sim-coverage` after `sim-report-replay`; in parallel with `sim-shrink`.
+9. `sim-schedule-skill` after `sim-shrink`, `sim-coverage` and `sim-faults`.
+10. `sim-verify` last.
 
 ## Open decisions
 
-None — every choice is made. Choices made without a separate review: ports `:9290`/`:4290`; data under `~/.wgw-sim/`; night slot 01:00–02:15 local time via launchd with a `pmset` wake one minute earlier (installed once by the maintainer, it needs `sudo`); 14 snapshots kept; Drive volume cap 50 GB; weekend nights run the light plan.
+None — every choice is made. Choices made without a separate review: ports `:9290`/`:4290`; data under `~/.wgw-sim/`; night slot 01:00–02:15 local time via launchd with a `pmset` wake one minute earlier (installed once by the maintainer, it needs `sudo`); 14 snapshots kept; Drive volume cap 50 GB; weekend nights run the light plan; at most one fault window per 10 simulated minutes; shrink time box 30 minutes per failure and 3 failures per morning; coverage horizon 14 nights.
 
 ## Invariants
 
@@ -75,6 +88,9 @@ None — every choice is made. Choices made without a separate review: ports `:9
 - Bootstrap is idempotent. A wrong change creates duplicate users, Teams or projects every night. Proof: `path: tools/team-sim/src/bootstrap/bootstrap.test.mjs` assertion `second run against the same state plans zero writes`.
 - Visibility findings and product pains never leave the machine through the harness. A wrong change files or prints a pre-beta security finding in a public place. Proof: `path: tools/team-sim/src/report/report.test.mjs` assertions `visibility failures render only in the private section`, `product pains render only in the product section`, `flaky failure moves to file-now on the third night`, `report module has no network client`.
 - Each oracle can fail. A wrong change ships an oracle that is green whatever happens. Proof: `path: tools/team-sim/src/oracles/oracles.test.mjs` assertion `every oracle reports a planted fault`.
+- An injected fault never counts as a bug by itself, and never hides one. A wrong change floods the report with expected 502s, or lets a lost write inside a fault window pass. Proof: `path: tools/team-sim/src/oracles/faults.test.mjs` assertions `a 502 inside a net window is ignored by errors`, `a write lost inside a fault window still fails convergence`.
+- A shrunk sequence still fails and never drops a prerequisite. A wrong change files a bug with steps that do not reproduce. Proof: `path: tools/team-sim/src/shrink/shrink.test.mjs` assertions `ddmin keeps the failing property on a planted fault`, `a candidate never drops a dependency of a kept action`.
+- Coverage steering does not break determinism. A wrong change makes replay differ because coverage was read from outside the snapshot. Proof: `path: tools/team-sim/src/planner/planner.test.mjs` assertion `coverage is read from the snapshot and changes the plan only through it`.
 - Nothing in CI or the existing e2e tiers starts the simulation. A wrong change makes a pull-request check boot a 75-minute job. Proof: `cmd: ! grep -rn "team-sim" .github/workflows packages/apps/playwright*.config.* tools/api-e2e/playwright.config.mjs`.
 - After `sim-instance` merges alone, `main` still works and no existing command changes. Proof: `cmd: pnpm install --frozen-lockfile && pnpm run check:agent-docs`.
 
@@ -143,6 +159,33 @@ None — every choice is made. Choices made without a separate review: ports `:9
 - **Verify with:** `pnpm --dir tools/team-sim test -- report`; `node tools/team-sim/bin/sim.mjs replay <date>` on a recorded night.
 - **Parallel with:** none
 
+### Chunk I: Fault injection
+
+- **id:** `sim-faults`
+- **Skill:** testing, dev-environment
+- **Inputs:** proxy target setting `path: packages/apps/scripts/wgw-proxy-target.ts:16`; quota capability `path: packages/api/app/Services/Jmap/JmapCapabilities.php:27`; Playwright version `path: packages/apps/package.json:108`
+- **Done when:** the planner emits fault actions from the seed within the window budget; `src/faults/` runs a small Node fault proxy on `:9292` (latency, connection drop, 502) that the preview server targets during the night; `api-restart` stops and restarts the PHP server through the instance manager; `clock-skew` installs the Playwright clock on one UI persona's context; `quota` sets the persona's Drive quota through the admin API before an upload round and restores it after; every fault writes start and end to the night log, which the oracles read.
+- **Verify with:** `pnpm --dir tools/team-sim test -- faults`; one light night with `--faults-only` shows each fault kind in the log.
+- **Parallel with:** `sim-oracles`
+
+### Chunk J: Shrinking
+
+- **id:** `sim-shrink`
+- **Skill:** testing
+- **Inputs:** replay from `sim-report-replay`; dependency edges from `sim-world-planner`
+- **Done when:** `sim shrink <date> --action <n>` runs ddmin over the action prefix on scratch copies of the snapshot, keeps dependency closure, stops at the 30-minute box, and writes the shortest failing sequence in user terms into the report next to the failure; the morning triage shrinks at most 3 failures.
+- **Verify with:** `pnpm --dir tools/team-sim test -- shrink`; shrink a planted failure on a recorded night to at most 5 actions.
+- **Parallel with:** `sim-coverage`
+
+### Chunk K: Coverage steering
+
+- **id:** `sim-coverage`
+- **Skill:** testing
+- **Inputs:** OpenAPI path templates `path: packages/api/openapi/openapi.json:1`; actor request logs from `sim-api-actors` and `sim-ui-actors`
+- **Done when:** after each night, request logs are matched to OpenAPI path templates and UI navigation to client route paths; `coverage.json` in the data directory stores last-reached dates; the planner weights free choices by days since last reached; the report lists paths and screens not reached in 14 nights.
+- **Verify with:** `pnpm --dir tools/team-sim test -- coverage`; two consecutive planned nights differ in free choices toward unreached items.
+- **Parallel with:** `sim-shrink`
+
 ### Chunk H: Schedule and triage skill
 
 - **id:** `sim-schedule-skill`
@@ -163,7 +206,7 @@ None — every choice is made. Choices made without a separate review: ports `:9
 
 ## Test plan
 
-- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, bootstrap diff, oracle planted faults, report sections.
+- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, bootstrap diff, oracle planted faults, report sections, fault windows, ddmin, coverage matching.
 - [ ] One manual light night on a scratch data directory, then a replay of it with a matching action-list hash.
 - [ ] Three consecutive unattended nights on the maintainer's Mac before the issue closes; the morning reports are read and triaged.
 

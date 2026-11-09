@@ -1,4 +1,4 @@
-Source: #1981 (body-hash: e59b0297)
+Source: #1981 (body-hash: aa95cb57)
 
 # Nightly team simulation
 
@@ -40,6 +40,14 @@ A deterministic harness under `tools/team-sim/` plays a fictional 10-person crea
   - A failure that does not reproduce stays in the report as `flaky` with a night counter; it is filed once the counter reaches 3.
   - Oracle failures in the `visibility` class, and anything the security skill treats as a security finding, stay in the private section and go through the advisory process (pre-beta: fix and close, never publish).
   - Product pains (gap moments, friction) and feature requests stay in the private report. The Sunday-night report adds a weekly digest ranked by frequency. Only the product lead turns one into a Goal.
+- **Fault injection.** The planner draws faults from the seed, at most one fault window per 10 simulated minutes:
+  - `api-restart`: the API process is stopped mid-action and restarted after 5–30 s.
+  - `net`: a fault proxy between the preview server and the API (`:9292` → `:9290`) adds latency, drops connections or answers 502 for a window.
+  - `clock-skew`: one UI persona's browser clock runs 2–10 minutes off for the night (Playwright clock).
+  - `quota`: one persona's Drive quota is set just above current use before an upload round.
+  Every fault is written to the night log with start and end. The `errors` oracle ignores failures inside a fault window that the fault explains; `convergence` and `notify` still apply after the window closes.
+- **Shrinking.** For a failure that reproduces on replay, `sim shrink <date> --action <n>` runs delta debugging (ddmin) over the actions before `n` on scratch copies of the snapshot (`:9291`/`:4291`). The planner emits dependency edges (a reply needs its message, a share needs its file), so a candidate never drops a prerequisite of a kept action. Time box: 30 minutes per failure, at most 3 failures per morning. The result is the shortest failing sequence found, in user terms.
+- **Coverage steering.** Each night records which API routes (request method and path matched to an OpenAPI path template) and which app screens (client route paths) were reached. A cumulative `coverage.json` lives in the data directory, so it is part of the snapshot and replay stays deterministic. Where the planner has a free choice (which project chore, which file operation, which view), it weights options by days since last reached. The report lists OpenAPI paths and screens not reached in 14 nights.
 - **Resource use.** The night runs at a fixed slot with lowered priority and a hard time cap (75 minutes). It must not overlap another night job of the maintainer on the same ports or data.
 
 ## World (summary)
@@ -86,9 +94,12 @@ Studio rhythm: Monday studio meeting, daily project stand-up, Friday deadlines, 
 | `notify` | Every action that should notify a persona produces exactly one notification; none for non-recipients |
 | `timing` | Per request kind, p50/p95 are recorded; a jump over the 7-night median is flagged, not failed |
 | `gap` | Gap moments are listed, never failed |
+| `coverage` | Routes and screens not reached in 14 nights are listed, never failed |
 
 ## Edge cases
 
+- A shrink run outlives its time box: the report keeps the best sequence so far and marks it unfinished.
+- An injected API restart lands mid-upload: the upload must resume or fail visibly; a silently missing file is a bug.
 - A night is interrupted (sleep, crash, cap reached): the next night starts from a fresh snapshot; the report marks the interrupted night incomplete.
 - `main` has a migration that needs a manual step: the upgrade oracle fails, the night stops, the instance stays on the previous commit until the next night.
 - A persona's action fails because of a known open bug: the planner records it as `blocked-by #N` (from a local known-issues list) instead of re-reporting it every night.

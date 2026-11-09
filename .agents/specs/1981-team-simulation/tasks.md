@@ -18,6 +18,9 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `sim-ui-actors` | builder | testing, workspace | `tools/team-sim/src/actors/ui/` | one night with `--ui-only`; traces under `~/.wgw-sim/runs/<date>/` |
 | `sim-oracles` | builder | testing, security | `tools/team-sim/src/oracles/` | `pnpm --dir tools/team-sim test -- oracles` (each oracle fails on a planted fault) |
 | `sim-report-replay` | builder | testing, document | `tools/team-sim/src/report/`, `tools/team-sim/src/replay/` | `node tools/team-sim/bin/sim.mjs replay <date>` reproduces the action-list hash |
+| `sim-faults` | builder | testing, dev-environment | `tools/team-sim/src/faults/` | `pnpm --dir tools/team-sim test -- faults` |
+| `sim-shrink` | builder | testing | `tools/team-sim/src/shrink/` | `pnpm --dir tools/team-sim test -- shrink` |
+| `sim-coverage` | builder | testing | `tools/team-sim/src/coverage/` | `pnpm --dir tools/team-sim test -- coverage` |
 | `sim-schedule-skill` | builder | dev-environment, document | `tools/team-sim/launchd/`, `.agents/skills/testing/team-simulation.md` | `node tools/team-sim/bin/sim.mjs schedule install --dry-run`; `pnpm run check:agent-docs` |
 | `sim-verify` | verifier | testing | read-only | [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md); three consecutive unattended nights |
 
