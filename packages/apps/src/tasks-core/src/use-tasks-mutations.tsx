@@ -15,11 +15,7 @@ import {
   tasksCompleteToastMessage,
   tasksMoveToastMessage,
 } from "@/tasks-core/src/tasks-toast-messages";
-import {
-  moveTasksBack,
-  moveTasksToList,
-  revertTaskStatus,
-} from "@/tasks-core/src/tasks-undo-writes";
+import { moveTasksBack, moveTasksToList } from "@/tasks-core/src/tasks-undo-writes";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
@@ -138,6 +134,15 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L.toastTaskAdded, operations, setTasks, shell, showMutationError, taskLists],
   );
 
+  const { autosaveTask, setStatusInOrder } = useTaskDetailAutosave({
+    tasks,
+    taskLists,
+    setTasks,
+    operations,
+    patchTask,
+    showMutationError,
+  });
+
   /**
    * Completes (or reopens) tasks as one undoable write: one task from its circle,
    * or a selection. Read-only lists are skipped.
@@ -179,15 +184,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         key: `tasks:complete:${changedIds.slice().sort().join(",")}`,
         toastMessage: tasksCompleteToastMessage(completing, changed.length, L),
         icon: completing ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />,
+        // On each task's save chain: after typed text that is still saving.
         execute: async (signal) => {
-          for (const taskId of changedIds) {
-            await patchTask(taskId, { workflowStatus: nextStatus }, { signal });
-          }
+          for (const taskId of changedIds) await setStatusInOrder(taskId, nextStatus, signal);
         },
         revert: async () => {
-          for (const [taskId, status] of before) {
-            await revertTaskStatus(operations, setTasks, taskId, status);
-          }
+          for (const [taskId, status] of before) await setStatusInOrder(taskId, status);
         },
         undo: rollback,
         undoToastMessage: L.toastCompleteUndone,
@@ -198,7 +200,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       beginTaskExit,
       cancelTaskExit,
       operations,
-      patchTask,
+      setStatusInOrder,
       queueMutation,
       setTasks,
       taskLists,
@@ -213,15 +215,6 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     },
     [setTasksCompleted, tasks],
   );
-
-  const autosaveTask = useTaskDetailAutosave({
-    tasks,
-    taskLists,
-    setTasks,
-    operations,
-    patchTask,
-    showMutationError,
-  });
 
   const deleteTasks = useCallback(
     (ids: string[]) => {

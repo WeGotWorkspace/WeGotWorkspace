@@ -18,7 +18,7 @@ packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	725	2
 packages/apps/src/notes-core/src/use-notes-notebook-mutations.tsx#useNotesNotebookMutations	231	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-shell.tsx#useNotesShell	185	6	grandfathered
 packages/apps/src/share-ui/use-share-mutations.ts#useShareMutations	217	0	grandfathered
-packages/apps/src/tasks-core/src/use-tasks-mutations.tsx#useTasksMutations	317	0	grandfathered
+packages/apps/src/tasks-core/src/use-tasks-mutations.tsx#useTasksMutations	314	0	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-join.ts#useDocsCollabJoin	619	2	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-mesh.ts#useDocsCollabMesh	304	0	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-save.ts#useDocsCollabSave	218	0	grandfathered

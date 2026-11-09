@@ -8,19 +8,6 @@ function showServerTask(setTasks: SetTasks, saved: Task): void {
   setTasks((prev) => prev.map((task) => (task.id === saved.id ? saved : task)));
 }
 
-/**
- * Undo of complete / reopen: sends only the old status. No If-Match from the screen:
- * the write it undoes made a new version, so the operation takes the cached one.
- */
-export async function revertTaskStatus(
-  operations: TasksAPIOperations,
-  setTasks: SetTasks,
-  taskId: string,
-  status: NonNullable<Task["workflowStatus"]>,
-): Promise<void> {
-  showServerTask(setTasks, await operations.patchTask(taskId, { workflowStatus: status }));
-}
-
 /** Moves tasks one at a time and marks each move the server applied. */
 export async function moveTasksToList(
   operations: TasksAPIOperations,

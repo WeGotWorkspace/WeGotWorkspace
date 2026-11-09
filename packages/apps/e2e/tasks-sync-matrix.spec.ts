@@ -111,8 +111,11 @@ function isoDay(days: number): string {
 const D1 = isoDay(7);
 const D2 = isoDay(14);
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-/** "Add time" sets 09:00 in the local zone. */
-const D1_AT_9 = `${D1}T09:00 ${ZONE}`;
+/**
+ * All day off gives the due 09:00 with no time zone: the pane saves floating time
+ * on purpose (docs/architecture/tasks.md, Known limitations).
+ */
+const D1_AT_9 = `${D1}T09:00 floating`;
 const ALERT_15M = {
   "@type": "Alert",
   action: "display",
@@ -223,7 +226,9 @@ async function deleteFromDetail(tab: Tab, title: string) {
     .click();
 }
 
-type Due = { date: string } | "none" | "addTime" | "addTimeAmsterdam" | "dateOnly";
+/** A day from the picker, no due, or the All day switch off (09:00) / on. */
+type Due = { date: string } | "none" | "timed" | "allDay";
+/** Alarm rows: `change` and `remove` act on Alarm 1; `add` fills the empty last row. */
 type Remind = { add?: string[]; change?: string; remove?: boolean };
 type Edit = {
   title?: string;
@@ -255,40 +260,31 @@ async function pickDay(tab: Tab, popover: Locator, iso: string) {
   throw new Error(`no day ${iso} in the date picker`);
 }
 
-async function setDue(tab: Tab, dialog: Locator, due: Due) {
-  await dialog.getByRole("button", { name: /^Due date:/ }).click();
-  const popover = tab.locator(".tasks-field__due-popover");
-  await popover.waitFor({ timeout: 10_000 });
-  if (due === "none") {
-    // Clearing closes the picker.
-    await popover.getByRole("button", { name: "No due date" }).click();
+/** Sets the due in the open task. Each pick saves at once. */
+async function setDue(tab: Tab, detail: Locator, due: Due) {
+  if (due === "timed" || due === "allDay") {
+    // A due day shows the All day switch: off gives 09:00, on a date again.
+    const allDay = detail.getByRole("switch", { name: "All day" });
+    if ((await allDay.isChecked()) !== (due === "allDay")) await allDay.click();
+    await sleep(200);
     return;
   }
-  if (due === "addTime" || due === "addTimeAmsterdam") {
-    await popover.getByRole("button", { name: "Add time" }).click();
-    if (due === "addTimeAmsterdam") {
-      await popover.getByRole("combobox", { name: "Time zone" }).click();
-      await tab.getByRole("option", { name: /Europe\/Amsterdam/ }).click();
-    }
-  } else if (due === "dateOnly") await popover.getByRole("button", { name: "Date only" }).click();
+  await detail.getByRole("button", { name: /^Due date:/ }).click();
+  const popover = tab.locator(".tasks-field__due-popover");
+  await popover.waitFor({ timeout: 10_000 });
+  // Picking a day or clearing the due closes the picker.
+  if (due === "none") await popover.getByRole("button", { name: "No due date" }).click();
   else await pickDay(tab, popover, due.date);
-  await sleep(200);
-  await tab.keyboard.press("Escape");
   await popover.waitFor({ state: "detached", timeout: 5_000 });
+  await sleep(200);
 }
 
-async function setReminders(tab: Tab, dialog: Locator, remind: Remind) {
-  await dialog.locator(".tasks-field__remind-button").click();
-  const remindDialog = tab.getByRole("dialog", { name: "Remind me" });
-  await remindDialog.waitFor({ timeout: 10_000 });
-  const rows = remindDialog.getByRole("combobox", { name: "Alert time" });
-  if (remind.change) await pickOption(tab, rows.first(), remind.change);
-  if (remind.remove)
-    await remindDialog.getByRole("button", { name: "Remove alert" }).first().click();
-  // The last row is always the empty one a new reminder goes into.
-  for (const offset of remind.add ?? []) await pickOption(tab, rows.last(), offset);
-  await tab.keyboard.press("Escape");
-  await remindDialog.waitFor({ state: "detached", timeout: 5_000 });
+/** Alarms are dropdowns "Alarm 1", "Alarm 2", …; the last one is empty, for the next. */
+async function setReminders(tab: Tab, detail: Locator, remind: Remind) {
+  const alarms = detail.getByRole("combobox", { name: /^Alarm \d+$/ });
+  if (remind.change) await pickOption(tab, alarms.first(), remind.change);
+  if (remind.remove) await pickOption(tab, alarms.first(), "None");
+  for (const offset of remind.add ?? []) await pickOption(tab, alarms.last(), offset);
 }
 
 /** Changes the open task in the detail pane. Typing saves after a pause, a pick at once. */
@@ -516,7 +512,7 @@ const ACTIONS = {
   dueTimed: {
     nets: FIELD,
     task: { due: D1, showWithoutTime: true },
-    run: (tab, f) => editTask(tab, f.task, { due: "addTime" }),
+    run: (tab, f) => editTask(tab, f.task, { due: "timed" }),
     landed: (s, f) => taskT(s, f)?.due === D1_AT_9,
     calendar: () => [{ date: D1, spot: "timed" }],
   },
@@ -524,7 +520,7 @@ const ACTIONS = {
   dueAllDay: {
     nets: FIELD,
     task: { due: `${D1}T09:00:00`, showWithoutTime: false, timeZone: ZONE },
-    run: (tab, f) => editTask(tab, f.task, { due: "dateOnly" }),
+    run: (tab, f) => editTask(tab, f.task, { due: "allDay" }),
     landed: (s, f) => taskT(s, f)?.due === D1,
     calendar: () => [{ date: D1, spot: "all-day" }],
   },
@@ -629,20 +625,20 @@ const ACTIONS = {
     },
     landed: (s, f) => titled(s, `N ${f.id} v2`)?.listId === f.listAId && !titled(s, `N ${f.id}`),
   },
-  // A new task with a due, moved before it reached the server: the queued move
-  // rides on the server id and must keep the due's time and zone. Amsterdam is
-  // picked so a dropped TZID shows, whatever zone the runner is in.
+  // A new task with a timed due, moved before it reached the server: the queued
+  // move rides on the server id and must keep the due's time, still floating
+  // (the pane saves no time zone; a zone that appears means the move added one).
   createMove: {
     nets: COMPOUND,
     async run(tab, f) {
-      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "addTimeAmsterdam"]);
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "timed"]);
       await editTask(tab, `N ${f.id}`, { list: f.listB });
     },
     landed: (s, f) => {
       const t = titled(s, `N ${f.id}`);
       return (
         t?.listId === f.listBId &&
-        t.due === `${D1}T09:00 Europe/Amsterdam` &&
+        t.due === D1_AT_9 &&
         s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
       );
     },

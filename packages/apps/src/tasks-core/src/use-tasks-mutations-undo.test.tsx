@@ -90,23 +90,25 @@ describe("useTasksMutations undo as a compensating write", () => {
     const { result } = renderTasks(operations);
 
     act(() => result.current.toggleTaskComplete(OPEN_TASK.id));
-
+    // Sent on the task's save chain (a microtask later), after any typed text.
+    await act(async () => undefined);
     expect(operations.patchTask).toHaveBeenCalledWith(
       OPEN_TASK.id,
       { workflowStatus: "completed" },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    await act(async () => undefined);
 
     pressUndo();
 
     await vi.waitFor(() => {
       expect(operations.patchTask).toHaveBeenCalledTimes(2);
     });
-    // Only the status, and no If-Match from before the write: the cached version is used.
-    expect(operations.patchTask).toHaveBeenLastCalledWith(OPEN_TASK.id, {
-      workflowStatus: "needs-action",
-    });
+    // Only the status, against the version the complete produced (not the one before it).
+    expect(operations.patchTask).toHaveBeenLastCalledWith(
+      OPEN_TASK.id,
+      { workflowStatus: "needs-action" },
+      expect.objectContaining({ ifMatch: expect.stringMatching(/^"server-/) }),
+    );
   });
 
   it("waits for a complete still on its way before sending the undo", async () => {
@@ -134,9 +136,11 @@ describe("useTasksMutations undo as a compensating write", () => {
     await vi.waitFor(() => {
       expect(operations.patchTask).toHaveBeenCalledTimes(2);
     });
-    expect(operations.patchTask).toHaveBeenLastCalledWith(OPEN_TASK.id, {
-      workflowStatus: "needs-action",
-    });
+    expect(operations.patchTask).toHaveBeenLastCalledWith(
+      OPEN_TASK.id,
+      { workflowStatus: "needs-action" },
+      expect.objectContaining({ ifMatch: expect.stringMatching(/^"server-/) }),
+    );
   });
 
   it("moves tasks at once and moves each one back to its own list on undo", async () => {
