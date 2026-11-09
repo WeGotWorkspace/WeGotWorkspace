@@ -92,6 +92,17 @@ describe("CalendarAvailabilityPopover", () => {
     expect(screen.queryByText(defaultCalendarLabels.teamAvailabilityPreviewNoDetails)).toBeNull();
   });
 
+  it("renders valid markup: the avatar heading is not inside a <p>", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderPopover(withDetails);
+    const nesting = errors.mock.calls.filter((args) =>
+      String(args[0]).includes("cannot be a descendant of"),
+    );
+    errors.mockRestore();
+    expect(nesting).toEqual([]);
+    expect(document.querySelector("p .user-avatar")).toBeNull();
+  });
+
   it("opens a dialog titled with the person on phones", () => {
     isMobileRef.current = true;
     renderPopover(withDetails);

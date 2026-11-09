@@ -98,7 +98,7 @@ export function CalendarOverlayPopoverShell({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <div className={bodyClassName}>
-          <p className={titleClassName}>{title}</p>
+          <div className={titleClassName}>{title}</div>
           {children}
         </div>
       </PopoverContent>
