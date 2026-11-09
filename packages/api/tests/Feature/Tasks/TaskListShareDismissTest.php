@@ -26,6 +26,8 @@ final class TaskListShareDismissTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpTasksFixtures();
         $this->seedInboxTaskListFor('alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_dismissed_task_list_no_longer_resolves_by_id(): void
@@ -142,6 +144,8 @@ final class TaskListShareDismissTest extends WgwDatabaseTestCase
             $this->assertNotNull($principal);
             $this->addPrincipalToGroup($team, $principal);
         }
+        // Epic #1915: only a member of a Team may share with it.
+        $this->seedSharedTeam(self::TEAM, 'bob');
         $listId = $this->createPersonalList('bob', 'Team Share');
         $this->asUser('bob')
             ->patchJson('/api/v1/tasks/tasklists/'.$listId, ['shareWith' => ['groups/'.self::TEAM => ['mayReadItems' => true]]])

@@ -26,6 +26,8 @@ final class TasksCalDavSharingTest extends WgwDatabaseTestCase
         $this->setAppSetting(WgwSettings::CALENDAR_ENABLED, true);
         $this->seedInboxTaskListFor('alice');
         $this->setUpCalDavSharingInterop();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function calDavSharingComponentSet(): string

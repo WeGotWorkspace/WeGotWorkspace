@@ -17,6 +17,8 @@ export type MeshSdpExchange = {
   sendSignal: (to: string, type: string, payload: unknown) => Promise<void>;
   onSignalError: (remoteId: string, error: unknown) => void;
   onSignaled: (remoteId: string) => void;
+  /** Media hook between the applied remote offer and the answer (send slots). */
+  prepareAnswer?: (pc: RTCPeerConnection) => Promise<void>;
   /** Close listeners and drop the map slot. Used when the pc is already `closed`. */
   dropPeer: (remoteId: string) => void;
   log: (event: string, details?: unknown) => void;
@@ -76,6 +78,7 @@ export async function acceptMeshOffer(
   await rollBackIfUnstable(entry.pc);
   await applyRemoteDescription(exchange, from, entry.pc, sdp);
   await flushPendingIce(entry.pc, entry.pendingIce);
+  await exchange.prepareAnswer?.(entry.pc);
   const answer = await entry.pc.createAnswer();
   const formatted = exchange.formatOutbound(answer);
   await entry.pc.setLocalDescription(formatted);

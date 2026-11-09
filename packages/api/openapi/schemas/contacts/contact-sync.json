@@ -36,6 +36,7 @@
         "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
       },
       "shareWith": {
+        "description": "Patch share grants. Null revokes every grant. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included.",
         "oneOf": [
           {
             "type": "object",
@@ -48,7 +49,7 @@
           },
           { "type": "null" }
         ],
-        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes."
+        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included."
       }
     },
     "additionalProperties": false

@@ -235,9 +235,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
             // The share dialog directory: the actor's own group is listed; principals it shares nothing with are not.
             $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OwnGroup, Outcome::Allowed);
-            // The share directory lists every user and group of the instance.
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::Allowed);
-            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::Allowed);
+            // The share directory lists Team mates and the actor's own Teams only, admins included.
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherUser, Outcome::NotFound);
+            $cases[] = OwnershipCase::of('GET /files/shares/principals', $actor, Scope::OtherGroup, Outcome::NotFound);
 
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OwnUser, Outcome::Allowed);
             $cases[] = OwnershipCase::of('POST /jmap/upload/{accountId}', $actor, Scope::OtherUser, Outcome::NotFound);
@@ -588,7 +588,8 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         $response = $this->requestAs($case->actor, 'GET', $uri);
         $this->assertTargetHidden($response, $target, $case);
         $this->assertRestOutcome($response, $case);
-        $this->assertContains($target['docName'], $this->entryNames($this->requestAsUsername(OwnershipPrincipals::DAVE, 'GET', $uri)), $case->key().': dave lost access.');
+        $other = $this->usernameFor($case->actor === Actor::Admin ? Actor::Member : Actor::Admin);
+        $this->assertContains($target['docName'], $this->entryNames($this->requestAsUsername($other, 'GET', $uri)), $case->key().': '.$other.' lost access.');
     }
 
     // ---- Target seeding --------------------------------------------------
@@ -614,9 +615,12 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             Scope::OtherUser => [$carol, '/users/carol/box'],
             Scope::OtherGroup => [$carol, '/groups/outsiders/box'],
             // The other actor stays in alumni, so the owner's view still works after this actor leaves.
+            // Epic #1915: a Team share needs an owner in that Team, so the alumni share is the
+            // other actor's (still in alumni) and the crew share is dave's.
             Scope::FormerGroup => $case->operation === 'GET /files/shared-with-me'
-                ? [$carol, '/users/carol/box']
+                ? [$other, '/users/'.$other.'/box']
                 : [$other, '/groups/alumni/box'],
+            Scope::UserToActorGroup => [$dave, '/users/dave/shared'],
             Scope::GroupToNonmemberRead, Scope::GroupToNonmemberWrite => [$carol, '/groups/outsiders/shared'],
             default => [$carol, '/users/carol/shared'],
         };
@@ -719,15 +723,18 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
         if (self::isGrantScope($scope)) {
             $level = self::levelOf($scope === Scope::GrantRevoked ? Scope::UserToActorWrite : $scope, $case->variant) ?? 'edit';
-            $grantee = $scope === Scope::UserToActorGroup ? 'groups/'.OwnershipPrincipals::CREW : $self;
+            if ($scope === Scope::UserToActorGroup) {
+                // dave (in crew) grants crew; left-crew: the other actor reads through the group
+                // grant alone, so its read proves the grant survives another member leaving.
+                $grants = ['groups/'.OwnershipPrincipals::CREW => ['access' => $level]];
+                if ($case->variant !== 'left-crew') {
+                    $grants[$carol] = ['access' => 'view'];
+                }
 
-            // left-crew: dave reads through the group grant alone, so his read
-            // proves the grant survives another member leaving.
-            $grants = $case->variant === 'left-crew'
-                ? [$grantee => ['access' => $level]]
-                : [$grantee => ['access' => $level], $dave => ['access' => 'view']];
+                return [$dave, $grants, $carol];
+            }
 
-            return [$carol, $grants, $dave];
+            return [$carol, [$self => ['access' => $level], $dave => ['access' => 'view']], $dave];
         }
 
         return match ($scope) {
@@ -736,7 +743,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
                 ? [$dave, [$carol => ['access' => 'view']], $carol]
                 : [$self, [$dave => ['access' => 'view']], $dave],
             Scope::FormerGroup => $case->operation === 'GET /files/shared-with-me'
-                ? [$carol, ['groups/'.OwnershipPrincipals::ALUMNI => ['access' => 'view']], $dave]
+                ? [$this->usernameFor($case->actor === Actor::Admin ? Actor::Member : Actor::Admin), ['groups/'.OwnershipPrincipals::ALUMNI => ['access' => 'view']], $dave]
                 : [$self, [$dave => ['access' => 'view']], $dave],
             // other-user, other-group: carol grants dave, never the actor.
             default => [$carol, [$dave => ['access' => 'view']], $dave],
@@ -965,10 +972,15 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
     {
         [$query, $principal] = match ($case->scope) {
             Scope::OwnGroup => ['crew', 'groups/crew'],
-            Scope::OtherUser => ['carol', 'carol'],
+            // Every fixture user shares a Team with the actors, so the other user is
+            // seeded here, after the world, in no Team at all.
+            Scope::OtherUser => ['erin', 'erin'],
             Scope::OtherGroup => ['outsiders', 'groups/outsiders'],
             default => throw new LogicException('No principal for '.$case->scope->value),
         };
+        if ($case->scope === Scope::OtherUser) {
+            $this->seedWgwUser('erin', displayName: 'Erin');
+        }
         $response = $this->requestAs($case->actor, 'GET', '/files/shares/principals?query='.$query);
         $response->assertOk();
         $listed = array_map('strval', array_column((array) $response->json('data'), 'principal'));
@@ -1048,10 +1060,19 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             return;
         }
         $response->assertOk();
-        $changed = array_map('strval', array_merge(
-            (array) $response->json('methodResponses.0.1.created'),
-            (array) $response->json('methodResponses.0.1.updated'),
-        ));
+        if ($response->json('methodResponses.0.0') === 'error') {
+            // #1926: a grant that reaches the actor changes the grant hash in the FileNode
+            // state, so the client resyncs instead of getting a delta; check the full tree.
+            $this->assertSame('cannotCalculateChanges', $response->json('methodResponses.0.1.type'), $case->key());
+            $changed = array_map('strval', array_column((array) $this->jmap($case->actor, [
+                ['FileNode/get', ['accountId' => $self, 'ids' => null, 'properties' => ['id']], 'c0'],
+            ])->assertOk()->json('methodResponses.0.1.list'), 'id'));
+        } else {
+            $changed = array_map('strval', array_merge(
+                (array) $response->json('methodResponses.0.1.created'),
+                (array) $response->json('methodResponses.0.1.updated'),
+            ));
+        }
         if ($case->outcome === Outcome::Allowed) {
             $this->assertContains($docId, $changed, $case->key());
 

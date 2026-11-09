@@ -26,6 +26,11 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
 
     private FakeHostIpResolver $dns;
 
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

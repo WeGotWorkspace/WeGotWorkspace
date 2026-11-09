@@ -212,6 +212,7 @@ final class JmapChatMethodsTest extends WgwDatabaseTestCase
 
     public function test_sharee_sees_shared_channel_and_non_member_sees_nothing(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob');
         $channelId = $this->createChannel('alice', 'Team');
         $messageId = $this->ulid('AA');
         $this->postMessage('alice', $channelId, $messageId, 'members only');
@@ -245,6 +246,7 @@ final class JmapChatMethodsTest extends WgwDatabaseTestCase
 
     public function test_newly_shared_channel_is_primed_without_replaying_history(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob');
         // Bob records his (empty) message state first.
         $bobState = $this->jmap('bob', [
             ['ChatMessage/get', ['accountId' => 'bob', 'ids' => []], 'c0'],

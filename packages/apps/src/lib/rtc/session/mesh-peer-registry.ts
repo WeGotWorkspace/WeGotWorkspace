@@ -1,5 +1,10 @@
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
 import { DataChannelOutbound } from "@/lib/rtc/session/data-channel-outbound";
+import {
+  fillEmptyMediaSendSlots,
+  mediaSenderFor,
+  type MediaKind,
+} from "@/lib/rtc/session/media-send-slots";
 import type { IceMode, RtcLinkState } from "@/lib/rtc/types";
 
 export type MeshPeerEntry = {
@@ -27,6 +32,9 @@ export class MeshPeerRegistry {
   private readonly entries = new Map<string, MeshPeerEntry>();
 
   private readonly outbound = new Map<string, DataChannelOutbound>();
+
+  /** Last track handed to `replaceSenderTrack` per kind, for slots opened later. */
+  private readonly sentTracks = new Map<MediaKind, MediaStreamTrack>();
 
   /** Roster caps recorded before the peer entry exists. Applied in `add`. */
   private readonly announcedCaps = new Map<string, readonly string[]>();
@@ -151,14 +159,28 @@ export class MeshPeerRegistry {
     this.onSendFailed?.(remoteId, error);
   }
 
-  /** Replace the outbound track of every sender of `kind` that already has one. */
-  async replaceSenderTrack(kind: "audio" | "video", track: MediaStreamTrack): Promise<void> {
+  /**
+   * Put `track` on every peer: on the sender that carries `kind`, or on the empty
+   * send slot an audio-only join left for it.
+   */
+  async replaceSenderTrack(kind: MediaKind, track: MediaStreamTrack): Promise<void> {
+    this.sentTracks.set(kind, track);
     const updates: Promise<void>[] = [];
     for (const entry of this.entries.values()) {
-      const sender = entry.pc.getSenders().find((s) => s.track?.kind === kind);
+      const sender = mediaSenderFor(entry.pc, kind);
       if (!sender) continue;
       updates.push(sender.replaceTrack(track));
     }
     await Promise.all(updates);
+  }
+
+  /**
+   * Answerer, between the remote offer and the answer: open the offered send
+   * slots and place a track that was turned on before they existed.
+   */
+  async prepareAnswer(pc: RTCPeerConnection): Promise<void> {
+    if (this.binding?.kind !== "media") return;
+    this.binding.prepareAnswer(pc);
+    await fillEmptyMediaSendSlots(pc, this.sentTracks);
   }
 }

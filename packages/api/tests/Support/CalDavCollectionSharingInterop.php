@@ -6,8 +6,11 @@ namespace Tests\Support;
 
 use App\Dav\SabreServerFactory;
 use App\Models\CalendarInstance;
+use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use Closure;
+use Illuminate\Http\Request;
 use Sabre\CalDAV\Plugin as CalDavPlugin;
 use Sabre\DAV\Exception as SabreDavException;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -132,6 +135,164 @@ trait CalDavCollectionSharingInterop
         $shared = $this->collectionNamedForViewer('alice', 'From Apple');
         $this->assertTrue($shared['myRights']['mayWriteAll']);
         $this->assertNull($shared['shareWith']);
+    }
+
+    /**
+     * Epic #1915: a CalDAV client sharing with someone outside the owner's Teams gets the
+     * answer an unknown address gets. The invite is stored without a principal, so nobody
+     * gains access and the owner's shareWith does not list it.
+     */
+    public function test_caldav_share_with_a_non_colleague_is_stored_like_an_unknown_address(): void
+    {
+        $this->seedWgwUser('erin', email: 'erin@example.test', displayName: 'Erin');
+        $results = [];
+        foreach (['mailto:erin@example.test' => 'erin', 'mailto:ghost@example.test' => 'ghost'] as $mailto => $name) {
+            $collectionId = $this->createSharingCollection('bob', 'Gate '.$name, 'gate-'.$name);
+            $posted = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: true), [
+                'Content-Type' => 'application/xml',
+            ]);
+            $invite = CalendarInstance::query()->where('share_href', $mailto)->firstOrFail();
+            $results[$name] = [
+                'status' => $posted['status'],
+                'body' => $posted['body'],
+                'principaluri' => $invite->principaluri,
+                'invitestatus' => $invite->share_invitestatus,
+                'shareWith' => $this->ownerCollectionShareWith('bob', $collectionId),
+            ];
+        }
+
+        $this->assertSame($results['ghost'], $results['erin']);
+        $this->assertNull($results['erin']['principaluri']);
+        $this->assertSame(0, CalendarInstance::query()->where('principaluri', 'principals/erin')->where('access', '!=', SharingPlugin::ACCESS_SHAREDOWNER)->count());
+    }
+
+    /**
+     * A refused re-share must not reach Sabre's in-place update of an existing invite: the
+     * former colleague's grant keeps its access, status and principal, and stays listed.
+     */
+    public function test_caldav_re_share_with_a_former_colleague_leaves_the_grant_untouched(): void
+    {
+        $collectionId = $this->createSharingCollection('bob', 'Former Colleague', 'former-colleague');
+        $first = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml(self::CALDAV_SHARE_ALICE_MAILTO, write: false), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $first['status'], $first['body']);
+        $aliceInstance = static fn (): ?CalendarInstance => CalendarInstance::query()
+            ->where('share_href', self::CALDAV_SHARE_ALICE_MAILTO)
+            ->first();
+        $before = $aliceInstance()?->getAttributes();
+        $this->assertNotNull($before);
+        $shareWithBefore = $this->ownerCollectionShareWith('bob', $collectionId);
+        $this->assertIsArray($shareWithBefore['alice'] ?? null);
+
+        // alice leaves every Team; the next request must not reuse the memoised colleagues.
+        $restore = $this->removeFromEveryTeam('alice');
+
+        $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml(self::CALDAV_SHARE_ALICE_MAILTO, write: true), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $again['status'], $again['body']);
+
+        $this->assertSame($before, $aliceInstance()?->getAttributes());
+        // #1920: the grant is hidden from the owner while they share no Team, and comes back as it was.
+        $this->assertArrayNotHasKey('alice', $this->ownerCollectionShareWith('bob', $collectionId) ?? []);
+        $restore();
+        $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
+    }
+
+    /**
+     * Removes the user from every Team and starts a new request, so memoised colleagues are
+     * dropped. The returned callback puts the memberships back the same way.
+     *
+     * @return Closure(): void
+     */
+    private function removeFromEveryTeam(string $username): Closure
+    {
+        $memberId = Principal::forUsername($username)?->id;
+        $rows = GroupMember::query()->where('member_id', $memberId)->get()
+            ->map(static fn (GroupMember $row): array => $row->getAttributes())->all();
+        GroupMember::query()->where('member_id', $memberId)->delete();
+        $this->app->instance('request', Request::create('/'));
+
+        return function () use ($rows): void {
+            GroupMember::query()->insert($rows);
+            $this->app->instance('request', Request::create('/'));
+        };
+    }
+
+    /**
+     * A CalDAV share Epic #1915 refused leaves a principal-less row. Once that person joins
+     * the owner's Team, a real share must replace it rather than update it in place.
+     */
+    public function test_app_share_after_a_refused_caldav_share_gives_the_colleague_access(): void
+    {
+        $this->assertRefusedCalDavShareThenRealShare(viaCalDav: false);
+    }
+
+    public function test_caldav_share_after_a_refused_caldav_share_gives_the_colleague_access(): void
+    {
+        $this->assertRefusedCalDavShareThenRealShare(viaCalDav: true);
+    }
+
+    private function assertRefusedCalDavShareThenRealShare(bool $viaCalDav): void
+    {
+        $this->seedWgwUser('erin', email: 'erin@example.test', displayName: 'Erin');
+        $name = 'Refused Then Real '.($viaCalDav ? 'Dav' : 'App');
+        $collectionId = $this->createSharingCollection('bob', $name, 'refused-then-real-'.($viaCalDav ? 'dav' : 'app'));
+        $mailto = 'mailto:erin@example.test';
+
+        $first = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: false), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $first['status'], $first['body']);
+        $this->assertNull(CalendarInstance::query()->where('share_href', $mailto)->firstOrFail()->principaluri);
+
+        $this->seedSharedTeam('colleagues', 'bob', 'erin');
+        $this->app->instance('request', Request::create('/'));
+
+        if ($viaCalDav) {
+            $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml($mailto, write: false), [
+                'Content-Type' => 'application/xml',
+            ]);
+            $this->assertSame(200, $again['status'], $again['body']);
+        } else {
+            $this->shareCollectionViaApp('bob', $collectionId, 'erin', write: false);
+        }
+
+        $rows = CalendarInstance::query()->where('share_href', $mailto)->get();
+        $this->assertCount(1, $rows);
+        $this->assertSame('principals/erin', $rows->first()?->principaluri);
+        $this->assertContains($name, $this->collectionNamesForViewer('erin'));
+    }
+
+    /**
+     * A Team grant is stored as `mailto:groups/{slug}`, which no principal lookup resolves.
+     * A CalDAV re-share of it must not rewrite the existing row.
+     */
+    public function test_caldav_re_share_of_an_existing_team_grant_leaves_it_untouched(): void
+    {
+        $collectionId = $this->createSharingCollection('bob', 'Team Grant', 'team-grant');
+        $this->shareCollectionViaApp('bob', $collectionId, 'groups/colleagues', write: false);
+        $teamInstance = static fn (): ?CalendarInstance => CalendarInstance::query()
+            ->where('share_href', 'mailto:groups/colleagues')
+            ->first();
+        $before = $teamInstance()?->getAttributes();
+        $this->assertNotNull($before);
+        $shareWithBefore = $this->ownerCollectionShareWith('bob', $collectionId);
+        $this->assertIsArray($shareWithBefore['groups/colleagues'] ?? null);
+
+        $restore = $this->removeFromEveryTeam('bob');
+
+        $again = $this->calDavShareSabre('bob', 'POST', '/calendars/bob/'.$collectionId, $this->csShareXml('mailto:groups/colleagues', write: true), [
+            'Content-Type' => 'application/xml',
+        ]);
+        $this->assertSame(200, $again['status'], $again['body']);
+
+        $this->assertSame($before, $teamInstance()?->getAttributes());
+        // #1920: a share to a Team its owner left is hidden from the owner, and comes back as it was.
+        $this->assertArrayNotHasKey('groups/colleagues', $this->ownerCollectionShareWith('bob', $collectionId) ?? []);
+        $restore();
+        $this->assertSame($shareWithBefore, $this->ownerCollectionShareWith('bob', $collectionId));
     }
 
     public function test_caldav_dav_share_resource_appears_in_app_share_with(): void

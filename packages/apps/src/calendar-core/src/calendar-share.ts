@@ -14,6 +14,7 @@ import {
   shareGrantEntries,
   sharePermissionFromRights,
   sharePrincipalsFromDirectory,
+  sharesTeamWithViewer,
   shareRightsAllowWrite,
   shareRightsForPermission,
 } from "@/share-ui/collection-share";
@@ -41,7 +42,7 @@ export function calendarSharePrincipalsFromDirectory(args: {
 }): CalendarSharePrincipal[] {
   return sharePrincipalsFromDirectory({
     users: (args.invitees ?? [])
-      .filter((invitee) => invitee.username)
+      .filter((invitee) => invitee.username && sharesTeamWithViewer(invitee))
       .map((invitee) => ({
         id: invitee.username,
         displayName: invitee.name.trim() || invitee.username,

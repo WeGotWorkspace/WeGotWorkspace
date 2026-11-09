@@ -53,6 +53,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpCalendarsFixtures();
         $this->seedWgwUser('dave', displayName: 'Dave');
+        $this->joinCalendarFixtureTeam('dave');
         $this->seedDefaultCalendarFor('dave');
         Mail::fake();
         Log::listen(function (MessageLogged $event): void {
@@ -60,6 +61,8 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
                 $this->skippedDeliveries[] = array_intersect_key($event->context, array_flip(['uid', 'recipient', 'method']));
             }
         });
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

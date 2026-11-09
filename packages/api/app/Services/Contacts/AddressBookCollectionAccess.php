@@ -6,6 +6,7 @@ namespace App\Services\Contacts;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
+use App\Models\AddressBookShare;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Drive\DriveGroupResolver;
@@ -44,21 +45,19 @@ final class AddressBookCollectionAccess
             );
         }
 
-        $inboundAccess = $this->shareInvites->highestAccessByBook($this->shareePrincipalUris($username));
+        $grants = $this->visibleInboundGrants($username);
+        $inboundAccess = $this->shareInvites->highestAccessByBook($grants);
         if ($inboundAccess === []) {
             return $listings;
         }
 
-        $inboundBooks = Addressbook::query()
-            ->whereIn('id', array_keys($inboundAccess))
-            ->get()
+        $inboundBooks = $grants
+            ->map(static fn (AddressBookShare $grant): ?Addressbook => $grant->addressbook)
+            ->filter()
             ->keyBy(static fn (Addressbook $book): int => (int) $book->id);
 
         foreach ($inboundAccess as $bookId => $access) {
             if (isset($ownedIds[$bookId])) {
-                continue;
-            }
-            if ($this->shareVisibility->isDismissed($username, $bookId)) {
                 continue;
             }
             $book = $inboundBooks->get($bookId);
@@ -68,7 +67,7 @@ final class AddressBookCollectionAccess
             $listings[] = new AddressBookListing($book, isSharee: true, access: $access);
         }
 
-        return $listings;
+        return $this->shareVisibility->rejectDismissedSharees($username, $listings);
     }
 
     public function listingFor(string $username, string $addressBookId): ?AddressBookListing
@@ -160,10 +159,25 @@ final class AddressBookCollectionAccess
             return;
         }
 
-        $inboundAccess = $this->shareInvites->highestAccessByBook($this->shareePrincipalUris($username));
+        $inboundAccess = $this->shareInvites->highestAccessByBook(
+            $this->shareInvites->grantsHeldBy($this->shareePrincipalUris($username)),
+        );
         if (array_key_exists($bookId, $inboundAccess)) {
             $this->shareVisibility->restore($username, $bookId);
         }
+    }
+
+    /**
+     * Grants the user holds directly or through a Team, without hidden ones (Epic #1915).
+     *
+     * @return Collection<int, AddressBookShare>
+     */
+    private function visibleInboundGrants(string $username): Collection
+    {
+        return $this->shareVisibility->rejectHiddenSharees(
+            $username,
+            $this->shareInvites->grantsHeldBy($this->shareePrincipalUris($username)),
+        );
     }
 
     /**
