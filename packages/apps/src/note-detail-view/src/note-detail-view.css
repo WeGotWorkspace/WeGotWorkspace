@@ -70,9 +70,10 @@
   @apply relative;
 }
 
-/* A control left of the title (a task's done box), centred on the title's
- * capitals: they start 0.31em below the line top (line-height 1.3) and stand
- * 0.7em tall. A larger control overhangs them evenly. */
+/* A control left of the title (a task's done box), centred on the title's first
+ * line as the eye reads it: a 0.7em band starting 0.44em below the title's top
+ * (1rem at the 36px desktop title, the same share at 28px on phones). A larger
+ * control overhangs that band evenly. */
 .note-detail-view__title-row {
   @apply flex items-start gap-3;
 }
@@ -84,7 +85,7 @@
 .note-detail-view__title-leading {
   @apply flex shrink-0 items-center;
   height: calc(var(--workspace-detail-title-size, 2.25rem) * 0.7);
-  margin-top: calc(var(--workspace-detail-title-size, 2.25rem) * 0.31);
+  margin-top: calc(var(--workspace-detail-title-size, 2.25rem) * 0.4444);
 }
 
 /**
