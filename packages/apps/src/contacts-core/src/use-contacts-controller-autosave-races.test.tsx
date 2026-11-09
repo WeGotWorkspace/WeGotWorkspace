@@ -331,7 +331,7 @@ describe("contacts autosave: creates and failed saves", () => {
   });
 
   it("keeps the name being sent when another device's change arrives mid-save", async () => {
-    const { operations, patchCard } = fakeOperations();
+    const { operations, patchCard, server } = fakeOperations();
     const { result, rerender } = renderController(operations);
 
     clickSelect(result, "card-jane");
@@ -339,26 +339,33 @@ describe("contacts autosave: creates and failed saves", () => {
     const release = holdNextPatch(patchCard);
     await advance(PAUSE);
     expect(patchCard).toHaveBeenCalledOnce();
-    rerender({
-      cards: withJane(remoteJane({ notes: { n1: { "@type": "Note", note: "Met at the fair" } } })),
-    });
+    const met = remoteJane({ notes: { n1: { "@type": "Note", note: "Met at the fair" } } });
+    server.set("card-jane", met);
+    rerender({ cards: withJane(met) });
     await settle();
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
     expect(result.current.editDraft?.notes).toBe("Met at the fair");
-    rerender({
-      cards: withJane(remoteJane({ notes: { n1: { "@type": "Note", note: "Called back" } } })),
+
+    // A second change from that device, still with the old name, before the save returns.
+    const called = remoteJane({
+      etag: '"remote-2"',
+      notes: { n1: { "@type": "Note", note: "Called back" } },
     });
+    server.set("card-jane", called);
+    rerender({ cards: withJane(called) });
     await settle();
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
     expect(result.current.editDraft?.notes).toBe("Called back");
 
     await release();
     await advance(PAUSE * 2);
-    for (const call of patchCard.mock.calls) {
-      expect(patchedNames(call[1])).not.toContain("Jane");
-      expect(JSON.stringify(call[1])).not.toContain("Met at the fair");
+    for (const [, patch] of patchCard.mock.calls) {
+      expect(patchedNames(patch)).not.toContain("Jane");
+      expect(JSON.stringify(patch)).not.toContain("Met at the fair");
     }
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
     expect(result.current.editDraft?.notes).toBe("Called back");
+    expect(savedDraft(server, "card-jane").nameGiven).toBe("Janet");
+    expect(savedDraft(server, "card-jane").notes).toBe("Called back");
   });
 });
