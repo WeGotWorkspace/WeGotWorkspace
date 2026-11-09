@@ -17,7 +17,11 @@ import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/c
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useIsTouch } from "@/hooks/use-is-touch";
-import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
+import {
+  filterSharePrincipals,
+  sharePrincipalsFromDirectory,
+  viewerHasNoTeam,
+} from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import type { TasksWorkspaceProps } from "@/tasks-core/src/tasks-workspace-props";
@@ -447,6 +451,7 @@ export function TasksWorkspace({
             ? {
                 knownPrincipals: knownSharePrincipals,
                 online,
+                noTeam: viewerHasNoTeam(data.groups),
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchShareWith,
               }

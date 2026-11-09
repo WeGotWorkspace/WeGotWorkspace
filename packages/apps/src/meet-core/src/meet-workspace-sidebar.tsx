@@ -9,6 +9,7 @@ import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting"
 import type { MeetChannelSections } from "@/meet-core/src/meet-channel-partition";
 import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { noTeamYetCopy } from "@/share-ui/share-labels";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 import {
   MeetDirectMessageRows,
@@ -27,6 +28,8 @@ export type MeetWorkspaceSidebarProps = {
   /** Calendar meetings without a channel of their own. */
   leftoverUpcoming: MeetUpcomingMeeting[];
   directMessagePeople: MeetDirectMessagePerson[];
+  /** The viewer is in no Team: the DM section says so instead of staying empty (#1924). */
+  noTeam?: boolean;
   selectedId: string | null;
   onSelect: (channelId: string) => void;
   authorPresence?: ChatAuthorPresenceMap;
@@ -50,6 +53,7 @@ export function MeetWorkspaceSidebar({
   todayMeetings,
   leftoverUpcoming,
   directMessagePeople,
+  noTeam = false,
   selectedId,
   onSelect,
   authorPresence,
@@ -141,6 +145,10 @@ export function MeetWorkspaceSidebar({
             channelHasLiveCall={channelHasLiveCall}
             channelCallAudioOnly={channelCallAudioOnly}
           />
+        </SidebarSection>
+      ) : noTeam ? (
+        <SidebarSection title={meetLabels.sidebarDirectMessages}>
+          <p className="sidebar-section__note">{noTeamYetCopy}</p>
         </SidebarSection>
       ) : null}
     </AppSidebar>

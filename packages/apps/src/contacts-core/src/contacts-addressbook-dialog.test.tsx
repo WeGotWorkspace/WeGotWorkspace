@@ -14,6 +14,7 @@ import {
   CONTACTS_VIEW_PREFS_STORAGE_KEY,
   readContactsViewPrefs,
 } from "@/contacts-core/src/contacts-view-prefs";
+import { noTeamYetCopy } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const labels = contactsAddressBookDialogLabelsFrom(defaultContactsLabels);
@@ -106,6 +107,30 @@ describe("ContactsAddressBookDialog", () => {
     expect(addressBookDotColor({ id: "default" })).toBe(override);
     expect(addressBookDotColor({ id: "default" })).not.toBe(hashed);
     expect(addressBookDotColor({ id: "group-eng" })).not.toBe(override);
+  });
+
+  it("tells a viewer without a Team in the share section", () => {
+    renderDialog(
+      <ContactsAddressBookDialog
+        dialog={{
+          bookId: "default",
+          name: "Ada",
+          mayShare: true,
+          isSharee: false,
+          shareWith: null,
+        }}
+        labels={labels}
+        onClose={vi.fn()}
+        share={{
+          online: true,
+          noTeam: true,
+          onSearchPrincipals: async () => [],
+          onPatchShareWith: async () => undefined,
+        }}
+      />,
+    );
+
+    expect(screen.getByText(noTeamYetCopy)).toBeTruthy();
   });
 
   it("hides share UI for a sharee and offers remove", () => {

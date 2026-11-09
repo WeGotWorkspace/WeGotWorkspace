@@ -3,6 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { noTeamYetCopy } from "@/share-ui/share-labels";
 import {
   MeetWorkspaceStoryHarness,
   STORY_UPCOMING_MEETINGS,
@@ -219,6 +220,19 @@ export const DirectMessage: Story = {
   args: {
     initialChannelId: "dm:ada.lovelace",
     initialCallLayout: "collapsed",
+  },
+};
+
+/** The viewer is in no Team: the DM section says so (#1924). */
+export const NoTeam: Story = {
+  name: "No Team yet",
+  args: {
+    noTeam: true,
+    initialCallLayout: "collapsed",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByText(noTeamYetCopy)).resolves.toBeTruthy();
   },
 };
 
