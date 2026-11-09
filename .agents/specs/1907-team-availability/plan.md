@@ -294,7 +294,7 @@ Decided:
   - Online-only pattern for share changes. `path: lib/offline/calendars-hybrid-operations.ts:280`
 - **Builds:**
   - REST client for `/calendars/availability` with typed errors
-  - Availability section in `settings-calendar-availability-section.tsx` per spec.md, Owner settings, including both hints and the footer line
+  - Availability section in `settings-calendar-availability-section.tsx` per spec.md, Owner settings, including the switch-off line, the Team tag tooltip and the footer line
   - save, then `notifySettingsSliceSaved`; offline error toast
 - **Done when:** Vitest covers row defaults, the disabled select, the fixed "Time only" on Team rows, the save mapping and the offline rejection. Storybook covers switch off, on with 0 Teams, and on with 2 Teams and 3 calendars, one unchecked. Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`

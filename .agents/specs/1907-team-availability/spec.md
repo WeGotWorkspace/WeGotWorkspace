@@ -5,7 +5,7 @@ Goal: WeGotWorkspace/Product#43
 
 Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
 
-Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness.
+Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness. Owner settings were simplified on 2026-11-09 after the product owner's screenshot review of #1974.
 
 ## Goal
 
@@ -13,8 +13,9 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 - **One API, three users.** A vendor JMAP capability `urn:wgw:jmap:availability` with `TeamMember/get` (who may I see) and `TeamMember/getAvailability` (busy periods for a range). The sidebar, the invitee list (#1614) and the offline clash follow-up (#1914) all use it.
 - **Privacy first.** A master switch, "Share my availability with my Teams", is **off** by default. While it is off, nobody gets anything for that user.
 - **Owner settings.** With the switch on, the user sees in Settings → Calendar their own personal event calendars and their Team calendars:
-  - **(a) include:** whether the calendar counts. Every calendar starts checked.
+  - **(a) include:** whether the calendar counts. Every calendar starts included.
   - **(b) detail:** for personal calendars, whether teammates see only the time (`busy`, the default) or also the title and location (`details`). Team calendars are always time only.
+  - Both choices are one select per calendar: "Do not add", "Time only" or (personal calendars only) "Title and location". Product owner, 2026-11-09.
 - ICS subscriptions are never listed and never count.
 - **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can uncheck a Team calendar for themselves.
 - **"Show as: Free" always wins**, in personal and Team calendars, for a series or one occurrence.
@@ -192,10 +193,11 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 - **Owner settings** in one **Availability** section of Settings → Calendar, in its own file:
   - Master switch "Share my availability with my Teams", off by default. While off, only one explanatory line shows.
   - While on:
-    - the Teams that can see it, or a note that the user is in no Team yet
-    - one row per own personal event calendar (color, name): a checkbox "Counts toward my availability" (checked by default) and a select "Teammates see": "Time only" (default) or "Title and location", disabled while unchecked
-    - one row per Team calendar: the same checkbox, a fixed "Time only", and the hint "Every event on this Team calendar counts for the whole Team, also if you decline it."
+    - a **Calendars** list. No list of Teams and no "no Team yet" note: who can see it follows from Teams, and the switch line already says so.
+    - one row per own personal event calendar (color, name) with one select and no visible label: "Do not add", "Time only" (default) or "Title and location". "Do not add" stores `include: false`; the other two store `include: true` plus the detail.
+    - one row per Team calendar (color, name, a "Team" tag) with the same select limited to "Do not add" and "Time only". The tag has the suite tooltip "Counts for the whole Team". It opens on hover and keyboard focus; tap-to-open is a shared tooltip matter, not handled here.
     - a footer line: "Events marked 'Show as: Free' never count."
+    - Simplified by the product owner on screenshots, 2026-11-09 (#1974): no "Who can see it" block, no "Counts toward my availability" checkbox, no "Teammates see" label, and the Team hint moved into the tag's tooltip.
   - Save goes through the REST resource and calls `notifySettingsSliceSaved`. Offline shows an error toast, like share and publish.
 - **Event editor: all-day default (#1927).**
   - A new all-day event starts with "Show as: Free". A new timed event keeps "Busy".
@@ -213,11 +215,11 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - X sees only "Busy", never the title, and cannot tell a Team B event from U's own.
   - Known residue: X can infer that several teammates are busy at the same moment. Accepted, because it is time only.
 - **Team calendar as a notice board.** All-day entries default to Free. Timed entries that are Busy block every member. A member can uncheck that Team calendar.
-- **A member declines a Team event.** They stay busy. The settings hint says so.
+- **A member declines a Team event.** They stay busy. The settings screen does not repeat this rule; the "Team" tag's tooltip only says the calendar counts for the whole Team.
 - **Time off entered as an all-day event.** It defaults to Free, so it does not block until the author sets Busy. The editor hint says so.
 - **Owner turns a calendar off, or the switch off.** The next fetch reflects it. Teammates' caches keep old data until their next online fetch. Turning the switch off makes the person disappear from `TeamMember/get`, and the client then drops their rows and cache.
 - **A user removed from a Team.** On the next request they are in `notFound`. The client drops their row and their cached weeks. If they still share another Team with the viewer, nothing changes.
-- **A user with no Team.** `TeamMember/get` returns an empty list. The settings pane shows the "no Team yet" note.
+- **A user with no Team.** `TeamMember/get` returns an empty list. The settings pane shows no extra note; with the switch on, nobody sees anything until the user joins a Team.
 - **Owner changes their display name.** The `TeamMember/get` state changes and rows update.
 - **Recurring events** are expanded per request. An oversized recurrence is skipped and logged and does not fail the call.
 - **Floating-time and all-day events** keep their wall-clock time (`timeZone: null`, `showWithoutTime`). Display-zone conversion stays client-side (#981).
@@ -234,7 +236,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - Planning offline is not blocked. A clash found after reconnect is #1914.
   - The settings pane needs a connection (error toast). The invitee tags simply do not show.
 - **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no tag.
-- **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members uncheck what they do not want. With Projects (#810), joining a Project becomes that switch.
+- **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members set the ones they do not want to "Do not add". With Projects (#810), joining a Project becomes that switch.
 
 ## Follow-up issues
 
