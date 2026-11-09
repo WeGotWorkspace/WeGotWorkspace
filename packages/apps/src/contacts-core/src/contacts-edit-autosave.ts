@@ -39,6 +39,13 @@ export function createContactSaveDebouncer(delayMs: number) {
     pending.delete(contactId);
   }
 
+  /** Save one contact's pending draft now, if it has one. */
+  function flush(contactId: string, persist: PersistFn): void {
+    const draft = pending.get(contactId);
+    cancel(contactId);
+    if (draft) persist(contactId, draft);
+  }
+
   function flushAll(persist: PersistFn): void {
     for (const timer of timers.values()) {
       clearTimeout(timer);
@@ -50,5 +57,5 @@ export function createContactSaveDebouncer(delayMs: number) {
     pending.clear();
   }
 
-  return { schedule, cancel, flushAll };
+  return { schedule, cancel, flush, flushAll };
 }

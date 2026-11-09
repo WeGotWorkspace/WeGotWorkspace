@@ -69,3 +69,36 @@ export function withBlankRowsFrom(
     ),
   };
 }
+
+/** Draft fields that change together: a merge never mixes a name or a company from two versions. */
+const DRAFT_FIELD_GROUPS: (keyof ContactEditDraft)[][] = [
+  ["nameGiven", "nameGiven2", "nameSurname", "showGiven2"],
+  ["showAsCompany"],
+  ["phones"],
+  ["emails"],
+  ["addresses"],
+  ["urls"],
+  ["title", "titleId"],
+  ["organization", "department", "organizationId"],
+  ["notes", "notesId"],
+  ["birthday", "birthdayId"],
+];
+
+/**
+ * The open draft on top of a card another device changed. Each field the person did
+ * not touch since `synced` (the draft the card last matched) takes the fresh card's
+ * value; a field they did touch keeps theirs, so their next save sends only that.
+ */
+export function rebaseContactDraft(
+  draft: ContactEditDraft,
+  synced: ContactEditDraft,
+  fresh: ContactEditDraft,
+): ContactEditDraft {
+  const next: Record<string, unknown> = { ...draft };
+  for (const group of DRAFT_FIELD_GROUPS) {
+    const touched = group.some((key) => JSON.stringify(draft[key]) !== JSON.stringify(synced[key]));
+    if (touched) continue;
+    for (const key of group) next[key] = fresh[key];
+  }
+  return withBlankRowsFrom(next as ContactEditDraft, draft);
+}
