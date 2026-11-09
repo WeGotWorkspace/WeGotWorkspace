@@ -81,7 +81,7 @@ See spec.md, Non-goals.
 - **Settings on JMAP `Calendar`** (`includeInAvailability`, a vendor detail property): rejected. A side table is invisible to `/changes`, so other devices would show stale values, and it would touch OpenAPI `calendar.json`, three client mappers and the Dexie calendar rows. One REST resource read fresh by the settings pane avoids all of that. REST already hosts per-calendar sharing settings (feeds).
 - **Settings device-local like #981**: rejected. These decide what others may see, so the server must own them.
 - **A "Tentative" state**: dropped. WGW stores Busy or Free only (`calendar-alerts.ts:50`).
-- **A day strip in the event editor** (#1614's first idea): replaced by one Free/Busy tag next to the RSVP tag, at the product owner's request (2026-11-04). The grid is where to look around.
+- **A day strip in the event editor** (#1614's first idea): replaced by one Free/Busy tag next to the RSVP tag, at the product owner's request (2026-11-04). The grid is where to look around. That tag became a busy warning on the participant tag itself on 2026-11-09 (see Decided).
 - **Team calendars by participation, or narrowed by invite list**: rejected by the product owner, 2026-11-04. Every Team calendar event counts for the whole Team.
 - **Team calendars time-only**: kept. Team members can read the Team calendar anyway; time-only protects against teammates from *other* Teams of the same user (the cross-Team case).
 - **New all-day events default to Free**: kept as decided, 2026-11-04, but as its own Task (#1927) with a hint for time off, instead of hidden in the rendering slice.
@@ -130,14 +130,16 @@ Decided:
 
 - Computed on request instead of a projected calendar (option B). Confirmed by the product owner, 2026-11-04, on the condition that any range, also next year, is fetched online.
 - Invitee list shows Free/Busy next to the RSVP status; #1614 moves under this Epic. Visible UI is reviewed together. Product owner, 2026-11-04.
-- Team calendar events count for the whole Team, always, time only. "Show as: Free" opts out; each member can uncheck a Team calendar. 2026-11-04.
+- Team calendar events count for the whole Team, always, time only. "Show as: Free" opts out; each member can set a Team calendar to "Do not add". 2026-11-04, wording 2026-11-09.
 - New all-day events default to "Show as: Free" and stay editable. 2026-11-04.
-- Privacy first: the switch is off by default; when on, every own personal and Team calendar starts checked, time only. 2026-11-04.
+- Privacy first: the switch is off by default; when on, every own personal and Team calendar starts included, time only. 2026-11-04.
 - Admins get no extra availability visibility. 2026-11-04.
 - Subscriptions never count. "Details" is title and location only. 2026-11-04.
 - Offline: cache what was fetched, prefetch the current week plus 4 weeks for ticked teammates, show "Offline · updated …". 2026-11-04.
 - The offline clash notice is #1914, not built here. 2026-11-04.
 - Offline: "updated …" stamp plus a hint when a visible week was never fetched, shown as one notice in the shared notice bar. Invitee tags offline: nothing. 2026-11-04 (review round 2).
+- Invitee list: no separate Free/Busy label; a busy teammate's own participant tag gets a warning wash, a warning icon and the busy tooltip. Product owner, 2026-11-09, on screenshots of #1962. Supersedes the Free/Busy tag of 2026-11-04.
+- Settings: one select per calendar ("Do not add", "Time only", "Title and location"), no list of Teams, Team hint as the "Team" tag's tooltip. Product owner, 2026-11-09, on screenshots of #1974.
 - Projects (#810): a member joins a Project in the UI; joining is not access (Teams are) but it is the switch that makes that Project's calendar count toward their availability. Until Projects land, every Team event calendar counts by default. 2026-11-04 (review round 2).
 - One detail level per calendar for every Team, not per Team. 2026-11-04.
 - CalDAV free/busy follows the same switch. With the switch off by default, external CalDAV clients (Apple Calendar, Thunderbird) stop getting free/busy for a colleague when they add them as attendee, until that colleague opts in. Today they get an answer for everyone. Accepted as a deliberate change to interop for one privacy rule everywhere. Product owner, 2026-11-04 (PR review round 2).
@@ -329,14 +331,14 @@ Decided:
 - **Skill:** apps-ui, workspace, client-transport
 - **Inputs:** `path: calendar-core/src/calendar-invitees-card.tsx:80`, `path: calendar-core/src/calendar-invitees-card.tsx:117`; C's client (or B's mock until C lands)
 - **Builds:**
-  - Free/Busy tag next to the RSVP tag for invitees who are teammates sharing availability, for the event's own time (occurrence being edited, or first occurrence of a new series)
+  - a warning (warning wash, warning icon, "busy at this time" in the accessible name) on the participant tag of an invitee who is a teammate sharing availability and busy at the event's own time (occurrence being edited, or first occurrence of a new series); no separate Free/Busy label
   - `excludeEventId` for saved events; requests snap to the containing UTC week(s) to share the server cache; answers are not written to the client cache
   - debounced refresh on time, all-day and invitee changes
-  - no tag when the invitee's result is `complete: false`; a busy all-day period on a date the event touches means "Busy"
+  - no warning when the invitee's result is `complete: false`; a busy all-day period on a date the event touches means busy
   - no growth of `calendar-workspace.tsx` or `use-calendar-controller.ts`
-  - "Busy" tooltip with overlapping times (and titles when shared)
-  - offline: no tags and no text; never blocks saving
-- **Done when:** Vitest covers free, busy, no tag for non-teammates, external guests and incomplete results, all-day busy, `excludeEventId` on edit, week snapping, the debounce, and offline. Storybook shows the invitee card with mixed tags. Screenshots reviewed with the product owner before merge.
+  - the busy tag's tooltip with overlapping times (and titles when shared)
+  - offline: no warnings and no text; never blocks saving
+- **Done when:** Vitest covers busy (warning), not busy (no warning), no warning for non-teammates, external guests and incomplete results, all-day busy, `excludeEventId` on edit, week snapping, the debounce, and offline. Storybook shows the invitee card with one busy and one free teammate. Screenshots reviewed with the product owner before merge.
 - **Verify with:** `cmd: pnpm test:apps-done-gate`
 - **Parallel with:** `chunk-c-availability-sidebar`, `chunk-d-availability-render`, `chunk-e-availability-settings`
 

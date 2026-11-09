@@ -1,9 +1,9 @@
-Source: #1907 (body-hash: 34d30576)
+Source: #1907 (body-hash: 17c4b1b9)
 Goal: WeGotWorkspace/Product#43
 
 # Team availability
 
-Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
+Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate who is busy at that time, their participant tag shows a warning. There is no separate "find a time" UI yet.
 
 Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness. Owner settings were simplified on 2026-11-09 after the product owner's screenshot review of #1974.
 
@@ -234,8 +234,8 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - `Notice` gets an optional action (`actionLabel` and `onAction` become optional together), because this notice has nothing to settle. Existing notices keep their action; a test covers a notice without one.
   - The section header and the popover carry no offline text of their own.
   - Planning offline is not blocked. A clash found after reconnect is #1914.
-  - The settings pane needs a connection (error toast). The invitee tags simply do not show.
-- **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no tag.
+  - The settings pane needs a connection (error toast). Offline, no availability warning shows and there is no extra text.
+- **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no warning; a plain tag never claims free, so no third state is needed. Decided 2026-11-09 with #1962; the sidebar marker is where "could not be loaded" is said.
 - **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members set the ones they do not want to "Do not add". With Projects (#810), joining a Project becomes that switch.
 
 ## Follow-up issues
