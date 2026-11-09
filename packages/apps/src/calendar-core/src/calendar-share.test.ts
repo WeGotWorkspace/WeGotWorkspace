@@ -92,6 +92,17 @@ describe("calendar share helpers", () => {
     expect(filterCalendarSharePrincipals("a", principals)).toEqual([]);
   });
 
+  it("offers only invitees who share a Team; the attendee directory keeps everyone", () => {
+    const invitees = [
+      { username: "colleague", email: "c@example.test", name: "Colleague", sharesTeam: true },
+      { username: "outsider", email: "o@example.test", name: "Outsider", sharesTeam: false },
+      { username: "legacy", email: "l@example.test", name: "Legacy" },
+    ];
+    const principals = calendarSharePrincipalsFromDirectory({ invitees });
+    expect(principals.map((row) => row.id)).toEqual(["colleague", "legacy"]);
+    expect(filterCalendarSharePrincipals("outsider", principals)).toEqual([]);
+  });
+
   it("falls back to the JMAP id when no display name is known", () => {
     expect(displayNameForSharePrincipal("alice")).toBe("alice");
     expect(displayNameForSharePrincipal("groups/editorial")).toBe("editorial");

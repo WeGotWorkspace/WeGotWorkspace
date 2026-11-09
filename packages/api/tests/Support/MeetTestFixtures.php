@@ -105,10 +105,20 @@ trait MeetTestFixtures
         $this->assertTrue(str_starts_with($principalUri, AdminConstants::GROUP_PREFIX));
         $groupSlug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
 
+        // Epic #1915: only someone who shares a Team with the sharee may share with them.
+        $sharer = 'meet-sharer';
+        if (Principal::forUsername($sharer) === null) {
+            $this->seedWgwUser($sharer);
+        }
+        $this->seedSharedTeam('meet-sharers', $sharer, $sharee);
+        // Team membership is cached per request; forget it so the new member counts.
+        $this->app->forgetScopedInstances();
+
         app(CalendarShareInvites::class)->apply(
             $ownerInstance,
             $groupSlug,
             [$sharee => $write ? ['mayWrite' => true] : ['mayRead' => true]],
+            $sharer,
         );
     }
 

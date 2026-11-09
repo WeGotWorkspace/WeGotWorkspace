@@ -23,6 +23,7 @@ final class ChatMessagesTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
         $this->seedWgwUser('carol', displayName: 'Carol');
+        $this->seedSharedTeamForEveryone();
 
         $this->channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'General', 'kind' => 'channel',

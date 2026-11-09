@@ -25,6 +25,8 @@ final class ChatMessagePostedNotifyTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
         $this->seedWgwUser('carol', displayName: 'Carol');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_channel_notifies_n_minus_one_and_skips_author(): void

@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarAvailabilityController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarEventImportController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
@@ -247,6 +248,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
             ->where('id', '[A-Za-z0-9-]+');
         Route::post('calendars/subscriptions/{id}/refresh', [CalendarSubscriptionsController::class, 'refresh'])
             ->where('id', '[A-Za-z0-9-]+');
+        Route::get('calendars/availability', [CalendarAvailabilityController::class, 'show']);
+        Route::put('calendars/availability', [CalendarAvailabilityController::class, 'update']);
         Route::get('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'show'])
             ->where('calendarId', '[A-Za-z0-9_-]+');
         Route::post('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'store'])

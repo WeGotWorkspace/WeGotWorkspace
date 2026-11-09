@@ -57,6 +57,8 @@ final class ChatCollectionsDavExposureTest extends WgwDatabaseTestCase
 
         $this->seedWgwUser('bob', displayName: 'Bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_chat_collections_are_dav_invisible_while_notes_stay_dav_visible(): void

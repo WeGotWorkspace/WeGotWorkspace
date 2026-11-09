@@ -12,6 +12,7 @@ use App\Models\SchedulingObject;
 use App\Services\Calendars\Conversion\LocationConversionSupport;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
+use App\Services\Teams\TeamColleagues;
 use App\Services\VObject\VObjectScalar;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -35,14 +36,27 @@ final class CalendarSchedulingNotificationService
         private readonly CalendarSchedulingInviteHorizon $horizon,
         private readonly CalendarSchedulingRsvpScope $rsvpScope,
         private readonly CalendarSchedulingObjects $objects,
+        private readonly TeamColleagues $colleagues,
     ) {}
 
     /**
-     * @return array{list: list<array{username: string, email: string, name: string}>, canSubmitEmail: bool}
+     * People the caller may find and invite: colleagues, or everyone for an admin.
+     * `sharesTeam` follows real Team membership (admins too); only those entries
+     * are offered for DMs and shares.
+     *
+     * @return array{list: list<array{username: string, email: string, name: string, sharesTeam: bool}>, canSubmitEmail: bool}
      */
-    public function invitees(): array
+    public function invitees(string $username): array
     {
-        $rows = Principal::query()
+        $colleagues = $this->colleagues->colleagues($username);
+        $query = Principal::query();
+        if (! $colleagues->isUnrestricted()) {
+            $query->whereIn('uri', array_map(
+                static fn (string $colleague): string => 'principals/'.$colleague,
+                $colleagues->usernames(),
+            ));
+        }
+        $rows = $query
             ->where('uri', 'like', 'principals/%')
             ->where('uri', 'not like', 'principals/groups/%')
             // The `principals/groups` container node is not a user either.
@@ -52,10 +66,10 @@ final class CalendarSchedulingNotificationService
 
         $list = [];
         foreach ($rows as $row) {
-            $username = str_starts_with((string) $row->uri, 'principals/')
+            $invitee = str_starts_with((string) $row->uri, 'principals/')
                 ? substr((string) $row->uri, strlen('principals/'))
                 : (string) $row->uri;
-            if ($username === '' || str_contains($username, '/')) {
+            if ($invitee === '' || str_contains($invitee, '/')) {
                 continue;
             }
             $email = $this->addresses->canonicalCalendarUserAddress($row);
@@ -64,9 +78,11 @@ final class CalendarSchedulingNotificationService
             }
             $name = trim((string) ($row->displayname ?? ''));
             $list[] = [
-                'username' => $username,
+                'username' => $invitee,
                 'email' => $email,
-                'name' => $name !== '' ? $name : $username,
+                'name' => $name !== '' ? $name : $invitee,
+                'sharesTeam' => ! $colleagues->isUnrestricted()
+                    || $this->colleagues->sharesTeamIgnoringAdminRole($username, $invitee),
             ];
         }
 

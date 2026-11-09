@@ -28,6 +28,8 @@ final class NotebookShareDismissTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_dismissed_notebook_no_longer_resolves_by_id(): void

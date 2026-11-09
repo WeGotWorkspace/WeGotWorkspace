@@ -35,6 +35,8 @@ final class CollabRoomAccessTest extends WgwDatabaseTestCase
             SettingKeys::RTC_TURN_URL => 'turn:relay.example.test:3478',
             SettingKeys::RTC_TURN_SECRET => 'north',
         ]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

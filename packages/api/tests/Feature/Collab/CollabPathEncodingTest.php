@@ -239,6 +239,9 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
 
     private function grantEditShareToBob(string $path): void
     {
+        // Epic #1915: a share only reaches a grantee who shares a Team with the owner.
+        $this->seedSharedTeam('collab', 'alice', 'bob');
+
         $share = new DriveShare;
         $share->id = (string) Str::uuid();
         $share->path = $path;

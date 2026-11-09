@@ -48,9 +48,35 @@ trait CalendarsTestFixtures
         $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
         $this->grantAdminRole($alice);
+        if ($this->calendarFixtureUsersShareATeam()) {
+            $this->joinCalendarFixtureTeam('bob', 'carol');
+        }
 
         $this->seedDefaultCalendarFor('bob');
         $this->seedDefaultCalendarFor('carol');
+    }
+
+    /**
+     * bob and carol share the Team `calendar-fixture`, so they schedule each other
+     * locally (#1923: someone outside your Teams is invited as an external guest).
+     * Tests about the Team boundary return false and build their own Teams.
+     */
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return true;
+    }
+
+    /** Adds users to the shared fixture Team (created on first use). */
+    protected function joinCalendarFixtureTeam(string ...$usernames): void
+    {
+        Principal::query()->firstOrCreate(['uri' => 'principals/groups'], ['displayname' => 'Groups', 'email' => null]);
+        $uri = 'principals/groups/calendar-fixture';
+        $team = Principal::query()->where('uri', $uri)->first() ?? $this->seedWgwGroup($uri, 'Calendar fixture');
+        foreach ($usernames as $username) {
+            $member = Principal::forUsername($username);
+            $this->assertNotNull($member);
+            $this->addPrincipalToGroup($team, $member);
+        }
     }
 
     protected function seedDefaultCalendarFor(string $username): void

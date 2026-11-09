@@ -4,7 +4,11 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
-import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
+import {
+  filterSharePrincipals,
+  sharePrincipalsFromDirectory,
+  sharesTeamWithViewer,
+} from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import {
@@ -268,7 +272,7 @@ export function MeetWorkspace({
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
     () =>
-      data.directory ??
+      data.directory?.filter(sharesTeamWithViewer) ??
       sharePrincipalsFromDirectory({
         groups,
         excludeId: session.user.username,

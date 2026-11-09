@@ -16,9 +16,11 @@ final class CalendarSchedulingNotificationsController
 {
     public function __construct(private readonly CalendarSchedulingNotificationService $notifications) {}
 
-    public function invitees(): JsonResponse
+    public function invitees(Request $request): JsonResponse
     {
-        return response()->json($this->notifications->invitees());
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+
+        return response()->json($this->notifications->invitees($principal['username']));
     }
 
     public function index(Request $request): JsonResponse

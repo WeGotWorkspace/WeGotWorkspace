@@ -8,6 +8,7 @@ use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeReindexer;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
@@ -228,7 +229,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $nodes = $this->getAll();
         $fileId = $this->nodeIdByName($nodes, 'plan.txt');
         $dirId = $this->nodeIdByName($nodes, 'Projects');
-        $state = (string) app(FileNodeIndexService::class)->currentSeq();
+        $state = app(FileNodeSyncState::class)->current('bob');
 
         $this->jmap([
             ['FileNode/set', ['accountId' => 'bob', 'update' => [$fileId => ['name' => 'plan-v2.txt']]], 'c0'],
@@ -243,7 +244,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
 
         // Ancestor rename: only the directory itself changes, descendants
         // keep id AND seq (parent links are by id).
-        $state = (string) app(FileNodeIndexService::class)->currentSeq();
+        $state = app(FileNodeSyncState::class)->current('bob');
         $this->jmap([
             ['FileNode/set', ['accountId' => 'bob', 'update' => [$dirId => ['name' => 'Archive']]], 'c2'],
         ])->assertOk();
@@ -355,7 +356,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->seedPrivateFile('bob', 'doomed/sub/b.txt');
         $nodes = $this->getAll();
         $dirId = $this->nodeIdByName($nodes, 'doomed');
-        $state = (string) app(FileNodeIndexService::class)->currentSeq();
+        $state = app(FileNodeSyncState::class)->current('bob');
 
         $this->jmap([
             ['FileNode/set', ['accountId' => 'bob', 'destroy' => [$dirId], 'onDestroyRemoveChildren' => true], 'c0'],
@@ -608,7 +609,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         // full DAV front needs an install fixture; the plugin's contract is
         // path→key mapping + index recording.
         $this->getAll(); // ensure roots exist
-        $state = (string) app(FileNodeIndexService::class)->currentSeq();
+        $state = app(FileNodeSyncState::class)->current('bob');
 
         $disk = app(WgwStorage::class)->files();
         $disk->put('users/bob/dav-upload.bin', 'dav bytes');
