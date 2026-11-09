@@ -21,7 +21,7 @@ See [spec.md](./spec.md#non-goals).
 - Tasks, Calendar and Docs always spread, even without overrides. `path: packages/apps/src/tasks-core/src/tasks-labels.ts:350`
 - Owner field copy is already shared by Tasks and Calendar. `path: packages/apps/src/ui/owner-scope-labels.ts:15`
 - "No people or teams found" is already shared. `path: packages/apps/src/share-ui/share-labels.ts:7`
-- 32 string values appear in three or more label files on `main` at `cdacba3da` (counted over `"…"` literal values in every `*-labels.ts`). "Cancel" is in 8 files and "Delete" in 7.
+- 32 string values appear in three or more label files on `main` at `cdacba3da`; "Cancel" is in 8 files and "Delete" in 7. The baseline snapshot of every bag, taken before any label file changed: `path: packages/apps/src/lib/workspace/__snapshots__/workspace-labels.snapshot.test.ts.snap`
 
 ## Considered
 
