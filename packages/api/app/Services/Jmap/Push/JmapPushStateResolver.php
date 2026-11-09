@@ -9,8 +9,8 @@ use App\Services\Chat\ChatChannelRepository;
 use App\Services\Contacts\AddressBookRepository;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Notes\NoteRepository;
@@ -80,9 +80,9 @@ final class JmapPushStateResolver
         private readonly AddressBookRepository $books,
         private readonly ChatChannelRepository $channels,
         private readonly TaskListRepository $taskLists,
-        private readonly FileNodeIndexService $fileIndex,
         private readonly FileNodeAccountSupport $fileAccounts,
         private readonly FileNodeRootMarkers $fileMarkers,
+        private readonly FileNodeSyncState $fileSyncState,
         private readonly NotificationInboxMarkers $inbox,
         private readonly JmapCapabilitySet $capabilities,
     ) {}
@@ -180,8 +180,13 @@ final class JmapPushStateResolver
             $basis .= strlen((string) $root).':'.$root.'='.$marker."\n";
         }
 
+        // The member grants follow the markers (#1926): hiding one of two grants on one root or
+        // changing a grant's access in place moves neither the markers nor change_seq. The basis
+        // stays per user; the global seq would wake every browser on any file write.
+        $basis .= "grants\n".$this->fileAccounts->memberGrantPairs($username);
+
         return [
-            'state' => (string) $this->fileIndex->currentSeq(),
+            'state' => $this->fileSyncState->current($username),
             'basis' => $basis,
         ];
     }

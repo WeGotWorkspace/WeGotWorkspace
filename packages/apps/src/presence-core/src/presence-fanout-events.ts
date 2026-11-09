@@ -1,7 +1,7 @@
 import type {
   PresenceEnvelope,
   PresenceMeetFanoutEvent,
-  PresenceNotifyHintEvent,
+  PresenceCheckNowEvent,
 } from "@/presence-core/src/presence-types";
 
 /**
@@ -43,8 +43,6 @@ export function toPresenceMeetFanoutEvent(
         emoji: envelope.emoji,
         on: envelope.on,
       };
-    case "channel-changed":
-      return { kind: "channel-changed", senderUsername, channel: envelope.channel };
     case "call-active":
       return {
         kind: "call-active",
@@ -58,15 +56,10 @@ export function toPresenceMeetFanoutEvent(
   }
 }
 
-/** Suite-notify wake hint, or null for any other envelope kind. */
-export function toPresenceNotifyHintEvent(
+/** A peer's `check-now`, or null for any other envelope kind. */
+export function toPresenceCheckNowEvent(
   envelope: PresenceEnvelope,
   senderUsername: string,
-): PresenceNotifyHintEvent | null {
-  if (envelope.kind !== "notify-hint") return null;
-  return {
-    kind: "notify-hint",
-    senderUsername,
-    ...(envelope.tag ? { tag: envelope.tag } : {}),
-  };
+): PresenceCheckNowEvent | null {
+  return envelope.kind === "check-now" ? { kind: "check-now", senderUsername } : null;
 }

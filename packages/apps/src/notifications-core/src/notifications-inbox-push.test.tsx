@@ -32,6 +32,8 @@ const hub = vi.hoisted(() => {
         state.statusListeners.add(listener);
         return () => state.statusListeners.delete(listener);
       },
+      /** Toasts are covered in notification-toasts.test.tsx. */
+      frontTab: async () => null,
     },
   };
 });

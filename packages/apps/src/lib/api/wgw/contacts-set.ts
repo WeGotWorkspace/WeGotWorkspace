@@ -5,6 +5,11 @@ import type {
 } from "@/contacts-core/src/contacts-types";
 import { connectedContacts, getCard } from "@/lib/api/wgw/contacts";
 import type { JmapContactCard, SetResponse } from "@/lib/jmap-client";
+import {
+  cachedCollectionAudience,
+  cachedItemAudience,
+  checkNowAfterWrite,
+} from "@/lib/offline/core/collection-check-now";
 
 export type ContactCardSetResponse = {
   created: Record<string, string>;
@@ -79,6 +84,9 @@ export async function contactCardSet(
   },
   _opts?: { signal?: AbortSignal },
 ): Promise<ContactCardSetResponse> {
+  const before = [...Object.keys(body.update ?? {}), ...destroyIds(body.destroy)].map((id) =>
+    cachedItemAudience("contacts", id),
+  );
   const { contacts, accountId } = await connectedContacts();
   const response = await contacts.setContactCards({
     accountId,
@@ -86,6 +94,10 @@ export async function contactCardSet(
     ...(body.update ? { update: body.update } : {}),
     ...(body.destroy ? { destroy: destroyIds(body.destroy) } : {}),
   });
+  const created = Object.values(body.create ?? {}).flatMap((card) =>
+    Object.keys(card.addressBookIds ?? {}),
+  );
+  checkNowAfterWrite([...before, cachedCollectionAudience("contacts", created)]);
   return mapSetResponse(response);
 }
 

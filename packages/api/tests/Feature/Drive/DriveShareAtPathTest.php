@@ -28,6 +28,8 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
         $this->createDriveDirectory('/users/bob', 'projects');
         $this->createDriveDirectory('/users/bob/projects', 'q3');
         $this->createDriveFile($this->ownerToken, '/users/bob/projects/q3', 'draft.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -359,6 +361,8 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
             $this->assertNotNull($member);
             $this->addPrincipalToGroup($staffGroup, $member);
         }
+        // Epic #1915: the owner may only share with a Team they are in.
+        $this->seedSharedTeam('staff', 'bob');
 
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
             'path' => '/users/bob/projects',
@@ -382,11 +386,15 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
         )->assertOk();
 
         $groupMemberQueries = 0;
+        $ownTeamQueries = 0;
         $driveSharesBatchQueries = 0;
         $driveShareGrantsBatchQueries = 0;
         foreach (DB::connection('wgw')->getQueryLog() as $query) {
             $sql = strtolower((string) ($query['query'] ?? ''));
-            if (str_contains($sql, 'groupmembers')) {
+            if (str_contains($sql, 'groupmembers') && str_contains($sql, 'team_uri')) {
+                // Epic #1915: the owner's own Teams, read once to hide grants to Teams they left.
+                $ownTeamQueries++;
+            } elseif (str_contains($sql, 'groupmembers')) {
                 $groupMemberQueries++;
             }
             if (str_contains($sql, 'drive_shares') && (str_contains($sql, '"id" in (') || str_contains($sql, '`id` in ('))) {
@@ -398,6 +406,7 @@ final class DriveShareAtPathTest extends WgwDatabaseTestCase
         }
 
         $this->assertLessThanOrEqual(1, $groupMemberQueries, 'Expected at most one groupmembers query for duplicate group slugs');
+        $this->assertLessThanOrEqual(1, $ownTeamQueries, "Expected the owner's Teams to load at most once");
         $this->assertLessThanOrEqual(2, $driveSharesBatchQueries, 'Expected at most two batched drive_shares queries (scoped load + eager share)');
         $this->assertLessThanOrEqual(1, $driveShareGrantsBatchQueries, 'Expected at most one batched drive_share_grants query');
     }

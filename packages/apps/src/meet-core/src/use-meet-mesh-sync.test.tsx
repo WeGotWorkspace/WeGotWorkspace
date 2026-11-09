@@ -38,6 +38,9 @@ class FakeSession implements PresenceMeshSession {
   getRoomPeers(): RtcPeerDescriptor[] {
     return this.peers;
   }
+  isLinked(): boolean {
+    return false;
+  }
 
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {
     this.listeners.add(listener);
@@ -72,7 +75,14 @@ function wrapperFor(store: PresenceStore | null) {
 }
 
 const channels: MeetChannel[] = [
-  { id: "chat-grp-eng", name: "eng", kind: "channel", scope: "group", groupSlug: "eng" },
+  {
+    id: "chat-grp-eng",
+    name: "eng",
+    kind: "channel",
+    scope: "group",
+    groupSlug: "eng",
+    members: ["alice", "bob", "carol"],
+  },
 ];
 
 const sampleMessage: ChatMessage = {
@@ -99,7 +109,6 @@ describe("useMeetMeshSync", () => {
           username: "alice",
           selfUsername: "alice",
           channels,
-          directory: [{ id: "bob", displayName: "Bob", principalType: "user" }],
         }),
       { wrapper: wrapperFor(store) },
     );
@@ -114,8 +123,46 @@ describe("useMeetMeshSync", () => {
     expect(session.sentTo[0]?.envelope.kind).toBe("channel-message");
     expect(session.sentTo[1]).toEqual({
       peerId: "bob-aaa111",
-      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+      envelope: { v: 1, kind: "check-now" },
     });
+  });
+
+  it("sends a Team channel message to the roster only, not to every online coworker", async () => {
+    const { session, store } = await onlineStore();
+    session.peers = [
+      { id: "bob-aaa111", name: "Bob", user: "bob" },
+      { id: "carol-bbb222", name: "Carol", user: "carol" },
+    ];
+    session.emit({ type: "roster" });
+    const team: MeetChannel = {
+      id: "chat-grp-alpha",
+      name: "alpha",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "alpha",
+      members: ["alice", "bob"],
+    };
+    const saved: ChatMessage = { ...sampleMessage, channelId: team.id, body: "roster only" };
+    const sendMessage = vi.fn().mockResolvedValue(saved);
+    const { result } = renderHook(
+      () =>
+        useMeetMeshSync({
+          operations: { sendMessage },
+          username: "alice",
+          selfUsername: "alice",
+          channels: [team],
+        }),
+      { wrapper: wrapperFor(store) },
+    );
+
+    await act(async () => {
+      await result.current.operations?.sendMessage?.(team.id, "roster only");
+    });
+
+    expect(session.sentTo.map((row) => row.peerId)).not.toContain("carol-bbb222");
+    expect(session.sentTo.find((row) => row.envelope.kind === "channel-message")?.peerId).toBe(
+      "bob-aaa111",
+    );
   });
 
   it("applies inbound call-active onto the remapped DM id", async () => {
@@ -292,7 +339,6 @@ describe("useMeetMeshSync", () => {
           username: "alice",
           selfUsername: "alice",
           channels,
-          directory: [{ id: "bob", displayName: "Bob", principalType: "user" }],
         }),
       { wrapper: wrapperFor(store) },
     );
@@ -322,10 +368,6 @@ describe("useMeetMeshSync", () => {
           username: "alice",
           selfUsername: "alice",
           channels,
-          directory: [
-            { id: "bob", displayName: "Bob", principalType: "user" },
-            { id: "carol", displayName: "Carol", principalType: "user" },
-          ],
         }),
       { wrapper: wrapperFor(store), initialProps: { live: null as string | null } },
     );

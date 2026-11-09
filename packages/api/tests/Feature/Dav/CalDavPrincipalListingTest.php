@@ -6,6 +6,8 @@ namespace Tests\Feature\Dav;
 
 use App\Dav\Server\AppCalDAVPrincipalCollection;
 use App\Dav\Server\AppCalendarRoot;
+use App\Dav\Server\CalDavDeliveryRecipients;
+use App\Services\Teams\TeamColleagues;
 use Illuminate\Support\Facades\DB;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Auth\Plugin as AuthPlugin;
@@ -29,7 +31,8 @@ final class CalDavPrincipalListingTest extends WgwDatabaseTestCase
         $auth->method('getCurrentPrincipal')->willReturn('principals/bob');
         $pdo = DB::connection('wgw')->getPdo();
         $principals = new PrincipalPDO($pdo);
-        $collection = new AppCalDAVPrincipalCollection($principals, $auth);
+        // bob and carol share the calendar fixture Team, so carol resolves (#1922).
+        $collection = new AppCalDAVPrincipalCollection($principals, $auth, app(TeamColleagues::class), new CalDavDeliveryRecipients);
 
         $listed = array_map(static fn ($node): string => $node->getName(), $collection->getChildren());
         $this->assertContains('bob', $listed);

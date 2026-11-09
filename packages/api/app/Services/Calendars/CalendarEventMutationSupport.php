@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
@@ -17,13 +18,14 @@ use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Reader;
 
 final class CalendarEventMutationSupport
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarRepository $calendars,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarEventMapper $mapper,
@@ -51,7 +53,7 @@ final class CalendarEventMutationSupport
             $ics = $this->mapper->toIcs($eventPayload);
             $this->assertRecurrenceAllowed($ics);
 
-            $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+            $this->backends->calBackend()->createCalendarObject($this->collections->backendId($instance), $eventUri, $ics);
             $this->meetLinkHook->afterPersist(
                 $ics,
                 null,
@@ -141,7 +143,7 @@ final class CalendarEventMutationSupport
             $eventUri = $this->allocateEventUri((int) $instance->calendarid, [
                 'title' => $this->importedEventTitle($ics),
             ]);
-            $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
+            $this->backends->calBackend()->createCalendarObject($this->collections->backendId($instance), $eventUri, $ics);
 
             $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
             $this->searchIndexSync->sync(
@@ -304,7 +306,7 @@ final class CalendarEventMutationSupport
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $remaining = $this->mapper->removeVEventFromIcs($raw, $veventUid);
             if ($remaining === null) {
-                $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+                $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($instance), $eventUri);
                 $this->scheduling->scheduleAfterDelete($username, $oldIcs);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
@@ -314,7 +316,7 @@ final class CalendarEventMutationSupport
                     $username,
                 );
             } else {
-                $this->calBackend()->updateCalendarObject($this->calBackendCalendarId($instance), $eventUri, $remaining);
+                $this->backends->calBackend()->updateCalendarObject($this->collections->backendId($instance), $eventUri, $remaining);
                 $this->scheduling->scheduleAfterWrite($username, $oldIcs, $remaining);
                 $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
@@ -325,7 +327,7 @@ final class CalendarEventMutationSupport
                 );
             }
         } else {
-            $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
+            $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($instance), $eventUri);
             $this->scheduling->scheduleAfterDelete($username, $oldIcs);
             $davPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
             $this->searchIndexSync->sync(
@@ -418,11 +420,11 @@ final class CalendarEventMutationSupport
                 $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid'], $baselinePayload),
             );
             $this->assertRecurrenceAllowed($ics);
-            $sourceBackendId = $this->calBackendCalendarId($instance);
-            $targetBackendId = $this->calBackendCalendarId($targetInstance);
+            $sourceBackendId = $this->collections->backendId($instance);
+            $targetBackendId = $this->collections->backendId($targetInstance);
             if ($sourceBackendId !== $targetBackendId) {
-                $this->calBackend()->createCalendarObject($targetBackendId, $eventUri, $ics);
-                $this->calBackend()->deleteCalendarObject($sourceBackendId, $eventUri);
+                $this->backends->calBackend()->createCalendarObject($targetBackendId, $eventUri, $ics);
+                $this->backends->calBackend()->deleteCalendarObject($sourceBackendId, $eventUri);
                 $oldPath = $this->calDavPath($username, (string) $instance->uri, $eventUri);
                 $this->searchIndexSync->sync(
                     'calendars',
@@ -431,7 +433,7 @@ final class CalendarEventMutationSupport
                     $username,
                 );
             } else {
-                $this->calBackend()->updateCalendarObject($targetBackendId, $eventUri, $ics);
+                $this->backends->calBackend()->updateCalendarObject($targetBackendId, $eventUri, $ics);
             }
             $this->scheduling->scheduleAfterWrite($username, $raw, $ics);
             $this->meetLinkHook->afterPersist(
@@ -623,19 +625,17 @@ final class CalendarEventMutationSupport
         // The caller can reach one calendar through several instances (own,
         // group, direct share). Resolve through the instance the calendar list
         // shows. When the list has none for this calendar, take the one with
-        // the most rights. A dismissed share is skipped either way.
+        // the most rights. A dismissed or hidden share is skipped either way.
         $calendarId = (int) $object->calendarid;
         $instance = $this->calendars->accessibleVeventInstances($username)
             ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
-            ?? $this->collectionAccess->withoutDismissed(
+            ?? $this->collectionAccess->visibleHighestAccess(
                 $username,
-                $this->collectionAccess->preferHighestAccessPerCalendar(
-                    CalendarInstance::query()
-                        ->where('calendarid', $calendarId)
-                        ->whereIn('principaluri', $principalUris)
-                        ->orderBy('id')
-                        ->get(),
-                ),
+                CalendarInstance::query()
+                    ->where('calendarid', $calendarId)
+                    ->whereIn('principaluri', $principalUris)
+                    ->orderBy('id')
+                    ->get(),
             )->first();
 
         if ($instance === null) {
@@ -702,18 +702,5 @@ final class CalendarEventMutationSupport
             (int) ($object->lastmodified ?? 0),
             $requirePrecondition,
         );
-    }
-
-    public function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
-    }
-
-    /**
-     * @return array{0: int, 1: int}
-     */
-    public function calBackendCalendarId(CalendarInstance $instance): array
-    {
-        return [(int) $instance->calendarid, (int) $instance->id];
     }
 }

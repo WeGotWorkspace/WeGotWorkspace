@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Chat;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
@@ -20,7 +21,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PDOException;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 /**
  * Chat messages as VJOURNAL objects in chat channel collections (Epic #701).
@@ -45,6 +45,7 @@ final class ChatMessageRepository
     public const CHANGES_PAGE_SIZE = 200;
 
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly ChatChannelRepository $channels,
         private readonly ChatMessageJournalConverter $converter,
         private readonly ChatChangesFeed $changesFeed,
@@ -190,7 +191,7 @@ final class ChatMessageRepository
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
         try {
-            $this->calBackend()->createCalendarObject(
+            $this->backends->calBackend()->createCalendarObject(
                 [(int) $instance->calendarid, (int) $instance->id],
                 $uid.'.ics',
                 $ics,
@@ -239,7 +240,7 @@ final class ChatMessageRepository
             $body,
             new DateTimeImmutable('now', new DateTimeZone('UTC')),
         );
-        $this->calBackend()->updateCalendarObject(
+        $this->backends->calBackend()->updateCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
             (string) $object->uri,
             $ics,
@@ -276,7 +277,7 @@ final class ChatMessageRepository
             $this->rawIcs($object),
             new DateTimeImmutable('now', new DateTimeZone('UTC')),
         );
-        $this->calBackend()->updateCalendarObject(
+        $this->backends->calBackend()->updateCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
             (string) $object->uri,
             $ics,
@@ -314,7 +315,7 @@ final class ChatMessageRepository
 
             $reactions = $this->toggleReactionSet($message['reactions'] ?? [], $emoji, $username);
             $ics = $this->converter->applyReactions($this->rawIcs($locked), $reactions);
-            $this->calBackend()->updateCalendarObject(
+            $this->backends->calBackend()->updateCalendarObject(
                 [(int) $instance->calendarid, (int) $instance->id],
                 (string) $locked->uri,
                 $ics,
@@ -583,7 +584,7 @@ final class ChatMessageRepository
         string $messageUid,
         array $mentions,
     ): void {
-        $roster = $this->channels->rosterUsernames($instance, null);
+        $roster = $this->channels->rosterUsernames($instance, null, true);
         $rosterSet = [];
         foreach ($roster as $username) {
             $rosterSet[strtolower($username)] = strtolower($username);
@@ -709,10 +710,5 @@ final class ChatMessageRepository
     private function rawIcs(CalendarObject $object): string
     {
         return is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

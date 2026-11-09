@@ -9,9 +9,8 @@ packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	406	0
 packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	325	8	grandfathered
 packages/apps/src/installer-core/src/use-installer-controller.ts#useInstallerController	216	1	grandfathered
 packages/apps/src/meet-core/src/use-meet-call-session.ts#useMeetCallSession	326	5	grandfathered
-packages/apps/src/meet-core/src/use-meet-chat-api.ts#useMeetChatAPI	212	3	grandfathered
 packages/apps/src/meet-core/src/use-meet-chat-call.ts#useMeetChatCall	219	0	grandfathered
-packages/apps/src/meet-core/src/use-meet-local-media.ts#useMeetLocalMedia	386	2	grandfathered
+packages/apps/src/meet-core/src/use-meet-local-media.ts#useMeetLocalMedia	382	2	grandfathered
 packages/apps/src/meet-core/src/use-meet-mutations.ts#useMeetMutations	385	3	grandfathered
 packages/apps/src/notes-core/src/use-notes-batch-actions.tsx#useNotesBatchActions	207	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-list.tsx#useNotesList	231	5	grandfathered

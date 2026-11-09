@@ -44,6 +44,8 @@ final class UrgentPushTest extends WgwDatabaseTestCase
         $this->app->forgetInstance(VapidPushService::class);
         $this->app->forgetInstance(UrgentPushService::class);
         Carbon::setTestNow(Carbon::parse('2026-11-03T12:00:00Z'));
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

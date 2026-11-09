@@ -1,11 +1,14 @@
 import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
+import { CheckNowThrottle } from "@/lib/jmap-client/push/check-now-throttle";
+import type { MeshCheckNowPort } from "@/lib/jmap-client/push/mesh-check-now";
 import { encodePrincipalRoomId } from "@/lib/rtc/room-id";
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
 import { sendPresenceLeaveBeacon } from "@/presence-core/src/presence-leave-beacon";
+import { presenceCheckNowEnvelope } from "@/presence-core/src/presence-envelope";
 import {
+  toPresenceCheckNowEvent,
   toPresenceMeetFanoutEvent,
-  toPresenceNotifyHintEvent,
 } from "@/presence-core/src/presence-fanout-events";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
 import {
@@ -15,7 +18,6 @@ import {
   type PresenceEnvelope,
   type PresenceMeetFanoutEvent,
   type PresenceMeshSession,
-  type PresenceNotifyHintEvent,
   type PresenceSnapshot,
   type PresenceUserStatus,
 } from "@/presence-core/src/presence-types";
@@ -89,14 +91,14 @@ function createInitialSnapshot(): PresenceSnapshot {
  * window dials; followers use {@link FollowerPresenceSession}. Leader close →
  * handoff with an expected ~0.5–2 s reconnect blip (PeerConnection cannot move).
  */
-export class PresenceStore {
+export class PresenceStore implements MeshCheckNowPort {
   private snapshot: PresenceSnapshot = createInitialSnapshot();
 
   private readonly listeners = new Set<() => void>();
 
   private readonly meetListeners = new Set<(event: PresenceMeetFanoutEvent) => void>();
 
-  private readonly notifyHintListeners = new Set<(event: PresenceNotifyHintEvent) => void>();
+  private readonly checkNowListeners = new Set<() => void>();
 
   private readonly meetJoinHintListeners = new Set<(room: string) => void>();
 
@@ -160,6 +162,8 @@ export class PresenceStore {
 
   private channelTypingTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private readonly checkNowThrottle: CheckNowThrottle;
+
   constructor(private readonly options: PresenceStoreOptions) {
     this.visibility =
       options.visibility === undefined ? defaultVisibilityPort() : options.visibility;
@@ -171,6 +175,12 @@ export class PresenceStore {
     this.crossWindowLeader = options.crossWindowLeader ?? false;
     this.createTabCoordinator =
       options.createTabCoordinator ?? ((handlers) => new PrincipalTabCoordinator(handlers));
+    this.checkNowThrottle = new CheckNowThrottle({
+      send: (usernames) => this.sendToUsernames(usernames, presenceCheckNowEnvelope()),
+      now: this.now,
+      setTimeoutFn: (callback, ms) => this.scheduleTimeout(callback, ms),
+      clearTimeoutFn: (handle) => this.cancelTimeout(handle as ReturnType<typeof setTimeout>),
+    });
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -188,11 +198,37 @@ export class PresenceStore {
     };
   };
 
-  /** Suite-notify wake hints — refresh inbox via HTTP; do not trust `tag` as content. */
-  subscribeNotifyHint = (listener: (event: PresenceNotifyHintEvent) => void): (() => void) => {
-    this.notifyHintListeners.add(listener);
+  /**
+   * True while the mesh has an open data channel to a peer of another user
+   * (#1943). Own other browsers do not count: they send no `check-now`. A
+   * follower window answers from the leader's relayed roster.
+   */
+  meshLinked = (): boolean => {
+    const session = this.session;
+    if (!session) return false;
+    const self = this.selfUsername.trim().toLowerCase();
+    return session.getRoomPeers().some((peer) => {
+      const username = (peer.user ?? "").trim().toLowerCase();
+      return username !== "" && username !== self && session.isLinked(peer.id);
+    });
+  };
+
+  /** Calls `listener` when {@link meshLinked} changes. */
+  subscribeMeshLinked = (listener: () => void): (() => void) => {
+    let last = this.meshLinked();
+    return this.subscribe(() => {
+      const linked = this.meshLinked();
+      if (linked === last) return;
+      last = linked;
+      listener();
+    });
+  };
+
+  /** A peer's content-free `check-now`: ask the server, never trust the mesh for data. */
+  subscribeCheckNow = (listener: () => void): (() => void) => {
+    this.checkNowListeners.add(listener);
     return () => {
-      this.notifyHintListeners.delete(listener);
+      this.checkNowListeners.delete(listener);
     };
   };
 
@@ -284,7 +320,8 @@ export class PresenceStore {
     }
     this.channelTypingUntil.clear();
     this.meetListeners.clear();
-    this.notifyHintListeners.clear();
+    this.checkNowListeners.clear();
+    this.checkNowThrottle.dispose();
     const session = this.session;
     this.session = null;
     this.followerSession = null;
@@ -328,7 +365,15 @@ export class PresenceStore {
   }
 
   /**
-   * Targeted send for Meet / notify-hint payloads. Looks up every live peer id for each
+   * After a successful write: a throttled `check-now` to these users (#1662).
+   * A follower window's send goes out through the leader's mesh.
+   */
+  sendCheckNow(usernames: readonly string[]): void {
+    this.checkNowThrottle.request(usernames);
+  }
+
+  /**
+   * Targeted send for Meet / check-now payloads. Looks up every live peer id for each
    * username (multi-tab) and never broadcasts — missing peers just miss the
    * hint and wait for the poll / VAPID path.
    */
@@ -426,10 +471,13 @@ export class PresenceStore {
   }
 
   private relayRosterToFollowers(): void {
-    if (!this.isMeshLeader || !this.session) return;
+    const session = this.session;
+    if (!this.isMeshLeader || !session) return;
+    const peers = session.getRoomPeers();
     this.coordinator?.publishRosterState({
-      peers: this.session.getRoomPeers(),
+      peers,
       selfPeerId: null,
+      linkedPeerIds: peers.filter((peer) => session.isLinked(peer.id)).map((peer) => peer.id),
     });
   }
 
@@ -540,16 +588,15 @@ export class PresenceStore {
       return;
     }
 
-    const hint = toPresenceNotifyHintEvent(envelope, senderUsername);
-    if (hint) this.emitNotifyHint(hint);
+    if (toPresenceCheckNowEvent(envelope, senderUsername)) this.emitCheckNow();
   }
 
   private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
     for (const listener of this.meetListeners) listener(event);
   }
 
-  private emitNotifyHint(event: PresenceNotifyHintEvent): void {
-    for (const listener of this.notifyHintListeners) listener(event);
+  private emitCheckNow(): void {
+    for (const listener of this.checkNowListeners) listener();
   }
 
   private handleChannelTyping(channelId: string, username: string, stop: boolean): void {

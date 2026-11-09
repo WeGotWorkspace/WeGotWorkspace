@@ -1,80 +1,84 @@
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
-import { shareGrantEntries, type CollectionSharePrincipal } from "@/share-ui/collection-share";
+import { shareGrantEntries } from "@/share-ui/collection-share";
+
+function normalize(username: string | null | undefined): string {
+  return username?.trim().toLowerCase() ?? "";
+}
+
+/**
+ * The users who may read this channel, as far as the local cache knows.
+ *
+ * `members` is the server roster (owner side plus sharees, groups expanded).
+ * A row cached before the server sent `members` falls back to the explicit
+ * user grants in `shareWith`. Never the workspace directory: the presence mesh
+ * reaches every online coworker, and most of them cannot read the channel.
+ */
+function channelReaders(channel: MeetChannel): string[] {
+  if (channel.members) return channel.members.map(normalize).filter(Boolean);
+  return shareGrantEntries(channel.shareWith)
+    .filter((grant) => !grant.isGroup && grant.id)
+    .map((grant) => normalize(grant.id));
+}
 
 /**
  * Usernames that may receive a Meet mesh payload for this conversation.
  *
- * Never the whole presence roster: the workspace mesh includes every online
- * coworker, including people outside the channel ACL. DMs go to the one peer.
- * Explicit `shareWith` user grants go to those users. Group-owned channels
- * (`groupSlug`) have no member list on the client yet — we fan out to
- * directory *user* principals (the same people as the DM rail) and the
- * receiver still drops the payload if the channel is not in their Dexie ACL
- * cache. Group grants in `shareWith` cannot be expanded and do not widen
- * the set by themselves.
+ * DMs go to the one peer. Channels go to their readers (see
+ * {@link channelReaders}). An unknown channel goes to nobody: the server's
+ * push delivers the change instead.
  */
 export function meetMeshFanoutUsernames(args: {
   channelId: string;
   selfUsername: string | null | undefined;
   channels?: readonly MeetChannel[];
-  directory?: readonly CollectionSharePrincipal[];
 }): string[] {
-  const self = args.selfUsername?.trim() ?? "";
+  const self = normalize(args.selfUsername);
   const targets = new Set<string>();
 
   const peer = meetDirectMessagePrincipalId(args.channelId);
   if (peer) {
-    if (peer !== self) targets.add(peer);
+    if (normalize(peer) !== self) targets.add(peer);
     return [...targets];
   }
 
   const channel = args.channels?.find((row) => row.id === args.channelId);
-  for (const grant of shareGrantEntries(channel?.shareWith)) {
-    if (!grant.isGroup && grant.id && grant.id !== self) targets.add(grant.id);
+  if (!channel) return [];
+  for (const reader of channelReaders(channel)) {
+    if (reader !== self) targets.add(reader);
   }
-
-  if (channel?.groupSlug) {
-    for (const principal of args.directory ?? []) {
-      if (principal.principalType !== "user" || !principal.id || principal.id === self) continue;
-      targets.add(principal.id);
-    }
-  }
-
   return [...targets];
 }
 
 /**
- * Whether the transport-authenticated sender may hint into this conversation.
+ * Whether the receiver may take this mesh payload from this sender.
  *
- * Mirrors {@link meetMeshFanoutUsernames}: DMs only from the peer; named
- * channels only from a user grant in local `shareWith`; group-owned channels
- * also from a directory *user* (same expansion as send). Group grants in
- * `shareWith` cannot be expanded. Unknown / empty membership is fail-closed.
+ * Mirrors {@link meetMeshFanoutUsernames}: DMs only from the peer; channels
+ * only when the sender is a reader, and — when the receiver's own name is
+ * given — the receiver is one too. A payload for a channel the receiver may
+ * not read is dropped before anything is stored. Unknown or empty membership
+ * is fail-closed.
  */
 export function meetMeshSenderMayHint(args: {
   channelId: string;
   senderUsername: string;
+  selfUsername?: string | null;
   channels?: readonly MeetChannel[];
-  directory?: readonly CollectionSharePrincipal[];
 }): boolean {
-  const sender = args.senderUsername.trim();
+  const sender = normalize(args.senderUsername);
   if (!sender) return false;
 
   const peer = meetDirectMessagePrincipalId(args.channelId);
-  if (peer) return peer === sender;
+  if (peer) return normalize(peer) === sender;
 
   const channel = args.channels?.find((row) => row.id === args.channelId);
   if (!channel) return false;
 
-  for (const grant of shareGrantEntries(channel.shareWith)) {
-    if (!grant.isGroup && grant.id === sender) return true;
-  }
-
-  if (!channel.groupSlug) return false;
-  return (args.directory ?? []).some(
-    (principal) => principal.principalType === "user" && principal.id === sender,
-  );
+  const readers = channelReaders(channel);
+  if (!readers.includes(sender)) return false;
+  const self = normalize(args.selfUsername);
+  if (self && channel.members && !readers.includes(self)) return false;
+  return true;
 }
 
 /** Union of `meetMeshFanoutUsernames` across snapshots (share add/remove, create). */

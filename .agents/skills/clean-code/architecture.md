@@ -26,4 +26,6 @@ Source code dependencies point **inward**:
 | `packages/api` | `app/Services/{Domain}/` | Controllers, Resources, Eloquent models |
 | `packages/apps` | Controller hooks, pure lib modules | TSX presentation, API client adapters |
 
+Calendar is a React app (`calendar-core/`) around vendored Lit views (`lib/calendar-elements/`). That split is accepted until a single React rewrite: pull tokens and domain logic outward, leave the Lit internals alone. See [docs/architecture/calendar-react-lit.md](../../../docs/architecture/calendar-react-lit.md).
+
 Do not reintroduce legacy static kernels or `\PDO` in domain services — see `api/SKILL.md` forbidden list.

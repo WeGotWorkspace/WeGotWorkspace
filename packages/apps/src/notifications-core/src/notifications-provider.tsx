@@ -37,6 +37,7 @@ import {
 } from "@/notifications-core/src/pushed-inbox-items";
 import { useNotificationsInboxPush } from "@/notifications-core/src/use-notifications-inbox-push";
 import { useNotificationsLocalAck } from "@/notifications-core/src/use-notifications-local-ack";
+import { useNotificationToasts } from "@/notifications-core/src/use-notification-toasts";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 
 export {
@@ -58,9 +59,9 @@ export const NOTIFICATIONS_INBOX_POLL_MS = 15_000;
 export const NOTIFICATIONS_INBOX_PUSH_POLL_MS = 60_000;
 
 /**
- * After a mesh notify-hint, re-GET again shortly in case the first response raced
- * an in-flight poll or a momentarily empty replica view. Kept short so the bell
- * still feels instant.
+ * After a mesh `check-now` while push is down, re-GET again shortly in case the
+ * first response raced an in-flight poll or a momentarily empty replica view.
+ * Kept short so the bell still feels instant.
  */
 export const NOTIFICATIONS_HINT_RETRY_MS = [300, 1_200] as const;
 
@@ -102,6 +103,21 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const signedIn = signedInMember();
   const trackUnreadForLocalAck = useNotificationsLocalAck();
 
+  /** A popover row or toast click: mark the row read, then open it. */
+  const onOpenItem = useCallback(async (item: NotificationInboxItem) => {
+    pushedRef.current = dropPushedItems(pushedRef.current, [item.id]);
+    setItems((prev) => prev.filter((row) => row.id !== item.id));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await ackNotification(item.id);
+    } catch {
+      // Continue to navigate even if ack fails; next unread poll reconciles.
+    }
+    goToNotificationNavigate(item.navigate);
+  }, []);
+
+  const offerToasts = useNotificationToasts(onOpenItem);
+
   const applyPayload = useCallback(
     (fromServer: NotificationInboxList) => {
       const merged = mergePushedItems(fromServer, pushedRef.current, Date.now());
@@ -110,15 +126,15 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
       trackUnreadForLocalAck(payload.list);
-      let sawNewAfterSeed = false;
+      const fresh: NotificationInboxItem[] = [];
       for (const item of payload.list) {
         if (seenRef.current.has(item.id)) continue;
-        const afterSeed = seededRef.current;
         seenRef.current.add(item.id);
-        if (afterSeed) sawNewAfterSeed = true;
+        if (seededRef.current) fresh.push(item);
       }
       seededRef.current = true;
-      if (sawNewAfterSeed) {
+      if (fresh.length > 0) {
+        offerToasts(fresh);
         setUnreadArrivalNonce((n) => n + 1);
         const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
         if (shouldPlayInboxNotificationSound(visibility, soundMutedRef.current)) {
@@ -126,7 +142,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
         }
       }
     },
-    [trackUnreadForLocalAck],
+    [trackUnreadForLocalAck, offerToasts],
   );
 
   const show = useCallback(
@@ -204,7 +220,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const pushConnected = useNotificationsInboxPush({ signedIn, fetchForPush, apply: applyShared });
   const pollMs = pushConnected ? NOTIFICATIONS_INBOX_PUSH_POLL_MS : NOTIFICATIONS_INBOX_POLL_MS;
 
-  const refreshFromNotifyHint = useCallback(() => {
+  const refreshFromCheckNow = useCallback(() => {
     for (const timer of hintRetryTimersRef.current) {
       window.clearTimeout(timer);
     }
@@ -244,12 +260,11 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 
   const presenceStore = usePresenceStoreContext();
   useEffect(() => {
-    if (!presenceStore) return;
-    // Open-tab acceleration: principal mesh wake → re-GET inbox (server remains SoT).
-    return presenceStore.subscribeNotifyHint(() => {
-      refreshFromNotifyHint();
-    });
-  }, [presenceStore, refreshFromNotifyHint]);
+    // While push is connected, a peer's `check-now` wakes the push stream instead,
+    // and the `Notification` state brings the inbox (#1662).
+    if (!presenceStore || pushConnected) return;
+    return presenceStore.subscribeCheckNow(refreshFromCheckNow);
+  }, [presenceStore, pushConnected, refreshFromCheckNow]);
 
   useEffect(() => {
     const worker = navigator.serviceWorker;
@@ -284,18 +299,6 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     window.addEventListener("pointerdown", retrySubscribe, { once: true });
     return () => window.removeEventListener("pointerdown", retrySubscribe);
   }, [signedIn]);
-
-  const onOpenItem = useCallback(async (item: NotificationInboxItem) => {
-    pushedRef.current = dropPushedItems(pushedRef.current, [item.id]);
-    setItems((prev) => prev.filter((row) => row.id !== item.id));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-    try {
-      await ackNotification(item.id);
-    } catch {
-      // Continue to navigate even if ack fails; next unread poll reconciles.
-    }
-    goToNotificationNavigate(item.navigate);
-  }, []);
 
   const onEnablePush = useCallback(() => {
     void ensurePushPermissionAndSubscribe().then((enabled) => {
@@ -364,7 +367,8 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 
 /**
  * Keeps the inbox current (on push, with a slower poll as fallback; see
- * {@link useNotificationsInboxPush}), local-acks from a visible window or a Meet call, and handles
+ * {@link useNotificationsInboxPush}), local-acks from a visible window or a Meet call, shows a
+ * new row as a toast in the tab the user is looking at ({@link useNotificationToasts}), and handles
  * service-worker notification clicks. Hidden windows show no OS toast of their
  * own: the service-worker push is the only OS notification path. The bell UI lives in
  * AppSidebar — not a viewport overlay — so Meet (which shares that sidebar)

@@ -48,3 +48,16 @@ export function useJmapPushConnected(hub: JmapPushHubLike | null = defaultJmapPu
   const snapshot = useCallback(() => hub?.connected ?? false, [hub]);
   return useSyncExternalStore(subscribe, snapshot, () => false);
 }
+
+/**
+ * Tell this tab's push hub which screen the tab shows (path plus query), so
+ * news about that screen does not toast here (docs/architecture/notifications.md).
+ */
+export function useReportRouteToPushHub(
+  route: string,
+  hub: Pick<JmapPushHub, "setRoute"> | null = defaultJmapPushHub(),
+): void {
+  useEffect(() => {
+    hub?.setRoute(route);
+  }, [hub, route]);
+}

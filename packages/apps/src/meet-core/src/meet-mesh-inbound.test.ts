@@ -40,6 +40,44 @@ describe("acceptMeetMeshSender", () => {
   });
 });
 
+describe("acceptMeetMeshSender on a Team channel", () => {
+  const team: MeetChannel = {
+    id: "chat-grp-eng",
+    name: "eng",
+    kind: "channel",
+    scope: "group",
+    groupSlug: "eng",
+    members: ["alice", "bob"],
+  };
+
+  it("accepts a member's payload for a member", () => {
+    expect(
+      acceptMeetMeshSender("chat-grp-eng", "bob", new Set(["chat-grp-eng"]), {
+        channels: [team],
+        self: "alice",
+      }),
+    ).toBe(true);
+  });
+
+  it("drops a payload from a coworker outside the Team", () => {
+    expect(
+      acceptMeetMeshSender("chat-grp-eng", "carol", new Set(["chat-grp-eng"]), {
+        channels: [team],
+        self: "alice",
+      }),
+    ).toBe(false);
+  });
+
+  it("drops a payload when the receiver is not on the cached roster", () => {
+    expect(
+      acceptMeetMeshSender("chat-grp-eng", "bob", new Set(["chat-grp-eng"]), {
+        channels: [team],
+        self: "carol",
+      }),
+    ).toBe(false);
+  });
+});
+
 describe("meetMeshReceiveCallChannelId", () => {
   it("rewrites virtual DM ids onto the sender", () => {
     expect(meetMeshReceiveCallChannelId("dm:bob", "alice")).toBe("dm:alice");

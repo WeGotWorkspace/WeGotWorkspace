@@ -16,6 +16,8 @@ export class FollowerPresenceSession implements PresenceMeshSession {
 
   private selfPeerId: string | null = null;
 
+  private linkedPeerIds = new Set<string>();
+
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
   constructor(private readonly publishOut: (envelope: PresenceEnvelope, peerId?: string) => void) {}
@@ -27,6 +29,7 @@ export class FollowerPresenceSession implements PresenceMeshSession {
   async leave(): Promise<void> {
     this.peers = [];
     this.selfPeerId = null;
+    this.linkedPeerIds = new Set();
   }
 
   broadcast(envelope: PresenceEnvelope): void {
@@ -41,6 +44,11 @@ export class FollowerPresenceSession implements PresenceMeshSession {
     return this.peers;
   }
 
+  /** As the leader's mesh last reported it. */
+  isLinked(peerId: string): boolean {
+    return this.linkedPeerIds.has(peerId);
+  }
+
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -51,6 +59,7 @@ export class FollowerPresenceSession implements PresenceMeshSession {
   applyRoster(snapshot: PrincipalRosterSnapshot): void {
     this.peers = snapshot.peers;
     this.selfPeerId = snapshot.selfPeerId;
+    this.linkedPeerIds = new Set(snapshot.linkedPeerIds ?? []);
     this.emit({ type: "roster" });
   }
 

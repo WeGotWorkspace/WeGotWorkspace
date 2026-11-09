@@ -15,6 +15,7 @@ use App\Services\Mcp\McpRedirectUris;
 use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PassportKeyStore;
 use App\Services\Notify\MinishlinkWebPushSender;
+use App\Services\Notify\NotifiedRecipients;
 use App\Services\Notify\WebPushSender;
 use App\Support\CspFormActions;
 use App\Support\CspNonce;
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
         $this->app->singleton(WebPushSender::class, MinishlinkWebPushSender::class);
+        $this->app->singleton(NotifiedRecipients::class);
     }
 
     public function boot(): void

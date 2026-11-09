@@ -7,6 +7,7 @@ namespace Tests\Feature\Notify;
 use App\Models\Notification;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Jmap\JmapCapabilities;
+use App\Services\Notify\NotifiedRecipients;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use App\Support\WgwSettings;
 use Illuminate\Testing\TestResponse;
@@ -37,6 +38,8 @@ final class CollectionSharedNotifyTest extends WgwDatabaseTestCase
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/bob');
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/alice');
         app(InboxTaskListProvisioner::class)->ensureForPrincipal('principals/carol');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**
@@ -102,6 +105,61 @@ final class CollectionSharedNotifyTest extends WgwDatabaseTestCase
         $row = Notification::query()->where('principal', 'carol')->where('domain', $domain)->where('action', $action)->first();
         $this->assertNotNull($row);
         $this->assertSame($navigate, $row->navigate);
+    }
+
+    #[DataProvider('domainProvider')]
+    public function test_share_response_names_only_the_newly_notified_sharee(
+        string $domain,
+        string $_action,
+        string $_navigate,
+    ): void {
+        $this->assertSame('alice', $this->shareCollectionResponse($domain, 'alice')->headers->get(NotifiedRecipients::HEADER));
+        // A later request starts empty: alice is not named again (#1662).
+        $this->assertSame('carol', $this->shareCollectionResponse($domain, 'carol')->headers->get(NotifiedRecipients::HEADER));
+    }
+
+    #[DataProvider('domainProvider')]
+    public function test_revoke_response_names_nobody(
+        string $domain,
+        string $_action,
+        string $_navigate,
+    ): void {
+        $this->shareCollection($domain, 'alice');
+
+        $response = match ($domain) {
+            'notes' => $this->asUser('bob')->patchJson('/api/v1/notes/notebooks/'.$this->notebookId(), [
+                'shareWith' => ['alice' => null],
+            ]),
+            'tasks' => $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->taskListId(), [
+                'shareWith' => ['alice' => null],
+            ]),
+            default => $this->jmapAs('bob', [
+                ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => [
+                    'shareWith' => ['alice' => null],
+                ]]], 'c0'],
+            ]),
+        };
+
+        $response->assertOk()->assertHeaderMissing(NotifiedRecipients::HEADER);
+    }
+
+    private function shareCollectionResponse(string $domain, string $sharee): TestResponse
+    {
+        $grant = [$sharee => ['mayReadItems' => true]];
+
+        return match ($domain) {
+            'notes' => $this->asUser('bob')->patchJson('/api/v1/notes/notebooks/'.$this->notebookId(), [
+                'shareWith' => $grant,
+            ])->assertOk(),
+            'tasks' => $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->taskListId(), [
+                'shareWith' => $grant,
+            ])->assertOk(),
+            default => $this->jmapAs('bob', [
+                ['Calendar/set', ['accountId' => 'bob', 'update' => ['default' => [
+                    'shareWith' => $grant,
+                ]]], 'c0'],
+            ])->assertOk(),
+        };
     }
 
     private function shareCollection(string $domain, string $sharee): void

@@ -1,6 +1,6 @@
 # FileNode node-identity design (JMAP filenode, #439)
 
-> **Issue:** [#439](https://github.com/WeGotWorkspace/wegotworkspace/issues/439) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/450-jmap-envelope-filenode/`
+> **Issue:** [#439](https://github.com/WeGotWorkspace/wegotworkspace/issues/439) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/archive/2026/450-jmap-envelope-filenode/`
 > **External spec:** draft-ietf-jmap-filenode-14 (pinned) · **Depends on:** real blobs (#438, merged)
 >
 > Design gate for the files envelope build (chunk F). The build Task derives its acceptance criteria from this document.
@@ -37,7 +37,7 @@ New table **`jmap_file_nodes`** (wgw connection), maintained alongside the disk:
 
 Sequence source: a single-row counter table (`jmap_file_node_seq`) incremented in the same transaction as the row write — portable across SQLite/MySQL, totally ordered.
 
-**State string** = the counter value at read time (fits `JmapAccountStateCodec` conventions as a single opaque token; no per-collection map needed because the sequence is global). `FileNode/changes(sinceState)` = rows with `change_seq > since`, **filtered to the account's visible set** (decision 5), split into created (`created after since`), updated, destroyed (tombstones). Tombstones are pruned after a retention window (default 30 days); a `sinceState` older than the pruning horizon → `cannotCalculateChanges` (client refetches — same honesty as the other domains).
+**State string** = `<seq>.<grantHash>`: the counter value at read time and a 128-bit hash of the sorted `(grant id, access)` pairs of the account's live, visible member grants (`FileNodeSyncState`, #1926). Every FileNode method returns this form, including `FileNode/set` `oldState`/`newState`/`ifInState` and `FileNode/query` `queryState`. A `sinceState` whose `grantHash` differs from the current one, or a legacy all-digit state, → `cannotCalculateChanges`, because grants never appear in the sequence. `FileNode/changes(sinceState)` = rows with `change_seq > since`, **filtered to the account's visible set** (decision 5), split into created (`created after since`), updated, destroyed (tombstones). Tombstones are pruned after a retention window (default 30 days); a `sinceState` older than the pruning horizon → `cannotCalculateChanges` (client refetches — same honesty as the other domains).
 
 Ancestor renames do **not** bump descendants (`parent_node_id` links by id), so a folder rename is exactly one `updated` entry — the id-stability test from the spec folder.
 
@@ -70,7 +70,7 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 
 - the product trash directory `.Trash` (and its children). Drive “Move to Trash” is a FileNode create/move into that folder;
 - leftover on-disk `.notes` trees (personal and group) and `.archive` **only** when it lives under `.notes` may still be indexed as FileNodes during/after migration. They are **not** the Notes store. Drive children listings still omit `.notes` via `DriveService::isHiddenNotesPath`. Other `.archive` directories stay hidden.
-- **Notes left Drive:** FileNode no longer projects a `note` object. Notes are CalDAV VJOURNAL (`REST /notes/*` + vendor `urn:wgw:jmap:notes` on `POST /jmap`). See [notes.md](../../../docs/architecture/notes.md). There is no FileNode query/get/set under `.notes` and no Drive star for notes. `GET /files/shared-with-me?includeNotes=true` is a leftover Drive flag for old path grants, not a Notes client API.
+- **Notes left Drive:** FileNode no longer projects a `note` object. Notes are CalDAV VJOURNAL (`REST /notes/*` + vendor `urn:wgw:jmap:notes` on `POST /jmap`). See [notes.md](../../../../docs/architecture/notes.md). There is no FileNode query/get/set under `.notes` and no Drive star for notes. `GET /files/shared-with-me?includeNotes=true` is a leftover Drive flag for old path grants, not a Notes client API.
 
 ## Decision 5 — rights, visibility, and shared nodes
 

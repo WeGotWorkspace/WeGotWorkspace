@@ -24,6 +24,11 @@ import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduli
 import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
 import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
+import {
+  cachedCollectionAudience,
+  cachedItemAudience,
+  checkNowAfterWrite,
+} from "@/lib/offline/core/collection-check-now";
 
 /**
  * Calendar transport: the vendored jmap-client over the JMAP envelope
@@ -156,6 +161,7 @@ export async function createCalendarEventLive(
   const get = await calendars.getCalendarEvents(accountId, [created.id]);
   const event = get.list[0];
   if (!event) throw new Error("Created event could not be fetched");
+  checkNowAfterWrite([cachedCollectionAudience("calendars", Object.keys(event.calendarIds ?? {}))]);
   return event;
 }
 
@@ -164,6 +170,7 @@ export async function patchCalendarEventLive(
   patch: CalendarEventPatch,
   client?: JmapClient,
 ): Promise<JmapCalendarEvent> {
+  const before = cachedItemAudience("calendars", eventId);
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendarEvents({
     accountId,
@@ -172,12 +179,18 @@ export async function patchCalendarEventLive(
   const get = await calendars.getCalendarEvents(accountId, [eventId]);
   const event = get.list[0];
   if (!event) throw new Error("Updated event could not be fetched");
+  checkNowAfterWrite([
+    before,
+    cachedCollectionAudience("calendars", Object.keys(event.calendarIds ?? {})),
+  ]);
   return event;
 }
 
 export async function deleteCalendarEventLive(eventId: string, client?: JmapClient): Promise<void> {
+  const before = cachedItemAudience("calendars", eventId);
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendarEvents({ accountId, destroy: [eventId] });
+  checkNowAfterWrite([before]);
 }
 
 export async function createCalendarLive(
@@ -208,6 +221,7 @@ export async function patchCalendarLive(
   patch: CalendarPatch,
   client?: JmapClient,
 ): Promise<CalendarInfo> {
+  const before = cachedCollectionAudience("calendars", [calendarId]);
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendars({
     accountId,
@@ -216,16 +230,20 @@ export async function patchCalendarLive(
   const get = await calendars.getCalendars(accountId, [calendarId]);
   const calendar = get.list[0];
   if (!calendar) throw new Error("Updated calendar could not be fetched");
-  return toCalendarInfo(calendar);
+  const info = toCalendarInfo(calendar);
+  checkNowAfterWrite([before], info.shareWith);
+  return info;
 }
 
 export async function deleteCalendarLive(calendarId: string, client?: JmapClient): Promise<void> {
+  const before = cachedCollectionAudience("calendars", [calendarId]);
   const { calendars, accountId } = await connectedCalendars(client);
   await calendars.setCalendars({
     accountId,
     destroy: [calendarId],
     onDestroyRemoveEvents: true,
   });
+  checkNowAfterWrite([before]);
 }
 
 export class CalendarImportError extends Error {

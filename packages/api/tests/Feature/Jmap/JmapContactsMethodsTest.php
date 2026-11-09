@@ -25,6 +25,8 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
     {
         parent::setUp();
         $this->setUpContactsFixtures();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**

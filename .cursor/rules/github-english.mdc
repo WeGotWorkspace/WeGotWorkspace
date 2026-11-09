@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## Must be English
 
-- Specs and plans (`.agents/specs/**`, `.agents/plans/**`, `docs/plans/**`)
+- Specs and plans (`.agents/specs/**`, `.agents/plans/**`, `docs/archive/**`)
 - Documentation (`docs/**`, package docs, READMEs, skills)
 - GitHub issue titles and bodies (Goals, Epics, Tasks, Chores, Bugs)
 - GitHub issue comments, including automated comments

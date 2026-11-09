@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
-use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
+use App\Services\Teams\TeamColleagues;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\DAV\Xml\Element\Sharee;
 
@@ -18,7 +18,10 @@ use Sabre\DAV\Xml\Element\Sharee;
 final class CalendarShareInvites
 {
     public function __construct(
+        private readonly CalDavCollections $collections,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarPrincipalAddresses $addresses,
+        private readonly TeamColleagues $colleagues,
     ) {}
 
     public function canShare(CalendarInstance $instance, ?string $groupSlug): bool
@@ -51,8 +54,18 @@ final class CalendarShareInvites
         }
 
         $grants = [];
-        foreach ($this->calBackend()->getInvites($this->backendId($instance)) as $sharee) {
+        foreach ($this->backends->calBackend()->getInvites($this->collections->backendId($instance)) as $sharee) {
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER) {
+                continue;
+            }
+            // A grant hidden by Epic #1915 (the sharee no longer shares a Team with the owner)
+            // is left out; the row stays, and only revoke-all removes it.
+            if (is_string($sharee->principal)
+                && ! $this->colleagues->grantIsVisible((string) $instance->principaluri, $sharee->principal)) {
+                continue;
+            }
+            // An invite no principal matched grants nothing (Sabre marks it invalid).
+            if ((int) $sharee->inviteStatus === SharingPlugin::INVITE_INVALID) {
                 continue;
             }
             $id = $this->jmapIdForSharee($sharee);
@@ -65,22 +78,63 @@ final class CalendarShareInvites
         return $grants === [] ? null : $grants;
     }
 
-    public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith): void
+    /**
+     * `$caller` is the signed-in user. A sharee who shares no Team with the caller, or a Team
+     * the caller is not in, is refused exactly like an unknown principal (Epic #1915).
+     */
+    public function apply(CalendarInstance $instance, ?string $groupSlug, mixed $shareWith, string $caller): void
     {
         if (! $this->canShare($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
         }
 
-        $currentInvites = array_values($this->calBackend()->getInvites($this->backendId($instance)));
+        $currentInvites = array_values($this->backends->calBackend()->getInvites($this->collections->backendId($instance)));
         $sharees = $shareWith === null
             ? $this->revokeAllSharees($currentInvites)
-            : $this->shareesFromPatch($instance, $shareWith, $currentInvites);
+            : $this->shareesFromPatch($instance, $shareWith, $currentInvites, $caller);
 
         if ($sharees === []) {
             return;
         }
 
-        $this->calBackend()->updateInvites($this->backendId($instance), $sharees);
+        $backend = $this->backends->calBackend();
+        $backendId = $this->collections->backendId($instance);
+        $stale = $this->principalLessHrefsBeingGranted($currentInvites, $sharees);
+        if ($stale !== []) {
+            // Sabre updates a principal-less row in place and keeps it principal-less. Drop it
+            // first so the grant below inserts a fresh row carrying the principal.
+            $backend->updateInvites($backendId, array_map(
+                static fn (string $href): Sharee => new Sharee(['href' => $href, 'access' => SharingPlugin::ACCESS_NOACCESS]),
+                $stale,
+            ));
+        }
+        $backend->updateInvites($backendId, $sharees);
+    }
+
+    /**
+     * @param  list<Sharee>  $currentInvites
+     * @param  list<Sharee>  $sharees
+     * @return list<string>
+     */
+    private function principalLessHrefsBeingGranted(array $currentInvites, array $sharees): array
+    {
+        $granted = [];
+        foreach ($sharees as $sharee) {
+            if ((int) $sharee->access !== SharingPlugin::ACCESS_NOACCESS && is_string($sharee->principal)) {
+                $granted[(string) $sharee->href] = true;
+            }
+        }
+
+        $stale = [];
+        foreach ($currentInvites as $invite) {
+            $href = (string) $invite->href;
+            if (isset($granted[$href]) && (int) $invite->access !== SharingPlugin::ACCESS_SHAREDOWNER
+                && (! is_string($invite->principal) || $invite->principal === '')) {
+                $stale[$href] = $href;
+            }
+        }
+
+        return array_values($stale);
     }
 
     /**
@@ -107,7 +161,7 @@ final class CalendarShareInvites
      * @param  list<Sharee>  $currentInvites
      * @return list<Sharee>
      */
-    private function shareesFromPatch(CalendarInstance $instance, mixed $shareWith, array $currentInvites): array
+    private function shareesFromPatch(CalendarInstance $instance, mixed $shareWith, array $currentInvites, string $caller): array
     {
         if (! is_array($shareWith)) {
             throw new ApiHttpException(400, 'shareWith must be an object or null.', 'invalidProperties', ['shareWith']);
@@ -128,6 +182,13 @@ final class CalendarShareInvites
                 continue;
             }
             if ((string) $principal->uri === (string) $instance->principaluri) {
+                continue;
+            }
+            // An owner can always take access away from a sharee who already holds a grant.
+            $revokesExisting = $grant === null && $this->holdsInvite($currentInvites, (string) $principal->uri);
+            if (! $revokesExisting && ! $this->colleagues->mayShareWithPrincipalUri($caller, (string) $principal->uri)) {
+                $invalid[] = 'shareWith/'.$id;
+
                 continue;
             }
             if ($grant === null) {
@@ -159,6 +220,20 @@ final class CalendarShareInvites
         }
 
         return $sharees;
+    }
+
+    /**
+     * @param  list<Sharee>  $currentInvites
+     */
+    private function holdsInvite(array $currentInvites, string $principalUri): bool
+    {
+        foreach ($currentInvites as $invite) {
+            if ((string) $invite->principal === $principalUri) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -210,18 +285,5 @@ final class CalendarShareInvites
             'mayShare' => false,
             'mayDelete' => false,
         ];
-    }
-
-    /**
-     * @return array{0: int, 1: int}
-     */
-    private function backendId(CalendarInstance $instance): array
-    {
-        return [(int) $instance->calendarid, (int) $instance->id];
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

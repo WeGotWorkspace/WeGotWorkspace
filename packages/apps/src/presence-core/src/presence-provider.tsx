@@ -7,6 +7,7 @@ import {
   wgwIsGuestSession,
 } from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
+import { registerMeshCheckNowPort } from "@/lib/jmap-client/push/mesh-check-now";
 import { resolveRoomId } from "@/lib/rtc/room-id";
 import {
   decidePresenceJoinMode,
@@ -65,6 +66,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     let booting = false;
     let activeStore: PresenceStore | null = null;
+    let unregisterCheckNow: (() => void) | null = null;
     let recheckTimer: ReturnType<typeof setInterval> | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAttempt = 0;
@@ -119,6 +121,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         crossWindowLeader: true,
       });
       activeStore = presenceStore;
+      unregisterCheckNow = registerMeshCheckNowPort(presenceStore);
       presenceStore.start({
         username: session.user.username ?? "",
         displayName: session.user.displayName,
@@ -157,6 +160,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", onOnline);
       clearRetryTimer();
       if (recheckTimer !== null) clearInterval(recheckTimer);
+      unregisterCheckNow?.();
       if (activeStore) void activeStore.stop();
     };
   }, []);

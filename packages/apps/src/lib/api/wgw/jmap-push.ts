@@ -8,6 +8,11 @@ import {
 import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 import { EventSourceTransport } from "@/lib/jmap-client/push/event-source-transport";
 import { isPushMessage, JmapPushHub, type PushMessage } from "@/lib/jmap-client/push/jmap-push-hub";
+import {
+  MeshCheckNowTransport,
+  meshLinked,
+  subscribeMeshLinked,
+} from "@/lib/jmap-client/push/mesh-check-now";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
@@ -63,6 +68,25 @@ function documentVisibility() {
   };
 }
 
+/** When this window last got focus; a window focused at load counts from then. */
+function windowFocus() {
+  let focusedAt = document.hasFocus() ? Date.now() : 0;
+  const listeners = new Set<() => void>();
+  window.addEventListener("focus", () => {
+    focusedAt = Date.now();
+    for (const listener of listeners) listener();
+  });
+  return {
+    focusedAt: () => focusedAt,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 function randomTabId(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -83,6 +107,7 @@ function createHub(): JmapPushHub {
     topic: crossTabTopic<PushMessage>(CHANNEL, isPushMessage),
     locks: browserWebLocks(),
     visibility: documentVisibility(),
+    focus: windowFocus(),
     onPageHide: (listener) => {
       window.addEventListener("pagehide", listener);
       return () => window.removeEventListener("pagehide", listener);
@@ -100,11 +125,15 @@ function createHub(): JmapPushHub {
             subscribeBrowserOnline(() => listener(getConnectivitySnapshot())),
         },
         refreshAuth: wgwAwaitSessionRefreshForReconnect,
+        // A linked presence mesh carries colleagues' check-now; wait 5 s, not 3 s (#1943).
+        mesh: { linked: meshLinked, subscribe: subscribeMeshLinked },
         headers: (): Record<string, string> => {
           const browserId = readRtcBrowserId();
           return browserId ? { [BROWSER_ID_HEADER]: browserId } : {};
         },
       }),
+    // A peer's `check-now` reconnects the stream early (#1662).
+    wakeTransports: () => [new MeshCheckNowTransport()],
   });
 }
 

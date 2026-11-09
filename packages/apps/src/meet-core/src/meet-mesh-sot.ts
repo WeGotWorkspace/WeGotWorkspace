@@ -5,25 +5,15 @@
  * every hint we put on the principal presence mesh: apply (Dexie ingest) and
  * wrap (fan out after a successful local write). Payloads are untrusted —
  * `authorId` / reactor must match the signaling sender; the sender must be a
- * local ACL member (`shareWith` / group directory). Unknown channels are
- * dropped unless the kind is a `channel-changed` ping (then REST decides).
+ * reader on the channel's `members` roster. Unknown channels are
+ * dropped. Every successful write also sends the channel's members a
+ * content-free `check-now`, so their push hub asks the server at once (#1662).
  */
-import {
-  getChatChannel,
-  isMeetChatGone,
-  meetChatHttpStatus,
-  type WgwChatChannel,
-} from "@/lib/api/wgw/meet-chat";
-import {
-  ingestRemoteChatChannel,
-  ingestRemoteChatChannelDestroyed,
-  ingestRemoteChatMessage,
-} from "@/lib/offline/meet-chat-jmap-inbound";
+import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat-jmap-inbound";
 import {
   getCachedChatMessage,
   upsertChatMessageInCache,
 } from "@/lib/offline/meet-chat-offline-store";
-import { isMeetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
 import {
   acceptMeetMeshSender,
   applyMeetMeshChatMessage,
@@ -34,19 +24,10 @@ import {
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
 import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
-import {
-  presenceCallActiveEnvelope,
-  presenceNotifyHintEnvelope,
-} from "@/presence-core/src/presence-envelope";
+import { presenceCallActiveEnvelope } from "@/presence-core/src/presence-envelope";
 import type { PresenceEnvelope, PresenceMeetFanoutEvent } from "@/presence-core/src/presence-types";
 
 export type MeetMeshApplyResult = "applied" | "dropped";
-
-export type MeetMeshFetchChannel = (channelId: string) => Promise<WgwChatChannel>;
-
-function isForbidden(error: unknown): boolean {
-  return meetChatHttpStatus(error) === 403;
-}
 
 function receiveChannelId(channelId: string, senderUsername: string): string {
   return meetMeshReceiveChannelId(channelId, senderUsername);
@@ -160,24 +141,6 @@ async function applyReactionEvent(
   return result === "upserted" ? "applied" : "dropped";
 }
 
-async function applyChannelChanged(
-  username: string,
-  event: PresenceMeetFanoutEvent & { kind: "channel-changed" },
-  fetchChannel: MeetMeshFetchChannel,
-): Promise<MeetMeshApplyResult> {
-  const channelId = receiveChannelId(event.channel, event.senderUsername);
-  if (isMeetDirectMessageChannelId(channelId)) return "dropped";
-  try {
-    const wire = await fetchChannel(channelId);
-    await ingestRemoteChatChannel(username, wire);
-    return "applied";
-  } catch (error) {
-    if (!isMeetChatGone(error) && !isForbidden(error)) return "dropped";
-    await ingestRemoteChatChannelDestroyed(username, channelId);
-    return "applied";
-  }
-}
-
 /**
  * Apply one inbound Meet mesh event to the Dexie cache.
  * `call-active` is UI state (not Dexie) — the hook handles it.
@@ -187,7 +150,6 @@ export async function applyMeetMeshFanoutEvent(args: {
   event: PresenceMeetFanoutEvent;
   knownChannelIds: ReadonlySet<string>;
   acl?: MeetMeshChannelAcl;
-  fetchChannel?: MeetMeshFetchChannel;
 }): Promise<MeetMeshApplyResult> {
   const { username, event, knownChannelIds, acl } = args;
   if (event.kind === "call-active") return "dropped";
@@ -200,10 +162,7 @@ export async function applyMeetMeshFanoutEvent(args: {
   if (event.kind === "channel-message-destroy") {
     return applyDestroy(username, event, knownChannelIds, acl);
   }
-  if (event.kind === "channel-reaction") {
-    return applyReactionEvent(username, event, knownChannelIds, acl);
-  }
-  return applyChannelChanged(username, event, args.fetchChannel ?? getChatChannel);
+  return applyReactionEvent(username, event, knownChannelIds, acl);
 }
 
 function reactionIsOn(message: ChatMessage, emoji: string, authorId: string): boolean {
@@ -212,11 +171,16 @@ function reactionIsOn(message: ChatMessage, emoji: string, authorId: string): bo
 
 export type MeetMeshFanoutPort = {
   sendToUsernames: (usernames: readonly string[], envelope: PresenceEnvelope) => void;
+  /** Throttled, content-free `check-now` (#1662). */
+  sendCheckNow: (usernames: readonly string[]) => void;
   targetsFor: (channelId: string, snapshots?: readonly MeetChannel[]) => string[];
   resolveMessage: (messageId: string) => Promise<ChatMessage | undefined>;
 };
 
-/** Wrap chat operations so every successful write fans out the matching hint. */
+/**
+ * Wrap chat operations so every successful write fans out the matching preview
+ * (rule 9) and a `check-now`, which replaced `channel-changed` and `notify-hint`.
+ */
 export function wrapMeetChatOperationsWithMesh(
   operations: MeetChatOperations,
   selfUsername: string | null | undefined,
@@ -226,10 +190,12 @@ export function wrapMeetChatOperationsWithMesh(
   const self = selfUsername?.trim() ?? "";
   const send = (
     channelId: string,
-    envelope: PresenceEnvelope,
+    envelope: PresenceEnvelope | null,
     snapshots?: readonly MeetChannel[],
   ) => {
-    port.sendToUsernames(port.targetsFor(channelId, snapshots), envelope);
+    const targets = port.targetsFor(channelId, snapshots);
+    if (envelope) port.sendToUsernames(targets, envelope);
+    port.sendCheckNow(targets);
   };
 
   return {
@@ -242,7 +208,6 @@ export function wrapMeetChatOperationsWithMesh(
             kind: "channel-message",
             message: meetMeshChatMessageFromApp(saved),
           });
-          send(saved.channelId, presenceNotifyHintEnvelope("chat.message_posted"));
           return saved;
         }
       : undefined,
@@ -254,7 +219,6 @@ export function wrapMeetChatOperationsWithMesh(
             kind: "channel-message",
             message: meetMeshChatMessageFromApp(saved),
           });
-          send(saved.channelId, presenceNotifyHintEnvelope("chat.message_posted"));
           return saved;
         }
       : undefined,
@@ -289,44 +253,47 @@ export function wrapMeetChatOperationsWithMesh(
     react: operations.react
       ? async (messageId, emoji) => {
           const saved = await operations.react!(messageId, emoji);
-          if (self) {
-            send(saved.channelId, {
-              v: 1,
-              kind: "channel-reaction",
-              messageId: saved.id,
-              channel: saved.channelId,
-              emoji,
-              on: reactionIsOn(saved, emoji, self),
-            });
-          }
+          send(
+            saved.channelId,
+            self
+              ? {
+                  v: 1,
+                  kind: "channel-reaction",
+                  messageId: saved.id,
+                  channel: saved.channelId,
+                  emoji,
+                  on: reactionIsOn(saved, emoji, self),
+                }
+              : null,
+          );
           return saved;
         }
       : undefined,
     createChannel: operations.createChannel
       ? async (input) => {
           const created = await operations.createChannel!(input);
-          send(created.id, { v: 1, kind: "channel-changed", channel: created.id }, [created]);
+          send(created.id, null, [created]);
           return created;
         }
       : undefined,
     patchChannel: operations.patchChannel
       ? async (channelId, patch) => {
           const updated = await operations.patchChannel!(channelId, patch);
-          send(updated.id, { v: 1, kind: "channel-changed", channel: updated.id }, [updated]);
+          send(updated.id, null, [updated]);
           return updated;
         }
       : undefined,
     patchChannelShareWith: operations.patchChannelShareWith
       ? async (channelId, shareWith) => {
           const updated = await operations.patchChannelShareWith!(channelId, shareWith);
-          send(updated.id, { v: 1, kind: "channel-changed", channel: updated.id }, [updated]);
+          send(updated.id, null, [updated]);
           return updated;
         }
       : undefined,
     deleteChannel: operations.deleteChannel
       ? async (channelId) => {
           await operations.deleteChannel!(channelId);
-          send(channelId, { v: 1, kind: "channel-changed", channel: channelId });
+          send(channelId, null);
         }
       : undefined,
     startCall: operations.startCall

@@ -19,6 +19,8 @@ final class DocShareNotifyTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpDriveFixtures();
         $this->createDriveFile($this->userBearerToken(), '/users/bob', 'shared.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

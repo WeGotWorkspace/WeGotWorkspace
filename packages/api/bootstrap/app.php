@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureCalendarsEnabled;
 use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureMcpEnabled;
 use App\Http\Middleware\EnsureTasksEnabled;
+use App\Http\Middleware\ExposeNotifiedRecipients;
 use App\Http\Middleware\FilterMcpConsentScopes;
 use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
@@ -58,6 +59,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $schedule->command('wgw:notify:due-alarms')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:notify:vapid-sweep')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:rtc:prune')->hourly()->withoutOverlapping();
+        $schedule->command('wgw:availability:prune-cache')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: [
@@ -85,6 +87,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('api', [
             WgwSecurityHeaders::class,
+            // Names the users the caller's write notified, for a mesh check-now (#1662).
+            ExposeNotifiedRecipients::class,
         ]);
         // SDP must keep its trailing CRLF. TrimStrings would strip it on the way in,
         // and Chrome then refuses the Firefox offer (`invalid sdp line`).

@@ -22,6 +22,8 @@ final class DriveShareDeletedPrincipalTest extends WgwDatabaseTestCase
     {
         parent::setUp();
         $this->setUpDriveFixtures();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -100,6 +102,9 @@ final class DriveShareDeletedPrincipalTest extends WgwDatabaseTestCase
     {
         $admin = $this->adminBearerToken();
         $this->withBearer($admin)->postJson('/api/v1/admin/groups', ['name' => 'crew'])->assertOk();
+        // Epic #1915: carol may only share with Teams she is in.
+        $this->seedSharedTeam('crew', 'carol');
+        $this->seedSharedTeam('team', 'carol');
         $carolPath = $this->seedPrivateFile('carol', 'for-crew.md', 'carol body');
         $carolShareId = $this->memberShare($this->carolBearerToken(), $carolPath, [
             'groups/crew' => ['access' => 'view'],

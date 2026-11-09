@@ -17,13 +17,21 @@ export function markCommentThreadActive(
   setActiveThreadId(threadId);
 }
 
+/**
+ * `openThreads` is null while the Doc's thread list has not loaded: the marks
+ * are then left alone, since an empty list would strip every one of them.
+ */
+function syncMarksWhenLoaded(editor: Editor, openThreads: DocsCommentThread[] | null): void {
+  if (openThreads) syncPersistedCommentMarks(editor, openThreads);
+}
+
 export function activateCommentThreadInEditor(
   editor: Editor,
   threadId: string,
-  openThreads: DocsCommentThread[],
+  openThreads: DocsCommentThread[] | null,
   clickPos?: number,
 ): void {
-  syncPersistedCommentMarks(editor, openThreads);
+  syncMarksWhenLoaded(editor, openThreads);
 
   if (clickPos != null) {
     editor.commands.selectComment(threadId, { caretPos: clickPos });
@@ -42,10 +50,10 @@ export function activateCommentThreadInEditor(
 export function selectCommentThreadInEditor(
   editor: Editor,
   threadId: string,
-  openThreads: DocsCommentThread[],
+  openThreads: DocsCommentThread[] | null,
   openThreadIds: Set<string>,
 ): void {
-  syncPersistedCommentMarks(editor, openThreads);
+  syncMarksWhenLoaded(editor, openThreads);
 
   const { empty, $anchor } = editor.state.selection;
   const selectedMarkId = findCommentMarkIdInSelection(editor, { allowedIds: openThreadIds });

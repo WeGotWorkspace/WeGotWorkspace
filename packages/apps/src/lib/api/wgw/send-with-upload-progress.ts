@@ -1,14 +1,20 @@
+import { nudgeNotifiedUsers } from "@/lib/api/wgw/notified-header";
 import { fetchKeepaliveOnPageExit } from "@/lib/api/wgw/page-exit-keepalive";
 
 /** `RequestInit` for `wgwFetch`, plus the octets of the body sent so far. */
 export type WgwRequestInit = RequestInit & { onUploadProgress?: (sentBytes: number) => void };
 
-/** With `onUploadProgress`, sends so it can report it; otherwise as before. */
+/**
+ * With `onUploadProgress`, sends so it can report it; otherwise as before.
+ * Every response passes {@link nudgeNotifiedUsers}: a write that notified
+ * other users nudges them over the mesh (#1662).
+ */
 export function sendWgwRequest(url: string, init: WgwRequestInit): Promise<Response> {
   const { onUploadProgress, ...rest } = init;
-  return onUploadProgress
+  const sent = onUploadProgress
     ? sendWithUploadProgress(url, rest, onUploadProgress)
     : fetchKeepaliveOnPageExit(url, rest);
+  return sent.then(nudgeNotifiedUsers);
 }
 
 /**

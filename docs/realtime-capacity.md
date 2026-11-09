@@ -65,11 +65,16 @@ Set `PUSH_USER` and `PUSH_PASSWORD` to add push scenarios to the k6 script:
 
 `PUSH_ONLY=1` skips the real-time mix. With `WGW_JMAP_PUSH_SERVER_TIMING=1` on the server, every push response carries a `Server-Timing` header per state source; k6 reports those as `push_state_<source>_ms`.
 
+- `PUSH_USER` may list several accounts with the same `PUSH_PASSWORD` (`load1,load2,load3`); the browsers spread over them. Writes go to the first.
+- `PUSH_INTERVAL_MS` makes every browser reconnect at that interval instead of the server's `retry:`, as a browser with a linked presence mesh does (5000).
+- `FPM_STATUS_URL` points at the pool's `pm.status_path`; a sampler reads it four times a second and reports busy children as `fpm_busy_children` (the status request itself is subtracted).
+- Each browser starts at a random point in its interval, as real browsers do. Without that, every browser fires in the same millisecond and the pool sees bursts that no real install has.
+
 ```bash
 k6 run -e BASE_URL=https://example.test -e PUSH_USER=… -e PUSH_PASSWORD=… tools/load/rtc-shared-hosting.k6.js
 ```
 
-All browsers in the scenario share one account, so the per-account ceiling caps it at about 15 browsers at a 3-second retry (300 a minute). More browsers need more accounts.
+One account allows 300 push requests a minute, about 15 browsers at a 3-second interval, so more browsers need more accounts in `PUSH_USER`.
 
 ### Local measurement
 
@@ -87,6 +92,24 @@ Caveats:
 - The single PUT sits at a flat 200 ms in both runs, while the batch of 10 creates takes about 60 ms. That points to a local network artefact (such as delayed ACK) rather than the marker upsert, but it is not proven, and this number does not isolate the write-side cost.
 - The one failed request in the 12-browser run left no line in the server or application log; its cause is unknown.
 - `php -S` does not report busy workers, so the FPM busy-children share is not measured. At about 40 ms average, 12 browsers polling every 3 seconds (240 a minute) keep about 0.16 of one child busy (Little's law), roughly 3% of a 5-child pool.
+
+### 3 s or 5 s, by mesh state (#1943)
+
+A browser reconnects every 5 s instead of 3 s while its presence mesh has held a link ([architecture/jmap-push.md](architecture/jmap-push.md#interval-by-mesh-state)). Measured on 2026-11-05 on a developer laptop (Apple Silicon), with PHP-FPM this time: `pm = static`, `pm.max_children = 5`, OPcache on, SQLite, a near-empty data set, three accounts, `PUSH_ONLY=1`, 2 minutes per row. The Drive writers run in every row (12 single PUTs and 2 batches of 10 a minute), so busy children include them.
+
+| Browsers | Interval | Push requests per minute | Push median / p95 | Busy FPM children, average | Busy children, max |
+|---|---|---|---|---|---|
+| 5 | 3 s | 96 | 44 ms / 85 ms | 0.11 (2% of the pool) | 3 |
+| 5 | 5 s | 57 | 48 ms / 202 ms | 0.12 (2%) | 2 |
+| 16 | 3 s | 302 | 47 ms / 234 ms | 0.51 (10%) | 4 |
+| 16 | 5 s | 180 | 48 ms / 294 ms | 0.32 (6%) | 4 |
+| 32 | 3 s | 605 | 41 ms / 188 ms | 0.73 (15%) | 4 |
+| 32 | 5 s | 363 | 42 ms / 90 ms | 0.32 (6%) | 4 |
+
+- 5 s cuts push requests by 40% at every size. That is the saving on a host where every browser has a linked mesh; a browser without one keeps 3 s.
+- At 16 and 32 browsers the average busy children drop by 35–55%. At 5 browsers push is a small share next to the Drive writers, and the difference is within noise.
+- The median request stays at 41–48 ms. The p95 and the maximum move between runs without a pattern: other work on the laptop (load average about 7 during these runs) set them more than the interval did. They are not a result.
+- A first pass without the random start had all browsers in step: at 16 browsers and 3 s, p95 255 ms and 4 of 5 children busy at the 95th percentile, against an average of 0.35. Bursts, not the average, fill a small pool.
 
 **Still to do:** run the push scenario on a host with `pm.max_children = 5`, MySQL and a realistic data set, and record push p95, write p95 and busy children here.
 

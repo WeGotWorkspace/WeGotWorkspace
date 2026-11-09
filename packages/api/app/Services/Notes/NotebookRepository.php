@@ -7,9 +7,11 @@ namespace App\Services\Notes;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
+use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
@@ -19,10 +21,10 @@ use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV\Exception\BadRequest;
@@ -39,6 +41,7 @@ final class NotebookRepository
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
         private readonly WgwCalendarBackendFactory $backends,
+        private readonly CalDavCollections $collections,
         private readonly NotebookNotesRelocation $notesRelocation,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -46,11 +49,11 @@ final class NotebookRepository
     /** @return array<mixed> */
     public function list(string $username): array
     {
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
         $lists = $this->accessibleNotebookInstances($username)
             ->map(function (CalendarInstance $instance) use ($username): array {
-                $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+                $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
                 return $this->mapNotebook($username, $instance, $groupSlug);
             })
@@ -69,7 +72,7 @@ final class NotebookRepository
         }
 
         $groupSlug = CalendarCollectionUris::parseGroupNotebookApiId($notebookId)
-            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            ?? $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         return $this->mapNotebook($username, $instance, $groupSlug);
     }
@@ -106,7 +109,7 @@ final class NotebookRepository
                 (string) ($group->displayname ?? $groupSlug),
             );
         } else {
-            $principalUri = $this->principalUri($username);
+            $principalUri = $this->collections->principalUri($username);
         }
 
         $uri = $this->allocateNotebookUri(
@@ -164,7 +167,7 @@ final class NotebookRepository
 
             if ($mutations !== []) {
                 $propPatch = new PropPatch($mutations);
-                $this->backends->make()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $this->backends->make()->updateCalendar($this->collections->backendId($instance), $propPatch);
                 $propPatch->commit();
             }
 
@@ -178,7 +181,7 @@ final class NotebookRepository
             $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
             $instance->refresh();
-            $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
             return $this->mapNotebook($username, $instance, $groupSlug);
         });
@@ -209,7 +212,7 @@ final class NotebookRepository
             $instance,
             $options,
             fn (string $id): ?CalendarInstance => $this->findAccessibleNotebook($username, $id),
-            fn () => $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance)),
+            fn () => $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance)),
         );
 
         return ['ok' => true];
@@ -222,7 +225,7 @@ final class NotebookRepository
      */
     public function notebookSyncTokens(string $username): array
     {
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
         $tokens = [];
         $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {
@@ -235,43 +238,13 @@ final class NotebookRepository
     /** @return array<mixed> */
     public function changes(string $username, ?string $since): array
     {
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
-        $instances = $this->accessibleNotebookInstances($username);
+        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $currentState = $this->computeInstancesState($instances);
-        $previous = $this->parseInstancesState($since);
-
-        if ($since === null || $since === '' || $since === '0') {
-            return ['oldState' => '0', 'newState' => $currentState, 'created' => $this->apiIdsForInstances($instances), 'updated' => [], 'destroyed' => []];
-        }
-        if ($since === $currentState) {
-            return ['oldState' => $since, 'newState' => $currentState, 'created' => [], 'updated' => [], 'destroyed' => []];
-        }
-        if ($previous === null) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
-        }
-
-        $currentMap = [];
-        foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
-        }
-        $created = [];
-        $updated = [];
-        foreach ($currentMap as $uri => $token) {
-            if (! array_key_exists($uri, $previous)) {
-                $created[] = $uri;
-            } elseif ($previous[$uri] !== $token) {
-                $updated[] = $uri;
-            }
-        }
-        $destroyed = [];
-        foreach (array_keys($previous) as $uri) {
-            if (! array_key_exists($uri, $currentMap)) {
-                $destroyed[] = $uri;
-            }
-        }
-
-        return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
+        return $this->collections->changes(
+            $this->accessibleNotebookInstances($username),
+            $since,
+            fn (CalendarInstance $instance): string => $this->apiIdForInstance($instance),
+        );
     }
 
     /**
@@ -334,7 +307,7 @@ final class NotebookRepository
 
     public function apiIdForInstance(CalendarInstance $instance): string
     {
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+        $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
         if ($groupSlug !== null) {
             $uri = (string) $instance->uri;
             if ($uri === CalendarCollectionUris::groupNotebookCalDavUri($groupSlug)) {
@@ -356,7 +329,7 @@ final class NotebookRepository
         }
 
         $groupSlug = CalendarCollectionUris::parseGroupNotebookApiId($notebookId)
-            ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            ?? $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         return [$instance, $groupSlug];
     }
@@ -377,7 +350,7 @@ final class NotebookRepository
         mixed $requested,
     ): void {
         $this->assertOwnerTransferAllowed($instance, $currentGroupSlug);
-        $newGroupSlug = $this->normalizePatchGroupSlug($requested);
+        $newGroupSlug = $this->collections->normalizePatchGroupSlug($requested);
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
@@ -409,38 +382,13 @@ final class NotebookRepository
         }
     }
 
-    private function normalizePatchGroupSlug(mixed $requested): ?string
-    {
-        if ($requested !== null && ! is_string($requested)) {
-            throw new ApiHttpException(400, 'groupSlug must be a string or null.', 'invalidProperties');
-        }
-
-        $groupSlug = is_string($requested) ? trim($requested) : null;
-
-        return $groupSlug === '' ? null : $groupSlug;
-    }
-
     private function principalUriForOwnerScope(
         string $username,
         CalendarInstance $instance,
         ?string $groupSlug,
     ): string {
-        if ($groupSlug === null) {
-            return $this->principalUri($username);
-        }
-        if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-            throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
-        }
-        $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
-        $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
-        if ($group === null) {
-            throw new ApiHttpException(404, 'Group not found.', 'not_found');
-        }
-        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
-            (string) $group->uri,
-            (string) ($group->displayname ?? $groupSlug),
-        );
-        if ((string) $instance->uri === CalendarCollectionUris::groupNotebookCalDavUri($groupSlug)) {
+        $principalUri = $this->collections->ownerScopePrincipalUri($username, $groupSlug);
+        if ($groupSlug !== null && (string) $instance->uri === CalendarCollectionUris::groupNotebookCalDavUri($groupSlug)) {
             throw new ApiHttpException(409, 'Notebook id already exists.', 'alreadyExists');
         }
 
@@ -501,48 +449,6 @@ final class NotebookRepository
         return $candidate;
     }
 
-    /** @param iterable<CalendarInstance> $instances */
-    private function computeInstancesState(iterable $instances): string
-    {
-        $parts = [];
-        foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
-        }
-
-        return (string) count($parts).':'.implode(',', $parts);
-    }
-
-    /** @return array<mixed> */
-    private function parseInstancesState(?string $state): ?array
-    {
-        if ($state === null || $state === '' || $state === '0') {
-            return [];
-        }
-        if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
-            return null;
-        }
-        $entries = explode(',', $matches[2]);
-        if (count($entries) !== (int) $matches[1]) {
-            return null;
-        }
-        $map = [];
-        foreach ($entries as $entry) {
-            $parts = explode(':', $entry, 2);
-            if (count($parts) !== 2 || $parts[0] === '' || ! ctype_digit($parts[1])) {
-                return null;
-            }
-            $map[$parts[0]] = (int) $parts[1];
-        }
-
-        return $map;
-    }
-
-    /** @return array<mixed> */
-    private function calBackendCalendarId(CalendarInstance $instance): array
-    {
-        return [(int) $instance->calendarid, (int) $instance->id];
-    }
-
     private function notifyCollectionShare(
         string $username,
         CalendarInstance $instance,
@@ -554,6 +460,7 @@ final class NotebookRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;
@@ -649,40 +556,15 @@ final class NotebookRepository
         ];
     }
 
-    /**
-     * @return list<CalendarInstance>
-     */
-    private function groupNotebookInstances(string $groupSlug): array
+    /** @param  Builder<Calendar>  $query */
+    private static function notebooks(Builder $query): void
     {
-        $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
-        $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
-        if ($group === null) {
-            return [];
-        }
-
-        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
-            (string) $group->uri,
-            (string) ($group->displayname ?? $groupSlug),
-        );
-
-        return array_values(CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $groupUri)
-            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::Notebook))
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get()
-            ->all());
+        $query->ofKind(CollectionKind::Notebook);
     }
 
     private function findNotebookInstance(string $principalUri, string $notebookUri): ?CalendarInstance
     {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $principalUri)
-            ->where('uri', $notebookUri)
-            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::Notebook))
-            ->first();
+        return $this->collections->findInstance($principalUri, $notebookUri, self::notebooks(...));
     }
 
     /**
@@ -717,47 +599,10 @@ final class NotebookRepository
 
     private function ensureGroupNotebookInstance(string $groupSlug): ?CalendarInstance
     {
-        foreach ($this->groupNotebookInstances($groupSlug) as $instance) {
-            if ((string) $instance->uri === CalendarCollectionUris::groupNotebookCalDavUri($groupSlug)) {
-                return $instance;
-            }
-        }
-
-        return null;
-    }
-
-    private function groupSlugFromPrincipalUri(string $principalUri): ?string
-    {
-        if (! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
-            return null;
-        }
-
-        $slug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
-
-        return $slug !== '' ? $slug : null;
-    }
-
-    /**
-     * @param  iterable<CalendarInstance>  $instances
-     * @return list<string>
-     */
-    private function apiIdsForInstances(iterable $instances): array
-    {
-        $ids = [];
-        foreach ($instances as $instance) {
-            $ids[] = $this->apiIdForInstance($instance);
-        }
-
-        return $ids;
-    }
-
-    private function principalUri(string $username): string
-    {
-        return 'principals/'.$username;
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
+        return $this->collections->findGroupInstance(
+            $groupSlug,
+            CalendarCollectionUris::groupNotebookCalDavUri($groupSlug),
+            self::notebooks(...),
+        );
     }
 }

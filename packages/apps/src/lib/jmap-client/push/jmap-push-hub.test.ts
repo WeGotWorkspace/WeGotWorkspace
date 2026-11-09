@@ -44,6 +44,23 @@ function visibility(initial = true) {
   };
 }
 
+/** Window focus for a fake tab; `focus(at)` is the user clicking into it at time `at`. */
+function windowFocus() {
+  const listeners = new Set<() => void>();
+  let focusedAt = 0;
+  return {
+    focusedAt: () => focusedAt,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    focus(at: number) {
+      focusedAt = at;
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
 function browser() {
   const locks = new FakeWebLocks();
   const bus = new FakeCrossTabBus<PushMessage>();
@@ -54,11 +71,13 @@ function browser() {
     opts: { visible?: boolean; wakeTransports?: () => PushTransport[]; noLocks?: boolean } = {},
   ) => {
     const view = visibility(opts.visible ?? true);
+    const focus = windowFocus();
     const hub = new JmapPushHub({
       tabId,
       topic: bus.topic(),
       locks: opts.noLocks ? null : locks.client(tabId),
       visibility: view,
+      focus,
       createEventSource: (ctx) => {
         const stream: FakeEventSource = {
           ctx,
@@ -82,7 +101,7 @@ function browser() {
       wakeTransports: opts.wakeTransports,
     });
     hubs.push(hub);
-    return { hub, view };
+    return { hub, view, focus };
   };
   const live = () => streams.filter((stream) => !stream.stopped);
   return { locks, bus, streams, live, tab, hubs };
@@ -570,6 +589,111 @@ describe("JmapPushHub", () => {
       b.live()[0]!.ctx.onStatus(true);
       leave();
       expect(a.hub.connected).toBe(false);
+    });
+  });
+
+  describe("front tab", () => {
+    const front = async (...tabs: Array<{ hub: JmapPushHub }>) =>
+      Promise.all(tabs.map(async (tab) => (await tab.hub.frontTab())?.tabId ?? null));
+
+    it("elects the most recently focused visible tab, the same one in every tab", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      a.focus.focus(100);
+      c.focus.focus(200);
+      await settle();
+      expect(await front(a, c)).toEqual(["c", "c"]);
+      expect((await c.hub.frontTab())?.self).toBe(true);
+      expect((await a.hub.frontTab())?.self).toBe(false);
+
+      a.focus.focus(300);
+      await settle();
+      expect(await front(a, c)).toEqual(["a", "a"]);
+    });
+
+    it("a tab that joins later learns the others' focus at once", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+      c.focus.focus(200);
+      await settle();
+      // "a" opens in the background: it never had focus, and "c" publishes nothing new.
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(await front(a, c)).toEqual(["c", "c"]);
+    });
+
+    it("never elects a hidden tab, and elects none when every tab is hidden", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      a.focus.focus(100);
+      c.focus.focus(200);
+      c.view.set(false);
+      await settle();
+      expect(await front(a, c)).toEqual(["a", "a"]);
+
+      a.view.set(false);
+      await settle();
+      expect(await front(a, c)).toEqual([null, null]);
+    });
+
+    it("drops a tab that closed or crashed", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      const d = b.tab("d");
+      const leaveC = c.hub.subscribe(["Note"], vi.fn());
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), d.hub.subscribe(["Note"], vi.fn()));
+      a.focus.focus(100);
+      c.focus.focus(300);
+      d.focus.focus(200);
+      await settle();
+      expect(await front(a)).toEqual(["c"]);
+
+      leaveC();
+      await settle();
+      expect(await front(a, d)).toEqual(["d", "d"]);
+
+      b.locks.crash("d");
+      await settle();
+      expect(await front(a)).toEqual(["a"]);
+    });
+
+    it("carries the route each tab reported", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      c.hub.setRoute("/meet/dms/bob");
+      c.focus.focus(200);
+      a.hub.setRoute("/docs");
+      a.focus.focus(100);
+      await settle();
+      expect(await a.hub.frontTab()).toEqual({
+        tabId: "c",
+        self: false,
+        focusedAt: 200,
+        route: "/meet/dms/bob",
+      });
+
+      c.hub.setRoute("/calendar");
+      await settle();
+      expect((await a.hub.frontTab())?.route).toBe("/calendar");
+    });
+
+    it("without Web Locks knows only this tab", async () => {
+      const b = browser();
+      const a = b.tab("a", { noLocks: true });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      a.hub.setRoute("/tasks");
+      expect(await a.hub.frontTab()).toMatchObject({ tabId: "a", self: true, route: "/tasks" });
+      a.view.set(false);
+      expect(await a.hub.frontTab()).toBeNull();
     });
   });
 

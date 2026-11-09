@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
@@ -15,7 +16,6 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
@@ -31,12 +31,14 @@ use Sabre\VObject\Reader;
 final class CalendarSchedulingService
 {
     public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarPrincipalAddresses $addresses,
         private readonly SearchIndexerService $searchIndexer,
         private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly CalendarImipService $imip,
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
+        private readonly CalendarSchedulingReach $reach,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -80,7 +82,7 @@ final class CalendarSchedulingService
      */
     public function withOrganizer(string $username, array $event): array
     {
-        $event = $this->canonicalizeLocalParticipants($event);
+        $event = $this->canonicalizeLocalParticipants($username, $event);
         $participants = $event['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
             return $event;
@@ -120,12 +122,13 @@ final class CalendarSchedulingService
     /**
      * Rewrite local participants to a stable calendar-user address (usable
      * email or username) so Broker + inbox matching do not depend on a
-     * valid mailbox.
+     * valid mailbox. A typed address of someone outside the writer's Teams
+     * stays as typed: that person is invited like an external guest (#1923).
      *
      * @param  array<string, mixed>  $event
      * @return array<string, mixed>
      */
-    private function canonicalizeLocalParticipants(array $event): array
+    private function canonicalizeLocalParticipants(string $username, array $event): array
     {
         $participants = $event['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
@@ -141,7 +144,7 @@ final class CalendarSchedulingService
                 continue;
             }
             $principal = $this->addresses->principalForMailto($email);
-            if ($principal === null) {
+            if ($principal === null || ! $this->reach->mayCanonicalise($username, $this->usernameOf($principal))) {
                 continue;
             }
             $canonical = $this->addresses->canonicalCalendarUserAddress($principal);
@@ -314,7 +317,8 @@ final class CalendarSchedulingService
     private function deliver(string $username, Message $message): void
     {
         $recipient = $this->addresses->principalForMailto((string) $message->recipient);
-        if ($recipient === null) {
+        if ($recipient === null
+            || ! $this->reach->deliversLocally($username, $this->usernameOf($recipient), (string) $message->method)) {
             $this->imip->deliver($username, $message);
 
             return;
@@ -325,6 +329,13 @@ final class CalendarSchedulingService
         }
 
         $this->deliverLocal($username, $message, (string) $recipient->uri);
+    }
+
+    private function usernameOf(Principal $principal): string
+    {
+        $uri = (string) $principal->uri;
+
+        return str_starts_with($uri, 'principals/') ? substr($uri, strlen('principals/')) : $uri;
     }
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
@@ -383,7 +394,7 @@ final class CalendarSchedulingService
             $method === 'REQUEST' ? (string) $message->sender : null,
         );
 
-        $caldav = $this->calBackend();
+        $caldav = $this->backends->calBackend();
         $objectUri = 'sabredav-'.Str::uuid()->toString().'.ics';
         $payload = $message->message->serialize();
         $caldav->createSchedulingObject($principalUri, $objectUri, $payload);
@@ -469,7 +480,7 @@ final class CalendarSchedulingService
         $raw = is_string($object->calendardata) && $object->calendardata !== '' ? $object->calendardata : null;
         $newObject = (new Broker)->processMessage($message, $this->objects->parse($object));
 
-        $caldav = $this->calBackend();
+        $caldav = $this->backends->calBackend();
         $calendarId = [(int) $instance->calendarid, (int) $instance->id];
         if (($raw !== null && $this->isTentativeInviteCopy($raw, $principalUri)) || $newObject === null) {
             $caldav->deleteCalendarObject($calendarId, (string) $object->uri);
@@ -564,7 +575,7 @@ final class CalendarSchedulingService
         if ($uid === '') {
             return;
         }
-        $caldav = $this->calBackend();
+        $caldav = $this->backends->calBackend();
         foreach ($caldav->getSchedulingObjects($principalUri) as $row) {
             $data = is_string($row['calendardata'] ?? null) ? $row['calendardata'] : '';
             if ($data === '' || ! str_contains($data, $uid)) {
@@ -650,10 +661,5 @@ final class CalendarSchedulingService
             $davPath,
             $username,
         );
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

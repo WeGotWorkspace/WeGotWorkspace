@@ -250,7 +250,6 @@ function MeetChatLiveWorkspace({
     username: session.user.username ?? null,
     selfUsername: session.user.username,
     channels,
-    directory: data.directory,
     onApplied: patchFromCache,
   });
 

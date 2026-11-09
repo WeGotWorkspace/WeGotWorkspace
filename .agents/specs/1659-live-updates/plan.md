@@ -8,7 +8,7 @@ Ship JMAP Push in short-burst form on the existing per-user states, one push hub
 
 ## Budget
 
-Draws from the shared-hosting request budget in `docs/realtime-capacity.md` (5 PHP-FPM workers, shared with signaling): about 20 push requests per minute per open browser at a 3 s retry. Displaces, once measured, most of the per-app polls (Notes, Contacts and Calendar every 10 s, Meet chat every 4 s, inbox every 15 s), which are heavier requests.
+Draws from the shared-hosting request budget in `docs/realtime-capacity.md` (5 PHP-FPM workers, shared with signaling): about 20 push requests per minute per open browser at a 3 s retry, and 12 while its presence mesh is linked (5 s, #1943). Displaces, once measured, most of the per-app polls (Notes, Contacts and Calendar every 10 s, Meet chat every 4 s, inbox every 15 s), which are heavier requests.
 
 ## Non-goals
 

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Chat;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use Illuminate\Support\Facades\DB;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 /**
  * Object-level changes for one chat collection on top of Sabre's
@@ -26,6 +25,10 @@ final class ChatChangesFeed
 {
     public const DEFAULT_LIMIT = 200;
 
+    public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
+    ) {}
+
     /**
      * @return array{oldState: string, newState: string, created: list<string>, updated: list<string>, destroyed: list<string>, hasMoreChanges: bool}
      */
@@ -34,7 +37,7 @@ final class ChatChangesFeed
         $syncToken = $this->normalizeSyncToken($since);
 
         // Sabre's PDO backend treats a falsy token as the initial sync.
-        $changes = $this->calBackend()->getChangesForCalendar(
+        $changes = $this->backends->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
             $syncToken === null ? '0' : (string) $syncToken,
             1,
@@ -109,10 +112,5 @@ final class ChatChangesFeed
         }
 
         return array_values(array_unique($uids));
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

@@ -3,7 +3,6 @@ import { useEditor, type Editor, type UseEditorOptions } from "@tiptap/react";
 import { isChangeOrigin } from "@tiptap/extension-collaboration";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
-import { cn } from "@/lib/utils";
 import { type TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import {
@@ -17,7 +16,7 @@ import { getCommentMarkIdFromTarget } from "@/text-editor-core/src/text-editor-c
 import { isLiveEditor } from "@/text-editor-core/src/text-editor-live";
 import { getTrackChangeIdFromTarget } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
-import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
+import { TextEditorFrame } from "@/text-editor-core/src/text-editor-frame";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
@@ -274,40 +273,22 @@ export function DocsCollabEditor({
     />
   );
 
-  const formatLabel = format === "markdown" ? "Markdown" : format === "text" ? "Text" : "HTML";
-
   return (
-    <div
-      className={cn(
-        "text-editor flex w-full flex-col",
-        sheetFill ? "h-full min-h-0 flex-1" : "h-full w-full",
-        viewSource && "text-editor--view-source",
-        className,
-      )}
-      data-paper={pageSetup?.format}
-    >
-      {viewSource ? (
-        <div className="text-editor__body min-h-0 flex-1">
-          <TextEditorSource
-            value={sourceValue}
-            onChange={onSourceChange}
-            onFocus={onSourceFocus}
-            onBlur={onSourceBlur}
-            editable={editable}
-            formatLabel={formatLabel}
-            className="text-editor__source min-h-0"
-          />
-          <div className="text-editor__formatted flex min-h-0 flex-1 flex-col">
-            {formatBarElement}
-            {sheetElement}
-          </div>
-        </div>
-      ) : (
-        <>
-          {formatBarElement}
-          {sheetElement}
-        </>
-      )}
-    </div>
+    <TextEditorFrame
+      format={format}
+      pageSetup={pageSetup}
+      sheetFill={sheetFill}
+      viewSource={viewSource}
+      source={{
+        value: sourceValue,
+        onChange: onSourceChange,
+        onFocus: onSourceFocus,
+        onBlur: onSourceBlur,
+        editable,
+      }}
+      formatBar={formatBarElement}
+      sheet={sheetElement}
+      className={className}
+    />
   );
 }

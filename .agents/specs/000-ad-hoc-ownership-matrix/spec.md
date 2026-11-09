@@ -107,7 +107,7 @@ A sharee who calls share management on a share granted to them gets 403 `forbidd
 
 These rows follow a product decision instead of the default denial:
 
-- **Share directory:** `GET /files/shares/principals` lists every user and group of the instance, for every signed-in actor. It is a directory for picking share targets, not a read of their data.
+- **Share directory:** `GET /files/shares/principals` lists the people who share a Team with the caller and the caller's own Teams, admins included (#1918). Anyone else is left out of a 200 response, so the matrix records those rows as not found. It is a directory for picking share targets, not a read of their data.
 - **Drive roots:** `GET /files/children` on `/users` and `/groups` lists every home and group drive, for the same reason. Each entry's `myRights` are the caller's own rights on it, so another owner's entry shows no rights. Its contents stay denied as not found.
 - **Invisible parent in JMAP:** `FileNode/set` that creates under, or moves into, a folder the caller cannot see rejects the create or update with `invalidProperties` (RFC 8620 §5.3), not `notFound`.
 - **Push endpoints:** registering a push endpoint that another account registered creates a separate record for the caller. Deleting by that endpoint removes only the caller's own record. Neither touches the other account's subscription.
