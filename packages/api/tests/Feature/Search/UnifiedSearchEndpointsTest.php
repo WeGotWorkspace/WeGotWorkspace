@@ -148,6 +148,67 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         ], $keys);
     }
 
+    public function test_unified_search_file_results_carry_the_file_node_id_in_one_query(): void
+    {
+        $storage = app(WgwStorage::class);
+        foreach (['one', 'two', 'three', 'four'] as $name) {
+            $storage->files()->put("users/alice/{$name}.md", "# {$name}");
+        }
+        $this->reindexAll();
+
+        $token = $this->issueBearerToken();
+        $connection = DB::connection('wgw');
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+        $response = $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file'],
+                'extensions' => ['md'],
+                'categories' => ['document'],
+                'limit' => 50,
+            ]));
+        $nodeQueries = array_filter(
+            $connection->getQueryLog(),
+            static fn (array $query): bool => str_contains((string) $query['query'], 'jmap_file_nodes'),
+        );
+        $connection->disableQueryLog();
+
+        $response->assertOk();
+        $results = (array) $response->json('data.results');
+        $this->assertCount(4, $results);
+        // One batched lookup for the page, not one per row.
+        $this->assertCount(1, $nodeQueries);
+        foreach ($results as $result) {
+            $this->assertMatchesRegularExpression('/^fn-[0-9a-f]{32}$/', (string) $result['nodeId']);
+            // The same id `/files/node` answers for the path.
+            $this->withBearer($token)
+                ->getJson('/api/v1/files/node?path='.rawurlencode('/'.$result['sourceKey']))
+                ->assertOk()
+                ->assertJsonPath('data.id', $result['nodeId']);
+        }
+    }
+
+    public function test_unified_search_leaves_node_id_out_for_a_file_the_index_does_not_know(): void
+    {
+        app(WgwStorage::class)->files()->put('users/alice/indexed.md', '# Indexed');
+        $this->reindexAll();
+        // The search row stays, but its FileNode is gone (an out-of-band delete before a reindex).
+        DB::connection('wgw')->table('jmap_file_nodes')
+            ->where('storage_key', 'users/alice/indexed.md')
+            ->delete();
+
+        $response = $this->withBearer($this->issueBearerToken())
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file'],
+                'extensions' => ['md'],
+                'categories' => ['document'],
+                'limit' => 50,
+            ]));
+
+        $response->assertOk()->assertJsonPath('data.results.0.sourceKey', 'users/alice/indexed.md');
+        $this->assertArrayNotHasKey('nodeId', (array) $response->json('data.results.0'));
+    }
+
     public function test_unified_search_browse_paginates_with_offset_and_has_more(): void
     {
         $storage = app(WgwStorage::class);

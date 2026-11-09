@@ -2,9 +2,11 @@ import { expect, test, type Page } from "./helpers/live-test";
 import {
   appendToActiveDocBody,
   blockReachabilityAndApi,
+  docsHomeRow,
   docTokenOnServer,
   docsUrlForFile,
   expectEditorContains,
+  gotoDocsHome,
   loginToDocs,
   myDriveDocSearchPath,
   restoreNetwork,
@@ -100,6 +102,55 @@ test.describe("Docs open by id (live app)", () => {
     await expect(second).toHaveTitle(/moved/, { timeout: 30_000 });
     await expectEditorContains(second, `Tab ${stamp}`);
     await second.close();
+  });
+
+  test("a Docs home row opens straight by id, without a path lookup", async ({ page }) => {
+    const stamp = Date.now();
+    const fileName = `e2e-row-${stamp}.md`;
+    const apiPath = `/${myDriveDocSearchPath(fileName)}`;
+    await loginToDocs(page);
+    await seedDocAtPath(apiPath, `# Row ${stamp}\n\nOpened from the list.\n`);
+    await gotoDocsHome(page);
+    const row = docsHomeRow(page, fileName);
+    await expect(row).toBeVisible({ timeout: 30_000 });
+
+    const nodeLookups: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/api/v1/files/node")) {
+        nodeLookups.push(request.url());
+      }
+    });
+    // Record every route URL the SPA sets and whether the wait screen ever shows (#1976).
+    await page.evaluate((waitSelector) => {
+      const w = window as unknown as { __docsUrls: string[]; __sawOpening: boolean };
+      w.__docsUrls = [];
+      w.__sawOpening = false;
+      for (const method of ["pushState", "replaceState"] as const) {
+        const original = history[method].bind(history);
+        history[method] = (data, unused, url) => {
+          if (url) w.__docsUrls.push(String(url));
+          original(data, unused, url);
+        };
+      }
+      // The "Opening document…" frame; its text stays hidden for the first 400 ms.
+      new MutationObserver(() => {
+        if (document.querySelector(waitSelector)) w.__sawOpening = true;
+      }).observe(document.body, { childList: true, subtree: true });
+    }, ".docs-route-status--loading");
+
+    await row.dblclick();
+
+    await expect(page).toHaveURL(ID_URL, { timeout: 30_000 });
+    await expectEditorContains(page, `Row ${stamp}`);
+    const { urls, sawOpening } = await page.evaluate(() => {
+      const w = window as unknown as { __docsUrls: string[]; __sawOpening: boolean };
+      return { urls: w.__docsUrls, sawOpening: w.__sawOpening };
+    });
+    const docsUrls = urls.filter((url) => url.includes("/docs?"));
+    expect(docsUrls[0]).toMatch(ID_URL);
+    expect(docsUrls.some((url) => url.includes("file="))).toBe(false);
+    expect(sawOpening).toBe(false);
+    expect(nodeLookups).toEqual([]);
   });
 
   test("an unknown id shows not found with a way back", async ({ page }) => {
