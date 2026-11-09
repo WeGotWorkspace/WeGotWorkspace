@@ -50,7 +50,13 @@ export function useSelectableListState({
           setSelectionRange(id, id);
         } else {
           const [start, end] = a < b ? [a, b] : [b, a];
-          setSelectedIds(visibleIds.slice(start, end + 1));
+          const range = visibleIds.slice(start, end + 1);
+          // In selection mode the range adds to rows picked before, as a Cmd-click would.
+          setSelectedIds(
+            selectionMode
+              ? [...selectedIds, ...range.filter((x) => !selectedIds.includes(x))]
+              : range,
+          );
           // The anchor stays; the clicked row is the end Shift+Arrow moves on from.
           setRangeEndId(id);
         }
