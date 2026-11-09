@@ -74,7 +74,8 @@
 }
 
 .docs-suggestion-card__accept {
-  --workspace-accent: var(--docs-accept-bg, oklch(0.72 0.19 150));
+  /* Dark enough for the white label to reach 4.5:1. */
+  --workspace-accent: var(--docs-accept-bg, oklch(0.52 0.14 150));
   --workspace-accent-foreground: var(--docs-accept-fg, oklch(0.99 0 0));
   font-weight: 600;
 }
