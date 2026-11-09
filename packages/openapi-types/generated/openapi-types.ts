@@ -4288,7 +4288,7 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.
+         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API. A grant from an owner who shares no Team with the caller (or to a Team the owner left) is left out until they share a Team again, admins included; FileNode and path access follow the same rule.
          */
         get: {
             parameters: {
@@ -4482,7 +4482,7 @@ export interface paths {
         head?: never;
         /**
          * Update share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
          */
         patch: {
             parameters: {
@@ -4676,7 +4676,7 @@ export interface paths {
         };
         /**
          * Share grants overview at path
-         * @description Owner context: direct, ancestor, and nested shares plus grantSources (raw), resolved effectiveGrants, memberAccess (per-user expansion), and publicShares for the sharing panel.
+         * @description Owner context: direct, ancestor, and nested shares plus grantSources (raw), resolved effectiveGrants, memberAccess (per-user expansion), and publicShares for the sharing panel. Grants to users who share no Team with the owner, and to Teams the owner left, are left out (admins too); email grants and public links are unchanged.
          */
         get: {
             parameters: {
@@ -4717,7 +4717,7 @@ export interface paths {
         };
         /**
          * Search share principals
-         * @description Principal picker for the share panel — searchable users and grantable groups with display names.
+         * @description Principal picker for the share panel. Returns only users who share at least one Team with the caller, and the caller's own Teams, with display names. This applies to admins too: an admin may share only within their own Teams. A user outside the caller's Teams is never listed, so a search for them answers like a search for an unknown name.
          */
         get: {
             parameters: {
@@ -4799,7 +4799,7 @@ export interface paths {
         };
         /**
          * List grants for a principal
-         * @description Owner-scoped audit of all grant rows for a queried principal (user, group, or email) across owned shares. Optional scope limits to a subtree.
+         * @description Owner-scoped audit of all grant rows for a queried principal (user, group, or email) across owned shares. Optional scope limits to a subtree. Grants to users who share no Team with the owner, and to Teams the owner left, are left out (admins too); email grants and public links are unchanged.
          */
         get: {
             parameters: {
@@ -5466,7 +5466,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List instance users who can be invited */
+        /**
+         * List people the caller can invite
+         * @description Colleagues of the caller: users who share at least one Team with them. Admins get every user. Each entry carries `sharesTeam`, true when the user shares a real Team with the caller (always true for non-admins). The attendee picker and mentions offer every entry; the DM rail and share dialogs offer only entries with `sharesTeam: true`, because DMs and shares follow real Team membership for admins too. `canSubmitEmail` does not depend on the caller.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -8515,6 +8518,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read my Team availability settings
+         * @description The switch, the Teams that can see the caller's availability, and one row per own personal event calendar and Team event calendar. ICS subscriptions and calendars shared with the caller are never listed. No push or /changes: clients read it when the settings pane opens.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The caller's settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilitySettings"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /**
+         * Change my Team availability settings
+         * @description Partial update of the switch and per-calendar choices; returns the full settings. Every calendarId must be one of the caller's own personal or Team event calendars, and `details` is only allowed on a personal calendar, otherwise 422 and nothing is written. Choices are kept while the switch is off.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarAvailabilitySettingsUpdate"];
+                };
+            };
+            responses: {
+                /** @description The caller's settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilitySettings"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                /** @description A calendarId that is not the caller's own personal or Team event calendar, or `details` on a Team calendar */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9397,7 +9478,7 @@ export interface components {
             isDefault: boolean;
             /** @description Whether the book is shown in client UI. */
             isSubscribed: boolean;
-            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. */
+            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
@@ -10379,7 +10460,7 @@ export interface components {
             description?: string | null;
             /** @description Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored. */
             isSubscribed?: boolean;
-            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
+            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
@@ -10719,7 +10800,7 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal calendars. */
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -10774,7 +10855,7 @@ export interface components {
             scope: "personal" | "group";
             /** @description Group slug when scope is group; null for personal task lists. */
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -10963,7 +11044,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -10997,7 +11078,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11157,7 +11238,7 @@ export interface components {
         DriveShareGrantEntry: {
             access: components["schemas"]["DriveShareAccess"];
         };
-        /** @description Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path). */
+        /** @description Map of username, groups/{slug}, or email to grant entry; null value removes the grant. On CRUD responses, contains active user and group grants only — pending email invites are omitted (see effectiveGrants on at-path). A user or Team grant whose owner no longer shares a Team with the grantee (or left the Team the share went to) is hidden on read for both of them, admins included, and left out here; nothing is deleted, and it shows again when they share a Team again. */
         DriveShareShareWithMap: {
             [key: string]: components["schemas"]["DriveShareGrantEntry"] | null;
         };
@@ -11538,7 +11619,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel get+changes and ChatMessage get+changes+query, mutations stay on REST /chat/*) follow the same shape. The vendor capability `urn:wgw:jmap:availability` (Team availability: TeamMember/get and TeamMember/getAvailability, schemas CalendarAvailabilityTeamMember* and CalendarAvailabilityGet*) is an empty object here; its account object is CalendarAvailabilityAccountCapability. It is advertised while calendars are enabled. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -11680,6 +11761,8 @@ export interface components {
             username: string;
             email: string;
             name: string;
+            /** @description True when this user shares at least one Team with the caller. Always true for non-admins. Only entries with true may be offered for DMs and shares. */
+            sharesTeam: boolean;
         };
         CalendarSchedulingInviteeListResponse: {
             list: components["schemas"]["CalendarSchedulingInvitee"][];
@@ -11838,7 +11921,7 @@ export interface components {
             /** @enum {string} */
             scope: "personal" | "group";
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -11863,7 +11946,7 @@ export interface components {
             isSubscribed?: boolean;
             /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -11883,7 +11966,7 @@ export interface components {
             /** @enum {string} */
             scope: "personal" | "group";
             groupSlug: string | null;
-            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"];
             } | null;
@@ -11928,7 +12011,7 @@ export interface components {
             topic?: string | null;
             /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
-            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. */
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
                 [key: string]: components["schemas"]["CalendarRights"] | null;
             } | null;
@@ -12392,6 +12475,117 @@ export interface components {
         };
         DriveFileNodeLocationDataResponse: {
             data: components["schemas"]["DriveFileNodeLocation"];
+        };
+        /** @description A Team that can see the owner's availability while the switch is on. */
+        CalendarAvailabilityTeam: {
+            slug: string;
+            name: string;
+        };
+        /** @description One of the owner's own personal event calendars or one of their Team event calendars. ICS subscriptions and calendars shared with the owner are never listed. A calendar without a stored choice is included and `busy`. */
+        CalendarAvailabilityCalendar: {
+            /** @description The JMAP Calendar id. */
+            calendarId: string;
+            name: string;
+            color: string | null;
+            /** @enum {string} */
+            source: "personal" | "team";
+            /** @description Whether the calendar counts toward the owner's availability. */
+            include: boolean;
+            /**
+             * @description `busy`: teammates see the time only. `details`: also the title and location. Team calendars are always `busy`.
+             * @enum {string}
+             */
+            detail: "busy" | "details";
+        };
+        /** @description The caller's Team availability settings. While `enabled` is false nobody gets anything for the caller, the caller included; choices are kept and come back when it is turned on again. */
+        CalendarAvailabilitySettings: {
+            /** @description Share my availability with my Teams. Off by default. */
+            enabled: boolean;
+            teams: components["schemas"]["CalendarAvailabilityTeam"][];
+            calendars: components["schemas"]["CalendarAvailabilityCalendar"][];
+        };
+        /** @description Partial update. Omitted fields keep their value. Every `calendarId` must be one of the caller's own personal or Team event calendars, and `details` is only allowed on a personal calendar; otherwise 422 and nothing is written. */
+        CalendarAvailabilitySettingsUpdate: {
+            enabled?: boolean;
+            calendars?: {
+                calendarId: string;
+                include?: boolean;
+                /** @enum {string} */
+                detail?: "busy" | "details";
+            }[];
+        };
+        /** @description Account-level object of the vendor capability `urn:wgw:jmap:availability` (the session-level value is the empty object). Limits of TeamMember/getAvailability; a larger request is `invalidArguments` before any read. */
+        CalendarAvailabilityAccountCapability: {
+            /** @constant */
+            maxIdsPerCall: 50;
+            /** @constant */
+            maxWeeksPerCall: 54;
+            /**
+             * @description ids × weeks.
+             * @constant
+             */
+            maxPersonWeeksPerCall: 540;
+        };
+        /** @description TeamMember (urn:wgw:jmap:availability): someone whose availability the caller may read. Listed only while their switch is on, they are not disabled, and they share at least one Team with the caller (the admin role gives no extra access); the caller is listed as themselves (`isSelf`) while their own switch is on. */
+        CalendarAvailabilityTeamMember: {
+            /** @description The person's username, the same string as their JMAP accountId. */
+            id: string;
+            name: string;
+            isSelf: boolean;
+            /** @description Changes when the person renames or changes their switch, which calendars count, or how much detail they share. A client drops every cached week of this person when it changes. */
+            version: string;
+        };
+        /** @description TeamMember/get arguments. `ids: null` returns everyone the caller may see. */
+        CalendarAvailabilityTeamMemberGetRequest: {
+            accountId: string;
+            ids?: string[] | null;
+            properties?: string[] | null;
+        };
+        /** @description TeamMember/get response. `state` is a hash of every visible (id, version); there is no TeamMember/changes. Unknown people, people with the switch off, disabled people and people who share no Team with the caller all come back in `notFound` alike. */
+        CalendarAvailabilityTeamMemberGetResponse: {
+            accountId: string;
+            state: string;
+            list: components["schemas"]["CalendarAvailabilityTeamMember"][];
+            notFound: string[];
+        };
+        /** @description One busy occurrence, close to the standard Principal/getAvailability BusyPeriod. Time fields are read like the same fields of a CalendarEvent: `start` is a UTC date-time with `Z` (timeZone null), a local date-time with an IANA `timeZone`, a floating local date-time (timeZone null), or a bare date when `showWithoutTime`. `title` and `location` appear only for an event on a personal calendar the owner shares with `details` that is not private or confidential; a location holding a URL is dropped and the title is cut at 200 characters. */
+        CalendarAvailabilityBusyPeriod: {
+            start: string;
+            timeZone: string | null;
+            /** @description ISO 8601 duration, e.g. PT1H or P1D. */
+            duration: string;
+            showWithoutTime: boolean;
+            title?: string;
+            location?: string;
+        };
+        /** @description TeamMember/getAvailability arguments. The range is whole UTC weeks: `utcStart` a Monday 00:00:00Z and `utcEnd` a whole number of weeks later, at most 54 weeks, at most 50 ids, and ids × weeks at most 540. Anything else is `invalidArguments`. */
+        CalendarAvailabilityGetRequest: {
+            accountId: string;
+            ids: string[];
+            /**
+             * Format: date-time
+             * @example 2030-01-07T00:00:00Z
+             */
+            utcStart: string;
+            /**
+             * Format: date-time
+             * @example 2030-01-14T00:00:00Z
+             */
+            utcEnd: string;
+            /** @description A CalendarEvent id. Every occurrence of that event's UID is left out, so an invitee is not busy with the event being edited. It must be an event the caller may edit, or one the caller organizes or attends; any other id is `invalidArguments`. */
+            excludeEventId?: string;
+        };
+        CalendarAvailabilityPerson: {
+            id: string;
+            periods: components["schemas"]["CalendarAvailabilityBusyPeriod"][];
+            /** @description False when some busy time in the range could not be worked out (an unreadable event, a recurrence over the limit, or more than 2000 periods in a week). A gap is then not proof of free time. */
+            complete: boolean;
+        };
+        /** @description TeamMember/getAvailability response. Periods are sorted by start and include every occurrence that overlaps the range, also ones that start before it. */
+        CalendarAvailabilityGetResponse: {
+            accountId: string;
+            list: components["schemas"]["CalendarAvailabilityPerson"][];
+            notFound: string[];
         };
     };
     responses: {

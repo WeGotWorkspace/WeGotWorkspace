@@ -36,6 +36,7 @@ final class DriveShareService
         private FileNodeIndexService $fileNodes,
         private DriveShareOwnerReach $ownerReach,
         private DriveShareRevoker $revoker,
+        private DriveShareGrantVisibility $grantVisibility,
     ) {}
 
     /**
@@ -403,6 +404,12 @@ final class DriveShareService
                 ->where('status', 'active')
                 ->get();
 
+        // Grants hidden because the owner no longer shares a Team with this user (Epic #1915)
+        // drop out of "shared with me" like revoked ones; the rows stay.
+        $this->grantVisibility->checkFromGrantee($user);
+        $userGrants = $userGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
+        $groupGrants = $groupGrants->filter(fn (DriveShareGrant $grant): bool => $this->grantVisibility->isVisible($grant));
+
         $directByShareId = [];
         foreach ($userGrants as $grant) {
             $share = $grant->share;
@@ -639,7 +646,7 @@ final class DriveShareService
             ->where('owner_username', $owner)
             ->whereNull('revoked_at')
             ->whereIn('path', array_keys($pathList))
-            ->get(['id', 'path', 'kind']);
+            ->get(['id', 'path', 'kind', 'owner_username']);
 
         if ($shares->isEmpty()) {
             return [];
@@ -660,22 +667,20 @@ final class DriveShareService
         }
 
         if ($memberShareIds !== []) {
-            /** @var list<string> $activeMemberShareIds */
-            $activeMemberShareIds = DriveShareGrant::query()
+            $sharesById = $shares->keyBy(static fn (DriveShare $share): string => (string) $share->id);
+            // A grant hidden by Epic #1915 does not count, so the badge matches the access panel.
+            $activeMemberShareIds = [];
+            $grants = DriveShareGrant::query()
                 ->whereIn('share_id', $memberShareIds)
-                ->where(function ($query): void {
-                    $query->where(function ($inner): void {
-                        $inner->where('grantee_type', 'user')->where('status', 'active');
-                    })->orWhere(function ($inner): void {
-                        $inner->where('grantee_type', 'group')->where('status', 'active');
-                    });
-                })
-                ->distinct()
-                ->pluck('share_id')
-                ->map(static fn (mixed $id): string => (string) $id)
-                ->all();
-
-            $activeMemberShareIds = array_flip($activeMemberShareIds);
+                ->whereIn('grantee_type', ['user', 'group'])
+                ->where('status', 'active')
+                ->get(['id', 'share_id', 'grantee_type', 'grantee_user', 'grantee_group']);
+            foreach ($grants as $grant) {
+                $share = $sharesById->get((string) $grant->share_id);
+                if ($share !== null && $this->grantVisibility->isVisible($grant, $share)) {
+                    $activeMemberShareIds[(string) $grant->share_id] = true;
+                }
+            }
             foreach ($shares as $share) {
                 if ($share->kind !== 'member') {
                     continue;

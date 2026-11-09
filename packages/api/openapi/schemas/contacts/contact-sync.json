@@ -49,7 +49,7 @@
           },
           { "type": "null" }
         ],
-        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes."
+        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included."
       }
     },
     "additionalProperties": false

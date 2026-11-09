@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Calendars\CalendarDavImipDelivery;
 use App\Services\Calendars\CalendarSchedulingDeliveryPolicy;
 use App\Services\Calendars\CalendarSchedulingObjects;
+use App\Services\Calendars\CalendarSchedulingReach;
+use Sabre\CalDAV\Schedule\Plugin;
+use Sabre\DAV\Auth\Plugin as AuthPlugin;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\DAVACL\Plugin as AclPlugin;
@@ -21,17 +25,31 @@ use Sabre\VObject\ITip\Message;
  * the matching scheduling object (see {@see CalendarSchedulingDeliveryPolicy});
  * that object stays as it is, the message gets schedule status 3.8 (no
  * authority, RFC 5546) and the skip is logged.
+ *
+ * It also stops local delivery to someone outside the sender's Teams
+ * ({@see CalendarSchedulingReach}, #1923) and treats them like an external
+ * address: the message goes out by email ({@see CalendarDavImipDelivery},
+ * #1929, schedule status 1.1), and when no mail goes out the status is the one
+ * Sabre's local delivery sets when it cannot find a principal. Principal
+ * lookup goes through the unfiltered principal backend, so this runs before
+ * Sabre reaches the recipient through the node tree.
  */
 final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
 {
     /** Sabre registers scheduleLocalDelivery at the default priority 100. */
     private const PRIORITY = 90;
 
+    /** What {@see Plugin::scheduleLocalDelivery} sets for an external address. */
+    public const EXTERNAL_ADDRESS_STATUS = '3.7;Could not find principal.';
+
     private ?Server $server = null;
 
     public function __construct(
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $policy,
+        private readonly CalendarSchedulingReach $reach,
+        private readonly CalendarDavImipDelivery $imip,
+        private readonly CalDavDeliveryRecipients $deliveryRecipients,
     ) {}
 
     public function initialize(Server $server): void
@@ -55,6 +73,17 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         if (! is_string($principalUri) || $principalUri === '') {
             return null;
         }
+        $sender = $this->currentUsername();
+        if ($sender !== null && ! $this->reachesLocally($sender, $message, $principalUri)) {
+            $message->scheduleStatus = self::EXTERNAL_ADDRESS_STATUS;
+            $this->imip->deliver($sender, $message);
+
+            return false;
+        }
+        // Sabre's local delivery reaches the inbox through principals/{user}, which
+        // resolves colleagues only (#1922). A reply to an admin's invite is let
+        // through above, so open that one principal for this request.
+        $this->deliveryRecipients->allow($principalUri);
 
         foreach ($this->objects->ownedByPrincipal($principalUri, (string) $message->uid) as $candidate) {
             if (! $this->policy->allows($message, $principalUri, $this->objects->parse($candidate['object']))) {
@@ -66,5 +95,31 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         }
 
         return null;
+    }
+
+    private function reachesLocally(string $sender, Message $message, string $recipientUri): bool
+    {
+        if (! str_starts_with($recipientUri, 'principals/')) {
+            return true;
+        }
+
+        return $this->reach->deliversLocally(
+            $sender,
+            substr($recipientUri, strlen('principals/')),
+            (string) $message->method,
+        );
+    }
+
+    /** The signed-in DAV user, who sends the message and whose iMIP caps count. */
+    private function currentUsername(): ?string
+    {
+        $auth = $this->server?->getPlugin('auth');
+        $principal = $auth instanceof AuthPlugin ? $auth->getCurrentPrincipal() : null;
+        if (! is_string($principal) || ! str_starts_with($principal, 'principals/')) {
+            return null;
+        }
+        $username = substr($principal, strlen('principals/'));
+
+        return $username === '' || str_contains($username, '/') ? null : $username;
     }
 }

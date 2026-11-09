@@ -126,6 +126,8 @@ final class OwnershipRegistry
             'GET /settings/state' => 'Returns the caller settings.',
             'PUT /settings/profile' => 'Updates the caller profile.',
             'GET /jmap/session' => 'Returns the caller JMAP session.',
+            'GET /calendars/availability' => "Returns the caller's own Team availability settings.",
+            'PUT /calendars/availability' => "Writes only the caller's own settings rows; a calendarId outside the caller's own personal or Team event calendars is 422 (CalendarAvailabilitySettingsTest).",
         ];
         foreach ($selfOnly as $operation => $why) {
             $exempt[$operation] = ['reason' => ExemptionReason::SelfOnly, 'why' => $why];

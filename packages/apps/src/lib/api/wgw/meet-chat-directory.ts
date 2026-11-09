@@ -56,6 +56,7 @@ export async function fetchMeetChatDirectory(): Promise<MeetChatDirectory> {
     .map((invitee) => ({
       id: invitee.username,
       displayName: invitee.name?.trim() || invitee.username,
+      sharesTeam: invitee.sharesTeam,
     }));
   return { directory: sharePrincipalsFromDirectory({ users, groups }), groups };
 }

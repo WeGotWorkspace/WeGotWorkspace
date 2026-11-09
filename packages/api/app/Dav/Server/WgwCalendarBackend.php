@@ -9,6 +9,7 @@ use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
+use App\Services\Teams\TeamColleagues;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -17,6 +18,7 @@ use Sabre\DAV\Exception\Conflict;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\PropPatch;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
+use Sabre\DAV\Xml\Element\Sharee;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 /**
@@ -58,6 +60,9 @@ final class WgwCalendarBackend extends CalPDO
         '{DAV:}displayname' => 'displayname',
         '{http://apple.com/ns/ical/}calendar-color' => 'calendarcolor',
     ];
+
+    /** True while {@see updateInvites} runs, so Sabre's own read of the invites sees every row. */
+    private bool $writingInvites = false;
 
     public function __construct(\PDO $pdo)
     {
@@ -195,6 +200,105 @@ final class WgwCalendarBackend extends CalPDO
         }
     }
 
+    /**
+     * The `{DAV:}invite` list a CalDAV client shows the owner leaves out grants hidden by
+     * Epic #1915 (a sharee who no longer shares a Team with the owner). The rows stay; app
+     * writes read them through their own backend, so revoke-all still reaches them.
+     *
+     * @param  mixed  $calendarId
+     * @return list<Sharee>
+     */
+    public function getInvites($calendarId)
+    {
+        $invites = array_values(parent::getInvites($calendarId));
+        if ($this->writingInvites) {
+            return $invites;
+        }
+        $owner = null;
+        foreach ($invites as $invite) {
+            if ((int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER && is_string($invite->principal)) {
+                $owner = $invite->principal;
+            }
+        }
+        $colleagues = app(TeamColleagues::class);
+
+        return array_values(array_filter(
+            $invites,
+            static fn (Sharee $invite): bool => (int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER
+                || ! is_string($invite->principal)
+                || $colleagues->grantIsVisible($owner, $invite->principal),
+        ));
+    }
+
+    /**
+     * Sabre reads the current invites here to tell an update from an insert, so it sees every
+     * row, hidden ones included. An invite no principal matched (an unknown address, or a user
+     * outside the caller's Teams, see {@see TeamGatedSharingPlugin}) never rewrites a grant
+     * that has a principal, so a hidden grant stays exactly as it is.
+     *
+     * @param  mixed  $calendarId
+     * @param  list<Sharee>  $sharees
+     */
+    public function updateInvites($calendarId, array $sharees): void
+    {
+        $this->writingInvites = true;
+        try {
+            $resolved = [];
+            $current = $this->getInvites($calendarId);
+            $ownerHref = null;
+            foreach ($current as $invite) {
+                if (is_string($invite->principal)) {
+                    $resolved[$invite->href] = true;
+                }
+                if ((int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER) {
+                    $ownerHref = $invite->href;
+                }
+            }
+            // Unsharing from a client (PROPPATCH dropping shared-owner) reads the filtered
+            // invite list and sets NOACCESS on it plus the owner's own href. Treat the owner
+            // going NOACCESS as revoke-all, so hidden grants go too.
+            foreach ($sharees as $sharee) {
+                if ($ownerHref !== null && $sharee->href === $ownerHref
+                    && (int) $sharee->access === SharingPlugin::ACCESS_NOACCESS) {
+                    $sharees = $this->revokeAll($current, $sharees);
+                    break;
+                }
+            }
+            parent::updateInvites($calendarId, array_values(array_filter(
+                $sharees,
+                static fn (Sharee $sharee): bool => is_string($sharee->principal)
+                    || (int) $sharee->access === SharingPlugin::ACCESS_NOACCESS
+                    || ! array_key_exists($sharee->href, $resolved),
+            )));
+        } finally {
+            $this->writingInvites = false;
+        }
+    }
+
+    /**
+     * @param  list<Sharee>  $current  every invite row, hidden ones included
+     * @param  list<Sharee>  $sharees
+     * @return list<Sharee>
+     */
+    private function revokeAll(array $current, array $sharees): array
+    {
+        $listed = [];
+        foreach ($sharees as $sharee) {
+            $listed[$sharee->href] = true;
+        }
+        foreach ($current as $invite) {
+            if ((int) $invite->access === SharingPlugin::ACCESS_SHAREDOWNER || isset($listed[$invite->href])) {
+                continue;
+            }
+            $revoked = new Sharee;
+            $revoked->href = $invite->href;
+            $revoked->access = SharingPlugin::ACCESS_NOACCESS;
+            $sharees[] = $revoked;
+        }
+
+        return $sharees;
+    }
+
     /** @return array<mixed> */
     public function getCalendarsForUser($principalUri)
     {
@@ -219,7 +323,21 @@ final class WgwCalendarBackend extends CalPDO
             }
         }
 
-        $dismissed = array_flip($this->dismissedShareCalendarIds($principalUri));
+        $shareeIds = [];
+        foreach ($calendars as $calendar) {
+            $access = (int) ($calendar['share-access'] ?? SharingPlugin::ACCESS_SHAREDOWNER);
+            if ($access === SharingPlugin::ACCESS_READ || $access === SharingPlugin::ACCESS_READWRITE) {
+                $id = $calendar['id'] ?? null;
+                $shareeIds[] = is_array($id) ? (int) ($id[0] ?? 0) : (int) $id;
+            }
+        }
+        // Dismissed shares (per user) and shares hidden because the owner no longer shares a
+        // Team with this principal (Epic #1915). A native client drops its copy and syncs it
+        // again when the share comes back; nothing is deleted.
+        $dismissed = array_flip([
+            ...$this->dismissedShareCalendarIds($principalUri),
+            ...app(CalendarShareVisibility::class)->hiddenShareeCalendarIds((string) $principalUri, $shareeIds),
+        ]);
 
         return array_values(array_filter($calendars, static function (array $calendar) use ($hidden, $dismissed): bool {
             $id = $calendar['id'] ?? null;
@@ -243,7 +361,7 @@ final class WgwCalendarBackend extends CalPDO
             return [];
         }
 
-        return (new CalendarShareVisibility)->dismissedCalendarIds(substr($principalUri, strlen('principals/')));
+        return app(CalendarShareVisibility::class)->dismissedCalendarIds(substr($principalUri, strlen('principals/')));
     }
 
     /**

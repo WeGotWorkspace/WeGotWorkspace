@@ -120,14 +120,14 @@ final class DriveSharesController
 
     public function principals(Request $request): JsonResponse
     {
-        $this->principal($request);
+        $principal = $this->principal($request);
         $query = $request->query('query');
         if (! is_string($query)) {
             $query = '';
         }
 
         return response()->json([
-            'data' => $this->principalDirectory->search($query),
+            'data' => $this->principalDirectory->search($principal['username'], $query),
         ]);
     }
 
