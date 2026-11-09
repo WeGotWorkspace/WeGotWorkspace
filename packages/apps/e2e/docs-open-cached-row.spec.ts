@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "./helpers/live-test";
 import {
   docsHomeRow,
-  expectEditorContains,
   gotoDocsHome,
   loginToDocs,
   myDriveDocSearchPath,
