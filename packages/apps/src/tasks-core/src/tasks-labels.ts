@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
@@ -174,7 +175,7 @@ export const defaultTasksLabels: TasksUILabels = {
   shareListSectionTitle: "Team access",
   shareListSectionHint: "Grant read or read-and-write access to people or groups.",
   shareListAddPlaceholder: "Add people or groups…",
-  shareListSearchEmpty: "No people or groups found",
+  shareListSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareListOffline: "Sharing changes require a connection.",
   shareListFailed: "Could not update sharing.",
   removeListShareTitle: "Remove access?",

@@ -38,6 +38,8 @@ trait SharedWorkspaceFixture
     {
         parent::setUp();
         $this->setUpDriveFixtures();
+        // Epic #1915: alice may only share with people in one of her Teams.
+        $this->seedSharedTeam('workspace', 'alice', 'bob', 'carol');
         $this->createDriveDirectory('/users/alice', 'workspace');
         app(WgwStorage::class)->files()->put('users/alice/workspace/plan.md', self::PLAN_BODY);
         app(WgwStorage::class)->files()->put('users/alice/private.md', self::PRIVATE_BODY);

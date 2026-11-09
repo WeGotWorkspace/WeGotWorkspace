@@ -24,6 +24,7 @@ export type CalendarEventFormSecondaryProps = {
   readOnly: boolean;
   fieldsDisabled: boolean;
   canSubmitEmail: boolean;
+  noTeam?: boolean;
   sessionEmail?: string;
   controlSize: ControlSize;
   meetEmailGuestHint?: string;
@@ -44,6 +45,7 @@ export function CalendarEventFormSecondary({
   readOnly,
   fieldsDisabled,
   canSubmitEmail,
+  noTeam = false,
   sessionEmail,
   controlSize,
   meetEmailGuestHint,
@@ -68,6 +70,7 @@ export function CalendarEventFormSecondary({
             busy={busy}
             readOnly={readOnly}
             canSubmitEmail={canSubmitEmail}
+            noTeam={noTeam}
             sessionEmail={sessionEmail}
             controlSize={controlSize}
             meetEmailGuestHint={meetEmailGuestHint}

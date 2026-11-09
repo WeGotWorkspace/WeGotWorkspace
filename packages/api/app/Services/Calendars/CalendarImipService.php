@@ -47,14 +47,18 @@ final class CalendarImipService
         private readonly MailDeliveryService $mail,
         private readonly MailDeliveryTransportResolver $resolver,
         private readonly CalendarPrincipalAddresses $addresses,
+        private readonly CalendarSchedulingReach $reach,
     ) {}
 
-    public function deliver(string $organizerUsername, Message $message): void
+    /**
+     * Sends the message by email when the instance rules allow it. True when the
+     * mail transport accepted a mail; false when it was skipped (external invites
+     * off, a cap, no mail transport) or the transport refused it.
+     */
+    public function deliver(string $organizerUsername, Message $message): bool
     {
         if ($this->isSchedulingNotice($message)) {
-            $this->sendComposed($organizerUsername, $message, false);
-
-            return;
+            return $this->sendComposed($organizerUsername, $message, false);
         }
 
         if (! $this->wasPreviouslyInvited($message)) {
@@ -63,15 +67,15 @@ final class CalendarImipService
                     'organizer' => $organizerUsername,
                 ]);
 
-                return;
+                return false;
             }
-            if (! $this->withinEventAttendeeCap($message)) {
+            if (! $this->withinEventAttendeeCap($organizerUsername, $message)) {
                 Log::warning('imip.attendee_cap', [
                     'uid' => trim((string) $message->uid),
                     'cap' => self::EVENT_ATTENDEE_CAP,
                 ]);
 
-                return;
+                return false;
             }
         }
 
@@ -80,10 +84,10 @@ final class CalendarImipService
                 'organizer' => $organizerUsername,
             ]);
 
-            return;
+            return false;
         }
 
-        $this->sendComposed($organizerUsername, $message, true);
+        return $this->sendComposed($organizerUsername, $message, true);
     }
 
     /**
@@ -299,11 +303,11 @@ final class CalendarImipService
         RateLimiter::hit($this->dailyKey($organizerUsername), self::DAILY_DECAY_SECONDS);
     }
 
-    private function sendComposed(string $organizerUsername, Message $message, bool $countTowardLimits): void
+    private function sendComposed(string $organizerUsername, Message $message, bool $countTowardLimits): bool
     {
         $outbound = $this->compose($organizerUsername, $message);
         if ($outbound === null) {
-            return;
+            return false;
         }
         if ($countTowardLimits) {
             $this->recordSend($organizerUsername);
@@ -313,7 +317,8 @@ final class CalendarImipService
             'organizer' => $organizerUsername,
             'to_domain' => $this->recipientDomain($to),
         ]);
-        $this->mail->send($outbound);
+
+        return $this->mail->send($outbound)->accepted;
     }
 
     /**
@@ -352,35 +357,35 @@ final class CalendarImipService
      * VEVENT may receive a REQUEST. The list is the event itself, so a later
      * request cannot mail a new recipient past the cap.
      */
-    private function withinEventAttendeeCap(Message $message): bool
+    private function withinEventAttendeeCap(string $organizerUsername, Message $message): bool
     {
         $email = $this->addresses->normalizedEmail((string) $message->recipient);
         if ($email === null) {
             return false;
         }
 
-        return isset($this->externalAttendeesWithinCap($message)[$email]);
+        return isset($this->externalAttendeesWithinCap($organizerUsername, $message)[$email]);
     }
 
     /**
      * @return array<string, true>
      */
-    private function externalAttendeesWithinCap(Message $message): array
+    private function externalAttendeesWithinCap(string $organizerUsername, Message $message): array
     {
-        $key = $this->attendeeCapKey($message);
+        $key = $this->attendeeCapKey($organizerUsername, $message);
         if ($this->externalAttendeeCapCache !== null && $this->externalAttendeeCapCache['key'] === $key) {
             return $this->externalAttendeeCapCache['allowed'];
         }
 
-        $allowed = $this->resolveExternalAttendeesWithinCap($message);
+        $allowed = $this->resolveExternalAttendeesWithinCap($organizerUsername, $message);
         $this->externalAttendeeCapCache = ['key' => $key, 'allowed' => $allowed];
 
         return $allowed;
     }
 
-    private function attendeeCapKey(Message $message): string
+    private function attendeeCapKey(string $organizerUsername, Message $message): string
     {
-        $parts = [trim((string) $message->uid)];
+        $parts = [$organizerUsername, trim((string) $message->uid)];
         foreach ($message->message->select('VEVENT') as $event) {
             if (! $event instanceof VEvent || ! isset($event->ATTENDEE)) {
                 continue;
@@ -394,9 +399,12 @@ final class CalendarImipService
     }
 
     /**
+     * External attendees in event order, up to the cap. A local mailbox counts as
+     * external when its owner is outside the organizer's Teams (#1923).
+     *
      * @return array<string, true>
      */
-    private function resolveExternalAttendeesWithinCap(Message $message): array
+    private function resolveExternalAttendeesWithinCap(string $organizerUsername, Message $message): array
     {
         $ordered = [];
         foreach ($message->message->select('VEVENT') as $event) {
@@ -418,7 +426,7 @@ final class CalendarImipService
         $local = $this->addresses->localMailboxes(array_keys($ordered));
         $allowed = [];
         foreach (array_keys($ordered) as $candidate) {
-            if (isset($local[$candidate])) {
+            if (isset($local[$candidate]) && $this->reachesLocally($organizerUsername, $candidate, (string) $message->method)) {
                 continue;
             }
             if (count($allowed) >= self::EVENT_ATTENDEE_CAP) {
@@ -428,6 +436,15 @@ final class CalendarImipService
         }
 
         return $allowed;
+    }
+
+    private function reachesLocally(string $organizerUsername, string $email, string $method): bool
+    {
+        $principal = $this->addresses->principalForMailto($email);
+        $uri = $principal !== null ? (string) $principal->uri : '';
+
+        return $uri === ''
+            || $this->reach->deliversLocally($organizerUsername, substr($uri, strlen('principals/')), $method);
     }
 
     private function hourlyKey(string $organizerUsername): string

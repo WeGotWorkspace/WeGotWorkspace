@@ -27,6 +27,8 @@ final class MeetStartedNotifyTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpCalendarsFixtures();
         config(['app.url' => self::ORIGIN]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_first_activation_notifies_roster_once(): void

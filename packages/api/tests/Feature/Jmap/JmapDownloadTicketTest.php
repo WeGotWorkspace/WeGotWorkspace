@@ -39,6 +39,8 @@ final class JmapDownloadTicketTest extends WgwDatabaseTestCase
             'wgw.jmap.download_ticket_idle_minutes' => 30,
             'wgw.jmap.download_ticket_lifetime_hours' => 24,
         ]);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

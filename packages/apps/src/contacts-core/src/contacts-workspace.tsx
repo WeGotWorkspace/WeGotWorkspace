@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -8,7 +8,11 @@ import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-se
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/ui/tooltip";
-import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
+import {
+  loadCalendarDirectoryGroups,
+  searchCollectionSharePrincipals,
+} from "@/lib/api/wgw/calendar";
+import { viewerHasNoTeam } from "@/share-ui/collection-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
 import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
@@ -258,6 +262,20 @@ export function ContactsWorkspace({
     async (query: string) => searchCollectionSharePrincipals(query, session.user.username),
     [session.user.username],
   );
+
+  // The viewer's own Teams, loaded when a share dialog opens; a failed load stays unknown.
+  const sharing = Boolean(addressBookDialog?.mayShare);
+  const [ownTeams, setOwnTeams] = useState<readonly unknown[] | undefined>(undefined);
+  useEffect(() => {
+    if (!sharing || !online) return;
+    let live = true;
+    void loadCalendarDirectoryGroups().then((teams) => {
+      if (live && teams) setOwnTeams(teams);
+    });
+    return () => {
+      live = false;
+    };
+  }, [sharing, online]);
 
   const browserTitleContext = active && selectedIds.length <= 1 ? displayName : viewLabel;
   useDocumentTitle(browserTitleContext);
@@ -562,6 +580,7 @@ export function ContactsWorkspace({
           addressBookDialog?.mayShare
             ? {
                 online,
+                noTeam: viewerHasNoTeam(ownTeams),
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchShareWith,
               }

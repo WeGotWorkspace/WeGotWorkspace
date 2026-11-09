@@ -38,6 +38,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $this->seedWgwUser('bob', displayName: 'Bob');
         $this->seedWgwUser('carol', displayName: 'Carol');
         $this->seedWgwUser('dave', displayName: 'Dave');
+        $this->seedSharedTeamForEveryone();
 
         $this->channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Team', 'kind' => 'channel',

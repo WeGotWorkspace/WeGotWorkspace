@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Ownership;
 
+use App\Models\GroupMember;
+use App\Models\Principal;
 use App\Services\Calendars\Availability\AvailabilitySettings;
 use App\Services\Jmap\JmapCapabilities;
 use App\Support\WgwSettings;
@@ -48,6 +50,11 @@ final class AvailabilityOwnershipTest extends WgwDatabaseTestCase implements Own
         $this->cacheDir = sys_get_temp_dir().'/wgw-availability-ownership-'.uniqid('', true);
         config(['cache.stores.availability.path' => $this->cacheDir]);
         Cache::purge('availability');
+        // The matrix world puts everyone in a shared `colleagues` Team so they may share with
+        // each other; here the shared Team is the thing under test, so only `crew` stays.
+        GroupMember::query()
+            ->whereIn('principal_id', Principal::query()->where('uri', 'principals/groups/colleagues')->pluck('id'))
+            ->delete();
         foreach ([OwnershipPrincipals::DAVE, OwnershipPrincipals::CAROL] as $username) {
             app(AvailabilitySettings::class)->setEnabled($username, true);
         }

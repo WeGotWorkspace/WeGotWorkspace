@@ -23,6 +23,12 @@ trait AvailabilityTestFixtures
 
     protected string $availabilityCacheDir = '';
 
+    /** Availability suites build their own Teams: bob and carol in `eng`, nobody else. */
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUpAvailabilityFixtures(): void
     {
         $this->setUpCalendarsFixtures();

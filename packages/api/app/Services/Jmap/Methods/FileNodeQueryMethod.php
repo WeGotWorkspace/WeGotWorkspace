@@ -7,6 +7,7 @@ namespace App\Services\Jmap\Methods;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 
@@ -28,6 +29,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FileNodeAccountSupport $accounts,
+        private readonly FileNodeSyncState $syncState,
     ) {}
 
     public function name(): string
@@ -97,7 +99,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
 
         $response = [
             'accountId' => $username,
-            'queryState' => (string) $this->index->currentSeq(),
+            'queryState' => $this->syncState->current($username),
             'canCalculateChanges' => false,
             'position' => $position,
             'ids' => array_slice($ids, $position, $limit),

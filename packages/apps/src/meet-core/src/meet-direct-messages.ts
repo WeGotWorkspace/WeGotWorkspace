@@ -1,4 +1,4 @@
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import { sharesTeamWithViewer, type CollectionSharePrincipal } from "@/share-ui/collection-share";
 
 export const MEET_DM_CHANNEL_PREFIX = "dm:";
 
@@ -33,7 +33,12 @@ export function meetDirectMessagePeople(
   const excludeId = options?.excludeId;
   const unread = options?.unreadByPrincipalId ?? {};
   return (directory ?? [])
-    .filter((principal) => principal.principalType === "user" && principal.id !== excludeId)
+    .filter(
+      (principal) =>
+        principal.principalType === "user" &&
+        principal.id !== excludeId &&
+        sharesTeamWithViewer(principal),
+    )
     .map((principal) => {
       const unreadCount = unread[principal.id];
       return {

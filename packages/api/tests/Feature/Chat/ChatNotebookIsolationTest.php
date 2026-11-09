@@ -24,6 +24,8 @@ final class ChatNotebookIsolationTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_chat_channels_never_surface_as_notebooks(): void

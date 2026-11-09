@@ -24,6 +24,8 @@ final class NotesNotebooksShareWithTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_owner_can_share_and_revoke_notebook(): void

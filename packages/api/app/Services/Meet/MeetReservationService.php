@@ -244,7 +244,7 @@ final class MeetReservationService
                 }
             }
             if ($instance !== null) {
-                foreach ($this->channels->rosterUsernames($instance, null) as $username) {
+                foreach ($this->channels->rosterUsernames($instance, null, true) as $username) {
                     $out[strtolower($username)] = strtolower($username);
                 }
             }

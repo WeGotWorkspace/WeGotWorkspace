@@ -34,7 +34,7 @@ final class CalendarCollectionAccess
 
     /**
      * Personal + group + inbound sharee instances for $username, filtered by
-     * component set, then highest-access-per-calendarid, then dismissals.
+     * component set, then highest-access-per-calendarid, then dismissed and hidden shares.
      *
      * @return Collection<int, CalendarInstance>
      */
@@ -47,9 +47,21 @@ final class CalendarCollectionAccess
             }
         }
 
+        return $this->visibleHighestAccess($username, $instances);
+    }
+
+    /**
+     * Hidden shares go first, so a hidden higher-ranked Team grant cannot displace a
+     * visible direct grant; then highest access per calendar; then dismissed shares.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function visibleHighestAccess(string $username, $instances)
+    {
         return $this->shareVisibility->rejectDismissedSharees(
             $username,
-            $this->preferHighestAccessPerCalendar($instances),
+            $this->preferHighestAccessPerCalendar($this->shareVisibility->rejectHiddenSharees($username, $instances)),
         );
     }
 
@@ -178,7 +190,7 @@ final class CalendarCollectionAccess
 
     /**
      * Lookup by id: the user's own collection first, then the groups they may
-     * use. A dismissed inbound share answers like a missing collection.
+     * use. A dismissed or hidden inbound share answers like a missing collection.
      *
      * @param  callable(string): ?CalendarInstance  $findIn  the instance with the id under a principal uri
      */
@@ -194,19 +206,20 @@ final class CalendarCollectionAccess
 
         return $instance === null
             ? null
-            : $this->withoutDismissed($username, new Collection([$instance]))->first();
+            : $this->withoutDismissedOrHidden($username, new Collection([$instance]))->first();
     }
 
     /**
-     * Drops inbound shares the user dismissed, for item lookups that collect
-     * candidate instances themselves.
+     * Drops inbound shares the user dismissed and shares hidden because the owner no
+     * longer shares a Team with them, for item lookups that collect candidate
+     * instances themselves.
      *
      * @param  Collection<int, CalendarInstance>  $instances
      * @return Collection<int, CalendarInstance>
      */
-    public function withoutDismissed(string $username, Collection $instances): Collection
+    public function withoutDismissedOrHidden(string $username, Collection $instances): Collection
     {
-        return $this->shareVisibility->rejectDismissedSharees($username, $instances);
+        return $this->shareVisibility->rejectInvisibleSharees($username, $instances);
     }
 
     /**
