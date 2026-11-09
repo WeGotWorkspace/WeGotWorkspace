@@ -9,8 +9,9 @@ import { meshOpen, spyOnMesh } from "./helpers/mesh-spy";
  * User A shares a Team with the teammate, user B is alone in another Team. The
  * mesh between A and the teammate comes up (control), and A and B never see each
  * other's presence nor open a room of the other's Team. When the owner then adds
- * both to a new Team, they find each other without a reload; when B is removed
- * again, B's dot goes away on A.
+ * both to a new Team, they open a data channel without a reload (the DM list itself
+ * only lists the new Team mate after a reload, #1918); when B is removed again, B's
+ * dot goes away on A.
  */
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15_000 });
@@ -102,10 +103,16 @@ test("users in different Teams do not see each other's presence", async ({ brows
     }
     await recheck(tabA);
     await recheck(tabB);
+    // B shared no room before; a data channel now proves both followed the new Team.
+    await expect.poll(() => meshOpen(tabB), { timeout: 90_000 }).toBeGreaterThan(0);
+    // The DM list shows Team mates only (#1918). A load paints the cached list and
+    // refreshes the cache behind it, so B's row shows on the load after that refresh.
+    await reloadTwice(tabA);
+    await reloadTwice(tabB);
     await expect(dotOn(tabA, nameB)).toBeVisible({ timeout: 90_000 });
     await expect(dotOn(tabB, nameA)).toBeVisible({ timeout: 90_000 });
 
-    // B leaves it again: the dot goes away on A.
+    // B leaves it again: B's row stays until the list is read again, but its dot goes away.
     await ensureOk(await api(OWNER, "DELETE", `/admin/groups/${teamShared}/members/${userB}`));
     await recheck(tabA);
     await recheck(tabB);
@@ -114,6 +121,17 @@ test("users in different Teams do not see each other's presence", async ({ brows
     for (const context of contexts) await context.close();
   }
 });
+
+/** Reloads, waits for the fresh people list to reach the cache, then reloads again. */
+async function reloadTwice(tab: Tab): Promise<void> {
+  const refreshed = tab.waitForResponse(
+    (response) => response.url().includes("/calendars/scheduling/invitees") && response.ok(),
+  );
+  await tab.reload();
+  await refreshed;
+  await tab.waitForTimeout(1_000);
+  await tab.reload();
+}
 
 /** Offline and back fires the `online` re-check of the Team list; it waits out the 10 s gap. */
 async function recheck(tab: Tab): Promise<void> {
