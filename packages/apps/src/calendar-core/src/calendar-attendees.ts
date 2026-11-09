@@ -16,6 +16,12 @@ export type CalendarInvitee = {
   username: string;
   email: string;
   name: string;
+  /**
+   * True when this person shares a Team with the viewer. An admin's directory
+   * also lists people outside their Teams (`false`): invitable, but never
+   * offered for DMs or shares. Absent (mock or older cache) counts as true.
+   */
+  sharesTeam?: boolean;
 };
 
 export type JmapParticipant = {

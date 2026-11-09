@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use Illuminate\Support\Facades\Cache;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\InteractsWithFileNodeJmap;
@@ -51,7 +52,7 @@ final class JmapEventSourceDriveTest extends WgwDatabaseTestCase
         $pushed = $this->changedStates($this->readEventSource($this->userBearerToken(), 'FileNode'), 'bob');
 
         $this->assertSame(['FileNode' => $getState], $pushed);
-        $this->assertSame((string) app(FileNodeIndexService::class)->currentSeq(), $getState);
+        $this->assertSame(app(FileNodeSyncState::class)->current('bob'), $getState);
     }
 
     public function test_a_write_in_another_users_root_pushes_nothing(): void
@@ -78,7 +79,7 @@ final class JmapEventSourceDriveTest extends WgwDatabaseTestCase
         $this->createDriveFile('alice', '/users/alice/Projects', 'plan.md');
 
         $after = $this->changedStates($this->readEventSource($this->userBearerToken(), 'FileNode', $bob['id']), 'bob');
-        $this->assertSame(['FileNode' => (string) app(FileNodeIndexService::class)->currentSeq()], $after);
+        $this->assertSame(['FileNode' => app(FileNodeSyncState::class)->current('bob')], $after);
 
         $changes = $this->fileNodeJmap([
             ['FileNode/changes', ['accountId' => 'bob', 'sinceState' => $sinceState], 'c0'],

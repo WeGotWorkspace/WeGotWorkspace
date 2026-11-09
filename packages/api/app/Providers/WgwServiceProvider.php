@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
+use App\Dav\Server\CalDavDeliveryRecipients;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\SabreCredentialValidator;
 use App\Services\Drive\DriveShareOwnerReach;
@@ -66,6 +67,14 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(TeamColleagues::class)) {
                 $app->make(TeamColleagues::class)->forgetRequestState();
+            }
+        });
+
+        // Principals one CalDAV local delivery may open (#1922): never carried into the next request.
+        $this->app->scoped(CalDavDeliveryRecipients::class);
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(CalDavDeliveryRecipients::class)) {
+                $app->make(CalDavDeliveryRecipients::class)->forget();
             }
         });
 

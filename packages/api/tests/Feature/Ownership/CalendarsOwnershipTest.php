@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Ownership;
 
 use App\Models\CalendarFeedToken;
+use App\Models\GroupMember;
+use App\Models\Principal;
 use App\Services\Calendars\HostIpResolver;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Jmap\JmapCapabilities;
@@ -1127,7 +1129,7 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             $this->assertIsArray($row);
             $keys = array_keys($row);
             sort($keys);
-            $this->assertSame(['email', 'name', 'username'], $keys, $case->key().': invitee rows carry more than a name and an address.');
+            $this->assertSame(['email', 'name', 'sharesTeam', 'username'], $keys, $case->key().': invitee rows carry more than a name, an address and the Team flag.');
         }
         $this->assertNotContains(OwnershipPrincipals::CREW, array_column($rows, 'username'), $case->key());
     }
@@ -1184,6 +1186,22 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
      * carol organizes an event in a calendar she shares with the actor, and
      * invites the actor. The actor accepts into its own calendar.
      */
+    /**
+     * A local invite needs a shared Team (#1923); outside it the attendee is
+     * invited as an external guest and gets no notification.
+     */
+    private function shareInviteTeam(string ...$usernames): void
+    {
+        $team = Principal::query()->where('uri', 'principals/groups/invite-pair')->first()
+            ?? $this->seedWgwGroup('principals/groups/invite-pair', 'Invite pair');
+        foreach ($usernames as $username) {
+            $member = $this->ownershipPrincipal($username);
+            if (! GroupMember::query()->where('principal_id', $team->id)->where('member_id', $member->id)->exists()) {
+                $this->addPrincipalToGroup($team, $member);
+            }
+        }
+    }
+
     private function runSharedOrganizerRsvp(OwnershipCase $case): void
     {
         $self = $this->usernameFor($case->actor);
@@ -1193,6 +1211,7 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/'.$self);
         [$ownCalendarId] = $this->createCalendarWithEvent($self, 'own-rsvp', 'own calendar for rsvp', null, null, false);
         $title = 'carol invites '.$self;
+        $this->shareInviteTeam($carol, $self);
         $this->jmapAsUsername($carol, [
             ['Calendar/set', ['accountId' => $carol, 'create' => ['c' => ['id' => 'carol-organizer', 'name' => 'carol organizer', 'shareWith' => [$self => $right]]]], 's0'],
             ['CalendarEvent/set', ['accountId' => $carol, 'create' => ['e' => $this->eventPayload('carol-organizer', $title) + ['participants' => [
@@ -1236,6 +1255,7 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
         }
 
         $dave = OwnershipPrincipals::DAVE;
+        $this->shareInviteTeam($dave, $attendee);
         $this->jmapAsUsername($dave, [['CalendarEvent/set', ['accountId' => $dave, 'create' => ['inv' => [
             'calendarIds' => ['default' => true],
             'title' => 'invite for '.$attendee,
