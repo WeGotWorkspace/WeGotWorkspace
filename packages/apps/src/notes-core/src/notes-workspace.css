@@ -86,8 +86,8 @@
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: var(--notes-detail-accent);
   /* The open note sits on the plain pane surface: no notebook wash, no sheet
-   * shadow. The notebook colour lives in the eyebrow above the title and on
-   * the editor checks (`--notes-detail-accent`). */
+   * shadow. The notebook colour lives in the eyebrow above the title
+   * (`--notes-detail-accent`). */
   --paper-sheet-bg: var(--workspace-surface);
   --paper-sheet-shadow: none;
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
@@ -119,11 +119,11 @@
   --button-active-color: var(--workspace-foreground);
 }
 
-/* Editor task checks: the selection mark shape, filled with the notebook colour
- * and a check in its contrast ink (dark or light, per notebook). */
+/* Editor task checks follow the text, not the notebook: a ring in the body ink,
+ * and when checked the inverse — filled with the ink, the check in the sheet colour. */
 .notes-workspace .note-text-editor-body {
-  --text-editor-task-check-fill: var(--notes-detail-accent);
-  --text-editor-task-check-color: var(--notes-detail-check-fg, var(--workspace-accent-foreground));
+  --text-editor-task-check-fill: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+  --text-editor-task-check-color: var(--workspace-surface);
 }
 
 /* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */

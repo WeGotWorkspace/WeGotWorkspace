@@ -9,10 +9,10 @@ import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
 
 /**
- * Editor task checks: the selection mark shape (empty ring, or one solid fill)
- * in the notebook colour, with a check in its contrast ink.
+ * Editor task checks follow the text, not the notebook: an empty ring, or
+ * checked the inverse — filled with the body ink, the check in the sheet colour.
  */
-async function expectNotebookTaskChecks(canvasElement: HTMLElement) {
+async function expectInkTaskChecks(canvasElement: HTMLElement) {
   const box = (state: "true" | "false") =>
     canvasElement.querySelector<HTMLElement>(
       `ul[data-type="taskList"] li[data-checked="${state}"] > label span`,
@@ -29,11 +29,12 @@ async function expectNotebookTaskChecks(canvasElement: HTMLElement) {
     return color;
   };
   const style = getComputedStyle(checked);
-  expect(style.backgroundColor).toBe(resolve("var(--notes-detail-accent)"));
-  expect(style.borderTopColor).toBe(style.backgroundColor);
-  expect(style.color).toBe(
-    resolve("var(--notes-detail-check-fg, var(--workspace-accent-foreground))"),
+  expect(style.backgroundColor).toBe(
+    resolve("var(--notes-detail-contrast-fg, var(--workspace-foreground))"),
   );
+  expect(style.backgroundColor).not.toBe(resolve("var(--notes-detail-accent)"));
+  expect(style.borderTopColor).toBe(style.backgroundColor);
+  expect(style.color).toBe(resolve("var(--workspace-surface)"));
   expect(style.color).not.toBe(style.backgroundColor);
   expect(getComputedStyle(checked, "::after").backgroundColor).toBe(style.color);
   expect(getComputedStyle(unchecked).backgroundColor).toBe("rgba(0, 0, 0, 0)");
@@ -264,7 +265,7 @@ export const NotebookTint: Story = {
     expect(scroll!.scrollHeight).toBeLessThanOrEqual(scroll!.clientHeight + 1);
     expect(sheet!.scrollHeight).toBeLessThanOrEqual(sheet!.clientHeight + 1);
 
-    await expectNotebookTaskChecks(canvasElement);
+    await expectInkTaskChecks(canvasElement);
   },
 };
 
@@ -278,9 +279,7 @@ export const NotebookTintDark: Story = {
     const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
       canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
     expect(workspace).toBeTruthy();
-    expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-we-got-soft)",
-    );
+    expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe("");
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
@@ -293,7 +292,7 @@ export const NotebookTintDark: Story = {
     expect(title).toBeTruthy();
     expect(getComputedStyle(title!).color).toBe(getComputedStyle(softInk).color);
     softInk.remove();
-    await expectNotebookTaskChecks(canvasElement);
+    await expectInkTaskChecks(canvasElement);
   },
 };
 
@@ -301,7 +300,7 @@ export const NotebookTintDark: Story = {
 export const TaskChecks: Story = {
   tags: ["vitest-ci"],
   args: { withTasks: true },
-  play: async ({ canvasElement }) => expectNotebookTaskChecks(canvasElement),
+  play: async ({ canvasElement }) => expectInkTaskChecks(canvasElement),
 };
 
 /** Dark: same notebook fill and contrast check. */
