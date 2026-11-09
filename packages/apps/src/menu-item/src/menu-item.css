@@ -2,7 +2,9 @@
 /* ----- Root (all contexts) ----- */
 
 .menu-item {
-  @apply flex w-full gap-2 rounded px-4 py-2 text-left text-sm outline-none transition-[color,background-color,box-shadow];
+  @apply flex w-full gap-2 rounded px-4 py-2 text-left outline-none transition-[color,background-color,box-shadow];
+  font-size: var(--menu-item-font-size);
+  line-height: var(--menu-item-line-height);
   /* Beat UA `buttonface` (#efefef) so white-on-accent rails stay AA. */
   background-color: transparent;
 }

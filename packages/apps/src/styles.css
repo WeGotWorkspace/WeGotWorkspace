@@ -181,6 +181,10 @@
 
 :root {
   --radius: 0.625rem;
+  /* Every menu and dropdown option (DropdownMenu, Select, sidebar rows, slash menu):
+     one type size, set here only. Do not set font-size on an option elsewhere. */
+  --menu-item-font-size: 0.875rem;
+  --menu-item-line-height: 1.25rem;
   /* Sidebar rows (menu-item and collection rows) and their selected wash. */
   --sidebar-item-radius: 0.625rem;
   /* Minimum row height for lists and tables (Drive/Docs listing, pickers, admin). */
