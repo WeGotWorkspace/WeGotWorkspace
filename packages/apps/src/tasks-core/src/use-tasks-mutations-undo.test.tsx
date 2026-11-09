@@ -205,3 +205,49 @@ describe("useTasksMutations undo as a compensating write", () => {
     );
   });
 });
+
+describe("useTasksMutations selection complete", () => {
+  const click = (keys: { metaKey?: boolean } = {}) =>
+    ({ metaKey: false, ctrlKey: false, shiftKey: false, ...keys }) as unknown as React.MouseEvent;
+
+  it("sends the old status back for the tasks that landed when a later one fails", async () => {
+    const operations = createOperations();
+    const { result } = renderTasks(operations);
+    const [first, second, third] = result.current.listTasks
+      .filter((task) => task.workflowStatus !== "completed")
+      .map((task) => task.id);
+    const before = new Map(
+      result.current.listTasks.map((task) => [task.id, task.workflowStatus ?? "needs-action"]),
+    );
+    act(() => result.current.handleSelect(first!, click()));
+    act(() => result.current.handleSelect(second!, click({ metaKey: true })));
+    act(() => result.current.handleSelect(third!, click({ metaKey: true })));
+
+    // The first complete lands, the second fails: the batch must not stay half done.
+    operations.patchTask
+      .mockImplementationOnce(async (taskId: string, patch: TaskPatch) => serverTask(taskId, patch))
+      .mockImplementationOnce(async () => {
+        throw new Error("412");
+      });
+    act(() => result.current.selectionBarButtons[0]!.onClick());
+
+    await vi.waitFor(() => {
+      expect(operations.patchTask).toHaveBeenCalledWith(
+        first,
+        { workflowStatus: before.get(first!) },
+        expect.anything(),
+      );
+    });
+    // The third was never sent, the second never landed: only the first goes back.
+    const sent = operations.patchTask.mock.calls.map(([id, patch]) => [id, patch.workflowStatus]);
+    expect(sent).toEqual([
+      [first, "completed"],
+      [second, "completed"],
+      [first, before.get(first!)],
+    ]);
+    const status = (id: string) =>
+      result.current.displayTasks.find((task) => task.id === id)?.workflowStatus;
+    expect(status(first!)).toBe(before.get(first!));
+    expect(status(second!)).toBe(before.get(second!));
+  });
+});

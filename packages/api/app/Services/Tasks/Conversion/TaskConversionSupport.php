@@ -211,14 +211,24 @@ final class TaskConversionSupport
             $task['showWithoutTime'] = true;
         }
 
-        // A UTC time (`...Z`, no TZID) is JSCalendar wall time in "UTC", as the writer
-        // reads it back; otherwise a picked UTC zone would come back as floating.
+        // UTC times (`...Z`, no TZID) are JSCalendar wall time in "UTC", as the writer
+        // reads it back; otherwise a picked UTC zone would come back as floating. The
+        // zone is shared by start and due, so only when every time is UTC: a floating
+        // start next to a UTC due stays floating, and the due keeps its `Z`.
         if (($timeZone === null || $timeZone === '') && ! $showWithoutTime) {
-            foreach (['start', 'due'] as $field) {
-                if (isset($task[$field]) && is_string($task[$field]) && str_ends_with($task[$field], 'Z')) {
-                    $task[$field] = substr($task[$field], 0, -1);
-                    $timeZone = 'UTC';
+            $times = array_filter(
+                [$task['start'] ?? null, $task['due'] ?? null],
+                static fn (mixed $value): bool => is_string($value),
+            );
+            $allUtc = $times !== []
+                && array_filter($times, static fn (string $value): bool => ! str_ends_with($value, 'Z')) === [];
+            if ($allUtc) {
+                foreach (['start', 'due'] as $field) {
+                    if (isset($task[$field]) && is_string($task[$field])) {
+                        $task[$field] = substr($task[$field], 0, -1);
+                    }
                 }
+                $timeZone = 'UTC';
             }
         }
 

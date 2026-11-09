@@ -15,7 +15,7 @@ import {
   tasksCompleteToastMessage,
   tasksMoveToastMessage,
 } from "@/tasks-core/src/tasks-toast-messages";
-import { moveTasksBack, moveTasksToList } from "@/tasks-core/src/tasks-undo-writes";
+import { moveTasksBack, moveTasksToList, statusWrites } from "@/tasks-core/src/tasks-undo-writes";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
@@ -179,18 +179,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         );
       };
 
-      const changedIds = [...before.keys()];
       queueMutation({
-        key: `tasks:complete:${changedIds.slice().sort().join(",")}`,
+        key: `tasks:complete:${[...before.keys()].sort().join(",")}`,
         toastMessage: tasksCompleteToastMessage(completing, changed.length, L),
         icon: completing ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />,
         // On each task's save chain: after typed text that is still saving.
-        execute: async (signal) => {
-          for (const taskId of changedIds) await setStatusInOrder(taskId, nextStatus, signal);
-        },
-        revert: async () => {
-          for (const [taskId, status] of before) await setStatusInOrder(taskId, status);
-        },
+        ...statusWrites(setStatusInOrder, before, nextStatus),
         undo: rollback,
         undoToastMessage: L.toastCompleteUndone,
       });

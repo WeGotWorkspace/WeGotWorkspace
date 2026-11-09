@@ -449,6 +449,33 @@ const ACTIONS = {
     },
     landed: (s, f) => taskT(s, f)?.status === "completed",
   },
+  // The done box ticked while the typed title's save is still on its way: both land,
+  // and the tick does not take the title back.
+  tickDuringAutosave: {
+    nets: { one: ["on", "off"] },
+    async run(tab, f) {
+      const detail = await openTask(tab, f.task);
+      const url = `**/api/v1/tasks/items/${f.taskId}`;
+      let sent = () => {};
+      const inFlight = new Promise<void>((resolve) => (sent = resolve));
+      const slow = async (route: Route) => {
+        sent();
+        await sleep(3_000);
+        await route.fallback();
+      };
+      await tab.route(url, slow);
+      await detail.getByRole("textbox", { name: "Task name" }).fill(`${f.task} v2`);
+      // Offline nothing is sent: the tick then queues behind the queued title.
+      await Promise.race([inFlight, sleep(4_000)]);
+      await detail.getByRole("checkbox", { name: "Mark complete" }).click();
+      await sleep(4_000);
+      await tab.unroute(url, slow);
+    },
+    landed: (s, f) => {
+      const t = taskT(s, f);
+      return t?.title === `${f.task} v2` && t.status === "completed";
+    },
+  },
   statusBack: {
     nets: FIELD,
     task: { workflowStatus: "completed" },
@@ -484,6 +511,20 @@ const ACTIONS = {
     task: { due: D1, showWithoutTime: true, alerts: { a1: ALERT_15M } },
     run: (tab, f) => editTask(tab, f.task, { remind: { remove: true } }),
     landed: (s, f) => taskT(s, f)?.alerts.length === 0,
+  },
+  // One alarm of two removed: the other one stays.
+  remindDeleteOne: {
+    nets: FIELD,
+    task: {
+      due: D1,
+      showWithoutTime: true,
+      alerts: {
+        a1: ALERT_15M,
+        a2: { ...ALERT_15M, trigger: { ...ALERT_15M.trigger, offset: "-PT1H" } },
+      },
+    },
+    run: (tab, f) => editTask(tab, f.task, { remind: { remove: true } }),
+    landed: (s, f) => taskT(s, f)?.alerts.join() === "-PT1H end",
   },
   dueAdd: {
     nets: FIELD,

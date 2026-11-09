@@ -34,3 +34,31 @@ export async function moveTasksBack(
     showServerTask(setTasks, await operations.moveTaskToList(task.id, task.taskListId));
   }
 }
+
+type Status = NonNullable<Task["workflowStatus"]>;
+type SetStatusInOrder = (taskId: string, status: Status, signal?: AbortSignal) => Promise<unknown>;
+
+/**
+ * A done toggle of several tasks, on each task's save chain. Each landed write is
+ * marked, so a batch that fails halfway reverts only what landed.
+ */
+export function statusWrites(
+  setStatusInOrder: SetStatusInOrder,
+  before: ReadonlyMap<string, Status>,
+  nextStatus: Status,
+) {
+  return {
+    async execute(signal: AbortSignal, markCompleted: (taskId: string) => void) {
+      for (const taskId of before.keys()) {
+        await setStatusInOrder(taskId, nextStatus, signal);
+        markCompleted(taskId);
+      }
+    },
+    async revert(completed: CompletedWriteKeys) {
+      for (const [taskId, status] of before) {
+        if (completed && !completed.has(taskId)) continue;
+        await setStatusInOrder(taskId, status);
+      }
+    },
+  };
+}

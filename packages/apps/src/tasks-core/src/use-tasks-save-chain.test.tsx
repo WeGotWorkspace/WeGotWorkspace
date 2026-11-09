@@ -195,4 +195,34 @@ describe("one save chain per task", () => {
 
     expect(operations.patchTask).toHaveBeenCalledWith(OPEN.id, { priority: 1 }, expect.anything());
   });
+  it("keeps the etag of a list move whose patch failed, also after the chain went idle", async () => {
+    const { operations, result } = setup(async (_taskId, patch: TaskPatch) => {
+      if ("title" in patch) throw new Error("412");
+      return answer(patch, '"v3"');
+    });
+    operations.moveTaskToList.mockImplementation(async (_taskId: string, taskListId: string) =>
+      answer({ taskListId } as TaskPatch, '"moved"'),
+    );
+
+    // One save moves the task and changes its title; the title patch fails.
+    await act(async () => {
+      await result.current.autosaveTask(OPEN.id, {
+        ...taskToFormValue(OPEN, "default"),
+        listId: "work",
+        title: "Buy oat milk",
+      });
+    });
+    await act(async () => {});
+    expect(taskById(result, OPEN.id)?.taskListId).toBe("work");
+
+    // The chain is idle now; the next write starts from the move's version.
+    act(() => result.current.toggleTaskComplete(OPEN.id));
+    await waitFor(() =>
+      expect(operations.patchTask).toHaveBeenLastCalledWith(
+        OPEN.id,
+        { workflowStatus: "completed" },
+        expect.objectContaining({ ifMatch: '"moved"' }),
+      ),
+    );
+  });
 });

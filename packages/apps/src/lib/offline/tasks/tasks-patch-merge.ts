@@ -16,6 +16,18 @@ export function applyTaskPatch(task: Task, patch: TaskPatch): Task {
   return next;
 }
 
+/**
+ * A queued patch that clears every alert, written as a null per alert id the task has.
+ * The API merges alerts per id, so a bare `alerts: null` coalesced with a later new
+ * alert would become just that alert, and the server would keep the old ones.
+ */
+export function withExplicitAlertsClear(patch: TaskPatch, base: Task): TaskPatch {
+  if (patch.alerts !== null) return patch;
+  const ids = Object.keys(base.alerts ?? {});
+  if (ids.length === 0) return patch;
+  return { ...patch, alerts: Object.fromEntries(ids.map((id) => [id, null])) };
+}
+
 /** Two queued patches as one: the later wins, alert by alert. */
 export function coalesceTaskPatches(a: TaskPatch, b: TaskPatch): TaskPatch {
   const merged = { ...a, ...b };

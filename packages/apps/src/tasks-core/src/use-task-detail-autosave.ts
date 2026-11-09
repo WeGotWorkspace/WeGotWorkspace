@@ -138,15 +138,21 @@ export function useTaskDetailAutosave({
     );
   }, []);
 
-  /** Remembers a version the server returned, for the next write on the chain. */
-  const remember = useCallback((taskId: string, saved: Task | undefined) => {
-    const etag = (saved as (Task & { etag?: string }) | undefined)?.etag;
-    if (!saved || !etag) return;
-    savedEtagsRef.current.set(taskId, etag);
-    tasksRef.current = tasksRef.current.map((item) =>
-      item.id === taskId ? { ...item, etag } : item,
-    );
-  }, []);
+  /**
+   * Remembers a version the server returned, for the next write on the chain and, in
+   * the task itself, for a write after the chain went idle.
+   */
+  const remember = useCallback(
+    (taskId: string, saved: Task | undefined) => {
+      const etag = (saved as (Task & { etag?: string }) | undefined)?.etag;
+      if (!saved || !etag) return;
+      savedEtagsRef.current.set(taskId, etag);
+      const withEtag = (item: Task) => (item.id === taskId ? { ...item, etag } : item);
+      tasksRef.current = tasksRef.current.map(withEtag);
+      setTasks((prev) => prev.map(withEtag));
+    },
+    [setTasks],
+  );
 
   const enqueue = useCallback(<T>(taskId: string, write: () => Promise<T>): Promise<T> => {
     const chains = saveChainsRef.current;
@@ -232,14 +238,14 @@ export function useTaskDetailAutosave({
           if (moved) {
             const { taskListId: _landed, ...rest } = undo;
             undo = rest;
-            etag = (moved as Task & { etag?: string }).etag;
+            // Kept at once: the patch below may fail, and the move did land.
+            remember(taskId, moved);
+            etag = etagFor(taskId);
           }
         }
         if (hasPatch) {
-          const updated = await patchTask(taskId, patch, { ifMatch: etag });
-          etag = (updated as (Task & { etag?: string }) | undefined)?.etag ?? etag;
+          remember(taskId, await patchTask(taskId, patch, { ifMatch: etag }));
         }
-        if (etag) savedEtagsRef.current.set(taskId, etag);
       } catch {
         tasksRef.current = tasksRef.current.map(apply(undo));
         setTasks((prev) => prev.map(apply(undo)));
@@ -248,7 +254,7 @@ export function useTaskDetailAutosave({
         done();
       }
     },
-    [etagFor, operations, patchTask, setTasks, showMutationError, showOverlay],
+    [etagFor, operations, patchTask, remember, setTasks, showMutationError, showOverlay],
   );
 
   const autosaveTask = useCallback(
