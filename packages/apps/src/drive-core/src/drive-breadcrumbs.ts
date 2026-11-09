@@ -1,6 +1,6 @@
 import type { PathBreadcrumbItem } from "@/path-breadcrumb/src/path-breadcrumb";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 
 const GROUPS_ROOT = "Groups";
 

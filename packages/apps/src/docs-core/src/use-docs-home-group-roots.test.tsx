@@ -1,8 +1,8 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { useDocsHomeGroupRoots } from "@/docs-core/src/use-docs-home-group-roots";
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => {

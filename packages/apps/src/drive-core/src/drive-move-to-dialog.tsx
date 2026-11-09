@@ -11,9 +11,9 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveDriveFolderPickerStartPath } from "@/drive-core/src/drive-folder-picker-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 
 type DriveMoveToDialogShared = {
   open: boolean;

@@ -10,9 +10,9 @@ import {
   parseFileSizeBytes,
   suggestNewMarkdownFileName,
 } from "@/drive-core/src/drive-file-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
-import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
+import { SHARED_WITH_ME_UI_ROOT } from "@/lib/files/drive-path-utils";
 
 function file(title: string, kind: DriveFile["kind"] = "doc"): DriveFile {
   return {

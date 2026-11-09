@@ -1,5 +1,5 @@
-import type { ViewKey } from "@/drive-core/src/drive-models";
-import { normalizeDriveFolderUiPath } from "@/drive-core/src/drive-path-utils";
+import type { ViewKey } from "@/lib/files/drive-models";
+import { normalizeDriveFolderUiPath } from "@/lib/files/drive-path-utils";
 
 export type DriveRouteSearch = {
   view?: string;

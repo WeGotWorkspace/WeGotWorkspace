@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
 import { cn } from "@/lib/utils";
 import {
   DriveSelectionCheckbox,

@@ -1,8 +1,8 @@
 import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
 import { formatBytesCompact, inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
 
 /** Id of an upload in the Uploads view (never a server path). */

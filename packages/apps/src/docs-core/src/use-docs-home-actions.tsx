@@ -5,15 +5,15 @@ import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { DOCS_DELETE_NEEDS_CONNECTION } from "@/lib/offline/docs/docs-hybrid-operations";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
   moveDocsRowsToTrash,
   revertDocsHomeTrash,
   type DocsHomeTrashOfflineSnapshot,
 } from "@/docs-core/src/docs-home-trash-undo";
-import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 

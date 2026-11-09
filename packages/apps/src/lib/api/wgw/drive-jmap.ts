@@ -31,11 +31,7 @@ import type {
   WgwDriveUserData,
   WgwDriveUserResponse,
 } from "@/lib/api/wgw/types";
-import type {
-  DriveMutationOpts,
-  DriveUIData,
-  DriveUploadProgress,
-} from "@/drive-core/src/drive-types";
+import type { DriveMutationOpts, DriveUIData, DriveUploadProgress } from "@/lib/files/drive-types";
 
 export { DRIVE_READ_BLOB_MAX_BYTES, DriveFileTooLargeToOpenError };
 

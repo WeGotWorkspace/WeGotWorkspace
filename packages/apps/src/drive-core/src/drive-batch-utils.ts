@@ -3,12 +3,12 @@ import {
   DRIVE_TRASH_DIR_NAME,
   normalizeApiVirtualPath,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import type { Dispatch, SetStateAction } from "react";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 export function resolveDriveFileApiPath(

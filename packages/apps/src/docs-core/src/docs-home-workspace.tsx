@@ -39,8 +39,8 @@ import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
 import { DocsHomeSidebar } from "@/docs-core/src/docs-home-sidebar";
 import { docsHomeEmptyIcon } from "@/docs-core/src/docs-home-empty-icon";
-import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   createHybridDocsDriveOperations,
   getDocsSyncRunner,

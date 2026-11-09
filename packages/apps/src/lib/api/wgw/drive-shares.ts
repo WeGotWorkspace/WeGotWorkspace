@@ -19,7 +19,7 @@ import type {
   DriveSharedWithMeDataResponse,
   DriveSharedWithMeEntry,
 } from "@wgw/openapi-types/drive-types";
-import type { DriveShareMutationOpts, DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareMutationOpts, DriveShareOperations } from "@/lib/files/drive-types";
 
 function pathQuery(path: string): string {
   return `path=${encodeURIComponent(normalizePath(path))}`;

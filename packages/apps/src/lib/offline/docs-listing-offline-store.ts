@@ -13,7 +13,7 @@ import {
   type DocsListingBrowseFilters,
 } from "@/lib/offline/docs/docs-listing-cache-key";
 import { docsListingRowsTable, type OfflineDocsListingRow } from "@/lib/offline/docs/docs-schema";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 
 export type DocsListingCacheSnapshot = {
   results: WgwUnifiedSearchResult[];

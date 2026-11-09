@@ -1,9 +1,9 @@
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
   DriveUIData,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
 export type DriveWorkspaceProps = {

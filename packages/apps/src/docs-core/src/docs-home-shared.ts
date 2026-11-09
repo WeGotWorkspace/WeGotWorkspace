@@ -5,7 +5,7 @@
  */
 import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 import { DOCS_HOME_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 

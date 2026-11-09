@@ -24,8 +24,8 @@ import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdow
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import type { DocsHomeCreateDialogState } from "@/docs-core/src/use-docs-home-create-dialog";

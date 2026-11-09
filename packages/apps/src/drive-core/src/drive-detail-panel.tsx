@@ -2,7 +2,7 @@ import { HardDrive } from "lucide-react";
 import { Tag } from "@/tag/src/tag";
 import { DriveDetailActionBar } from "@/drive-core/src/drive-detail-action-bar";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { useCanDownloadDriveItem } from "@/drive-core/src/drive-item-download";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { FilePreview } from "@/file-preview/src/file-preview";

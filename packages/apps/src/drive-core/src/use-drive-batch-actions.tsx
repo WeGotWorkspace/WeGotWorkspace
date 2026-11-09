@@ -19,9 +19,9 @@ import {
   unrestoredDriveFilesMessage,
   type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
-import { DRIVE_TRASH_UI_PATH, isForeignDriveApiPath } from "@/drive-core/src/drive-path-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import { DRIVE_TRASH_UI_PATH, isForeignDriveApiPath } from "@/lib/files/drive-path-utils";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 
 /** A failed folder reload is not a failed batch. The renames already reached the server. */
 async function refreshOpenFolderAfterBatch(

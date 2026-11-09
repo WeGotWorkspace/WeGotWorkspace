@@ -16,9 +16,9 @@ import {
   resolveFreeName,
   restoreCompletedDriveMoves,
 } from "@/drive-core/src/drive-batch-utils";
-import { DRIVE_TRASH_DIR_NAME } from "@/drive-core/src/drive-path-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import { DRIVE_TRASH_DIR_NAME } from "@/lib/files/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 
 const USER = "alice";
 const groupRoots = new Set<string>();

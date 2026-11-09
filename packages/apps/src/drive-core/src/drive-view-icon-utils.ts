@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Clock, CloudUpload, HardDrive, Share, Shield, Star, Trash2 } from "lucide-react";
 import { isDriveSharedGroupPath } from "@/drive-core/src/drive-breadcrumbs";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 
 /** Icons aligned with {@link useDriveSidebarModel} sidebar items. */
 export const driveViewIcons = {

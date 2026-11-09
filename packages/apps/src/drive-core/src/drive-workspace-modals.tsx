@@ -21,11 +21,11 @@ import {
 } from "@/ui/alert-dialog";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
-import { isForeignDriveApiPath } from "@/drive-core/src/drive-path-utils";
+import { isForeignDriveApiPath } from "@/lib/files/drive-path-utils";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { DriveUploadBatchDialog } from "@/drive-core/src/drive-upload-batch-dialog";
 import { ShareDialog } from "@/share-ui/share-dialog";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import type { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 

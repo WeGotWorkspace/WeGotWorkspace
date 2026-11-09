@@ -10,9 +10,9 @@ import {
   DRIVE_TRASH_DIR_NAME,
   DRIVE_TRASH_UI_PATH,
   normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import { apiPathFromSearchSourceKey } from "@/drive-core/src/drive-search-utils";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";

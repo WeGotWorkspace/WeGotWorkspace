@@ -5,7 +5,7 @@ import { Callout } from "@/callout/src/callout";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { kindIcon } from "@/drive-core/src/drive-icons";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   canChooseDriveUploadFolder,
   driveUploadIssueLabels as issueLabels,

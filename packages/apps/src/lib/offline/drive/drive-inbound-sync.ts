@@ -1,4 +1,4 @@
-import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
+import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { driveJmapSession, fileNodeToDirectoryEntry } from "@/lib/api/wgw/drive-jmap";
 import { parentAndName } from "@/lib/files/api-path";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { driveLabels as L } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 

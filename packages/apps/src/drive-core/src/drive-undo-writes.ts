@@ -5,9 +5,9 @@ import {
   resolveFreeName,
   type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
-import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/drive-core/src/drive-path-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/lib/files/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 
 /** A star value a path had before a change, for Undo. */
 export type DriveStarChange = { path: string; before: boolean };

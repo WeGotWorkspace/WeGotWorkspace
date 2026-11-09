@@ -6,7 +6,7 @@ import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builde
 import { useCanDownloadDriveItem } from "@/drive-core/src/drive-item-download";
 import { driveUploadPlaceholderMenu } from "@/drive-core/src/drive-upload-placeholder-menu";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 /** A row menu action; `description` explains a disabled one. */
 export type DriveFileMenuAction = ActionBarAction & { description?: string };

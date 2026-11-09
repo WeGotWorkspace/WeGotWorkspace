@@ -1,5 +1,5 @@
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 export const driveLabels = {
   /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */

@@ -11,13 +11,13 @@ import {
 } from "@/drive-core/src/drive-group-roots";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
 import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
@@ -31,7 +31,7 @@ import type {
   DriveShareOperations,
   DriveUIData,
   DriveUnifiedSearchResult,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";

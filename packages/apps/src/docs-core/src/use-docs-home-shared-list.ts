@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { useDriveSharedList } from "@/drive-core/src/use-drive-shared-list";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useConnectivity } from "@/hooks/use-connectivity";

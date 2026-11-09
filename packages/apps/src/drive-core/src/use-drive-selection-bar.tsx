@@ -4,8 +4,8 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-types";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   canDownloadDriveItem,
   canDownloadDriveSelection,

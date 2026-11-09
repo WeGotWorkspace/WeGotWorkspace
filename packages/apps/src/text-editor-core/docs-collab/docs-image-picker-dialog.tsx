@@ -11,8 +11,8 @@ import {
 } from "@/ui/dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   buildDocsFolderPickerRootLabels,
   DOCS_DRIVE_UI_PERSONAL_PATH,

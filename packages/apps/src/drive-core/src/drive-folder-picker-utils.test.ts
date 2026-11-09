@@ -10,7 +10,7 @@ import {
   isDriveFolderPickerDestinationPath,
   resolveDriveFolderPickerStartPath,
 } from "@/drive-core/src/drive-folder-picker-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 describe("resolveDriveFolderPickerStartPath", () => {
   it("opens at the current folder when not in trash", () => {

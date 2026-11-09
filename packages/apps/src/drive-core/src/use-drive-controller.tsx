@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { isKeyboardFieldTarget } from "@/lib/keyboard/is-keyboard-field-target";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
   DriveUIData,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-types";
 import { useDriveList } from "@/drive-core/src/use-drive-list";
 import { useDriveMutations } from "@/drive-core/src/use-drive-mutations";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";

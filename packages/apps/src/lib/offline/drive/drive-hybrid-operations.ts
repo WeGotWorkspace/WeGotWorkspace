@@ -4,12 +4,8 @@ import {
   listTrashEntryNames,
   resolveFreeName,
 } from "@/drive-core/src/drive-batch-utils";
-import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/drive-core/src/drive-path-utils";
-import type {
-  DriveAPIOperations,
-  DriveAppBootstrap,
-  DriveUIData,
-} from "@/drive-core/src/drive-types";
+import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/lib/files/drive-path-utils";
+import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,

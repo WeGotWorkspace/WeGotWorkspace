@@ -1,4 +1,4 @@
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { driveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 import { normalizeApiVirtualPath } from "@/lib/files/api-path";

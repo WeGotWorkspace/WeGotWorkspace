@@ -1,6 +1,6 @@
 import { wgwFetch } from "@/lib/api/wgw/http";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import {
   backgroundSyncPacer,
   BackgroundSyncRateLimitedError,

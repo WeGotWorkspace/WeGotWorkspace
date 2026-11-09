@@ -6,7 +6,7 @@ import {
   canChooseDriveUploadFolder,
   driveUploadIssueLabels,
 } from "@/drive-core/src/drive-upload-issue-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   driveUploadRowStateFor,
   type DriveUploadQueueModel,

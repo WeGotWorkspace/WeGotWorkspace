@@ -1,12 +1,12 @@
 import { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import { driveLabels, driveUploadStatusText } from "@/drive-core/src/drive-labels";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
 import {
   normalizeApiVirtualPath,
   SHARED_WITH_ME_UI_ROOT,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 
 const BROWSER_PREVIEW_IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i;
 

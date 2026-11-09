@@ -12,9 +12,9 @@ import {
   mergeDriveFolderListing,
   refreshDriveFolderListing,
 } from "@/drive-core/src/drive-batch-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import { apiPathFromUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";

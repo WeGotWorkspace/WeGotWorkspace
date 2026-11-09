@@ -22,12 +22,12 @@ import {
   DRIVE_TRASH_UI_PATH,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DestinationPickerFrame } from "@/destination-picker/src/destination-picker-frame";
 import { DestinationPickerList } from "@/destination-picker/src/destination-picker-list";

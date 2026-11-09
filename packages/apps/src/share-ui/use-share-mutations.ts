@@ -5,7 +5,7 @@ import type {
   DriveSharePrincipalEntry,
 } from "@wgw/openapi-types/drive-types";
 import { useAppToast } from "@/hooks/use-app-toast";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { uiPermissionToAccess, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { generateFriendlySharePassword } from "@/share-ui/generate-friendly-share-password";
 import { shareLabels } from "@/share-ui/share-labels";

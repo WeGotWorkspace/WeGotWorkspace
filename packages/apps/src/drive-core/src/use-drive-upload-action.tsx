@@ -3,8 +3,8 @@ import { Upload } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { driveFileFromEntry, formatBytesCompact } from "@/drive-core/src/drive-file-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
-import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
+import { apiPathFromUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import { queuePickedDriveUploads } from "@/drive-core/src/drive-upload-listing";
 import {
   droppedFolderEntries,

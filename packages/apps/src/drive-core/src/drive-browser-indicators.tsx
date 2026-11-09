@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Folder, Globe2, HardDrive, Share, Share2, Users2 } from "lucide-react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { kindIcon } from "@/drive-core/src/drive-icons";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
-import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
+import { SHARED_WITH_ME_UI_ROOT } from "@/lib/files/drive-path-utils";
 import { cn } from "@/lib/utils";
 
 /** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */

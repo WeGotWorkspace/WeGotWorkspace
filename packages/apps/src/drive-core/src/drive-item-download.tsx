@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 
 /**
  * True when the Drive operations can download a folder as a zip (#1621):
