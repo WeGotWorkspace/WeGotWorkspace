@@ -10,7 +10,7 @@ import {
   Sun,
 } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
-import { CardRow } from "@/card/src/card-row";
+import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotesNotebookSelect } from "@/notes-core/src/notes-notebook-select";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
@@ -19,7 +19,6 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { isTaskCompleted, taskListDotColor, taskListName } from "@/tasks-core/src/tasks-task-utils";
 import { taskFieldControls, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";
-import "@/tasks-core/src/tasks-detail-view.css";
 
 /** Typing in the title or notes saves after this pause (and on leaving the task). */
 export const TASK_DETAIL_SAVE_DEBOUNCE_MS = 600;
@@ -138,7 +137,7 @@ export function TasksDetailView({
       }
     >
       <TextareaAutosize
-        className="tasks-detail-view__notes note-detail-view__body-start"
+        className="tasks-detail-view__notes note-detail-view__notes note-detail-view__body-start"
         value={form.description}
         onChange={(event) =>
           update((prev) => ({ ...prev, description: event.target.value }), "later")
@@ -151,7 +150,7 @@ export function TasksDetailView({
         // Grows with the notes, however long: the pane scrolls, not the field.
         maxRows={Number.POSITIVE_INFINITY}
       />
-      <div className="tasks-detail-view__fields">
+      <DetailFieldList className="tasks-detail-view__fields">
         <TasksDetailField icon={<CircleCheck />} title={L.addTaskStatus}>
           {controls.status}
         </TasksDetailField>
@@ -171,7 +170,7 @@ export function TasksDetailView({
             {alarm}
           </TasksDetailField>
         ))}
-      </div>
+      </DetailFieldList>
     </NoteDetailView>
   );
 }
@@ -186,13 +185,9 @@ function TasksDetailField({
   children: ReactNode;
 }) {
   return (
-    <CardRow
-      className="tasks-detail-view__field"
-      leading={<span className="tasks-detail-view__field-icon">{icon}</span>}
-      title={title}
-    >
+    <DetailFieldRow className="tasks-detail-view__field" icon={icon} title={title}>
       {children}
-    </CardRow>
+    </DetailFieldRow>
   );
 }
 

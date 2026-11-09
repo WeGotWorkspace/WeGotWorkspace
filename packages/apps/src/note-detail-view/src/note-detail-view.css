@@ -108,3 +108,25 @@
 .note-detail-view__tag-group {
   @apply mb-5 -mt-1 pt-0 pb-5;
 }
+
+/* A plain-text body under the title (a task's or a contact's notes): reads like a
+ * note's body, grows with its text. */
+.note-detail-view__notes {
+  @apply mb-8 block w-full resize-none appearance-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none;
+  @apply whitespace-pre-wrap break-words font-sans;
+  font-size: var(--text-editor-prose-font-size, clamp(15px, 0.875rem + 0.35vw, 16px));
+  line-height: var(--text-editor-prose-line-height, 1.7);
+  color: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+}
+
+.note-detail-view__notes::placeholder {
+  color: color-mix(
+    in oklab,
+    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 35%,
+    transparent
+  );
+}
+
+.note-detail-view__notes:read-only {
+  @apply cursor-default;
+}
