@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
@@ -503,7 +504,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
   eventAttendeesRemove: "Remove participant",
-  eventAttendeesSearchEmpty: "No people found",
+  eventAttendeesSearchEmpty: noPeopleOrTeamsFoundCopy,
   eventAttendeesTeammate: "Teammate",
   eventAttendeesContactWork: "Work",
   eventAttendeesContactHome: "Home",
@@ -528,7 +529,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   shareCalendarSectionTitle: "Team access",
   shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
   shareCalendarAddPlaceholder: "Add people or groups…",
-  shareCalendarSearchEmpty: "No people or groups found",
+  shareCalendarSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareCalendarOffline: "Sharing changes require a connection.",
   shareCalendarFailed: "Could not update sharing.",
   sharedCalendar: "Shared with you",

@@ -69,10 +69,8 @@ import { parseTaskDueOverlayKey } from "@/calendar-core/src/calendar-task-due-ov
 import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
 import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
 import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
-import {
-  calendarDirectoryGroupsFromBootstrap,
-  personalOwnerLabel,
-} from "@/calendar-core/src/calendar-workspace-props";
+import { personalOwnerLabel } from "@/calendar-core/src/calendar-workspace-props";
+import { useCalendarSharePrincipals } from "@/calendar-core/src/use-calendar-share-principals";
 import {
   isSessionEventInvitee,
   isSessionEventOrganizer,
@@ -95,11 +93,7 @@ import {
   canWriteCalendarCollection,
   isCalendarEventFormReadOnly,
 } from "@/calendar-core/src/calendar-collection-write";
-import {
-  calendarSharePrincipalsFromDirectory,
-  filterCalendarSharePrincipals,
-  type CalendarShareWith,
-} from "@/calendar-core/src/calendar-share";
+import type { CalendarShareWith } from "@/calendar-core/src/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ownedAndTeamCalendarsForSidebar,
@@ -271,7 +265,13 @@ export function CalendarWorkspace({
   );
   const invitationsLayout = useDocsCommentsLayout();
   const useInvitationsDrawer = invitationsLayout === "drawer";
-  const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
+  const { directoryGroups, sharePrincipals, searchSharePrincipals, noTeam, attendeePickerNoTeam } =
+    useCalendarSharePrincipals({
+      data,
+      invitees: invitations.invitees,
+      username: session.user.username,
+      operations,
+    });
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const availability = useTeamAvailability({
@@ -288,24 +288,6 @@ export function CalendarWorkspace({
     calendarDialog?.mode === "edit"
       ? (calendars.find((calendar) => calendar.id === calendarDialog.calendarId) ?? null)
       : null;
-  const sharePrincipals = useMemo(
-    () =>
-      calendarSharePrincipalsFromDirectory({
-        invitees: invitations.invitees,
-        groups: directoryGroups,
-        excludeUsername: session.user.username,
-      }),
-    [directoryGroups, invitations.invitees, session.user.username],
-  );
-  const searchSharePrincipals = useCallback(
-    async (query: string) => {
-      if (operations?.searchSharePrincipals) {
-        return operations.searchSharePrincipals(query);
-      }
-      return filterCalendarSharePrincipals(query, sharePrincipals);
-    },
-    [operations, sharePrincipals],
-  );
   const patchShareWith = useCallback(
     async (calendarId: string, shareWith: CalendarShareWith) => {
       if (!operations?.patchCalendar) {
@@ -1213,6 +1195,7 @@ export function CalendarWorkspace({
           contactCards={contactCards}
           onRefreshContactCards={refreshCards}
           canSubmitEmail={invitations.canSubmitEmail}
+          noTeam={attendeePickerNoTeam}
           sessionEmail={sessionEmail}
           sessionUsername={session.user.username}
           meetOperations={meetOperations}
@@ -1242,6 +1225,7 @@ export function CalendarWorkspace({
                 calendar: editCalendar,
                 knownPrincipals: sharePrincipals,
                 online,
+                noTeam,
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchShareWith,
               }

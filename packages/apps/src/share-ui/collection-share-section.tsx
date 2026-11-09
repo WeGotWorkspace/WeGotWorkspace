@@ -12,7 +12,7 @@ import {
 import { NOTES_SHARE_UI_PERMISSIONS } from "@/share-ui/share-access-map";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { shareLabels } from "@/share-ui/share-labels";
+import { noTeamYetCopy, shareLabels } from "@/share-ui/share-labels";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import {
   SharePrincipalSearchDropdown,
@@ -52,6 +52,8 @@ export type CollectionShareSectionProps = {
    * Default true (Notes-style role picker).
    */
   accessSelect?: boolean;
+  /** The viewer is in no Team: say so instead of the hint and the no-match text. */
+  noTeam?: boolean;
   onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   onPatchShareWith: (collectionId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
@@ -65,6 +67,7 @@ export function CollectionShareSection({
   online = true,
   dialogClassName,
   accessSelect = true,
+  noTeam = false,
   onSearchPrincipals,
   onPatchShareWith,
 }: CollectionShareSectionProps) {
@@ -117,13 +120,13 @@ export function CollectionShareSection({
       <ShareAccessCard
         titleIcon={<Users className="size-4" />}
         title={copy.title}
-        description={copy.hint}
+        description={noTeam ? noTeamYetCopy : copy.hint}
         addControl={
           <SharePrincipalSearchDropdown
             query={query}
             searching={searching}
             results={searchOptions}
-            emptyLabel={copy.empty}
+            emptyLabel={noTeam ? noTeamYetCopy : copy.empty}
             listLabel={copy.title}
             onSelect={(option) => {
               const entry = selectableResults.find((row) => row.id === option.id);

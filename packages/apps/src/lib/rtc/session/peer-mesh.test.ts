@@ -239,6 +239,7 @@ describe("RtcPeerMesh", () => {
       binding: {
         kind: "media",
         attach: () => new MediaStream(),
+        prepareAnswer: () => undefined,
       },
     });
 
@@ -269,6 +270,7 @@ describe("RtcPeerMesh", () => {
       binding: {
         kind: "media",
         attach: () => new MediaStream(),
+        prepareAnswer: () => undefined,
       },
     });
 
@@ -294,6 +296,7 @@ describe("RtcPeerMesh", () => {
       binding: {
         kind: "media",
         attach: () => new MediaStream(),
+        prepareAnswer: () => undefined,
       },
       shouldHandleRtcSignals: () => false,
     });

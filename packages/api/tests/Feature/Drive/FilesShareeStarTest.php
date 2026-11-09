@@ -31,6 +31,8 @@ final class FilesShareeStarTest extends WgwDatabaseTestCase
         $this->createDriveDirectory('/users/bob', 'workspace');
         $this->createDriveFile($this->ownerToken, self::SHARE_ROOT, 'plan.md');
         $this->createDriveFile($this->ownerToken, '/users/bob', 'private.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

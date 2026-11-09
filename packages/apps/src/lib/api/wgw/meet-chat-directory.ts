@@ -16,7 +16,8 @@ const GROUP_PRINCIPAL_PREFIX = "principals/groups/";
 
 export type MeetChatDirectory = {
   directory: CollectionSharePrincipal[];
-  groups: MeetDirectoryGroup[];
+  /** `undefined` when the Teams could not be loaded: not the same as "no Team". */
+  groups?: MeetDirectoryGroup[];
 };
 
 function meetDirectoryGroupsFromSettings(
@@ -30,16 +31,18 @@ function meetDirectoryGroupsFromSettings(
   });
 }
 
-async function fetchMeetDirectoryGroups(): Promise<MeetDirectoryGroup[]> {
+async function fetchMeetDirectoryGroups(): Promise<MeetDirectoryGroup[] | undefined> {
   try {
     const res = await wgwFetch("/settings/state");
-    if (!res.ok) return [];
+    if (!res.ok) return undefined;
     const settings = (await wgwReadJson(res)) as {
       groups?: { id: string; displayName: string }[];
     };
-    return Array.isArray(settings.groups) ? meetDirectoryGroupsFromSettings(settings.groups) : [];
+    return Array.isArray(settings.groups)
+      ? meetDirectoryGroupsFromSettings(settings.groups)
+      : undefined;
   } catch {
-    return [];
+    return undefined;
   }
 }
 
@@ -56,6 +59,10 @@ export async function fetchMeetChatDirectory(): Promise<MeetChatDirectory> {
     .map((invitee) => ({
       id: invitee.username,
       displayName: invitee.name?.trim() || invitee.username,
+      sharesTeam: invitee.sharesTeam,
     }));
-  return { directory: sharePrincipalsFromDirectory({ users, groups }), groups };
+  return {
+    directory: sharePrincipalsFromDirectory({ users, groups: groups ?? [] }),
+    ...(groups !== undefined ? { groups } : {}),
+  };
 }

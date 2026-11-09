@@ -237,7 +237,9 @@ final class ContactsOwnershipTest extends WgwDatabaseTestCase implements Ownersh
         $this->assertJmapGetOutcome($after, $target['actorBookId'], $case);
         $all = array_map('strval', array_column((array) $after->json('methodResponses.1.1.list'), 'id'));
         $this->assertIdsAbsent([$target['actorBookId']], $all, $case->key());
-        $this->assertSame($target['actorBookId'], $get(OwnershipPrincipals::DAVE)->json('methodResponses.0.1.list.0.id'), $case->key().': dave lost access.');
+        // The other actor stays in crew and keeps the book (dave owns it).
+        $other = $this->usernameFor($case->actor === Actor::Admin ? Actor::Member : Actor::Admin);
+        $this->assertSame($target['actorBookId'], $get($other)->json('methodResponses.0.1.list.0.id'), $case->key().': '.$other.' lost access.');
     }
 
     // ---- Target seeding -------------------------------------------------
@@ -258,6 +260,8 @@ final class ContactsOwnershipTest extends WgwDatabaseTestCase implements Ownersh
             // The other actor stays in alumni, so the owner's view still works
             // after this actor leaves.
             Scope::FormerGroup => [$this->usernameFor($actor === Actor::Admin ? Actor::Member : Actor::Admin), OwnershipPrincipals::ALUMNI],
+            // Epic #1915: a Team share needs an owner in that Team; dave is in crew.
+            Scope::UserToActorGroup => [OwnershipPrincipals::DAVE, null],
             default => [$carol, null],
         };
         $ownerBookId = $groupSlug === null ? $default : AddressBookCollectionUris::groupApiId($groupSlug);

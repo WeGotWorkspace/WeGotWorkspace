@@ -6,6 +6,7 @@ namespace App\Services\Jmap\Methods;
 
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 use App\Services\Jmap\Methods\Concerns\ValidatesChangesArguments;
@@ -24,6 +25,7 @@ final class FileNodeChangesMethod implements JmapMethodInterface
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FileNodeAccountSupport $accounts,
+        private readonly FileNodeSyncState $syncState,
     ) {}
 
     public function name(): string
@@ -42,17 +44,17 @@ final class FileNodeChangesMethod implements JmapMethodInterface
     }
 
     /**
-     * Grant add/revoke does not appear here: no consumer reads FileNode/changes for shares (#990).
+     * The state is `<seq>.<grantHash>` ({@see FileNodeSyncState}). A grant that was added,
+     * revoked, hidden or changed since `sinceState` answers cannotCalculateChanges, so the
+     * client resyncs; so does a legacy all-digit state.
      */
     public function handle(string $username, array $args): array
     {
         $sinceState = $this->sinceState($args);
-        if (! ctype_digit($sinceState)) {
-            throw new JmapMethodException('cannotCalculateChanges', 'Sync state is invalid or expired.');
-        }
+        $sinceSeq = $this->syncState->sinceSeq($username, $sinceState);
 
         $roots = $this->accounts->rootsFor($username);
-        $delta = $this->index->changesSince((int) $sinceState, $roots);
+        $delta = $this->index->changesSince($sinceSeq, $roots);
         if ($delta === null) {
             throw new JmapMethodException('cannotCalculateChanges', 'Sync state is invalid or expired.');
         }
@@ -60,7 +62,7 @@ final class FileNodeChangesMethod implements JmapMethodInterface
         return [
             'accountId' => $username,
             'oldState' => $sinceState,
-            'newState' => (string) $this->index->currentSeq(),
+            'newState' => $this->syncState->current($username),
             'hasMoreChanges' => false,
             'created' => $delta['created'],
             'updated' => $delta['updated'],

@@ -33,6 +33,8 @@ final class McpContactsToolsTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpContactsFixtures();
         $this->enableMcp();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_addressbook_list_and_contact_write_happy_path(): void

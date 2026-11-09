@@ -267,18 +267,6 @@ final class CalendarRepository
         return $instance;
     }
 
-    /** @return array<string, mixed> */
-    public function changes(string $username, ?string $since): array
-    {
-        $changes = $this->collections->changes(
-            $this->accessibleVeventInstances($username),
-            $since,
-            fn (CalendarInstance $instance): string => $this->apiIdForInstance($instance),
-        );
-
-        return ['oldState' => $changes['oldState'], 'newState' => $changes['newState'], 'hasMoreChanges' => false] + $changes;
-    }
-
     public function instanceMayWrite(CalendarInstance $instance): bool
     {
         return (int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)
@@ -489,6 +477,7 @@ final class CalendarRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;

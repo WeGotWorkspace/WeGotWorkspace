@@ -45,6 +45,8 @@ final class JmapQuotaTest extends WgwDatabaseTestCase
         };
         $this->app->instance(FreeSpaceSource::class, $this->freeSpace);
         $this->fakeFreeSpace(self::FREE);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void

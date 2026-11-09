@@ -25,6 +25,8 @@ final class DriveShareByPrincipalTest extends WgwDatabaseTestCase
         $this->createDriveDirectory('/users/bob', 'projects');
         $this->createDriveDirectory('/users/bob/projects', 'q3');
         $this->createDriveFile($this->ownerToken, '/users/bob/projects/q3', 'draft.md');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     protected function tearDown(): void
@@ -70,6 +72,8 @@ final class DriveShareByPrincipalTest extends WgwDatabaseTestCase
         $priya = Principal::forUsername('priya');
         $this->assertNotNull($priya);
         $this->addPrincipalToGroup($designTeam, $priya);
+        // Epic #1915: the owner may only share with a Team they are in.
+        $this->seedSharedTeam('design-team', 'bob');
 
         $this->withBearer($this->ownerToken)->postJson('/api/v1/files/shares', [
             'path' => '/users/bob/projects/q3',

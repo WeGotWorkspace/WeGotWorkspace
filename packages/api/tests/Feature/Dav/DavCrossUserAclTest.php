@@ -148,6 +148,8 @@ final class DavCrossUserAclTest extends WgwDatabaseTestCase
 
     public function test_sharee_propfind_on_shared_calendar_is_allowed(): void
     {
+        // A share between people who share no Team is hidden (Epic #1915).
+        $this->seedSharedTeam('colleagues', 'alice', 'bob');
         $calendarId = $this->seedAliceEvent();
         $caldav = new CalPDO(DB::connection('wgw')->getPdo());
         $caldav->updateInvites($calendarId, [

@@ -49,7 +49,7 @@ See [ics-conversion-matrix.md](ics-conversion-matrix.md) for field mapping.
 | PUT | `/calendars/events/{eventId}` | Replace event |
 | PATCH | `/calendars/events/{eventId}` | Partial update |
 | DELETE | `/calendars/events/{eventId}` | Delete event |
-| GET | `/calendars/scheduling/invitees` | Instance users plus `canSubmitEmail` |
+| GET | `/calendars/scheduling/invitees` | Colleagues (admins: every user), each with `sharesTeam`, plus `canSubmitEmail` |
 | GET | `/calendars/scheduling/notifications` | Own iTIP inbox |
 | POST | `/calendars/scheduling/notifications/{id}/respond` | RSVP (sends REPLY) |
 | DELETE | `/calendars/scheduling/notifications/{id}` | Dismiss without REPLY |
@@ -57,6 +57,15 @@ See [ics-conversion-matrix.md](ics-conversion-matrix.md) for field mapping.
 | POST | `/calendar/rsvp/{token}` | Public RSVP (guest) |
 
 Composite event ids in paths must be URL-encoded (`#` → `%23`). Scheduling inbox details: [scheduling.md](scheduling.md).
+
+## Team availability
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/calendars/availability` | The caller's availability switch, Teams and per-calendar choices |
+| PUT | `/calendars/availability` | Partial update of those settings |
+
+Busy periods are served over JMAP (`urn:wgw:jmap:availability`: `TeamMember/get`, `TeamMember/getAvailability`) and the CalDAV outbox free/busy report (no titles). See [availability.md](availability.md).
 
 ## Published feeds
 
