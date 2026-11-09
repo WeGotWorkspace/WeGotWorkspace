@@ -171,6 +171,10 @@ describe("SettingsCalendarAvailabilitySection", () => {
 
     fireEvent.keyDown(tag, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+
+    // A touch tap opens it too, although Radix ignores touch pointers.
+    fireEvent.pointerDown(tag, { pointerType: "touch" });
+    expect((await screen.findByRole("tooltip")).textContent).toBe(labels.teamHint);
   });
 
   it("saves the switch and changed calendars through the REST operations", async () => {

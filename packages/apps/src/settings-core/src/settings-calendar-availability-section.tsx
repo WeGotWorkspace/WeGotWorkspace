@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef, useState } from "react";
 import { useWatch, type Control } from "react-hook-form";
 import { Button } from "@/button/src/button";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
@@ -207,12 +207,30 @@ function AvailabilityCalendarRow({
   );
 }
 
-/** The "Team" tag of a Team calendar row; its hint is the suite tooltip on hover and focus. */
+/**
+ * The "Team" tag of a Team calendar row; its hint is the suite tooltip on hover and focus.
+ * Radix ignores touch, so a touch tap opens it here and keeps the trigger from closing it again.
+ */
 function TeamCalendarTag() {
+  const [open, setOpen] = useState(false);
+  const touchRef = useRef(false);
   return (
-    <Tooltip>
+    <Tooltip open={open} onOpenChange={setOpen}>
       <TooltipTrigger asChild>
-        <Badge variant="outline" tabIndex={0}>
+        <Badge
+          variant="outline"
+          tabIndex={0}
+          onPointerDown={(event) => {
+            touchRef.current = event.pointerType !== "mouse";
+            if (touchRef.current) {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
+          onClick={(event) => {
+            if (touchRef.current) event.preventDefault();
+          }}
+        >
           {labels.teamBadge}
         </Badge>
       </TooltipTrigger>
