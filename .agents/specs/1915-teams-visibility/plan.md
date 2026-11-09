@@ -145,6 +145,7 @@ See spec.md, Non-goals.
 
 - **Admins reach everyone with DM and share, and hiding exempts admin-owned shares:** rejected by the product owner, 2026-11-04 (PR review). With hiding checked on the recipient's side, an admin's DM to someone outside the admin's Teams was accepted and then never shown. A DM or share from an admin reaches only people in the admin's own Teams; admins still find and invite everyone.
 - **FileNode grant hash only in the StateChange string, or the push basis set to the global seq:** rejected (PR review). The first never wakes an open app, because the event id is built from the basis. The second wakes every browser on any file write, which `docs/architecture/jmap-push.md` is designed to avoid.
+- **A Team share stays visible for a member who still shares another Team with the owner (per viewer):** rejected 2026-11-08 by the product owner. A Team share counts only while its owner is a member of that Team, so all members of a Team see the same and the rule is one membership check per grant.
 
 ## Affected packages
 
@@ -167,14 +168,14 @@ None — every choice for this work is made. The former OD1–OD3, the review bl
 
 ## Admin rule
 
-One paragraph, so that every chunk applies the same rule. Admin is a **role**, not a Team (chunk J). An admin **finds and invites everyone**: people lists, the attendee picker, calendar invites (delivered locally), and the CalDAV group directory and principal lookup. For **DMs, shares, presence and free/busy** an admin follows real Team membership, as for any user. Decided 2026-11-04 after the PR review: a DM or share from an admin reaches only people in the admin's own Teams. Otherwise the recipient would never see it, because hiding is checked on the recipient's side. In code, the first group of checks calls `isColleague`. The second calls `sharesTeamIgnoringAdminRole` (or `assertMayShareWith` / `isOwnTeam`, which use the same membership). No other variant exists.
+One paragraph, so that every chunk applies the same rule. Admin is a **role**, not a Team (chunk J). An admin **finds and invites everyone**: people lists, the attendee picker, calendar invites (delivered locally), and the CalDAV group directory and principal lookup. For **DMs, shares, presence and free/busy** an admin follows real Team membership, as for any user. Decided 2026-11-04 after the PR review: a DM or share from an admin reaches only people in the admin's own Teams. Otherwise the recipient would never see it, because hiding is checked on the recipient's side. In code, the first group of checks calls `isColleague`. The second calls `sharesTeamIgnoringAdminRole` (or `assertMayShareWith` / `isOwnTeam`, which use the same membership). Hiding combines them in `grantIsVisible` (added in E1): `sharesTeamIgnoringAdminRole` for a user grant, the owner's `isOwnTeam` for a Team grant. No other variant exists.
 
 | Surface | Chunk | Check |
 |---|---|---|
 | Scheduling invitees: attendee picker, mentions | C | `isColleague` |
 | DM rail and share dialogs (`sharesTeam` flag), Drive share principals | C | `sharesTeamIgnoringAdminRole` |
 | DM open, share writes, group sharee | D | `assertMayShareWith`, `isOwnTeam` (admins too) |
-| Hidden shares, owner share lists | E1, E2 | `sharesTeamIgnoringAdminRole` |
+| Hidden shares, owner share lists | E1, E2 | `grantIsVisible`: user grant `sharesTeamIgnoringAdminRole`, Team grant owner `isOwnTeam` |
 | Presence rooms | F | own Teams only (admins too) |
 | `principals/groups/`, `group-member-set`, `principals/{user}` | G | `isColleague` / own Teams (admins: all) |
 | iTIP: JMAP → iMIP; DAV → same result as an external address | H | `isColleague` |
@@ -290,9 +291,10 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Skill:** api
 - **Inputs:** `path: app/Services/Calendars/CalendarShareVisibility.php:56` (viewer side, also used by `findReachable`), `path: app/Dav/Server/WgwCalendarBackend.php:199` (CalDAV home), `path: app/Services/Jmap/Methods/CalendarChangesMethod.php:52` and `path: app/Services/Jmap/Push/JmapPushStateResolver.php:156` (states keyed by visible collections), `path: app/Services/Contacts/AddressBookShareVisibility.php:17` (no filter method yet), `path: app/Services/Contacts/AddressBookCollectionAccess.php:25`, `path: app/Services/Calendars/CalendarShareInvites.php:90` (revoke-all), `path: app/Mcp/McpMemberShareCommand.php:39`
 - **Done when:**
-  - `CalendarShareVisibility` gets `rejectHiddenSharees(viewer, instances)` next to `rejectDismissedSharees`. It drops sharee instances whose owner is a user principal who shares no Team with the viewer (`sharesTeamIgnoringAdminRole`, admins included). `accessibleInstances`, `findReachable` and `WgwCalendarBackend::getCalendarsForUser` apply both filters. That covers calendars, task lists, notebooks and Meet channels, DMs included.
+  - `CalendarShareVisibility` gets `rejectHiddenSharees(viewer, instances)` next to `rejectDismissedSharees`. It drops sharee instances whose grant no longer holds, admins included. E1 adds `TeamColleagues::grantIsVisible(ownerPrincipalUri, granteePrincipalUri)` for this and updates the class docblock table: a user grant needs an owner who shares a Team with that user (`sharesTeamIgnoringAdminRole`), a Team grant needs an owner who is still a member of that Team (`isOwnTeam`). `accessibleInstances`, `findReachable` and `WgwCalendarBackend::getCalendarsForUser` apply both filters. That covers calendars, task lists, notebooks and Meet channels, DMs included.
   - `AddressBookShareVisibility` gets the same pair of filters, applied in `AddressBookCollectionAccess` and on the CardDAV home.
-  - Owner side: the `shareWith` map that the owner reads (JMAP, CalDAV sharee properties, MCP listing) omits sharees who share no Team with the owner (admins included).
+  - Owner side: the `shareWith` map that the owner reads (JMAP, CalDAV sharee properties, MCP listing) omits sharees by the same rule: users who share no Team with the owner and Teams the owner left (admins included).
+  - Test: owner and member share T1 and T2, a calendar is shared with T1, the owner leaves T1. The member loses it, the owner's `shareWith` drops T1, and it returns only when the owner rejoins T1.
   - Test: an existing DM or calendar share between an admin and a user outside the admin's Teams is hidden for both and comes back when they share a Team.
   - Patch writes of `shareWith` leave hidden grants untouched (test). Revoke-all (`shareWith: null` on calendars and address books, MCP `set` with `shareWith: null`) also revokes hidden grants, and OpenAPI says so.
   - Team-owned items are never filtered. Restoring a dismissed share does not bypass hiding.
@@ -312,8 +314,9 @@ One paragraph, so that every chunk applies the same rule. Admin is a **role**, n
 - **Skill:** api
 - **Inputs:** `path: app/Services/Jmap/Methods/FileNodeChangesMethod.php:51` (digits-only guard), `path: app/Services/Drive/DriveShareGrantResolver.php:131`, `path: app/Services/Drive/DriveShareGrantResolver.php:181`, `path: app/Services/Drive/DriveShareService.php:360`, `path: app/Services/Drive/DriveShareAuthorizer.php:28`, `path: app/Services/Collab/CollabJoinAuthorizer.php:82`, `path: app/Services/Collab/DocCollabSignalingService.php:262`, `path: app/Services/Drive/DriveShareGrantWriter.php:26`
 - **Done when:**
-  - A new filter in `DriveShareGrantResolver` drops member grants whose share owner is a user who shares no Team with the viewer (admins included). `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
-  - Owner side: the owner's grant list and access panel omit grantees who share no Team with the owner (admins included). `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
+  - A new filter in `DriveShareGrantResolver` drops member grants by the same rule as the calendar family (`TeamColleagues::grantIsVisible`, admins included): a user grant needs an owner who shares a Team with the viewer, a Team grant needs an owner who is still a member of that Team. `resolveMemberGrant`, `memberShareRootPaths` and `DriveShareService::memberGrantRows` use it, so "shared with me", path access, JMAP FileNode, WebDAV and collab joins follow.
+  - Owner side: the owner's grant list and access panel omit grantees by the same rule: users who share no Team with the owner and Teams the owner left (admins included).
+  - Test: owner and member share T1 and T2, a folder is shared with T1, the owner leaves T1. The member loses it in "shared with me" and by path, the owner's grant list drops T1, and it returns only when the owner rejoins T1. `mergeShareWith` keeps hidden grants. A revoke-all of a share revokes hidden grants too.
   - The FileNode state is `<seq>.<grantHash>` on every method that returns it: `FileNode/get` (`path: app/Services/Jmap/Methods/FileNodeGetMethod.php:95`), `FileNode/changes`, `FileNode/set` including the `ifInState` guard (`path: app/Services/Jmap/Methods/FileNodeSetMethod.php:45`), `FileNode/query` (`path: app/Services/Jmap/Methods/FileNodeQueryMethod.php:100`) and the push StateChange value. Otherwise the Drive client's `fullResync` stores a bare digit token and every later sync resets the tree.
   - `grantHash` is a 128-bit hash (as `JmapPushEventId::hash`) of the sorted `(grant id, access)` pairs of the viewer's resolved, visible member grants (not their root paths; see Considered).
   - A matching `grantHash` gets a normal delta from the seq prefix. A different one answers `cannotCalculateChanges`. A legacy all-digit state answers `cannotCalculateChanges`, so each client resyncs FileNode once after the deploy.

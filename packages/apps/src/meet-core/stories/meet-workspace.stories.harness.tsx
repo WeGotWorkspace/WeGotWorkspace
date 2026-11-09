@@ -39,6 +39,8 @@ export type MeetWorkspaceStoryArgs = {
   unmatchedAdHocRoom?: string | null;
   upcomingMeetings?: MeetUpcomingMeeting[];
   onJoinUpcomingMeeting?: (href: string) => void;
+  /** The viewer is in no Team: no colleagues in the directory and no own Teams (#1924). */
+  noTeam?: boolean;
 };
 
 export const STORY_UPCOMING_MEETINGS: MeetUpcomingMeeting[] = [
@@ -179,8 +181,21 @@ export function MeetWorkspaceStoryHarness({
   unmatchedAdHocRoom = null,
   upcomingMeetings = STORY_UPCOMING_MEETINGS,
   onJoinUpcomingMeeting,
+  noTeam = false,
 }: MeetWorkspaceStoryArgs) {
-  const bootstrap = useMemo(() => createMeetAppBootstrap(), []);
+  const bootstrap = useMemo(() => {
+    const base = createMeetAppBootstrap();
+    if (!noTeam) return base;
+    const self = base.session.user.username;
+    return {
+      ...base,
+      data: {
+        ...base.data,
+        directory: (base.data.directory ?? []).filter((principal) => principal.id === self),
+        groups: [],
+      },
+    };
+  }, [noTeam]);
   const calendarBootstrap = useMemo(() => createCalendarAppBootstrap(), []);
   const [videoOn, setVideoOn] = useState(initialVideoOn);
   useEffect(() => {

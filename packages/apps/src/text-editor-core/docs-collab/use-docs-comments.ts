@@ -96,7 +96,7 @@ export function useDocsComments({
     clearActiveThread,
   } = useDocsCommentsActive(editor);
   const threads = source.comments;
-  useDocsCommentsSync(editor, threads);
+  useDocsCommentsSync(editor, threads, source.loaded);
 
   const openThreads = useMemo(() => threads.filter(isPersistedOpenThread), [threads]);
   const openThreadIds = useMemo(
@@ -118,6 +118,7 @@ export function useDocsComments({
       currentUser,
       openThreads,
       openThreadIds,
+      threadsLoaded: source.loaded,
       activeThreadIdRef,
       dismissedSelectionRef,
       draftThreadRef,
