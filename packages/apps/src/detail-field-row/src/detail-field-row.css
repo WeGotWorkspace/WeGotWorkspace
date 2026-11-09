@@ -82,7 +82,15 @@
   @apply ms-auto flex shrink-0 items-center self-center;
 }
 
-/* On a mouse the remove button waits for the row; touch keeps it visible. */
+/* A destructive action (remove) wears its danger wash at rest, not only on hover. */
+.detail-field-row__trailing .button.button--severity-danger,
+.detail-field-row__trailing .button.button--severity-danger:hover {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+/* On a mouse the trailing actions wait for the row (hover or focus). Touch has
+ * no hover, so there they always show. */
 @media (hover: hover) and (pointer: fine) {
   .detail-field-row__trailing {
     @apply opacity-0 transition-opacity;
