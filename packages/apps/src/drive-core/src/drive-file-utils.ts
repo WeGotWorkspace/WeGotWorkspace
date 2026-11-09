@@ -258,3 +258,22 @@ export function suggestNewMarkdownFileName(files: readonly DriveFile[]): string 
   }
   return candidate;
 }
+
+/** A folder shown right away while its create request is on the way. */
+export function optimisticDriveFolder(title: string, parent: string): DriveFile {
+  return {
+    id: `f-${Date.now()}`,
+    notebook: "Folder",
+    category: "Folder",
+    date: "Now",
+    modifiedMs: Date.now(),
+    title,
+    excerpt: "0 items",
+    body: [],
+    tags: [],
+    wordCount: 0,
+    parent,
+    kind: "folder",
+    size: "—",
+  };
+}

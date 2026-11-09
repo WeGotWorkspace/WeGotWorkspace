@@ -173,13 +173,10 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
 
-  // URL / deep-link changes update activeId — keep selectedIds aligned so
-  // isActive and isSelected never paint two different rows in single-select UI.
-  // When the URL only catches up with a local move (Shift+Arrow extends the
-  // selection and moves the active note), keep the selection.
+  // A URL change selects only its note; one catching up with Shift+Arrow keeps the selection.
   useEffect(() => {
-    if (initialNoteId === undefined) return;
-    if (initialNoteId && initialNoteId === activeIdRef.current) return;
+    if (initialNoteId === undefined || (initialNoteId && initialNoteId === activeIdRef.current))
+      return;
     setActiveId(initialNoteId);
     if (initialNoteId) {
       selectSingle(initialNoteId);

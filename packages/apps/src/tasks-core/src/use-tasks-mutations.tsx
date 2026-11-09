@@ -1,19 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Circle, ListTodo, Plus, Trash2 } from "lucide-react";
-import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
-import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-types";
+import { useCallback } from "react";
+import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
-import { taskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
-import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
+import { TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
-  dueEditSendsShowWithoutTime,
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
-  taskAlertsEqual,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -28,52 +23,14 @@ import {
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
+import { useTaskDetailAutosave } from "@/tasks-core/src/use-task-detail-autosave";
+import { useTasksSelectionActions } from "@/tasks-core/src/use-tasks-selection-actions";
 
 type UseTasksMutationsArgs = {
   shell: TasksShellState;
   list: TasksListState;
   exitAnimation: TasksExitAnimationState;
 };
-
-function taskEditValues(input: TasksTaskFormValue) {
-  const due = input.due ?? null;
-  return {
-    title: input.title.trim(),
-    description: input.description.trim() || null,
-    workflowStatus: input.workflowStatus ?? "needs-action",
-    priority: input.priority === TASK_PRIORITY_NONE ? null : input.priority,
-    due,
-    showWithoutTime: due ? (input.showWithoutTime ?? true) : undefined,
-    timeZone: due && input.showWithoutTime === false ? (input.timeZone ?? null) : null,
-    alerts: input.alerts,
-  };
-}
-
-function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): TaskPatch {
-  const patch: TaskPatch = {};
-  if (next.title !== (task.title ?? "")) patch.title = next.title;
-  if (next.description !== (task.description?.trim() || null)) {
-    patch.description = next.description;
-  }
-  if (next.due !== (task.due ?? null)) patch.due = next.due;
-  if (dueEditSendsShowWithoutTime(task, next.due, next.showWithoutTime)) {
-    patch.showWithoutTime = next.showWithoutTime;
-  }
-  if (next.due && next.timeZone !== (task.timeZone ?? null)) patch.timeZone = next.timeZone;
-  if (!next.due && (task.due ?? null) !== null) {
-    patch.due = null;
-    patch.showWithoutTime = true;
-    patch.timeZone = null;
-  }
-  if (next.workflowStatus !== (task.workflowStatus ?? "needs-action")) {
-    patch.workflowStatus = next.workflowStatus;
-  }
-  if (next.priority !== normalizeTaskPriority(task.priority)) patch.priority = next.priority;
-  if (!taskAlertsEqual(next.alerts, task.alerts)) {
-    patch.alerts = taskAlertsPatch(task.alerts, next.alerts);
-  }
-  return patch;
-}
 
 export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutationsArgs) {
   const {
@@ -257,78 +214,14 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [setTasksCompleted, tasks],
   );
 
-  // Detail pane autosave. Saves of one task run one after the other, each against
-  // the version the previous one produced, or the server refuses the second as a
-  // conflict. No toast and the pane stays open (like Notes).
-  const tasksRef = useRef(tasks);
-  tasksRef.current = tasks;
-  const taskListsRef = useRef(taskLists);
-  taskListsRef.current = taskLists;
-  const savedEtagsRef = useRef(new Map<string, string>());
-  const saveChainsRef = useRef(new Map<string, Promise<void>>());
-
-  const saveTaskNow = useCallback(
-    async (taskId: string, input: TasksTaskFormValue) => {
-      if (!operations) return;
-      const task = tasksRef.current.find((item) => item.id === taskId);
-      if (!task) return;
-      const lists = taskListsRef.current;
-      if (!canWriteTaskList(lists.find((list) => list.id === task.taskListId))) return;
-      // A blank title keeps the stored one: a task always has a title.
-      const title = input.title.trim() || task.title || "";
-      if (!title) return;
-
-      const next = taskEditValues({ ...input, title });
-      const listChanged = input.listId !== task.taskListId;
-      const patch = taskEditPatch(task, next);
-      const hasPatch = Object.keys(patch).length > 0;
-      if (!hasPatch && !listChanged) return;
-
-      const snapshot = task;
-      const optimistic: Task = { ...task, ...next, taskListId: input.listId };
-      tasksRef.current = tasksRef.current.map((item) => (item.id === taskId ? optimistic : item));
-      setTasks((prev) => prev.map((item) => (item.id === taskId ? optimistic : item)));
-
-      let rollback: Task = snapshot;
-      try {
-        let etag = savedEtagsRef.current.get(taskId) ?? (task as Task & { etag?: string }).etag;
-        if (listChanged) {
-          // Same as the edit dialog: the move carries no precondition (#1814).
-          const moved = await operations.moveTaskToList(taskId, input.listId);
-          if (moved) {
-            rollback = moved;
-            etag = (moved as Task & { etag?: string }).etag;
-          }
-        }
-        if (hasPatch) {
-          const updated = await patchTask(taskId, patch, { ifMatch: etag });
-          etag = (updated as (Task & { etag?: string }) | undefined)?.etag ?? etag;
-        }
-        if (etag) savedEtagsRef.current.set(taskId, etag);
-      } catch {
-        setTasks((prev) => prev.map((item) => (item.id === taskId ? rollback : item)));
-        showMutationError();
-      }
-    },
-    [operations, patchTask, setTasks, showMutationError],
-  );
-
-  const autosaveTask = useCallback(
-    (taskId: string, input: TasksTaskFormValue): Promise<void> => {
-      const chains = saveChainsRef.current;
-      const run = (chains.get(taskId) ?? Promise.resolve()).then(() => saveTaskNow(taskId, input));
-      const settled = run.catch(() => {});
-      chains.set(taskId, settled);
-      void settled.then(() => {
-        // Idle again: later saves read the etag from the task (it may have synced).
-        if (chains.get(taskId) !== settled) return;
-        chains.delete(taskId);
-        savedEtagsRef.current.delete(taskId);
-      });
-      return run;
-    },
-    [saveTaskNow],
-  );
+  const autosaveTask = useTaskDetailAutosave({
+    tasks,
+    taskLists,
+    setTasks,
+    operations,
+    patchTask,
+    showMutationError,
+  });
 
   const deleteTasks = useCallback(
     (ids: string[]) => {
@@ -422,72 +315,16 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L, operations, queueMutation, setTasks, taskLists, tasks],
   );
 
-  // --- multi-select: the shared selection bar and the detail pane's actions ---
-  const { selectedIds, selectionMode, exitSelection, activeId } = list;
-  const [moveDialog, setMoveDialog] = useState<{ ids: string[] } | null>(null);
-
-  const selectedTasks = useMemo(
-    () => tasks.filter((task) => selectedIds.includes(task.id)),
-    [selectedIds, tasks],
-  );
-  const selectionWritable = selectedTasks.filter((task) =>
-    canWriteTaskList(taskLists.find((list) => list.id === task.taskListId)),
-  );
-  const allSelectedCompleted =
-    selectionWritable.length > 0 && selectionWritable.every((task) => isTaskCompleted(task));
-
-  const requestDeleteSelected = useCallback(() => {
-    const ids = selectionWritable.map((task) => task.id);
-    if (ids.length === 0) return;
-    requestConfirm({
-      title: L.deleteSelectedTitle(ids.length),
-      description: L.deleteSelectedBody(ids.length),
-      confirmLabel: L.delete,
-      cancelLabel: L.cancel,
-      onConfirm: () => {
-        deleteTasks(ids);
-        exitSelection();
-      },
+  const { moveDialog, setMoveDialog, requestDeleteSelected, selectionBar, selectionBarButtons } =
+    useTasksSelectionActions({
+      L,
+      list,
+      tasks,
+      taskLists,
+      requestConfirm,
+      deleteTasks,
+      setTasksCompleted,
     });
-  }, [L, deleteTasks, exitSelection, requestConfirm, selectionWritable]);
-
-  const selectionActionButtons = useMemo<WorkspaceActionButton[]>(
-    () =>
-      selectionWritable.length === 0
-        ? []
-        : [
-            {
-              label: allSelectedCompleted ? L.markIncomplete : L.selectionComplete,
-              icon: <CheckCircle2 className="size-4" />,
-              onClick: () =>
-                setTasksCompleted(
-                  selectionWritable.map((task) => task.id),
-                  !allSelectedCompleted,
-                ),
-              active: allSelectedCompleted,
-            },
-            {
-              label: L.selectionMoveToList,
-              icon: <ListTodo className="size-4" />,
-              onClick: () => setMoveDialog({ ids: selectionWritable.map((task) => task.id) }),
-            },
-            {
-              label: L.delete,
-              icon: <Trash2 className="size-4" />,
-              onClick: requestDeleteSelected,
-              severity: "danger" as const,
-            },
-          ],
-    [L, allSelectedCompleted, requestDeleteSelected, selectionWritable, setTasksCompleted],
-  );
-  const { selectionBarButtons, selectionBar } = useWorkspaceSelectionPresentation({
-    selectedIds,
-    selectionMode,
-    activeId,
-    exitSelection,
-    actionButtons: selectionActionButtons,
-    doneLabel: L.selectionDone,
-  });
 
   const handleTaskExitAnimationEnd = useCallback(
     (taskId: string) => {

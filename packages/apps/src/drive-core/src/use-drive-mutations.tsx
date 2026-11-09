@@ -12,7 +12,7 @@ import {
 } from "@/drive-core/src/drive-path-utils";
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { driveCreateJumpsToPersonal } from "@/drive-core/src/drive-folder-picker-utils";
-import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import { driveFileFromEntry, optimisticDriveFolder } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
 import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortcut";
@@ -287,25 +287,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     const v = name.trim();
     if (!v) return;
     const targetParent = destinationPath;
-    const id = `f-${Date.now()}`;
-    setFiles((p) => [
-      {
-        id,
-        notebook: "Folder",
-        category: "Folder",
-        date: "Now",
-        modifiedMs: Date.now(),
-        title: v,
-        excerpt: "0 items",
-        body: [],
-        tags: [],
-        wordCount: 0,
-        parent: targetParent,
-        kind: "folder",
-        size: "—",
-      },
-      ...p,
-    ]);
+    setFiles((p) => [optimisticDriveFolder(v, targetParent), ...p]);
     // The new folder opens where it lives (All Files, or another folder picked).
     if (view.type !== "folder" || view.path !== targetParent) {
       commitView({ type: "folder", path: targetParent });

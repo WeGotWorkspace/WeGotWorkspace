@@ -392,31 +392,6 @@ function addressValue(card: ContactCard, id: string): ContactAddressDraft {
   };
 }
 
-/**
- * `next` with the rows of `prev` that are still empty (just added with "Add phone"),
- * so a save does not take away a row someone is about to fill in.
- */
-export function withBlankRowsFrom(
-  next: ContactEditDraft,
-  prev: ContactEditDraft,
-): ContactEditDraft {
-  const keep = <T extends { id: string }>(rows: T[], prevRows: T[], blank: (row: T) => boolean) => [
-    ...rows,
-    ...prevRows.filter((row) => blank(row) && !rows.some((saved) => saved.id === row.id)),
-  ];
-  return {
-    ...next,
-    phones: keep(next.phones, prev.phones, (row) => !row.number.trim()),
-    emails: keep(next.emails, prev.emails, (row) => !row.address.trim()),
-    urls: keep(next.urls, prev.urls, (row) => !row.uri.trim()),
-    addresses: keep(next.addresses, prev.addresses, (row) =>
-      [row.street, row.postalCode, row.locality, row.region, row.country].every(
-        (part) => !part.trim(),
-      ),
-    ),
-  };
-}
-
 export function contactCardToEditDraft(card: ContactCard): ContactEditDraft {
   const components = card.name?.components ?? [];
   let nameGiven = componentValue(components, "given");
