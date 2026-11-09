@@ -9,6 +9,14 @@ type UseListKeyboardNavigationArgs = {
   setSelectedIds: (ids: string[]) => void;
   onNavigateToId?: (id: string) => void;
   itemSelector?: string;
+  /**
+   * The range mouse clicks built (`useSelectableListState`): its anchor and its
+   * moving end. Shift+Arrow grows that range, and the keys report the range back,
+   * so a later shift-click starts where the keys left off.
+   */
+  rangeAnchorId?: string;
+  rangeEndId?: string;
+  onRangeChange?: (anchorId: string, endId: string) => void;
 };
 
 export function useListKeyboardNavigation({
@@ -20,6 +28,9 @@ export function useListKeyboardNavigation({
   setSelectedIds,
   onNavigateToId,
   itemSelector = "[data-list-item-id]",
+  rangeAnchorId,
+  rangeEndId,
+  onRangeChange,
 }: UseListKeyboardNavigationArgs) {
   const keyboardAnchorIdRef = useRef<string | null>(null);
 
@@ -50,36 +61,63 @@ export function useListKeyboardNavigation({
         setSelectionMode(false);
         setSelectedIds([nextId]);
         setActiveId(nextId);
+        onRangeChange?.(nextId, nextId);
         scrollListItemIntoView(nextId);
         onNavigateToId?.(nextId);
         return;
       }
 
-      // Shift+Arrow (or Space held): the anchor stays put and the moving edge is
-      // the active item, so the range can grow, shrink, and cross the anchor
-      // (Finder / Mail behaviour).
-      const anchorId =
-        keyboardAnchorIdRef.current && visibleIds.includes(keyboardAnchorIdRef.current)
-          ? keyboardAnchorIdRef.current
-          : activeId && visibleIds.includes(activeId)
-            ? activeId
-            : (selectedIds.find((id) => visibleIds.includes(id)) ?? visibleIds[fallbackIndex]);
+      // Shift+Arrow (or Space held): the anchor stays put and the moving end steps,
+      // so the range can grow, shrink, and cross the anchor (Finder / Mail). The
+      // range is the one the mouse built when it is still selected (a shift-click
+      // moves the end, a Cmd-click starts a new range); rows picked outside it with
+      // Cmd-click stay selected.
+      const isSelected = (id: string | null | undefined): id is string =>
+        !!id && visibleIds.includes(id) && selectedIds.includes(id);
+      const singleId = selectedIds.length <= 1 ? (selectedIds[0] ?? activeId) : null;
+      const anchorId = singleId
+        ? visibleIds.includes(singleId)
+          ? singleId
+          : visibleIds[fallbackIndex]
+        : isSelected(rangeAnchorId)
+          ? rangeAnchorId
+          : isSelected(keyboardAnchorIdRef.current)
+            ? keyboardAnchorIdRef.current
+            : isSelected(activeId)
+              ? activeId
+              : (selectedIds.find((id) => visibleIds.includes(id)) ?? visibleIds[fallbackIndex]);
       if (!anchorId) return;
       keyboardAnchorIdRef.current = anchorId;
       const anchorIndex = visibleIds.indexOf(anchorId);
       if (anchorIndex < 0) return;
 
-      const edgeIndex = currentIndex >= 0 ? currentIndex : anchorIndex;
+      const endId = singleId
+        ? anchorId
+        : isSelected(rangeEndId)
+          ? rangeEndId
+          : isSelected(activeId)
+            ? activeId
+            : anchorId;
+      const edgeIndex = visibleIds.indexOf(endId);
       const nextEdgeIndex = Math.min(visibleIds.length - 1, Math.max(0, edgeIndex + direction));
-      const start = Math.min(anchorIndex, nextEdgeIndex);
-      const end = Math.max(anchorIndex, nextEdgeIndex);
-      const nextSelection = visibleIds.slice(start, end + 1);
+      const previousRange = new Set(
+        visibleIds.slice(Math.min(anchorIndex, edgeIndex), Math.max(anchorIndex, edgeIndex) + 1),
+      );
+      const nextRange = new Set(
+        visibleIds.slice(
+          Math.min(anchorIndex, nextEdgeIndex),
+          Math.max(anchorIndex, nextEdgeIndex) + 1,
+        ),
+      );
+      const kept = new Set(selectedIds.filter((id) => !previousRange.has(id)));
+      const nextSelection = visibleIds.filter((id) => nextRange.has(id) || kept.has(id));
       const nextId = visibleIds[nextEdgeIndex];
       if (!nextId) return;
 
       setSelectionMode(true);
       setSelectedIds(nextSelection);
       setActiveId(nextId);
+      onRangeChange?.(anchorId, nextId);
       scrollListItemIntoView(nextId);
       onNavigateToId?.(nextId);
     },
@@ -92,6 +130,9 @@ export function useListKeyboardNavigation({
       setActiveId,
       scrollListItemIntoView,
       onNavigateToId,
+      rangeAnchorId,
+      rangeEndId,
+      onRangeChange,
     ],
   );
 

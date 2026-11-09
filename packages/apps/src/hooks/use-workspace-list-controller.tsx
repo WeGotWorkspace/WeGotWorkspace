@@ -33,6 +33,9 @@ export function useWorkspaceListController<TItem extends IdentifiableItem>({
     enterSelectionFor,
     exitSelection,
     selectSingle,
+    selectionAnchorId,
+    selectionEndId,
+    setSelectionRange,
   } = useSelectableListState({
     initialId,
     visibleIds,
@@ -60,6 +63,9 @@ export function useWorkspaceListController<TItem extends IdentifiableItem>({
     setSelectionMode,
     setSelectedIds,
     onNavigateToId,
+    rangeAnchorId: selectionAnchorId,
+    rangeEndId: selectionEndId,
+    onRangeChange: setSelectionRange,
   });
 
   return {
