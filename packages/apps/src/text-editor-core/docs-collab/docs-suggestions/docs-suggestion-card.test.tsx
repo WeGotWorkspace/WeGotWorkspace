@@ -66,6 +66,50 @@ describe("DocsSuggestionCard", () => {
     expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
   });
 
+  it("waits for the suggestion's thread root before offering replies or reactions", () => {
+    // Whoever wrote first would otherwise create the root and be named as the author.
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{ ...insertSuggestion, hasThread: false }}
+        labels={docsLabels}
+        currentUserId="u-2"
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.getByRole("button", { name: docsLabels.suggestionsAccept })).toBeTruthy();
+    expect(screen.getByText(insertSuggestion.authorName)).toBeTruthy();
+  });
+
+  it("lets a reviewer who cannot comment accept, without a composer or reaction picker", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        canReview
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: docsLabels.suggestionsAccept })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+  });
+
   it("shows the reply composer when the card is active", () => {
     renderCard(
       <DocsSuggestionCard

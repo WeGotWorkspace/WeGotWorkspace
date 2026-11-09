@@ -19,8 +19,10 @@ export type DocsSuggestionCardProps = {
   labels: DocsUILabels;
   currentUserId: string;
   active: boolean;
-  /** When false, hide accept/reject / composer / reaction picker (chips stay visible). */
+  /** When false, hide the composer and the reaction picker (chips stay visible). */
   canMutate?: boolean;
+  /** When false, hide accept/reject. Defaults to `canMutate`. */
+  canReview?: boolean;
   onSelect: () => void;
   onAccept: () => void;
   onReject: () => void;
@@ -36,6 +38,7 @@ export function DocsSuggestionCard({
   currentUserId,
   active,
   canMutate = true,
+  canReview = canMutate,
   onSelect,
   onAccept,
   onReject,
@@ -47,6 +50,9 @@ export function DocsSuggestionCard({
   const { cardRef, isExiting, runExitAnimation, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: SUGGESTION_EXIT_ANIMATION,
   });
+  // Replies and reactions wait for the thread root: whoever writes first would
+  // otherwise create it, and the card would name them as the suggestion's author.
+  const canComment = canMutate && suggestion.hasThread !== false;
   const trimmedComposerText = composerText.trim();
   const canPost = trimmedComposerText.length > 0;
   const reactionAuthors: DocsCommentAuthor[] = suggestion.messages.map((message) => message.author);
@@ -105,7 +111,7 @@ export function DocsSuggestionCard({
         </p>
       ) : null}
 
-      {canMutate ? (
+      {canReview ? (
         <div className="docs-suggestion-card__decision">
           <Button
             label={labels.suggestionsAcceptShort}
@@ -134,14 +140,14 @@ export function DocsSuggestionCard({
         </div>
       ) : null}
 
-      {/* An editor needs the row for its add button, also before the first reaction. */}
-      {canMutate || (suggestion.reactions?.length ?? 0) > 0 ? (
+      {/* A commenter needs the row for its add button, also before the first reaction. */}
+      {canComment || (suggestion.reactions?.length ?? 0) > 0 ? (
         <DocsCollabReactions
           className="docs-suggestion-card__reactions"
           reactions={suggestion.reactions}
           authors={reactionAuthors}
           currentUserId={currentUserId}
-          canMutate={canMutate}
+          canMutate={canComment}
           onToggleReaction={onToggleReaction}
         />
       ) : null}
@@ -156,7 +162,7 @@ export function DocsSuggestionCard({
         </ul>
       ) : null}
 
-      {active && canMutate ? (
+      {active && canComment ? (
         <div
           className="docs-suggestion-card__composer"
           onClick={(event) => event.stopPropagation()}
