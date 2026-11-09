@@ -55,7 +55,7 @@ This draws from the Product#84 dark-mode track (suite design language). It displ
 
 ## Open decisions
 
-None. Light scope, dark selection colour and the Meet exclusion were decided on 2026-11-05 (see spec).
+None. Light scope, dark selection colour and the Meet exclusion were decided on 2026-11-05; sky selection and hover in light mode on 2026-11-09 (see spec).
 
 ## Invariants
 

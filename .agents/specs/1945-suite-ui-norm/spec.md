@@ -12,6 +12,7 @@ Decided with the product lead on 2026-11-05:
 - **Light scheme:** neutral for the whole suite. Surface `#ffffff`, rail `#f6f7f9`, ink `#16181d`. Brand cream stays in the logo and the app icons only.
 - **Dark scheme:** the spike's cool blue-black (`#0e1216` surface, `#10161b` rail, `#eef1f5` ink).
 - **Selection:** one recipe. Light is a quiet ink wash; dark is a sky wash fading right with a sky hairline.
+  - Updated with the product lead on 2026-11-09: light uses the same sky as dark (`--scheme-selection`, a lighter strength). List hover is a lighter step of that sky (`--workspace-hover-background`). Sky mixes into the surface in oklab, because an oklch mix with white swings it towards pink.
   - Sidebar rows (40px high) take the wash without the hairline.
   - Pressed outline toggles keep the quiet wash by default. The full selection look is opt-in through `pressedStyle="selection"` on Button and IconButton. Docs Suggest uses it.
 
