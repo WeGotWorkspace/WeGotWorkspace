@@ -167,7 +167,15 @@ export const MultiSelectDark: Story = {
   },
 };
 
-function TasksDetailHarness({ readOnly, onSave }: { readOnly: boolean; onSave: () => void }) {
+function TasksDetailHarness({
+  readOnly,
+  onSave,
+  onToggleComplete = () => {},
+}: {
+  readOnly: boolean;
+  onSave: () => void;
+  onToggleComplete?: (taskId: string) => void;
+}) {
   const bootstrap = createTasksAppBootstrap();
   const task = bootstrap.data.tasks.find((item) => item.id === "task-review-spec")!;
   return (
@@ -181,6 +189,7 @@ function TasksDetailHarness({ readOnly, onSave }: { readOnly: boolean; onSave: (
             allTaskLists={bootstrap.data.taskLists}
             readOnly={readOnly}
             onSave={onSave}
+            onToggleComplete={onToggleComplete}
           />
         </div>
       </div>
@@ -191,9 +200,21 @@ function TasksDetailHarness({ readOnly, onSave }: { readOnly: boolean; onSave: (
 export const Detail: StoryObj<typeof TasksDetailHarness> = {
   tags: ["vitest-ci"],
   render: (args) => <TasksDetailHarness {...args} />,
-  args: { readOnly: false, onSave: fn() },
+  args: { readOnly: false, onSave: fn(), onToggleComplete: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
+    // The done box sits left of the title, its top on the top of the capitals.
+    const box = canvas.getByRole("checkbox", { name: L.markComplete });
+    const title = canvas.getByLabelText(L.addTaskName);
+    const boxRect = box.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    expect(boxRect.right).toBeLessThanOrEqual(titleRect.left);
+    expect(boxRect.top).toBeGreaterThan(titleRect.top);
+    expect(boxRect.bottom).toBeLessThan(
+      titleRect.top + parseFloat(getComputedStyle(title).lineHeight) + 8,
+    );
+    await userEvent.click(box);
+    expect(args.onToggleComplete).toHaveBeenCalledWith("task-review-spec");
     // A picked value saves at once; there is no Save button.
     await userEvent.click(canvas.getByLabelText(L.addTaskPriority));
     await userEvent.click(

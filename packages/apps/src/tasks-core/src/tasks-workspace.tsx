@@ -399,6 +399,7 @@ export function TasksWorkspace({
               onSave={(taskId, value) => {
                 void autosaveTask(taskId, value);
               }}
+              onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
             />
           ) : (

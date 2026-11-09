@@ -95,6 +95,8 @@ export type NoteDetailViewProps = {
   readOnly?: boolean;
   /** Above the title, e.g. the notebook switcher. */
   eyebrow?: ReactNode;
+  /** Left of the title, on its first line (a task's done box). */
+  titleLeading?: ReactNode;
   className?: string;
 };
 
@@ -121,6 +123,7 @@ export function NoteDetailView({
   collab,
   readOnly = false,
   eyebrow,
+  titleLeading,
   className,
 }: NoteDetailViewProps) {
   const markdown = noteBodyToMarkdown(body ?? []);
@@ -157,36 +160,45 @@ export function NoteDetailView({
     onAutoFocusTitleConsumed?.();
   }
 
+  const titleInput = (
+    <div className="note-detail-view__title-field">
+      <TextareaAutosize
+        ref={titleRef}
+        id={titleFieldId}
+        className="note-detail-view__title"
+        value={titleField.value}
+        placeholder={titlePlaceholder}
+        readOnly={titleReadOnly}
+        autoFocus={autoFocusTitle && !titleReadOnly}
+        minRows={1}
+        maxRows={12}
+        wrap="soft"
+        onChange={titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)}
+        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
+        onBlur={titleReadOnly ? undefined : handleTitleBlur}
+      />
+      <NoteTitleCaretsLayer
+        textareaRef={titleRef}
+        carets={remoteTitleCarets}
+        value={titleField.value}
+      />
+    </div>
+  );
+
   return (
     <article className={cn("note-detail-view paper-sheet", className)}>
       {eyebrow ? <div className="note-detail-view__eyebrow">{eyebrow}</div> : null}
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>
-      <div className="note-detail-view__title-field">
-        <TextareaAutosize
-          ref={titleRef}
-          id={titleFieldId}
-          className="note-detail-view__title"
-          value={titleField.value}
-          placeholder={titlePlaceholder}
-          readOnly={titleReadOnly}
-          autoFocus={autoFocusTitle && !titleReadOnly}
-          minRows={1}
-          maxRows={12}
-          wrap="soft"
-          onChange={
-            titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)
-          }
-          onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
-          onBlur={titleReadOnly ? undefined : handleTitleBlur}
-        />
-        <NoteTitleCaretsLayer
-          textareaRef={titleRef}
-          carets={remoteTitleCarets}
-          value={titleField.value}
-        />
-      </div>
+      {titleLeading ? (
+        <div className="note-detail-view__title-row">
+          <div className="note-detail-view__title-leading">{titleLeading}</div>
+          {titleInput}
+        </div>
+      ) : (
+        titleInput
+      )}
       {showTags ? (
         <TagGroup
           className="note-detail-view__tag-group"

@@ -13,12 +13,16 @@ import { ActionBar } from "@/action-bar/src/action-bar";
 import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotesNotebookSelect } from "@/notes-core/src/notes-notebook-select";
+import { Checkbox } from "@/ui/checkbox";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { isTaskCompleted, taskListDotColor, taskListName } from "@/tasks-core/src/tasks-task-utils";
 import { taskFieldControls, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";
+// The done box shares the list row's mark styles.
+import "@/tasks-core/src/tasks-list-panel.css";
 
 /** Typing in the title or notes saves after this pause (and on leaving the task). */
 export const TASK_DETAIL_SAVE_DEBOUNCE_MS = 600;
@@ -33,12 +37,15 @@ type TasksDetailViewProps = {
   readOnly: boolean;
   /** Saves the whole form; runs after a typing pause, right away for a picked value. */
   onSave: (taskId: string, value: TasksTaskFormValue) => void;
+  /** The done box left of the title, the same toggle as in the list. */
+  onToggleComplete: (taskId: string) => void;
   onCreateList?: () => void;
 };
 
 /**
  * The open task, laid out like an open note (`NoteDetailView`): its list above the
- * title, the notes as the body, then one row per field. Every change saves itself.
+ * title, a large done box left of it, the notes as the body, then one row per field.
+ * Every change saves itself.
  */
 export function TasksDetailView({
   task,
@@ -47,6 +54,7 @@ export function TasksDetailView({
   allTaskLists,
   readOnly,
   onSave,
+  onToggleComplete,
   onCreateList,
 }: TasksDetailViewProps) {
   const [form, setForm] = useTaskEditForm(task, readOnly);
@@ -100,6 +108,31 @@ export function TasksDetailView({
     disabled: readOnly,
   });
 
+  const completed = isTaskCompleted(task);
+  const completeLabel = completed ? L.markIncomplete : L.markComplete;
+  // As in the list row: the tooltip names what a click does, or why it cannot. The
+  // trigger is a span, so the tooltip's `data-state` does not replace the box's.
+  const completeControl = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="tasks-detail-view__complete-hint">
+          <Checkbox
+            className="tasks-detail-view__complete"
+            checked={completed}
+            aria-label={completeLabel}
+            disabled={readOnly}
+            onCheckedChange={() => {
+              // What was typed saves first, so the toggle lands on top of it.
+              flush();
+              onToggleComplete(task.id);
+            }}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{readOnly ? L.viewOnlyListBadge : completeLabel}</TooltipContent>
+    </Tooltip>
+  );
+
   const ownList = allTaskLists.find((list) => list.id === form.listId);
   const listItems = taskLists.map((list) => ({
     id: list.id,
@@ -113,6 +146,7 @@ export function TasksDetailView({
       noteId={task.id}
       title={form.title}
       titlePlaceholder={L.addTaskName}
+      titleLeading={completeControl}
       onTitleChange={
         readOnly ? undefined : (title) => update((prev) => ({ ...prev, title }), "later")
       }

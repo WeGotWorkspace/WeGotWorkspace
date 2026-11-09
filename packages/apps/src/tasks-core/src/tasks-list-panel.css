@@ -94,7 +94,7 @@
 /* The suite selection mark (as the Notes editor task checks), at the row's leading
    control size: an empty dimmed ring as thick as the title strokes, or one solid
    fill in the multi-selection colour with a contrasting check. */
-.tasks-list-row .tasks-list-row__complete {
+:is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete) {
   --checkbox-size: var(--list-item-leading-control-size, 1.25rem);
   --checkbox-check-size: 0.875rem;
   --checkbox-border-color: var(
@@ -114,37 +114,61 @@
 /* Hover, as the sidebar visibility toggles: the mark grows a little; an empty ring
    also darkens with a faint wash. A press sinks it. */
 @media (hover: hover) {
-  .tasks-list-row .tasks-list-row__complete:not(:disabled):hover {
+  :is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete):not(
+      :disabled
+    ):hover {
     transform: scale(1.1);
   }
 
-  .tasks-list-row .tasks-list-row__complete[data-state="unchecked"]:not(:disabled):hover {
+  :is(
+      .tasks-list-row .tasks-list-row__complete,
+      .tasks-detail-view__complete
+    )[data-state="unchecked"]:not(:disabled):hover {
     --checkbox-border-color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
     background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
   }
 }
 
-.tasks-list-row .tasks-list-row__complete:not(:disabled):active {
+:is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete):not(:disabled):active {
   transform: scale(0.92);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tasks-list-row .tasks-list-row__complete {
+  :is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete) {
     transition: none;
   }
 
-  .tasks-list-row .tasks-list-row__complete:not(:disabled):is(:hover, :active) {
+  :is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete):not(:disabled):is(
+      :hover,
+      :active
+    ) {
     transform: none;
   }
 }
 
 /* Browsers round a 1.5px border down to 1px; the inner half pixel is a shadow. */
-.tasks-list-row .tasks-list-row__complete[data-state="unchecked"]:not(:focus-visible) {
+:is(
+    .tasks-list-row .tasks-list-row__complete,
+    .tasks-detail-view__complete
+  )[data-state="unchecked"]:not(:focus-visible) {
   box-shadow: inset 0 0 0 0.5px var(--checkbox-border-color);
 }
 
-.tasks-list-row__complete-hint {
+.tasks-list-row__complete-hint,
+.tasks-detail-view__complete-hint {
   display: inline-flex;
+}
+
+/* The open task's done box: the same mark, at the height of the title's capitals
+ * (0.7em of the title), its ring as thick as the title strokes. */
+.tasks-detail-view .tasks-detail-view__complete {
+  --checkbox-size: calc(var(--workspace-detail-title-size, 2.25rem) * 0.7);
+  --checkbox-check-size: calc(var(--checkbox-size) * 0.6);
+  border-width: 2px;
+}
+
+.tasks-detail-view .tasks-detail-view__complete .checkbox__icon {
+  stroke-width: 3;
 }
 
 /* Done: a quieter title, struck through. */

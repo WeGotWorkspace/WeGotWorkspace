@@ -15,6 +15,7 @@ const L = defaultTasksLabels;
 function renderDetail(overrides: Partial<React.ComponentProps<typeof TasksDetailView>> = {}) {
   const task = bootstrap.data.tasks[0] as Task;
   const onSave = vi.fn();
+  const onToggleComplete = vi.fn();
   const ui = (props: Partial<React.ComponentProps<typeof TasksDetailView>>) => (
     <TooltipProvider>
       <TasksDetailView
@@ -25,6 +26,7 @@ function renderDetail(overrides: Partial<React.ComponentProps<typeof TasksDetail
         allTaskLists={bootstrap.data.taskLists}
         readOnly={false}
         onSave={onSave}
+        onToggleComplete={onToggleComplete}
         {...props}
       />
     </TooltipProvider>
@@ -32,7 +34,7 @@ function renderDetail(overrides: Partial<React.ComponentProps<typeof TasksDetail
   const view = render(ui(overrides));
   const rerender = (props: Partial<React.ComponentProps<typeof TasksDetailView>>) =>
     view.rerender(ui({ ...overrides, ...props }));
-  return { task, onSave, rerender, unmount: view.unmount };
+  return { task, onSave, onToggleComplete, rerender, unmount: view.unmount };
 }
 
 function fieldValue(label: string): string {
@@ -71,6 +73,27 @@ describe("TasksDetailView", () => {
     for (const label of [L.addTaskStatus, L.dueLabel, L.addTaskPriority, L.detailAlarm(1)]) {
       expect(screen.getByText(label, { selector: ".card__row-title, .card__row-title *" }));
     }
+  });
+
+  it("toggles done from the box left of the title, after saving what was typed", () => {
+    vi.useFakeTimers();
+    const { task, onSave, onToggleComplete } = renderDetail();
+    const box = screen.getByRole("checkbox", { name: L.markComplete });
+    expect(box.closest(".note-detail-view__title-row")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(L.addTaskName), { target: { value: "Typed" } });
+    fireEvent.click(box);
+
+    expect(onSave).toHaveBeenCalledWith(task.id, expect.objectContaining({ title: "Typed" }));
+    expect(onToggleComplete).toHaveBeenCalledWith(task.id);
+    expect(onSave.mock.invocationCallOrder[0]).toBeLessThan(
+      onToggleComplete.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("disables the done box on a read-only task", () => {
+    renderDetail({ readOnly: true });
+    expect(screen.getByRole("checkbox", { name: L.markComplete })).toHaveProperty("disabled", true);
   });
 
   it("saves typed text after a pause, once", () => {
