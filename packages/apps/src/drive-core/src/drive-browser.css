@@ -2,12 +2,12 @@
 
 /*
  * Tile and list chrome. Idle is the main paper (`--workspace-surface`).
- * Hover and selected are the shared outline ladder (`workspace-derive.css`),
- * not a Dark accent mix. Selected+hover stays on the selected step.
+ * Hover and selected are the suite sky steps (`workspace-derive.css`), as list
+ * rows. Selected+hover stays on the selected step.
  * Notes and Contacts read `--drive-item-selected-background` for that step.
  */
 .drive-workspace {
-  --drive-item-hover-background: var(--button-outline-hover-background);
+  --drive-item-hover-background: var(--workspace-hover-background);
   --drive-item-selected-hover-background: var(--drive-item-selected-background);
 }
 

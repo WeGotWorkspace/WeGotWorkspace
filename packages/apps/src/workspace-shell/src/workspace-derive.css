@@ -93,25 +93,32 @@
   --field-label-color: var(--workspace-foreground);
 
   /*
-   * Selected (sidebar rows, list rows, tiles, pressed toggles): one flat wash.
-   * Light: ink; dark: sky (`--scheme-selection-*`).
+   * Selected (sidebar rows, list rows, tiles, pressed toggles): one flat wash of
+   * sky in both themes (`--scheme-selection-*`). Mixed in oklab: white paper has no
+   * real hue, and an oklch mix with it swings the sky towards pink.
    */
   --workspace-selected-background: color-mix(
-    in oklch,
+    in oklab,
     var(--scheme-selection) var(--scheme-selection-strength),
     var(--workspace-surface)
   );
+  /* A hovered list row (Notes, Tasks, Contacts, Drive): a lighter step of the same sky. */
+  --workspace-hover-background: color-mix(
+    in oklab,
+    var(--scheme-selection) var(--scheme-selection-hover-strength),
+    var(--workspace-surface)
+  );
   --workspace-selected-shadow: inset 0 0 0 1px
-    color-mix(in oklch, var(--scheme-selection) var(--scheme-selection-edge), transparent);
+    color-mix(in oklab, var(--scheme-selection) var(--scheme-selection-edge), transparent);
   --workspace-selected-color: var(--workspace-foreground);
   /*
    * Selection marks: one solid fill in the selected wash's own colour at a stronger
-   * mix (a mid ink in light, bright sky in dark). Editor task checkboxes fill with it
+   * mix (bright sky). Editor task checkboxes fill with it
    * (dark check: a deep shade of that same colour); multi-selected list items, Drive
    * rows and tiles show it as a thick bar just inside their leading edge (no checkboxes there).
    */
   --workspace-selected-mark-border: color-mix(
-    in oklch,
+    in oklab,
     var(--scheme-selection) var(--scheme-selection-mark-edge),
     var(--workspace-surface)
   );

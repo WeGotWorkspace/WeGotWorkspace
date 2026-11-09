@@ -427,7 +427,7 @@
   --docs-chip-bg: color-mix(in oklch, var(--workspace-foreground) 7%, var(--docs-surface));
   --docs-chip-radius: 0.625rem;
   --docs-toolbar-bg: color-mix(in oklch, var(--workspace-foreground) 2.5%, var(--docs-surface));
-  /* Active outline row dot: the suite selection hue (ink in light, sky in dark). */
+  /* Active outline row dot: the suite selection sky. */
   --docs-outline-dot-active: var(--scheme-selection);
 }
 

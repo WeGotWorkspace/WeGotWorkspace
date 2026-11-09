@@ -376,12 +376,15 @@
    * recipe per token and reads these, so only this tier swaps for dark.
    * Selection: a flat wash of `--scheme-selection` at `--scheme-selection-strength`,
    * with an inset hairline at `--scheme-selection-edge` (opt-in pressed buttons).
+   * The same sky as dark, a lighter wash on white paper.
    */
-  --scheme-selection: var(--scheme-ink);
-  --scheme-selection-strength: 6%;
-  --scheme-selection-edge: 0%;
+  --scheme-selection: oklch(0.68 0.13 240);
+  --scheme-selection-strength: 12%;
+  /* Hovered list rows: the same sky, about half the selected wash. */
+  --scheme-selection-hover-strength: 6%;
+  --scheme-selection-edge: 30%;
   /* Selection marks (task checks, multi-select bars): the same colour, stronger. */
-  --scheme-selection-mark-edge: 40%;
+  --scheme-selection-mark-edge: 80%;
   /* Frosted chrome: ink tint over a translucent paper fill. */
   --scheme-frost-ink: 0%;
   --scheme-frost-paper: 86%;
@@ -444,6 +447,7 @@
   /* Sky selection: flat wash plus a hairline that follows the radius. */
   --scheme-selection: oklch(0.68 0.13 240);
   --scheme-selection-strength: 18%;
+  --scheme-selection-hover-strength: 9%;
   --scheme-selection-edge: 30%;
   --scheme-selection-mark-edge: 80%;
   --scheme-frost-ink: 7%;

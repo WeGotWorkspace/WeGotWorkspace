@@ -240,8 +240,8 @@
 }
 
 /*
- * `pressedStyle="selection"`: the suite selection (flat ink wash in light, sky wash
- * plus hairline in dark) for a mode that must read from across the screen.
+ * `pressedStyle="selection"`: the suite selection (a sky wash plus hairline) for a
+ * mode that must read from across the screen.
  */
 .button.button--variant-outline.button--pressed-selection:is(
     .icon-button--active,

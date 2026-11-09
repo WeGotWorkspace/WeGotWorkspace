@@ -47,10 +47,10 @@
 }
 
 /* Selection tint over the frost (Meet's "Meeting started" band): the selected-row
-   wash, sky in dark and ink in light. */
+   sky wash (oklab, as the rows: an oklch mix with white turns pink). */
 .list-sticky-header--selection {
   background-color: color-mix(
-    in oklch,
+    in oklab,
     var(--scheme-selection) var(--scheme-selection-strength),
     var(--list-sticky-header-frost)
   );
