@@ -345,12 +345,20 @@ describe("contacts autosave: creates and failed saves", () => {
     await settle();
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
     expect(result.current.editDraft?.notes).toBe("Met at the fair");
+    rerender({
+      cards: withJane(remoteJane({ notes: { n1: { "@type": "Note", note: "Called back" } } })),
+    });
+    await settle();
+    expect(result.current.editDraft?.nameGiven).toBe("Janet");
+    expect(result.current.editDraft?.notes).toBe("Called back");
 
     await release();
     await advance(PAUSE * 2);
     for (const call of patchCard.mock.calls) {
       expect(patchedNames(call[1])).not.toContain("Jane");
+      expect(JSON.stringify(call[1])).not.toContain("Met at the fair");
     }
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
+    expect(result.current.editDraft?.notes).toBe("Called back");
   });
 });

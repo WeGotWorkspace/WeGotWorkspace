@@ -120,23 +120,35 @@ const groupTouched = (
     (key) => JSON.stringify(cardValue(draft, key)) !== JSON.stringify(cardValue(synced, key)),
   );
 
+/** A save on its way: the draft it sends, and the draft the card matched when it started. */
+export type ContactSending = { draft: ContactEditDraft; base: ContactEditDraft | null };
+
 /**
  * The open draft on top of a card another device changed. Each field the person did
  * not touch since `synced` (the draft the card last matched) takes the fresh card's
  * value; a field they did touch keeps theirs, so their next save sends only that. An
  * empty row or a revealed field is not a touch: it stays, beside the fresh values.
+ * While a save is on its way (`sending`), its own card may arrive first: a group that
+ * save changed, which the fresh card still holds as sent and the draft no longer does,
+ * is an edit made since, and stays too.
  * With no touched field the result is `withBlankRowsFrom(fresh, draft)`, which is
  * what the merge marks as synced, so nothing is saved.
  */
 export function rebaseContactDraft(
   draft: ContactEditDraft,
-  synced: ContactEditDraft | ContactEditDraft[],
+  synced: ContactEditDraft,
   fresh: ContactEditDraft,
+  sending?: ContactSending,
 ): ContactEditDraft {
-  const bases = Array.isArray(synced) ? synced : [synced];
   const next: Record<string, unknown> = { ...withBlankRowsFrom(fresh, draft) };
   for (const group of DRAFT_FIELD_GROUPS) {
-    if (!bases.some((base) => groupTouched(group, draft, base))) continue;
+    const touched =
+      groupTouched(group, draft, synced) ||
+      (!!sending?.base &&
+        groupTouched(group, sending.draft, sending.base) &&
+        !groupTouched(group, fresh, sending.draft) &&
+        groupTouched(group, draft, sending.draft));
+    if (!touched) continue;
     for (const key of group) next[key] = draft[key];
   }
   return next as ContactEditDraft;

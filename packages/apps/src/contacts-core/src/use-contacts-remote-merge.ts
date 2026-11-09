@@ -5,7 +5,11 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from "react";
-import { rebaseContactDraft, withBlankRowsFrom } from "@/contacts-core/src/contacts-draft-rows";
+import {
+  rebaseContactDraft,
+  withBlankRowsFrom,
+  type ContactSending,
+} from "@/contacts-core/src/contacts-draft-rows";
 import {
   contactCardToEditDraft,
   type ContactEditDraft,
@@ -26,7 +30,7 @@ type UseContactsRemoteMergeArgs = {
   setEditDraft: Dispatch<SetStateAction<ContactEditDraft | null>>;
   syncedRef: MutableRefObject<Map<string, ContactSynced>>;
   /** The draft a contact's save is sending now. */
-  sendingRef: MutableRefObject<Map<string, ContactEditDraft>>;
+  sendingRef: MutableRefObject<Map<string, ContactSending>>;
   /** Cards this tab set itself (an optimistic save): not a change from elsewhere. */
   ownCardsRef: MutableRefObject<WeakSet<ContactCard>>;
   /** The draft autosave last saw, with the contact it was open on. */
@@ -63,15 +67,15 @@ export function useContactsRemoteMerge({
     const synced = syncedRef.current.get(activeId);
     if (!synced || synced.base === activeCardJson) return;
     const fresh = contactCardToEditDraft(activeCard);
-    // While a save is on its way, the card it brings back may arrive first (a sync): a
-    // field is touched when it differs from what that save sends (an edit undone
-    // meanwhile) or from what the card last held (an edit being sent): neither is
-    // taken for "untouched" and overwritten.
-    const bases = [JSON.parse(synced.json) as ContactEditDraft];
-    const sending = sendingRef.current.get(activeId);
-    if (sending) bases.push(sending);
     markSynced(activeId, withBlankRowsFrom(fresh, editDraft), activeCard);
-    setEditDraft(rebaseContactDraft(editDraft, bases, fresh));
+    setEditDraft(
+      rebaseContactDraft(
+        editDraft,
+        JSON.parse(synced.json) as ContactEditDraft,
+        fresh,
+        sendingRef.current.get(activeId),
+      ),
+    );
   }, [
     activeCard,
     activeCardJson,

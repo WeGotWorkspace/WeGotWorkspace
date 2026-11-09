@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactSending } from "@/contacts-core/src/contacts-draft-rows";
 import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,
   createContactSaveDebouncer,
@@ -88,7 +89,7 @@ export function useContactsEditAutosave({
   const ownCardsRef = useRef(new WeakSet<ContactCard>());
   const inFlightRef = useRef(new Map<string, Promise<void>>());
   // The draft each contact's save is sending now: what its card will hold.
-  const sendingRef = useRef(new Map<string, ContactEditDraft>());
+  const sendingRef = useRef(new Map<string, ContactSending>());
   // Contacts still being created: their saves wait for the real id.
   const heldRef = useRef(new Set<string>());
   const latestRef = useRef<Latest>({ activeId, createMode, editMode, editDraft });
@@ -136,11 +137,16 @@ export function useContactsEditAutosave({
       };
       const previous = inFlightRef.current.get(contactId) ?? Promise.resolve();
       const send = async () => {
-        sendingRef.current.set(contactId, draft);
+        const synced = syncedRef.current.get(contactId);
+        const sending = {
+          draft,
+          base: synced ? (JSON.parse(synced.json) as ContactEditDraft) : null,
+        };
+        sendingRef.current.set(contactId, sending);
         try {
           await persistRef.current(contactId, draft);
         } finally {
-          if (sendingRef.current.get(contactId) === draft) sendingRef.current.delete(contactId);
+          if (sendingRef.current.get(contactId) === sending) sendingRef.current.delete(contactId);
         }
       };
       const next = previous
