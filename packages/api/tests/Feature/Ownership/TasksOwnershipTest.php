@@ -42,6 +42,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
     private const ITEM_WRITE_OPS = [
         'POST /tasks/items',
+        'POST /tasks/items/import',
         'PUT /tasks/items/{taskId}',
         'PATCH /tasks/items/{taskId}',
         'DELETE /tasks/items/{taskId}',
@@ -200,6 +201,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'POST /tasks/items/query' => $this->runItemQuery($case, $target),
             'GET /tasks/items/{taskId}' => $this->runItemShow($case, $target),
             'POST /tasks/items' => $this->runItemCreate($case, $target),
+            'POST /tasks/items/import' => $this->runItemImport($case, $target),
             'PUT /tasks/items/{taskId}', 'PATCH /tasks/items/{taskId}', 'DELETE /tasks/items/{taskId}' => $this->runItemWrite($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
@@ -529,6 +531,46 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         if ($case->outcome === Outcome::Allowed) {
             $this->assertSame('task '.$case->scope->value, $response->json('title'), $case->key());
         }
+    }
+
+    /**
+     * @param  array{owner: string, name: string, ownerListId: string, actorListId: string, taskId: string}  $target
+     */
+    private function runItemImport(OwnershipCase $case, array $target): void
+    {
+        $uid = 'import-'.$case->scope->value.'@example.test';
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//ownership-matrix//EN\r\n"
+            ."BEGIN:VTODO\r\nUID:{$uid}\r\nSUMMARY:imported by actor\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+        $server = ['CONTENT_TYPE' => 'text/calendar', 'HTTP_ACCEPT' => 'application/json'];
+        $token = $this->tokenFor($case->actor);
+        if ($token !== null) {
+            $server['HTTP_AUTHORIZATION'] = 'Bearer '.$token;
+        }
+        $send = fn (): TestResponse => $this->call(
+            'POST',
+            '/api/v1/tasks/items/import?taskListId='.rawurlencode($target['actorListId']),
+            [],
+            [],
+            [],
+            $server,
+            $ics,
+        );
+
+        if ($case->outcome === Outcome::Allowed) {
+            $response = $send();
+            $this->assertRestOutcome($response, $case);
+            $this->assertSame(201, $response->getStatusCode(), $case->key());
+
+            return;
+        }
+        if ($case->outcome === Outcome::Unauthenticated) {
+            $this->assertRestOutcome($send(), $case);
+
+            return;
+        }
+
+        $response = $this->assertUnchanged(fn () => $this->ownerSnapshot($target), $send, $case->key());
+        $this->assertRestOutcome($response, $case);
     }
 
     /**
