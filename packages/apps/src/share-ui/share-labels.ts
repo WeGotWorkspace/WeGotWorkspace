@@ -6,11 +6,16 @@ import type { ShareUIPermission } from "@/share-ui/share-access-map";
  */
 export const sharePrincipalCopy = {
   addPlaceholder: "Add people or teams…",
-  searchEmpty: "No people or teams found",
   sectionHint: "Grant read or read-and-write access to people or teams.",
   removeConfirm: (item: string) =>
     `This person or team will lose access to this ${item}. Continue?`,
 } as const;
+
+/** Wherever people are picked, for a viewer who is in no Team (#1924). */
+export const noTeamYetCopy = "You're not in a Team yet. Ask your admin to add you.";
+
+/** A people-and-Teams picker whose search matched nothing. */
+export const noPeopleOrTeamsFoundCopy = "No people or teams found";
 
 export const shareLabels = {
   dialogDescription: "Share a public link or invite teammates.",

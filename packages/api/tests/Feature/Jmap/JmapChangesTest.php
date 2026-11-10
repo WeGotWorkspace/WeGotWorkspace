@@ -22,6 +22,11 @@ final class JmapChangesTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
 
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

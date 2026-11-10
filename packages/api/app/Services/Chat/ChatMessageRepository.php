@@ -584,7 +584,7 @@ final class ChatMessageRepository
         string $messageUid,
         array $mentions,
     ): void {
-        $roster = $this->channels->rosterUsernames($instance, null);
+        $roster = $this->channels->rosterUsernames($instance, null, true);
         $rosterSet = [];
         foreach ($roster as $username) {
             $rosterSet[strtolower($username)] = strtolower($username);

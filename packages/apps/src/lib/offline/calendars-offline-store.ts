@@ -31,6 +31,7 @@ export {
 } from "@/lib/offline/core/outbox-store";
 
 const META_SESSION = "calendars:session";
+const META_GROUPS_LOADED = "calendars:groups-loaded";
 const META_SYNC_TOKEN_PREFIX = "calendars:sync:";
 
 function eventCalendarId(event: JmapCalendarEvent): string {
@@ -65,13 +66,18 @@ export async function readCalendarBootstrapFromCache(
     (left, right) => left.sortOrder - right.sortOrder,
   );
   if (calendars.length === 0 && events.length === 0) return null;
+  // An empty table only means "no Team" once a groups load completed; otherwise
+  // the Teams are unknown and must not be written back as [].
+  const groupsLoaded = groups.length > 0 || (await db.meta.get(META_GROUPS_LOADED)) !== undefined;
 
   return {
     session: JSON.parse(sessionRow.value) as CalendarAppBootstrap["session"],
     data: {
       calendars: calendars.map((row) => JSON.parse(row.data) as CalendarInfo),
       events: events.map((row) => JSON.parse(row.data) as JmapCalendarEvent),
-      groups: groups.map((row) => JSON.parse(row.data) as CalendarDirectoryGroup),
+      groups: groupsLoaded
+        ? groups.map((row) => JSON.parse(row.data) as CalendarDirectoryGroup)
+        : undefined,
     },
   };
 }
@@ -121,14 +127,18 @@ export async function writeCalendarBootstrapToCache(
       data: JSON.stringify(calendar),
     })),
   );
-  await groups.clear();
-  await groups.bulkPut(
-    (bootstrap.data.groups ?? []).map((group, sortOrder) => ({
-      slug: group.slug,
-      sortOrder,
-      data: JSON.stringify(group),
-    })),
-  );
+  // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
+  if (bootstrap.data.groups !== undefined) {
+    await groups.clear();
+    await groups.bulkPut(
+      bootstrap.data.groups.map((group, sortOrder) => ({
+        slug: group.slug,
+        sortOrder,
+        data: JSON.stringify(group),
+      })),
+    );
+    await db.meta.put({ key: META_GROUPS_LOADED, value: "1" });
+  }
   // One transaction: a period loaded on demand must not land between the read
   // and the clear and then be lost.
   await db.transaction("rw", events, async () => {

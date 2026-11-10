@@ -62,8 +62,9 @@ use Tests\Support\WgwTestDisks;
  *   target carol's participant in a document the actor cannot read;
  *   former-group targets the actor's own participant, joined while it was
  *   still in `alumni`.
- * - `principal`: presence rooms. own-group is `groups.crew`, other-user is
- *   carol's participant in the workspace room, other-group is carol's
+ * - `principal`: presence rooms, one per Team (#1921). own-group is `groups.crew`,
+ *   other-user is dave's participant in `groups.crew`, a room the actor shares
+ *   with dave (there is no instance-wide room any more), other-group is carol's
  *   participant in `groups.outsiders`, former-group is the actor's own
  *   participant in `groups.alumni`, joined before it left.
  */
@@ -1212,7 +1213,9 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
                 Scope::OwnGroup => 'groups.'.OwnershipPrincipals::CREW,
                 Scope::OtherGroup => $case->variant === 'principal-unknown-group' ? 'groups.no-such-group' : 'groups.'.OwnershipPrincipals::OUTSIDERS,
                 Scope::FormerGroup => 'groups.'.OwnershipPrincipals::ALUMNI,
-                default => 'workspace',
+                // other-user: dave's participant in a room the actor shares with him.
+                // none (guest, anonymous): a real Team room, refused before any lookup.
+                default => 'groups.'.OwnershipPrincipals::CREW,
             };
 
             return ['roomId' => app(RoomIdCodec::class)->encodePrincipalRoom($room), 'store' => $room];
@@ -1383,8 +1386,8 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
                 $this->leaveFormerGroup($case->actor);
             }
         } else {
-            $peerId = $this->joinAsUsername(OwnershipPrincipals::CAROL, $kind, $room, self::CAROL_MEET_PEER);
-            $this->requestAsUsername(OwnershipPrincipals::CAROL, 'POST', '/rooms/'.$room['roomId'].'/events', [
+            $peerId = $this->joinAsUsername($this->peerTargetUser($case), $kind, $room, self::CAROL_MEET_PEER);
+            $this->requestAsUsername($this->peerTargetUser($case), 'POST', '/rooms/'.$room['roomId'].'/events', [
                 $kind === 'meet' ? 'from' : 'peerId' => $peerId,
                 'to' => $peerId,
                 'type' => 'offer',
@@ -1438,9 +1441,20 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
     private function assertNoRoomContent(TestResponse $response, OwnershipCase $case): void
     {
         $content = (string) $response->getContent();
-        foreach ([self::ROOM_EVENT_MARKER, ucfirst(OwnershipPrincipals::CAROL), 'relay.example.org', 'credential', '"participants"', '"events"', '"messages"'] as $needle) {
+        foreach ([self::ROOM_EVENT_MARKER, ucfirst($this->peerTargetUser($case)), 'relay.example.org', 'credential', '"participants"', '"events"', '"messages"'] as $needle) {
             $this->assertStringNotContainsString($needle, $content, $case->key().': room content in the response.');
         }
+    }
+
+    /**
+     * The other user whose participant a peer operation targets: dave in a presence
+     * room the actor shares with him, carol everywhere else.
+     */
+    private function peerTargetUser(OwnershipCase $case): string
+    {
+        $principalRoom = str_starts_with((string) $case->variant, 'principal') && $case->scope === Scope::OtherUser;
+
+        return $principalRoom ? OwnershipPrincipals::DAVE : OwnershipPrincipals::CAROL;
     }
 
     private function sendPeerOperation(OwnershipCase $case, string $kind, string $roomId, string $peerId): TestResponse

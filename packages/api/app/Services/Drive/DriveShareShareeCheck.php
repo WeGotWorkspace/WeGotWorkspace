@@ -19,6 +19,7 @@ final class DriveShareShareeCheck
         private DriveGroupResolver $groups,
         private DriveSharePresenter $presenter,
         private DriveSharePathScope $scope,
+        private DriveShareGrantVisibility $visibility,
     ) {}
 
     public function isShareeOf(string $username, string $shareId): bool
@@ -48,6 +49,8 @@ final class DriveShareShareeCheck
                     });
                 }
             })
-            ->exists();
+            ->get()
+            // A grant hidden by Epic #1915 does not make the user a sharee.
+            ->contains(fn (DriveShareGrant $grant): bool => $this->visibility->isVisible($grant, $share));
     }
 }

@@ -7,6 +7,7 @@ namespace App\Services\Jmap\Methods;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeMapper;
+use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
@@ -25,6 +26,7 @@ final class FileNodeGetMethod implements JmapMethodInterface
         private readonly FileNodeIndexService $index,
         private readonly FileNodeMapper $mapper,
         private readonly FileNodeAccountSupport $accounts,
+        private readonly FileNodeSyncState $syncState,
     ) {}
 
     public function name(): string
@@ -92,7 +94,7 @@ final class FileNodeGetMethod implements JmapMethodInterface
 
         return [
             'accountId' => $username,
-            'state' => (string) $this->index->currentSeq(),
+            'state' => $this->syncState->current($username),
             'list' => $this->projectProperties($list, $args),
             'notFound' => $notFound,
         ];

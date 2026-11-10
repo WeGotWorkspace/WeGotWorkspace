@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\ApiHttpException;
-use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\AdminGroupCreateRequest;
 use App\Http\Requests\Api\V1\AdminGroupUpdateRequest;
 use App\Services\Admin\AdminGroupManagementService;
@@ -35,8 +34,6 @@ final class GroupsController
 
     public function update(AdminGroupUpdateRequest $request, string $group): JsonResponse
     {
-        /** @var array{username: string} $principal */
-        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $payload = $request->payload();
 
         try {
@@ -44,7 +41,6 @@ final class GroupsController
                 $group,
                 $payload['displayName'],
                 $payload['members'],
-                $principal['username'],
             );
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');

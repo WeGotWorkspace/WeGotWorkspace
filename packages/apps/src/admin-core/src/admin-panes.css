@@ -25,6 +25,27 @@
   @apply flex shrink-0 items-center gap-1;
 }
 
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-tags {
+  @apply inline-flex shrink-0 items-center gap-1;
+}
+
+/* Admin is a role per user (#1925). Neutral chip so it reads as a fact, not a warning. */
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-role-tag {
+  @apply shrink-0;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__role-row {
+  @apply flex items-start justify-between gap-4 pt-1;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__role-text {
+  @apply flex min-w-0 flex-col gap-1;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__role-hint {
+  @apply text-xs text-muted-foreground;
+}
+
 :is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch {
   @apply inline-flex items-center justify-center;
   min-height: var(--control-height-md, 2.25rem);

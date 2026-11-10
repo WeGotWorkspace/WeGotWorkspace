@@ -29,7 +29,7 @@ Every write already advances a counter that the per-user JMAP `state` strings ar
 |------|---------|--------|
 | Notes, calendar events, tasks, Meet chat, Docs threads (all VEVENT / VTODO / VJOURNAL in CalDAV) | Sabre `calendars.synctoken` + `calendarchanges` | every write path: DAV clients, REST, JMAP, MCP. `NoteMoveHelper` bumps it directly. |
 | Contacts | Sabre `addressbooks.synctoken` + `addressbookchanges` | same; `AddressBookShareInvites` also bumps on share |
-| Drive | `jmap_file_nodes.change_seq` (one global sequence, `FileNodeIndexService`) | writes through the file-node index |
+| Drive | `jmap_file_nodes.change_seq` (one global sequence, `FileNodeIndexService`) plus the hash of the user's member grants (`FileNodeSyncState`) | writes through the file-node index; a member grant added, revoked, hidden (Epic #1915) or changed in access |
 
 The account-wide `state` of a type is already a composite over the collections the user can access, for example `3:work:41,private:17,team:88` (`JmapAccountStateCodec`, and `computeInstancesState` in `NotebookRepository`, `CalendarRepository`, `TaskListRepository`, `AddressBookRepository`). It changes when an item changes, and also when a collection is shared with the user or removed, because the list of instances changes.
 
@@ -70,7 +70,7 @@ The id encodes the user's visible state per type, so a reconnect needs no server
 v1;Note=<h>;Notebook=<h>;CalendarEvent=<h>;Calendar=<h>;ContactCard=<h>;AddressBook=<h>;FileNode=<h>;Notification=<h>;...
 ```
 
-The id is a plain list of independent per-type hashes, never one hash over the whole. `<h>` is a 128-bit hash (32 hex characters) of the type's state for the user. A collision would be a silent, permanent miss, so it is not truncated further. For `FileNode` the hash covers the composite of the user's root markers, while the StateChange value is the global sequence (below). Because the parts are independent, the client can rebuild an id from the hashes it has confirmed ([below](#the-id-is-built-from-confirmed-hashes)). An unknown or malformed id counts as "everything differs": the server sends the current states of all requested types, and the client compares them with its own and only syncs types that really changed.
+The id is a plain list of independent per-type hashes, never one hash over the whole. `<h>` is a 128-bit hash (32 hex characters) of the type's state for the user. A collision would be a silent, permanent miss, so it is not truncated further. For `FileNode` the hash covers the composite of the user's root markers and member grants, while the StateChange value is the FileNode state `<seq>.<grantHash>` (below). Because the parts are independent, the client can rebuild an id from the hashes it has confirmed ([below](#the-id-is-built-from-confirmed-hashes)). An unknown or malformed id counts as "everything differs": the server sends the current states of all requested types, and the client compares them with its own and only syncs types that really changed.
 
 ### Types
 
@@ -80,7 +80,7 @@ The id is a plain list of independent per-type hashes, never one hash over the w
 | `CalendarEvent`, `Calendar` | calendar instances + synctokens | existing |
 | `ContactCard`, `AddressBook` | address book listings + synctokens | existing |
 | `ChatMessage`, `ChatChannel` | channel instances + synctokens | existing |
-| `FileNode` | a change marker per visible root (below) | existing |
+| `FileNode` | a change marker per visible root, plus the user's member grants (below) | existing; grants since #1926 |
 | `Task`, `TaskList` | task list instances + synctokens (`TaskListRepository`) | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
 | `Notification` | a change marker per principal on `notifications` (below) | WGW type for active news; the client fetches the inbox |
 
@@ -90,14 +90,14 @@ Docs threads also live in `calendarchanges`, but their access comes from the Dri
 
 ### Drive: a change marker per root
 
-`FileNode/get` returns the global `currentSeq()` as `state`. Pushing that as-is would wake every browser on any file change and show everyone when others are active. Filtering change rows per poll instead (as `changesSince` does) would scale with server-wide write volume. So the server keeps a marker per root:
+`FileNode/get` returns `<seq>.<grantHash>` as `state`: the global `currentSeq()` and a 128-bit hash of the sorted `(grant id, access)` pairs of the user's live, visible member grants (`FileNodeSyncState`, #1926). Pushing the sequence as-is would wake every browser on any file change and show everyone when others are active. Filtering change rows per poll instead (as `changesSince` does) would scale with server-wide write volume. So the server keeps a marker per root:
 
 - **Write:** every Drive write bumps the marker of each root its storage key falls under: the account root (`users/x` or `groups/y`) and every share root that is an ancestor of the key. The share roots are found by looking up the key's ancestor paths, O(depth). One upsert per root touched, not one per person with access, so a group folder with 200 members costs the same as a private one.
 - **Move and delete** bump the root set of the old path and of the new path, so a grantee sees an item leave their share.
 - **Batch operations** (folder upload, batch move, zip) compute the root set once per operation and bump each root once, not once per file.
 - **Missing rows:** a root without a marker row counts as 0, so two equal situations always give the same composite.
-- **Read:** the user's roots come from `FileNodeAccountSupport::rootsFor`, which already includes group roots and shares to a single person. The user's push state for `FileNode` is a hash over the sorted list of `root → marker` pairs of those roots: identity and value, so adding or revoking any root changes it, even an empty one at 0. The event id carries that hash. A new share adds a root, so the composite changes.
-- **Push value:** the StateChange still carries the global sequence, because that is what `FileNode/changes` expects as `sinceState`. It is only sent when the user's composite changed.
+- **Read:** the user's roots come from `FileNodeAccountSupport::rootsFor`, which already includes group roots and shares to a single person. The user's push state for `FileNode` is a hash over the sorted list of `root → marker` pairs of those roots, followed by the sorted `(grant id, access)` pairs of the user's live, visible member grants: identity and value, so adding or revoking any root changes it, even an empty one at 0. The event id carries that hash. A new share adds a root, so the composite changes. Hiding one of two grants on the same root (Epic #1915) or changing a grant's access in place moves neither a marker nor `change_seq`; the grant pairs make the hash change anyway, so an open app wakes without a file write.
+- **Push value:** the StateChange carries the FileNode state `<seq>.<grantHash>`, because that is what `FileNode/changes` expects as `sinceState`. It is only sent when the user's composite changed. `FileNode/changes` answers `cannotCalculateChanges` when `grantHash` differs from the user's current one, or for a legacy all-digit state, so the client resyncs once and gets a delta again after that.
 
 ### Inbox: a change marker per principal
 
@@ -166,7 +166,7 @@ The event id is a list of independent per-type hashes, so the hub does not resen
 
 Hashes cannot be ordered, so the hub never runs two syncs of the same type at once: one sync in flight per type, and a newer push only replaces the hash that waits for the next sync. Otherwise an older sync that fails after a newer one succeeded would roll back a confirmed hash.
 
-The browser cannot compute these hashes itself (for `FileNode` the hash covers the user's root markers, not the global sequence), so it only takes them from ids the server sent. The leader publishes each confirmed hash on the `crossTabTopic`, so every tab holds the same map. A new leader starts from its copy; with none, it sends no id, the server answers with every type, and the apps compare and sync only what really differs.
+The browser cannot compute these hashes itself (for `FileNode` the hash covers the user's root markers and member grants, not the global sequence), so it only takes them from ids the server sent. The leader publishes each confirmed hash on the `crossTabTopic`, so every tab holds the same map. A new leader starts from its copy; with none, it sends no id, the server answers with every type, and the apps compare and sync only what really differs.
 
 ### Event source over fetch
 

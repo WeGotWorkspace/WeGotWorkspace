@@ -444,11 +444,12 @@ export async function writeMeetChatBootstrapMetaToCache(
 export async function writeMeetChatDirectoryToCache(
   username: string,
   directory: CollectionSharePrincipal[],
-  groups: MeetDirectoryGroup[],
+  groups: MeetDirectoryGroup[] | undefined,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await db.meta.put({ key: META_DIRECTORY, value: JSON.stringify(directory) });
-  await db.meta.put({ key: META_GROUPS, value: JSON.stringify(groups) });
+  // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
+  if (groups !== undefined) await db.meta.put({ key: META_GROUPS, value: JSON.stringify(groups) });
 }
 
 export type MeetChatCachedBootstrap = {

@@ -11,8 +11,10 @@ use App\Models\CalendarObject;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\LazyCollection;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 final class CalendarEventQuerySupport
@@ -86,15 +88,36 @@ final class CalendarEventQuerySupport
     }
 
     /**
+     * VEVENT objects of one calendar that may touch $window, narrowed by
+     * Sabre's firstoccurence/lastoccurence columns.
+     *
+     * Without $columns: every column, ordered by uri, loaded at once. With
+     * $columns (opt-in, for callers that read many objects): only those columns
+     * plus the id, in chunks of 100, so no call holds every candidate at once.
+     *
      * @param  array{after: DateTimeImmutable, before: DateTimeImmutable}|null  $window
-     * @return Collection<int, CalendarObject>
+     * @param  list<string>|null  $columns
+     * @return ($columns is null ? Collection<int, CalendarObject> : LazyCollection<int, CalendarObject>)
      */
-    public function candidateObjects(CalendarInstance $instance, ?array $window): Collection
+    public function candidateObjects(CalendarInstance $instance, ?array $window, ?array $columns = null): Collection|LazyCollection
+    {
+        $query = $this->candidateQuery((int) $instance->calendarid, $window);
+        if ($columns === null) {
+            return $query->orderBy('uri')->get();
+        }
+
+        return $query->select(array_values(array_unique(['id', ...$columns])))->lazyById(100, 'id');
+    }
+
+    /**
+     * @param  array{after: DateTimeImmutable, before: DateTimeImmutable}|null  $window
+     * @return Builder<CalendarObject>
+     */
+    private function candidateQuery(int $calendarId, ?array $window): Builder
     {
         $query = CalendarObject::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('componenttype', 'VEVENT')
-            ->orderBy('uri');
+            ->where('calendarid', $calendarId)
+            ->where('componenttype', 'VEVENT');
 
         if ($window !== null) {
             $afterTs = $window['after']->getTimestamp();
@@ -108,7 +131,7 @@ final class CalendarEventQuerySupport
                 });
         }
 
-        return $query->get();
+        return $query;
     }
 
     /**

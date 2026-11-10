@@ -4,7 +4,12 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
-import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
+import {
+  filterSharePrincipals,
+  sharePrincipalsFromDirectory,
+  sharesTeamWithViewer,
+  viewerHasNoTeam,
+} from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import {
@@ -265,10 +270,11 @@ export function MeetWorkspace({
       ? selectedDm.displayName
       : (visitMeeting?.title ?? meetLabels.productName);
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
+  const noTeam = viewerHasNoTeam(data.groups);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
     () =>
-      data.directory ??
+      data.directory?.filter(sharesTeamWithViewer) ??
       sharePrincipalsFromDirectory({
         groups,
         excludeId: session.user.username,
@@ -596,6 +602,7 @@ export function MeetWorkspace({
             todayMeetings={todayMeetings}
             leftoverUpcoming={leftoverUpcoming}
             directMessagePeople={dmPeople}
+            noTeam={noTeam}
             selectedId={selectedId}
             onSelect={setSelectedId}
             authorPresence={data.authorPresence}
@@ -647,6 +654,7 @@ export function MeetWorkspace({
         }
       />
       <MeetWorkspaceDialogs
+        noTeam={noTeam}
         dialogs={dialogs}
         actions={channelActions}
         session={session}

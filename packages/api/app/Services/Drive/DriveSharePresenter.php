@@ -22,6 +22,7 @@ final class DriveSharePresenter
         private DriveSharePathScope $scope,
         private CollabDocFormats $collabDocFormats,
         private WgwStorage $storage,
+        private DriveShareGrantVisibility $grantVisibility,
     ) {}
 
     /**
@@ -38,6 +39,11 @@ final class DriveSharePresenter
             ->get();
 
         foreach ($grants as $grant) {
+            // The owner's list leaves out grants hidden by Epic #1915; the row stays and only
+            // a revoke of the whole share removes it.
+            if (! $this->grantVisibility->isVisible($grant, $share)) {
+                continue;
+            }
             if ($grant->grantee_type === 'user') {
                 if ($grant->grantee_user === null || $grant->grantee_user === '') {
                     continue;

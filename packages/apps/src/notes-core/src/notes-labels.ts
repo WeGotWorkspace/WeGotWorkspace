@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
 import { sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
@@ -241,7 +242,7 @@ export const defaultNotesLabels: NotesUILabels = {
   shareNotebookTitle: "Share notebook",
   shareNotebookHint: "People you add can open this notebook in Notes.",
   shareNotebookPlaceholder: sharePrincipalCopy.addPlaceholder,
-  shareNotebookEmpty: "No matches",
+  shareNotebookEmpty: noPeopleOrTeamsFoundCopy,
   shareNotebookOffline: "Sharing is unavailable offline.",
   removeNotebookShareTitle: "Remove access?",
   removeNotebookShareConfirm: "They will no longer see this notebook.",

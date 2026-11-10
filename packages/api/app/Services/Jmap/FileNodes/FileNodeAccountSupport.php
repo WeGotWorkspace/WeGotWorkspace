@@ -80,6 +80,26 @@ final class FileNodeAccountSupport
         ]));
     }
 
+    /**
+     * Sorted `grantId:access` lines of the user's live, visible member grants. The FileNode
+     * state and push basis carry their hash, because hiding a grant or changing its access in
+     * place moves neither the global change sequence nor the root markers (#1926).
+     */
+    public function memberGrantPairs(string $username): string
+    {
+        if ($this->guests->find($username) !== null) {
+            return '';
+        }
+
+        $pairs = [];
+        foreach ($this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username)) as $grant) {
+            $pairs[] = $grant->id.':'.$grant->access;
+        }
+        sort($pairs, SORT_STRING);
+
+        return implode("\n", $pairs);
+    }
+
     public function ensureAccountIndexed(string $username): void
     {
         $guest = $this->guests->find($username);

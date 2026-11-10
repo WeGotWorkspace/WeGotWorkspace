@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\RateLimiting\WgwApiRateLimiters;
+use App\Services\Calendars\Availability\AvailabilityCachePruner;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -480,6 +481,13 @@ Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping
 
     return Command::SUCCESS;
 })->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
+
+Artisan::command('wgw:availability:prune-cache', function (AvailabilityCachePruner $pruner): int {
+    $result = $pruner->prune();
+    $this->info(sprintf('Deleted %d expired availability cache file(s); kept %d.', $result['deleted'], $result['kept']));
+
+    return Command::SUCCESS;
+})->purpose('Delete expired Team availability cache files that are never read again');
 
 Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance): int {
     $result = $maintenance->runFull();

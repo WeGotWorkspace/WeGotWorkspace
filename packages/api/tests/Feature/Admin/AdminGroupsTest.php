@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\ApiRefreshToken;
-use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
+use App\Models\User;
+use App\Services\Admin\AdminRoleWriter;
 use Tests\Support\AdminTestFixtures;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class AdminGroupsTest extends WgwDatabaseTestCase
@@ -82,27 +83,48 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $this->assertFalse(is_dir($this->adminDataDirectory().'/files/groups/support-team'));
     }
 
-    public function test_administrators_group_cannot_be_deleted(): void
+    public function test_the_old_administrators_team_can_be_deleted_without_changing_roles(): void
     {
-        $this->withBearer($this->adminBearerToken())
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
             ->deleteJson('/api/v1/admin/groups/administrators')
-            ->assertBadRequest()
-            ->assertJsonPath('error', 'The administrators team cannot be deleted.');
+            ->assertOk();
+
+        $this->assertDatabaseMissing('principals', ['uri' => LegacyAdministratorsTeam::URI], 'wgw');
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk();
     }
 
-    public function test_patch_administrators_members_revokes_removed_member_refresh_token(): void
+    public function test_membership_of_the_old_administrators_team_does_not_change_roles(): void
     {
-        $bobPrincipal = Principal::forUsername('bob');
-        $this->assertNotNull($bobPrincipal);
-        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
-        $this->addPrincipalToGroup($admins, $bobPrincipal);
+        $alice = $this->login('alice');
+
+        $this->withBearer($alice['access_token'])
+            ->patchJson('/api/v1/admin/groups/administrators', [
+                'members' => ['bob'],
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, (int) ApiRefreshToken::query()
+            ->where('token_hash', hash('sha256', $alice['refresh_token']))
+            ->value('revoked'));
+        $users = collect($this->withBearer($alice['access_token'])->getJson('/api/v1/admin/state')->assertOk()->json('users'));
+        $this->assertTrue($users->firstWhere('username', 'alice')['isAdmin']);
+        $this->assertFalse($users->firstWhere('username', 'bob')['isAdmin']);
+    }
+
+    public function test_removing_the_admin_role_revokes_the_users_refresh_token(): void
+    {
+        $this->grantAdminRole('bob');
 
         $alice = $this->login('alice');
         $bob = $this->login('bob');
 
         $this->withBearer($bob['access_token'])
-            ->patchJson('/api/v1/admin/groups/administrators', [
-                'members' => ['bob'],
+            ->patchJson('/api/v1/admin/users/alice', [
+                'isAdmin' => false,
             ])
             ->assertOk();
 
@@ -117,21 +139,99 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             ->assertOk();
     }
 
-    public function test_admin_cannot_remove_self_from_administrators(): void
+    public function test_admin_cannot_remove_own_admin_role(): void
+    {
+        $this->grantAdminRole('bob');
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/alice', [
+                'isAdmin' => false,
+                'displayName' => 'Changed',
+            ])
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'You cannot remove your own administrator access.');
+
+        $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+        $this->assertDatabaseMissing('principals', ['uri' => 'principals/alice', 'displayname' => 'Changed'], 'wgw');
+    }
+
+    public function test_the_last_admin_cannot_be_removed(): void
+    {
+        $this->withBearer($this->adminBearerToken())
+            ->deleteJson('/api/v1/admin/users/alice')
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'The last administrator cannot be removed.');
+
+        try {
+            app(AdminRoleWriter::class)->set('alice', false, 'someone-else');
+            $this->fail('The last admin lost the role.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame('The last administrator cannot be removed.', $e->getMessage());
+        }
+        $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+    }
+
+    public function test_a_disabled_admin_does_not_count_as_another_administrator(): void
+    {
+        $this->grantAdminRole('bob');
+        $token = $this->adminBearerToken();
+        User::query()->where('username', 'bob')->update(['enabled' => false]);
+
+        $this->withBearer($token)
+            ->deleteJson('/api/v1/admin/users/alice')
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'The last administrator cannot be removed.');
+        $this->assertDatabaseHas('users', ['username' => 'alice', 'is_admin' => true], 'wgw');
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/bob', ['isAdmin' => false])
+            ->assertOk();
+        $this->assertDatabaseHas('users', ['username' => 'bob', 'is_admin' => false], 'wgw');
+    }
+
+    public function test_admin_grants_the_role_and_it_takes_effect_on_the_next_sign_in(): void
+    {
+        $bob = $this->login('bob');
+        $this->withBearer($bob['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+
+        $this->withBearer($this->adminBearerToken())
+            ->patchJson('/api/v1/admin/users/bob', ['isAdmin' => true])
+            ->assertOk();
+
+        $this->postRefresh($bob['refresh_token'])
+            ->assertUnauthorized();
+        $this->withBearer($this->login('bob')['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertOk();
+    }
+
+    public function test_admin_creates_a_user_with_the_admin_role(): void
     {
         $token = $this->adminBearerToken();
 
         $this->withBearer($token)
-            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
-            ->assertBadRequest()
-            ->assertJsonPath('error', 'You cannot remove your own administrator access.');
-
-        $this->withBearer($token)
-            ->patchJson('/api/v1/admin/groups/administrators', [
-                'members' => ['bob'],
+            ->postJson('/api/v1/admin/users', [
+                'username' => 'dave',
+                'password' => 'a-long-password',
+                'displayName' => 'Dave',
+                'isAdmin' => true,
             ])
-            ->assertBadRequest()
-            ->assertJsonPath('error', 'You cannot remove your own administrator access.');
+            ->assertOk();
+        $this->withBearer($token)
+            ->postJson('/api/v1/admin/users', [
+                'username' => 'erin',
+                'password' => 'a-long-password',
+                'displayName' => 'Erin',
+            ])
+            ->assertOk();
+
+        $users = collect($this->withBearer($token)->getJson('/api/v1/admin/state')->json('users'));
+        $this->assertTrue($users->firstWhere('username', 'dave')['isAdmin']);
+        $this->assertFalse($users->firstWhere('username', 'erin')['isAdmin']);
+        $this->assertSame([], $users->firstWhere('username', 'dave')['groups']);
     }
 
     public function test_admin_can_add_group_member_via_member_endpoint(): void

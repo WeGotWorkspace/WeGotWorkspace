@@ -13,6 +13,7 @@ final class DriveShareGrantResolver
     public function __construct(
         private DriveSharePathScope $scope,
         private DriveShareOwnerReach $ownerReach,
+        private DriveShareGrantVisibility $visibility,
     ) {}
 
     /**
@@ -173,12 +174,32 @@ final class DriveShareGrantResolver
 
     /**
      * Live member-grant share roots for a user (direct + via member groups),
-     * as normalized virtual paths. Revoked, expired and dormant shares are skipped.
+     * as normalized virtual paths. Revoked, expired, dormant and hidden shares are skipped.
      *
      * @param  list<string>  $groupSlugs
      * @return list<string>
      */
     public function memberShareRootPaths(string $username, array $groupSlugs): array
+    {
+        $paths = [];
+        foreach ($this->liveMemberGrants($username, $groupSlugs) as $grant) {
+            $share = $grant->share;
+            if ($share !== null) {
+                $paths[$this->scope->normalize((string) $share->path)] = true;
+            }
+        }
+
+        return array_keys($paths);
+    }
+
+    /**
+     * The user's live member grants (direct + via member groups): active, on a share that is
+     * not revoked, expired, trashed or dormant, and not hidden by Epic #1915.
+     *
+     * @param  list<string>  $groupSlugs
+     * @return list<DriveShareGrant>
+     */
+    public function liveMemberGrants(string $username, array $groupSlugs): array
     {
         $user = strtolower(trim($username));
         $now = Carbon::now();
@@ -193,31 +214,34 @@ final class DriveShareGrantResolver
             })
             ->get();
 
-        $paths = [];
+        $live = [];
+        if ($grants->isNotEmpty()) {
+            $this->visibility->checkFromGrantee($user);
+        }
         foreach ($grants as $grant) {
             $share = $grant->share;
-            if ($share === null || $share->revoked_at !== null) {
+            if ($share === null || $share->revoked_at !== null || ! $this->visibility->isVisible($grant, $share)) {
                 continue;
             }
             if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {
                 continue;
             }
-            $path = $this->scope->normalize((string) $share->path);
-            if ($this->scope->isInProductTrash($path)) {
+            if ($this->scope->isInProductTrash($this->scope->normalize((string) $share->path))) {
                 continue;
             }
             if (! $this->ownerReach->ownerReachesShare($share)) {
                 continue;
             }
-            $paths[$path] = true;
+            $live[] = $grant;
         }
 
-        return array_keys($paths);
+        return $live;
     }
 
     /**
      * Null when the grant's share is revoked, expired, trashed, dormant (owner no longer
-     * reaches the share path) or does not cover $requestedPath.
+     * reaches the share path), hidden (the owner no longer shares a Team with the grantee,
+     * Epic #1915) or does not cover $requestedPath.
      *
      * @return array{
      *   shareId: string,
@@ -238,7 +262,7 @@ final class DriveShareGrantResolver
         string $grantKind,
     ): ?array {
         $share = $grant->share;
-        if ($share === null || $share->revoked_at !== null) {
+        if ($share === null || $share->revoked_at !== null || ! $this->visibility->isVisible($grant, $share)) {
             return null;
         }
         if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {

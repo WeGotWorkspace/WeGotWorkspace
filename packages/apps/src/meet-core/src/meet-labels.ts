@@ -1,5 +1,5 @@
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { meetLowDataLabels } from "@/lib/meet-low-data";
-import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
 export const meetLabels = {
   productName: "Meet",
@@ -163,7 +163,7 @@ export const meetLabels = {
   shareChannelSectionHint:
     "Share this channel with workspace people or teams. Email guests cannot be added.",
   shareChannelAddPlaceholder: sharePrincipalCopy.addPlaceholder,
-  shareChannelSearchEmpty: sharePrincipalCopy.searchEmpty,
+  shareChannelSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareChannelOffline: "Sharing needs a connection.",
   removeChannelShareTitle: "Remove access?",
   removeChannelShareConfirm: "Remove",

@@ -71,12 +71,16 @@
   },
   "CalendarSchedulingInvitee": {
     "type": "object",
-    "required": ["username", "email", "name"],
+    "required": ["username", "email", "name", "sharesTeam"],
     "additionalProperties": false,
     "properties": {
       "username": { "type": "string" },
       "email": { "type": "string" },
-      "name": { "type": "string" }
+      "name": { "type": "string" },
+      "sharesTeam": {
+        "type": "boolean",
+        "description": "True when this user shares at least one Team with the caller. Always true for non-admins. Only entries with true may be offered for DMs and shares."
+      }
     }
   },
   "CalendarSchedulingInviteeListResponse": {

@@ -41,8 +41,6 @@ export type AdminWorkspaceModalsProps = {
 
 export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
   const {
-    data,
-    session,
     controller,
     newUserOpen,
     setNewUserOpen,
@@ -80,6 +78,7 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
         open={Boolean(editingUser)}
         title="Edit user"
         initial={editingUser ?? undefined}
+        isSelf={editingUser?.username === controller.currentUser}
         onOpenChange={(next) => {
           if (!next) setEditUserId(null);
         }}
@@ -119,7 +118,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
         open={newGroupOpen}
         title="New team"
         users={controller.users}
-        currentUsername={data.currentUser || session.user.username || ""}
         onOpenChange={setNewGroupOpen}
         onSubmit={async (payload) => {
           if (await controller.actions.createGroup(payload.name)) {
@@ -132,7 +130,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
         title="Edit team"
         initial={editingGroup ?? undefined}
         users={controller.users}
-        currentUsername={data.currentUser || session.user.username || ""}
         onOpenChange={(next) => {
           if (!next) setEditGroupId(null);
         }}

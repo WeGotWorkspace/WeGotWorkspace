@@ -29,6 +29,12 @@ final class TeamShareGatesTest extends WgwDatabaseTestCase
     use CalendarsTestFixtures;
     use RefusedLikeUnknown;
 
+    /** These tests set up their own Teams; the fixture Team would make every fixture user a colleague. */
+    protected function calendarFixtureUsersShareATeam(): bool
+    {
+        return false;
+    }
+
     /** @var array<string, string> */
     private array $tokens = [];
 

@@ -1,4 +1,3 @@
-import { isProtectedGroup } from "@/admin-core/src/admin-workspace-utils";
 import {
   appendLocalGroup,
   applyGroupMembership,
@@ -71,10 +70,6 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
   };
 
   const deleteGroup = async (groupId: string) => {
-    if (isProtectedGroup(groupId)) {
-      showError("The administrators team is protected and cannot be deleted.");
-      return false;
-    }
     if (operations?.deleteGroup) {
       try {
         const next = await operations.deleteGroup(groupId);

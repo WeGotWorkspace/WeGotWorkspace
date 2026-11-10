@@ -15,12 +15,12 @@ use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Calendars\CalendarShareInvites;
-use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Teams\TeamColleagues;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
@@ -47,7 +47,6 @@ final class ChatChannelRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
-        private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly ChatUnreadCounter $unreadCounter,
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
@@ -360,22 +359,15 @@ final class ChatChannelRepository
         // Personal instance: owner or (uri-normalized) sharee copy.
         $instance = $this->findChannelInstance($this->collections->principalUri($username), $channelId);
         if ($instance !== null) {
-            if ($this->shareInvites->isSharee($instance)
-                && $this->shareVisibility->isDismissed($username, (int) $instance->calendarid)) {
-                return null;
-            }
-
-            return $instance;
+            // A dismissed share, or one hidden because the owner no longer shares a Team
+            // with the viewer (a DM is hidden on both sides), answers like a missing channel.
+            return $this->visibleOrNull($username, $instance);
         }
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
             $instance = $this->findChannelInstance(AdminConstants::GROUP_PREFIX.$slug, $channelId);
+            $instance = $instance === null ? null : $this->visibleOrNull($username, $instance);
             if ($instance !== null) {
-                if ($this->shareInvites->isSharee($instance)
-                    && $this->shareVisibility->isDismissed($username, (int) $instance->calendarid)) {
-                    continue;
-                }
-
                 return $instance;
             }
         }
@@ -647,6 +639,11 @@ final class ChatChannelRepository
         );
     }
 
+    private function visibleOrNull(string $username, CalendarInstance $instance): ?CalendarInstance
+    {
+        return $this->collectionAccess->withoutDismissedOrHidden($username, new EloquentCollection([$instance]))->first();
+    }
+
     /**
      * DM channels are immutable through the generic channel endpoints: no
      * rename/recolor, no further sharing, no owner transfer, no delete (not
@@ -678,11 +675,12 @@ final class ChatChannelRepository
 
     /**
      * Distinct channel roster: owner side (group members or the personal
-     * owner) plus sharees, group sharees expanded.
+     * owner) plus sharees, group sharees expanded. The display roster keeps every grant;
+     * `$visibleGrantsOnly` drops grants hidden by Epic #1915 (for notification recipients).
      *
      * @return list<string>
      */
-    public function rosterUsernames(CalendarInstance $instance, ?string $_groupSlug = null): array
+    public function rosterUsernames(CalendarInstance $instance, ?string $_groupSlug = null, bool $visibleGrantsOnly = false): array
     {
         $usernames = [];
 
@@ -693,6 +691,9 @@ final class ChatChannelRepository
 
         foreach ($this->backends->calBackend()->getInvites($this->collections->backendId($instance)) as $sharee) {
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER || ! is_string($sharee->principal)) {
+                continue;
+            }
+            if ($visibleGrantsOnly && ! $this->colleagues->grantIsVisible($ownerPrincipal, $sharee->principal)) {
                 continue;
             }
             foreach ($this->usernamesForPrincipalUri($sharee->principal) as $username) {

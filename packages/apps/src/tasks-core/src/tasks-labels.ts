@@ -1,6 +1,6 @@
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
-import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
 export type TasksUILabels = {
   appName: string;
@@ -175,7 +175,7 @@ export const defaultTasksLabels: TasksUILabels = {
   shareListSectionTitle: "Team access",
   shareListSectionHint: sharePrincipalCopy.sectionHint,
   shareListAddPlaceholder: sharePrincipalCopy.addPlaceholder,
-  shareListSearchEmpty: sharePrincipalCopy.searchEmpty,
+  shareListSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareListOffline: "Sharing changes require a connection.",
   shareListFailed: "Could not update sharing.",
   removeListShareTitle: "Remove access?",

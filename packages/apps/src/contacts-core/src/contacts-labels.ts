@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
 import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
@@ -301,7 +302,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",
   shareAddressBookPlaceholder: sharePrincipalCopy.addPlaceholder,
-  shareAddressBookEmpty: "No matches",
+  shareAddressBookEmpty: noPeopleOrTeamsFoundCopy,
   shareAddressBookOffline: "Sharing is unavailable offline.",
   removeAddressBookShareTitle: "Remove access?",
   removeAddressBookShareConfirm: "They will no longer see this address book.",
