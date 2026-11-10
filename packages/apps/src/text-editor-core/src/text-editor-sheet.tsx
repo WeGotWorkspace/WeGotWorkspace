@@ -47,15 +47,14 @@ export function TextEditorSheet({
 }: TextEditorSheetProps) {
   useTextEditorFitScale(editor, fitToScreen && paginated && variant === "sheet");
 
-  // BEM block/modifiers must NOT pass through `cn` (tailwind-merge): it treats
-  // the shared `text-` prefix as one utility group and keeps only the last
-  // `text-editor-sheet*` class, silently dropping the base + co-modifiers (e.g.
-  // `--fill` next to `--paginated`). `clsx` preserves every class as authored.
-
   const onChromeMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     focusTextEditorFromChromeEvent(event, editor);
   };
 
+  // BEM block/modifiers must NOT pass through `cn` (tailwind-merge): it treats
+  // the shared `text-` prefix as one utility group and keeps only the last
+  // `text-editor-sheet*` class, silently dropping the base + co-modifiers (e.g.
+  // `--fill` next to `--paginated`). `clsx` preserves every class as authored.
   return (
     <div
       className={clsx(
