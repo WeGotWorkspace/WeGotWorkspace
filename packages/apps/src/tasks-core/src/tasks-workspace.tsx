@@ -42,6 +42,7 @@ import {
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
 import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
@@ -249,7 +250,7 @@ export function TasksWorkspace({
                 onImportTasks={
                   icsImport.canImportTasks
                     ? () => {
-                        setSidebarOpen(false);
+                        dismissSidebarOverlay(() => setSidebarOpen(false));
                         icsFileInputRef.current?.click();
                       }
                     : undefined
