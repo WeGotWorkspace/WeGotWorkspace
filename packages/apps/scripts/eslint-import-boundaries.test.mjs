@@ -9,7 +9,7 @@ import {
   targetModule,
   violation,
 } from "./eslint-import-boundaries.mjs";
-import { collectEdges, summarize } from "./lint-boundaries.mjs";
+import { collectEdges, compareToBaseline, lowerBaseline, summarize } from "./lint-boundaries.mjs";
 
 RuleTester.afterAll = afterAll;
 RuleTester.describe = describe;
@@ -202,5 +202,49 @@ describe("lint-boundaries summary", () => {
       },
     ];
     expect(() => collectEdges(bad)).toThrow(/Unexpected message/);
+  });
+});
+
+describe("lint-boundaries baseline", () => {
+  /** @param {[string, string, number][]} rows */
+  const summaryOf = (rows) => ({
+    edges: rows.map(([from, to, files]) => ({ from, to, files })),
+  });
+
+  it("fails on a new edge and on an edge with more files", () => {
+    const { failures } = compareToBaseline(
+      summaryOf([
+        ["lib", "drive-core", 3],
+        ["lib", "docs-core", 1],
+      ]),
+      { "lib -> drive-core": 2 },
+    );
+    expect(failures).toHaveLength(2);
+    expect(failures[0]).toMatch(/lib -> drive-core grew from 2 to 3 files/);
+    expect(failures[1]).toMatch(/new edge lib -> docs-core \(1 files\)/);
+  });
+
+  it("only notices an edge that shrank or is gone", () => {
+    const { failures, notices } = compareToBaseline(summaryOf([["lib", "drive-core", 1]]), {
+      "lib -> drive-core": 2,
+      "lib -> docs-core": 4,
+    });
+    expect(failures).toEqual([]);
+    expect(notices).toEqual([
+      "lib -> drive-core dropped from 2 to 1 files",
+      "lib -> docs-core is gone",
+    ]);
+  });
+
+  it("lowers counts and drops gone edges, but never raises or adds", () => {
+    const next = lowerBaseline(
+      summaryOf([
+        ["lib", "drive-core", 1],
+        ["lib", "meet-core", 9],
+        ["lib", "notes-core", 5],
+      ]),
+      { "lib -> drive-core": 2, "lib -> docs-core": 4, "lib -> meet-core": 3 },
+    );
+    expect(next).toEqual({ "lib -> drive-core": 1, "lib -> meet-core": 3 });
   });
 });
