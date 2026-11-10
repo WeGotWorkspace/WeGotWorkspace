@@ -14,7 +14,10 @@ import {
 import { IconButton } from "@/button/src/button";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
-import { CalendarSidebarRows } from "@/calendar-core/src/calendar-sidebar-rows";
+import {
+  CalendarSidebarRows,
+  MyCalendarsSidebarSection,
+} from "@/calendar-core/src/calendar-sidebar-rows";
 import { CalendarAvailabilitySidebar } from "@/calendar-core/src/calendar-availability-sidebar";
 import { CalendarNoticeBar } from "@/calendar-core/src/calendar-notice-bar";
 import { useTeamAvailability } from "@/calendar-core/src/use-team-availability";
@@ -67,7 +70,7 @@ import {
   type CalendarOverlayPreview,
 } from "@/calendar-core/src/calendar-overlay-preview";
 import {
-  CalendarTaskDueSidebarRows,
+  CalendarRemindersSidebar,
   partitionCalendarTaskDueSidebarLists,
 } from "@/calendar-core/src/calendar-task-due-sidebar";
 import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
@@ -152,7 +155,7 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
-  const { hiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
+  const { hiddenOverlayTaskListIds, setHiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
     useCalendarOverlayHiddenIds();
   const taskDueOverlay = useCalendarTaskDueOverlay({
     preset: taskDueBootstrap ?? null,
@@ -182,6 +185,7 @@ export function CalendarWorkspace({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    setCalendarsVisible,
     selectDefaultCalendar,
     visibleCalendarIds,
     defaultCalendarId,
@@ -779,35 +783,25 @@ export function CalendarWorkspace({
               />
             }
           >
-            <SidebarSection title={L.myCalendarsSection}>
-              <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
-            </SidebarSection>
+            <MyCalendarsSidebarSection
+              rowProps={{ calendars: myCalendars, ...calendarRowProps }}
+              onSetVisible={setCalendarsVisible}
+              labels={L}
+            />
             {sharedWithMeCalendars.length > 0 ? (
               <SidebarSection title={L.sharedWithMeSection}>
                 <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
               </SidebarSection>
             ) : null}
             <CalendarAvailabilitySidebar availability={availability} labels={L} />
-            {overlayOwnedLists.length > 0 ? (
-              <SidebarSection title={L.tasksSection}>
-                <CalendarTaskDueSidebarRows
-                  lists={overlayOwnedLists}
-                  hiddenListIds={hiddenOverlayTaskListIds}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  onToggleVisibility={toggleOverlayTaskListVisibility}
-                />
-              </SidebarSection>
-            ) : null}
-            {overlaySharedLists.length > 0 ? (
-              <SidebarSection title={L.sharedTaskListsSection}>
-                <CalendarTaskDueSidebarRows
-                  lists={overlaySharedLists}
-                  hiddenListIds={hiddenOverlayTaskListIds}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  onToggleVisibility={toggleOverlayTaskListVisibility}
-                />
-              </SidebarSection>
-            ) : null}
+            <CalendarRemindersSidebar
+              lists={overlayOwnedLists}
+              sharedLists={overlaySharedLists}
+              hiddenListIds={hiddenOverlayTaskListIds}
+              onSetHiddenListIds={setHiddenOverlayTaskListIds}
+              onToggleVisibility={toggleOverlayTaskListVisibility}
+              labels={L}
+            />
           </AppSidebar>
         }
         mainNotice={<CalendarNoticeBar availability={availability} labels={L} locale={locale} />}

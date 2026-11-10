@@ -5,14 +5,11 @@ import {
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
+import { sectionToggleAll } from "@/sidebar-section/src/section-toggle-all";
 import { Input } from "@/ui/input";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { JmapTeamMember } from "@/lib/jmap-client/availability/types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import {
-  availabilityColor,
-  availabilityColorToken,
-} from "@/calendar-core/src/calendar-availability-overlay";
+import { availabilityColor } from "@/calendar-core/src/calendar-availability-overlay";
 import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availability";
 import "./calendar-availability-sidebar.css";
 
@@ -32,13 +29,21 @@ type SidebarLabels = Pick<
   | "teamAvailabilityIncomplete"
   | "teamAvailabilityCollapse"
   | "teamAvailabilityExpand"
+  | "teamAvailabilityShowAll"
+  | "teamAvailabilityHideAll"
 >;
 
 export type CalendarAvailabilitySidebarProps = {
   /** Members null or empty renders nothing. */
   availability: Pick<
     TeamAvailabilityState,
-    "members" | "shownIds" | "incompleteIds" | "collapsed" | "toggleShown" | "toggleCollapsed"
+    | "members"
+    | "shownIds"
+    | "incompleteIds"
+    | "collapsed"
+    | "toggleShown"
+    | "setShown"
+    | "toggleCollapsed"
   > &
     Partial<Pick<TeamAvailabilityState, "colors">>;
   labels: SidebarLabels;
@@ -61,7 +66,8 @@ function visibilityLabel(member: JmapTeamMember, shown: boolean, labels: Sidebar
 /**
  * Team availability, after Shared with me (#1910). One row per teammate who
  * shares with the user, hidden by default; ticking one paints their busy
- * blocks on the grid. Collapsible, with a filter above eight rows.
+ * blocks on the grid. The heading's dot shows or hides everyone at once.
+ * Collapsible, with a filter above eight rows.
  */
 export function CalendarAvailabilitySidebar({
   availability,
@@ -83,6 +89,8 @@ export function CalendarAvailabilitySidebar({
     [members, query],
   );
   if (!members || members.length === 0) return null;
+  // Over everyone listed, not just the rows a filter leaves.
+  const memberIds = members.map((member) => member.id);
 
   return (
     <SidebarSection
@@ -92,6 +100,13 @@ export function CalendarAvailabilitySidebar({
       onToggleCollapsed={availability.toggleCollapsed}
       collapseLabel={labels.teamAvailabilityCollapse}
       expandLabel={labels.teamAvailabilityExpand}
+      toggleAll={sectionToggleAll({
+        ids: memberIds,
+        isOn: (id) => shownIds.has(id),
+        onSetAll: (on) => availability.setShown(memberIds, on),
+        showLabel: labels.teamAvailabilityShowAll,
+        hideLabel: labels.teamAvailabilityHideAll,
+      })}
       beforeList={
         showFilter ? (
           <div className="calendar-availability-sidebar__filter">
@@ -121,15 +136,6 @@ export function CalendarAvailabilitySidebar({
             visible={shown}
             visibilityLabel={visibilityLabel(member, shown, labels)}
             onToggleVisibility={() => onToggleShown(member.id)}
-            nameLeading={
-              <UserAvatar
-                displayName={member.name}
-                compact
-                size="xs"
-                color={availabilityColorToken(member.id, colors)}
-                className="calendar-availability-sidebar__avatar"
-              />
-            }
             badges={
               shown && incompleteIds.has(member.id) ? (
                 <CollectionSidebarMark

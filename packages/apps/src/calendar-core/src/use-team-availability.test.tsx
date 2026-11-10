@@ -148,6 +148,20 @@ describe("useTeamAvailability", () => {
     expect(graceBlock?.data.color).toBe("#f43f5e");
   });
 
+  it("shows or hides several teammates at once and remembers it", async () => {
+    shown(["ada", "gone"]);
+    const { source } = fakeSource(["ada", "alan", "grace"].map((id) => member(id)));
+    const { result } = renderAvailability({ source });
+    await waitFor(() => expect(result.current.members).not.toBeNull());
+    act(() => result.current.setShown(["ada", "alan", "grace"], true));
+    expect([...result.current.shownIds].sort()).toEqual(["ada", "alan", "gone", "grace"]);
+    act(() => result.current.setShown(["ada", "alan", "grace"], false));
+    expect([...result.current.shownIds]).toEqual(["gone"]);
+    expect(JSON.parse(window.localStorage.getItem(CALENDAR_VIEW_PREFS_STORAGE_KEY)!)).toMatchObject(
+      { shownAvailabilityIds: ["gone"] },
+    );
+  });
+
   it("fetches the visible range at once when ticking a teammate", async () => {
     const { source, getAvailability } = fakeSource([member("alice")]);
     const { result } = renderAvailability({ source });

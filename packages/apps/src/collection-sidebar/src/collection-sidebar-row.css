@@ -72,77 +72,12 @@
   @apply inline-flex items-center justify-center;
 }
 
-/* Visibility toggle: a coloured dot, grey while the collection is hidden. */
-.collection-sidebar-row__visibility {
-  @apply relative z-10 inline-flex shrink-0 items-center justify-center rounded-full;
-  width: var(--collection-sidebar-row-leading-size, 0.875rem);
-  height: var(--collection-sidebar-row-leading-size, 0.875rem);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-  outline: none;
-}
-
-/* The dot stays small; its hit area is a square as tall as the row (40px, 44px
- * on touch). It reaches left into the row padding and stops halfway to the
- * name, so tapping the name still selects the collection. */
-.collection-sidebar-row__visibility {
-  --collection-sidebar-row-hit-size: 2.5rem;
-}
-
-@media (pointer: coarse) {
-  .collection-sidebar-row__visibility {
-    --collection-sidebar-row-hit-size: 2.75rem;
-  }
-}
-
-.collection-sidebar-row__visibility::before {
-  content: "";
-  position: absolute;
-  inset-block: calc(
-    (
-        var(--collection-sidebar-row-leading-size, 0.875rem) -
-          var(--collection-sidebar-row-hit-size)
-      ) /
-      2
-  );
-  inset-inline-end: -0.25rem;
-  width: var(--collection-sidebar-row-hit-size);
-  border-radius: var(--control-radius);
-}
-
-.collection-sidebar-row__visibility:focus-visible {
-  @apply ring-2 ring-ring;
-}
-
-.collection-sidebar-row__visibility-dot {
-  @apply size-2.5 rounded-full;
-  background-color: var(--collection-row-color, var(--workspace-foreground));
-  transition:
-    background-color 150ms ease,
-    transform 150ms ease;
-}
-
-.collection-sidebar-row__visibility[data-state="unchecked"]
-  .collection-sidebar-row__visibility-dot {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
-}
-
 /* A hidden collection reads as off: the name and count take the quiet label colour
    with the grey dot (still 4.5:1, which half opacity was not). */
 .collection-sidebar-row:has(.collection-sidebar-row__visibility[data-state="unchecked"])
   :is(.collection-sidebar-row__title, .collection-sidebar-row__trailing) {
   color: var(--workspace-label-color);
   transition: color 150ms ease;
-}
-
-@media (hover: hover) {
-  .collection-sidebar-row__visibility:hover .collection-sidebar-row__visibility-dot {
-    transform: scale(1.2);
-  }
 }
 
 .collection-sidebar-row__dot {

@@ -187,6 +187,32 @@ export const SeededMonthSidebar: Story = {
     ).toBeTruthy();
     expectSearchLeftOfViewSelect(canvasElement);
     expectNoSearchChrome(canvasElement);
+
+    // My calendars heading: show/hide-all dot and a fold, beside the New event menu.
+    const mine = sidebarSection(canvasElement, defaultCalendarLabels.myCalendarsSection);
+    const hideAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsHideAll,
+    });
+    await expect(hideAll).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(hideAll);
+    const showAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsShowAll,
+    });
+    await expect(showAll).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(within(mine).getByRole("checkbox", { name: "Show Personal" }));
+    await expect(showAll).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(showAll);
+    await expect(
+      within(mine).getByRole("checkbox", { name: defaultCalendarLabels.myCalendarsHideAll }),
+    ).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsCollapse }),
+    );
+    await expect(within(mine).queryByText("Personal")).toBeNull();
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsExpand }),
+    );
+    await expect(within(mine).getByText("Personal")).toBeTruthy();
   },
 };
 
@@ -385,6 +411,44 @@ export const TaskDueOverlayWeek: Story = {
       expect(summaries).toContain("Buy milk");
       expect(summaries).not.toContain("Review API spec");
     });
+
+    // The heading's dot: half-filled while only some lists show; it shows all.
+    const showAll = within(tasksSection).getByRole("checkbox", {
+      name: defaultCalendarLabels.tasksSectionShowAll,
+    });
+    await expect(showAll).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(showAll);
+    await waitFor(() =>
+      expect(collectEventCardSummaries(canvasElement)).toContain("Review API spec"),
+    );
+    await userEvent.click(
+      within(tasksSection).getByRole("checkbox", {
+        name: defaultCalendarLabels.tasksSectionHideAll,
+      }),
+    );
+    await waitFor(() => {
+      const summaries = collectEventCardSummaries(canvasElement);
+      expect(summaries).not.toContain("Buy milk");
+      expect(summaries).not.toContain("Review API spec");
+    });
+
+    // Folding keeps the dot, so everything can come back without unfolding.
+    await userEvent.click(
+      within(tasksSection).getByRole("button", {
+        name: defaultCalendarLabels.tasksSectionCollapse,
+      }),
+    );
+    await expect(within(tasksSection).queryByText("Personal")).toBeNull();
+    await userEvent.click(
+      within(tasksSection).getByRole("checkbox", {
+        name: defaultCalendarLabels.tasksSectionShowAll,
+      }),
+    );
+    await waitFor(() => expect(collectEventCardSummaries(canvasElement)).toContain("Buy milk"));
+    await userEvent.click(
+      within(tasksSection).getByRole("button", { name: defaultCalendarLabels.tasksSectionExpand }),
+    );
+    await expect(within(tasksSection).getByText("Personal")).toBeTruthy();
   },
 };
 
@@ -407,13 +471,37 @@ export const TeamAvailabilityThree: Story = {
   },
   play: async ({ canvasElement }) => {
     const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
-    const rows = within(section).getAllByRole("checkbox");
+    const rows = within(within(section).getByRole("list")).getAllByRole("checkbox");
     await expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
       "Show your own availability",
       "Hide Ada Lovelace's availability",
       "Hide Grace Hopper's availability",
     ]);
     await expect(within(section).queryByRole("searchbox")).toBeNull();
+
+    // The heading's dot: mixed while some are on, then shows and hides everyone.
+    const all = within(section).getByRole("checkbox", {
+      name: defaultCalendarLabels.teamAvailabilityShowAll,
+    });
+    await expect(all).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(all);
+    await waitFor(() =>
+      expect(
+        within(section).getByRole("checkbox", { name: "Hide your own availability" }),
+      ).toBeTruthy(),
+    );
+    await userEvent.click(
+      within(section).getByRole("checkbox", {
+        name: defaultCalendarLabels.teamAvailabilityHideAll,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        within(section).getByRole("checkbox", {
+          name: defaultCalendarLabels.teamAvailabilityShowAll,
+        }),
+      ).toHaveAttribute("aria-checked", "false"),
+    );
   },
 };
 
@@ -429,7 +517,8 @@ export const TeamAvailabilityTwelve: Story = {
   },
   play: async ({ canvasElement }) => {
     const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
-    await expect(within(section).getAllByRole("checkbox")).toHaveLength(12);
+    const list = within(section).getByRole("list");
+    await expect(within(list).getAllByRole("checkbox")).toHaveLength(12);
     await expect(
       within(section).getByRole("img", { name: defaultCalendarLabels.teamAvailabilityIncomplete }),
     ).toBeTruthy();
@@ -439,7 +528,7 @@ export const TeamAvailabilityTwelve: Story = {
       }),
       "gr",
     );
-    await waitFor(() => expect(within(section).getAllByRole("checkbox")).toHaveLength(1));
+    await waitFor(() => expect(within(list).getAllByRole("checkbox")).toHaveLength(1));
   },
 };
 

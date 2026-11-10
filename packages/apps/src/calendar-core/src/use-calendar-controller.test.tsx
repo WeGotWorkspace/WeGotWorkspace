@@ -734,6 +734,15 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.defaultCalendarId).toBe("default");
   });
 
+  it("setCalendarsVisible hides and shows several calendars, keeping the others", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+    act(() => result.current.toggleCalendarVisibility("default"));
+    act(() => result.current.setCalendarsVisible(["work", "missing"], false));
+    expect([...result.current.hiddenCalendarIds].sort()).toEqual(["default", "missing", "work"]);
+    act(() => result.current.setCalendarsVisible(["work", "missing"], true));
+    expect([...result.current.hiddenCalendarIds]).toEqual(["default"]);
+  });
+
   it("selectDefaultCalendar sets create target and unhides a hidden calendar", () => {
     const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
 
