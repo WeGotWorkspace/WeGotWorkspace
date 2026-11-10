@@ -9,6 +9,25 @@ const buttonCss = readFileSync(join(here, "button/src/button.css"), "utf8");
 const iconButtonCss = readFileSync(join(here, "button/src/icon-button.css"), "utf8");
 const inputCss = readFileSync(join(here, "ui/input.css"), "utf8");
 
+/** The bodies of every `@media (max-width: 767px)` block, joined. */
+function phoneBlocks(css: string): string {
+  const marker = "@media (max-width: 767px)";
+  const bodies: string[] = [];
+  let at = css.indexOf(marker);
+  while (at !== -1) {
+    const open = css.indexOf("{", at);
+    let depth = 0;
+    let end = open;
+    for (; end < css.length; end += 1) {
+      if (css[end] === "{") depth += 1;
+      else if (css[end] === "}" && --depth === 0) break;
+    }
+    bodies.push(css.slice(open + 1, end));
+    at = css.indexOf(marker, end);
+  }
+  return bodies.join("\n");
+}
+
 describe("control height tokens", () => {
   it("defines a fixed xs…xl scale and aliases --input-height to md", () => {
     expect(styles).toMatch(/--control-height-xs:\s*1\.75rem/);
@@ -40,8 +59,7 @@ describe("control height tokens", () => {
   });
 
   it("keeps phones on the desktop height scale so fields align with selects and buttons", () => {
-    const phone = styles.slice(styles.indexOf("@media (max-width: 767px)"));
-    expect(phone).not.toMatch(/--control-height-(?:sm|md):/);
+    expect(phoneBlocks(styles)).not.toMatch(/--control-height-(?:sm|md):/);
 
     const root = styles.match(/:root\s*\{([\s\S]*?)\n\}/);
     expect(root?.[1]).toMatch(/--control-height-sm:\s*2rem;/);
@@ -53,14 +71,10 @@ describe("form control type and inset", () => {
   const swatchCss = readFileSync(join(here, "ui/color-swatch-trigger.css"), "utf8");
   const ruleBody = (css: string, selector: RegExp) => css.match(selector)?.[1] ?? "";
 
-  it("lifts SelectTrigger and control-surface onto the text-field steps on phones", () => {
-    const phone = styles.slice(styles.indexOf("@media (max-width: 767px)"));
-    const body = ruleBody(phone, /\.select-trigger,\s*\.control-surface\s*\{([^}]*)\}/);
-    expect(body).toMatch(/--input-font-size-xs:\s*1rem;/);
-    expect(body).toMatch(/--input-font-size-sm:\s*1rem;/);
-    expect(body).toMatch(/--input-font-size-md:\s*1rem;/);
-    // Tokens only: a control that pins its own font-size or height keeps it.
-    expect(body).not.toMatch(/(?:^|[\s;])(?:font-size|height|min-height):/);
+  it("keeps fields, selects and control surfaces at their desktop type size on phones", () => {
+    // iOS focus zoom is handled once in the viewport meta (theme-boot.js), so no
+    // phone rule lifts the field type to 16px.
+    expect(phoneBlocks(styles)).not.toMatch(/--input-font-size-(?:xs|sm|md):/);
   });
 
   it("gives the labelled swatch the size padding and keeps the icon-only swatch compact", () => {

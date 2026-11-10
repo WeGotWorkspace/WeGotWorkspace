@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type RefObject } from "react";
+import { useCallback, useEffect, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
@@ -17,9 +17,30 @@ export type UseDocsListingCacheRefreshOptions = {
   /** Cache key of the filters the visible rows belong to. */
   shownKeyRef: RefObject<string | null>;
   cacheTimeoutMs: number;
-  setResults: (results: WgwUnifiedSearchResult[]) => void;
+  setResults: Dispatch<SetStateAction<WgwUnifiedSearchResult[]>>;
   setHasMore: (hasMore: boolean) => void;
 };
+
+/**
+ * Cached rows carry no FileNode id (#1976). A row on screen from a live
+ * response keeps its id while the cache still shows the same file: same path
+ * and same modified time. Otherwise the row opens by path, which asks the server.
+ */
+export function keepLiveNodeIds(
+  shown: readonly WgwUnifiedSearchResult[],
+  cached: WgwUnifiedSearchResult[],
+): WgwUnifiedSearchResult[] {
+  const live = new Map(
+    shown.filter((row) => row.nodeId).map((row) => [row.sourceKey, row] as const),
+  );
+  if (live.size === 0) return cached;
+  return cached.map((row) => {
+    const match = live.get(row.sourceKey);
+    return match?.nodeId && match.modifiedAt === row.modifiedAt
+      ? { ...row, nodeId: match.nodeId }
+      : row;
+  });
+}
 
 /**
  * Inbound sync in any tab changed the cached Docs views (#1563): show the
@@ -44,7 +65,7 @@ export function useDocsListingCacheRefresh({
       void guardOfflineCacheStep(read, undefined, cacheTimeoutMs).then((cached) => {
         // A timeout or a view never cached is no reason to clear the list.
         if (!cached || shownKeyRef.current !== filtersKey) return;
-        setResults(cached.results);
+        setResults((shown) => keepLiveNodeIds(shown, cached.results));
         setHasMore(cached.hasMore);
       });
     });

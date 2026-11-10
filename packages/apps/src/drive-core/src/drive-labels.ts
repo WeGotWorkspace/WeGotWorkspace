@@ -1,8 +1,9 @@
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const driveLabels = {
-  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  /** Primary AppSidebar home (SST with Docs; Docs uses "All Docs"). */
   sidebarHome: filesBrowserSidebarLabels.homeDrive,
   /**
    * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
@@ -15,13 +16,23 @@ export const driveLabels = {
   sidebarTrash: filesBrowserSidebarLabels.trash,
   /** My Drives section title (SST with Docs; was "Team drives"). */
   sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
+  /** Root label for Team drives; the UI path segment stays `Groups`. */
+  teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
   listColumnName: "Name",
   listColumnLocation: "Location",
+  gridSectionFolders: "Folders",
+  gridSectionFiles: "Files",
+  listColumnLastModified: "Last modified",
+  listColumnKind: "Kind",
+  listColumnSize: "Size",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
+  allFilesEmpty: "No files yet",
+  allFilesLoading: filesBrowserSidebarLabels.listLoading,
+  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
   /** Folder view when the live listing failed and no rows are shown — never "empty". */
   folderListingFailed: "This folder could not be loaded",
@@ -29,7 +40,7 @@ export const driveLabels = {
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
   /** Chevron menu on the sidebar segmented New control. */
-  newButtonMenu: "More create options",
+  newButtonMenu: workspaceLabels.list.moreCreateOptions,
   newFolder: "New folder",
   uploadFiles: "Upload files",
   uploadFolder: "Upload folder",
@@ -65,9 +76,9 @@ export const driveLabels = {
   /** Accessible name of the progress ring. */
   uploadRingName: (fileName: string) => `Upload of ${fileName}`,
   uploadPercent: (percent: number) => `${percent}%`,
-  uploadRetry: "Retry",
+  uploadRetry: workspaceLabels.dialog.retry,
   uploadRetryAll: "Retry all failed",
-  uploadRemove: "Remove",
+  uploadRemove: workspaceLabels.dialog.remove,
   /** Description on actions a placeholder cannot do yet (open, share, move, rename…). */
   uploadActionUnavailable: "Available after the upload",
   uploadOpenUnavailable: "This file is still uploading. You can open it once it is uploaded.",
@@ -114,9 +125,11 @@ export const driveLabels = {
   detailClosePanel: "Close",
   /** Empty body when the details panel is open with no file selected. */
   detailEmpty: "Select a file to see its details.",
-  selectionDone: "Done",
+  /** Details panel label above the count when several items are selected. */
+  detailMultipleSelection: "Multiple selection",
+  selectionDone: workspaceLabels.dialog.done,
   selectionStar: "Star",
-  selectionMove: "Move",
+  selectionMove: workspaceLabels.dialog.move,
   selectionDownload: "Download",
   selectionMoveToTrash: "Move to trash",
   selectionDeletePermanently: "Delete permanently",
@@ -129,17 +142,17 @@ export const driveLabels = {
   renameDialogDescription: "Enter a new name. File extensions cannot be changed.",
   renameDialogDescriptionFolder: "Enter a new name for this folder.",
   renameAction: "Rename",
-  cancel: "Cancel",
-  detailMove: "Move",
+  cancel: workspaceLabels.dialog.cancel,
+  detailMove: workspaceLabels.dialog.move,
   detailShare: "Share",
-  detailDelete: "Delete",
+  detailDelete: workspaceLabels.dialog.delete,
   folderPickerDrivesRoot: "Drives",
   moveDialogTitle: "Move to folder",
   moveDialogDescription:
     "Browse folders like in Drive. Click to select a destination, double-click to open a folder.",
   moveDialogSearchPlaceholder: "Search folders…",
   moveDialogEmpty: "No folders match your search.",
-  moveDialogCancel: "Cancel",
+  moveDialogCancel: workspaceLabels.dialog.cancel,
   moveDialogConfirm: "Move here",
   fileSelectDialogTitle: "Insert image",
   fileSelectDialogDescription:
@@ -148,16 +161,20 @@ export const driveLabels = {
   fileSelectEmpty: "No images in this folder",
   createMarkdownDialogTitle: "New document",
   createMarkdownDialogDescription: "Choose a name and folder before creating the document.",
-  createMarkdownDialogNamePlaceholder: "Name",
-  createMarkdownDialogCancel: "Cancel",
-  createMarkdownDialogConfirm: "Create",
+  createMarkdownDialogNamePlaceholder: workspaceLabels.dialog.nameField,
+  createMarkdownDialogCancel: workspaceLabels.dialog.cancel,
+  createMarkdownDialogConfirm: workspaceLabels.dialog.create,
+  createFolderDialogTitle: "New folder",
+  createFolderDialogDescription: "Choose a name and where the folder goes.",
+  createFolderDialogNamePlaceholder: "Folder name",
+  createFolderDialogConfirm: "Create folder",
   offlineMakeAvailable: "Make available offline",
   offlineRemoveCopy: "Remove offline copy",
   offlineDownloading: "Downloading for offline use",
   offlineAvailable: "Available offline",
-  offlinePendingSync: "Pending sync",
-  toastSynced: "Changes synced",
-  syncFailedTitle: "Some changes could not sync",
+  offlinePendingSync: workspaceLabels.sync.pending,
+  toastSynced: workspaceLabels.sync.changesSynced,
+  syncFailedTitle: workspaceLabels.sync.failedTitle,
   syncFailedMessage:
     "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
   retrySync: "Retry sync",
@@ -165,12 +182,13 @@ export const driveLabels = {
   accessScopesTitle: "Scopes",
   accessRevokeAllPublic: "Revoke all public links",
   accessManageShare: "Manage share",
-  accessSearchPlaceholder: "Search people and groups…",
+  accessSearchPlaceholder: "Search people and teams…",
   accessFilterAll: "All",
   accessFilterExternal: "External",
   accessFilterPublic: "Public links",
-  accessFilterGroups: "Groups",
+  accessFilterGroups: "Teams",
   accessVia: "via",
+  accessViaTeam: (name: string) => `Team: ${name}`,
   accessExternalBadge: "External",
   accessExpiredBadge: "Expired",
   accessPendingBadge: "Pending",

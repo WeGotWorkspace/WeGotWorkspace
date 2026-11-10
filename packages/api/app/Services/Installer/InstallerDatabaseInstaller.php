@@ -70,7 +70,7 @@ final class InstallerDatabaseInstaller
             $enableContacts,
             $initialSettings,
         ): void {
-            $this->seeder->seed($username, $password, $displayName, $email, $enableCalendars, $enableContacts);
+            $this->seeder->seed($username, $password, $displayName, $email, $enableCalendars, $enableContacts, isAdmin: true);
             $this->settings->replaceMany($initialSettings);
         });
     }

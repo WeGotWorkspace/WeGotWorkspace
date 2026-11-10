@@ -31,10 +31,7 @@ final class PrincipalActorResolver
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
         if ($username === null) {
-            throw new PrincipalResponseException(401, [
-                'error' => 'auth_required',
-                'message' => 'Sign in to join the workspace presence room.',
-            ]);
+            throw new PrincipalResponseException(401, 'auth_required', 'Sign in to join the workspace presence room.');
         }
 
         return $username;

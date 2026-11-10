@@ -112,21 +112,30 @@ export function useDocsSuggestionsMutations({
   );
 
   /**
-   * An open root for a live suggestion. If its journal was archived (accept or
-   * reject, then undo brought the mark back) it is reopened, so replies and
-   * reactions show on the live card.
+   * The open root of a suggestion that already has one. Replies and reactions
+   * never create the root: only the suggesting session does (see
+   * `useDocsSuggestionThreadRoots`), because the root's creator is the card's
+   * author. If the journal was archived (accept or reject, then undo brought the
+   * mark back) it is reopened, so replies and reactions show on the live card.
+   * `null` while there is no root yet (the card hides its composer and picker).
    */
-  const ensureOpenSuggestionRoot = useCallback(
-    async (changeId: string): Promise<DocsFileThread> => {
+  const openSuggestionRoot = useCallback(
+    async (changeId: string): Promise<DocsFileThread | null> => {
+      if (!client || !path) throw new Error("no threads client");
       const open = suggestionRoot(source.fileThreads, changeId);
       if (open) return open;
-      const journal = await ensureSuggestionRoot(changeId);
-      if (!journal.archived || !client || !path) return journal;
+      let journal = suggestionJournal(source.fileThreads, changeId);
+      if (!journal && !source.loaded) {
+        journal = suggestionJournal(await client.list(path), changeId);
+        if (journal) source.upsert(journal);
+      }
+      if (!journal) return null;
+      if (!journal.archived) return journal;
       const reopened = await client.patch(path, journal.id, { archived: false, changeId });
       source.upsert(reopened);
       return reopened;
     },
-    [client, ensureSuggestionRoot, path, source],
+    [client, path, source],
   );
 
   const addReply = useCallback(
@@ -137,22 +146,24 @@ export function useDocsSuggestionsMutations({
       if (!message) return Promise.resolve();
 
       return (async () => {
-        const root = await ensureOpenSuggestionRoot(changeId);
+        const root = await openSuggestionRoot(changeId);
+        if (!root) return;
         source.upsert(await client.reply(path, root.id, { id: message.id, body: message.body }));
       })();
     },
-    [client, currentUser, ensureOpenSuggestionRoot, path, source],
+    [client, currentUser, openSuggestionRoot, path, source],
   );
 
   const toggleReaction = useCallback(
     (changeId: string, emoji: string) => {
       if (!client || !path) return Promise.resolve();
       return (async () => {
-        const root = await ensureOpenSuggestionRoot(changeId);
+        const root = await openSuggestionRoot(changeId);
+        if (!root) return;
         source.upsert(await client.react(path, root.id, emoji));
       })();
     },
-    [client, ensureOpenSuggestionRoot, path, source],
+    [client, openSuggestionRoot, path, source],
   );
 
   const archiveSuggestion = useCallback(

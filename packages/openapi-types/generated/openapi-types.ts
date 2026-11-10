@@ -4354,7 +4354,7 @@ export interface paths {
         put?: never;
         /**
          * Create share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
          */
         post: {
             parameters: {
@@ -4482,7 +4482,7 @@ export interface paths {
         head?: never;
         /**
          * Update share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
          */
         patch: {
             parameters: {
@@ -8798,6 +8798,8 @@ export interface components {
             password?: string;
             groups?: components["schemas"]["AdminUserGroupList"];
             enabled?: boolean;
+            /** @description Grant or remove the admin role. A change revokes the user's refresh tokens. An admin cannot remove their own role, and the last admin cannot lose it. */
+            isAdmin?: boolean;
         };
         /**
          * @example {
@@ -8846,6 +8848,8 @@ export interface components {
             groups: components["schemas"]["AdminUserGroupList"];
             createdAt: string;
             enabled: boolean;
+            /** @description Whether the user has the admin role. */
+            isAdmin: boolean;
         };
         AdminGroupSummary: {
             id: string;
@@ -9019,6 +9023,8 @@ export interface components {
         SettingsStateResponse: {
             user: components["schemas"]["SettingsUserProfile"];
             groups: components["schemas"]["SettingsUserGroupList"];
+            /** @description Whether the caller has the admin role. Admin is a role per user, not membership of a Team. */
+            isAdmin: boolean;
             logoutUrl: string;
             /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
             mcpEnabled: boolean;
@@ -11012,8 +11018,9 @@ export interface components {
             recurrenceOverrides?: {
                 [key: string]: components["schemas"]["TaskRecurrenceOverride"];
             };
+            /** @description Merged per alert id; null clears all alerts, an alert set to null removes that one */
             alerts?: {
-                [key: string]: components["schemas"]["TaskAlert"];
+                [key: string]: components["schemas"]["TaskAlert"] | null;
             } | null;
             participants?: {
                 [key: string]: components["schemas"]["TaskParticipant"];
@@ -11167,6 +11174,8 @@ export interface components {
             modifiedAt: number;
             snippet?: string | null;
             tokenScore: number;
+            /** @description FileNode id (fn-…) for a file result with a live FileNode; omitted otherwise. */
+            nodeId?: string;
             metadata: {
                 [key: string]: unknown;
             };

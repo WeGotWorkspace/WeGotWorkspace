@@ -37,7 +37,7 @@
   --docs-text: var(--workspace-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
   --docs-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  --docs-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --docs-border: var(--border);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -51,8 +51,6 @@
   --workspace-main-content-max-width: none;
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --checkbox-border-color: var(--workspace-accent);
-  --checkbox-checked-border: var(--workspace-accent);
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
   /* Quiet menu washes: shared `workspace-derive.css`.
@@ -368,13 +366,6 @@
   }
 }
 
-.docs-workspace .workspace-app-layout__panel {
-  @apply flex min-h-0 flex-col border-l;
-  width: var(--docs-comments-column-width);
-  border-color: var(--docs-border);
-  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
-}
-
 .docs-workspace__editor .text-editor--view-source .text-editor__source {
   background-color: var(--docs-surface);
 }
@@ -421,4 +412,251 @@
 .docs-workspace__loading {
   @apply flex flex-1 items-center justify-center text-sm;
   color: var(--docs-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Docs chrome. Scheme, selection, sidebar panel, account card and     */
+/* borderless header buttons are suite-wide (styles.css, workspace-    */
+/* derive.css, app-sidebar, workspace-app-layout). Only Docs-specific   */
+/* surfaces live here.                                                  */
+/* ------------------------------------------------------------------ */
+
+.docs-workspace {
+  --docs-chip-bg: color-mix(in oklch, var(--workspace-foreground) 7%, var(--docs-surface));
+  --docs-chip-radius: 0.625rem;
+  --docs-toolbar-bg: color-mix(in oklch, var(--workspace-foreground) 2.5%, var(--docs-surface));
+  /* Active outline row dot: the suite selection sky. */
+  --docs-outline-dot-active: var(--scheme-selection);
+}
+
+.docs-workspace .text-editor {
+  --text-editor-page-border: color-mix(in oklch, var(--workspace-foreground) 9%, transparent);
+}
+
+/* Format bar: chip wash on hover. */
+.docs-workspace__editor .text-editor-format-bar {
+  --button-hover-background: var(--docs-chip-bg);
+}
+
+/*
+ * md+: a floating pill laid over the canvas. Absolute (not in flow) so the scrollport
+ * starts at the top of the editor and the sheet scrolls under the pill.
+ */
+@media (min-width: 768px) {
+  .docs-workspace__editor .text-editor:not(.text-editor--view-source) {
+    position: relative;
+  }
+
+  .docs-workspace__editor .text-editor:not(.text-editor--view-source) > .text-editor-format-bar {
+    @apply floating-toolbar absolute;
+    top: 0.875rem;
+    left: 50%;
+    translate: -50% 0;
+    width: max-content;
+    max-width: calc(100% - 2rem);
+  }
+
+  /* Clear the pill (40px controls + pads) plus the usual desk gap. */
+  .docs-workspace {
+    --docs-sheet-canvas-padding-block-start: 5.125rem;
+  }
+}
+
+/* Transparent like the other bar buttons (the frost shows through); wash on hover/open. */
+.docs-workspace__editor .text-editor-format-bar__heading-trigger {
+  border-radius: 0.5rem;
+  min-width: 5rem;
+}
+
+.docs-workspace__editor .text-editor-format-bar__heading-trigger[data-state="open"] {
+  background-color: var(--docs-chip-bg);
+}
+
+.docs-workspace__editor .text-editor-format-bar__sep {
+  height: 1rem;
+  margin-inline: 0.375rem;
+  background: var(--floating-toolbar-separator-color);
+}
+
+/* Footer stats: plain text with hairline separators instead of chips. */
+.docs-workspace__stats-footer .tag {
+  background-color: transparent !important;
+  padding-inline: 0;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  color: color-mix(in oklch, var(--workspace-foreground) 82%, transparent);
+}
+
+.docs-workspace__stats-footer
+  .workspace-detail-footer__meta-tag
+  + .workspace-detail-footer__meta-tag {
+  border-inline-start: 1px solid var(--docs-border);
+  padding-inline-start: 1rem;
+  margin-inline-start: 0.25rem;
+}
+
+.docs-workspace__footer-tools {
+  @apply flex items-center gap-2;
+}
+
+/* Source view: a labelled switch, not a mystery </> glyph. */
+.docs-workspace__source-switch {
+  @apply inline-flex cursor-pointer select-none items-center gap-2 text-sm font-medium;
+  padding-inline: 0.5rem;
+  color: color-mix(in oklch, var(--workspace-foreground) 82%, transparent);
+}
+
+.docs-workspace__source-switch:has(button:disabled) {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.docs-workspace__stats-footer .workspace-chrome-footer__group--end {
+  @apply gap-0;
+}
+
+.docs-workspace__stats-footer .workspace-chrome-footer__group--end > * + * {
+  border-inline-start: 1px solid var(--docs-border);
+  margin-inline-start: 1rem;
+  padding-inline-start: 1rem;
+}
+
+/* Saved / synced: a green status dot ahead of the copy. */
+.docs-workspace__doc-status {
+  @apply inline-flex items-center gap-2;
+}
+
+.docs-workspace__doc-status::before {
+  content: "";
+  @apply inline-block size-2 shrink-0 rounded-full;
+  background-color: var(--docs-status-dot, var(--color-success, oklch(0.72 0.19 150)));
+}
+
+/* Shared floating-toolbar rhythm (styles.css). */
+.docs-workspace__editor .text-editor-format-bar__controls {
+  gap: var(--floating-toolbar-gap);
+}
+
+.docs-workspace__editor .text-editor-format-bar[data-size="lg"] .text-editor-format-bar__sep {
+  @apply floating-toolbar-separator;
+}
+
+.docs-workspace__editor
+  .text-editor-format-bar[data-size="lg"]
+  .text-editor-format-bar__heading-trigger {
+  min-width: 5.75rem;
+  font-size: 0.875rem;
+}
+
+/*
+ * The full lg pill is ~56rem wide. Narrower editors (review panel open) first keep the
+ * 40px height but slim the buttons; below 52rem the bar falls back to md.
+ */
+.docs-workspace__editor .text-editor {
+  container: docs-editor / inline-size;
+}
+
+@container docs-editor (max-width: 58rem) {
+  .docs-workspace__editor .text-editor-format-bar[data-size="lg"] .icon-button--size-lg {
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
+
+  .docs-workspace__editor .text-editor-format-bar[data-size="lg"] {
+    --floating-toolbar-gap: 0.125rem;
+  }
+}
+
+@container docs-editor (max-width: 52rem) {
+  .docs-workspace__editor .text-editor-format-bar[data-size="lg"] {
+    --control-height-lg: var(--control-height-md, 2.25rem);
+    --floating-toolbar-separator-height: 1rem;
+    --floating-toolbar-separator-margin: 0.375rem;
+  }
+}
+
+.docs-workspace__doc-status[data-doc-status-kind="idle"]::before {
+  display: none;
+}
+
+.docs-workspace__doc-status:is(
+  [data-doc-status-kind="saving"],
+  [data-doc-status-kind="connecting"]
+) {
+  --docs-status-dot: var(--color-sync-pending);
+}
+
+.docs-workspace__doc-status:is(
+  [data-doc-status-kind="offline"],
+  [data-doc-status-kind="saveOnly"]
+) {
+  --docs-status-dot: var(--color-warning);
+}
+
+/* Page sheets: rounded. Pages mode draws page ends inside `.breaker`; give that the desk
+ * colour and round each page end, so every page reads as its own rounded card. */
+.docs-workspace {
+  --docs-page-radius: 0.75rem;
+}
+
+@media screen and (min-width: 768px) {
+  .docs-workspace__editor .text-editor-sheet--fill:not(.text-editor-sheet--paginated) .paper-sheet {
+    border-radius: var(--docs-page-radius);
+  }
+
+  .docs-workspace .text-editor-prose.rm-with-pagination {
+    border-radius: var(--docs-page-radius);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker {
+    width: calc(var(--rm-page-width) + 2px) !important;
+    margin-left: calc(-1 * var(--rm-margin-left) - 1px) !important;
+    background-color: var(--text-editor-page-gap);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > :is(.rm-page-footer, .rm-page-header) {
+    box-sizing: border-box;
+    /* Same outer edge as the page's 1px outside ring, so the side line runs straight. */
+    width: calc(var(--rm-page-width) + 2px) !important;
+    margin-left: 0 !important;
+    border: 1px solid var(--text-editor-page-border);
+  }
+
+  /* The library's gap carries its own hairlines and overhangs the page by 2px: drop both. */
+  .docs-workspace .rm-with-pagination .breaker > .rm-pagination-gap {
+    width: 100% !important;
+    margin-inline: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > .rm-page-footer {
+    border-top: 0;
+    border-radius: 0 0 var(--docs-page-radius) var(--docs-page-radius);
+  }
+
+  .docs-workspace .rm-with-pagination .breaker > .rm-page-header {
+    border-bottom: 0;
+    border-radius: var(--docs-page-radius) var(--docs-page-radius) 0 0;
+  }
+}
+
+/* Paper: None — no sheet at all; text floats on the desk. */
+.docs-workspace .text-editor[data-paper="none"] .text-editor-sheet__surface {
+  background: transparent;
+  box-shadow: none;
+}
+
+.docs-workspace__header-actions-trailing {
+  @apply flex shrink-0 items-center;
+  margin-inline-start: 0.25rem;
+}
+
+/* Header presence: shared `--header` look (docs-collab-presence-chrome.css), ringed in the docs surface. */
+.docs-workspace__header-presence {
+  --collab-presence-header-surface: var(--docs-surface);
+}
+
+/* Free-text status (loading, errors): neutral dot, not "saved" green. */
+.docs-workspace__doc-status[data-doc-status-kind="message"] {
+  --docs-status-dot: color-mix(in oklch, var(--workspace-foreground) 40%, transparent);
 }

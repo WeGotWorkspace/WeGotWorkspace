@@ -1,7 +1,9 @@
+import type React from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
+import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
@@ -57,7 +59,7 @@ describe("useTasksController URL routing", () => {
     });
   });
 
-  it("opens the edit dialog once for a matching initialTaskId", async () => {
+  it("opens a matching initialTaskId once", async () => {
     const { result, rerender } = renderHook(
       ({ initialTaskId }: { initialTaskId?: string }) =>
         useTasksController({ data: bootstrap.data, initialTaskId }),
@@ -65,24 +67,26 @@ describe("useTasksController URL routing", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.editDialog).toEqual({ taskId: "task-inbox-demo" });
+      expect(result.current.activeId).toBe("task-inbox-demo");
     });
+    expect(result.current.activeTask?.id).toBe("task-inbox-demo");
+    expect(result.current.selectedIds).toEqual(["task-inbox-demo"]);
 
     act(() => {
-      result.current.closeEditTask();
+      result.current.closeTask();
     });
-    expect(result.current.editDialog).toBeNull();
+    expect(result.current.activeId).toBe("");
 
     rerender({ initialTaskId: "task-inbox-demo" });
-    expect(result.current.editDialog).toBeNull();
+    expect(result.current.activeId).toBe("");
   });
 
-  it("does not open the edit dialog for an unknown initialTaskId", async () => {
+  it("does not open an unknown initialTaskId", async () => {
     const { result } = renderHook(() =>
       useTasksController({ data: bootstrap.data, initialTaskId: "missing-task" }),
     );
     await act(async () => undefined);
-    expect(result.current.editDialog).toBeNull();
+    expect(result.current.activeId).toBe("");
   });
 
   it("initialView seeds the controller view on mount", () => {
@@ -392,5 +396,81 @@ describe("useTasksController URL routing", () => {
 
     expect(result.current.hiddenTaskListIds.has("inbox")).toBe(false);
     expect(createTask).toHaveBeenCalled();
+  });
+});
+
+describe("useTasksController multi-select (the shared list controller)", () => {
+  const click = (keys: { metaKey?: boolean; shiftKey?: boolean } = {}) =>
+    ({ metaKey: false, ctrlKey: false, shiftKey: false, ...keys }) as unknown as React.MouseEvent;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  function renderController() {
+    const hook = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+    const [first, second, third] = hook.result.current.listTasks.map((task) => task.id);
+    return { ...hook, first: first!, second: second!, third: third! };
+  }
+
+  it("opens a task on a plain click and adds rows with Cmd and Shift", () => {
+    const { result, first, second, third } = renderController();
+
+    act(() => result.current.handleSelect(first, click()));
+    expect(result.current.activeId).toBe(first);
+    expect(result.current.selectedIds).toEqual([first]);
+
+    act(() => result.current.handleSelect(second, click({ metaKey: true })));
+    expect(result.current.selectedIds).toEqual([first, second]);
+
+    act(() => result.current.handleSelect(third, click({ shiftKey: true })));
+    expect(result.current.selectedIds).toEqual([second, third]);
+  });
+
+  it("offers complete, move, delete and done for a selection", () => {
+    const { result, first, second } = renderController();
+    act(() => result.current.handleSelect(first, click()));
+    act(() => result.current.handleSelect(second, click({ metaKey: true })));
+
+    expect(result.current.selectionBarButtons.map((button) => button.label)).toEqual([
+      L.selectionComplete,
+      L.selectionMoveToList,
+      L.delete,
+      L.selectionDone,
+    ]);
+
+    act(() => result.current.selectionBarButtons[1]!.onClick());
+    expect(result.current.moveDialog).toEqual({ ids: [first, second] });
+  });
+
+  it("completes the whole selection in one go", () => {
+    const { result, first, second } = renderController();
+    act(() => result.current.handleSelect(first, click()));
+    act(() => result.current.handleSelect(second, click({ metaKey: true })));
+
+    act(() => result.current.selectionBarButtons[0]!.onClick());
+
+    const status = (id: string) =>
+      result.current.displayTasks.find((task) => task.id === id)?.workflowStatus;
+    expect(status(first)).toBe("completed");
+    expect(status(second)).toBe("completed");
+  });
+
+  it("walks the list with the arrow keys and extends with Shift", () => {
+    const { result, first, second, third } = renderController();
+    act(() => result.current.handleSelect(first, click()));
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    });
+    expect(result.current.activeId).toBe(second);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", shiftKey: true }));
+    });
+    expect(result.current.selectedIds).toEqual([second, third]);
   });
 });

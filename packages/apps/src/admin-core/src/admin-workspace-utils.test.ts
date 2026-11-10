@@ -5,7 +5,6 @@ import {
   formatByteCount,
   formatHumanDateTime,
   getServerCheckVisual,
-  isProtectedGroup,
   parseUpdateLogLine,
 } from "@/admin-core/src/admin-workspace-utils";
 
@@ -87,12 +86,5 @@ describe("formatByteCount", () => {
     expect(formatByteCount(0)).toBe("0 B");
     expect(formatByteCount(1536)).toBe("1.5 KB");
     expect(formatByteCount(5 * 1024 * 1024)).toBe("5.0 MB");
-  });
-});
-
-describe("isProtectedGroup", () => {
-  it("flags administrators group as protected", () => {
-    expect(isProtectedGroup("principals/groups/administrators")).toBe(true);
-    expect(isProtectedGroup("principals/groups/users")).toBe(false);
   });
 });

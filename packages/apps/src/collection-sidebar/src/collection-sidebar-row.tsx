@@ -1,7 +1,6 @@
 import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
@@ -135,18 +134,25 @@ export function CollectionSidebarRow({
         } as CSSProperties
       }
     >
-      {/* Fixed-width leading column (checkbox / icon / color-dot) so labels share one x. */}
+      {/* Fixed-width leading column (visibility dot / icon / color-dot) so labels share one x. */}
       {hasLeading ? (
         <span className={bem(blocks, "__leading")}>
           {onToggleVisibility ? (
-            <Checkbox
-              size="sm"
-              checked={visible}
+            /* Suite norm: a coloured dot, grey while the collection is hidden. */
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={visible}
+              data-state={visible ? "checked" : "unchecked"}
               aria-label={`${visible ? "Hide" : "Show"} ${name}`}
               className={bem(blocks, "__visibility")}
-              onCheckedChange={() => onToggleVisibility()}
-              onClick={(event) => event.stopPropagation()}
-            />
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleVisibility();
+              }}
+            >
+              <span className={bem(blocks, "__visibility-dot")} aria-hidden />
+            </button>
           ) : null}
           {showColorDotLeading ? <span className={bem(blocks, "__dot")} aria-hidden /> : null}
           {leading ? (

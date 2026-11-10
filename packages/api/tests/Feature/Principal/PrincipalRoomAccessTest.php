@@ -14,7 +14,8 @@ use Tests\Support\WgwDatabaseTestCase;
 /**
  * Group presence rooms follow the caller's current membership on every
  * request, not only on join, and every answer about a room the caller may not
- * use is the same whatever peer id is asked for.
+ * use is the same whatever peer id is asked for. There is no instance-wide room
+ * (#1921): presence follows Teams.
  */
 final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
 {
@@ -52,7 +53,7 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
 
         $this->removeMember('bob');
 
-        $this->poll('bob', $bobPeer)->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->poll('bob', $bobPeer)->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
         $roster = $this->poll('alice', $alicePeer)->assertOk()->json('peers');
         $this->assertNotContains($bobPeer, array_column($roster, 'id'));
     }
@@ -64,7 +65,7 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
 
         $this->removeMember('bob');
 
-        $this->send('bob', $bobPeer, $alicePeer)->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->send('bob', $bobPeer, $alicePeer)->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
         $this->assertFalse(PrincipalPeer::query()->where('owner_user', 'u:bob')->exists());
     }
 
@@ -75,7 +76,7 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
 
         $this->removeMember('bob');
 
-        $this->relay('bob', $bobPeer)->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->relay('bob', $bobPeer)->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
     }
 
     public function test_a_removed_member_may_still_leave_with_their_own_peer(): void
@@ -94,21 +95,50 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
     public function test_group_room_configuration_answers_only_to_members(): void
     {
         $this->configuration('alice', self::GROUP_ROOM_ID)->assertOk()->assertJsonStructure(['rtc' => ['stunUrls']]);
-        $this->configuration('carol', self::GROUP_ROOM_ID)->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->configuration('carol', self::GROUP_ROOM_ID)->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
 
         $this->removeMember('bob');
 
-        $this->configuration('bob', self::GROUP_ROOM_ID)->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->configuration('bob', self::GROUP_ROOM_ID)->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
     }
 
-    public function test_workspace_room_configuration_answers_to_every_account(): void
+    public function test_the_workspace_room_is_refused_to_everyone_admins_included(): void
     {
-        $this->configuration('carol', self::WORKSPACE_ROOM_ID)->assertOk()->assertJsonStructure(['rtc' => ['stunUrls']]);
+        $this->grantAdminRole('alice');
+
+        foreach (['alice', 'carol'] as $username) {
+            $this->assertDenied($this->configuration($username, self::WORKSPACE_ROOM_ID));
+            $this->assertDenied(
+                $this->asUser($username)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'X'])
+            );
+            $this->assertDenied(
+                $this->asUser($username)->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$username.'-000000&since=0')
+            );
+        }
+        $this->assertSame(0, PrincipalPeer::query()->count());
+    }
+
+    public function test_users_in_different_teams_never_share_a_presence_room(): void
+    {
+        $sales = $this->seedWgwGroup('principals/groups/sales', 'Sales');
+        $carol = Principal::forUsername('carol');
+        $this->assertNotNull($carol);
+        $this->addPrincipalToGroup($sales, $carol);
+
+        $alicePeer = $this->join('alice');
+        $carolPeer = (string) $this->asUser('carol')
+            ->postJson('/api/v1/rooms/p_groups.sales/participants', ['name' => 'Carol'])
+            ->assertOk()
+            ->json('peerId');
+
+        $this->assertDenied($this->asUser('carol')->postJson('/api/v1/rooms/'.self::GROUP_ROOM_ID.'/participants', ['name' => 'Carol']));
+        $this->assertDenied($this->asUser('alice')->postJson('/api/v1/rooms/p_groups.sales/participants', ['name' => 'Alice']));
+        $this->assertNotContains($carolPeer, array_column((array) $this->poll('alice', $alicePeer)->assertOk()->json('peers'), 'id'));
     }
 
     public function test_unknown_room_configuration_is_denied(): void
     {
-        $this->configuration('alice', 'p_some-other-room')->assertForbidden()->assertJson(['error' => 'forbidden']);
+        $this->configuration('alice', 'p_some-other-room')->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
     }
 
     public function test_a_non_member_gets_the_same_answer_for_a_live_and_an_unknown_peer_id(): void
@@ -131,6 +161,7 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
         $response->assertForbidden();
         $this->assertSame([
             'error' => 'forbidden',
+            'code' => 'forbidden',
             'message' => 'You do not have access to this presence room.',
         ], $response->json());
     }

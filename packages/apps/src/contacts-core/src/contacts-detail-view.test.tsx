@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState, type ComponentProps } from "react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
   addressesAfterFieldChange,
@@ -9,295 +9,37 @@ import {
   urlsAfterUriChange,
 } from "./contact-channel-commit";
 import { ContactsDetailView } from "./contacts-detail-view";
-import { defaultContactsLabels } from "./contacts-labels";
+import { addressBookDotColor } from "./contacts-addressbook-color";
+import { defaultContactsLabels as L } from "./contacts-labels";
 import {
+  CONTACT_CHANNEL_DEFAULT_CONTEXT,
   contactCardToEditDraft,
-  editDraftToPatch,
   emptyContactEditDraft,
   type ContactEditDraft,
 } from "./contacts-edit-utils";
-import { mergeContactFromPatch } from "./contacts-patch-merge";
 import type { ContactCard } from "./contacts-types";
+
+beforeAll(() => {
+  // Radix menus and popovers measure and scroll; jsdom has none of it.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 afterEach(() => {
   cleanup();
 });
 
-function EditableDetailHarness({
-  initialDraft = emptyContactEditDraft(),
-}: {
-  initialDraft?: ContactEditDraft;
-}) {
-  const [editDraft, setEditDraft] = useState(initialDraft);
-  return (
-    <TooltipProvider delayDuration={0}>
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        createMode
-        editMode
-        editDraft={editDraft}
-        displayName={defaultContactsLabels.newContact}
-        onDraftChange={(patch) => setEditDraft((prev) => ({ ...prev, ...patch }))}
-        onUpdatePhone={(id, number, phoneType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            phones: phonesAfterNumberChange({
-              phones: prev.phones,
-              rowId: id,
-              number,
-              phoneType,
-            }),
-          }))
-        }
-        onUpdateEmail={(id, address, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            emails: emailsAfterAddressChange({
-              emails: prev.emails,
-              rowId: id,
-              address,
-              contextType,
-            }),
-          }))
-        }
-        onUpdatePhoneContext={(id, phoneType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            phones: prev.phones.map((row) => (row.id === id ? { ...row, phoneType } : row)),
-          }))
-        }
-        onUpdateEmailContext={(id, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            emails: prev.emails.map((row) => (row.id === id ? { ...row, contextType } : row)),
-          }))
-        }
-        onUpdateAddress={(id, field, value, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            addresses: addressesAfterFieldChange({
-              addresses: prev.addresses,
-              rowId: id,
-              field,
-              value,
-              contextType,
-            }),
-          }))
-        }
-        onUpdateAddressContext={(id, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            addresses: prev.addresses.map((row) => (row.id === id ? { ...row, contextType } : row)),
-          }))
-        }
-        onUpdateUrl={(id, uri, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            urls: urlsAfterUriChange({ urls: prev.urls, rowId: id, uri, contextType }),
-          }))
-        }
-        onUpdateUrlContext={(id, contextType) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            urls: prev.urls.map((row) => (row.id === id ? { ...row, contextType } : row)),
-          }))
-        }
-        onRemoveUrl={(id) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            urls: prev.urls.filter((row) => row.id !== id),
-          }))
-        }
-        onRemovePhone={(id) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            phones: prev.phones.filter((row) => row.id !== id),
-          }))
-        }
-        onRemoveEmail={(id) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            emails: prev.emails.filter((row) => row.id !== id),
-          }))
-        }
-        onRemoveAddress={(id) =>
-          setEditDraft((prev) => ({
-            ...prev,
-            addresses: prev.addresses.filter((row) => row.id !== id),
-          }))
-        }
-      />
-      <output data-testid="draft-birthday">{editDraft.birthday}</output>
-      <output data-testid="draft-phones">{String(editDraft.phones.length)}</output>
-      <output data-testid="draft-emails">{String(editDraft.emails.length)}</output>
-      <output data-testid="draft-addresses">{String(editDraft.addresses.length)}</output>
-      <output data-testid="draft-urls">{String(editDraft.urls.length)}</output>
-    </TooltipProvider>
-  );
-}
-
-describe("ContactsDetailView empty trailing rows", () => {
-  it("always shows one empty trailing row per channel and has no Add buttons", () => {
-    render(<EditableDetailHarness />);
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.addPhone })).toBeNull();
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.addEmail })).toBeNull();
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.addAddress })).toBeNull();
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.addUrl })).toBeNull();
-    expect(screen.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(1);
-    expect(screen.getAllByLabelText(defaultContactsLabels.emailAddress)).toHaveLength(1);
-    expect(screen.getAllByLabelText(defaultContactsLabels.urlAddress)).toHaveLength(1);
-    expect(screen.getByLabelText(defaultContactsLabels.addressStreet)).toBeTruthy();
-    expect(screen.getByTestId("draft-phones").textContent).toBe("0");
-    expect(screen.getByTestId("draft-emails").textContent).toBe("0");
-    expect(screen.getByTestId("draft-addresses").textContent).toBe("0");
-    expect(screen.getByTestId("draft-urls").textContent).toBe("0");
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.removeRow })).toBeNull();
-    expect(document.querySelectorAll(".contacts-detail-view__channel-action-spacer").length).toBe(
-      4,
-    );
-    expect(document.querySelectorAll(".contacts-detail-view__channel-action")).toHaveLength(4);
-  });
-
-  it("defaults trailing empty channel types to Home", () => {
-    render(<EditableDetailHarness />);
-    expect(
-      screen.getByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
-      }).textContent,
-    ).toBe(defaultContactsLabels.channelTypeHome);
-    expect(
-      screen.getByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.emailAddress}`,
-      }).textContent,
-    ).toBe(defaultContactsLabels.channelTypeHome);
-    expect(
-      screen.getByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.urlAddress}`,
-      }).textContent,
-    ).toBe(defaultContactsLabels.channelTypeHome);
-    expect(
-      screen.getByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.sectionAddresses}`,
-      }).textContent,
-    ).toBe(defaultContactsLabels.channelTypeHome);
-  });
-
-  it("commits a phone on type and keeps focus so typing can continue", () => {
-    render(<EditableDetailHarness />);
-    const phone = screen.getByLabelText(defaultContactsLabels.phoneNumber);
-    fireEvent.change(phone, { target: { value: "555" } });
-    const phones = screen.getAllByLabelText(defaultContactsLabels.phoneNumber);
-    expect(phones).toHaveLength(2);
-    expect((phones[0] as HTMLInputElement).value).toBe("555");
-    expect(document.activeElement).toBe(phones[0]);
-    expect(screen.getByTestId("draft-phones").textContent).toBe("1");
-    expect((phones[1] as HTMLInputElement).value).toBe("");
-    fireEvent.change(phones[0]!, { target: { value: "5550123" } });
-    expect(
-      (screen.getAllByLabelText(defaultContactsLabels.phoneNumber)[0] as HTMLInputElement).value,
-    ).toBe("5550123");
-    expect(screen.getByRole("button", { name: defaultContactsLabels.removeRow })).toBeTruthy();
-    expect(document.querySelectorAll(".contacts-detail-view__channel-action-spacer").length).toBe(
-      4,
-    );
-    expect(document.querySelectorAll(".contacts-detail-view__channel-action")).toHaveLength(5);
-    const phoneTypes = screen.getAllByRole("combobox", {
-      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
-    });
-    expect(phoneTypes.map((control) => control.textContent)).toEqual([
-      defaultContactsLabels.channelTypeHome,
-      defaultContactsLabels.channelTypeHome,
-    ]);
-  });
-
-  it("commits email, url, and address the same way and keeps focus", () => {
-    render(<EditableDetailHarness />);
-    fireEvent.change(screen.getByLabelText(defaultContactsLabels.emailAddress), {
-      target: { value: "a@b.com" },
-    });
-    expect(document.activeElement).toBe(
-      screen.getAllByLabelText(defaultContactsLabels.emailAddress)[0],
-    );
-    fireEvent.change(screen.getByLabelText(defaultContactsLabels.urlAddress), {
-      target: { value: "https://ex.test" },
-    });
-    expect(document.activeElement).toBe(
-      screen.getAllByLabelText(defaultContactsLabels.urlAddress)[0],
-    );
-    fireEvent.change(screen.getByLabelText(defaultContactsLabels.addressStreet), {
-      target: { value: "1 Main" },
-    });
-    expect(document.activeElement).toBe(
-      screen.getAllByLabelText(defaultContactsLabels.addressStreet)[0],
-    );
-    expect(screen.getByTestId("draft-emails").textContent).toBe("1");
-    expect(screen.getByTestId("draft-urls").textContent).toBe("1");
-    expect(screen.getByTestId("draft-addresses").textContent).toBe("1");
-    expect(screen.getAllByLabelText(defaultContactsLabels.emailAddress)).toHaveLength(2);
-    expect(screen.getAllByLabelText(defaultContactsLabels.urlAddress)).toHaveLength(2);
-    expect(screen.getAllByLabelText(defaultContactsLabels.addressStreet)).toHaveLength(2);
-  });
-
-  it("keeps street on the address top row and secondary fields below", () => {
-    render(<EditableDetailHarness />);
-    const street = screen.getByLabelText(defaultContactsLabels.addressStreet);
-    const postal = screen.getByLabelText(defaultContactsLabels.addressPostalCode);
-    const city = screen.getByLabelText(defaultContactsLabels.addressLocality);
-    expect(street.closest(".contacts-detail-view__channel-row--address")).toBeTruthy();
-    expect(street.closest(".contacts-detail-view__address-fields")).toBeNull();
-    expect(postal.closest(".contacts-detail-view__address-fields")).toBeTruthy();
-    expect(postal.closest(".contacts-detail-view__channel-row--address")).toBeNull();
-    expect(postal.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
-    expect(city.closest(".contacts-detail-view__address-locality-row")).toBeTruthy();
-  });
-
-  it("reserves the address type label band and keeps channel selects at md", () => {
-    render(<EditableDetailHarness />);
-    const addressType = screen.getByRole("combobox", {
-      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.sectionAddresses}`,
-    });
-    const reserved = addressType
-      .closest(".field-label-row")
-      ?.querySelector(".field-label-row__label--reserved");
-    expect(reserved).toBeTruthy();
-    expect(reserved?.getAttribute("aria-hidden")).toBe("true");
-    expect(addressType.classList.contains("select-trigger--size-md")).toBe(true);
-
-    const streetRow = screen
-      .getByLabelText(defaultContactsLabels.addressStreet)
-      .closest(".field-label-row");
-    expect(streetRow?.querySelector(".field-label-row__label--reserved")).toBeNull();
-    expect(streetRow?.textContent).toContain(defaultContactsLabels.addressStreet);
-
-    const phoneType = screen.getByRole("combobox", {
-      name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
-    });
-    expect(phoneType.closest(".field-label-row")).toBeNull();
-    expect(phoneType.classList.contains("select-trigger--size-md")).toBe(true);
-    expect(
-      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-md"),
-    ).toBe(true);
-  });
-
-  it("uses field-label-row__label for section titles", () => {
-    render(<EditableDetailHarness />);
-    const nameSection = screen.getByRole("heading", {
-      level: 2,
-      name: defaultContactsLabels.sectionName,
-    });
-    expect(nameSection.classList.contains("field-label-row__label")).toBe(true);
-    expect(nameSection.classList.contains("contacts-detail-view__section-title")).toBe(true);
-    const phonesSection = screen.getByRole("heading", {
-      level: 2,
-      name: defaultContactsLabels.sectionPhones,
-    });
-    expect(phonesSection.classList.contains("field-label-row__label")).toBe(true);
-  });
-});
+type ViewProps = ComponentProps<typeof ContactsDetailView>;
 
 const noop = () => undefined;
 
-const viewModeHandlers = {
+/** Every handler a no-op: for sheets that only show a card. */
+const displayHandlers = {
   onDraftChange: noop,
   onUpdatePhone: noop,
   onUpdateEmail: noop,
@@ -311,7 +53,185 @@ const viewModeHandlers = {
   onRemovePhone: noop,
   onRemoveEmail: noop,
   onRemoveAddress: noop,
-};
+  onAddPhone: noop,
+  onAddEmail: noop,
+  onAddAddress: noop,
+  onAddUrl: noop,
+} satisfies Partial<ViewProps>;
+
+let rowCounter = 0;
+const nextRowId = () => `row-${++rowCounter}`;
+
+/**
+ * The sheet wired to a local draft the way the controller wires it: updates go
+ * through the channel commit helpers, and each "Add …" appends an empty row and
+ * returns its id.
+ */
+function EditableDetailHarness({
+  initialDraft = emptyContactEditDraft(),
+  card,
+  createMode = !card,
+  spies = {},
+  extra = {},
+}: {
+  initialDraft?: ContactEditDraft;
+  card?: ContactCard;
+  createMode?: boolean;
+  spies?: Partial<Record<"onAddPhone" | "onAddEmail" | "onAddAddress" | "onAddUrl", () => void>>;
+  extra?: Partial<ViewProps>;
+}) {
+  const [draft, setDraft] = useState(initialDraft);
+  const add =
+    (key: keyof typeof spies, patch: (prev: ContactEditDraft, id: string) => ContactEditDraft) =>
+    () => {
+      spies[key]?.();
+      const id = nextRowId();
+      setDraft((prev) => patch(prev, id));
+      return id;
+    };
+  return (
+    <TooltipProvider delayDuration={0}>
+      <ContactsDetailView
+        labels={L}
+        card={card}
+        createMode={createMode}
+        readOnly={false}
+        editDraft={draft}
+        displayName={L.newContact}
+        onDraftChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
+        onUpdatePhone={(id, number, phoneType) =>
+          setDraft((prev) => ({
+            ...prev,
+            phones: phonesAfterNumberChange({ phones: prev.phones, rowId: id, number, phoneType }),
+          }))
+        }
+        onUpdateEmail={(id, address, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            emails: emailsAfterAddressChange({
+              emails: prev.emails,
+              rowId: id,
+              address,
+              contextType,
+            }),
+          }))
+        }
+        onUpdatePhoneContext={(id, phoneType) =>
+          setDraft((prev) => ({
+            ...prev,
+            phones: prev.phones.map((row) => (row.id === id ? { ...row, phoneType } : row)),
+          }))
+        }
+        onUpdateEmailContext={(id, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            emails: prev.emails.map((row) => (row.id === id ? { ...row, contextType } : row)),
+          }))
+        }
+        onUpdateAddress={(id, field, value, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            addresses: addressesAfterFieldChange({
+              addresses: prev.addresses,
+              rowId: id,
+              field,
+              value,
+              contextType,
+            }),
+          }))
+        }
+        onUpdateAddressContext={(id, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            addresses: prev.addresses.map((row) => (row.id === id ? { ...row, contextType } : row)),
+          }))
+        }
+        onUpdateUrl={(id, uri, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            urls: urlsAfterUriChange({ urls: prev.urls, rowId: id, uri, contextType }),
+          }))
+        }
+        onUpdateUrlContext={(id, contextType) =>
+          setDraft((prev) => ({
+            ...prev,
+            urls: prev.urls.map((row) => (row.id === id ? { ...row, contextType } : row)),
+          }))
+        }
+        onRemoveUrl={(id) =>
+          setDraft((prev) => ({ ...prev, urls: prev.urls.filter((row) => row.id !== id) }))
+        }
+        onRemovePhone={(id) =>
+          setDraft((prev) => ({ ...prev, phones: prev.phones.filter((row) => row.id !== id) }))
+        }
+        onRemoveEmail={(id) =>
+          setDraft((prev) => ({ ...prev, emails: prev.emails.filter((row) => row.id !== id) }))
+        }
+        onRemoveAddress={(id) =>
+          setDraft((prev) => ({
+            ...prev,
+            addresses: prev.addresses.filter((row) => row.id !== id),
+          }))
+        }
+        onAddPhone={add("onAddPhone", (prev, id) => ({
+          ...prev,
+          phones: [...prev.phones, { id, number: "", phoneType: "mobile" }],
+        }))}
+        onAddEmail={add("onAddEmail", (prev, id) => ({
+          ...prev,
+          emails: [
+            ...prev.emails,
+            { id, address: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT },
+          ],
+        }))}
+        onAddAddress={add("onAddAddress", (prev, id) => ({
+          ...prev,
+          addresses: [
+            ...prev.addresses,
+            {
+              id,
+              street: "",
+              locality: "",
+              region: "",
+              postalCode: "",
+              country: "",
+              contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT,
+            },
+          ],
+        }))}
+        onAddUrl={add("onAddUrl", (prev, id) => ({
+          ...prev,
+          urls: [...prev.urls, { id, uri: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT }],
+        }))}
+        {...extra}
+      />
+      <output data-testid="draft">{JSON.stringify(draft)}</output>
+    </TooltipProvider>
+  );
+}
+
+function currentDraft(): ContactEditDraft {
+  return JSON.parse(screen.getByTestId("draft").textContent ?? "{}") as ContactEditDraft;
+}
+
+function openAddFieldMenu() {
+  fireEvent.keyDown(screen.getByRole("button", { name: L.addField }), { key: "Enter" });
+  return screen.getByRole("menu");
+}
+
+function addFieldMenuLabels(): string[] {
+  const menu = openAddFieldMenu();
+  const labels = within(menu)
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent?.trim() ?? "");
+  fireEvent.keyDown(menu, { key: "Escape" });
+  return labels;
+}
+
+function titleInputIds(): string[] {
+  const title = document.querySelector(".contacts-detail-view__title");
+  return [...(title?.querySelectorAll("input") ?? [])].map((input) => input.id);
+}
 
 const personWithIdentity = {
   "@type": "Card",
@@ -336,6 +256,7 @@ const groupCard = {
   uid: "urn:uuid:group-friends",
   kind: "group",
   name: { full: "Friends" },
+  addressBookIds: { default: true },
   titles: {
     "title-1": { "@type": "Title", kind: "title", name: "Should not show" },
   },
@@ -343,125 +264,6 @@ const groupCard = {
     "org-1": { "@type": "Organization", name: "Should not show" },
   },
 } as unknown as ContactCard;
-
-describe("ContactsDetailView identity header", () => {
-  it("places name, job title, and company beside an xl avatar", () => {
-    const { container } = render(
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        card={personWithIdentity}
-        createMode={false}
-        editMode={false}
-        editDraft={null}
-        displayName="Ada Lovelace"
-        {...viewModeHandlers}
-      />,
-    );
-    const identity = container.querySelector(".contacts-detail-view__identity");
-    expect(identity).toBeTruthy();
-    expect(identity?.querySelector(".user-avatar--xl")).toBeTruthy();
-    expect(
-      (
-        identity?.querySelector(".contacts-user-avatar") as HTMLElement | null
-      )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe("");
-    expect(identity?.querySelector(".contacts-detail-view__heading")).toBeTruthy();
-    expect(identity?.querySelector(".contacts-detail-view__title")?.textContent).toBe(
-      "Ada Lovelace",
-    );
-    const lines = [...(identity?.querySelectorAll(".contacts-detail-view__subtitle") ?? [])].map(
-      (node) => node.textContent,
-    );
-    expect(lines).toEqual(["Mathematician", "Analytical Engine"]);
-  });
-
-  it("keeps Notes-like group tags below the avatar identity row", () => {
-    const { container } = render(
-      <TooltipProvider delayDuration={0}>
-        <ContactsDetailView
-          labels={defaultContactsLabels}
-          card={personWithIdentity}
-          createMode={false}
-          editMode={false}
-          editDraft={null}
-          displayName="Ada Lovelace"
-          groupTags={{
-            assigned: [
-              {
-                group: groupCard,
-                writable: true,
-              },
-            ],
-            suggestions: [],
-            readonly: false,
-            allowCreate: false,
-            onAdd: noop,
-            onRemove: noop,
-          }}
-          {...viewModeHandlers}
-        />
-      </TooltipProvider>,
-    );
-    const identity = container.querySelector(".contacts-detail-view__identity");
-    const tags = container.querySelector(".contacts-detail-view__tag-group");
-    expect(identity).toBeTruthy();
-    expect(tags).toBeTruthy();
-    expect(identity?.contains(tags)).toBe(false);
-    expect(identity?.querySelector(".contacts-detail-view__title")).toBeTruthy();
-    expect(identity?.nextElementSibling).toBe(tags);
-  });
-
-  it("shows a group icon and name without job title or company", () => {
-    const { container } = render(
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        card={groupCard}
-        createMode={false}
-        editMode={false}
-        editDraft={null}
-        displayName="Friends"
-        {...viewModeHandlers}
-      />,
-    );
-    const identity = container.querySelector(".contacts-detail-view__identity");
-    expect(identity?.querySelector(".contacts-group-icon-slot--xl")).toBeTruthy();
-    expect(identity?.querySelector(".contacts-group-icon")).toBeTruthy();
-    expect(identity?.querySelector(".user-avatar")).toBeNull();
-    expect(identity?.querySelector(".contacts-detail-view__title")?.textContent).toBe("Friends");
-    expect(identity?.querySelector(".contacts-detail-view__subtitle")).toBeNull();
-  });
-
-  it("shows a company icon instead of initials for org cards", () => {
-    const orgCard = {
-      "@type": "Card",
-      version: "1.0",
-      id: "card-acme",
-      uid: "urn:uuid:acme",
-      kind: "org",
-      organizations: {
-        "org-1": { "@type": "Organization", name: "Acme Corp" },
-      },
-    } as unknown as ContactCard;
-    const { container } = render(
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        card={orgCard}
-        createMode={false}
-        editMode={false}
-        editDraft={null}
-        displayName="Acme Corp"
-        {...viewModeHandlers}
-      />,
-    );
-    const identity = container.querySelector(".contacts-detail-view__identity");
-    expect(
-      identity?.querySelector(".contacts-detail-view__avatar .contacts-org-icon"),
-    ).toBeTruthy();
-    expect(identity?.querySelector(".contacts-group-icon")).toBeNull();
-    expect(identity?.querySelector(".user-avatar__mark")?.textContent).not.toMatch(/A/);
-    expect(identity?.querySelector(".contacts-detail-view__title")?.textContent).toBe("Acme Corp");
-  });
-});
 
 const familyGroup = {
   "@type": "Card",
@@ -472,89 +274,6 @@ const familyGroup = {
   addressBookIds: { default: true },
   name: { full: "Family" },
 } as unknown as ContactCard;
-
-describe("ContactsDetailView group tags", () => {
-  it("adds and removes group membership through the shared TagGroup", () => {
-    const onAdd = vi.fn();
-    const onRemove = vi.fn();
-    render(
-      <TooltipProvider delayDuration={0}>
-        <ContactsDetailView
-          labels={defaultContactsLabels}
-          card={personWithIdentity}
-          createMode={false}
-          editMode={false}
-          editDraft={null}
-          displayName="Ada Lovelace"
-          groupTags={{
-            assigned: [{ group: groupCard, writable: true }],
-            suggestions: [familyGroup],
-            readonly: false,
-            allowCreate: true,
-            onAdd,
-            onRemove,
-          }}
-          {...viewModeHandlers}
-        />
-      </TooltipProvider>,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Remove group Friends" }));
-    expect(onRemove).toHaveBeenCalledWith("card-group-friends");
-
-    fireEvent.click(screen.getByRole("button", { name: defaultContactsLabels.addGroup }));
-    fireEvent.change(screen.getByRole("combobox", { name: defaultContactsLabels.addGroup }), {
-      target: { value: "Fam" },
-    });
-    fireEvent.mouseDown(screen.getByRole("option", { name: "Family" }));
-    expect(onAdd).toHaveBeenCalledWith("card-group-family");
-  });
-
-  it("shows read-only chips for a view-only sharee", () => {
-    render(
-      <TooltipProvider delayDuration={0}>
-        <ContactsDetailView
-          labels={defaultContactsLabels}
-          card={personWithIdentity}
-          createMode={false}
-          editMode={false}
-          editDraft={null}
-          displayName="Ada Lovelace"
-          groupTags={{
-            assigned: [{ group: groupCard, writable: false }],
-            suggestions: [familyGroup],
-            readonly: true,
-            allowCreate: false,
-            onAdd: vi.fn(),
-            onRemove: vi.fn(),
-          }}
-          {...viewModeHandlers}
-        />
-      </TooltipProvider>,
-    );
-
-    expect(screen.getByText("Friends")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Remove group Friends" })).toBeNull();
-    expect(screen.queryByRole("button", { name: defaultContactsLabels.addGroup })).toBeNull();
-  });
-
-  it("does not render the tag group when groupTags is omitted (group cards)", () => {
-    const { container } = render(
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        card={groupCard}
-        createMode={false}
-        editMode={false}
-        editDraft={null}
-        displayName="Friends"
-        {...viewModeHandlers}
-      />,
-    );
-
-    expect(container.querySelector(".contacts-detail-view__tag-group")).toBeNull();
-    expect(container.querySelector(".tag-group")).toBeNull();
-  });
-});
 
 const janeWithBirthday = {
   "@type": "Card",
@@ -573,153 +292,472 @@ const janeWithBirthday = {
   },
 } as unknown as ContactCard;
 
-describe("ContactsDetailView birthday field", () => {
-  it("renders LocaleDatePicker in edit mode and writes the draft", () => {
-    function BirthdayEditHarness() {
-      const [editDraft, setEditDraft] = useState(() => contactCardToEditDraft(janeWithBirthday));
-      return (
-        <TooltipProvider delayDuration={0}>
-          <ContactsDetailView
-            labels={defaultContactsLabels}
-            card={janeWithBirthday}
-            createMode={false}
-            editMode
-            editDraft={editDraft}
-            locale="en-US"
-            displayName="Jane Doe"
-            {...viewModeHandlers}
-            onDraftChange={(patch) => setEditDraft((prev) => ({ ...prev, ...patch }))}
-          />
-          <output data-testid="draft-birthday">{editDraft.birthday}</output>
-        </TooltipProvider>
-      );
-    }
+function renderReadOnly(props: Partial<ViewProps> & { card?: ContactCard }) {
+  return render(
+    <TooltipProvider delayDuration={0}>
+      <ContactsDetailView
+        labels={L}
+        createMode={false}
+        readOnly
+        editDraft={null}
+        displayName="Ada Lovelace"
+        {...displayHandlers}
+        {...props}
+      />
+    </TooltipProvider>,
+  );
+}
 
-    render(<BirthdayEditHarness />);
-    const field = screen.getByRole("button", { name: /Birthday:/ });
-    expect(field.classList.contains("locale-date-picker")).toBe(true);
-    expect(field.classList.contains("control-surface")).toBe(true);
+describe("ContactsDetailView editable sheet", () => {
+  it("shows first and last name as title inputs, with no middle name until it is added", () => {
+    render(<EditableDetailHarness />);
+    expect(titleInputIds()).toEqual(["contact-given-name", "contact-surname"]);
+    const given = screen.getByRole("textbox", { name: L.nameGiven }) as HTMLInputElement;
+    expect(given.readOnly).toBe(false);
+    expect(document.activeElement).toBe(given);
+    fireEvent.change(given, { target: { value: "Grace" } });
+    fireEvent.change(screen.getByRole("textbox", { name: L.nameSurname }), {
+      target: { value: "Hopper" },
+    });
+    expect(currentDraft()).toMatchObject({ nameGiven: "Grace", nameSurname: "Hopper" });
+  });
+
+  it("puts the middle name between first and last name once it is added from Add field", () => {
+    render(<EditableDetailHarness />);
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.nameGiven2 }));
+    expect(titleInputIds()).toEqual([
+      "contact-given-name",
+      "contact-field-middleName",
+      "contact-surname",
+    ]);
+    expect(currentDraft().showGiven2).toBe(true);
+    fireEvent.change(screen.getByRole("textbox", { name: L.nameGiven2 }), {
+      target: { value: "Brewster" },
+    });
+    expect(currentDraft().nameGiven2).toBe("Brewster");
+    expect(addFieldMenuLabels()).not.toContain(L.nameGiven2);
+  });
+
+  it("shows a middle name that already has a value without Add field", () => {
+    render(
+      <EditableDetailHarness
+        initialDraft={{
+          ...emptyContactEditDraft(),
+          nameGiven: "Grace",
+          nameGiven2: "Brewster",
+          nameSurname: "Hopper",
+        }}
+      />,
+    );
+    expect(titleInputIds()).toEqual([
+      "contact-given-name",
+      "contact-field-middleName",
+      "contact-surname",
+    ]);
+  });
+
+  it("starts with Add phone and Add email but no phone, e-mail, address or website rows", () => {
+    render(<EditableDetailHarness />);
+    expect(screen.getByRole("button", { name: L.addPhone })).toBeTruthy();
+    expect(screen.getByRole("button", { name: L.addEmail })).toBeTruthy();
+    // Addresses and websites come in through "Add field" until there is one.
+    expect(screen.queryByRole("button", { name: L.addAddress })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addUrl })).toBeNull();
+    expect(screen.queryAllByLabelText(L.phoneNumber)).toHaveLength(0);
+    expect(screen.queryAllByLabelText(L.emailAddress)).toHaveLength(0);
+    expect(screen.queryByLabelText(L.addressStreet)).toBeNull();
+    expect(screen.queryByLabelText(L.urlAddress)).toBeNull();
+  });
+
+  it("adds a phone row with Add phone, focuses it, and typing does not add another row", () => {
+    const onAddPhone = vi.fn();
+    render(<EditableDetailHarness spies={{ onAddPhone }} />);
+    fireEvent.click(screen.getByRole("button", { name: L.addPhone }));
+    expect(onAddPhone).toHaveBeenCalledOnce();
+
+    const phone = screen.getByLabelText(L.phoneNumber) as HTMLInputElement;
+    expect(document.activeElement).toBe(phone);
+    expect(
+      screen.getByRole("combobox", { name: `${L.channelType} ${L.phoneNumber}` }).textContent,
+    ).toBe(L.channelTypeMobile);
+
+    fireEvent.change(phone, { target: { value: "5550123" } });
+    expect(screen.getAllByLabelText(L.phoneNumber)).toHaveLength(1);
+    expect((screen.getByLabelText(L.phoneNumber) as HTMLInputElement).value).toBe("5550123");
+    expect(currentDraft().phones).toHaveLength(1);
+    expect(screen.getByRole("button", { name: L.callPhone })).toBeTruthy();
+  });
+
+  it("adds and removes an e-mail row", () => {
+    const onAddEmail = vi.fn();
+    render(<EditableDetailHarness spies={{ onAddEmail }} />);
+    fireEvent.click(screen.getByRole("button", { name: L.addEmail }));
+    expect(onAddEmail).toHaveBeenCalledOnce();
+    fireEvent.change(screen.getByLabelText(L.emailAddress), { target: { value: "a@b.test" } });
+    expect(currentDraft().emails.map((row) => row.address)).toEqual(["a@b.test"]);
+
+    fireEvent.click(screen.getByRole("button", { name: L.removeRow }));
+    expect(screen.queryByLabelText(L.emailAddress)).toBeNull();
+    expect(currentDraft().emails).toHaveLength(0);
+  });
+
+  it("lists only the hidden fields under Add field", () => {
+    render(<EditableDetailHarness />);
+    expect(addFieldMenuLabels()).toEqual([
+      L.nameGiven2,
+      L.jobTitle,
+      L.jobDepartment,
+      L.sectionBirthday,
+      L.address,
+      L.urlAddress,
+    ]);
+  });
+
+  it("drops fields with a value from Add field", () => {
+    render(
+      <EditableDetailHarness
+        card={personWithIdentity}
+        initialDraft={contactCardToEditDraft(personWithIdentity)}
+      />,
+    );
+    // Ada has a job title, so the row is shown and the menu leaves it out.
+    expect((screen.getByRole("textbox", { name: L.jobTitle }) as HTMLInputElement).value).toBe(
+      "Mathematician",
+    );
+    expect(addFieldMenuLabels()).toEqual([
+      L.nameGiven2,
+      L.jobDepartment,
+      L.sectionBirthday,
+      L.address,
+      L.urlAddress,
+    ]);
+  });
+
+  it("adds an address from Add field, then offers Add address instead", () => {
+    const onAddAddress = vi.fn();
+    render(<EditableDetailHarness spies={{ onAddAddress }} />);
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.address }));
+    expect(onAddAddress).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText(L.addressStreet)).toBeTruthy();
+    expect(screen.getByRole("button", { name: L.addAddress })).toBeTruthy();
+    expect(addFieldMenuLabels()).not.toContain(L.address);
+
+    fireEvent.click(screen.getByRole("button", { name: L.addAddress }));
+    expect(onAddAddress).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByLabelText(L.addressStreet)).toHaveLength(2);
+  });
+
+  it("adds a website from Add field, then offers Add website instead", () => {
+    const onAddUrl = vi.fn();
+    render(<EditableDetailHarness spies={{ onAddUrl }} />);
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.urlAddress }));
+    expect(onAddUrl).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText(L.urlAddress)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: L.addUrl }));
+    expect(onAddUrl).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByLabelText(L.urlAddress)).toHaveLength(2);
+  });
+
+  it("lays out an address as street, then postal code and city on one line", () => {
+    render(<EditableDetailHarness />);
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.address }));
+    const street = screen.getByLabelText(L.addressStreet);
+    const postal = screen.getByLabelText(L.addressPostalCode);
+    const city = screen.getByLabelText(L.addressLocality);
+    expect(street.closest(".contacts-detail-view__address-line")).toBeNull();
+    expect(postal.closest(".contacts-detail-view__address-line")).toBe(
+      city.closest(".contacts-detail-view__address-line"),
+    );
+    fireEvent.change(city, { target: { value: "Utrecht" } });
+    expect(currentDraft().addresses[0]?.locality).toBe("Utrecht");
+  });
+
+  it("reveals the birthday from Add field and writes the picked date", () => {
+    render(<EditableDetailHarness />);
+    expect(screen.queryByRole("button", { name: /^Birthday:/ })).toBeNull();
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.sectionBirthday }));
+    const field = screen.getByRole("button", { name: /^Birthday:/ });
+    expect(field.className).toContain("collection-ghost-select");
+    fireEvent.click(field);
+    const day = document.querySelector<HTMLButtonElement>("button[data-day]");
+    expect(day).toBeTruthy();
+    fireEvent.click(day!);
+    expect(currentDraft().birthday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("edits an existing birthday with the ghost date picker", () => {
+    render(
+      <EditableDetailHarness
+        card={janeWithBirthday}
+        initialDraft={contactCardToEditDraft(janeWithBirthday)}
+      />,
+    );
+    const field = screen.getByRole("button", { name: /^Birthday:/ });
     expect(field.getAttribute("aria-label")).toMatch(/1985/);
-    expect(screen.getByTestId("draft-birthday").textContent).toBe("1985-04-23");
+    expect(currentDraft().birthday).toBe("1985-04-23");
     fireEvent.click(field);
     const day = document.querySelector<HTMLButtonElement>(
       'button[data-day]:not([data-selected-single="true"])',
     );
     expect(day).toBeTruthy();
     fireEvent.click(day!);
-    expect(screen.getByTestId("draft-birthday").textContent).not.toBe("1985-04-23");
-    expect(screen.getByTestId("draft-birthday").textContent).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(currentDraft().birthday).not.toBe("1985-04-23");
+    expect(currentDraft().birthday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("shows a formatted birthday in read mode without a date picker", () => {
-    render(
-      <ContactsDetailView
-        labels={defaultContactsLabels}
-        card={janeWithBirthday}
-        createMode={false}
-        editMode={false}
-        editDraft={null}
-        displayName="Jane Doe"
-        {...viewModeHandlers}
-      />,
+  it("switches a person to a company with the Company contact switch", () => {
+    render(<EditableDetailHarness />);
+    fireEvent.click(screen.getByRole("switch", { name: L.companyContact }));
+    expect(currentDraft().showAsCompany).toBe(true);
+    expect(titleInputIds()).toEqual(["contact-organization"]);
+  });
+
+  it("puts the notes in the last field row", () => {
+    const { container } = render(<EditableDetailHarness />);
+    const notes = screen.getByRole("textbox", { name: L.sectionNotes });
+    expect(notes.getAttribute("placeholder")).toBe(L.notesPlaceholder);
+    const lists = container.querySelectorAll(".detail-field-list");
+    expect(lists[lists.length - 1]?.contains(notes)).toBe(true);
+    fireEvent.change(notes, { target: { value: "Met at the conference" } });
+    expect(currentDraft().notes).toBe("Met at the conference");
+  });
+});
+
+describe("ContactsDetailView company contacts", () => {
+  const companyDraft: ContactEditDraft = {
+    ...emptyContactEditDraft(),
+    showAsCompany: true,
+    organization: "Acme Corp",
+    nameGiven: "Wile",
+    nameSurname: "Coyote",
+    title: "Should not show",
+  };
+
+  it("shows the organization as the title and the person's name in a Name row", () => {
+    render(<EditableDetailHarness initialDraft={companyDraft} />);
+    expect(titleInputIds()).toEqual(["contact-organization"]);
+    const organization = screen.getByRole("textbox", { name: L.companyName }) as HTMLInputElement;
+    expect(organization.value).toBe("Acme Corp");
+    expect(organization.getAttribute("placeholder")).toBe(L.companyName);
+
+    const nameRow = screen.getByText(L.sectionName).closest(".detail-field-row");
+    expect(nameRow).toBeTruthy();
+    const nameInputs = [...(nameRow?.querySelectorAll("input") ?? [])].map((input) => input.id);
+    expect(nameInputs).toEqual(["contact-given-name", "contact-surname"]);
+    expect((screen.getByRole("textbox", { name: L.nameGiven }) as HTMLInputElement).value).toBe(
+      "Wile",
     );
-    const birthdaySection = screen.getByRole("heading", {
-      name: defaultContactsLabels.sectionBirthday,
+  });
+
+  it("hides Job title for companies, even from Add field", () => {
+    render(<EditableDetailHarness initialDraft={companyDraft} />);
+    expect(screen.queryByRole("textbox", { name: L.jobTitle })).toBeNull();
+    const labels = addFieldMenuLabels();
+    expect(labels).not.toContain(L.jobTitle);
+    expect(labels).toContain(L.nameGiven2);
+    expect(labels).toContain(L.jobDepartment);
+  });
+
+  it("puts an added middle name between first and last name in the Name row", () => {
+    render(<EditableDetailHarness initialDraft={companyDraft} />);
+    fireEvent.click(within(openAddFieldMenu()).getByRole("menuitem", { name: L.nameGiven2 }));
+    const nameRow = screen.getByText(L.sectionName).closest(".detail-field-row");
+    expect([...(nameRow?.querySelectorAll("input") ?? [])].map((input) => input.id)).toEqual([
+      "contact-given-name",
+      "contact-field-middleName",
+      "contact-surname",
+    ]);
+  });
+});
+
+describe("ContactsDetailView read-only", () => {
+  it("shows filled rows only and no add, remove or Add field controls", () => {
+    const draft: ContactEditDraft = {
+      ...emptyContactEditDraft(),
+      nameGiven: "Ada",
+      phones: [
+        { id: "p1", number: "555 0100", phoneType: "work" },
+        { id: "p2", number: "", phoneType: "mobile" },
+      ],
+      emails: [{ id: "e1", address: "", contextType: "home" }],
+    };
+    renderReadOnly({ card: personWithIdentity, editDraft: draft });
+
+    const phones = screen.getAllByLabelText(L.phoneNumber) as HTMLInputElement[];
+    expect(phones).toHaveLength(1);
+    expect(phones[0]?.readOnly).toBe(true);
+    expect(phones[0]?.value).toBe("555 0100");
+    const phoneType = screen.getByRole("combobox", {
+      name: `${L.channelType} ${L.phoneNumber}`,
+    }) as HTMLButtonElement;
+    expect(phoneType.disabled).toBe(true);
+    // Calling still works on a card you cannot change.
+    expect(screen.getByRole("button", { name: L.callPhone })).toBeTruthy();
+
+    expect(screen.queryByLabelText(L.emailAddress)).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addPhone })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addEmail })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addField })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.removeRow })).toBeNull();
+    expect(screen.queryByRole("switch", { name: L.companyContact })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: L.sectionNotes })).toBeNull();
+    // An empty last name is left out of the title instead of showing its placeholder.
+    expect(titleInputIds()).toEqual(["contact-given-name"]);
+    expect((screen.getByRole("textbox", { name: L.nameGiven }) as HTMLInputElement).readOnly).toBe(
+      true,
+    );
+  });
+
+  it("shows the card's own values read-only before the editing draft exists", () => {
+    renderReadOnly({ card: personWithIdentity, readOnly: false, editDraft: null });
+    const given = screen.getByRole("textbox", { name: L.nameGiven }) as HTMLInputElement;
+    expect(given.value).toBe("Ada");
+    expect(given.readOnly).toBe(true);
+    expect((screen.getByRole("textbox", { name: L.nameSurname }) as HTMLInputElement).value).toBe(
+      "Lovelace",
+    );
+    expect(
+      (screen.getByRole("textbox", { name: L.organizationName }) as HTMLInputElement).value,
+    ).toBe("Analytical Engine");
+    expect((screen.getByRole("textbox", { name: L.jobTitle }) as HTMLInputElement).value).toBe(
+      "Mathematician",
+    );
+    expect(screen.queryByRole("button", { name: L.addField })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addPhone })).toBeNull();
+  });
+
+  it("shows notes and birthday read-only when they have a value", () => {
+    const withNotes = {
+      ...janeWithBirthday,
+      notes: { "note-1": { "@type": "Note", note: "Prefers e-mail" } },
+    } as unknown as ContactCard;
+    renderReadOnly({ card: withNotes, displayName: "Jane Doe" });
+    const notes = screen.getByRole("textbox", { name: L.sectionNotes }) as HTMLTextAreaElement;
+    expect(notes.value).toBe("Prefers e-mail");
+    expect(notes.readOnly).toBe(true);
+    const birthday = screen.getByRole("button", { name: /^Birthday:/ }) as HTMLButtonElement;
+    expect(birthday.disabled).toBe(true);
+    expect(birthday.getAttribute("aria-label")).toMatch(/1985/);
+  });
+});
+
+describe("ContactsDetailView header", () => {
+  it("puts an xl avatar beside the eyebrow and the name", () => {
+    const { container } = renderReadOnly({
+      card: personWithIdentity,
+      eyebrow: <span data-testid="book-switcher">Personal</span>,
     });
-    expect(birthdaySection.classList.contains("field-label-row__label")).toBe(true);
-    expect(birthdaySection.classList.contains("contacts-detail-view__section-title")).toBe(true);
-    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
-    expect(screen.getByText(/1985/)).toBeTruthy();
+    const header = container.querySelector(".contacts-detail-view__header");
+    expect(header?.querySelector(".user-avatar--xl")).toBeTruthy();
+    const heading = header?.querySelector(".contacts-detail-view__heading");
+    expect(heading?.querySelector(".note-detail-view__eyebrow")?.textContent).toBe("Personal");
+    expect(heading?.querySelector(".contacts-detail-view__title")).toBeTruthy();
   });
 
-  it("clears birthday then survives toggling edit off and on", () => {
-    function BirthdayToggleHarness() {
-      const [card, setCard] = useState(janeWithBirthday);
-      const [editMode, setEditMode] = useState(true);
-      const [editDraft, setEditDraft] = useState<ContactEditDraft | null>(() =>
-        contactCardToEditDraft(janeWithBirthday),
-      );
-
-      return (
-        <TooltipProvider delayDuration={0}>
-          <ContactsDetailView
-            labels={defaultContactsLabels}
-            card={card}
-            createMode={false}
-            editMode={editMode}
-            editDraft={editDraft}
-            locale="en-US"
-            displayName="Jane Doe"
-            {...viewModeHandlers}
-            onDraftChange={(patch) => setEditDraft((prev) => (prev ? { ...prev, ...patch } : prev))}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setEditDraft((prev) => (prev ? { ...prev, birthday: "" } : prev));
-            }}
-          >
-            Clear birthday
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (editMode && editDraft) {
-                const merged = mergeContactFromPatch(card, editDraftToPatch(editDraft, card));
-                setCard(merged);
-                setEditDraft(null);
-                setEditMode(false);
-                return;
-              }
-              setEditDraft(contactCardToEditDraft(card));
-              setEditMode(true);
-            }}
-          >
-            Toggle edit
-          </button>
-        </TooltipProvider>
-      );
-    }
-
-    render(<BirthdayToggleHarness />);
-    const field = screen.getByRole("button", { name: /Birthday:/ });
-    expect(field.getAttribute("aria-label")).toMatch(/1985/);
-    fireEvent.click(screen.getByRole("button", { name: "Clear birthday" }));
-    expect(screen.getByRole("button", { name: /^Birthday:\s*$/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
-    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
-    expect(
-      screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
-    ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
-    const again = screen.getByRole("button", { name: /^Birthday:\s*$/ });
-    expect(again.classList.contains("locale-date-picker")).toBe(true);
-    fireEvent.click(again);
-    const day = document.querySelector<HTMLButtonElement>("button[data-day]");
-    expect(day).toBeTruthy();
-    fireEvent.click(day!);
-    expect(
-      screen.getByRole("button", { name: /Birthday:/ }).getAttribute("aria-label"),
-    ).not.toMatch(/^Birthday:\s*$/);
+  it("shows a group as an icon and a plain title, with no person fields", () => {
+    const { container } = renderReadOnly({
+      card: groupCard,
+      readOnly: false,
+      editDraft: contactCardToEditDraft(groupCard),
+      displayName: "Friends",
+    });
+    const header = container.querySelector(".contacts-detail-view__header");
+    expect(header?.querySelector(".contacts-group-icon-slot--xl")).toBeTruthy();
+    expect(header?.querySelector(".user-avatar")).toBeNull();
+    const title = header?.querySelector(".contacts-detail-view__title");
+    expect(title?.textContent).toBe("Friends");
+    expect(title?.querySelector("input")).toBeNull();
+    expect(screen.queryByText("Should not show")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: L.jobTitle })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Birthday:/ })).toBeNull();
+    expect(screen.queryByRole("switch", { name: L.companyContact })).toBeNull();
   });
 
-  it("hides the birthday editor for group cards", () => {
-    render(
-      <TooltipProvider delayDuration={0}>
-        <ContactsDetailView
-          labels={defaultContactsLabels}
-          card={groupCard}
-          createMode={false}
-          editMode
-          editDraft={contactCardToEditDraft(groupCard)}
-          displayName="Friends"
-          {...viewModeHandlers}
-        />
-      </TooltipProvider>,
+  it("shows a company icon instead of initials for org cards", () => {
+    const orgCard = {
+      "@type": "Card",
+      version: "1.0",
+      id: "card-acme",
+      uid: "urn:uuid:acme",
+      kind: "org",
+      organizations: {
+        "org-1": { "@type": "Organization", name: "Acme Corp" },
+      },
+    } as unknown as ContactCard;
+    const { container } = renderReadOnly({ card: orgCard, displayName: "Acme Corp" });
+    expect(
+      container.querySelector(".contacts-detail-view__avatar .contacts-org-icon"),
+    ).toBeTruthy();
+    expect(container.querySelector(".contacts-group-icon")).toBeNull();
+    expect((screen.getByRole("textbox", { name: L.companyName }) as HTMLInputElement).value).toBe(
+      "Acme Corp",
     );
-    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
-    expect(
-      screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
-    ).toBeNull();
+  });
+});
+
+describe("ContactsDetailView group tags", () => {
+  function tagProps(overrides: Partial<NonNullable<ViewProps["groupTags"]>> = {}) {
+    return {
+      assigned: [{ group: groupCard, writable: true }],
+      suggestions: [familyGroup],
+      readonly: false,
+      allowCreate: true,
+      onAdd: vi.fn(),
+      onRemove: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it("sits under the name beside the avatar, washed in the address book colour", () => {
+    const { container } = renderReadOnly({ card: personWithIdentity, groupTags: tagProps() });
+    const heading = container.querySelector(
+      ".contacts-detail-view__header .contacts-detail-view__heading",
+    );
+    const tags = container.querySelector(".contacts-detail-view__tag-group");
+    expect(tags).toBeTruthy();
+    expect(heading?.contains(tags)).toBe(true);
+    expect(heading?.querySelector(".contacts-detail-view__title")?.nextElementSibling).toBe(tags);
+
+    const chip = screen.getByText("Friends").closest(".tag") as HTMLElement | null;
+    const color = addressBookDotColor({ id: "default" });
+    expect(chip?.style.getPropertyValue("--tag-bg")).toContain(color);
+    expect(chip?.style.getPropertyValue("--tag-fg")).toContain(color);
+  });
+
+  it("adds and removes group membership through the shared TagGroup", () => {
+    const onAdd = vi.fn();
+    const onRemove = vi.fn();
+    renderReadOnly({ card: personWithIdentity, groupTags: tagProps({ onAdd, onRemove }) });
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove group Friends" }));
+    expect(onRemove).toHaveBeenCalledWith("card-group-friends");
+
+    expect(L.addGroup).toBe("Add to group");
+    fireEvent.click(screen.getByRole("button", { name: L.addGroup }));
+    const input = screen.getByRole("combobox", { name: L.addGroup });
+    expect(input.getAttribute("placeholder")).toBe(L.addGroupPlaceholder);
+    fireEvent.change(input, { target: { value: "Fam" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Family" }));
+    expect(onAdd).toHaveBeenCalledWith("card-group-family");
+  });
+
+  it("shows read-only chips for a view-only sharee", () => {
+    renderReadOnly({
+      card: personWithIdentity,
+      groupTags: tagProps({
+        assigned: [{ group: groupCard, writable: false }],
+        readonly: true,
+        allowCreate: false,
+      }),
+    });
+    expect(screen.getByText("Friends")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove group Friends" })).toBeNull();
+    expect(screen.queryByRole("button", { name: L.addGroup })).toBeNull();
+  });
+
+  it("does not render the tag group when groupTags is omitted (group cards)", () => {
+    const { container } = renderReadOnly({ card: groupCard, displayName: "Friends" });
+    expect(container.querySelector(".contacts-detail-view__tag-group")).toBeNull();
+    expect(container.querySelector(".tag-group")).toBeNull();
   });
 });

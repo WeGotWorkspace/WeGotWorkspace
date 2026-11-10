@@ -122,7 +122,7 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
                 ['If-Match' => self::STALE_ETAG],
             )
             ->assertStatus(412)
-            ->assertJsonPath('error', 'precondition_failed');
+            ->assertExactJson(['error' => 'precondition_failed', 'code' => 'precondition_failed']);
     }
 
     public function test_a_refused_put_leaves_the_stored_document_untouched(): void
@@ -176,7 +176,7 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
                 ['If-None-Match' => '*'],
             )
             ->assertStatus(412)
-            ->assertJsonPath('error', 'precondition_failed');
+            ->assertExactJson(['error' => 'precondition_failed', 'code' => 'precondition_failed']);
     }
 
     public function test_yjs_get_returns_304_when_if_none_match_still_matches(): void
@@ -271,7 +271,7 @@ PHP);
         $this->withBearer($token)
             ->putCollaboration($this->collaborationUrl(), null, "\x02")
             ->assertStatus(428)
-            ->assertJsonPath('error', 'precondition_required');
+            ->assertExactJson(['error' => 'precondition_required', 'code' => 'precondition_required']);
 
         $storage = app(WgwStorage::class)->files();
         $this->assertSame("\x01", (string) $storage->get(self::SIDECAR_STORAGE_PATH));

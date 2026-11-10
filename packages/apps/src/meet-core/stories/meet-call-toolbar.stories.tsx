@@ -130,6 +130,14 @@ export const Default: Story = {
     await expect(leave).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
     expect(devices.compareDocumentPosition(leave) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // One control size in the bar, as in the Docs format pill.
+    const sizes = new Set(
+      canvas.getAllByRole("button").map((button) => {
+        const box = button.getBoundingClientRect();
+        return `${box.width}x${box.height}`;
+      }),
+    );
+    await expect([...sizes]).toHaveLength(1);
     await userEvent.click(devices);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByText(meetLabels.microphoneLabel)).toBeInTheDocument();

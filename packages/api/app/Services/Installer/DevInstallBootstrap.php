@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Models\Principal;
 use App\Models\User;
+use App\Services\Admin\AdminConstants;
+use App\Services\Admin\AdminGroupManagementService;
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
@@ -20,6 +23,12 @@ final class DevInstallBootstrap
     /** Second local login so two-user flows work without creating an account by hand. */
     public const DEV_MEMBER_USERNAME = 'member';
 
+    /**
+     * Team the admin and member share, so two-user flows see each other (#1925:
+     * admin is a role, so no `administrators` group joins them any more).
+     */
+    public const DEV_TEAM_SLUG = 'team';
+
     public function __construct(
         private AppPaths $paths,
         private InstallerEnvWriter $envWriter,
@@ -32,6 +41,7 @@ final class DevInstallBootstrap
         private DevContactSeeder $contacts,
         private WgwSchemaMigrator $schemaMigrator,
         private InstallerSeeder $seeder,
+        private AdminGroupManagementService $teams,
     ) {}
 
     /**
@@ -50,6 +60,7 @@ final class DevInstallBootstrap
             $this->schemaMigrator->migrate();
             $this->seedDevData($username);
             $this->seedDevMember($password);
+            $this->seedDevTeam($username);
 
             return false;
         }
@@ -115,6 +126,7 @@ final class DevInstallBootstrap
         $this->apiEnv->ensure($this->paths->installRoot(), 'http://127.0.0.1:9080');
         $this->seedDevData($username);
         $this->seedDevMember($password);
+        $this->seedDevTeam($username);
 
         return true;
     }
@@ -147,6 +159,28 @@ final class DevInstallBootstrap
             true,
             true,
         );
+    }
+
+    /**
+     * Created once with both logins. Skips when the Team exists, so membership
+     * changed by hand in Admin is left alone.
+     */
+    private function seedDevTeam(string $username): void
+    {
+        if (Principal::query()->where('uri', AdminConstants::GROUP_PREFIX.self::DEV_TEAM_SLUG)->exists()) {
+            return;
+        }
+        $members = User::query()
+            ->whereIn('username', [$username, self::DEV_MEMBER_USERNAME])
+            ->pluck('username')
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
+        if ($members === []) {
+            return;
+        }
+
+        $this->teams->create(self::DEV_TEAM_SLUG, 'Team');
+        $this->teams->update(self::DEV_TEAM_SLUG, null, array_values($members));
     }
 
     private function seedDevCalendarEvents(string $username): void

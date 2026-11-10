@@ -25,8 +25,9 @@ const task = (id: string, status: Task["workflowStatus"] = "needs-action"): Task
 
 describe("tasks toast messages", () => {
   it("returns complete vs reopened copy", () => {
-    expect(tasksCompleteToastMessage(true, defaultTasksLabels)).toBe("Task completed");
-    expect(tasksCompleteToastMessage(false, defaultTasksLabels)).toBe("Marked incomplete");
+    expect(tasksCompleteToastMessage(true, 1, defaultTasksLabels)).toBe("Task completed");
+    expect(tasksCompleteToastMessage(true, 3, defaultTasksLabels)).toBe("3 tasks completed");
+    expect(tasksCompleteToastMessage(false, 1, defaultTasksLabels)).toBe("Marked incomplete");
   });
 
   it("formats move toasts", () => {

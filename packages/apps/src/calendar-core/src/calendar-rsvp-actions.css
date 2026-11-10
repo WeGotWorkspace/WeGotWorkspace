@@ -24,6 +24,7 @@
   );
   --segmented-control-hover-color: var(--workspace-foreground);
   --segmented-control-track-bg: transparent;
+  --segmented-control-inner-radius: 0;
   --segmented-control-track-border-color: var(
     --button-outline-border-color,
     var(--control-border-color)

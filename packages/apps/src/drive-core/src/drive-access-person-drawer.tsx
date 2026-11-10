@@ -82,7 +82,7 @@ export function DriveAccessPersonDrawer({ controller }: DriveAccessPersonDrawerP
                 </p>
                 {entry.viaGroup ? (
                   <p className="drive-access-person-drawer__group">
-                    Group: {entry.viaGroup.replace(/^groups\//, "")}
+                    {labels.accessViaTeam(entry.viaGroup.replace(/^groups\//, ""))}
                   </p>
                 ) : null}
               </li>

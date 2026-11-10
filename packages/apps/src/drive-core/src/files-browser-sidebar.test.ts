@@ -16,8 +16,8 @@ describe("filesBrowserSidebar", () => {
       "trash",
     ]);
     expect(filesBrowserSidebarLabels.uploads).toBe("Uploads");
-    expect(filesBrowserHomeLabel("docs")).toBe("My Docs");
-    expect(filesBrowserHomeLabel("drive")).toBe("My Files");
+    expect(filesBrowserHomeLabel("docs")).toBe("All Docs");
+    expect(filesBrowserHomeLabel("drive")).toBe("All Files");
     expect(filesBrowserSidebarLabels.drivesSection).toBe("My Drives");
     expect(filesBrowserSidebarLabels.personalDrive).toBe("Personal");
   });

@@ -25,7 +25,8 @@ function foreignSelectValue(alert: CalendarEventAlertFormValue): string | null {
   return null;
 }
 
-function alarmOffsetSelectValue(alert: CalendarEventAlertFormValue | null): string {
+/** The Select value for one alarm row; `"none"` for the empty trailing slot. */
+export function alarmOffsetSelectValue(alert: CalendarEventAlertFormValue | null): string {
   if (!alert) return "none";
   if (alert.offset != null) {
     return matchAlertOffsetPreset(alert.offset) ?? `offset:${alert.offset}`;
@@ -37,6 +38,60 @@ function alarmOffsetSelectValue(alert: CalendarEventAlertFormValue | null): stri
 function foreignSelectLabel(alert: CalendarEventAlertFormValue): string {
   if (alert.offset != null) return formatUnmatchedAlertOffset(alert.offset);
   return alert.when ?? "";
+}
+
+const ALARM_OFFSET_PRESETS = [
+  ["at-start", "eventAlarmAtStart"],
+  ["5m", "eventAlarm5Min"],
+  ["10m", "eventAlarm10Min"],
+  ["15m", "eventAlarm15Min"],
+  ["30m", "eventAlarm30Min"],
+  ["1h", "eventAlarm1Hour"],
+  ["1d", "eventAlarm1Day"],
+] as const satisfies ReadonlyArray<
+  readonly [CalendarAlertOffsetSelectValue, keyof CalendarAlarmsCardLabels]
+>;
+
+/** What one alarm row shows: a preset name, a foreign offset or time, or None. */
+export function alarmOffsetLabel(
+  alert: CalendarEventAlertFormValue | null,
+  labels: CalendarAlarmsCardLabels,
+): string {
+  const value = alarmOffsetSelectValue(alert);
+  const preset = ALARM_OFFSET_PRESETS.find(([presetValue]) => presetValue === value);
+  if (preset) return labels[preset[1]];
+  if (value === "none" || !alert) return labels.eventAlarmNone;
+  return foreignSelectLabel(alert);
+}
+
+/** The options of one alarm row's Select: None, a foreign value (read-only), the presets. */
+export function AlarmOffsetMenuItems({
+  alert,
+  labels,
+  itemClassName,
+}: {
+  alert: CalendarEventAlertFormValue | null;
+  labels: CalendarAlarmsCardLabels;
+  itemClassName?: string;
+}) {
+  const foreignValue = alert ? foreignSelectValue(alert) : null;
+  return (
+    <>
+      <SelectItem value="none" className={itemClassName}>
+        {labels.eventAlarmNone}
+      </SelectItem>
+      {foreignValue && alert ? (
+        <SelectItem value={foreignValue} disabled className={itemClassName}>
+          {foreignSelectLabel(alert)}
+        </SelectItem>
+      ) : null}
+      {ALARM_OFFSET_PRESETS.map(([value, key]) => (
+        <SelectItem key={value} value={value} className={itemClassName}>
+          {labels[key]}
+        </SelectItem>
+      ))}
+    </>
+  );
 }
 
 function AlarmOffsetRow({
@@ -55,7 +110,6 @@ function AlarmOffsetRow({
   onRemove?: () => void;
 }) {
   const selectValue = alarmOffsetSelectValue(alert);
-  const foreignValue = alert ? foreignSelectValue(alert) : null;
 
   return (
     <div className="calendar-event-dialog__alarm-row">
@@ -74,19 +128,7 @@ function AlarmOffsetRow({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">{labels.eventAlarmNone}</SelectItem>
-          {foreignValue && alert ? (
-            <SelectItem value={foreignValue} disabled>
-              {foreignSelectLabel(alert)}
-            </SelectItem>
-          ) : null}
-          <SelectItem value="at-start">{labels.eventAlarmAtStart}</SelectItem>
-          <SelectItem value="5m">{labels.eventAlarm5Min}</SelectItem>
-          <SelectItem value="10m">{labels.eventAlarm10Min}</SelectItem>
-          <SelectItem value="15m">{labels.eventAlarm15Min}</SelectItem>
-          <SelectItem value="30m">{labels.eventAlarm30Min}</SelectItem>
-          <SelectItem value="1h">{labels.eventAlarm1Hour}</SelectItem>
-          <SelectItem value="1d">{labels.eventAlarm1Day}</SelectItem>
+          <AlarmOffsetMenuItems alert={alert} labels={labels} />
         </SelectContent>
       </Select>
       {onRemove ? (

@@ -18,8 +18,15 @@ import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
 import "@/drive-core/src/drive-create-markdown-dialog.css";
 
+export type DriveCreateDialogKind = "document" | "folder";
+
+/**
+ * Create a document or a folder (suite create norm): a name and the folder it
+ * goes in. The picker opens on the folder the person is looking at.
+ */
 export function DriveCreateMarkdownDialog({
   open,
+  kind = "document",
   labels,
   defaultName,
   initialBrowsePath,
@@ -39,6 +46,8 @@ export function DriveCreateMarkdownDialog({
   onConfirm,
 }: {
   open: boolean;
+  /** `folder` names a new folder (no extension); `document` a new Markdown file. */
+  kind?: DriveCreateDialogKind;
   labels: DriveUILabels;
   defaultName: string;
   initialBrowsePath: string;
@@ -61,17 +70,20 @@ export function DriveCreateMarkdownDialog({
   onClose: () => void;
   onConfirm: (fileName: string, destinationPath: string) => void;
 }) {
-  const { extension } = splitMarkdownDialogDefaultName(defaultName);
+  const isFolder = kind === "folder";
+  const extension = isFolder ? "" : splitMarkdownDialogDefaultName(defaultName).extension;
   const [draftBaseName, setDraftBaseName] = useState("");
   const [focusSession, setFocusSession] = useState<string | null>(null);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
-  const nextFocusSession = open ? defaultName : null;
+  const nextFocusSession = open ? `${kind}:${defaultName}` : null;
   const pickerRemountKey = `${initialBrowsePath}::${initialSelectedPath ?? ""}`;
 
   if (nextFocusSession !== focusSession) {
     setFocusSession(nextFocusSession);
     if (nextFocusSession) {
-      setDraftBaseName(splitMarkdownDialogDefaultName(defaultName).baseName);
+      setDraftBaseName(
+        isFolder ? defaultName : splitMarkdownDialogDefaultName(defaultName).baseName,
+      );
       setDestinationPath(null);
     }
   }
@@ -80,7 +92,22 @@ export function DriveCreateMarkdownDialog({
     setDestinationPath(path);
   }, []);
 
-  const fileName = joinFileNameForRename(draftBaseName, extension);
+  const fileName = isFolder
+    ? draftBaseName.trim()
+    : joinFileNameForRename(draftBaseName, extension);
+  const copy = isFolder
+    ? {
+        title: labels.createFolderDialogTitle,
+        description: labels.createFolderDialogDescription,
+        placeholder: labels.createFolderDialogNamePlaceholder,
+        confirm: labels.createFolderDialogConfirm,
+      }
+    : {
+        title: labels.createMarkdownDialogTitle,
+        description: labels.createMarkdownDialogDescription,
+        placeholder: labels.createMarkdownDialogNamePlaceholder,
+        confirm: labels.createMarkdownDialogConfirm,
+      };
   const canSubmit = draftBaseName.trim().length > 0 && !!destinationPath && !isSubmitting;
 
   const handleConfirm = () => {
@@ -94,15 +121,15 @@ export function DriveCreateMarkdownDialog({
         className={cn(dialogSurfaceClassName, "drive-create-markdown-dialog", "sm:max-w-lg")}
       >
         <DialogHeader>
-          <DialogTitle>{labels.createMarkdownDialogTitle}</DialogTitle>
-          <DialogDescription>{labels.createMarkdownDialogDescription}</DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
         <RenameFilenameField
           focusKey={nextFocusSession}
-          placeholder={labels.createMarkdownDialogNamePlaceholder}
+          placeholder={copy.placeholder}
           baseName={draftBaseName}
-          extension={extension}
+          extension={extension || undefined}
           disabled={isSubmitting}
           onBaseNameChange={setDraftBaseName}
           onEnter={handleConfirm}
@@ -137,7 +164,7 @@ export function DriveCreateMarkdownDialog({
             {labels.createMarkdownDialogCancel}
           </Button>
           <Button variant="primary" disabled={!canSubmit} onClick={handleConfirm}>
-            {labels.createMarkdownDialogConfirm}
+            {copy.confirm}
           </Button>
         </DialogFooter>
       </DialogContent>

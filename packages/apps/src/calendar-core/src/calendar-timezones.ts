@@ -1,5 +1,5 @@
 /**
- * Curated IANA time zones for the event editor, plus floating/local wall time.
+ * IANA time zones for the event editor, plus floating/local wall time.
  * Wire shape follows JSCalendar: omit/`null` = floating; IANA id (incl. UTC) = fixed zone.
  * New timed events default to {@link defaultTimedEventTimeZone} (device IANA), not floating.
  */
@@ -8,6 +8,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import {
   COMMON_EVENT_TIME_ZONES,
   formatTimeZoneLabel,
+  timeZoneOptions,
   type CommonEventTimeZone,
 } from "@/lib/calendar-time-zones";
 
@@ -57,24 +58,16 @@ export type EventTimeZoneOption = {
 };
 
 /**
- * Options for the dialog select: floating first, then common zones, plus the
- * current value when it is not already in the curated list.
+ * Options for the time zone select: floating first, then every zone sorted by its
+ * label (UTC included), plus the current value when the runtime does not list it.
  */
 export function eventTimeZoneOptions(
   locale: string,
   floatingLabel: string,
   currentTimeZone?: string | null,
 ): EventTimeZoneOption[] {
-  const options: EventTimeZoneOption[] = [
+  return [
     { value: FLOATING_TIME_ZONE_VALUE, label: floatingLabel },
-    ...COMMON_EVENT_TIME_ZONES.map((id) => ({
-      value: id,
-      label: formatEventTimeZoneLabel(id, locale),
-    })),
+    ...timeZoneOptions(locale, normalizeEventTimeZone(currentTimeZone)),
   ];
-  const current = normalizeEventTimeZone(currentTimeZone);
-  if (current && !COMMON_EVENT_TIME_ZONES.includes(current as CommonEventTimeZone)) {
-    options.push({ value: current, label: formatEventTimeZoneLabel(current, locale) });
-  }
-  return options;
 }

@@ -67,8 +67,8 @@ function fileLocationFromSourceKey(sourceKey: string, username: string): string 
   const normalized = normalizeSourceKey(sourceKey);
   if (normalized.startsWith(`users/${username}/`)) return "My Drive";
   if (normalized.startsWith("groups/")) {
-    const group = normalized.split("/")[1] ?? "Group";
-    return `Group: ${group}`;
+    const team = normalized.split("/")[1] ?? "Team";
+    return `Team: ${team}`;
   }
   return "Documents";
 }

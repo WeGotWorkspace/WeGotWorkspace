@@ -31,6 +31,13 @@ trait SeedsWgwIdentity
         ]);
     }
 
+    /** Admin is a role per user (#1925). */
+    protected function grantAdminRole(Principal|string $user): void
+    {
+        $username = $user instanceof Principal ? substr((string) $user->uri, strlen('principals/')) : $user;
+        User::query()->where('username', $username)->update(['is_admin' => true]);
+    }
+
     protected function addPrincipalToGroup(Principal $group, Principal $member): GroupMember
     {
         return GroupMember::factory()->forGroupAndMember($group, $member)->create();

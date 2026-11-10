@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import {
   meetStoryParameters,
@@ -43,6 +44,38 @@ export const NoVideo: Story = {
     spotlight: true,
     disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
+  },
+};
+
+/**
+ * A peer that cannot connect: the avatar with the status under it, on dark media
+ * paper with no edge. Name tag and pin/mute are the larger sizes.
+ */
+export const Unreachable: Story = {
+  name: "Unreachable",
+  tags: ["vitest-ci"],
+  args: {
+    name: "Alex Morgan",
+    stream: null,
+    caption: "Can't connect to Alex Morgan",
+    disclosedMedia: { camera: false, mic: false },
+    onMuteParticipant: STORY_NOOP,
+  },
+  play: async ({ canvasElement }) => {
+    const tile = canvasElement.querySelector<HTMLElement>(".meet-peer-tile")!;
+    const avatar = tile
+      .querySelector(".meet-peer-tile__fill .user-avatar")!
+      .getBoundingClientRect();
+    const caption = tile.querySelector(".meet-peer-tile__caption")!.getBoundingClientRect();
+    await expect(caption.top).toBeGreaterThanOrEqual(avatar.bottom);
+    await expect(getComputedStyle(tile).borderTopWidth).toBe("0px");
+    await expect(getComputedStyle(tile).backgroundColor).toBe(
+      getComputedStyle(tile.querySelector(".meet-peer-tile__fill")!).backgroundColor,
+    );
+    await expect(tile.querySelector(".meet-peer-tile__name")?.classList).toContain("tag--size-lg");
+    for (const control of tile.querySelectorAll<HTMLElement>(".meet-peer-tile__control")) {
+      await expect(control.getBoundingClientRect().height).toBe(32);
+    }
   },
 };
 

@@ -211,6 +211,53 @@ final class TasksTasksTest extends WgwDatabaseTestCase
             ->assertJsonPath('progress', 25);
     }
 
+    public function test_patch_to_utc_reads_back_as_the_utc_zone(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'utc-due.ics', $this->sampleTodoIcs('Call back'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->patchJson($url, [
+                'due' => '2026-11-06T09:45:00',
+                'showWithoutTime' => false,
+                'timeZone' => 'UTC',
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)));
+
+        $response->assertOk()
+            ->assertJsonPath('due', '2026-11-06T09:45:00')
+            ->assertJsonPath('timeZone', 'UTC');
+        $this->withBearer($this->userBearerToken())->getJson($url)
+            ->assertJsonPath('due', '2026-11-06T09:45:00')
+            ->assertJsonPath('timeZone', 'UTC');
+    }
+
+    public function test_patch_removes_one_alert_sent_as_null(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'two-alerts.ics', $this->sampleTodoIcs('Pack'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $alert = static fn (string $offset): array => [
+            '@type' => 'Alert',
+            'action' => 'display',
+            'trigger' => ['@type' => 'OffsetTrigger', 'offset' => $offset, 'relativeTo' => 'end'],
+        ];
+
+        $added = $this->withBearer($this->userBearerToken())
+            ->patchJson($url, [
+                'due' => '2026-11-06',
+                'showWithoutTime' => true,
+                'alerts' => ['alert1' => $alert('-PT30M'), 'alert2' => $alert('-P1D')],
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)));
+        $added->assertOk()->assertJsonCount(2, 'alerts');
+
+        $removed = $this->withBearer($this->userBearerToken())
+            ->patchJson($url, [
+                'alerts' => ['alert1' => null, 'alert2' => $alert('-P1D')],
+            ], $this->withIfMatch((string) $added->json('etag')));
+
+        $removed->assertOk()->assertJsonCount(1, 'alerts');
+        $this->assertSame('-P1D', $removed->json('alerts.alert1.trigger.offset'));
+    }
+
     public function test_delete_task(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'buy-milk.ics', $this->sampleTodoIcs('Buy milk'));

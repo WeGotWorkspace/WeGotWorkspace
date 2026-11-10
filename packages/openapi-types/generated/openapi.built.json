@@ -565,6 +565,10 @@
                     },
                     "enabled": {
                         "type": "boolean"
+                    },
+                    "isAdmin": {
+                        "type": "boolean",
+                        "description": "Grant or remove the admin role. A change revokes the user's refresh tokens. An admin cannot remove their own role, and the last admin cannot lose it."
                     }
                 },
                 "example": {
@@ -677,6 +681,10 @@
                     },
                     "enabled": {
                         "type": "boolean"
+                    },
+                    "isAdmin": {
+                        "type": "boolean",
+                        "description": "Whether the user has the admin role."
                     }
                 },
                 "required": [
@@ -686,7 +694,8 @@
                     "displayName",
                     "groups",
                     "createdAt",
-                    "enabled"
+                    "enabled",
+                    "isAdmin"
                 ]
             },
             "AdminGroupSummary": {
@@ -1363,6 +1372,10 @@
                     "groups": {
                         "$ref": "#/components/schemas/SettingsUserGroupList"
                     },
+                    "isAdmin": {
+                        "type": "boolean",
+                        "description": "Whether the caller has the admin role. Admin is a role per user, not membership of a Team."
+                    },
                     "logoutUrl": {
                         "type": "string"
                     },
@@ -1374,6 +1387,7 @@
                 "required": [
                     "user",
                     "groups",
+                    "isAdmin",
                     "logoutUrl",
                     "mcpEnabled"
                 ]
@@ -6527,8 +6541,16 @@
                             "object",
                             "null"
                         ],
+                        "description": "Merged per alert id; null clears all alerts, an alert set to null removes that one",
                         "additionalProperties": {
-                            "$ref": "#/components/schemas/TaskAlert"
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/TaskAlert"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
                         }
                     },
                     "participants": {
@@ -7128,6 +7150,10 @@
                     },
                     "tokenScore": {
                         "type": "integer"
+                    },
+                    "nodeId": {
+                        "type": "string",
+                        "description": "FileNode id (fn-…) for a file result with a live FileNode; omitted otherwise."
                     },
                     "metadata": {
                         "type": "object",
@@ -16255,7 +16281,7 @@
                     "Files"
                 ],
                 "summary": "Create share",
-                "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.",
+                "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -16352,7 +16378,7 @@
                     "Files"
                 ],
                 "summary": "Update share",
-                "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.",
+                "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.",
                 "security": [
                     {
                         "bearerAuth": []

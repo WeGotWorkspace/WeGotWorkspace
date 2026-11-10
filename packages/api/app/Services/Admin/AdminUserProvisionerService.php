@@ -27,6 +27,7 @@ final class AdminUserProvisionerService
         private AppPaths $paths,
         private UserSessionRevoker $sessions,
         private DriveShareRevoker $driveShares,
+        private AdminRoleWriter $roles,
     ) {}
 
     /**
@@ -38,7 +39,7 @@ final class AdminUserProvisionerService
         string $displayName,
         ?string $email,
         array $groupUris,
-        string $actingAdmin,
+        bool $isAdmin,
     ): void {
         $username = strtolower(trim($username));
         $this->assertUsername($username);
@@ -60,13 +61,14 @@ final class AdminUserProvisionerService
             $email,
             $enableCalendars,
             $enableContacts,
+            $isAdmin,
         );
 
-        $this->syncGroupMemberships($username, $groupUris, $actingAdmin, skipAdminBootstrap: true);
+        $this->syncGroupMemberships($username, $groupUris);
     }
 
     /**
-     * @param  array{displayName?: string, email?: string, password?: string, groups?: list<string>, enabled?: bool}  $input
+     * @param  array{displayName?: string, email?: string, password?: string, groups?: list<string>, enabled?: bool, isAdmin?: bool}  $input
      */
     public function update(string $username, array $input, string $actingAdmin): void
     {
@@ -74,6 +76,11 @@ final class AdminUserProvisionerService
         $this->assertUsername($username);
         if (! User::query()->where('username', $username)->exists()) {
             throw new \InvalidArgumentException('User not found.');
+        }
+
+        // First, so a refused role change leaves the rest of the user untouched.
+        if (array_key_exists('isAdmin', $input)) {
+            $this->roles->set($username, (bool) $input['isAdmin'], $actingAdmin);
         }
 
         if (array_key_exists('enabled', $input)) {
@@ -114,7 +121,7 @@ final class AdminUserProvisionerService
         }
 
         if (array_key_exists('groups', $input)) {
-            $this->syncGroupMemberships($username, $input['groups'], $actingAdmin, skipAdminBootstrap: true);
+            $this->syncGroupMemberships($username, $input['groups']);
         }
     }
 
@@ -122,6 +129,7 @@ final class AdminUserProvisionerService
     {
         $username = strtolower(trim($username));
         $this->assertUsername($username);
+        $this->roles->assertNotLastAdmin($username);
 
         $principalUri = 'principals/'.$username;
         $principal = Principal::query()->where('uri', $principalUri)->first();
@@ -184,12 +192,8 @@ final class AdminUserProvisionerService
     /**
      * @param  list<string>  $groupUris
      */
-    private function syncGroupMemberships(
-        string $username,
-        array $groupUris,
-        string $actingAdmin,
-        bool $skipAdminBootstrap,
-    ): void {
+    private function syncGroupMemberships(string $username, array $groupUris): void
+    {
         $desired = [];
         foreach ($groupUris as $groupUri) {
             $groupUri = trim((string) $groupUri);
@@ -207,7 +211,7 @@ final class AdminUserProvisionerService
             if ($shouldBelong === $isMember) {
                 continue;
             }
-            $this->groups->setMembership($groupUri, $username, $shouldBelong, $actingAdmin);
+            $this->groups->setMembership($groupUri, $username, $shouldBelong);
         }
     }
 

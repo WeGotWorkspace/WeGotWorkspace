@@ -1,11 +1,11 @@
 import type { AdminGroup, AdminUser } from "@/admin-core/src/admin-types";
 
 export type RequiredGroupName =
-  { ok: true; name: string } | { ok: false; message: "Group name is required" };
+  { ok: true; name: string } | { ok: false; message: "Team name is required" };
 
 export type NewGroupDecision =
   | { ok: true; name: string; id: string }
-  | { ok: false; message: "Group name is required" | "Group already exists" };
+  | { ok: false; message: "Team name is required" | "Team already exists" };
 
 export function groupIdFromName(name: string): string {
   const idToken = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -15,7 +15,7 @@ export function groupIdFromName(name: string): string {
 export function requiredGroupName(name: string): RequiredGroupName {
   const value = name.trim();
   if (!value) {
-    return { ok: false, message: "Group name is required" };
+    return { ok: false, message: "Team name is required" };
   }
   return { ok: true, name: value };
 }
@@ -28,7 +28,7 @@ export function validateNewGroup(groups: readonly AdminGroup[], name: string): N
   const id = groupIdFromName(required.name);
   const needle = required.name.toLowerCase();
   if (groups.some((group) => group.id === id || group.name.toLowerCase() === needle)) {
-    return { ok: false, message: "Group already exists" };
+    return { ok: false, message: "Team already exists" };
   }
   return { ok: true, name: required.name, id };
 }

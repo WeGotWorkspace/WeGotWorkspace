@@ -213,7 +213,8 @@ export const options = {
 };
 
 export function presence() {
-  session("p_workspace", `presence-${__VU}`, 1.2);
+  // One Team room (#1921): there is no instance-wide presence room any more.
+  session("p_groups.capacity", `presence-${__VU}`, 1.2);
 }
 
 export function docs() {

@@ -1,12 +1,18 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
-import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import {
+  workspaceDestructiveDialogLabels,
+  type WorkspaceDestructiveDialogLabels,
+} from "@/lib/workspace/destructive-dialog";
+import { sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
+import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 /**
  * User-visible copy for the notes workspace (sidebar, list chrome, dialogs, toasts).
- * Override via {@link NotesWorkspaceProps.labels} in stories/tests.
+ * Override via {@link NotesWorkspaceProps.labels} in stories/tests. Common strings come
+ * from `workspaceLabels`; the destructive-dialog keys are shared as-is.
  */
-export type NotesUILabels = {
+export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   listLoading: string;
   refreshList: string;
   searchPlaceholder: string;
@@ -84,14 +90,10 @@ export type NotesUILabels = {
   toolbarStar: string;
   toolbarArchive: string;
   toolbarUnarchive: string;
-  dialogCancel: string;
-  dialogDelete: string;
   dialogEmptyArchiveTitle: string;
   dialogDeleteItemsTitle: (count: number) => string;
   dialogEmptyArchiveDescription: (count: number) => string;
   dialogDeleteSelectedDescription: string;
-  dialogDeleteConfirmSuffix: string;
-  dialogPermanentDeleteLeadIn: string;
   tagViewTitle: (tag: string) => string;
   newNoteCategory: string;
   pendingSync: string;
@@ -102,7 +104,7 @@ export type NotesUILabels = {
   syncFailedTitle: string;
   syncFailedMessage: string;
   retrySync: string;
-  /** Clarification for the detail-footer last-edited chip (tooltip + aria-label; chip shows time only). */
+  /** Visible prefix before the last-edited date above the note title ("Edited 17:42"). */
   editedLabel: string;
   accessLostTitle: string;
   accessLostMessage: string;
@@ -147,18 +149,19 @@ export type NotesUILabels = {
 };
 
 export const defaultNotesLabels: NotesUILabels = {
+  ...workspaceDestructiveDialogLabels,
   listLoading: "Loading notes…",
   refreshList: "Refresh notes",
   searchPlaceholder: "Search notes...",
   sidebarAllItems: "All Items",
   sidebarStarred: "Starred",
   sidebarArchive: "Archived",
-  sidebarSharedWithMe: "Shared with me",
+  sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   sharedBy: (username) => username,
-  viewOnly: "View only",
+  viewOnly: workspaceLabels.sharing.viewOnly,
   shared: "Shared",
   sectionNotebooks: "My notebooks",
-  sectionSharedNotebooks: "Shared with me",
+  sectionSharedNotebooks: workspaceLabels.sharing.sharedWithMe,
   sectionTags: "Tags",
   share: "Share",
   titlePlaceholder: "Title",
@@ -181,9 +184,9 @@ export const defaultNotesLabels: NotesUILabels = {
   emptyList: "No items",
   emptyDetail: "Select a note",
   newNote: "New note",
-  newNoteMenu: "More create options",
-  edit: "Edit",
-  remove: "Remove",
+  newNoteMenu: workspaceLabels.list.moreCreateOptions,
+  edit: workspaceLabels.dialog.edit,
+  remove: workspaceLabels.dialog.remove,
   emptyArchive: "Empty archive",
   fallbackViewTitle: "Writings",
   toastNewNote: "New note",
@@ -192,14 +195,14 @@ export const defaultNotesLabels: NotesUILabels = {
   toastNotebookUpdated: "Notebook updated",
   toastNotebookDeleted: (name) => `Notebook “${name}” deleted`,
   toastNotebookShareRemoved: "Notebook removed",
-  toastSynced: "Changes synced",
-  toastListUpdated: "List updated",
+  toastSynced: workspaceLabels.sync.changesSynced,
+  toastListUpdated: workspaceLabels.list.listUpdated,
   toastListRefreshFailed: "Could not refresh notes. Please try again.",
   selectionStar: "Star",
   selectionArchive: "Archive",
   selectionMoveToNotebook: "Change notebook",
   selectionDeletePermanently: "Delete permanently",
-  selectionDone: "Done",
+  selectionDone: workspaceLabels.dialog.done,
   swipeStar: "Star",
   swipeUnstar: "Unstar",
   swipeArchive: "Archive",
@@ -208,30 +211,26 @@ export const defaultNotesLabels: NotesUILabels = {
   changeNotebookConfirm: "Change",
   moveNoteTitle: "Move note?",
   moveNoteDescription: (notebookName) => `Move this note to “${notebookName}”?`,
-  moveNoteConfirm: "Move",
+  moveNoteConfirm: workspaceLabels.dialog.move,
   toolbarStar: "Star",
   toolbarArchive: "Archive",
   toolbarUnarchive: "Unarchive",
-  dialogCancel: workspaceDestructiveDialogLabels.dialogCancel,
-  dialogDelete: workspaceDestructiveDialogLabels.dialogDelete,
   dialogEmptyArchiveTitle: "Empty archive?",
   dialogDeleteItemsTitle: (count) => `Delete ${count} item${count === 1 ? "" : "s"}?`,
   dialogEmptyArchiveDescription: (count) => `all ${count} archived item${count === 1 ? "" : "s"}`,
   dialogDeleteSelectedDescription: "the selected items",
-  dialogDeleteConfirmSuffix: workspaceDestructiveDialogLabels.dialogDeleteConfirmSuffix,
-  dialogPermanentDeleteLeadIn: workspaceDestructiveDialogLabels.dialogPermanentDeleteLeadIn,
   tagViewTitle: (tag) => tag,
   newNoteCategory: "Note",
-  pendingSync: "Pending sync",
+  pendingSync: workspaceLabels.sync.pending,
   externalWriteTitle: "Changed outside the app",
   externalWriteDescription: (title) =>
     `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
   externalWriteKeepMine: "Keep my edits",
   externalWriteUseOutside: "Use the outside version",
-  syncFailedTitle: "Some changes could not sync",
+  syncFailedTitle: workspaceLabels.sync.failedTitle,
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
-  retrySync: "Retry",
-  editedLabel: "Last edited",
+  retrySync: workspaceLabels.dialog.retry,
+  editedLabel: "Edited",
   accessLostTitle: "Access lost",
   accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
   noteDeletedElsewhere: (title: string) =>
@@ -240,26 +239,26 @@ export const defaultNotesLabels: NotesUILabels = {
     `“${title}” was archived elsewhere. Your changes to it were not saved.`,
   shareNotebookTitle: "Share notebook",
   shareNotebookHint: "People you add can open this notebook in Notes.",
-  shareNotebookPlaceholder: "Add people or groups",
+  shareNotebookPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareNotebookEmpty: noPeopleOrTeamsFoundCopy,
   shareNotebookOffline: "Sharing is unavailable offline.",
-  removeNotebookShareTitle: "Remove access?",
+  removeNotebookShareTitle: workspaceLabels.sharing.removeAccessTitle,
   removeNotebookShareConfirm: "They will no longer see this notebook.",
   newNotebookTitle: "New notebook",
   editNotebookTitle: "Edit notebook",
-  notebookNameLabel: "Name",
-  notebookColorLabel: "Color",
-  notebookOwnerLabel: "Owner",
+  notebookNameLabel: workspaceLabels.dialog.nameField,
+  notebookColorLabel: workspaceLabels.dialog.colorField,
+  notebookOwnerLabel: workspaceLabels.sharing.owner,
   notebookOwnerPersonal: (ownerLabel) => ownerLabel,
   notebookOwnerGroup: (name) => name,
   notebookOwnerReadOnly: "Owner cannot be changed for this notebook.",
   changeNotebookOwnerConfirmTitle: "Change notebook owner?",
   changeNotebookOwnerConfirmToGroup: (groupName) =>
-    `This notebook will move to ${groupName}. Members of that group will see it.`,
+    `This notebook will move to ${groupName}. Members of that team will see it.`,
   changeNotebookOwnerConfirmToPersonal: "This notebook will move to your personal notebooks.",
-  changeNotebookOwnerConfirm: "Change owner",
-  createNotebookButton: "Create",
-  saveNotebookButton: "Save",
+  changeNotebookOwnerConfirm: workspaceLabels.sharing.changeOwner,
+  createNotebookButton: workspaceLabels.dialog.create,
+  saveNotebookButton: workspaceLabels.dialog.save,
   removeSharedNotebook: "Remove notebook",
   removeSharedNotebookConfirmTitle: "Remove this shared notebook?",
   removeSharedNotebookConfirmDescription: "You will no longer see this notebook.",
@@ -283,8 +282,7 @@ export const defaultNotesLabels: NotesUILabels = {
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {
-  if (!overrides) return defaultNotesLabels;
-  return { ...defaultNotesLabels, ...overrides };
+  return mergeWorkspaceLabels(defaultNotesLabels, overrides);
 }
 
 export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjectDialogLabels {

@@ -111,8 +111,11 @@ function isoDay(days: number): string {
 const D1 = isoDay(7);
 const D2 = isoDay(14);
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-/** "Add time" sets 09:00 in the local zone. */
-const D1_AT_9 = `${D1}T09:00 ${ZONE}`;
+/**
+ * All day off gives the due 09:00 with no time zone: the pane saves floating time
+ * on purpose (docs/architecture/tasks.md, Known limitations).
+ */
+const D1_AT_9 = `${D1}T09:00 floating`;
 const ALERT_15M = {
   "@type": "Alert",
   action: "display",
@@ -161,9 +164,27 @@ async function seed(id: string, { task = {}, shareA = "write", teammate = false 
 // --- the actor's steps -------------------------------------------------------------------------
 
 function row(tab: Tab, title: string) {
-  return tab.locator(".tasks-main-view__row").filter({
-    has: tab.locator(".tasks-main-view__title").getByText(title, { exact: true }),
+  return tab.locator(".tasks-list-row").filter({
+    has: tab.locator(".list-item__title").getByText(title, { exact: true }),
   });
+}
+
+/** Opens the task in the detail pane; every change there saves itself. */
+async function openTask(tab: Tab, title: string): Promise<Locator> {
+  await row(tab, title).locator(".list-item__button").click();
+  const detail = tab.locator(".tasks-detail-view");
+  await expect(detail.getByRole("textbox", { name: "Task name" })).toHaveValue(title, {
+    timeout: 10_000,
+  });
+  return detail;
+}
+
+/** Quick add: the title only, into the list whose view is open. */
+async function quickAdd(tab: Tab, title: string) {
+  const field = tab.getByRole("textbox", { name: "Quick add task" });
+  await field.fill(title);
+  await field.press("Enter");
+  await row(tab, title).waitFor({ timeout: 15_000 });
 }
 
 function sidebarList(tab: Tab, name: string) {
@@ -183,24 +204,31 @@ async function pick(tab: Tab, scope: Locator, label: string, name: string) {
   await pickOption(tab, scope.getByRole("combobox", { name: label }), name);
 }
 
+/** Quick add in the list's own view; a due date is then set on the open task. */
 async function addTask(tab: Tab, title: string, list: string, dues: Due[] = []) {
+  await sidebarList(tab, list).getByRole("button", { name: list, exact: true }).click();
+  await sleep(300);
+  await quickAdd(tab, title);
+  if (dues.length) {
+    const detail = await openTask(tab, title);
+    for (const due of dues) await setDue(tab, detail, due);
+  }
   await showAllTasks(tab);
-  await tab.getByRole("textbox", { name: "Task name" }).fill(title);
-  await pick(tab, tab.locator("body"), "List", list);
-  for (const due of dues) await setDue(tab, tab.locator("body"), due);
-  await tab.getByRole("button", { name: "Add task" }).click();
-  await row(tab, title).waitFor({ timeout: 15_000 });
   await sleep(2_000);
 }
 
-async function openTaskMenu(tab: Tab, title: string, item: "Edit" | "Delete") {
-  const target = row(tab, title);
-  await target.hover();
-  await target.getByRole("button", { name: "Task actions" }).click();
-  await tab.getByRole("menuitem", { name: item, exact: true }).click();
+/** Delete from the open task's action bar (the confirm follows). */
+async function deleteFromDetail(tab: Tab, title: string) {
+  await openTask(tab, title);
+  await tab
+    .locator(".workspace-detail-pane .action-bar")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
 }
 
-type Due = { date: string } | "none" | "addTime" | "addTimeAmsterdam" | "dateOnly";
+/** A day from the picker, no due, or the All day switch off (09:00) / on. */
+type Due = { date: string } | "none" | "timed" | "allDay";
+/** Alarm rows: `change` and `remove` act on Alarm 1; `add` fills the empty last row. */
 type Remind = { add?: string[]; change?: string; remove?: boolean };
 type Edit = {
   title?: string;
@@ -232,57 +260,45 @@ async function pickDay(tab: Tab, popover: Locator, iso: string) {
   throw new Error(`no day ${iso} in the date picker`);
 }
 
-async function setDue(tab: Tab, dialog: Locator, due: Due) {
-  await dialog.getByRole("button", { name: /^Due date:/ }).click();
-  const popover = tab.locator(".tasks-main-view__composer-due-popover");
-  await popover.waitFor({ timeout: 10_000 });
-  if (due === "none") {
-    // Clearing closes the picker.
-    await popover.getByRole("button", { name: "No due date" }).click();
+/** Sets the due in the open task. Each pick saves at once. */
+async function setDue(tab: Tab, detail: Locator, due: Due) {
+  if (due === "timed" || due === "allDay") {
+    // A due day shows the All day switch: off gives 09:00, on a date again.
+    const allDay = detail.getByRole("switch", { name: "All day" });
+    if ((await allDay.isChecked()) !== (due === "allDay")) await allDay.click();
+    await sleep(200);
     return;
   }
-  if (due === "addTime" || due === "addTimeAmsterdam") {
-    await popover.getByRole("button", { name: "Add time" }).click();
-    if (due === "addTimeAmsterdam") {
-      await popover.getByRole("combobox", { name: "Time zone" }).click();
-      await tab.getByRole("option", { name: /Europe\/Amsterdam/ }).click();
-    }
-  } else if (due === "dateOnly") await popover.getByRole("button", { name: "Date only" }).click();
+  await detail.getByRole("button", { name: /^Due date:/ }).click();
+  const popover = tab.locator(".tasks-field__due-popover");
+  await popover.waitFor({ timeout: 10_000 });
+  // Picking a day or clearing the due closes the picker.
+  if (due === "none") await popover.getByRole("button", { name: "No due date" }).click();
   else await pickDay(tab, popover, due.date);
-  await sleep(200);
-  await tab.keyboard.press("Escape");
   await popover.waitFor({ state: "detached", timeout: 5_000 });
+  await sleep(200);
 }
 
-async function setReminders(tab: Tab, dialog: Locator, remind: Remind) {
-  await dialog.locator(".tasks-main-view__remind-button").click();
-  const remindDialog = tab.getByRole("dialog", { name: "Remind me" });
-  await remindDialog.waitFor({ timeout: 10_000 });
-  const rows = remindDialog.getByRole("combobox", { name: "Alert time" });
-  if (remind.change) await pickOption(tab, rows.first(), remind.change);
-  if (remind.remove)
-    await remindDialog.getByRole("button", { name: "Remove alert" }).first().click();
-  // The last row is always the empty one a new reminder goes into.
-  for (const offset of remind.add ?? []) await pickOption(tab, rows.last(), offset);
-  await tab.keyboard.press("Escape");
-  await remindDialog.waitFor({ state: "detached", timeout: 5_000 });
+/** Alarms are dropdowns "Alarm 1", "Alarm 2", …; the last one is empty, for the next. */
+async function setReminders(tab: Tab, detail: Locator, remind: Remind) {
+  const alarms = detail.getByRole("combobox", { name: /^Alarm \d+$/ });
+  if (remind.change) await pickOption(tab, alarms.first(), remind.change);
+  if (remind.remove) await pickOption(tab, alarms.first(), "None");
+  for (const offset of remind.add ?? []) await pickOption(tab, alarms.last(), offset);
 }
 
+/** Changes the open task in the detail pane. Typing saves after a pause, a pick at once. */
 async function editTask(tab: Tab, title: string, change: Edit) {
-  await openTaskMenu(tab, title, "Edit");
-  const dialog = tab.getByRole("dialog", { name: "Edit task" });
-  await dialog.waitFor({ timeout: 10_000 });
-  if (change.title) await dialog.getByRole("textbox", { name: "Task name" }).fill(change.title);
+  const detail = await openTask(tab, title);
+  if (change.title) await detail.getByRole("textbox", { name: "Task name" }).fill(change.title);
   if (change.description !== undefined) {
-    await dialog.getByRole("textbox", { name: "Notes" }).fill(change.description);
+    await detail.getByRole("textbox", { name: "Notes" }).fill(change.description);
   }
-  if (change.list) await pick(tab, dialog, "List", change.list);
-  if (change.status) await pick(tab, dialog, "Status", change.status);
-  if (change.priority) await pick(tab, dialog, "Priority", change.priority);
-  if (change.due) await setDue(tab, dialog, change.due);
-  if (change.remind) await setReminders(tab, dialog, change.remind);
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await dialog.waitFor({ state: "detached", timeout: 10_000 });
+  if (change.list) await pick(tab, detail, "List", change.list);
+  if (change.status) await pick(tab, detail, "Status", change.status);
+  if (change.priority) await pick(tab, detail, "Priority", change.priority);
+  if (change.due) await setDue(tab, detail, change.due);
+  if (change.remind) await setReminders(tab, detail, change.remind);
   await sleep(2_500);
 }
 
@@ -314,7 +330,7 @@ async function grantAccess(
   edit: boolean,
 ) {
   const dialog = await openListDialog(tab, f.listA);
-  await dialog.getByPlaceholder("Add people or groups…").fill(query);
+  await dialog.getByPlaceholder("Add people or teams…").fill(query);
   await tab.getByRole("option").filter({ hasText: option }).first().click();
   const access = dialog.getByRole("combobox", { name: "Can view" });
   await access.waitFor({ timeout: 10_000 });
@@ -360,7 +376,7 @@ const ACTIONS = {
   delete: {
     nets: FULL,
     async run(tab, f) {
-      await openTaskMenu(tab, f.task, "Delete");
+      await deleteFromDetail(tab, f.task);
       await tab.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
       // The delete waits out its undo delay (2.5 s) before it is sent or queued.
       await sleep(5_000);
@@ -433,6 +449,33 @@ const ACTIONS = {
     },
     landed: (s, f) => taskT(s, f)?.status === "completed",
   },
+  // The done box ticked while the typed title's save is still on its way: both land,
+  // and the tick does not take the title back.
+  tickDuringAutosave: {
+    nets: { one: ["on", "off"] },
+    async run(tab, f) {
+      const detail = await openTask(tab, f.task);
+      const url = `**/api/v1/tasks/items/${f.taskId}`;
+      let sent = () => {};
+      const inFlight = new Promise<void>((resolve) => (sent = resolve));
+      const slow = async (route: Route) => {
+        sent();
+        await sleep(3_000);
+        await route.fallback();
+      };
+      await tab.route(url, slow);
+      await detail.getByRole("textbox", { name: "Task name" }).fill(`${f.task} v2`);
+      // Offline nothing is sent: the tick then queues behind the queued title.
+      await Promise.race([inFlight, sleep(4_000)]);
+      await detail.getByRole("checkbox", { name: "Mark complete" }).click();
+      await sleep(4_000);
+      await tab.unroute(url, slow);
+    },
+    landed: (s, f) => {
+      const t = taskT(s, f);
+      return t?.title === `${f.task} v2` && t.status === "completed";
+    },
+  },
   statusBack: {
     nets: FIELD,
     task: { workflowStatus: "completed" },
@@ -469,6 +512,20 @@ const ACTIONS = {
     run: (tab, f) => editTask(tab, f.task, { remind: { remove: true } }),
     landed: (s, f) => taskT(s, f)?.alerts.length === 0,
   },
+  // One alarm of two removed: the other one stays.
+  remindDeleteOne: {
+    nets: FIELD,
+    task: {
+      due: D1,
+      showWithoutTime: true,
+      alerts: {
+        a1: ALERT_15M,
+        a2: { ...ALERT_15M, trigger: { ...ALERT_15M.trigger, offset: "-PT1H" } },
+      },
+    },
+    run: (tab, f) => editTask(tab, f.task, { remind: { remove: true } }),
+    landed: (s, f) => taskT(s, f)?.alerts.join() === "-PT1H end",
+  },
   dueAdd: {
     nets: FIELD,
     run: (tab, f) => editTask(tab, f.task, { due: { date: D1 } }),
@@ -496,7 +553,7 @@ const ACTIONS = {
   dueTimed: {
     nets: FIELD,
     task: { due: D1, showWithoutTime: true },
-    run: (tab, f) => editTask(tab, f.task, { due: "addTime" }),
+    run: (tab, f) => editTask(tab, f.task, { due: "timed" }),
     landed: (s, f) => taskT(s, f)?.due === D1_AT_9,
     calendar: () => [{ date: D1, spot: "timed" }],
   },
@@ -504,7 +561,7 @@ const ACTIONS = {
   dueAllDay: {
     nets: FIELD,
     task: { due: `${D1}T09:00:00`, showWithoutTime: false, timeZone: ZONE },
-    run: (tab, f) => editTask(tab, f.task, { due: "dateOnly" }),
+    run: (tab, f) => editTask(tab, f.task, { due: "allDay" }),
     landed: (s, f) => taskT(s, f)?.due === D1,
     calendar: () => [{ date: D1, spot: "all-day" }],
   },
@@ -609,20 +666,20 @@ const ACTIONS = {
     },
     landed: (s, f) => titled(s, `N ${f.id} v2`)?.listId === f.listAId && !titled(s, `N ${f.id}`),
   },
-  // A new task with a due, moved before it reached the server: the queued move
-  // rides on the server id and must keep the due's time and zone. Amsterdam is
-  // picked so a dropped TZID shows, whatever zone the runner is in.
+  // A new task with a timed due, moved before it reached the server: the queued
+  // move rides on the server id and must keep the due's time, still floating
+  // (the pane saves no time zone; a zone that appears means the move added one).
   createMove: {
     nets: COMPOUND,
     async run(tab, f) {
-      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "addTimeAmsterdam"]);
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "timed"]);
       await editTask(tab, `N ${f.id}`, { list: f.listB });
     },
     landed: (s, f) => {
       const t = titled(s, `N ${f.id}`);
       return (
         t?.listId === f.listBId &&
-        t.due === `${D1}T09:00 Europe/Amsterdam` &&
+        t.due === D1_AT_9 &&
         s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
       );
     },
@@ -1052,19 +1109,23 @@ test.describe("sharing", () => {
       // The UI offers no write on the list.
       const target = row(b, f.task);
       await expect(target.getByRole("checkbox", { name: "Mark complete" })).toBeDisabled();
-      await target.hover();
-      const menu = target.getByRole("button", { name: "Task actions" });
-      // The task menu is off, or it offers no edit or delete.
-      if ((await menu.count()) && (await menu.isEnabled())) {
-        await menu.click();
-        for (const item of ["Edit", "Delete"]) {
-          await expect(b.getByRole("menuitem", { name: item, exact: true })).toBeDisabled();
-        }
-        await b.keyboard.press("Escape");
+      // The open task is read-only: no typing, no picks, no complete or delete.
+      const detail = await openTask(b, f.task);
+      await expect(detail.getByRole("textbox", { name: "Task name" })).toHaveAttribute("readonly");
+      await expect(detail.getByRole("textbox", { name: "Notes" })).toHaveAttribute("readonly");
+      for (const name of ["List", "Status", "Priority"]) {
+        await expect(detail.getByRole("combobox", { name })).toBeDisabled();
       }
-      await b.getByRole("combobox", { name: "List" }).click();
-      await expect(b.getByRole("option", { name: f.listA, exact: true })).toHaveCount(0);
-      await b.keyboard.press("Escape");
+      const bar = b.locator(".workspace-detail-pane .action-bar");
+      await expect(bar.getByRole("button", { name: "Delete", exact: true })).toBeDisabled();
+      // Quick add never lands in the read-only list: its view offers no field.
+      // A view-only list's name carries its badge, so match the start only.
+      await b
+        .getByRole("button", { name: new RegExp(`^${f.listA}`) })
+        .first()
+        .click();
+      await expect(b.getByRole("textbox", { name: "Quick add task" })).toBeDisabled();
+      await showAllTasks(b);
 
       // The API refuses a write from them, too.
       const res = await patchTask(f.taskId, { title: `${f.task} mate` }, TEAMMATE);
@@ -1115,9 +1176,7 @@ async function queueCreateOffline(b: Tab, f: Fixture, title: string) {
   await b.getByRole("button", { name: f.listA, exact: true }).click();
   await setTabOffline(b, true);
   await sleep(1_000);
-  await b.getByRole("textbox", { name: "Task name" }).fill(title);
-  await b.getByRole("button", { name: "Add task" }).click();
-  await row(b, title).waitFor({ timeout: 15_000 });
+  await quickAdd(b, title);
   expect((await tabCache(b, f.id)).outbox, `${b.tag} queued the create`).toEqual(["create"]);
 }
 

@@ -45,8 +45,7 @@ function AppToasterSurface({ containerAriaLabel }: { containerAriaLabel: string 
       toastOptions={{
         unstyled: true,
         classNames: {
-          toast:
-            "flex w-full min-w-0 max-w-full items-stretch gap-0 rounded-md p-0 text-sm shadow-none",
+          toast: "flex w-full min-w-0 max-w-full items-stretch gap-0 p-0 text-sm shadow-none",
           content: "flex w-full min-w-0 max-w-full flex-col gap-0",
           title: "m-0 w-full min-w-0 max-w-full p-0 font-[inherit] leading-[inherit]",
           icon: "shrink-0 [&>svg]:size-4",

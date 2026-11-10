@@ -47,7 +47,29 @@ describe("CollectionSidebarRow", () => {
     expect(row.style.getPropertyValue("--collection-row-color")).toBe("#0ea5e9");
     const checkbox = screen.getByRole("checkbox", { name: "Hide Work" });
     expect(checkbox.className).toMatch(/collection-sidebar-row__visibility/);
-    expect(checkbox.className).toMatch(/checkbox--size-sm/);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
+    expect(checkbox.querySelector(".collection-sidebar-row__visibility-dot")).toBeTruthy();
+  });
+
+  it("shows the visibility toggle as a dot that goes grey when hidden", () => {
+    const onToggleVisibility = vi.fn();
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Work"
+          color="#0ea5e9"
+          visible={false}
+          onSelect={vi.fn()}
+          onToggleVisibility={onToggleVisibility}
+        />
+      </ul>,
+    );
+    const toggle = screen.getByRole("checkbox", { name: "Show Work" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(toggle.getAttribute("data-state")).toBe("unchecked");
+    expect(toggle.querySelector(".checkbox")).toBeNull();
+    fireEvent.click(toggle);
+    expect(onToggleVisibility).toHaveBeenCalledOnce();
   });
 
   it("renders a leading mark in the shared leading column", () => {
