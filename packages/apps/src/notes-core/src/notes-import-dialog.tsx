@@ -127,6 +127,7 @@ export function NotesImportDialog({
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState(labels.importNewNotebookDefault);
   const initializedOpen = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -149,7 +150,16 @@ export function NotesImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className={cn("notes-dialog-surface notes-import-dialog", contentClassName)}>
+      <DialogContent
+        className={cn("notes-dialog-surface notes-import-dialog", contentClassName)}
+        onOpenAutoFocus={(event) => {
+          // Start on Import: focusing the notebook picker pops its tooltip over the field label.
+          const submit = formRef.current?.querySelector<HTMLButtonElement>('button[type="submit"]');
+          if (!submit || submit.disabled) return;
+          event.preventDefault();
+          submit.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{labels.importDialogTitle}</DialogTitle>
           <DialogDescription>{labels.importFilesSelected(files.length)}</DialogDescription>
@@ -163,6 +173,7 @@ export function NotesImportDialog({
           </>
         ) : (
           <form
+            ref={formRef}
             className="notes-import-dialog__form"
             onSubmit={(event) => {
               event.preventDefault();

@@ -40,6 +40,7 @@ describe("NotesImportDialog", () => {
   it("imports into the notebook of the current view", () => {
     const { onImport } = renderDialog({ defaultNotebookId: "work" });
     expect(screen.getByText(L.importFilesSelected(2))).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: L.importSubmit }));
     fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));
     expect(onImport).toHaveBeenCalledWith(files, { mode: "existing", notebook: notebooks[1] });
   });
