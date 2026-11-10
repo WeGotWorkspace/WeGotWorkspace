@@ -171,6 +171,24 @@ describe("lint-boundaries summary", () => {
     ]);
   });
 
+  it("counts each importing file once per layer pair", () => {
+    const twoTargets = [
+      {
+        filePath: "/x/src/lib/d.ts",
+        messages: [
+          edge("lib", "base", "drive-core", "core"),
+          edge("lib", "base", "docs-core", "core"),
+        ],
+      },
+      ...results,
+    ];
+    const summary = summarize(collectEdges(twoTargets));
+    expect(summary.layerPairs).toEqual([
+      { layers: "base -> core", files: 2 },
+      { layers: "core -> core", files: 1 },
+    ]);
+  });
+
   it("counts a cycle once, including an allowlisted direction, and leaves lib out", () => {
     const summary = summarize(collectEdges(results));
     expect(summary.twoWayPairs).toEqual([{ a: "docs-core", b: "drive-core", aToB: 1, bToA: 1 }]);
