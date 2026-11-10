@@ -73,12 +73,16 @@ test.describe("Notes Markdown import (live app)", () => {
     await page.reload();
     await page.locator(".list-item__button", { hasText: title }).click();
     await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 20_000 });
-    await expect(
-      page
-        .locator(".ProseMirror img")
-        .first()
-        .evaluate((img: HTMLImageElement) => img.naturalWidth),
-    ).resolves.toBeGreaterThan(0);
+    await expect
+      .poll(
+        () =>
+          page
+            .locator(".ProseMirror img")
+            .first()
+            .evaluate((img: HTMLImageElement) => img.naturalWidth),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
   });
 
   test("offline: the menu item is disabled and opens no picker", async ({ page }) => {

@@ -199,7 +199,6 @@ describe("runNotesMarkdownImport", () => {
   it("skips an unreadable file and still imports the next one", async () => {
     const { operations } = fakeServer();
     const broken = md("broken.md", "# Broken");
-    broken.arrayBuffer = () => Promise.reject(new DOMException("gone", "NotReadableError"));
     Object.defineProperty(broken, "arrayBuffer", {
       value: () => Promise.reject(new DOMException("gone", "NotReadableError")),
     });

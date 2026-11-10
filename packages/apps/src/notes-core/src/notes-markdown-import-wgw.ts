@@ -1,3 +1,4 @@
+import type { Note } from "@/lib/models/note";
 import type { NotesMarkdownImportOperations } from "@/notes-core/src/notes-types";
 import {
   createNote as createVjournalNote,
@@ -8,6 +9,19 @@ import {
 import { uploadNoteAttachmentImage } from "@/text-editor-core/docs-collab/docs-image-upload";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes-bootstrap-sync";
+
+/**
+ * The note is saved on the server by now. A failed cache write must not count
+ * as a failed import (the run would delete the note); the next refresh loads it.
+ */
+async function publishSavedNote(username: string, note: Note): Promise<void> {
+  try {
+    await upsertNoteInCache(username, note, false);
+  } catch {
+    // Cache only.
+  }
+  notifyNotesBootstrapUpdated(username);
+}
 
 /**
  * WGW REST for the Markdown import (#1623): direct create with a client uid,
@@ -27,10 +41,7 @@ export function createWgwNotesMarkdownImport(username: string): NotesMarkdownImp
     deleteNote: async (note, opts) => {
       await deleteVjournalNote(note.id, opts);
     },
-    publishNote: async (note) => {
-      await upsertNoteInCache(username, note, false);
-      notifyNotesBootstrapUpdated(username);
-    },
+    publishNote: (note) => publishSavedNote(username, note),
     uploadImage: async (note, file, opts) => {
       const uploaded = await uploadNoteAttachmentImage(
         { groupSlug: note.groupSlug },
@@ -47,8 +58,7 @@ export function createWgwNotesMarkdownImport(username: string): NotesMarkdownImp
         { signal: opts?.signal, ifMatch: note.etag },
       );
       const updated = noteFromVjournal(saved, [notebook]);
-      await upsertNoteInCache(username, updated, false);
-      notifyNotesBootstrapUpdated(username);
+      await publishSavedNote(username, updated);
       return updated;
     },
   };

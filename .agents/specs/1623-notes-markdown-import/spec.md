@@ -67,9 +67,9 @@ Per file, in order, one file at a time:
 1. `createNote` (direct REST, not the outbox) with `notebookId`, `title`, `categories`, an empty body and a client `uid` (UUID). The uid is kept per `File` object for the dialog's life, so a retry — automatic after a network error, or the person pressing Import again after a failure — returns the same note instead of a new one (server: `NoteRepository::existingCreateForRetry`).
 2. Each data image is uploaded with the shared hidden-attachment upload (see below). A failed upload (bad base64, type the browser cannot show, too large, network) replaces the image by its alt text and counts it as not imported; the file still imports.
 3. When the final body is not empty: one `PATCH /notes/items/{id}` with `body` and `If-Match` from the create response.
-4. The created note is written to the offline cache so the list shows it without a full reload.
+4. Only now — after the body write, or right after the create for a title-only note — is the note written to the offline cache and announced to other tabs. Earlier, another tab would load the empty body. A failed cache write does not fail the file; the next refresh loads the note.
 
-A per-file error never stops the batch and never touches existing notes (only the note this file created is written to).
+A per-file error never stops the batch and never touches existing notes (only the note this file created is written to). When a step after the create fails, that note is deleted (best effort) and its uid released, so the file is truly skipped and a retry makes a fresh note. A file that can no longer be read is skipped as "Could not read this file". When a file failed, the result view offers *Retry* with the same files and destination.
 
 ### Image storage (shared with Docs)
 
