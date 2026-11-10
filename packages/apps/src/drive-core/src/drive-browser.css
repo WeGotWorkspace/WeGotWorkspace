@@ -1,13 +1,21 @@
 @import "../../styles.css" reference;
 
 /*
- * Tile and list chrome. Idle is the main paper (`--workspace-surface`).
- * Hover and selected are the suite sky steps (`workspace-derive.css`), as list
- * rows. Selected+hover stays on the selected step.
+ * Tile and list chrome. Grid tiles rest on a light fill, no border: a bit over
+ * half the hover step, so hover and selected still read as steps up. List rows
+ * rest on the main paper (`--workspace-surface`). Hover and selected are the
+ * suite sky steps (`workspace-derive.css`). Selected+hover stays on the
+ * selected step.
  */
 .drive-workspace {
   --drive-item-hover-background: var(--workspace-hover-background);
   --drive-item-selected-hover-background: var(--drive-item-selected-background);
+  /* oklab: white has no hue, and an oklch mix pulled in a stray pink one. */
+  --drive-tile-background: color-mix(
+    in oklab,
+    var(--drive-item-hover-background) 55%,
+    var(--workspace-surface)
+  );
 }
 
 /** Same as sidebar section labels: quiet label ink. */
@@ -102,24 +110,6 @@
   border-radius: var(--control-radius);
 }
 
-/*
- * Folder hit target: same hairline as file tiles (`drive-file-tile::after`).
- * The hit is shared with file tiles; those already paint the hairline on the tile,
- * so this stays on the folder only.
- */
-.drive-workspace .drive-folder-tile .drive-tile__hit::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.drive-workspace .drive-folder-tile--drop-target .drive-tile__hit::after {
-  box-shadow: none;
-}
-
 /* Decorative tile content must not block the overlay hit target. */
 .drive-workspace .drive-file-avatar,
 .drive-workspace .drive-folder-tile__text,
@@ -154,7 +144,7 @@
 }
 
 .drive-workspace .drive-folder-tile--idle {
-  background-color: var(--workspace-surface);
+  background-color: var(--drive-tile-background);
 }
 
 .drive-workspace .drive-folder-tile--idle:hover,
@@ -195,19 +185,10 @@
   @apply select-none;
 }
 
-/* File tiles: idle paper + the shared control hairline (same as folder tiles). */
+/* File tiles: the light tile fill, as folder tiles. */
 .drive-workspace .drive-file-tile {
   @apply cursor-pointer;
-  background-color: var(--workspace-surface);
-}
-
-.drive-workspace .drive-file-tile::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--border);
+  background-color: var(--drive-tile-background);
 }
 
 .drive-workspace .drive-file-tile--dragging {
@@ -220,10 +201,6 @@
 
 .drive-workspace .drive-file-tile--selected {
   background: var(--drive-item-selected-background);
-}
-
-.drive-workspace .drive-file-tile--selected::after {
-  box-shadow: none;
 }
 
 .drive-workspace .drive-file-tile--selected:hover {
