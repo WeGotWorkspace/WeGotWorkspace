@@ -6,6 +6,7 @@ import { useDocsHomeList, type DocsHomeFetcher } from "@/docs-core/src/use-docs-
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { applyDocsInboundChanges } from "@/lib/offline/docs/docs-inbound-sync";
 import { writeDocsListingToCache } from "@/lib/offline/docs-listing-offline-store";
+import { keepLiveNodeIds } from "@/docs-core/src/use-docs-listing-cache-refresh";
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: vi.fn(() => true),
@@ -95,5 +96,42 @@ describe("Docs home and inbound sync (#1563)", () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalled());
     await waitFor(() => expect(hook.current.refreshing).toBe(false));
     expect(hook.current.files.map((file) => file.title)).toEqual(["offline.md", "live.md"]);
+  });
+
+  it("keeps a live row's FileNode id when the list refreshes from the cache (#1976)", async () => {
+    const nodeA = `fn-${"a".repeat(32)}`;
+    const nodeC = `fn-${"c".repeat(32)}`;
+    const fetcher = fetcherFor([
+      { ...doc("users/kim/a.md", 1, 300), nodeId: nodeA },
+      doc("users/kim/b.md", 2, 200),
+      { ...doc("users/kim/c.md", 3, 100), nodeId: nodeC },
+    ]);
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "kim", fetcher, debounceMs: 0, offlineUsername: "kim" }),
+    );
+    await waitFor(() => expect(hook.current.files).toHaveLength(3));
+    await waitFor(() => expect(hook.current.refreshing).toBe(false));
+
+    await act(async () => {
+      await applyDocsInboundChanges("kim", [{ kind: "removed", path: "/users/kim/b.md" }]);
+    });
+
+    await waitFor(() => expect(hook.current.files).toHaveLength(2));
+    expect(hook.current.files.map((file) => file.nodeId)).toEqual([nodeA, nodeC]);
+  });
+});
+
+describe("keepLiveNodeIds", () => {
+  const nodeId = `fn-${"d".repeat(32)}`;
+
+  it("carries the id over for the same path and modified time", () => {
+    const shown = [{ ...doc("users/lee/a.md", 1, 100), nodeId }];
+    expect(keepLiveNodeIds(shown, [doc("users/lee/a.md", 1, 100)])[0]?.nodeId).toBe(nodeId);
+  });
+
+  it("drops the id when the cached file changed or moved", () => {
+    const shown = [{ ...doc("users/lee/a.md", 1, 100), nodeId }];
+    const cached = [doc("users/lee/a.md", 1, 200), doc("users/lee/b.md", 2, 100)];
+    expect(keepLiveNodeIds(shown, cached).map((row) => row.nodeId)).toEqual([undefined, undefined]);
   });
 });

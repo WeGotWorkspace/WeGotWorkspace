@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Exceptions\ApiHttpException;
+use App\Exceptions\RendersApiError;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Middleware\BindMcpPublicOrigin;
 use App\Http\Middleware\CompletePendingSchemaMigrations;
@@ -25,10 +25,7 @@ use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Auth\RefreshCookie;
-use App\Services\Collab\CollabResponseException;
 use App\Services\Mcp\McpPublicOrigin;
-use App\Services\Meet\MeetResponseException;
-use App\Services\Principal\PrincipalResponseException;
 use App\Support\PublicAppUrl;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -119,22 +116,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (MeetResponseException $e) {
-            return response()->json($e->payload, $e->status);
-        });
-        $exceptions->render(function (CollabResponseException $e) {
-            return response()->json($e->payload, $e->status);
-        });
-        $exceptions->render(function (PrincipalResponseException $e) {
-            return response()->json($e->payload, $e->status);
-        });
-        $exceptions->render(function (ApiHttpException $e) {
-            $payload = ['error' => $e->getMessage()];
-            if ($e->errorCode() !== null) {
-                $payload['code'] = $e->errorCode();
-            }
-
-            return response()->json($payload, $e->getStatusCode(), $e->getHeaders());
+        // The one render hook for API errors (#1646): ApiHttpException and the
+        // realtime DomainResponseException family. Contract: .agents/skills/api/rest-design.md.
+        $exceptions->render(function (RendersApiError $e) {
+            return response()->json($e->apiErrorBody(), $e->apiErrorStatus(), $e->apiErrorHeaders());
         });
         $exceptions->render(function (ValidationException $e) {
             $message = $e->validator->errors()->first();

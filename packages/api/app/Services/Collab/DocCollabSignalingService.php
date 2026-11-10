@@ -295,16 +295,12 @@ final class DocCollabSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw new CollabResponseException($exception->status, $exception->payload);
+            throw CollabResponseException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        $payload = ['error' => $error];
-        if ($message !== null) {
-            $payload['message'] = $message;
-        }
-        throw new CollabResponseException($status, $payload);
+        throw new CollabResponseException($status, $error, $message);
     }
 }

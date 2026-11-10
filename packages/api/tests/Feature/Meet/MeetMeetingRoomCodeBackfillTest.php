@@ -77,11 +77,11 @@ final class MeetMeetingRoomCodeBackfillTest extends WgwDatabaseTestCase
         $this->flushHeaders()->postJson('/api/v1/rooms/'.$slugId.'/participants', [
             'peerId' => 'peer-guest',
             'name' => 'Visitor',
-        ])->assertForbidden()->assertJsonPath('error', 'forbidden');
+        ])->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->flushHeaders()->postJson('/api/v1/rooms/'.$code.'/participants', [
             'peerId' => 'peer-guest',
             'name' => 'Visitor',
-        ])->assertForbidden()->assertJsonPath('error', 'knock_required');
+        ])->assertForbidden()->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         $again = app(MeetMeetingRoomCodeBackfill::class)->assignMissing();
         $this->assertSame(0, $again);

@@ -10,6 +10,7 @@ use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 
 final class UnifiedSearchService
@@ -24,6 +25,7 @@ final class UnifiedSearchService
         private SearchDocumentStore $store,
         private DriveShareService $shares,
         private StoragePaths $paths,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -121,8 +123,38 @@ final class UnifiedSearchService
             'hasMore' => $offset >= self::MAX_OFFSET ? false : count($results) >= $limit,
             'sources' => $allowedSources === [] ? ['file', 'note', 'caldav', 'carddav'] : $allowedSources,
             'filters' => $normalizedFilters,
-            'results' => $this->annotateHasShares($username, $results),
+            'results' => $this->annotateNodeIds($this->annotateHasShares($username, $results)),
         ];
+    }
+
+    /**
+     * Adds `nodeId` (the FileNode id `/files/node` returns) to file results, so
+     * Docs opens a row by id without a path lookup first (#1976). One query per
+     * page; a file the FileNode index does not know yet gets no id.
+     *
+     * @param  list<array<string, mixed>>  $results
+     * @return list<array<string, mixed>>
+     */
+    private function annotateNodeIds(array $results): array
+    {
+        $keysByIndex = [];
+        foreach ($results as $index => $result) {
+            if (($result['sourceType'] ?? '') !== 'file') {
+                continue;
+            }
+            $sourceKey = trim((string) ($result['sourceKey'] ?? ''));
+            if ($sourceKey !== '') {
+                $keysByIndex[$index] = $this->paths->virtualToStorageKey('/'.$sourceKey);
+            }
+        }
+        $ids = $this->fileNodes->liveFileNodeIdsByKey(array_values($keysByIndex));
+        foreach ($keysByIndex as $index => $key) {
+            if (isset($ids[$key])) {
+                $results[$index]['nodeId'] = $ids[$key];
+            }
+        }
+
+        return $results;
     }
 
     /**

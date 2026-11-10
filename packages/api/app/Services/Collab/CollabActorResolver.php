@@ -32,10 +32,7 @@ final class CollabActorResolver
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
         if ($username === null) {
-            throw new CollabResponseException(401, [
-                'error' => 'auth_required',
-                'message' => 'Sign in to join document collaboration.',
-            ]);
+            throw new CollabResponseException(401, 'auth_required', 'Sign in to join document collaboration.');
         }
 
         return [

@@ -64,10 +64,7 @@ final class MeetReservationService
             return $row;
         }
 
-        throw new MeetResponseException(404, [
-            'error' => 'not_found',
-            'message' => 'Meeting room is not reserved.',
-        ]);
+        throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
     }
 
     public function reserve(

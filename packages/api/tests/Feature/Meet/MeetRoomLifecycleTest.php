@@ -21,7 +21,7 @@ final class MeetRoomLifecycleTest extends WgwDatabaseTestCase
     {
         $this->getJson($this->meetStatusPath())
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_reserved_empty_room_is_not_active(): void
