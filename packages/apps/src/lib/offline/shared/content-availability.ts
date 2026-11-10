@@ -1,4 +1,4 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
 import {

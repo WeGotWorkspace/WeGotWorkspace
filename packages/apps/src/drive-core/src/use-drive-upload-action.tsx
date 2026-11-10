@@ -1,7 +1,8 @@
 import { useCallback, useRef } from "react";
 import { Upload } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { driveFileFromEntry, formatBytesCompact } from "@/drive-core/src/drive-file-utils";
+import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import { formatBytesCompact } from "@/lib/files/file-name-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile, FileKind } from "@/lib/files/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";

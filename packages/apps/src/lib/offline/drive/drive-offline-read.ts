@@ -1,4 +1,4 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readDriveAvailability } from "@/lib/offline/drive/drive-availability-store";

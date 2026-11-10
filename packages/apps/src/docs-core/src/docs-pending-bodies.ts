@@ -1,4 +1,4 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { buildDocsCollabUrls } from "@/docs-core/src/docs-collab-urls";
 import { listAllCachedDriveEntryPaths } from "@/lib/offline/drive/drive-directory-offline-store";
 import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-core/docs-collab";

@@ -1,5 +1,5 @@
 import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
-import { formatBytesCompact, inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
+import { formatBytesCompact, inferFileKindFromName } from "@/lib/files/file-name-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";

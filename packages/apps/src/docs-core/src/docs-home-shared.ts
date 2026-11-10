@@ -3,7 +3,7 @@
  * Markdown / plain-text allowlist used by Docs home browse (`DOCS_HOME_EXTENSIONS`).
  * Folders are omitted (Docs opens files, not folder browse).
  */
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";

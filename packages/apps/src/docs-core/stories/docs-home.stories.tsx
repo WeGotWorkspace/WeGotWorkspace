@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
-import { resolveFreeName } from "@/drive-core/src/drive-batch-utils";
+import { resolveFreeName } from "@/lib/files/drive-entry-names";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import {
   apiPathFromUiPath,

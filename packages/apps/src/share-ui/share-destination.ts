@@ -1,5 +1,5 @@
 import { docsSearchFromApiPath } from "@/docs-core/src/docs-route-search";
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { fileSupportsTextPreview } from "@/lib/file-preview/file-preview-utils";
 import { normalizeApiVirtualPath as normalizeSharePath, parentAndName } from "@/lib/files/api-path";

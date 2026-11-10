@@ -10,7 +10,7 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { isDocsEditorPreviewFile } from "@/lib/file-preview/file-preview-utils";
 
 const WRITE_QUEUE_DELAY_MS = 2500;

@@ -10,14 +10,16 @@ import { renamedDocsSearchResult } from "@/lib/offline/docs-listing-offline-stor
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
-  ensureTrashFolder,
-  listTrashEntryNames,
-  resolveFreeName,
   restoreCompletedDriveMoves,
   restoredDriveNamesMessage,
   unrestoredDriveFilesMessage,
   type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
+import {
+  ensureTrashFolder,
+  listTrashEntryNames,
+  resolveFreeName,
+} from "@/lib/files/drive-entry-names";
 import {
   apiPathFromUiPath,
   DRIVE_TRASH_UI_PATH,

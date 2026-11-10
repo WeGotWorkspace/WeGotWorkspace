@@ -18,7 +18,7 @@ import {
 } from "@/lib/api/wgw/http";
 import { buildDocsEditorUrls } from "@/docs-core/src/docs-collab-urls";
 import type { DocsAppProps } from "@/docs-core/src/docs-app-props";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
