@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import {
@@ -15,6 +15,7 @@ import {
   nextUntitledMarkdownName,
   resolveDocsDriveLabel,
   resolveDocsHomeCreateDialogBrowsePath,
+  resolveImportDocumentNames,
   resolveNewDocumentName,
 } from "@/docs-core/src/docs-home-drives";
 
@@ -286,5 +287,37 @@ describe("resolveNewDocumentName", () => {
     await expect(
       resolveNewDocumentName(undefined, "/users/alice", [file({ id: "1", title: "Untitled.md" })]),
     ).resolves.toBe("Untitled 2.md");
+  });
+});
+
+describe("resolveImportDocumentNames", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names each file after itself, clear of the folder and of each other", async () => {
+    const operations = {
+      listDirectory: vi.fn(async () => ({ directory: { files: [{ name: "Plan.md" }] } })),
+    } as unknown as Pick<DriveAPIOperations, "listDirectory">;
+    await expect(
+      resolveImportDocumentNames(operations, "/users/alice", [], ["Plan", "Notes", "Plan"]),
+    ).resolves.toEqual(["Plan 2.md", "Notes.md", "Plan 3.md"]);
+  });
+
+  it("falls back to timestamped names, none twice, when the listing fails", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-02T03:04:05.000Z"));
+    const operations = {
+      listDirectory: vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    } as unknown as Pick<DriveAPIOperations, "listDirectory">;
+    await expect(
+      resolveImportDocumentNames(operations, "/users/alice", [], ["Plan", "Plan", "Notes"]),
+    ).resolves.toEqual([
+      "Plan 2026-01-02 03-04-05.md",
+      "Plan 2026-01-02 03-04-05 2.md",
+      "Notes 2026-01-02 03-04-05.md",
+    ]);
   });
 });

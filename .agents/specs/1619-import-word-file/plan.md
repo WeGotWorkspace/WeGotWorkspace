@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add *Import Word file* to Docs home on top of the #1983 converter, with the New document dialog for name and folder.
+Add *Import docx file(s)* to Docs home on top of the #1983 converter, with the New document dialog for name and folder.
 
 ## Budget
 

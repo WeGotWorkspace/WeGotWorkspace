@@ -11,7 +11,7 @@ A `.docx` already in Drive can be turned into a new `.md` Doc next to it, in the
 
 ## Non-goals
 
-- *Import Word file* on Docs home (#1619) and the Google Docs guidance plus a real Google export fixture (#1615). Both reuse this converter later.
+- *Import docx file(s)* on Docs home (#1619) and the Google export fixture (#1615). Both reuse this converter later.
 - Converting `.gdoc`: the file is a JSON link (`doc_id`, account, sometimes a URL) with no text, and Product#107 rules out a Google sign-in.
 - `.doc`, `.odt`, merged cells or lists in cells (#1598), syncing Word file and Doc, batch conversion.
 - Running the converter in a Worker. The headless editor needs a DOM, and the slow part is `tiptap-markdown` (see Constraints).

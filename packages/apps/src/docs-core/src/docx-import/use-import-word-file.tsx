@@ -6,7 +6,7 @@ import {
   useDocxConversionRunner,
   type DocxBatchResult,
 } from "@/docs-core/src/docx-import/use-docx-conversion-runner";
-import type { DocxImportEntry } from "@/docs-core/src/use-docs-home-create-dialog";
+import type { DocxImportEntry } from "@/docs-core/src/docx-import/docx-import-entry";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 

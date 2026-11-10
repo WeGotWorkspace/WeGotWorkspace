@@ -10,9 +10,7 @@ import {
 } from "@/docs-core/src/docs-home-drives";
 import { docsHomeCreateDocumentApiPath } from "@/docs-core/src/docs-home-workspace-model";
 import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
-
-/** One Word file and the API path of the Doc made from it. */
-export type DocxImportEntry = { file: File; apiPath: string };
+import type { DocxImportEntry } from "@/docs-core/src/docx-import/docx-import-entry";
 
 export type DocsHomeCreateDialogState = {
   createDialogOpen: boolean;

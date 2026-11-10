@@ -158,7 +158,7 @@ export async function saveDocxAsMarkdown(
   );
 }
 
-/** Import Word file (#1619): a picked file becomes the Doc at `docPath`. */
+/** Import docx file(s) (#1619): a picked file becomes the Doc at `docPath`. */
 export async function importDocxFile(
   file: Pick<File, "name" | "size" | "arrayBuffer">,
   docPath: string,

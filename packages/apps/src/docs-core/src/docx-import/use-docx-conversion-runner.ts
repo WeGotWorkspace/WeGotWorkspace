@@ -15,10 +15,20 @@ export type DocxBatchResult =
 export type DocxBatchJob = { name: string; task: () => Promise<SaveAsMarkdownResult> };
 
 type Refusal = keyof typeof labels.refusals;
+
+/** The Doc is saved: hand it its report and the default page setup before it opens. */
+function prepareConvertedDoc({ docPath, report }: SaveAsMarkdownResult): void {
+  setPendingDocxImportReport(docPath, report);
+  try {
+    startDocWithDefaultPageSetup(docPath);
+  } catch {
+    // The Doc is saved: it opens with the page setup it has.
+  }
+}
 const refusalOf = (error: unknown) => (error as { refusal?: Refusal } | null)?.refusal;
 
 /**
- * Shared by Save as Markdown and Import Word file: one conversion at a time,
+ * Shared by Save as Markdown and Import docx file(s): one conversion at a time,
  * a progress toast, the report hand-over, then the new Doc opens. A refusal
  * explains itself; nothing is opened.
  */
@@ -34,14 +44,9 @@ export function useDocxConversionRunner(onOpenDocsFile: ((apiPath: string) => vo
       setRunning(true);
       const toastId = show(texts.progress, { duration: Infinity });
       try {
-        const { docPath, report } = await task();
-        setPendingDocxImportReport(docPath, report);
-        try {
-          startDocWithDefaultPageSetup(docPath);
-        } catch {
-          // The Doc is saved: open it with the page setup it has.
-        }
-        onOpenDocsFile?.(docPath);
+        const result = await task();
+        prepareConvertedDoc(result);
+        onOpenDocsFile?.(result.docPath);
       } catch (error) {
         const refusal = refusalOf(error);
         showError(texts.failed, {
@@ -70,14 +75,13 @@ export function useDocxConversionRunner(onOpenDocsFile: ((apiPath: string) => vo
           if (toastId !== null) dismiss(toastId);
           toastId = show(labels.importingMany(index, jobs.length), { duration: Infinity });
           try {
-            const { docPath, report } = await job.task();
-            setPendingDocxImportReport(docPath, report);
-            try {
-              startDocWithDefaultPageSetup(docPath);
-            } catch {
-              // The Doc is saved: it opens with the page setup it has.
-            }
-            results.push({ name: job.name, docPath, complete: report.lines.length === 0 });
+            const result = await job.task();
+            prepareConvertedDoc(result);
+            results.push({
+              name: job.name,
+              docPath: result.docPath,
+              complete: result.report.lines.length === 0,
+            });
           } catch (error) {
             const refusal = refusalOf(error);
             results.push({

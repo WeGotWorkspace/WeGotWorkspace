@@ -27,7 +27,8 @@ describe("docsLabels Drive SST re-exports", () => {
     expect(driveLabels.sidebarSharedDrives).toBe(docsLabels.homeDrivesSection);
     expect(docsLabels.renameDialogTitle).toBe("Rename document");
     expect(docsLabels.homeEmpty).toContain("import a Word file");
-    expect(docsLabels.homeEmpty).toContain("File → Download → Microsoft Word (.docx)");
+    // Product decision 2026-11-10: the Google route is explained only in the .gdoc dialog.
+    expect(docsLabels.homeEmpty).not.toContain("Google");
   });
 
   it("keeps English Suggest toggle and mode-switch toast labels for the collab header", () => {

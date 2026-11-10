@@ -15,5 +15,6 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 
 ## Notes
 
+- Product decision 2026-11-10: no hint under the *Import docx file(s)* menu item and no Google steps in the empty state; the `.gdoc` dialog is the only place that explains the Google route. The synthetic `google-export.docx` counts as the Google export test.
 - Regenerate fixtures with `node src/docs-core/src/docx-import/__tests__/fixtures/build-docx-fixtures.mjs` from `packages/apps`.
 - On scope change: update the **issue first**, then re-sync spec/plan/tasks and the `Source:` body-hash in spec.md.

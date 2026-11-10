@@ -7,11 +7,11 @@ Technical translation of Task [#1619](https://github.com/WeGotWorkspace/WeGotWor
 
 ## Goal
 
-Docs home gets *Import Word file* next to *New document*. The person picks a `.docx` on their device, names the Doc and picks its folder in the same dialog as *New document*, and the new Doc opens with the import report.
+Docs home gets *Import docx file(s)* next to *New document*. The person picks a `.docx` on their device, names the Doc and picks its folder in the same dialog as *New document*, and the new Doc opens with the import report. Picking several files at once asks only for the folder; each Doc is named after its file and one summary ends the import (product decision 2026-11-10).
 
 ## Non-goals
 
-- Everything listed as a non-goal in #1619 (Google guidance, export, `.odt`, several files at once).
+- Everything listed as a non-goal in #1619 (Google guidance, export, `.odt`), except several files at once, which product review added on 2026-11-10.
 - Keeping text alignment: a Doc's Markdown cannot store it (`tiptap-markdown` writes paragraphs and headings without attributes). Alignment is listed in the report until Docs stores it.
 - Drag and drop of `.docx` onto the Docs list.
 
@@ -24,7 +24,8 @@ Docs home gets *Import Word file* next to *New document*. The person picks a `.d
 | Piece | Where | What |
 |-------|-------|------|
 | Split button | `docs-core/src/docs-home-sidebar.tsx` | `SidebarSegmentedNewMenu` (the Calendar/Notes pattern) when there are extra items; a plain *New document* button otherwise. |
-| Menu item + picker | `docs-core/src/docx-import/use-import-word-file.tsx` | *Import Word file* item (disabled offline with the same reason as Save as Markdown, hidden for guests) and a hidden `<input type="file" accept=".docx,…">`. |
+| Menu item + picker | `docs-core/src/docx-import/use-import-word-file.tsx` | *Import docx file(s)* item, without a subtitle (disabled offline with the same reason as Save as Markdown, hidden for guests), and a hidden `<input type="file" accept=".docx,…" multiple>`. |
+| Several files | `use-docs-home-create-dialog.ts`, `docs-home-drives.ts` (`resolveImportDocumentNames`), `drive-create-markdown-dialog.tsx` (`hideName`), `use-docx-conversion-runner.ts` (`runBatch`), `docx-import-dialogs.tsx` (`DocxImportSummaryDialog`) | The dialog asks only for the folder. Each Doc gets its file's base name, made free against the folder and the other picked files. The files import one after the other; nothing opens on its own, and one summary lists each file with a link to its Doc. |
 | Name and folder | `docs-core/src/use-docs-home-create-dialog.ts` | Import mode of the New document dialog: default name is the Word file's base name plus `.md`, made free with the same logic (`Plan.md`, `Plan 2.md`, …); title, description and button say *Import*. Closing forgets the file. |
 | Flow | `docs-core/src/docx-import/save-docx-as-markdown.ts` | `importDocxFile(file, docPath)`: refuses files above 50 MiB before reading, then the shared `convertDocxIntoNewDoc` (scan → convert → 2 MiB check → create → images → write once → remove on failure). Save as Markdown uses the same core. |
 | Toast + report + open | `docs-core/src/docx-import/use-docx-conversion-runner.ts` | Shared with Save as Markdown: one run at a time, progress toast, report hand-over, page setup, open the Doc; refusals explained in an error toast. |
@@ -37,7 +38,7 @@ Docs home gets *Import Word file* next to *New document*. The person picks a `.d
 - The chosen name can be taken by the time the Doc is created (another tab). The create step keeps both, so the Doc then gets `Name (1).md`.
 - Picking the same file twice in a row works (the input is cleared after each pick).
 - The picker filters on `.docx`, but people can still choose other files; the scan refuses them with the same messages as Save as Markdown (old `.doc` gets its own hint).
-- Offline: *New document* still works (queued offline); *Import Word file* is disabled with a reason.
+- Offline: *New document* still works (queued offline); *Import docx file(s)* is disabled with a reason.
 
 ## Decisions for Wouter
 

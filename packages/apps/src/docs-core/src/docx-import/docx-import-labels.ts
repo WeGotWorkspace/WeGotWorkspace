@@ -1,6 +1,6 @@
 import type { SaveAsMarkdownRefusal } from "@/docs-core/src/docx-import/save-docx-as-markdown";
 
-/** Words for Save as Markdown (#1983) and Import Word file (#1619). Plain language, no file-format jargon beyond names people see. */
+/** Words for Save as Markdown (#1983) and Import docx file(s) (#1619). Plain language, no file-format jargon beyond names people see. */
 export const docxImportLabels = {
   saveAsMarkdown: "Save as Markdown",
   offlineReason: "Needs a connection: images and the new document are saved in Drive.",
