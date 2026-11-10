@@ -205,6 +205,23 @@ export function fallbackUntitledMarkdownName(
   return `${base} ${stamp}.md`;
 }
 
+/** Names already in `userRoot`, or null when the live listing failed. */
+async function takenDocumentNames(
+  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
+  userRoot: string,
+  loadedFiles: readonly DriveFile[],
+): Promise<string[] | null> {
+  if (!operations) {
+    return loadedFiles.filter((file) => file.kind !== "folder").map((file) => file.title);
+  }
+  try {
+    const state = await operations.listDirectory(userRoot);
+    return state.directory.files.map((entry) => entry.name);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve a collision-free file name for a new document in `userRoot`.
  *
@@ -220,17 +237,30 @@ export async function resolveNewDocumentName(
   /** Name without `.md`; an imported Word file passes its own base name. */
   base: string = NEW_DOCUMENT_BASE,
 ): Promise<string> {
-  if (operations) {
-    try {
-      const state = await operations.listDirectory(userRoot);
-      const names = state.directory.files.map((entry) => entry.name);
-      return nextUntitledMarkdownName(names, base);
-    } catch {
-      return fallbackUntitledMarkdownName(new Date(), base);
-    }
-  }
-  return nextUntitledMarkdownName(
-    loadedFiles.filter((file) => file.kind !== "folder").map((file) => file.title),
-    base,
-  );
+  const taken = await takenDocumentNames(operations, userRoot, loadedFiles);
+  return taken
+    ? nextUntitledMarkdownName(taken, base)
+    : fallbackUntitledMarkdownName(new Date(), base);
+}
+
+/**
+ * Free names for several imported Word files in one folder: each after its own
+ * file, none twice. Without a listing, each name gets the timestamp of
+ * {@link fallbackUntitledMarkdownName}.
+ */
+export async function resolveImportDocumentNames(
+  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
+  userRoot: string,
+  loadedFiles: readonly DriveFile[],
+  bases: readonly string[],
+): Promise<string[]> {
+  const listed = await takenDocumentNames(operations, userRoot, loadedFiles);
+  const taken = listed ?? [];
+  const now = new Date();
+  return bases.map((base) => {
+    const stem = listed ? base : fallbackUntitledMarkdownName(now, base).replace(/\.md$/, "");
+    const name = nextUntitledMarkdownName(taken, stem);
+    taken.push(name);
+    return name;
+  });
 }

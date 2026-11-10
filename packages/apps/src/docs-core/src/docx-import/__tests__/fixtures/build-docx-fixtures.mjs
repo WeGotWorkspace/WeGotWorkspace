@@ -254,7 +254,73 @@ const fixtures = {
     media: { rIdImg1: { name: "image1.png", bytes: makePng(40, 20, [30, 90, 200]) } },
   }),
   "report.docx": buildReportFixture(),
+  "google-export.docx": buildGoogleExportFixture(),
 };
+
+/**
+ * Shaped like Google Docs' *File → Download → Microsoft Word (.docx)* (#1615):
+ * Arial and black set on every run, Title/Subtitle styles, lists on Normal
+ * paragraphs, links coloured 1155CC, comments, and a pending suggestion as a
+ * tracked change. Synthetic: replace with a real export when one is at hand.
+ */
+function buildGoogleExportFixture() {
+  const arial = '<w:rFonts w:ascii="Arial" w:cs="Arial" w:eastAsia="Arial" w:hAnsi="Arial"/>';
+  const gRun = (text, extra = "") => run(text, `${arial}${extra}<w:color w:val="000000"/>`);
+  const gPara = (content, style = "Normal", extra = "") =>
+    para(
+      content,
+      `<w:pStyle w:val="${style}"/><w:keepNext w:val="0"/><w:keepLines w:val="0"/><w:spacing w:after="0" w:before="0" w:line="276" w:lineRule="auto"/>${extra}`,
+    );
+  const gList = (level, text) =>
+    gPara(
+      gRun(text),
+      "Normal",
+      `<w:numPr><w:ilvl w:val="${level}"/><w:numId w:val="1"/></w:numPr>`,
+    );
+  const gLink = (id, text) =>
+    `<w:hyperlink r:id="${id}">${run(text, `${arial}<w:color w:val="1155cc"/><w:u w:val="single"/>`)}</w:hyperlink>`;
+  const gCell = (text) =>
+    `<w:tc><w:tcPr><w:tcW w:w="4680" w:type="dxa"/></w:tcPr>${gPara(gRun(text))}</w:tc>`;
+  const body = [
+    gPara(gRun("Project brief"), "Title"),
+    gPara(gRun("Written in Google Docs"), "Subtitle"),
+    gPara(gRun("Goals"), "Heading1"),
+    gList(0, "Ship the beta"),
+    gList(1, "Invite ten teams"),
+    gList(0, "Collect feedback"),
+    gPara(gRun("Budget"), "Heading2"),
+    gPara(
+      gRun("We plan ") +
+        '<w:commentRangeStart w:id="0"/>' +
+        gRun("three sprints") +
+        '<w:commentRangeEnd w:id="0"/>' +
+        '<w:r><w:commentReference w:id="0"/></w:r>' +
+        gRun(" starting in ") +
+        `<w:ins w:id="1" w:author="Sam Editor" w:date="2026-11-09T10:00:00Z">${gRun("June")}</w:ins>` +
+        `<w:del w:id="2" w:author="Sam Editor" w:date="2026-11-09T10:00:00Z"><w:r><w:rPr>${arial}</w:rPr><w:delText xml:space="preserve">May</w:delText></w:r></w:del>` +
+        gRun("."),
+    ),
+    `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="4680"/><w:gridCol w:w="4680"/></w:tblGrid><w:tr>${gCell("Phase")}${gCell("Weeks")}</w:tr><w:tr>${gCell("Build")}${gCell("6")}</w:tr></w:tbl>`,
+    gPara(
+      `<w:r><w:rPr>${arial}</w:rPr>${imageRun("rIdImg1", "image1.png", "Team photo", 952500, 476250).slice(5)}`,
+    ),
+    gPara(gRun("Details on ") + gLink("rIdLink1", "the project site") + gRun(".")),
+    SECT,
+  ].join("");
+  return buildDocx({
+    body,
+    links: { rIdLink1: "https://example.com/project" },
+    media: { rIdImg1: { name: "image1.png", bytes: makePng(40, 20, [200, 60, 30]) } },
+    parts: {
+      "comments.xml": {
+        id: "rIdComments",
+        rel: `${REL}/comments`,
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml",
+        xml: `${XML}<w:comments ${W}><w:comment w:id="0" w:author="Ann Lee" w:date="2026-11-09T09:00:00Z" w:initials="AL">${para(run("Is three enough?"))}</w:comment></w:comments>`,
+      },
+    },
+  });
+}
 
 function buildReportFixture() {
   const comment = (id, text) =>

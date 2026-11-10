@@ -47,11 +47,20 @@ type DocsHomeModalsProps = {
   createDialog?: DocsHomeCreateDialogState;
 };
 
-/** The New document dialog, worded for Import Word file when a Word file was picked (#1619). */
+/** The New document dialog, worded for Import docx file(s) when Word files were picked (#1619). */
 function docsHomeCreateDialogLabels(
   labels: DriveUILabels,
   importSourceName: string | null,
+  importCount: number,
 ): DriveUILabels {
+  if (importCount > 1) {
+    return {
+      ...labels,
+      createMarkdownDialogTitle: docxImportLabels.importManyDialogTitle,
+      createMarkdownDialogDescription: docxImportLabels.importManyDialogDescription(importCount),
+      createMarkdownDialogConfirm: docxImportLabels.importDialogConfirm,
+    };
+  }
   if (!importSourceName) return labels;
   return {
     ...labels,
@@ -180,7 +189,9 @@ export function DocsHomeModals({
           labels={docsHomeCreateDialogLabels(
             driveLabels,
             createDialog.createDialogImportSourceName,
+            createDialog.createDialogImportCount,
           )}
+          hideName={createDialog.createDialogImportCount > 1}
           defaultName={createDialog.createDialogDefaultName}
           initialBrowsePath={createDialog.createDialogBrowsePath}
           files={files}

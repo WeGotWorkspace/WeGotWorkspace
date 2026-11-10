@@ -83,6 +83,12 @@ describe("tidyMammothHtml", () => {
       '<p>a</p><div data-type="page-break"></div>',
     );
   });
+
+  it("drops an underline inside a link, and keeps one outside", () => {
+    expect(tidyMammothHtml('<p><a href="https://x.test"><u>link</u></a> <u>kept</u></p>')).toBe(
+      '<p><a href="https://x.test">link</a> <u>kept</u></p>',
+    );
+  });
 });
 
 describe("scanDocx on the report fixture", () => {

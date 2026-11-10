@@ -15,7 +15,7 @@ export type DocsHomeSidebarProps = {
   onNewDocument: () => void;
   newDocumentLabel: string;
   newDocumentMenuLabel: string;
-  /** More ways to make a Doc, such as Import Word file (#1619). */
+  /** More ways to make a Doc, such as Import docx file(s) (#1619). */
   newDocumentMenuItems?: readonly DropdownMenuItemProps[];
   session: WorkspaceSession;
   onLogout?: () => void;

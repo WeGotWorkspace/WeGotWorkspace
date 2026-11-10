@@ -26,7 +26,9 @@ describe("docsLabels Drive SST re-exports", () => {
     expect(driveLabels.sidebarMyDrive).toBe(docsLabels.homeMyDrive);
     expect(driveLabels.sidebarSharedDrives).toBe(docsLabels.homeDrivesSection);
     expect(docsLabels.renameDialogTitle).toBe("Rename document");
-    expect(docsLabels.homeEmpty).toContain("Markdown");
+    expect(docsLabels.homeEmpty).toContain("import a Word file");
+    // Product decision 2026-11-10: the Google route is explained only in the .gdoc dialog.
+    expect(docsLabels.homeEmpty).not.toContain("Google");
   });
 
   it("keeps English Suggest toggle and mode-switch toast labels for the collab header", () => {

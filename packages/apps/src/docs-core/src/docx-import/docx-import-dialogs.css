@@ -12,3 +12,28 @@
 .docx-import-report__steps {
   @apply text-sm;
 }
+
+/* Summary after importing several files: name, then what came across. */
+.docx-import-summary__list {
+  @apply flex max-h-72 list-none flex-col gap-2 overflow-y-auto p-0 text-sm;
+}
+
+.docx-import-summary__row {
+  @apply flex flex-col;
+}
+
+.docx-import-summary__name {
+  @apply truncate text-left font-medium;
+}
+
+.docx-import-summary__name--link {
+  @apply cursor-pointer underline-offset-2 hover:underline;
+}
+
+.docx-import-summary__status {
+  @apply text-muted-foreground;
+}
+
+.docx-import-summary__status--failed {
+  @apply text-destructive;
+}
