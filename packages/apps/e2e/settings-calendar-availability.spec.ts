@@ -44,7 +44,9 @@ async function choose(scope: Locator, page: Page, calendar: string, option: stri
 
 async function openCalendarSettingsDialog(page: Page) {
   await openCalendarWeek(page);
-  await page.locator(".app-sidebar").getByText("Settings", { exact: true }).click();
+  // Suite norm (#1980): the app's Settings is the last option of the primary button's menu.
+  await page.getByRole("button", { name: "More calendar actions" }).click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("switch", { name: SWITCH })).toBeVisible();
   return dialog;
