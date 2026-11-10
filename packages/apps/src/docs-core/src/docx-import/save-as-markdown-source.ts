@@ -4,9 +4,6 @@ import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 /** Word files convert; `.gdoc` (Google Drive for desktop) is only a link and explains itself. */
 export type SaveAsMarkdownSourceKind = "docx" | "gdoc";
 
-/** Extensions the Docs file list adds to its own md/markdown/txt for this action. */
-export const SAVE_AS_MARKDOWN_SOURCE_EXTENSIONS = ["docx", "gdoc"] as const;
-
 export function saveAsMarkdownSourceKindFromName(name: string): SaveAsMarkdownSourceKind | null {
   const extension = extensionFromFileName(name);
   return extension === "docx" || extension === "gdoc" ? extension : null;
