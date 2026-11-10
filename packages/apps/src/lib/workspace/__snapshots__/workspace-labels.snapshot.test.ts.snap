@@ -148,6 +148,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: calendar
   "eventRecurrenceEndsOnDate": "Ends on date",
   "eventRepeatLabel": "Repeat",
   "eventShowAs": "Show as",
+  "eventShowAsAllDayFreeHint": "Set to Busy for time off, so teammates see you as away.",
   "eventShowAsBusy": "Busy",
   "eventShowAsFree": "Free",
   "eventStartLabel": "Starts",
