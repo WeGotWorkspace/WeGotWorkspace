@@ -94,6 +94,26 @@ describe("useDriveAllFiles paging", () => {
     expect(result.current.allHasMore).toBe(false);
   });
 
+  it("keeps hasMore past the empty-page cap so a later file still loads", async () => {
+    const listAllFiles = vi.fn<ListAllFiles>().mockImplementation(async ({ offset }) => {
+      if (offset >= 1200) {
+        return { entries: [entry("/users/demo/late.md")], nextOffset: 1300, hasMore: false };
+      }
+      return { entries: [], nextOffset: (offset ?? 0) + 100, hasMore: true };
+    });
+
+    const { result } = renderAllFiles(listAllFiles);
+
+    await waitFor(() => expect(result.current.allLoading).toBe(false));
+    expect(result.current.allItems).toEqual([]);
+    expect(listAllFiles).toHaveBeenCalledTimes(10);
+    expect(result.current.allHasMore).toBe(true);
+
+    act(() => result.current.loadMoreAll());
+    await waitFor(() => expect(result.current.allItems?.map((f) => f.title)).toEqual(["late.md"]));
+    expect(result.current.allHasMore).toBe(false);
+  });
+
   it("stops when the index does not move on", async () => {
     const listAllFiles = vi
       .fn<ListAllFiles>()
