@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Textarea } from "@/ui/textarea";
 
@@ -40,11 +40,17 @@ export const Ghost: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const textarea = canvas.getByRole("textbox", { name: "Notes" });
-    await expect(getComputedStyle(textarea).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    await expect(getComputedStyle(textarea).borderTopColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(textarea).toHaveClass("textarea--ghost");
+    // `transition-colors` can still be settling on the first frame.
+    await waitFor(() => {
+      expect(getComputedStyle(textarea).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      expect(getComputedStyle(textarea).borderTopColor).toBe("rgba(0, 0, 0, 0)");
+    });
     await userEvent.click(textarea);
     await userEvent.type(textarea, "Met at the conference");
     await expect(textarea).toHaveValue("Met at the conference");
-    await expect(getComputedStyle(textarea).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    await waitFor(() => {
+      expect(getComputedStyle(textarea).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    });
   },
 };
