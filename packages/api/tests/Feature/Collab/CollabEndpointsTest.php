@@ -55,7 +55,7 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
     {
         $this->getJson('/api/v1/rooms/'.$this->roomId().'/configuration')
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join document collaboration.']);
     }
 
     public function test_two_users_exchange_signaling_messages(): void
@@ -169,7 +169,7 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
-            ->assertJsonPath('error', 'unknown_peer');
+            ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
 
     public function test_same_user_on_two_browsers_keeps_both_peers(): void

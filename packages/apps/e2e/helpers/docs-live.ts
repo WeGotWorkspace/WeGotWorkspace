@@ -88,6 +88,34 @@ export async function waitForDocsBodySynced(
     .toBe(true);
 }
 
+/** Listing paths of every cached Docs view, by cache key. */
+export async function cachedDocsViews(page: Page): Promise<string[][]> {
+  return page.evaluate(async () => {
+    const username = localStorage.getItem("wgw.offline.docs.username");
+    if (!username) return [];
+    return new Promise<string[][]>((resolve) => {
+      const request = indexedDB.open(`wgw-offline-${username}`);
+      request.onerror = () => resolve([]);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("docs_listing_rows")) return resolve([]);
+        const read = db
+          .transaction("docs_listing_rows", "readonly")
+          .objectStore("docs_listing_rows")
+          .getAll();
+        read.onsuccess = () => {
+          const views = new Map<string, string[]>();
+          for (const row of read.result as Array<{ cacheKey: string; sourceKey: string }>) {
+            views.set(row.cacheKey, [...(views.get(row.cacheKey) ?? []), row.sourceKey]);
+          }
+          resolve([...views.values()]);
+        };
+        read.onerror = () => resolve([]);
+      };
+    });
+  });
+}
+
 /** Drop the docs offline IndexedDB so e2e starts from a clean cache. */
 export async function clearDocsOfflineStore(page: Page): Promise<void> {
   await page.evaluate(async () => {

@@ -70,7 +70,7 @@ final class CollabNoteRoomMailboxTest extends WgwDatabaseTestCase
 
         $this->send($this->carolBearerToken(), $carol, $bob, 'yjs', $this->payload(2))
             ->assertStatus(403)
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
 
         $this->assertSame([], $this->poll($this->userBearerToken(), $bob));
     }

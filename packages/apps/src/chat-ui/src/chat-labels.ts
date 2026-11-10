@@ -1,13 +1,15 @@
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
+
 export const chatUiLabels = {
   empty: "No messages yet",
   deleted: "This message was deleted",
   edited: "Edited",
   reply: "Reply",
   react: "Add reaction",
-  edit: "Edit",
-  delete: "Delete",
+  edit: workspaceLabels.dialog.edit,
+  delete: workspaceLabels.dialog.delete,
   send: "Send",
-  cancel: "Cancel",
+  cancel: workspaceLabels.dialog.cancel,
   mentionList: "Mention someone",
   mentionEmpty: "No matches",
   previewMissing: "Preview unavailable",

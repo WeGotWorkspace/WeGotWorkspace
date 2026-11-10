@@ -1,4 +1,5 @@
 import type { StepperDialogLabels } from "@/stepper-dialog/src/stepper-dialog";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 const files = (count: number) => (count === 1 ? "1 file" : `${count} files`);
 
@@ -7,7 +8,7 @@ export const driveUploadBatchLabels = {
   stepper: {
     back: "Back",
     next: "Next",
-    cancel: "Cancel",
+    cancel: workspaceLabels.dialog.cancel,
     dots: "Upload steps",
     stepOf: (number, total, dotLabel) => `Step ${number} of ${total}: ${dotLabel}`,
   } satisfies StepperDialogLabels,

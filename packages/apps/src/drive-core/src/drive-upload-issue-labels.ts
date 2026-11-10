@@ -1,11 +1,12 @@
 import type { DriveUploadErrorCode } from "@/lib/offline/drive/upload/drive-upload-schema";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 /** Copy of the upload pause and error states (#1522). */
 export const driveUploadIssueLabels = {
   serverFullTitle: "Uploads are paused: the server is full",
   serverFullMessage:
     "No other file starts until there is space. Files in the trash still take up space, so emptying the trash helps.",
-  serverFullRetry: "Retry",
+  serverFullRetry: workspaceLabels.dialog.retry,
   /** Accessible text of the Uploads sidebar badge while the queue is paused. */
   badgePaused: "paused, the server is full",
 
