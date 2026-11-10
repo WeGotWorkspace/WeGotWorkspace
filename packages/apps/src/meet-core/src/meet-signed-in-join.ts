@@ -1,4 +1,4 @@
-import { parseMeetInvitePath } from "@/calendar-core/src/calendar-meet-link";
+import { parseMeetInvitePath } from "@/lib/meetings/calendar-meet-link";
 import { meetUpcomingJoinTarget } from "@/meet-core/src/meet-calendar-meeting";
 import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
 import { meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";

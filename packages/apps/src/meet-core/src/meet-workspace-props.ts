@@ -1,5 +1,5 @@
 import type { CalendarAPIOperations, CalendarInfo } from "@/lib/models/calendar-types";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { ReactNode } from "react";

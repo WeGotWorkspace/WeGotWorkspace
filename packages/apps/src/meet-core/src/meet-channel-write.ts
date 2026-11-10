@@ -1,4 +1,4 @@
-import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
+import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
 import type {
   MeetChannel,
   MeetChannelPatchInput,

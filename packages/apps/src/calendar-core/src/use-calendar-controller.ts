@@ -38,7 +38,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
-import { meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
+import { meetingUrlFromLinks } from "@/lib/meetings/calendar-meet-link";
 import {
   canChangeCalendarOwner,
   canOpenCalendarSettings,

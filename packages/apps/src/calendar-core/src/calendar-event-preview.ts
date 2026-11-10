@@ -26,7 +26,7 @@ import {
   toLocalRecurrenceId,
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import { recurrencePresetOptionLabel } from "@/calendar-core/src/calendar-recurrence-presets";
-import { meetingUrlFromCalendarEvent } from "@/calendar-core/src/calendar-meet-link";
+import { meetingUrlFromCalendarEvent } from "@/lib/meetings/calendar-meet-link";
 
 export type CalendarEventPreviewModel = {
   eventId: string;

@@ -7,13 +7,13 @@ import type {
   WgwMeetRoomStatusRequest,
   WgwMeetRoomStatusResponse,
 } from "@/lib/api/wgw/types";
-import { meetActorPrincipal } from "@/meet-core/src/meet-invite-status";
+import { meetActorPrincipal } from "@/lib/meetings/meet-invite-status";
 import {
   buildMeetCollectionInviteLink,
   meetChannelIdFromPathname,
   meetMeetingIdFromPathname,
-} from "@/meet-core/src/meet-route-search";
-import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+} from "@/lib/meetings/meet-route-search";
+import { meetPublicChannelId } from "@/lib/meetings/meet-public-id";
 
 /** Same pattern as PHP `CalendarMeetLinkHref::ROOM_CODE_PATTERN`. */
 /** Ad-hoc meeting id. Same alphabet as `createMeetRoomCode` (no i, o, 0, 1). */

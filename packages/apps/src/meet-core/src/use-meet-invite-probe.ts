@@ -4,7 +4,7 @@ import {
   meetInviteStateFromRoomStatus,
   meetRoomStatusAllowsHost,
   type MeetInviteProbeState,
-} from "@/meet-core/src/meet-invite-status";
+} from "@/lib/meetings/meet-invite-status";
 
 export function useMeetInviteProbe(args: {
   invitedRoom: string | null;

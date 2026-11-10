@@ -7,7 +7,7 @@ import {
   fetchMeetGuestBootstrap,
   fetchMeetLiveBootstrap,
 } from "@/lib/api/wgw/meet";
-import { meetRoomStatusAllowsHost } from "@/meet-core/src/meet-invite-status";
+import { meetRoomStatusAllowsHost } from "@/lib/meetings/meet-invite-status";
 import type { MeetAPIOperations, MeetAppBootstrap } from "@/meet-core/src/meet-types";
 
 export type MeetApiSource = {

@@ -16,7 +16,7 @@ import {
 } from "@/lib/jmap-client";
 import type { CalendarEventDraft, CalendarEventPatch } from "@/lib/models/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
-import { linksFromMeetingUrl, meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
+import { linksFromMeetingUrl, meetingUrlFromLinks } from "@/lib/meetings/calendar-meet-link";
 import {
   alertMapsEqual,
   alertsToWire,

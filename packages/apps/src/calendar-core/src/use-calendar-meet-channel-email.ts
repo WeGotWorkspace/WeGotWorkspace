@@ -16,7 +16,7 @@ import {
   resolveCalendarMeetReserveScope,
   resolveMeetReserveExpiresAt,
   type CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 

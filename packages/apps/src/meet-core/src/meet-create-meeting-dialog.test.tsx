@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CALENDAR_MEET_LINK_KEY } from "@/calendar-core/src/calendar-meet-link";
+import { CALENDAR_MEET_LINK_KEY } from "@/lib/meetings/calendar-meet-link";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";

@@ -8,7 +8,7 @@ import {
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
+import { meetCallExitMode } from "@/lib/meetings/meet-route-search";
 import type { MeetAPIOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";

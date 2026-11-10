@@ -9,12 +9,12 @@ import {
   meetingUrlFromLinks,
   parseCalendarMeetHref,
   parseMeetInvitePath,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { meetChannelIdsEqual, meetCollectionIdFromPublic } from "@/meet-core/src/meet-public-id";
-import { buildMeetCollectionInviteLink } from "@/meet-core/src/meet-route-search";
+import { meetChannelIdsEqual, meetCollectionIdFromPublic } from "@/lib/meetings/meet-public-id";
+import { buildMeetCollectionInviteLink } from "@/lib/meetings/meet-route-search";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 
 /** Instant Meet creates use 30 minutes, not the calendar editor's 60-minute default. */

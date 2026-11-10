@@ -7,7 +7,7 @@ import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messag
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
-} from "@/meet-core/src/meet-invite-status";
+} from "@/lib/meetings/meet-invite-status";
 import {
   isMeetKnockRequiredError,
   isMeetRoomNotActiveError,

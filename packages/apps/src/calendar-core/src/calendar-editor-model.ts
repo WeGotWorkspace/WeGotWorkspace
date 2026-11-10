@@ -36,7 +36,7 @@ import {
   isHttpUrl,
   linksFromMeetingUrl,
   meetingUrlFromLinks,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 
 export type {
   CalendarEventAlertFormValue,

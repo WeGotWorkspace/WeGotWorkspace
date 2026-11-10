@@ -36,12 +36,12 @@ import {
   roomCodeFromMeetingUrl,
   type CalendarMeetChannelOption,
   type CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import { CalendarMeetChannelPicker } from "@/calendar-core/src/calendar-meet-channel-picker";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
-import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
-import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
+import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
+import { buildMeetGuestCallLink } from "@/lib/meetings/meet-route-search";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import { Callout } from "@/callout/src/callout";
 import type { ControlSize } from "@/ui/control-size";
