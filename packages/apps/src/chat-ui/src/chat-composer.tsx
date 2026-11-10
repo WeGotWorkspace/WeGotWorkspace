@@ -11,7 +11,7 @@ import { ChatMentionMenu } from "@/chat-ui/src/chat-mention-menu";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { parseChatMentions } from "@/chat-ui/src/chat-mention-utils";
 import { shouldSendChatOnEnter } from "@/chat-ui/src/chat-send-on-enter";
-import type { ChatMentionPrincipal, ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
 import { useChatComposerMentions } from "@/chat-ui/src/use-chat-composer-mentions";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";

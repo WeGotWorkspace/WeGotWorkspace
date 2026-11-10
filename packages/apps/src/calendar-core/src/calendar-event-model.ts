@@ -8,12 +8,12 @@ import {
 } from "@/lib/calendar-engine";
 import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
 import { localToInternalRecurrenceId } from "@/lib/jmap-client/mapping/datetime";
-import type { JmapParticipant } from "@/calendar-core/src/calendar-attendees";
+import type { JmapParticipant } from "@/lib/models/calendar-attendees";
 import {
   ownEventRsvpPresentation,
   type CalendarParticipationStatus,
-} from "@/calendar-core/src/calendar-attendees";
-import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-attendees";
+import type { CalendarInfo, CalendarViewId } from "@/lib/models/calendar-types";
 
 /**
  * Pure bridge between the JSCalendar wire shape the app stores/syncs and the

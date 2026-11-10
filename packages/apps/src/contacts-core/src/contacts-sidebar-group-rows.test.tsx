@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsSidebarGroupRows } from "./contacts-sidebar-group-rows";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 afterEach(() => {
   cleanup();

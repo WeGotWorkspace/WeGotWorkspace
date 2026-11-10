@@ -1,4 +1,4 @@
-import { inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
+import { inferFileKindFromName } from "@/lib/files/file-name-utils";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type {
   DriveUploadBatchView,

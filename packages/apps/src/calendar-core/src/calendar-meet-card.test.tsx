@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const showSuccess = vi.fn();

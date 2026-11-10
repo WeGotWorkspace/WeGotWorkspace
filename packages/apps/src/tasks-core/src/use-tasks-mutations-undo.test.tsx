@@ -3,7 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppToastShowOptions } from "@/hooks/use-app-toast";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { Task, TaskPatch, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 
 const toast = vi.hoisted(() => ({

@@ -1,5 +1,5 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
-import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
+import { ensureTrashFolder } from "@/lib/files/drive-entry-names";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,

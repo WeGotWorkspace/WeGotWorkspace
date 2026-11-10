@@ -1,4 +1,4 @@
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 
 /** Extensions allowed for Yjs collab editing (explicit allowlist). */
 export const DOCS_COLLAB_TEXT_EXTENSIONS = new Set([

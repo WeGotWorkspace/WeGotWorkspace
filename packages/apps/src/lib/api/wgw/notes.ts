@@ -1,5 +1,5 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import type { DeleteNotebookAction } from "@/notes-core/src/notes-types";
+import type { DeleteNotebookAction } from "@/lib/models/notes-types";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";

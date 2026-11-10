@@ -5,7 +5,7 @@ import type {
   TaskListCreate,
   TaskListPatch,
   TaskPatch,
-} from "@/tasks-core/src/tasks-types";
+} from "@/lib/models/tasks-types";
 import {
   createTask,
   createTaskList,

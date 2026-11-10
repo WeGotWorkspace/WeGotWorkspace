@@ -1,5 +1,5 @@
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
-import { canBrowserPreviewImage, inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
+import { canBrowserPreviewImage, inferFileKindFromName } from "@/lib/files/file-name-utils";
 import { canMoveDriveItemsToFolder, driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { DRIVE_TRASH_UI_PATH } from "@/lib/files/drive-path-utils";

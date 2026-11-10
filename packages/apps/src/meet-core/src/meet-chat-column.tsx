@@ -5,8 +5,8 @@ import type {
   ChatAuthorPresenceMap,
   ChatMentionPrincipal,
   ChatSendPayload,
-} from "@/chat-ui/src/chat-types";
-import type { ChatMessage as MeetChatMessage } from "@/meet-core/src/meet-types";
+} from "@/lib/models/chat-types";
+import type { ChatMessage as MeetChatMessage } from "@/lib/models/meet-types";
 import { chatMessageCanOpenThread } from "@/chat-ui/src/chat-thread-actions";
 import { meetTypingLabel } from "@/meet-core/src/meet-typing-label";
 import { cn } from "@/lib/utils";

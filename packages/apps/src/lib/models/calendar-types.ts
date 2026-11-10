@@ -1,5 +1,17 @@
-import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
-import type { SharePrincipalKind } from "@/share-ui/share-principal-mark";
+import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
+import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
+import type {
+  CalendarSchedulingNotification,
+  CalendarSchedulingRespondOptions,
+  CalendarSchedulingRespondStatus,
+} from "@/lib/api/wgw/calendar-scheduling";
+import type {
+  JmapCalendarEvent,
+  JSCalendarAlert,
+  JSCalendarLink,
+  JSCalendarPatchObject,
+  JSCalendarRecurrenceRule,
+} from "@/lib/jmap-client";
 
 /** OpenAPI CalendarRights, plus draft `mayWriteAll` when a client sends RFC-shaped grants. */
 export type CalendarShareRights = {
@@ -18,18 +30,6 @@ export type CalendarSharePrincipal = {
   principalType: SharePrincipalKind;
   memberCount?: number;
 };
-import type {
-  CalendarSchedulingNotification,
-  CalendarSchedulingRespondOptions,
-  CalendarSchedulingRespondStatus,
-} from "@/lib/api/wgw/calendar-scheduling";
-import type {
-  JmapCalendarEvent,
-  JSCalendarAlert,
-  JSCalendarLink,
-  JSCalendarPatchObject,
-  JSCalendarRecurrenceRule,
-} from "@/lib/jmap-client";
 
 /**
  * UI-facing calendar collection. Events travel as JSCalendar wire objects

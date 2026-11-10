@@ -17,7 +17,7 @@ import {
   type ContactEditDraft,
 } from "./contacts-edit-utils";
 import { mergeContactFromPatch } from "./contacts-patch-merge";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 afterEach(() => {
   cleanup();

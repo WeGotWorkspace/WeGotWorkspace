@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
-import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
+import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
+import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { noPeopleOrTeamsFoundCopy, shareLabels } from "@/share-ui/share-labels";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { cn } from "@/lib/utils";

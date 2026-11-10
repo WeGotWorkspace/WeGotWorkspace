@@ -5,7 +5,7 @@ import {
   normalizeCalendarSearchQuery,
   type CalendarRouteState,
 } from "@/calendar-core/src/calendar-route-search";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import {
   EMPTY_SEARCH_RESULTS,
   searchCalendarEvents,

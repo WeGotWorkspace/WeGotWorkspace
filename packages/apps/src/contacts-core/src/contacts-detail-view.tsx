@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { Tag, TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import type {
   ContactAddressDraft,
   ContactChannelContext,

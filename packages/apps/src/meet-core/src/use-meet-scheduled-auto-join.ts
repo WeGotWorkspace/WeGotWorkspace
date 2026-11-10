@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChatOperations } from "@/lib/models/meet-types";
 
 /**
  * Joins a meeting channel once while its scheduled window is live. Keyed on

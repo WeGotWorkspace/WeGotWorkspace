@@ -3,7 +3,7 @@ import {
   meetActorPrincipal,
   meetInviteStateFromRoomStatus,
   meetRoomStatusAllowsHost,
-} from "@/meet-core/src/meet-invite-status";
+} from "@/lib/meetings/meet-invite-status";
 
 describe("meetInviteStateFromRoomStatus", () => {
   it("treats an unreserved room as a missing invite", () => {

@@ -1,4 +1,4 @@
-import type { Task, TaskCreate, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskCreate, TaskPatch } from "@/lib/models/tasks-types";
 
 export function taskEtag(task: Task): string | undefined {
   return (task as Task & { etag?: string }).etag;

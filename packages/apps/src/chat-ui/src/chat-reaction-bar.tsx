@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Smile } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import type { ChatReaction } from "@/chat-ui/src/chat-types";
+import type { ChatReaction } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-reaction-bar.css";

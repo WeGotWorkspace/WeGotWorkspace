@@ -1,5 +1,5 @@
 import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 export type MeetChannelSections = {
   channels: MeetChannel[];

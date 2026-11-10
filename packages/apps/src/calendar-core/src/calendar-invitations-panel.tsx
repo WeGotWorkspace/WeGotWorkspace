@@ -9,7 +9,7 @@ import {
   filterInvitationsByTab,
   type CalendarInvitationInboxTab,
 } from "@/calendar-core/src/calendar-invitation-event";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type {
   CalendarSchedulingNotification,
   CalendarSchedulingRespondStatus,

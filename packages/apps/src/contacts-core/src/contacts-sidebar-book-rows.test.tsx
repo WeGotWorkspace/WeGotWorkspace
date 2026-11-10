@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsSidebarBookRows } from "./contacts-sidebar-book-rows";
 import { addressBookDotColor } from "./contacts-addressbook-color";
 import type { ContactsAddressBookRow } from "./contacts-addressbook-write";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { CONTACTS_VIEW_PREFS_STORAGE_KEY, persistAddressBookColor } from "./contacts-view-prefs";
 
 afterEach(() => {

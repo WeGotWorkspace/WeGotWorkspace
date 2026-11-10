@@ -3,7 +3,7 @@ import { Bell } from "lucide-react";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import { CardPanel } from "@/card/src/card-panel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formValuesToTaskAlerts,

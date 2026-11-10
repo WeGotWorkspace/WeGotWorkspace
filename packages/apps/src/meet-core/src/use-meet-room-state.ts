@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
-import { meetPathOwnsInviteRoom } from "@/meet-core/src/meet-route-search";
+import { meetPathOwnsInviteRoom } from "@/lib/meetings/meet-route-search";
 
 export type UseMeetRoomStateArgs = {
   defaultDisplayName: string;

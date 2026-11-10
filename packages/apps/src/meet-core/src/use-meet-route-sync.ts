@@ -8,7 +8,7 @@ import {
   meetRoomFromSearch,
   meetSearchFromRoom,
   parseMeetRouteSearch,
-} from "@/meet-core/src/meet-route-search";
+} from "@/lib/meetings/meet-route-search";
 
 /** App-layer meet routing: read `?room=` / `/meet/channels/{id}` and sync active room back. */
 export function useMeetRouteSync() {

@@ -4,7 +4,7 @@ import {
   acceptMeetMeshSender,
   meetMeshReceiveCallChannelId,
 } from "@/meet-core/src/meet-mesh-inbound";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 describe("acceptMeetMeshChannel", () => {
   it("accepts DMs without a known collection id", () => {

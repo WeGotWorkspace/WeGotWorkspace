@@ -1,10 +1,9 @@
+import { resolveDriveFileApiPath, type DriveRestoreMove } from "@/drive-core/src/drive-batch-utils";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
-  resolveDriveFileApiPath,
   resolveFreeName,
-  type DriveRestoreMove,
-} from "@/drive-core/src/drive-batch-utils";
+} from "@/lib/files/drive-entry-names";
 import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/lib/files/drive-path-utils";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";

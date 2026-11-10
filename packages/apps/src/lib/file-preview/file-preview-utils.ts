@@ -1,5 +1,5 @@
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 import type { FileKind } from "@/lib/files/drive-models";
 import { DOCS_EDITOR_EXTENSIONS } from "@/lib/files/drive-models";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";

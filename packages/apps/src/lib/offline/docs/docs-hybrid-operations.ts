@@ -4,7 +4,7 @@ import {
   ensureTrashFolder,
   listTrashEntryNames,
   resolveFreeName,
-} from "@/drive-core/src/drive-batch-utils";
+} from "@/lib/files/drive-entry-names";
 import { parentAndName } from "@/lib/files/api-path";
 import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { isDriveTrashApiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";

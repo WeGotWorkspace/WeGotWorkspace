@@ -1,8 +1,4 @@
-import type {
-  ContactCard,
-  ContactCardCreate,
-  ContactCardPatch,
-} from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardCreate, ContactCardPatch } from "@/lib/models/contacts-types";
 import { connectedContacts, getCard } from "@/lib/api/wgw/contacts";
 import type { JmapContactCard, SetResponse } from "@/lib/jmap-client";
 import {
