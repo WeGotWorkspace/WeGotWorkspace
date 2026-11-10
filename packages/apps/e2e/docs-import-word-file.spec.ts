@@ -55,12 +55,8 @@ test.describe("Import docx file(s) (live app)", () => {
   }) => {
     const stamp = Date.now();
 
-    // While online the menu item tells Google Docs users how to bring a document in.
-    const menuItem = await openImportMenu(page);
-    await expect(menuItem).toContainText(MENU_ITEM);
-    await expect(menuItem).toContainText(
-      "From Google Docs: File → Download → Microsoft Word (.docx) first.",
-    );
+    // The menu item has no subtitle.
+    await expect(await openImportMenu(page)).toHaveText(MENU_ITEM);
     await page.keyboard.press("Escape");
 
     const logoBase = `e2e-import-logo-${stamp}`;

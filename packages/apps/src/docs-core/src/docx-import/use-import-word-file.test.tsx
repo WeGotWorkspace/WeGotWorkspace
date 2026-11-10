@@ -36,12 +36,10 @@ beforeEach(() => {
 });
 
 describe("useImportWordFile", () => {
-  it("offers Import docx file(s) with the Google Docs way in, and nothing when disabled", () => {
+  it("offers Import docx file(s) without a subtitle, and nothing when disabled", () => {
     const [item, ...rest] = setup().hook.result.current.menuItems;
     expect(item.label).toBe("Import docx file(s)");
-    expect(item.description).toBe(
-      "From Google Docs: File → Download → Microsoft Word (.docx) first.",
-    );
+    expect(item.description).toBeUndefined();
     expect(rest).toEqual([]);
     const disabled = setup(false).hook.result.current;
     expect(disabled.menuItems).toEqual([]);
