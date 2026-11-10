@@ -166,6 +166,31 @@ function summarize(
   return { periodsByUser, incompleteIds, coverage: { oldestFetchedAt, uncachedWeeks } };
 }
 
+/** Ticked rows and the folded state, stored per device in the calendar view prefs. */
+function useTeamAvailabilityPrefs(presetShownIds: readonly string[] | undefined) {
+  const [shownIds, setShownIds] = useState<ReadonlySet<string>>(() =>
+    presetShownIds ? new Set(presetShownIds) : readShownIds(),
+  );
+  const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("availabilityCollapsed");
+  const updateShown = useCallback((change: (current: ReadonlySet<string>) => Set<string>) => {
+    setShownIds((current) => {
+      const next = change(current);
+      patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
+      return next;
+    });
+  }, []);
+  const toggleShown = useCallback(
+    (id: string) => updateShown((current) => withIds(current, [id], !current.has(id))),
+    [updateShown],
+  );
+  const setShown = useCallback(
+    (ids: readonly string[], shown: boolean) =>
+      updateShown((current) => withIds(current, ids, shown)),
+    [updateShown],
+  );
+  return { shownIds, toggleShown, setShown, collapsed, toggleCollapsed };
+}
+
 /**
  * Team availability for the Calendar sidebar and grid (#1910). Only ticked
  * teammates are fetched: the weeks in view at once on every range change,
@@ -191,10 +216,9 @@ export function useTeamAvailability({
   const membersRef = useRef<CachedTeamMembers | null>(null);
   const [rows, setRows] = useState<AvailabilityWeek[]>([]);
   const [revision, bumpRevision] = useReducer((value: number) => value + 1, 0);
-  const [shownIds, setShownIds] = useState<ReadonlySet<string>>(() =>
-    preset?.shownIds ? new Set(preset.shownIds) : readShownIds(),
+  const { shownIds, toggleShown, setShown, collapsed, toggleCollapsed } = useTeamAvailabilityPrefs(
+    preset?.shownIds,
   );
-  const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("availabilityCollapsed");
   const nowRef = useRef(now);
   nowRef.current = now;
 
@@ -323,25 +347,6 @@ export function useTeamAvailability({
       cancelled = true;
     };
   }, [presetMode, revision, shownKey, viewer, visibleKey]);
-
-  const updateShown = useCallback((change: (current: ReadonlySet<string>) => Set<string>) => {
-    setShownIds((current) => {
-      const next = change(current);
-      patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
-      return next;
-    });
-  }, []);
-
-  const toggleShown = useCallback(
-    (id: string) => updateShown((current) => withIds(current, [id], !current.has(id))),
-    [updateShown],
-  );
-
-  const setShown = useCallback(
-    (ids: readonly string[], shown: boolean) =>
-      updateShown((current) => withIds(current, ids, shown)),
-    [updateShown],
-  );
 
   const summary = useMemo(() => {
     const weekSet = new Set(visibleWeeks);
