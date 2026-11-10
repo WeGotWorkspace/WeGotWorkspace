@@ -52,6 +52,12 @@ test.describe("Import Word file (live app)", () => {
   }) => {
     const stamp = Date.now();
 
+    // #1615: Google Docs people are pointed at the Word export, under the menu item.
+    await expect(await openImportMenu(page)).toContainText(
+      "From Google Docs: File → Download → Microsoft Word (.docx) first.",
+    );
+    await page.keyboard.press("Escape");
+
     const logoBase = `e2e-import-logo-${stamp}`;
     let dialog = await pickWordFile(page, `${logoBase}.docx`, fixture("image-link.docx"));
     await expect(dialog.getByPlaceholder("Name")).toHaveValue(logoBase);
