@@ -124,6 +124,7 @@ export function TextEditor({
       onInsertImage={onInsertImage}
       pageBreak={pageSetup != null}
       paginated={paginated}
+      fitToScreen={pageSetup?.fitToScreen === true}
       className="min-h-0 flex-1"
     />
   );

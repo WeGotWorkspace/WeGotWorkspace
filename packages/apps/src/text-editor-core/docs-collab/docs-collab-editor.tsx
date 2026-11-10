@@ -261,6 +261,7 @@ export function DocsCollabEditor({
       onInsertImage={onInsertImage}
       pageBreak={hasPages}
       paginated={paginated}
+      fitToScreen={pageSetup?.fitToScreen === true}
       overlay={
         commentsOverlay || suggestionsOverlay ? (
           <>

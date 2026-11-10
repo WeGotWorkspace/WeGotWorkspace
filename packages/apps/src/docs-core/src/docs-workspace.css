@@ -309,9 +309,10 @@
 }
 
 /* Pages (#1810): each page draws its own sheet, so the surface only centres the column.
-   Beside the source too: the formatted half shows the same pages. */
+   Beside the source too: the formatted half shows the same pages (its wrapper is only
+   `.text-editor--view-source`, so no `.text-editor` in this selector). */
 @media screen {
-  .docs-workspace__editor .text-editor .text-editor-sheet--paginated .text-editor-sheet__surface {
+  .docs-workspace__editor .text-editor-sheet--paginated .text-editor-sheet__surface {
     width: max-content;
     max-width: none;
     min-height: 0;
