@@ -9,6 +9,8 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import unusedImports from "eslint-plugin-unused-imports";
 import tseslint from "typescript-eslint";
 
+import { importBoundariesPlugin } from "./scripts/eslint-import-boundaries.mjs";
+
 // Frontend structure rules from #1642. Each message names the skill doc that
 // states the rule; those docs link back here.
 
@@ -112,68 +114,17 @@ const messageClassificationRules = {
   ],
 };
 
-const IMPORT_DIRECTION_DOC =
-  "Import direction: src/lib sits below every *-core package, and two app packages do not import each other. Move the shared code down into src/lib or a shared package. See #1642.";
-
-// Tests only. Panes, workspaces, controllers and stories are checked too: the
-// direction rules use `@typescript-eslint/no-restricted-imports`, a separate
-// rule from the error-level core `no-restricted-imports` those files carry, so
-// neither replaces the other's options.
-const DIRECTION_IGNORES = ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"];
-
-// `lib/` must not import a `*-core` package. Baseline when the rule was added:
-// 106 non-test files under src/lib. It is `warn` so lint stays green; the count
-// must only go down.
-const libImportDirectionRule = {
-  "@typescript-eslint/no-restricted-imports": [
-    "warn",
-    {
-      patterns: [{ regex: "^(@/|(\\.\\./)+)[a-z-]+-core(/|$)", message: IMPORT_DIRECTION_DOC }],
-    },
-  ],
+// Import direction (#1632): base (src/lib) → primitives → app packages
+// (*-core) → shell (wegotworkspace). The layer map and the *-core allowlist
+// live in scripts/eslint-import-boundaries.mjs. `warn` so lint stays green
+// while #1638 moves code down; `pnpm --filter @wgw/apps run lint:boundaries`
+// prints the count per edge. Tests are not checked; stories are.
+const importBoundaryBlock = {
+  files: ["src/**/*.{ts,tsx}"],
+  ignores: ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"],
+  plugins: { "wgw-boundaries": importBoundariesPlugin },
+  rules: { "wgw-boundaries/import-boundaries": "warn" },
 };
-
-// App packages that import each other in both directions today. A one-way
-// import is allowed. Baseline (non-test files, panes, workspaces,
-// controllers and stories included, importing the other package):
-//   calendar-core 3 <-> meet-core 13
-//   calendar-core 5 <-> tasks-core 3
-//   docs-core 27 <-> drive-core 3
-//   docs-core 9 <-> text-editor-core 36
-//   drive-core 2 <-> text-editor-core 6
-//   meet-core 1 <-> settings-core 1
-// Break a cycle by removing one direction, then drop the pair from this list.
-const TWO_WAY_PAIRS = [
-  ["calendar-core", "meet-core"],
-  ["calendar-core", "tasks-core"],
-  ["docs-core", "drive-core"],
-  ["docs-core", "text-editor-core"],
-  ["drive-core", "text-editor-core"],
-  ["meet-core", "settings-core"],
-];
-
-const forbiddenByPackage = new Map();
-for (const [a, b] of TWO_WAY_PAIRS) {
-  forbiddenByPackage.set(a, [...(forbiddenByPackage.get(a) ?? []), b]);
-  forbiddenByPackage.set(b, [...(forbiddenByPackage.get(b) ?? []), a]);
-}
-
-// One block per package, so blocks never replace each other's options.
-const crossPackageBlocks = [...forbiddenByPackage].map(([pkg, others]) => ({
-  files: [`src/${pkg}/**/*.{ts,tsx}`],
-  ignores: DIRECTION_IGNORES,
-  rules: {
-    "@typescript-eslint/no-restricted-imports": [
-      "warn",
-      {
-        patterns: others.map((other) => ({
-          group: [`@/${other}`, `@/${other}/**`],
-          message: IMPORT_DIRECTION_DOC,
-        })),
-      },
-    ],
-  },
-}));
 
 export default tseslint.config(
   { ignores: ["dist", ".output"] },
@@ -263,12 +214,7 @@ export default tseslint.config(
     ignores: ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"],
     rules: messageClassificationRules,
   },
-  {
-    files: ["src/lib/**/*.{ts,tsx}"],
-    ignores: DIRECTION_IGNORES,
-    rules: libImportDirectionRule,
-  },
-  ...crossPackageBlocks,
+  importBoundaryBlock,
   eslintPluginPrettier,
   storybook.configs["flat/recommended"],
 );

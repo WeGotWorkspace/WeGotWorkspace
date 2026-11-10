@@ -35,7 +35,8 @@
     "test:e2e:ui": "playwright test --ui",
     "chromatic": "chromatic --build-script-name build-storybook",
     "test:watch": "vitest --project unit --project jsdom",
-    "check:storybook-coverage": "node scripts/check-storybook-coverage.mjs"
+    "check:storybook-coverage": "node scripts/check-storybook-coverage.mjs",
+    "lint:boundaries": "node scripts/lint-boundaries.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
