@@ -8,7 +8,7 @@ import {
   type CalendarAttendee,
   type CalendarInvitee,
   type CalendarParticipationStatus,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import {
   calendarInviteeSearchRows,
   searchRowToAttendee,

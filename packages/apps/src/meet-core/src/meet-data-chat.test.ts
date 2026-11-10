@@ -6,7 +6,7 @@ import {
   mergeMeetRoomChatIntoChannel,
   type MeetChatLine,
 } from "@/meet-core/src/meet-chat-line";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { acceptMeetDataChat } from "@/meet-core/src/meet-data-chat";
 

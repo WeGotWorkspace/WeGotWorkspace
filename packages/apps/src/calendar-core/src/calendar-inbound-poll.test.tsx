@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
-import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";

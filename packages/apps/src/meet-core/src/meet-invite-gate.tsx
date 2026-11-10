@@ -23,7 +23,7 @@ import {
   meetChannelIdsEqual,
   meetCollectionIdCandidates,
   meetCollectionIdFromPublic,
-} from "@/meet-core/src/meet-public-id";
+} from "@/lib/meetings/meet-public-id";
 import { MeetGuestChannelFrame } from "@/meet-core/src/meet-guest-channel";
 import { MeetGuestLobbyStatus } from "@/meet-core/src/meet-guest-lobby-card";
 import {

@@ -6,10 +6,10 @@ import type {
   CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { TasksUIData } from "@/lib/models/tasks-types";
 
 export type CalendarWorkspaceProps = {

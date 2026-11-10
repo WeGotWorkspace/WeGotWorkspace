@@ -1,4 +1,4 @@
-import type { UserAvatarPresence } from "@/user-avatar/src/user-avatar";
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
 
 export type ChatAuthorPresence = UserAvatarPresence;
 

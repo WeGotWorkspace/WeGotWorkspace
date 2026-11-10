@@ -4,7 +4,7 @@ import { expect, fn, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
-import type { ChatMessage } from "@/chat-ui/src/chat-types";
+import type { ChatMessage } from "@/lib/models/chat-types";
 import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import {
   attachChatStoryPreviews,

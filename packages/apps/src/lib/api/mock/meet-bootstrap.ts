@@ -4,7 +4,7 @@ import type {
   MeetChannel,
   MeetDirectoryGroup,
   MeetUIData,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import { DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";
 import { DEFAULT_MEET_CHANNEL_COLOR } from "@/meet-core/src/meet-channel-write";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";

@@ -1,4 +1,4 @@
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import { shareGrantEntries } from "@/lib/sharing/collection-share";
 

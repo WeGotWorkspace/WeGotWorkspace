@@ -1,4 +1,4 @@
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { PresenceCoworker } from "@/presence-core/src/presence-types";
 
 /** Roster usernames → chat author presence (anyone absent is treated offline). */

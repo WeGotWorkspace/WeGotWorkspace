@@ -16,15 +16,15 @@ import {
   meetRemoveExpiresAt,
   resolveMeetReserveExpiresAt,
   type CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type {
   CalendarAPIOperations,
   CalendarEventDraft,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import { calendarInviteesFromShareDirectory } from "@/calendar-core/src/calendar-meet-channel-email";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { Card } from "@/card/src/card";
@@ -36,12 +36,12 @@ import {
   type MeetUpcomingMeeting,
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
-import type { MeetChannel, MeetChannelWriteInput } from "@/meet-core/src/meet-types";
+import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
+import type { MeetChannel, MeetChannelWriteInput } from "@/lib/models/meet-types";
 import {
   buildMeetCollectionInviteLink,
   buildMeetGuestCallLink,
-} from "@/meet-core/src/meet-route-search";
+} from "@/lib/meetings/meet-route-search";
 import "@/calendar-core/src/calendar-workspace.css";
 import "@/meet-core/src/meet-channel-dialog.css";
 import "./meet-create-meeting-dialog.css";

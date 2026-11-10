@@ -4,7 +4,7 @@ import {
   meetMeshChatMessageToApp,
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 const sample: ChatMessage = {
   id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
