@@ -14,7 +14,8 @@ export type NotesImportLabels = {
   importRetry: string;
   importProgress: (done: number, total: number) => string;
   importedNotes: (count: number) => string;
-  importSkippedHeading: string;
+  importSkippedHeading: (count: number) => string;
+  importNotesHeading: string;
   importDroppedTags: (tags: readonly string[]) => string;
   importImagesNotImported: (count: number) => string;
   importSkipReason: (reason: MarkdownImportSkipReason, status?: number) => string;
@@ -46,8 +47,10 @@ export const defaultNotesImportLabels: NotesImportLabels = {
   importDone: "Done",
   importRetry: "Retry",
   importProgress: (done, total) => `Importing ${Math.min(done + 1, total)} of ${total}…`,
-  importedNotes: (count) => `Imported ${count} ${plural(count, "note", "notes")}`,
-  importSkippedHeading: "Skipped",
+  importedNotes: (count) =>
+    count === 0 ? "No notes imported" : `Imported ${count} ${plural(count, "note", "notes")}`,
+  importSkippedHeading: (count) => `Skipped files (${count})`,
+  importNotesHeading: "Good to know",
   importDroppedTags: (tags) =>
     `${plural(tags.length, "Tag", "Tags")} not added: ${tags.join(", ")}. Tags may only use letters a–z and hyphens.`,
   importImagesNotImported: (count) =>

@@ -12,35 +12,57 @@
   @apply flex items-center gap-2 text-sm;
 }
 
+.notes-import-dialog__summary {
+  @apply flex items-center gap-2 text-sm text-foreground;
+}
+
+.notes-import-dialog__summary-icon {
+  @apply size-4 shrink-0;
+  color: var(--color-success);
+}
+
+.notes-import-dialog__summary--none .notes-import-dialog__summary-icon {
+  color: var(--color-warning);
+}
+
 .notes-import-dialog__result {
   @apply flex min-w-0 max-w-full flex-col gap-3 text-sm;
 }
 
-.notes-import-dialog__result-count {
-  @apply font-medium;
+.notes-import-dialog__skipped,
+.notes-import-dialog__notes {
+  @apply flex min-w-0 flex-col gap-3;
 }
 
-.notes-import-dialog__skipped {
-  @apply flex flex-col gap-1;
+.notes-import-dialog__notes-list {
+  @apply list-disc space-y-1.5 pl-5 marker:text-muted-foreground;
 }
 
-.notes-import-dialog__skipped-heading {
+.notes-import-dialog__section-heading {
   @apply text-sm font-medium;
 }
 
-.notes-import-dialog__skipped-list {
-  @apply flex max-h-48 flex-col gap-1 overflow-y-auto;
+.notes-import-dialog__skipped-scroll {
+  @apply max-h-56 min-w-0 overflow-y-auto;
 }
 
-.notes-import-dialog__skipped-item {
-  @apply flex min-w-0 flex-col;
+.notes-import-dialog__skipped-table {
+  @apply table-fixed;
+}
+
+/* Read-only rows: no hover wash. */
+.notes-import-dialog__skipped-row:hover {
+  @apply bg-transparent;
 }
 
 .notes-import-dialog__file-name {
-  @apply truncate;
+  @apply truncate py-2.5 pl-0;
 }
 
-.notes-import-dialog__reason,
+.notes-import-dialog__reason {
+  @apply py-2.5 pr-0 text-muted-foreground;
+}
+
 .notes-import-dialog__note {
   @apply text-muted-foreground;
 }
