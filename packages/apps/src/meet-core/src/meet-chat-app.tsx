@@ -41,7 +41,7 @@ import {
   meetPublicChannelId,
 } from "@/lib/meetings/meet-public-id";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
-import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";
 import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";

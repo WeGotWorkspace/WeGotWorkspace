@@ -23,7 +23,7 @@ import {
   meetMeshChatMessageFromApp,
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
-import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/lib/models/meet-types";
 import { presenceCallActiveEnvelope } from "@/presence-core/src/presence-envelope";
 import type { PresenceEnvelope, PresenceMeetFanoutEvent } from "@/presence-core/src/presence-types";
 

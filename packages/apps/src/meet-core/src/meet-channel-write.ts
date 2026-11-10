@@ -3,7 +3,7 @@ import type {
   MeetChannel,
   MeetChannelPatchInput,
   MeetChannelWriteInput,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 
 export const DEFAULT_MEET_CHANNEL_COLOR = "#962fa8";
 

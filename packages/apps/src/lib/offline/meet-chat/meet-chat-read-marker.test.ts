@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import {
   MEET_CHAT_CAUGHT_UP_READ_UID,
   latestMessageInChannel,

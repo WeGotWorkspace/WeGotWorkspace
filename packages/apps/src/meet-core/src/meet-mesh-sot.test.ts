@@ -15,7 +15,7 @@ import {
   applyMeetMeshFanoutEvent,
   wrapMeetChatOperationsWithMesh,
 } from "@/meet-core/src/meet-mesh-sot";
-import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/lib/models/meet-types";
 import type { PresenceEnvelope } from "@/presence-core/src/presence-types";
 
 const username = "alice";

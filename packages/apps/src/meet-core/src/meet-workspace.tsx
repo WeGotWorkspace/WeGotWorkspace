@@ -55,7 +55,7 @@ import {
   findMeetDirectMessagePerson,
   meetDirectMessagePeople,
 } from "@/meet-core/src/meet-direct-messages";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 import {
   meetInitialCallLayoutForChannel,
   useMeetCallLayout,

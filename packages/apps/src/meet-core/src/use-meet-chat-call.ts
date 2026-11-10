@@ -23,7 +23,7 @@ import type {
   MeetChannel,
   MeetChatOperations,
   MeetUIData,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";
 
 export type UseMeetChatCallArgs = {

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
-import type { ChatMessage, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import type { MeetThreadCallLayout } from "@/meet-core/src/meet-thread-placement";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
 

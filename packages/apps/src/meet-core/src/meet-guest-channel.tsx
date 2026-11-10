@@ -10,7 +10,7 @@ import {
 import { MeetGuestLobby } from "@/meet-core/src/meet-guest-lobby";
 import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannelKind } from "@/meet-core/src/meet-types";
+import type { MeetChannelKind } from "@/lib/models/meet-types";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import { cn } from "@/lib/utils";
 import "@/meet-core/src/meet-workspace.css";

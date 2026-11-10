@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { MeetAPIOperations } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations } from "@/lib/models/meet-types";
 import {
   meetInviteStateFromRoomStatus,
   meetRoomStatusAllowsHost,

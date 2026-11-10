@@ -10,7 +10,7 @@ import {
   sharePrincipalsFromDirectory,
   type CollectionSharePrincipal,
 } from "@/lib/sharing/collection-share";
-import type { MeetDirectoryGroup } from "@/meet-core/src/meet-types";
+import type { MeetDirectoryGroup } from "@/lib/models/meet-types";
 
 const GROUP_PRINCIPAL_PREFIX = "principals/groups/";
 
