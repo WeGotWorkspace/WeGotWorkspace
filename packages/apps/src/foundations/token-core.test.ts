@@ -93,7 +93,7 @@ describe("workspace token core", () => {
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
     expect(derive).toContain("--muted-foreground:");
     expect(derive).toContain("--color-muted-foreground:");
-    expect(derive).toContain("body,");
+    expect(derive).toContain(":where(body),");
   });
 
   it("gates the paper-sheet lift behind relative-color support", () => {
@@ -105,14 +105,13 @@ describe("workspace token core", () => {
 
   it("lists every selector that assigns --workspace-surface or --workspace-foreground", () => {
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
-    const where = derive.match(/:where\(\s*([\s\S]*?)\)\s*\{/);
+    const where = derive.match(/(:where\([^)]*\)\s*,\s*)*:where\([^)]*\)\s*\{/);
     expect(where, "derive :where list").toBeTruthy();
     const listed = new Set(
-      where![1]
-        .split(",")
-        .map((part) => part.trim())
-        .filter(Boolean),
+      [...where![0].matchAll(/:where\(\s*([^)]*?)\s*\)/g)].map((match) => match[1]!),
     );
+    expect(listed.has(":root")).toBe(true);
+    expect(listed.has(".workspace-app-layout__main")).toBe(true);
 
     const missing: string[] = [];
     for (const file of walkCss(srcRoot)) {
@@ -145,6 +144,23 @@ describe("workspace token core", () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it("keeps one :where() per scope in the shared token sheets", () => {
+    // A `:where(a, b, …)` list cannot be indexed by class, so the browser tests it
+    // against every element on each full restyle (seconds with 1,000 Docs rows).
+    const offenders: string[] = [];
+    for (const rel of [
+      "workspace-shell/src/workspace-derive.css",
+      "workspace-shell/src/workspace-color.css",
+      "workspace-shell/src/workspace-split-app.css",
+    ]) {
+      const css = readFileSync(join(srcRoot, rel), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const match of css.matchAll(/:where\(([^)]*)\)/g)) {
+        if (match[1]!.includes(",")) offenders.push(`${rel}: ${match[0].replace(/\s+/g, " ")}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it("paints month-view in-month day numbers from workspace foreground", () => {

@@ -4,55 +4,58 @@
  * Custom properties inherit their computed value (`var()` already substituted).
  * Remapping `--workspace-surface` on a host does not update a `:root` mix that
  * already resolved. Every scope that assigns a core pair must be in this
- * `:where` list so washes recompute locally. Do not redeclare these on product
+ * selector list so washes recompute locally. Do not redeclare these on product
  * sheets.
  *
  * Mix direction is foreground-into-surface so a dark scope inverts without
  * a second recipe. Hover / active / active-hover = 4 / 8 / 12%.
+ *
+ * One `:where()` per scope, never `:where(a, b, …)`: the browser cannot index a
+ * multi-selector `:where` by class, so it tests the whole list against every
+ * element on each full restyle. With a long list (1,000 Docs) that made opening
+ * a menu take seconds.
  */
 
-:where(
-  :root,
-  body,
-  .app-sidebar,
-  .overlay-paper,
-  .workspace-app-layout__main,
-  .docs-collab-sidebar-panel,
-  .docs-collab-sidebar-panel-drawer,
-  .admin-workspace,
-  .settings-workspace,
-  .notes-workspace,
-  .tasks-workspace,
-  .calendar-workspace,
-  .contacts-workspace,
-  .drive-workspace,
-  .docs-workspace,
-  .meet-workspace,
-  .meet-workspace--split,
-  .admin-dialog-surface,
-  .docs-dialog-surface,
-  .notes-dialog-surface,
-  .tasks-dialog-surface,
-  .calendar-dialog-surface,
-  .contacts-dialog-surface,
-  .drive-dialog-surface,
-  .meet-channel-dialog,
-  .meet-call-dialog,
-  .meet-device-popover,
-  .meet-dialog-surface,
-  .meet-popover-surface,
-  .meet-guest-channel__lobby,
-  .meet-call-bar,
-  .meet-call-stage,
-  .meet-call-expanded,
-  .meet-peer-tile,
-  .share-dialog,
-  .share-access-card,
-  .dropdown-menu-ui__content,
-  .dropdown-menu-ui__sub-content,
-  .select-ui__content,
-  .popover-ui--frost
-) {
+:where(:root),
+:where(body),
+:where(.app-sidebar),
+:where(.overlay-paper),
+:where(.workspace-app-layout__main),
+:where(.docs-collab-sidebar-panel),
+:where(.docs-collab-sidebar-panel-drawer),
+:where(.admin-workspace),
+:where(.settings-workspace),
+:where(.notes-workspace),
+:where(.tasks-workspace),
+:where(.calendar-workspace),
+:where(.contacts-workspace),
+:where(.drive-workspace),
+:where(.docs-workspace),
+:where(.meet-workspace),
+:where(.meet-workspace--split),
+:where(.admin-dialog-surface),
+:where(.docs-dialog-surface),
+:where(.notes-dialog-surface),
+:where(.tasks-dialog-surface),
+:where(.calendar-dialog-surface),
+:where(.contacts-dialog-surface),
+:where(.drive-dialog-surface),
+:where(.meet-channel-dialog),
+:where(.meet-call-dialog),
+:where(.meet-device-popover),
+:where(.meet-dialog-surface),
+:where(.meet-popover-surface),
+:where(.meet-guest-channel__lobby),
+:where(.meet-call-bar),
+:where(.meet-call-stage),
+:where(.meet-call-expanded),
+:where(.meet-peer-tile),
+:where(.share-dialog),
+:where(.share-access-card),
+:where(.dropdown-menu-ui__content),
+:where(.dropdown-menu-ui__sub-content),
+:where(.select-ui__content),
+:where(.popover-ui--frost) {
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
