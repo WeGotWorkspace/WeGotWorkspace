@@ -13,12 +13,16 @@ on:
 
 # Two tiers. Pull requests run the fast checks: mcp-server, api-quality,
 # apps-quality, build, chromatic. The heavy jobs (apps-e2e, api-mysql,
-# upgrade-e2e, install-zip-sqlite) run in the merge queue and on pushes to
-# main, which still guards every merge. A pull request labeled run-full-ci
-# runs them too, from its next CI run on (adding the label starts nothing).
-# apps-e2e is a required check, so on a pull request it still starts and
-# reports success without work: a job skipped by its `if` would report under
-# its unevaluated name and never satisfy the check.
+# upgrade-e2e, install-zip-sqlite) run in the merge queue. apps-e2e and
+# api-mysql also run on pushes to main; upgrade-e2e and install-zip-sqlite
+# do not (the install workflow covers main). The queue only waits for
+# required checks: apps-e2e is one, and build waits for the other three, so
+# a failing heavy job blocks the merge. A pull request labeled run-full-ci
+# runs the heavy jobs too, from its next CI run that the gate lets through
+# (a human push or a hand-over label; adding run-full-ci alone starts
+# nothing). apps-e2e is a required check, so on a pull request it still
+# starts and reports success without work: a job skipped by its `if` would
+# report under its unevaluated name and never satisfy the check.
 #
 # Any other label starts a run that does nothing. Its own group keeps it from
 # cancelling the PR's CI. The label names match review-loop-ci-gate.yml.
@@ -283,15 +287,34 @@ jobs:
           path: packages/apps/test-results
           if-no-files-found: ignore
 
+  # build is a required check, so it also carries the heavy tier: the merge
+  # queue only waits for required checks. It needs api-mysql, upgrade-e2e and
+  # install-zip-sqlite, and fails when any job it needs failed or was
+  # cancelled. Skipped counts as passed (a pull request without run-full-ci,
+  # or upgrade-e2e and install-zip-sqlite on a push to main).
+  # !cancelled() instead of the default success(): with success() a failed
+  # need would skip build, and a skipped build reports under its unevaluated
+  # name, so the required check would wait forever instead of failing.
   build:
     name: build${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
-    needs: [gate, api-quality, apps-quality]
+    needs: [gate, api-quality, apps-quality, api-mysql, upgrade-e2e, install-zip-sqlite]
     if: >-
+      !cancelled() &&
       needs.gate.outputs.run == 'true' &&
       (github.event_name != 'push' ||
       !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
+      - name: Jobs build needs passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$NEEDS" | jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' > /dev/null; then
+            echo "::error::A job that build needs failed or was cancelled (see the list above). In the merge queue this includes api-mysql, upgrade-e2e and install-zip-sqlite."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2

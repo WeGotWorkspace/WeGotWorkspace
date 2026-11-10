@@ -59,7 +59,7 @@ PR title: same Conventional Commits style as commit subject when possible.
 
 ## Required CI (branch protection on `main`)
 
-From root [README.md](../../../README.md):
+Branch protection on `main` requires these checks:
 
 - `build` (CI)
 - `apps-e2e` (CI)
@@ -70,7 +70,7 @@ From root [README.md](../../../README.md):
 
 `SAST (Psalm PHP)` runs in the security workflow and is not a required status check.
 
-CI has two tiers. A pull request runs the fast checks (`mcp-server`, `api-quality`, `apps-quality`, `build`, `chromatic`, and the security workflow). The heavy jobs (`apps-e2e`, `api-mysql`, `upgrade-e2e`, `install-zip-sqlite`) run in the merge queue and on pushes to `main`. On a pull request `apps-e2e` reports success without running, so the required check is met. To run the heavy jobs on a pull request, for example when it changes e2e specs, migrations, or the installer, add the `run-full-ci` label and push; adding the label alone starts nothing.
+CI has two tiers. A pull request runs the fast checks (`mcp-server`, `api-quality`, `apps-quality`, `build`, `chromatic`, and the security workflow). The heavy jobs (`apps-e2e`, `api-mysql`, `upgrade-e2e`, `install-zip-sqlite`) run in the merge queue; `apps-e2e` and `api-mysql` also run on pushes to `main`. The queue only waits for required checks, so `build` waits for `api-mysql`, `upgrade-e2e`, and `install-zip-sqlite` and fails when one of them failed. On a pull request those three are skipped, and `apps-e2e` reports success without running, so the required checks are met. To run the heavy jobs on a pull request, for example when it changes e2e specs, migrations, or the installer, add the `run-full-ci` label. It takes effect on the next CI run the review-loop gate lets through (a human push or a hand-over label); adding the label alone starts nothing.
 
 Fix failing checks before expecting merge.
 
