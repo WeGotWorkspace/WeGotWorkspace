@@ -7,7 +7,7 @@ import type {
   ChatReaction,
   MeetUnfurlMap,
 } from "@/meet-core/src/meet-types";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 
 const GENERAL = "channel-general";
 

@@ -13,7 +13,7 @@ import {
   mergeShareWith,
   type CollectionSharePrincipal,
   type CollectionShareWith,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 
 export type MeetChatOperationsHandle = MeetChatOperations & {
   getState: () => MeetChatState;

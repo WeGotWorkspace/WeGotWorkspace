@@ -6,7 +6,7 @@ import {
 } from "@/calendar-core/src/calendar-share";
 import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
 import { calendarDirectoryGroupsFromBootstrap } from "@/calendar-core/src/calendar-workspace-props";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 
 type UseCalendarSharePrincipalsOptions = {
   data: CalendarUIData;

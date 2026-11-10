@@ -17,7 +17,7 @@ import {
   sharesTeamWithViewer,
   shareRightsAllowWrite,
   shareRightsForPermission,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 
 export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 export type {

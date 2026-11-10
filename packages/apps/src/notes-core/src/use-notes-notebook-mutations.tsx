@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import type {
   TaskProjectDialogConfirmInput,
   TaskProjectDialogState,

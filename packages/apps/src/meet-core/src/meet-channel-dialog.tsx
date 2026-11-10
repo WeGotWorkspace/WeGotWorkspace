@@ -23,7 +23,7 @@ import {
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-field";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
 import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";

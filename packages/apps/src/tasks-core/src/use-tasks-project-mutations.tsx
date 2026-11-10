@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Tag } from "lucide-react";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import type { TaskProjectDialogConfirmInput } from "@/tasks-core/src/task-project-dialog";
 import type { TaskProjectDialogState } from "@/tasks-core/src/task-project-dialog";
 import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";

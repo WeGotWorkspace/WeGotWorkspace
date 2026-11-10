@@ -7,7 +7,7 @@ import { IconButton } from "@/button/src/icon-button";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
-import { accessToUIPermission, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { accessToUIPermission, type ShareUIPermission } from "@/lib/sharing/share-access-map";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";

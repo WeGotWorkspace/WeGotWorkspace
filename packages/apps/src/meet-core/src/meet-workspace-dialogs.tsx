@@ -1,5 +1,5 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { MeetChannelDialog, MeetDeleteConfirmDialog } from "@/meet-core/src/meet-channel-dialog";
 import { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";
 import type {

@@ -9,7 +9,7 @@ import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   sharePrincipalsFromDirectory,
   type CollectionSharePrincipal,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 import type { MeetDirectoryGroup } from "@/meet-core/src/meet-types";
 
 const GROUP_PRINCIPAL_PREFIX = "principals/groups/";

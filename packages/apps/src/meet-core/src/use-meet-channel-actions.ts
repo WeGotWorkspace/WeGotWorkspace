@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { mergeShareWith } from "@/share-ui/collection-share";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import { mergeShareWith } from "@/lib/sharing/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import {
   calendarEventsForMeetingChannel,
   upcomingEventIdsForChannel,

@@ -7,7 +7,7 @@ import type {
 } from "@/meet-core/src/meet-types";
 import { DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";
 import { DEFAULT_MEET_CHANNEL_COLOR } from "@/meet-core/src/meet-channel-write";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import {
   MEET_CHAT_AUTHOR_PRESENCE,
   MEET_CHAT_DIRECTORY_USERS,

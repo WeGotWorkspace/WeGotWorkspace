@@ -26,7 +26,7 @@ import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import { calendarInviteesFromShareDirectory } from "@/calendar-core/src/calendar-meet-channel-email";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { Switch } from "@/ui/switch";

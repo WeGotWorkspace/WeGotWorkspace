@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { AddressBook, AddressBookMutationPatch } from "@/contacts-core/src/contacts-types";
 import {

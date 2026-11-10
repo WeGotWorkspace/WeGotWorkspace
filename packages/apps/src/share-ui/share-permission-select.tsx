@@ -1,5 +1,5 @@
 import { Eye, Lock, MessageSquare, Pencil, ShieldCheck } from "lucide-react";
-import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/lib/sharing/share-access-map";
 import { shareLabels, sharePermissionLabels } from "@/share-ui/share-labels";
 import { ShareRowSelect, type ShareRowSelectOption } from "@/share-ui/share-row-select";
 

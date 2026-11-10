@@ -12,7 +12,7 @@ import {
   filterSharePrincipals,
   mergeShareWith,
   sharePrincipalsFromDirectory,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,

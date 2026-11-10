@@ -12,7 +12,7 @@ import {
   loadCalendarDirectoryGroups,
   searchCollectionSharePrincipals,
 } from "@/lib/api/wgw/calendar";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
 import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
