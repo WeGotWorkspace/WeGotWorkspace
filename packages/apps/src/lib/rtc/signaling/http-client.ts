@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import { rtcLog } from "@/lib/rtc/log";
 import type { NetClass } from "@/lib/rtc/net-probe";
 import { resolveRoomId } from "@/lib/rtc/room-id";
@@ -14,12 +15,9 @@ import type {
  * tell a lost room (403) from a peer the server no longer knows (404); the
  * message stays the server's error code.
  */
-export class HttpSignalingError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
+export class HttpSignalingError extends ApiError {
+  constructor(message: string, status: number) {
+    super(message, status);
     this.name = "HttpSignalingError";
   }
 }

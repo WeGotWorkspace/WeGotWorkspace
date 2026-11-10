@@ -198,7 +198,8 @@ export async function fetchAdminUpdateLog(opts?: { signal?: AbortSignal }): Prom
 
 async function fetchAdminUpdateState(opts?: { signal?: AbortSignal }): Promise<AdminUpdateState> {
   const res = await wgwFetch("/admin/updates/state", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /admin/updates/state failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`GET /admin/updates/state failed (${res.status})`, res.status);
   return mapWgwUpdateStateToUI((await wgwReadJson(res)) as WgwUpdateStateResponse);
 }
 
@@ -206,7 +207,8 @@ async function fetchAdminSearchReindexState(opts?: {
   signal?: AbortSignal;
 }): Promise<AdminSearchReindexState> {
   const res = await wgwFetch("/admin/search/jobs/current", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /admin/search/jobs/current failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`GET /admin/search/jobs/current failed (${res.status})`, res.status);
   return mapWgwSearchReindexStateToUI((await wgwReadJson(res)) as WgwSearchReindexStateResponse);
 }
 
@@ -330,7 +332,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         body: JSON.stringify(payload),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`PUT /admin/settings failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`PUT /admin/settings failed (${res.status})`, res.status);
       return fetchAdminUiData(opts);
     },
     setAppUrl: async (url, opts) => {
@@ -345,7 +348,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res,
           `PUT /admin/settings/app-url failed (${res.status})`,
         );
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       return fetchAdminUiData(opts);
     },
@@ -361,7 +364,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res,
           `POST /admin/mail-delivery/test failed (${res.status})`,
         );
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       return fetchAdminUiData(opts);
     },
@@ -372,7 +375,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         body: JSON.stringify({ type: "check" }),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`POST /admin/update-jobs failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`POST /admin/update-jobs failed (${res.status})`, res.status);
       return fetchAdminUiData(opts);
     },
     setUpdateChannel: async (channel, opts) => {
@@ -387,7 +391,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res,
           `PUT /admin/updates/channel failed (${res.status})`,
         );
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       return fetchAdminUpdateState(opts);
     },
@@ -411,7 +415,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           }
         }
         const message = await readApiError(res, `POST /admin/update-jobs failed (${res.status})`);
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       await wgwReadJson(res as Response);
       return fetchAdminUpdateStateWithWarmup(opts);
@@ -421,7 +425,11 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         method: "DELETE",
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`DELETE /admin/update-jobs/current failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(
+          `DELETE /admin/update-jobs/current failed (${res.status})`,
+          res.status,
+        );
       const payload = (await wgwReadJson(res)) as { state: WgwUpdateStateResponse };
       return mapWgwUpdateStateToUI(payload.state);
     },
@@ -429,7 +437,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       const res = await wgwFetch("/admin/search/jobs", { method: "POST", signal: opts?.signal });
       if (!res.ok) {
         const message = await readApiError(res, `POST /admin/search/jobs failed (${res.status})`);
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       await wgwReadJson(res);
       return fetchAdminSearchReindexState(opts);
@@ -445,7 +453,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res,
           `DELETE /admin/search/jobs/current failed (${res.status})`,
         );
-        throw new Error(message);
+        throw new WgwRequestError(message, res.status);
       }
       const payload = (await wgwReadJson(res)) as { state: WgwSearchReindexStateResponse };
       return mapWgwSearchReindexStateToUI(payload.state);
@@ -453,7 +461,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
     refreshUpdateLog: (opts) => fetchAdminUpdateLog(opts),
     clearUpdateLog: async (opts) => {
       const res = await wgwFetch("/admin/updates/log", { method: "DELETE", signal: opts?.signal });
-      if (!res.ok) throw new Error(`DELETE /admin/updates/log failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`DELETE /admin/updates/log failed (${res.status})`, res.status);
       await wgwReadJson(res);
       return [];
     },
@@ -462,7 +471,11 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         method: "DELETE",
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`DELETE /admin/backups/${name} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(
+          `DELETE /admin/backups/${name} failed (${res.status})`,
+          res.status,
+        );
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -472,9 +485,13 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         signal: opts?.signal,
       });
       if (res.status === 404) {
-        throw new Error("Manual database backup creation is not available on this server yet.");
+        throw new WgwRequestError(
+          "Manual database backup creation is not available on this server yet.",
+          res.status,
+        );
       }
-      if (!res.ok) throw new Error(`POST /admin/updates/backups failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`POST /admin/updates/backups failed (${res.status})`, res.status);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -483,7 +500,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         method: "GET",
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`GET /admin/backups/${name} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`GET /admin/backups/${name} failed (${res.status})`, res.status);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       try {
@@ -510,7 +528,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         }),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`POST /admin/users failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`POST /admin/users failed (${res.status})`, res.status);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -521,7 +540,11 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         body: JSON.stringify(input),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`PATCH /admin/users/${username} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(
+          `PATCH /admin/users/${username} failed (${res.status})`,
+          res.status,
+        );
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -530,7 +553,11 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         method: "DELETE",
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`DELETE /admin/users/${username} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(
+          `DELETE /admin/users/${username} failed (${res.status})`,
+          res.status,
+        );
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -545,7 +572,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         }),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`POST /admin/groups failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`POST /admin/groups failed (${res.status})`, res.status);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -557,7 +585,8 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         body: JSON.stringify(input),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`PATCH /admin/groups/${slug} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`PATCH /admin/groups/${slug} failed (${res.status})`, res.status);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
@@ -567,7 +596,11 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         method: "DELETE",
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`DELETE /admin/groups/${slug} failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(
+          `DELETE /admin/groups/${slug} failed (${res.status})`,
+          res.status,
+        );
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },

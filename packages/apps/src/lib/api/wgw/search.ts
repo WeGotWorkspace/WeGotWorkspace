@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 
 export type WgwUnifiedSearchResult = {
@@ -82,7 +83,7 @@ export async function fetchWgwUnifiedSearch(
     method: "GET",
     signal: params.signal,
   });
-  if (!res.ok) throw new Error(`GET /search/results failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /search/results failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as WgwUnifiedSearchResponse;
   return payload.data;
 }
@@ -110,7 +111,10 @@ export async function downloadWgwUnifiedSearchRecord(input: {
     signal: input.signal,
   });
   if (!res.ok)
-    throw new Error(`GET /search/results/${resultSegment}/content failed (${res.status})`);
+    throw new WgwRequestError(
+      `GET /search/results/${resultSegment}/content failed (${res.status})`,
+      res.status,
+    );
   const blob = await res.blob();
   const fileName = filenameFromContentDisposition(res.headers.get("content-disposition"));
   const url = URL.createObjectURL(blob);

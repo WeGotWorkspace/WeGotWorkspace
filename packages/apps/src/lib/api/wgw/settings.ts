@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type { SettingsProfileRequest } from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import {
@@ -40,7 +41,8 @@ export function mapWgwSettingsStateToUI(state: WgwSettingsStateResponse): Settin
 
 export async function fetchSettingsLiveBootstrap(): Promise<SettingsAppBootstrap> {
   const [session, stateRes] = await Promise.all([wgwFetchPrincipal(), wgwFetch("/settings/state")]);
-  if (!stateRes.ok) throw new Error(`GET /settings/state failed (${stateRes.status})`);
+  if (!stateRes.ok)
+    throw new WgwRequestError(`GET /settings/state failed (${stateRes.status})`, stateRes.status);
   const json = (await wgwReadJson(stateRes)) as WgwSettingsStateResponse;
   const data = mapWgwSettingsStateToUI(json);
 
@@ -70,7 +72,7 @@ async function requestSettings(
     signal: opts?.signal,
   });
   if (!res.ok) {
-    throw new Error(`PUT ${path} failed (${res.status})`);
+    throw new WgwRequestError(`PUT ${path} failed (${res.status})`, res.status);
   }
   return (await wgwReadJson(res)) as WgwSettingsStateResponse;
 }
@@ -88,7 +90,8 @@ export async function listSettingsMcpGrants(opts?: {
   signal?: AbortSignal;
 }): Promise<SettingsMcpGrant[]> {
   const res = await wgwFetch("/settings/mcp-grants", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /settings/mcp-grants failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`GET /settings/mcp-grants failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as { grants?: SettingsMcpGrant[] };
   return Array.isArray(payload.grants) ? payload.grants : [];
 }
@@ -101,5 +104,9 @@ export async function revokeSettingsMcpGrant(
     method: "DELETE",
     signal: opts?.signal,
   });
-  if (!res.ok) throw new Error(`DELETE /settings/mcp-grants/${clientId} failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(
+      `DELETE /settings/mcp-grants/${clientId} failed (${res.status})`,
+      res.status,
+    );
 }

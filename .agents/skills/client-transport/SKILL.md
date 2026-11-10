@@ -14,9 +14,19 @@ paths:
 
 An error that leaves the transport layer carries an HTTP status. A bare `Error` whose text the caller must interpret is not that contract.
 
-- A real HTTP failure is an error class with a `status: number` field. `ContactsRequestError`, `TasksRequestError`, `NotesVjournalRequestError`, and `JmapRequestError` already follow this.
+- A real HTTP failure is an `ApiError` (`lib/api/api-error.ts`): `status: number` and, when the client parsed the `{ error, code? }` body, `code`. Throw `WgwRequestError(message, res.status)` for a plain WeGotWorkspace request, or a domain subclass (`ContactsRequestError`, `TasksRequestError`, `NotesRequestError`, `NotesVjournalRequestError`, `MeetChatRequestError`, `DriveTransportError`, `ShareSessionError`, `CalendarImportError`, `CollabHttpError`, `HttpSignalingError`) when callers need to tell them apart. Check with `isApiError(error)` or `instanceof` on the subclass. `ApiError` sets no `name`; a subclass that had a name keeps it.
+- A new error class for an HTTP failure extends `ApiError`. Do not re-declare `status` or `code` on the subclass: the build defines class fields, so a re-declared field resets the value `super()` set.
+- `JmapRequestError` (`lib/jmap-client`) is the exception: a JMAP request can fail before any status exists, so its `status` is optional and it does not extend `ApiError`.
 - A JMAP `/set` rejection has no HTTP status. `httpStatusFromFlushError` (`lib/offline/core/outbox-error-status.ts`) translates it. When a new `setError.type` is permanent, add it to that mapping. Do not add a regex at the caller.
 - A condition that locally means "does not exist" or "no access", such as a failed path resolution, is also a status (`404` or `403`). Throw a typed error.
+
+## Bare `Error` in `lib/api`
+
+A bare `throw new Error(` is left only where no status exists or where adding one would change what a caller does:
+
+- Programmer and input assertions (missing argument, guest operation that is not offered, missing config).
+- Failures with no HTTP status: unexpected JSON shape, a JMAP `SetError`, a missing blob id, an app turned off in settings.
+- Seven HTTP failures whose callers classify on status, where a new status would change behaviour the user sees: `drive.ts` star writes and `/files/starred` (the Drive and Docs outbox flush would treat a 409/412 as a state mismatch), guest `/files/children` (the folder listing would start auto-retrying 5xx), `drive-shares.ts` `getShareJson` (same two effects), `calendar-scheduling.ts` `throwUnlessSchedulingOk` (a 403 RSVP would become a permanent outbox failure), and `http.ts` `readTokenResponse` (dev auto-login). Converting them is a behaviour change: decide it per site with the outbox and listing owners.
 
 ## Do not classify on the message
 
