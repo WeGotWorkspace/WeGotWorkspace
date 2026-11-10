@@ -7,7 +7,7 @@ import { groupContactCardsBySection } from "@/contacts-core/src/contacts-display
  * `contacts-workspace.css`. Convert to px with the live root font size —
  * do not assume 16px.
  */
-export const CONTACTS_LIST_CARD_ROW_REM = 5.5;
+export const CONTACTS_LIST_CARD_ROW_REM = 6.75;
 export const CONTACTS_LIST_HEADER_ROW_REM = 2.25;
 /** Below this, render every row. Large books window to the scrollport. */
 export const CONTACTS_LIST_WINDOW_AFTER = 80;

@@ -24,6 +24,7 @@ function UsersPaneHarness() {
           groups: ["principals/groups/administrators"],
           createdAt: "",
           enabled: true,
+          isAdmin: true,
         },
         {
           id: "bob",
@@ -33,6 +34,7 @@ function UsersPaneHarness() {
           groups: [],
           createdAt: "",
           enabled: true,
+          isAdmin: false,
         },
         {
           id: "carol",
@@ -42,6 +44,7 @@ function UsersPaneHarness() {
           groups: [],
           createdAt: "",
           enabled: false,
+          isAdmin: false,
         },
       ],
     }),
@@ -70,6 +73,7 @@ function UsersPaneHarness() {
         open={Boolean(editingUser)}
         title="Edit user"
         initial={editingUser ?? undefined}
+        isSelf={editingUser?.username === controller.currentUser}
         onOpenChange={(open) => {
           if (!open) setEditUserId(null);
         }}
@@ -152,5 +156,40 @@ export const Default: Story = {
     await waitFor(() => {
       expect(body.queryAllByText("User disabled")).toHaveLength(0);
     });
+  },
+};
+
+/** #1925: admin is a role per user, switched on in the user dialog. */
+export const AdminRole: Story = {
+  tags: ["vitest-ci"],
+  render: () => <UsersPaneHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(canvas.getAllByText("Admin")).toHaveLength(1);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Edit Alice Example" }));
+    const ownDialog = await body.findByRole("dialog", { name: "Edit user" });
+    const ownSwitch = within(ownDialog).getByRole("switch", { name: "Administrator" });
+    await expect(ownSwitch).toHaveAttribute("aria-checked", "true");
+    await expect(ownSwitch).toBeDisabled();
+    await expect(ownDialog).toHaveTextContent("You cannot remove your own administrator access.");
+    await userEvent.click(within(ownDialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => {
+      expect(body.queryByRole("dialog")).toBeNull();
+    });
+
+    await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
+    const bobDialog = await body.findByRole("dialog", { name: "Edit user" });
+    const bobSwitch = within(bobDialog).getByRole("switch", { name: "Administrator" });
+    await expect(bobSwitch).toHaveAttribute("aria-checked", "false");
+    await expect(bobSwitch).toBeEnabled();
+    await userEvent.click(bobSwitch);
+    await userEvent.click(within(bobDialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(body.queryByRole("dialog")).toBeNull();
+      expect(canvas.getAllByText("Admin")).toHaveLength(2);
+    });
+    toast.dismiss();
   },
 };

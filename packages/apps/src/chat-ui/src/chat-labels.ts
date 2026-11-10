@@ -13,7 +13,6 @@ export const chatUiLabels = {
   previewMissing: "Preview unavailable",
   previewExternal: "External link",
   composerPlaceholder: "Write a message…",
-  sendHint: "Return to send · Shift + Return for new line",
   today: "Today",
   yesterday: "Yesterday",
   newMessages: "New messages",

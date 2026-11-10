@@ -22,10 +22,19 @@
   --text-editor-prose-heading-h6-size: 1;
 }
 
+/* Body text a touch dimmer than the headings, so the headings lead. */
 .note-text-editor-body .text-editor-prose {
-  color: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+  color: color-mix(
+    in oklch,
+    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 86%,
+    var(--paper-sheet-bg, var(--workspace-surface))
+  );
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
+}
+
+.note-text-editor-body .text-editor-prose :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--notes-detail-contrast-fg, var(--workspace-foreground));
 }
 
 .note-text-editor-body .text-editor-slash-menu {

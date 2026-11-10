@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
+import { useChatDock } from "@/chat-ui/src/use-chat-dock";
 import type {
   ChatAuthorPresenceMap,
   ChatMentionPrincipal,
@@ -53,8 +54,9 @@ export const MeetChatColumn = memo(function MeetChatColumn({
   className,
 }: MeetChatColumnProps) {
   const typingLabel = meetTypingLabel(typingNames);
+  const { hostRef, dockRef } = useChatDock<HTMLDivElement, HTMLDivElement>();
   return (
-    <div className={cn("meet-workspace__chat-column", className)}>
+    <div ref={hostRef} className={cn("meet-workspace__chat-column", className)}>
       <ChatMessageList
         messages={messages}
         currentUserId={currentUserId}
@@ -74,7 +76,6 @@ export const MeetChatColumn = memo(function MeetChatColumn({
             initialContent={message.body}
             onSend={(payload) => onSaveEdit?.(message.id, payload)}
             onCancel={onCancelEdit}
-            hint={null}
           />
         )}
         actionsForMessage={(message) => {
@@ -100,16 +101,19 @@ export const MeetChatColumn = memo(function MeetChatColumn({
           ];
         }}
       />
-      <div className="meet-workspace__typing" aria-live="polite">
-        {typingLabel}
-      </div>
-      <div className="meet-workspace__chat-composer">
-        <ChatComposer
-          principals={principals}
-          placeholder={placeholder}
-          onSend={onSend}
-          onTypingChange={onComposerTyping}
-        />
+      {/* Floats over the messages: the typing line, then the frosted composer. */}
+      <div ref={dockRef} className="meet-workspace__chat-dock">
+        <div className="meet-workspace__typing" aria-live="polite">
+          {typingLabel ? <span className="meet-workspace__typing-pill">{typingLabel}</span> : null}
+        </div>
+        <div className="meet-workspace__chat-composer">
+          <ChatComposer
+            principals={principals}
+            placeholder={placeholder}
+            onSend={onSend}
+            onTypingChange={onComposerTyping}
+          />
+        </div>
       </div>
     </div>
   );

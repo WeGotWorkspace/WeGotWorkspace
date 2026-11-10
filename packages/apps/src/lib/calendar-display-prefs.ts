@@ -1,7 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import {
   COMMON_EVENT_TIME_ZONES,
-  commonTimeZoneOptions,
+  timeZoneOptions,
   formatTimeZoneLabel,
   type CommonEventTimeZone,
 } from "@/lib/calendar-time-zones";
@@ -154,7 +154,7 @@ export function calendarDisplayTimeZoneOptions(
   locale: string,
   currentTimeZone?: string | null,
 ): { value: string; label: string }[] {
-  return commonTimeZoneOptions(locale, currentTimeZone);
+  return timeZoneOptions(locale, currentTimeZone);
 }
 
 export { COMMON_EVENT_TIME_ZONES, formatTimeZoneLabel };

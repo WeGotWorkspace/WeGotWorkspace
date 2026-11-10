@@ -2,9 +2,10 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 
 export function tasksCompleteToastMessage(
   completing: boolean,
-  labels: Pick<TasksUILabels, "toastTaskCompleted" | "toastTaskReopened">,
+  count: number,
+  labels: Pick<TasksUILabels, "toastTasksCompleted" | "toastTasksReopened">,
 ): string {
-  return completing ? labels.toastTaskCompleted : labels.toastTaskReopened;
+  return completing ? labels.toastTasksCompleted(count) : labels.toastTasksReopened(count);
 }
 
 export function tasksMoveToastMessage(

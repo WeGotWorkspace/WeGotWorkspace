@@ -8,7 +8,7 @@ describe("driveLabels", () => {
   });
 
   it("labels Shared with me and My Drives from the shared files-browser SST", () => {
-    expect(driveLabels.sidebarHome).toBe("My Files");
+    expect(driveLabels.sidebarHome).toBe("All Files");
     expect(driveLabels.sidebarMyDrive).toBe("Personal");
     expect(driveLabels.sidebarSharedWithMe).toBe("Shared with me");
     expect(driveLabels.sidebarSharedDrives).toBe("My Drives");

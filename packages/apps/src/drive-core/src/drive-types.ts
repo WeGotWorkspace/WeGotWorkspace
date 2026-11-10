@@ -106,12 +106,6 @@ export type DriveUnifiedSearchResult = {
   metadata?: Record<string, unknown>;
 };
 
-export type DriveUnifiedSearchDownloadInput = {
-  resultId?: number | string;
-  sourceType: "caldav" | "carddav";
-  sourceKey: string;
-};
-
 export type { DriveUploadQueueSnapshot };
 
 export type DriveAPIOperations = {
@@ -161,6 +155,14 @@ export type DriveAPIOperations = {
   readFileBlob: (path: string, opts?: { signal?: AbortSignal }) => Promise<Blob>;
   checkUploadReady: (opts?: { signal?: AbortSignal }) => Promise<void>;
   listStars: (opts?: { signal?: AbortSignal }) => Promise<string[]>;
+  /**
+   * One page of every file across the viewer's drives (All Files), newest first.
+   * Absent for guests: All Files then lists the files already loaded.
+   */
+  listAllFiles?: (
+    input: { offset: number; limit: number },
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ entries: WgwDriveDirectoryEntry[]; nextOffset: number; hasMore: boolean }>;
   listEntriesByPaths: (
     paths: string[],
     opts?: { signal?: AbortSignal },
@@ -176,10 +178,6 @@ export type DriveAPIOperations = {
       onProgress?: (progress: DriveUploadProgress) => void;
     },
   ) => Promise<DriveUIData>;
-  downloadUnifiedSearchRecord?: (
-    input: DriveUnifiedSearchDownloadInput,
-    opts?: { signal?: AbortSignal },
-  ) => Promise<void>;
   /**
    * Signed-in Drive with the offline layer: store picked files on the device
    * as one batch waiting for the batch dialog (placeholders show at once).

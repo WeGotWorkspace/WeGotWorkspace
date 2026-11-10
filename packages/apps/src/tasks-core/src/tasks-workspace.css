@@ -27,19 +27,8 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 70%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }

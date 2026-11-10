@@ -74,7 +74,7 @@ describe("formatNoteDateForList", () => {
   it("shows compact date (no year) for earlier days in the current year", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 5, 10, 18, 0, 0));
-    const edited = new Date(2026, 5, 9, 8, 30, 0);
+    const edited = new Date(2026, 5, 8, 8, 30, 0);
     expect(formatNoteDateForList(edited.toISOString())).toBe(formatSameYearDate(edited));
   });
 

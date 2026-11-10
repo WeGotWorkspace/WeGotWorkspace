@@ -11,6 +11,7 @@ import {
 } from "@/ui/dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveGroupUiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
@@ -47,7 +48,10 @@ export function DocsImagePickerDialog({
 }: DocsImagePickerDialogProps) {
   const [step, setStep] = useState<DocsImageInsertStep>(initialStep);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const groupPaths = useMemo(() => groupRoots.map((root) => `Groups/${root.slug}`), [groupRoots]);
+  const groupPaths = useMemo(
+    () => groupRoots.map((root) => driveGroupUiPath(root.slug)),
+    [groupRoots],
+  );
   const groupRootNames = useMemo(() => new Set(groupRoots.map((root) => root.slug)), [groupRoots]);
   const rootLabels = useMemo(
     () => buildDocsFolderPickerRootLabels(groupRoots, docsLabels.homeMyDrive),

@@ -24,8 +24,9 @@ import { settingsSectionFromLocation } from "@/settings-core/src/settings-sectio
 import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
 import type { SettingsDialogApi } from "@/settings-core/src/settings-dialog-provider";
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
-import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
+import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { TooltipProvider } from "@/ui/tooltip";
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -114,10 +115,26 @@ async function renderHosted(ui: ReactNode, initialPath = "/host") {
   return { history, router };
 }
 
-function footerSettingsButton() {
-  const footer = document.querySelector(".workspace-sidebar-account-footer");
-  if (!(footer instanceof HTMLElement)) return null;
-  return within(footer).queryByRole("button", { name: "Settings" });
+/** The sidebar's primary button for `appId`, which carries the app's Settings in its menu. */
+function SidebarPrimary({ appId }: { appId: WorkspaceAppId }) {
+  return (
+    <AppSidebarPrimaryProvider settingsAppId={appId}>
+      <SidebarSegmentedNewMenu mainLabel="New" menuLabel="More options" onMainAction={() => {}} />
+    </AppSidebarPrimaryProvider>
+  );
+}
+
+function primaryMenuTrigger() {
+  return screen.queryByRole("button", { name: "More options" });
+}
+
+/** Opens the primary button's menu and returns its Settings option (null when none). */
+function openSidebarSettingsOption() {
+  const trigger = primaryMenuTrigger();
+  if (!trigger) return null;
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  return screen.queryByRole("menuitem", { name: "Settings" });
 }
 
 function dialogFooterCancelButton() {
@@ -128,7 +145,7 @@ function dialogFooterCancelButton() {
   return within(footer).getByRole("button", { name: "Cancel" });
 }
 
-describe("settings dialog and in-app footer", () => {
+describe("settings dialog from the sidebar primary button's menu", () => {
   beforeEach(() => {
     cleanup();
     mockDomApis();
@@ -141,14 +158,11 @@ describe("settings dialog and in-app footer", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("opens Calendar in the dialog from the footer", async () => {
-    await renderHosted(
-      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
-    );
-    const settingsButton = footerSettingsButton();
-    expect(settingsButton).toBeTruthy();
-    settingsButton!.focus();
-    fireEvent.click(settingsButton!);
+  it("opens Calendar in the dialog from the primary button's menu", async () => {
+    await renderHosted(<SidebarPrimary appId="calendar" />);
+    const settingsOption = openSidebarSettingsOption();
+    expect(settingsOption).toBeTruthy();
+    fireEvent.click(settingsOption!);
 
     expect(await screen.findByRole("heading", { name: "Calendar" })).toBeTruthy();
     expect(await screen.findByRole("combobox", { name: "Timezone" })).toBeTruthy();
@@ -169,44 +183,50 @@ describe("settings dialog and in-app footer", () => {
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 
-  it("shows the Settings row for Notes", async () => {
+  it("puts Settings last in the Notes primary button's menu, not in a sidebar section", async () => {
     const bootstrap = createNotesAppBootstrap();
     await renderHosted(
       <NotesWorkspace {...bootstrap} listLoading={false} onLogout={() => undefined} />,
       "/notes",
     );
-    expect(footerSettingsButton()).toBeTruthy();
+    const sections = document.querySelector(".app-sidebar__sections");
+    expect(sections).toBeInstanceOf(HTMLElement);
+    expect(within(sections as HTMLElement).queryByRole("button", { name: "Settings" })).toBeNull();
+
+    const trigger = within(
+      document.querySelector(".app-sidebar__primary-button") as HTMLElement,
+    ).getByRole("button", { name: "More create options" });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    const options = screen.getAllByRole("menuitem").map((item) => item.textContent?.trim());
+    expect(options.at(-1)).toBe("Settings");
   });
 
-  it("hides the Settings row for Drive", async () => {
-    await renderHosted(<WorkspaceAppSettingsFooter appId="drive" session={mockWorkspaceSession} />);
-    expect(footerSettingsButton()).toBeNull();
+  it("makes the primary button a split button for Settings alone", async () => {
+    await renderHosted(<SidebarPrimary appId="calendar" />);
+    expect(primaryMenuTrigger()).toBeTruthy();
   });
 
-  it("restores focus to the footer Settings control on dismiss", async () => {
-    await renderHosted(
-      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
-    );
-    const settingsButton = footerSettingsButton();
-    expect(settingsButton).toBeTruthy();
-    settingsButton!.focus();
-    fireEvent.click(settingsButton!);
+  it("keeps a plain primary button for Drive, which has no settings", async () => {
+    await renderHosted(<SidebarPrimary appId="drive" />);
+    expect(primaryMenuTrigger()).toBeNull();
+    expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
+  });
+
+  it("returns focus to the primary button's menu trigger on dismiss", async () => {
+    await renderHosted(<SidebarPrimary appId="calendar" />);
+    fireEvent.click(openSidebarSettingsOption()!);
     expect(await screen.findByRole("button", { name: "Open in Settings" })).toBeTruthy();
 
     fireEvent.click(dialogFooterCancelButton());
     await waitFor(() => {
-      expect(footerSettingsButton()).toBe(document.activeElement);
+      expect(primaryMenuTrigger()).toBe(document.activeElement);
     });
   });
 
   it("does not restore focus to an unmounted opener after Open in Settings", async () => {
-    await renderHosted(
-      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
-    );
-    const settingsButton = footerSettingsButton();
-    expect(settingsButton).toBeTruthy();
-    settingsButton!.focus();
-    fireEvent.click(settingsButton!);
+    await renderHosted(<SidebarPrimary appId="calendar" />);
+    fireEvent.click(openSidebarSettingsOption()!);
     fireEvent.click(await screen.findByRole("button", { name: "Open in Settings" }));
 
     await waitFor(() => {
@@ -218,7 +238,7 @@ describe("settings dialog and in-app footer", () => {
       expect(heading?.textContent).toContain("Calendar");
       expect(document.activeElement).toBe(heading);
     });
-    expect(footerSettingsButton()).toBeNull();
+    expect(primaryMenuTrigger()).toBeNull();
   });
 });
 

@@ -193,6 +193,37 @@ final class IcsJmapTaskConverterTest extends TestCase
         $this->assertSame('Europe/Amsterdam', $roundTrip[0]['timeZone']);
     }
 
+    public function test_utc_due_beside_a_floating_start_keeps_the_start_floating(): void
+    {
+        $ics = $this->vtodo("DTSTART:20260610T090000\r\nDUE:20260611T170000Z");
+
+        $task = $this->reader->tasksFromIcs($ics)[0];
+        $this->assertArrayNotHasKey('timeZone', $task);
+        $this->assertSame('2026-06-10T09:00:00', $task['start']);
+        $this->assertSame('2026-06-11T17:00:00Z', $task['due']);
+
+        $roundTripIcs = $this->converter->icsFromTask($task);
+        $this->assertStringContainsString("DTSTART:20260610T090000\r\n", $roundTripIcs);
+        $this->assertStringContainsString("DUE:20260611T170000Z\r\n", $roundTripIcs);
+    }
+
+    public function test_utc_start_and_due_read_as_the_utc_zone(): void
+    {
+        $ics = $this->vtodo("DTSTART:20260610T090000Z\r\nDUE:20260611T170000Z");
+
+        $task = $this->reader->tasksFromIcs($ics)[0];
+        $this->assertSame('UTC', $task['timeZone']);
+        $this->assertSame('2026-06-10T09:00:00', $task['start']);
+        $this->assertSame('2026-06-11T17:00:00', $task['due']);
+    }
+
+    private function vtodo(string $times): string
+    {
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:VTODO\r\n"
+            ."UID:utc-mix\r\nDTSTAMP:20260601T000000Z\r\nSUMMARY:Mixed\r\n{$times}\r\n"
+            ."END:VTODO\r\nEND:VCALENDAR\r\n";
+    }
+
     public function test_ics_props_survives_round_trip(): void
     {
         $ics = str_replace("\n", "\r\n", (string) file_get_contents("{$this->fixturesDir}/ics-props-todo.ics"));

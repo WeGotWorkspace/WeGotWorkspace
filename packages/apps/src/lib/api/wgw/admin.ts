@@ -133,6 +133,7 @@ export function mapWgwAdminStateToUI(
       groups: user.groups,
       createdAt: user.createdAt,
       enabled: user.enabled !== false,
+      isAdmin: user.isAdmin === true,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,
@@ -525,6 +526,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           displayName: input.displayName,
           email: input.email,
           groups: (input.groups ?? []).filter((group) => group.startsWith("principals/groups/")),
+          isAdmin: input.isAdmin ?? false,
         }),
         signal: opts?.signal,
       });

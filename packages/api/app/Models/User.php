@@ -31,6 +31,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string $digesta1
  * @property string $digest
  * @property bool $enabled
+ * @property bool $is_admin
  * @property int $ui_session_epoch
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
@@ -52,6 +53,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         'digest',
         'digesta1',
         'enabled',
+        'is_admin',
     ];
 
     /** @var list<string> */
@@ -67,6 +69,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
     {
         return [
             'enabled' => 'boolean',
+            'is_admin' => 'boolean',
             'ui_session_epoch' => 'integer',
         ];
     }

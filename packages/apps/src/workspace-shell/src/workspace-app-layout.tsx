@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
@@ -9,7 +9,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
-import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
 type WorkspaceAppLayoutBaseProps = {
@@ -209,45 +208,21 @@ function useConnectivityAnnouncement(online: boolean): string {
   return announcement;
 }
 
-export type WorkspaceSidebarSettingsItem = {
-  label: string;
-  onClick: () => void;
-};
-
 type WorkspaceSidebarAccountFooterProps = {
   session: WorkspaceSession;
   onLogout?: () => void;
   /** Optional second line under the display name. Defaults to username. */
   detailLine?: string;
-  /** When omitted, the footer is avatar + logout only. */
-  settingsItem?: WorkspaceSidebarSettingsItem;
 };
 
+/** The account card at the foot of every app sidebar (Settings lives in the first section). */
 export function WorkspaceSidebarAccountFooter({
   session,
   onLogout,
   detailLine,
-  settingsItem,
 }: WorkspaceSidebarAccountFooterProps) {
   return (
     <div className="workspace-sidebar-account-footer">
-      {settingsItem ? (
-        <div className="workspace-sidebar-account-footer__settings">
-          <button
-            type="button"
-            className="workspace-sidebar-account-footer__settings-button"
-            onClick={settingsItem.onClick}
-            {...sidebarSelectMarker}
-          >
-            <span className="workspace-sidebar-account-footer__settings-icon" aria-hidden>
-              <Settings className="size-4" />
-            </span>
-            <span className="workspace-sidebar-account-footer__settings-label">
-              {settingsItem.label}
-            </span>
-          </button>
-        </div>
-      ) : null}
       <WorkspaceUserFooter
         name={session.user.displayName}
         initials={workspaceUserInitials(session.user)}

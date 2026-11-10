@@ -114,6 +114,12 @@ const preview: Preview = {
         createElement(AppToaster),
       );
     },
+    // Toolbar theme switch: same `data-theme` attribute the SPA sets before first paint.
+    (Story, context) => {
+      const theme = context.globals.theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = theme;
+      return createElement(Story);
+    },
     (Story) =>
       createElement(
         TooltipProvider,
@@ -171,8 +177,23 @@ const preview: Preview = {
       },
     },
   },
+  globalTypes: {
+    theme: {
+      description: "Colour theme",
+      toolbar: {
+        title: "Theme",
+        icon: "mirror",
+        items: [
+          { value: "light", title: "Light", icon: "sun" },
+          { value: "dark", title: "Dark", icon: "moon" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
   initialGlobals: {
     viewport: { value: DEFAULT_VIEWPORT, isRotated: false },
+    theme: "light",
   },
 };
 

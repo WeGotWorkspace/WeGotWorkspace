@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import { IconButton } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import { DropdownMenu, type DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
 import {
   DocsPageSetupIcon,
@@ -13,13 +13,19 @@ import { cn } from "@/lib/utils";
 
 export type DocsHeaderAction = ActionBarAction & {
   className?: string;
+  /** Wide screens: icon + visible label (Share) instead of icon-only. */
+  showLabel?: boolean;
   "data-count"?: number;
+  /** Wide screens: render after `trailing` (review toggle after Suggest). Phones keep it in the menu. */
+  placement?: "end";
 };
 
 export type DocsHeaderActionsProps = {
   actions: DocsHeaderAction[];
   menuLabel?: string;
   leading?: ReactNode;
+  /** Last in the row at every width (mode switch, e.g. Suggesting). */
+  trailing?: ReactNode;
   /** Page setup: first button in the wide-screen row, a submenu in the phone overflow menu. */
   pageSetup?: DocsPageSetupMenuProps;
   className?: string;
@@ -56,6 +62,20 @@ function pageSetupMenuEntries({ disabled, ...props }: DocsPageSetupMenuProps): D
 }
 
 function renderActionButton(action: DocsHeaderAction) {
+  if (action.showLabel) {
+    return (
+      <Button
+        key={action.id ?? action.label}
+        label={action.label}
+        icon={action.icon}
+        onClick={action.onClick}
+        disabled={action.disabled}
+        size="md"
+        variant="outline"
+        className={action.className}
+      />
+    );
+  }
   return (
     <IconButton
       key={action.id ?? action.label}
@@ -77,10 +97,13 @@ export function DocsHeaderActions({
   actions,
   menuLabel = "More actions",
   leading,
+  trailing,
   pageSetup,
   className,
 }: DocsHeaderActionsProps) {
-  if (actions.length === 0 && !leading) return null;
+  if (actions.length === 0 && !leading && !trailing) return null;
+  const rowActions = actions.filter((action) => action.placement !== "end");
+  const endActions = actions.filter((action) => action.placement === "end");
 
   return (
     <div className={cn("docs-workspace__header-actions", className)}>
@@ -89,7 +112,7 @@ export function DocsHeaderActions({
         <>
           <div className="docs-workspace__header-actions-row">
             {pageSetup ? <DocsPageSetupMenu {...pageSetup} /> : null}
-            {actions.map(renderActionButton)}
+            {rowActions.map(renderActionButton)}
           </div>
           <div className="docs-workspace__header-actions-menu">
             <DropdownMenu
@@ -112,6 +135,12 @@ export function DocsHeaderActions({
             />
           </div>
         </>
+      ) : null}
+      {trailing ? <div className="docs-workspace__header-actions-trailing">{trailing}</div> : null}
+      {endActions.length > 0 ? (
+        <div className="docs-workspace__header-actions-row docs-workspace__header-actions-row--end">
+          {endActions.map(renderActionButton)}
+        </div>
       ) : null}
     </div>
   );

@@ -73,7 +73,7 @@ export const Default: Story = {
       "Published",
       defaultNotesLabels.addNotebook,
     ]);
-    await expect(document.querySelector(".notes-notebook-select__separator")).toBeTruthy();
+    await expect(document.querySelector(".collection-select__separator")).toBeTruthy();
     await expect(screen.getByRole("option", { name: "Drafts" })).toHaveAttribute(
       "data-state",
       "checked",

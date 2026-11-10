@@ -6,15 +6,9 @@
  * Notes product shell: cream panes. The sidebar rail is the shared Sand wash,
  * not a full-bleed accent. `--workspace-accent` is Dark (buttons, checks,
  * selected chips use white on that fill). Detail pane / desk is the same cream
- * as the footer and action bar (`--workspace-chrome-footer-bg`), so the open-note
- * paper card can
- * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
- * `--notes-detail-tint` at 11% in oklab (same % as Calendar’s srgb
- * `surfaceTint`) — a very light notebook wash that keeps chroma/hue,
- * never the full collection color. Do not mix the sheet in oklch: an
- * 11% cylindrical blend into warm Soft interpolates toward cream’s hue
- * and reads peach for purple/teal notebooks.
- * `--notes-detail-accent` still binds to that tint so selected
+ * as the footer and action bar (`--workspace-chrome-footer-bg`), and the open
+ * note sits on it without a tinted sheet (`--paper-sheet-bg` is the surface).
+ * `--notes-detail-accent` binds to the notebook tint so selected
  * Star/Archive and editor checks use the live notebook hue. Detail tag
  * chips invert the paper sheet: fill is `--notes-detail-contrast-fg`,
  * label and icons are `--paper-sheet-bg` (no notebook color, no stroke).
@@ -52,51 +46,29 @@
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
 
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 70%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
-
   --notes-list-star-color: var(--workspace-accent);
+  /* Quiet text (row foot, edited date, add tag): the Notes ink is a light green,
+   * so it needs 68% (not the suite's 60–62%) to read at 4.5:1 on the paper. */
+  --notes-quiet-text-color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
+  --list-item-muted-color: var(--notes-quiet-text-color);
+  --tag-group-add-button-fg: var(--notes-quiet-text-color);
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  /*
-   * Selected list row: same wash as sidebar item hover
-   * (`.sidebar-section .menu-item--interactive:hover` /
-   * `--button-outline-hover-background`). Active-only stays the Drive tile wash.
-   */
-  --list-item-selected-bg: var(--button-outline-hover-background);
-  --list-item-active-bg: var(--drive-item-selected-background);
-  /* Checked fill is accent (Dark). Glyph follows the accent-foreground pair. */
-  --list-item-checkbox-icon-color: var(--workspace-accent-foreground);
-  --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
-  /* Workspace-level — sidebar collection rows override with row color.
-   * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph
-   * uses the shared Dark-mixed default. Detail editor task-lists use the tag
-   * wash on `.note-text-editor-body`. */
-  --checkbox-checked-border: var(--workspace-accent);
-  /* Idle sidebar filter chips read the selected collection-row wash on the
-   * chip rule (sidebar-local `--button-outline-active-background`). Do not
-   * alias that wash here: `.notes-workspace` resolves the mix against the
-   * desk surface, not the sidebar. Selected chips use the foreground/surface pair.
-   * Detail category chips invert the sheet (`--notes-detail-contrast-fg` /
-   * `--paper-sheet-bg`). `--note-detail-tag-*` stays the editor task-list wash. */
-  --notes-tag-fg: var(--workspace-foreground);
-  /* Selected sidebar tag chip — foreground fill, surface label, no stroke. Nested
-   * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
-  --notes-tag-selected-bg: var(--workspace-foreground);
-  --notes-tag-selected-fg: var(--workspace-surface);
+  /* Tags are the Tag primitive's chip. Idle sidebar chips keep its neutral wash;
+   * an active tag (selected in the sidebar, set on the open note) is this pair:
+   * the ink dimmed a little into the surface, with a surface label. Nested
+   * `.notes-workspace` inherits the tokens so stories do not reset chip text.
+   * `--note-detail-tag-*` is the editor task-list wash, not the tags. */
+  --notes-tag-active-bg: color-mix(
+    in oklch,
+    var(--workspace-foreground) 78%,
+    var(--workspace-surface)
+  );
+  --notes-tag-active-fg: var(--workspace-surface);
   /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
    * surfaceTint 14% accent into surface (srgb). */
   --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
@@ -107,13 +79,11 @@
   );
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: var(--notes-detail-accent);
-  /* Very light notebook wash on cream — not the full `--notes-detail-tint`.
-   * oklab (not oklch): small % keeps notebook chroma/hue on warm Soft. */
-  --paper-sheet-bg: color-mix(
-    in oklab,
-    var(--notes-detail-tint, var(--workspace-surface)) 11%,
-    var(--workspace-surface)
-  );
+  /* The open note sits on the plain pane surface: no notebook wash, no sheet
+   * shadow. The notebook colour lives in the eyebrow above the title
+   * (`--notes-detail-accent`); task checks follow the text, not the notebook. */
+  --paper-sheet-bg: var(--workspace-surface);
+  --paper-sheet-shadow: none;
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
     in oklch,
@@ -132,12 +102,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  /*
-   * Detail paper: small cream desk gaps. Min/max height resolve against the
-   * scrollport (minus these pads) so short notes fill the visible desk.
-   */
-  --note-detail-sheet-desk-pad-block-start: 1.5rem;
-  --note-detail-sheet-desk-pad-block-end: 0.75rem;
 
   /*
    * Outline / menu-item / collection-row language.
@@ -149,124 +113,16 @@
   --button-active-color: var(--workspace-foreground);
 }
 
-/* Detail scroll shares the cream desk (card is the notebook sheet). */
-.notes-workspace .workspace-detail-pane__scroll {
-  background-color: var(--notes-detail-body-bg);
-}
-
-/*
- * Notes detail editor task-list only — not Docs, not sidebar 16px collection
- * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
- * Same family as detail tags: saturated border + surfaceTint fill.
- */
+/* Editor task checks follow the text, not the notebook: a ring in the body ink,
+ * and when checked the inverse — filled with the ink, the check in the sheet colour. */
 .notes-workspace .note-text-editor-body {
-  --checkbox-border-color: var(--note-detail-tag-border);
-  --checkbox-checked-bg: var(--note-detail-tag-bg);
-  --checkbox-checked-border: var(--note-detail-tag-border);
-  --checkbox-checked-fg: var(--note-detail-tag-fg);
-}
-
-/*
- * Note paper sits on the cream desk. Horizontal gutters stay flushed
- * (`padding-inline: 0`) so the sheet owns `--notes-pane-padding-x`. Block
- * padding is a modest desk gap under the action-bar and a small gap above
- * the footer — not the pane defaults (`pt-6 pb-10` / `md:pt-12 md:pb-16`).
- * Min-height fills the scrollport (minus desk pads); height grows with
- * content. Overflow scrolls on `.workspace-detail-pane__scroll`, not the sheet.
- */
-.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-  padding-inline: 0;
-  padding-block-start: var(--note-detail-sheet-desk-pad-block-start);
-  padding-block-end: var(--note-detail-sheet-desk-pad-block-end);
-}
-
-.notes-workspace .note-detail-view.paper-sheet {
-  /* Match list gutter; note-detail-view.css carries the same defaults.
-   * Scrollport floor via shared `.paper-sheet` + `--paper-sheet-min-height`. */
-  padding-inline: var(--notes-pane-padding-x);
-  --paper-sheet-min-height: calc(
-    100% - var(--note-detail-sheet-desk-pad-block-start) -
-      var(--note-detail-sheet-desk-pad-block-end)
-  );
-}
-
-/*
- * Sheet measure is `max-w-[680px]` (`.note-detail-view.paper-sheet`). Once the
- * detail pane is that narrow, the sheet's inline edges already meet the pane.
- * Zero desk pads at the same width so full height arrives with the side flush
- * — not later, while a band of viewports still shows cream above and below.
- * Variables live on the scroll (a descendant of container `workspace-detail`)
- * so the shared min-height calc becomes `100%`.
- */
-@container workspace-detail (max-width: 680px) {
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-    --note-detail-sheet-desk-pad-block-start: 0;
-    --note-detail-sheet-desk-pad-block-end: 0;
-    background-color: var(--paper-sheet-bg);
-  }
-
-  .notes-workspace .note-detail-view.paper-sheet {
-    --paper-sheet-shadow: none;
-  }
-}
-
-/*
- * Flush sheet chrome below the sidebar-dock threshold (`--breakpoint-sidebar`
- * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Below that the
- * sidebar overlays, so the pane can still be wider than 680px; `max-w-none`
- * removes the remaining inline inset and the desk pads drop with it. Wider
- * panes keep the cream desk until the 680px container query above.
- */
-@media (max-width: 72.49rem) {
-  .notes-workspace {
-    --note-detail-sheet-desk-pad-block-start: 0;
-    --note-detail-sheet-desk-pad-block-end: 0;
-  }
-
-  .notes-workspace .workspace-detail-pane:has(.note-detail-view.paper-sheet) {
-    background-color: var(--paper-sheet-bg);
-  }
-
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
-    padding: 0;
-    background-color: var(--paper-sheet-bg);
-  }
-
-  /* Same element: `class="note-detail-view paper-sheet"`. */
-  .notes-workspace .note-detail-view.paper-sheet {
-    @apply mx-0 max-w-none;
-    --paper-sheet-shadow: none;
-  }
+  --checkbox-mark-fill: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+  --checkbox-mark-check: var(--workspace-surface);
 }
 
 /* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */
 :root[data-theme="dark"] .notes-workspace {
   --paper-sheet-shadow: none;
-}
-
-/*
- * Empty detail (“Select a note”): pin CollectionState ~40% down the scroll
- * pane (not dead center). Asymmetric flex spacers 2:3 ≈ 40%/60%; Drive keeps
- * justify-center on its own scroll host.
- */
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::before {
-  content: "";
-  flex: 2 0 0;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state)::after {
-  content: "";
-  flex: 3 0 0;
-}
-
-.notes-workspace .workspace-detail-pane__scroll:has(> .collection-state) > .collection-state {
-  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
@@ -300,26 +156,6 @@
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
-/* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
-.notes-workspace .workspace-detail-footer__meta-tag--edited {
-  @apply shrink-0;
-  --tag-bg: var(--button-outline-hover-background);
-  /* 72% clears WCAG AA on cream footer wash (~4.5:1); 65% was ~4.38:1. */
-  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-}
-
-.notes-workspace .workspace-detail-footer__meta-tag--edited .tag {
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
-}
-
-/* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
-.notes-workspace .workspace-detail-pane > .action-bar {
-  background-color: var(--workspace-chrome-footer-bg, var(--workspace-surface));
-  /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
-  padding-inline: var(--notes-pane-padding-x);
-}
-
 /*
  * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker).
  * Height/radius come from the shared primitive; fill is `--input-background`.
@@ -340,41 +176,18 @@
   --button-outline-hover-color: var(--notes-detail-accent-strong);
 }
 
-.notes-workspace .note-detail-view__tag-group {
-  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-  --tag-group-input-border: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
-  --tag-group-input-bg: color-mix(in oklch, var(--workspace-foreground) 4%, transparent);
-  --tag-group-input-bg-focus: var(--workspace-surface);
-  --tag-group-input-fg: var(--workspace-foreground);
-  --tag-group-suggestions-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --tag-group-suggestions-bg: var(--workspace-surface);
-  --tag-group-suggestion-bg-active: color-mix(
-    in oklch,
-    var(--workspace-foreground) 6%,
-    transparent
-  );
-}
-
+/* The open note's tags are active tags: the same colours as a selected sidebar
+ * tag. The Add tag control keeps its neutral wash. */
 .notes-workspace .note-detail-view__tag-group .tag {
-  @apply border-0;
-  /* Invert the paper sheet: fill is the sheet text, ink is the sheet fill. */
-  --tag-bg: var(--notes-detail-contrast-fg, var(--workspace-foreground));
-  --tag-fg: var(--paper-sheet-bg);
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
+  --tag-bg: var(--notes-tag-active-bg);
+  --tag-fg: var(--notes-tag-active-fg);
 }
 
-.notes-workspace .note-detail-view__tag-group .tag__icon,
-.notes-workspace .note-detail-view__tag-group .tag__label,
-.notes-workspace .note-detail-view__tag-group .tag__remove {
-  color: var(--tag-fg);
-  @apply opacity-100;
-}
-
-/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows).
- * Match section heading / MenuItem inset — not `px-4` (double-gutter vs rows). */
+/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows), the same `lg`
+ * chips as the detail (look lives in the Tag primitive). Match section heading /
+ * MenuItem inset — not `px-4` (double-gutter vs rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-1.5 space-y-0;
+  @apply flex flex-wrap gap-2 space-y-0;
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
@@ -385,7 +198,9 @@
 
 .notes-workspace .notes-sidebar-tags__item {
   @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
-  @apply cursor-pointer rounded-full outline-none;
+  @apply cursor-pointer outline-none;
+  /* Focus ring follows the capsule chip. */
+  border-radius: var(--control-radius-pill);
 }
 
 .notes-workspace .notes-sidebar-tags__item:focus-visible {
@@ -393,30 +208,23 @@
   --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
-/* Idle chips: same wash as a selected sidebar row, no stroke.
- * Resolve on the chip so `.app-sidebar`’s recomputed active wash wins. */
+/* Idle chips are the primitive's neutral chip; only the states swap its tokens. */
 .notes-workspace .notes-sidebar-tags__item .tag {
-  @apply max-w-full border-0;
-  background-color: var(
-    --collection-sidebar-row-selected-bg,
-    var(--button-outline-active-background)
-  );
-  color: var(--notes-tag-fg);
+  @apply max-w-full;
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
-  background-color: var(--button-outline-active-hover-background);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 11%, transparent);
 }
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  @apply border-0;
-  background-color: var(--notes-tag-selected-bg);
-  color: var(--notes-tag-selected-fg);
+  --tag-bg: var(--notes-tag-active-bg);
+  --tag-fg: var(--notes-tag-active-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
-  background-color: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
