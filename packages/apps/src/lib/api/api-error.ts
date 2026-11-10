@@ -1,8 +1,8 @@
 /**
- * An API request that failed with an HTTP status. Every error that leaves the
- * transport layer for an HTTP failure is one of these, so callers classify on
- * `status` and `code`, never on the message text
- * (`.agents/skills/client-transport/SKILL.md`).
+ * An API request that failed with an HTTP status, so callers classify on
+ * `status` and `code`, never on the message text. New HTTP failures use it; a
+ * few older classes still extend `Error` with their own `status` (listed in
+ * `.agents/skills/client-transport/SKILL.md`).
  *
  * `code` is the server's machine code from the `{ error, code? }` body when the
  * client parsed it (`.agents/skills/api/rest-design.md#errors`).
