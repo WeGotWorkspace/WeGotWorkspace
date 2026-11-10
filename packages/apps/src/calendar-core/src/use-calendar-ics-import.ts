@@ -71,11 +71,14 @@ export function useCalendarIcsImport({
       setImportDialogBusy(true);
       setImportDialogError(null);
       void (async () => {
-        let icsText = "";
         try {
-          icsText = await readIcsFile(file);
+          const icsText = await readIcsFile(file);
           if (icsText.trim() === "") {
             setImportDialogError(L.importFileInvalid);
+            return;
+          }
+          if (icsHasOnlyTasks(icsText)) {
+            setImportDialogError(L.importFileHasOnlyTasks);
             return;
           }
           const result = await runCalendarIcsImport(operations, icsText, destination);
@@ -95,10 +98,6 @@ export function useCalendarIcsImport({
           setImportFile(null);
           onMutated?.();
         } catch (error) {
-          if (icsHasOnlyTasks(icsText)) {
-            setImportDialogError(L.importFileHasOnlyTasks);
-            return;
-          }
           const message =
             error instanceof Error && error.message.trim() !== ""
               ? error.message

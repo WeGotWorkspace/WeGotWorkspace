@@ -212,6 +212,7 @@ describe("useCalendarIcsImport", () => {
     });
 
     expect(result.current.importDialogError).toBe(defaultCalendarLabels.importFileHasOnlyTasks);
+    expect(importEvents).not.toHaveBeenCalled();
     expect(toastApi.showError).not.toHaveBeenCalled();
   });
 });
