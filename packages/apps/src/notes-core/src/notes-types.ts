@@ -101,4 +101,49 @@ export type NotesAPIOperations = {
     action: DeleteNotebookAction,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
+  /** Markdown import (#1623). Online only; absent hides the menu item. */
+  markdownImport?: NotesMarkdownImportOperations;
+};
+
+/**
+ * Direct writes for the Markdown import (#1623) — not the outbox, which only
+ * creates empty notes. The cache and other tabs only see a note once it is final (`writeBody` or `publishNote`).
+ */
+export type NotesMarkdownImportOperations = {
+  /** `POST /notes/items` with a client uid; a repeat with the same uid returns the same note. */
+  createNote: (
+    input: {
+      notebook: NotesNotebookCollection;
+      uid: string;
+      title: string;
+      categories: string[];
+    },
+    opts?: { signal?: AbortSignal },
+  ) => Promise<Note>;
+  /** Store one image in the note's hidden Drive folder. */
+  uploadImage: (
+    note: Pick<Note, "id" | "groupSlug">,
+    file: File,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ nodeId: string }>;
+  /** Removes a note the import created but could not finish (best effort). */
+  deleteNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<void>;
+  /**
+   * Reads the note back with its stored Markdown body. Used after a body write
+   * failed, to tell a write whose response was lost from one that never landed.
+   */
+  readBody: (
+    note: Note,
+    notebook: NotesNotebookCollection,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ note: Note; body: string }>;
+  /** Writes a finished note without a body write (title only) to the cache and tells other tabs. */
+  publishNote: (note: Note) => Promise<void>;
+  /** One body write with `If-Match` from the create; also publishes the note. */
+  writeBody: (
+    note: Note,
+    body: string,
+    notebook: NotesNotebookCollection,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<Note>;
 };

@@ -84,6 +84,7 @@ import {
   useDocsExternalWriteRequest,
 } from "./use-docs-external-write-prompt";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { useDocsDownload } from "@/docs-core/src/use-docs-download";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -296,6 +297,7 @@ function DocsCollabWorkspaceInner({
   const imageInsertEnabled = permissions.editable && editorFormat !== "text";
   const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
   const pageSetup = useDocsPageSetup(resolvedDocApiPath);
+  const download = useDocsDownload(editor, resolvedDocumentTitle, pageSetup.pageSetup, labels);
   const pickerUsername = driveUsername?.trim() || session.user.username || "";
   const imageInsert = useDocsImageInsert({
     editor,
@@ -660,6 +662,7 @@ function DocsCollabWorkspaceInner({
                     onToggleViewSource: () => setViewSource((on) => !on),
                     sourceLockedByCollab,
                     reviewPanelOpen,
+                    download: collabSession && !snapshotPreview ? download : undefined,
                     share:
                       showShare && onShare
                         ? { label: shareLabel ?? labels.share, onClick: onShare }

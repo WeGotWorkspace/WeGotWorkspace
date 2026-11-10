@@ -323,7 +323,14 @@ export function DocsHomePane({
     fileCanManageStructure,
     offlinePendingSyncIds,
     offlineBadgeLabels: offlineLabels,
-    extraFileActions,
+    extraFileActions: extraFileActions
+      ? (file: DriveFile) =>
+          extraFileActions(
+            file.id === activeFile?.id && file.mayManageStructure === undefined
+              ? { ...file, mayManageStructure: activeMayManageStructure }
+              : file,
+          )
+      : undefined,
   };
 
   const gridBrowserProps = { ...sharedBrowserProps, filePreviews: gridFilePreviews };

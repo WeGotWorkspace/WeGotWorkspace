@@ -1,6 +1,10 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
 import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
+import {
+  defaultNotesImportLabels,
+  type NotesImportLabels,
+} from "@/notes-core/src/notes-import-labels";
 
 /**
  * User-visible copy for the notes workspace (sidebar, list chrome, dialogs, toasts).
@@ -144,7 +148,7 @@ export type NotesUILabels = {
   toastNotebookDeletedNotesMoved: (notebook: string, destination: string) => string;
   /** Shown when a new note could not be created in the selected notebook. */
   createNoteFailedMessage: (notebook: string) => string;
-};
+} & NotesImportLabels;
 
 export const defaultNotesLabels: NotesUILabels = {
   listLoading: "Loading notes…",
@@ -280,6 +284,7 @@ export const defaultNotesLabels: NotesUILabels = {
     `Deleted “${notebook}”. Its notes moved to “${destination}”.`,
   createNoteFailedMessage: (notebook) =>
     `Could not create a note in “${notebook}”. The notebook may no longer be available.`,
+  ...defaultNotesImportLabels,
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

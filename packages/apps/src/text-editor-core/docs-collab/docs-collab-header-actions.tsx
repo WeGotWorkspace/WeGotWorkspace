@@ -2,6 +2,8 @@ import type { Editor } from "@tiptap/react";
 import { Code2, Printer, Share } from "lucide-react";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHeaderAction } from "@/docs-core/src/docs-header-actions";
+import { docsDownloadHeaderAction } from "@/docs-core/src/docs-download-action";
+import type { DocsDownloadState } from "@/docs-core/src/use-docs-download";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +20,8 @@ export type DocsCollabHeaderActionsInput = {
   reviewPanelOpen: boolean;
   /** Omitted when the shell does not offer sharing for this document. */
   share?: { label: string; onClick: () => void };
+  /** Omitted when the shell offers no downloads (for example a snapshot preview). */
+  download?: DocsDownloadState;
 };
 
 function sourceToggleLabel(input: DocsCollabHeaderActionsInput): string {
@@ -28,7 +32,8 @@ function sourceToggleLabel(input: DocsCollabHeaderActionsInput): string {
 
 /** Docs header actions in display order, each carrying its own disabled reason. */
 export function docsCollabHeaderActions(input: DocsCollabHeaderActionsInput): DocsHeaderAction[] {
-  const { labels, editor, viewSource, sourceLockedByCollab, reviewPanelOpen, share } = input;
+  const { labels, editor, viewSource, sourceLockedByCollab, reviewPanelOpen, share, download } =
+    input;
   return [
     {
       id: "print",
@@ -37,6 +42,9 @@ export function docsCollabHeaderActions(input: DocsCollabHeaderActionsInput): Do
       disabled: !editor || viewSource,
       onClick: () => printTextEditorSheet(editor),
     },
+    ...(download
+      ? [docsDownloadHeaderAction({ labels, download, disabled: !editor || viewSource })]
+      : []),
     ...(share
       ? [
           {

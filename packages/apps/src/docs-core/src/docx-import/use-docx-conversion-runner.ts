@@ -26,7 +26,11 @@ export function useDocxConversionRunner(onOpenDocsFile: ((apiPath: string) => vo
       try {
         const { docPath, report } = await task();
         setPendingDocxImportReport(docPath, report);
-        startDocWithDefaultPageSetup(docPath);
+        try {
+          startDocWithDefaultPageSetup(docPath);
+        } catch {
+          // The Doc is saved: open it with the page setup it has.
+        }
         onOpenDocsFile?.(docPath);
       } catch (error) {
         const refusal = (error as { refusal?: keyof typeof labels.refusals } | null)?.refusal;

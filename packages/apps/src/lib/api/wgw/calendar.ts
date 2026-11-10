@@ -257,10 +257,17 @@ export class CalendarImportError extends Error {
   }
 }
 
+export type CalendarEventImportResult = {
+  list: JmapCalendarEvent[];
+  errors: Array<{ index: number; message: string }>;
+  /** Components the import left out; older servers omit it. */
+  skipped?: { tasks: number };
+};
+
 export async function importEventsLive(
   icsText: string,
   opts: { calendarId: string; signal?: AbortSignal },
-): Promise<{ list: JmapCalendarEvent[]; errors: Array<{ index: number; message: string }> }> {
+): Promise<CalendarEventImportResult> {
   if (!opts.calendarId.trim()) {
     throw new CalendarImportError("calendarId is required for ICS import", 400);
   }
@@ -283,10 +290,7 @@ export async function importEventsLive(
     }
     throw new CalendarImportError(message, res.status);
   }
-  return (await wgwReadJson(res)) as {
-    list: JmapCalendarEvent[];
-    errors: Array<{ index: number; message: string }>;
-  };
+  return (await wgwReadJson(res)) as CalendarEventImportResult;
 }
 
 export async function searchCalendarSharePrincipalsLive(

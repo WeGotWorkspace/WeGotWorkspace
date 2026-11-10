@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/button/src/button";
 import { docxImportLabels as labels } from "@/docs-core/src/docx-import/docx-import-labels";
 import type { DocxImportReport } from "@/docs-core/src/docx-import/docx-import-report";
-import { takePendingDocxImportReport } from "@/docs-core/src/docx-import/docx-import-report-store";
+import {
+  clearPendingDocxImportReport,
+  peekPendingDocxImportReport,
+} from "@/docs-core/src/docx-import/docx-import-report-store";
 import {
   Dialog,
   DialogContent,
@@ -58,13 +61,16 @@ export function DocxImportReportForDoc({
 }) {
   const [report, setReport] = useState<DocxImportReport | null>(null);
   useEffect(() => {
-    if (docPath) setReport(takePendingDocxImportReport(docPath));
+    setReport(docPath ? peekPendingDocxImportReport(docPath) : null);
   }, [docPath]);
   return (
     <DocxImportReportDialog
       report={report}
       surfaceClassName={surfaceClassName}
-      onClose={() => setReport(null)}
+      onClose={() => {
+        clearPendingDocxImportReport(docPath);
+        setReport(null);
+      }}
     />
   );
 }
