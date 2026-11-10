@@ -22,19 +22,19 @@ export type WorkspaceLabels = {
     deleteConfirmSuffix: string;
     /** Starts a permanent-delete description: "This will permanently delete …". */
     permanentDeleteLeadIn: string;
-    /** Name field of a collection dialog (notebook, list, calendar, channel). */
+    /** Name field of a collection dialog (notebook, calendar, channel, group, address book). */
     nameField: string;
     /** Color field of a collection dialog. */
     colorField: string;
   };
-  /** Share dialogs, shared sections and owner changes. */
+  /**
+   * Share dialogs, shared sections and owner changes. The people-picker copy
+   * (placeholder, section hint, remove confirm) lives in `sharePrincipalCopy`.
+   */
   sharing: {
     sharedWithMe: string;
     viewOnly: string;
     removeAccessTitle: string;
-    addPeoplePlaceholder: string;
-    /** Same prompt with a trailing ellipsis, as Tasks, Calendar and the share dialog show it. */
-    addPeoplePlaceholderEllipsis: string;
     teamAccess: string;
     copyLink: string;
     owner: string;
@@ -76,8 +76,6 @@ export const workspaceLabels = {
     sharedWithMe: "Shared with me",
     viewOnly: "View only",
     removeAccessTitle: "Remove access?",
-    addPeoplePlaceholder: "Add people or groups",
-    addPeoplePlaceholderEllipsis: "Add people or groups…",
     teamAccess: "Team access",
     copyLink: "Copy link",
     owner: "Owner",
