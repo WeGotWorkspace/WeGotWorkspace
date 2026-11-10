@@ -58,12 +58,19 @@ export function useTextEditorFitScale(editor: Editor | null, enabled: boolean): 
       surface.style.height = `${dom.offsetHeight * scale}px`;
     };
 
+    // Print lays the page out at paper width: drop the screen fit, and bring it back after.
+    const beforePrint = () => clearFit(dom, surface);
+
     const observer = new ResizeObserver(apply);
     observer.observe(sheet);
     observer.observe(dom);
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", apply);
     apply();
     return () => {
       observer.disconnect();
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", apply);
       clearFit(dom, surface);
     };
   }, [editor, enabled]);
