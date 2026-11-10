@@ -229,4 +229,71 @@ describe("useDocsHomeCreateDialog", () => {
     expect(onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled.md");
     expect(onImportWordFile).not.toHaveBeenCalled();
   });
+
+  describe("a name lookup that finishes late", () => {
+    function setup() {
+      const pending: Array<() => void> = [];
+      const listDirectory = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            pending.push(() => resolve({ directory: { files: [] } }));
+          }),
+      ) as unknown as DriveAPIOperations["listDirectory"];
+      const hook = renderHook(() =>
+        useDocsHomeCreateDialog({
+          username: "alice",
+          onCreateDocument: vi.fn(),
+          onImportWordFile: vi.fn(),
+          browsePathPrefix: undefined,
+          listingOperations: listing(listDirectory),
+          files: [],
+          groupRootSlugs: [],
+        }),
+      );
+      const settle = async () => {
+        await act(async () => {
+          pending.forEach((resolve) => resolve());
+          await Promise.resolve();
+        });
+      };
+      return { ...hook, settle };
+    }
+
+    it("keeps the later click when import follows New document", async () => {
+      const { result, settle } = setup();
+      act(() => {
+        result.current.handleCreateDocument();
+        result.current.handleImportWordFile(new File(["x"], "Plan.docx"));
+      });
+      await settle();
+      await waitFor(() => expect(result.current.createDialogOpen).toBe(true));
+      expect(result.current.createDialogDefaultName).toBe("Plan.md");
+      expect(result.current.createDialogImportSourceName).toBe("Plan.docx");
+    });
+
+    it("keeps the later click when New document follows import", async () => {
+      const { result, settle } = setup();
+      act(() => {
+        result.current.handleImportWordFile(new File(["x"], "Plan.docx"));
+        result.current.handleCreateDocument();
+      });
+      await settle();
+      await waitFor(() => expect(result.current.createDialogOpen).toBe(true));
+      expect(result.current.createDialogDefaultName).toBe("Untitled.md");
+      expect(result.current.createDialogImportSourceName).toBeNull();
+    });
+
+    it("stays closed when closed before the listing returns", async () => {
+      const { result, settle } = setup();
+      act(() => {
+        result.current.handleImportWordFile(new File(["x"], "Plan.docx"));
+      });
+      act(() => {
+        result.current.closeCreateDialog();
+      });
+      await settle();
+      expect(result.current.createDialogOpen).toBe(false);
+      expect(result.current.createDialogImportSourceName).toBeNull();
+    });
+  });
 });

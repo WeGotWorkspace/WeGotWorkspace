@@ -27,6 +27,7 @@ export const liveTierSpecs = [
   "docs-docx-save-as-markdown",
   "docs-download-word",
   "docs-home-browse",
+  "docs-import-word-file",
   "docs-inbound-sync",
   "docs-offline-gaps",
   "docs-offline-sync",
