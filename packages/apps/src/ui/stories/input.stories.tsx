@@ -4,8 +4,8 @@ import { expect, userEvent, within } from "storybook/test";
 
 import { CONTROL_SIZE_OPTIONS } from "@/ui/control-size";
 import { Input } from "@/ui/input";
-import { expectGhostAtRest, expectGhostWash } from "@/ui/stories/ghost-story-checks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { expectGhostAtRest, expectGhostWash } from "@/ui/stories/ghost-story-checks";
 
 const SIZE_PX: Record<(typeof CONTROL_SIZE_OPTIONS)[number], number> = {
   xs: 28,
