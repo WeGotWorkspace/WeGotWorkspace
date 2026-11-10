@@ -11,6 +11,7 @@ export type NotesImportLabels = {
   importNewNotebookDefault: string;
   importSubmit: string;
   importDone: string;
+  importRetry: string;
   importProgress: (done: number, total: number) => string;
   importedNotes: (count: number) => string;
   importSkippedHeading: string;
@@ -25,6 +26,7 @@ const SKIP_REASONS: Record<MarkdownImportSkipReason, string> = {
   unsupportedType: "Not a Markdown or text file",
   tooLarge: "File is too large",
   notUtf8: "Not a UTF-8 text file",
+  unreadable: "Could not read this file",
   empty: "File is empty",
   bodyTooLarge: "Note is larger than 2 MB",
   failed: "Could not save this note",
@@ -42,6 +44,7 @@ export const defaultNotesImportLabels: NotesImportLabels = {
   importNewNotebookDefault: "Imported notes",
   importSubmit: "Import",
   importDone: "Done",
+  importRetry: "Retry",
   importProgress: (done, total) => `Importing ${Math.min(done + 1, total)} of ${total}…`,
   importedNotes: (count) => `Imported ${count} ${plural(count, "note", "notes")}`,
   importSkippedHeading: "Skipped",

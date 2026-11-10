@@ -92,4 +92,35 @@ describe("NotesImportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: L.importDone }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("offers Retry for a failed file with the same files and destination", () => {
+    const onImport = vi.fn();
+    const ui = (result?: NotesImportDialogProps["result"]) => (
+      <TooltipProvider>
+        <NotesImportDialog
+          open
+          files={files}
+          notebooks={notebooks}
+          defaultNotebookId="work"
+          labels={L}
+          onImport={onImport}
+          onClose={vi.fn()}
+          result={result}
+        />
+      </TooltipProvider>
+    );
+    const { rerender } = render(ui());
+    fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));
+    rerender(
+      ui({
+        imported: [],
+        skipped: [{ fileName: "a.md", reason: "failed", status: 500 }],
+        droppedTags: [],
+        imagesNotImported: 0,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: L.importRetry }));
+    expect(onImport).toHaveBeenCalledTimes(2);
+    expect(onImport).toHaveBeenLastCalledWith(files, { mode: "existing", notebook: notebooks[1] });
+  });
 });

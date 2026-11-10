@@ -54,6 +54,8 @@ export function useNotesMarkdownImport({
   const uids = useRef(new WeakMap<File, string>());
   // A notebook made by an earlier try of this dialog is reused, not made twice.
   const createdNotebook = useRef<NotesNotebookCollection | null>(null);
+  // Set synchronously: `importBusy` is only visible after the next paint.
+  const running = useRef(false);
 
   const beginImport = useCallback(
     (fileList: FileList | readonly File[] | null) => {
@@ -100,8 +102,11 @@ export function useNotesMarkdownImport({
         setImportError(L.importFailed);
         return;
       }
+      if (running.current) return;
+      running.current = true;
       setImportBusy(true);
       setImportError(null);
+      setImportResult(null);
       setImportProgress({ done: 0, total: files.length });
       void (async () => {
         try {
@@ -118,6 +123,7 @@ export function useNotesMarkdownImport({
               }
               return uid;
             },
+            releaseUid: (file) => uids.current.delete(file),
             onProgress: setImportProgress,
             sleep,
           });
@@ -135,6 +141,7 @@ export function useNotesMarkdownImport({
         } catch {
           setImportError(L.importFailed);
         } finally {
+          running.current = false;
           setImportBusy(false);
         }
       })();

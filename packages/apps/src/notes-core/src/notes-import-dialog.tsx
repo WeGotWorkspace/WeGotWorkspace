@@ -34,6 +34,7 @@ export type NotesImportDialogLabels = Pick<
   | "importNewNotebookDefault"
   | "importSubmit"
   | "importDone"
+  | "importRetry"
   | "importProgress"
   | "importedNotes"
   | "importSkippedHeading"
@@ -128,6 +129,7 @@ export function NotesImportDialog({
   const [name, setName] = useState(labels.importNewNotebookDefault);
   const initializedOpen = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const lastDestination = useRef<NotesImportDestination | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -147,6 +149,11 @@ export function NotesImportDialog({
   const destinationReady = creating ? name.trim() !== "" : selected !== null;
   const canSubmit = destinationReady && files.length > 0 && !busy;
   const total = progress?.total ?? files.length;
+  const canRetry =
+    !!result &&
+    !busy &&
+    lastDestination.current !== null &&
+    result.skipped.some((item) => item.reason === "failed");
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
@@ -168,6 +175,14 @@ export function NotesImportDialog({
           <>
             <ImportResultView result={result} labels={labels} />
             <DialogFooter>
+              {canRetry ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  label={labels.importRetry}
+                  onClick={() => onImport(files, lastDestination.current!)}
+                />
+              ) : null}
               <Button type="button" variant="primary" label={labels.importDone} onClick={onClose} />
             </DialogFooter>
           </>
@@ -178,12 +193,11 @@ export function NotesImportDialog({
             onSubmit={(event) => {
               event.preventDefault();
               if (!canSubmit) return;
-              onImport(
-                files,
-                creating
-                  ? { mode: "create", name: name.trim() }
-                  : { mode: "existing", notebook: selected! },
-              );
+              const destination: NotesImportDestination = creating
+                ? { mode: "create", name: name.trim() }
+                : { mode: "existing", notebook: selected! };
+              lastDestination.current = destination;
+              onImport(files, destination);
             }}
           >
             {error ? <Callout severity="error" title={error} /> : null}

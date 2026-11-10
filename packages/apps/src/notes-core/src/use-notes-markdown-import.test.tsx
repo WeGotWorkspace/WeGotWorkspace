@@ -27,6 +27,8 @@ function operationsMock(): NotesMarkdownImportOperations {
     createNote: vi.fn(async ({ uid, title }) => ({ id: uid, title, etag: '"1"' }) as Note),
     uploadImage: vi.fn(async () => ({ nodeId: `fn-${"c".repeat(32)}` })),
     writeBody: vi.fn(async (note) => note),
+    deleteNote: vi.fn(async () => {}),
+    publishNote: vi.fn(async () => {}),
   };
 }
 
@@ -105,6 +107,18 @@ describe("useNotesMarkdownImport", () => {
     expect(calls[0][0].uid).toBe(calls[1][0].uid);
     expect(calls[1][0].notebook.id).toBe("nb-Imported");
     expect(createNotebook).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a second submit while a batch is running", async () => {
+    const { hook, markdownImport } = setup();
+    const files = [new File(["# A"], "a.md")];
+    act(() => hook.result.current.beginImport(files));
+    act(() => {
+      hook.result.current.submitImport(files, { mode: "existing", notebook: work });
+      hook.result.current.submitImport(files, { mode: "existing", notebook: work });
+    });
+    await waitFor(() => expect(hook.result.current.importBusy).toBe(false));
+    expect(markdownImport.createNote).toHaveBeenCalledOnce();
   });
 
   it("shows an error when the new notebook could not be made", async () => {

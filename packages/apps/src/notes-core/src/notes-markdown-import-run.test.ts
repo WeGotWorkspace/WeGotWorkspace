@@ -58,6 +58,13 @@ function fakeServer() {
       notes.set(note.id, saved);
       return saved;
     }),
+    deleteNote: vi.fn(async (note) => {
+      calls.push(`delete:${note.id}`);
+      notes.delete(note.id);
+    }),
+    publishNote: vi.fn(async (note) => {
+      calls.push(`publish:${note.id}`);
+    }),
   };
   return { calls, notes, operations };
 }
@@ -187,6 +194,55 @@ describe("runNotesMarkdownImport", () => {
     expect(vi.mocked(operations.writeBody).mock.calls[0][1]).toBe("Look: chart");
     expect(result.imagesNotImported).toBe(1);
     expect(result.imported).toHaveLength(1);
+  });
+
+  it("skips an unreadable file and still imports the next one", async () => {
+    const { operations } = fakeServer();
+    const broken = md("broken.md", "# Broken");
+    broken.arrayBuffer = () => Promise.reject(new DOMException("gone", "NotReadableError"));
+    Object.defineProperty(broken, "arrayBuffer", {
+      value: () => Promise.reject(new DOMException("gone", "NotReadableError")),
+    });
+    const result = await runNotesMarkdownImport({
+      files: [broken, md("good.md", "# Good\ntext")],
+      notebook,
+      operations,
+      uidFor: uidsByName(),
+      sleep: noSleep,
+    });
+    expect(result.imported.map((note) => note.title)).toEqual(["Good"]);
+    expect(result.skipped).toEqual([{ fileName: "broken.md", reason: "unreadable" }]);
+  });
+
+  it("deletes the note and frees its uid when the body write fails", async () => {
+    const { calls, notes, operations } = fakeServer();
+    vi.mocked(operations.writeBody).mockRejectedValueOnce(new HttpError(500));
+    const released: string[] = [];
+    const result = await runNotesMarkdownImport({
+      files: [md("a.md", "# A\ntext")],
+      notebook,
+      operations,
+      uidFor: uidsByName(),
+      releaseUid: (file) => released.push(file.name),
+      sleep: noSleep,
+    });
+    expect(result.imported).toEqual([]);
+    expect(result.skipped).toEqual([{ fileName: "a.md", reason: "failed", status: 500 }]);
+    expect(calls).toContain("delete:uid-a.md");
+    expect(notes.size).toBe(0);
+    expect(released).toEqual(["a.md"]);
+  });
+
+  it("publishes a title-only note once, and a written note only through its body write", async () => {
+    const { calls, operations } = fakeServer();
+    await runNotesMarkdownImport({
+      files: [md("a.md", "---\ntitle: Only\n---\n"), md("b.md", "# B\ntext")],
+      notebook,
+      operations,
+      uidFor: uidsByName(),
+      sleep: noSleep,
+    });
+    expect(calls.filter((call) => call.startsWith("publish:"))).toEqual(["publish:uid-a.md"]);
   });
 
   it("does not write a body for a note with only a title", async () => {

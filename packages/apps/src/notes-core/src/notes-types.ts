@@ -107,7 +107,7 @@ export type NotesAPIOperations = {
 
 /**
  * Direct writes for the Markdown import (#1623) — not the outbox, which only
- * creates empty notes. Each call writes the created or saved note to the cache.
+ * creates empty notes. The cache and other tabs only see a note once it is final (`writeBody` or `publishNote`).
  */
 export type NotesMarkdownImportOperations = {
   /** `POST /notes/items` with a client uid; a repeat with the same uid returns the same note. */
@@ -126,7 +126,11 @@ export type NotesMarkdownImportOperations = {
     file: File,
     opts?: { signal?: AbortSignal },
   ) => Promise<{ nodeId: string }>;
-  /** One body write with `If-Match` from the create. */
+  /** Removes a note the import created but could not finish (best effort). */
+  deleteNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<void>;
+  /** Writes a finished note without a body write (title only) to the cache and tells other tabs. */
+  publishNote: (note: Note) => Promise<void>;
+  /** One body write with `If-Match` from the create; also publishes the note. */
   writeBody: (
     note: Note,
     body: string,

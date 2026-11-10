@@ -27,7 +27,7 @@ const PLACEHOLDER_MARK = "\u0000";
 const DRIVE_FN_SRC_SAMPLE = `drive:fn-${"0".repeat(32)}`;
 
 export type MarkdownImportSkipReason =
-  "unsupportedType" | "tooLarge" | "notUtf8" | "empty" | "bodyTooLarge" | "failed";
+  "unsupportedType" | "tooLarge" | "notUtf8" | "unreadable" | "empty" | "bodyTooLarge" | "failed";
 
 export type MarkdownImportImage = {
   alt: string;
@@ -93,7 +93,14 @@ async function fileBytes(file: Blob): Promise<Uint8Array> {
 export async function readMarkdownImportText(file: File): Promise<MarkdownImportText> {
   if (!isMarkdownImportFile(file)) return { ok: false, reason: "unsupportedType" };
   if (file.size > MARKDOWN_IMPORT_MAX_FILE_BYTES) return { ok: false, reason: "tooLarge" };
-  const text = decodeMarkdownBytes(await fileBytes(file));
+  let bytes: Uint8Array;
+  try {
+    bytes = await fileBytes(file);
+  } catch {
+    // The file changed or went away after it was picked.
+    return { ok: false, reason: "unreadable" };
+  }
+  const text = decodeMarkdownBytes(bytes);
   if (text === null) return { ok: false, reason: "notUtf8" };
   if (text.trim() === "") return { ok: false, reason: "empty" };
   return { ok: true, text };

@@ -43,6 +43,8 @@ export type RunNotesMarkdownImportOptions = {
   operations: NotesMarkdownImportOperations;
   /** Same `File` → same note uid, so pressing Import again does not duplicate. */
   uidFor: (file: File) => string;
+  /** Called after a half-made note was deleted: the next try needs a fresh uid. */
+  releaseUid?: (file: File) => void;
   onProgress?: (progress: NotesMarkdownImportProgress) => void;
   signal?: AbortSignal;
   /** Waits between network retries (tests pass a no-op). */
@@ -139,8 +141,9 @@ async function importOneFile(
   }
 
   const { operations, notebook, signal } = options;
+  let created: Note | null = null;
   try {
-    let note = await withRetry(
+    created = await withRetry(
       () =>
         operations.createNote(
           {
@@ -154,15 +157,18 @@ async function importOneFile(
       sleep,
       signal,
     );
-    const sources = await uploadImages(note, parsed, options, sleep);
+    const empty = created;
+    const sources = await uploadImages(empty, parsed, options, sleep);
     const body = finalizeImportedBody(parsed, sources);
+    let note = empty;
     if (body.trim() !== "") {
-      const created = note;
       note = await withRetry(
-        () => operations.writeBody(created, body, notebook, { signal }),
+        () => operations.writeBody(empty, body, notebook, { signal }),
         sleep,
         signal,
       );
+    } else {
+      await operations.publishNote(note);
     }
     result.imported.push(note);
     for (const tag of parsed.droppedTags) {
@@ -172,6 +178,15 @@ async function importOneFile(
       parsed.relativeImageCount + sources.filter((src) => src === null).length;
   } catch (error) {
     if (signal?.aborted) throw error;
+    // A file reported as skipped must not leave a half-made note behind.
+    if (created) {
+      try {
+        await operations.deleteNote(created, { signal });
+        options.releaseUid?.(file);
+      } catch {
+        // Best effort: the note stays, and a retry finds it by its uid.
+      }
+    }
     const status = importErrorStatus(error);
     if (error instanceof SessionLostError || status === 401) {
       result.skipped.push({ fileName, reason: "failed", status: 401 });
