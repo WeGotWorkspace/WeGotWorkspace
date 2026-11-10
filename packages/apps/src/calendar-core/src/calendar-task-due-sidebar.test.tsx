@@ -5,7 +5,7 @@ import { createSharedTasksLists } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   CalendarTaskDueSidebarRows,
-  CalendarRemindersSidebarSection,
+  CalendarRemindersSidebar,
   partitionCalendarTaskDueSidebarLists,
 } from "@/calendar-core/src/calendar-task-due-sidebar";
 
@@ -89,7 +89,7 @@ describe("Calendar Reminders section", () => {
     const onSetHiddenListIds = vi.fn();
     const view = render(
       <TooltipProvider delayDuration={0}>
-        <CalendarRemindersSidebarSection
+        <CalendarRemindersSidebar
           lists={ownedLists}
           hiddenListIds={new Set(hidden)}
           onSetHiddenListIds={onSetHiddenListIds}
@@ -134,7 +134,7 @@ describe("Calendar Reminders section", () => {
 
   it("renders nothing without lists", () => {
     const { container } = render(
-      <CalendarRemindersSidebarSection
+      <CalendarRemindersSidebar
         lists={[]}
         hiddenListIds={new Set()}
         onSetHiddenListIds={vi.fn()}

@@ -42,3 +42,17 @@ export function sectionToggleAll({
   const turnOn = checked !== true;
   return { checked, label: turnOn ? showLabel : hideLabel, onToggle: () => onSetAll(turnOn) };
 }
+
+/** `current` with every id in `ids` added (`present`) or removed. */
+export function withIds(
+  current: ReadonlySet<string>,
+  ids: readonly string[],
+  present: boolean,
+): Set<string> {
+  const next = new Set(current);
+  for (const id of ids) {
+    if (present) next.add(id);
+    else next.delete(id);
+  }
+  return next;
+}

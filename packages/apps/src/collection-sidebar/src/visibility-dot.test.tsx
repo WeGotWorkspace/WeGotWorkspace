@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { VisibilityDot } from "@/collection-sidebar/src/visibility-dot";
-import { sectionToggleAll, visibilityOfAll } from "@/sidebar-section/src/section-toggle-all";
+import {
+  sectionToggleAll,
+  visibilityOfAll,
+  withIds,
+} from "@/sidebar-section/src/section-toggle-all";
 
 describe("VisibilityDot", () => {
   it("is a checkbox with a mixed state", () => {
@@ -49,5 +53,12 @@ describe("sectionToggleAll", () => {
     expect(sectionToggleAll({ ids: [], isOn: () => true, onSetAll: vi.fn(), ...labels })).toBe(
       undefined,
     );
+  });
+});
+
+describe("withIds", () => {
+  it("adds or removes ids and leaves the rest", () => {
+    expect([...withIds(new Set(["a", "x"]), ["a", "b"], true)].sort()).toEqual(["a", "b", "x"]);
+    expect([...withIds(new Set(["a", "x"]), ["a", "b"], false)]).toEqual(["x"]);
   });
 });

@@ -35,6 +35,10 @@ export type CalendarUILabels = {
   toastImportFailed: string;
   toastImportOffline: string;
   myCalendarsSection: string;
+  myCalendarsShowAll: string;
+  myCalendarsHideAll: string;
+  myCalendarsCollapse: string;
+  myCalendarsExpand: string;
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
@@ -326,6 +330,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
   myCalendarsSection: "My calendars",
+  myCalendarsShowAll: "Show all my calendars",
+  myCalendarsHideAll: "Hide all my calendars",
+  myCalendarsCollapse: "Collapse My calendars",
+  myCalendarsExpand: "Expand My calendars",
   sharedWithMeSection: "Shared with me",
   tasksSection: "Reminders",
   tasksSectionShowAll: "Show all reminders",

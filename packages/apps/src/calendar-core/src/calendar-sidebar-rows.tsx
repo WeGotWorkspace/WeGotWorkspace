@@ -10,6 +10,54 @@ import {
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
+import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
+import { sectionToggleAll } from "@/sidebar-section/src/section-toggle-all";
+
+type CalendarSidebarRowsProps = Parameters<typeof CalendarSidebarRows>[0];
+
+/**
+ * My calendars: the user's own and Team calendars, with a show/hide-all dot
+ * and a fold remembered on this device.
+ */
+export function MyCalendarsSidebarSection({
+  rowProps,
+  onSetVisible,
+  labels,
+}: {
+  rowProps: CalendarSidebarRowsProps;
+  onSetVisible: (calendarIds: readonly string[], visible: boolean) => void;
+  labels: Pick<
+    CalendarUILabels,
+    | "myCalendarsSection"
+    | "myCalendarsShowAll"
+    | "myCalendarsHideAll"
+    | "myCalendarsCollapse"
+    | "myCalendarsExpand"
+  >;
+}) {
+  const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("myCalendarsCollapsed");
+  const ids = rowProps.calendars.map((calendar) => calendar.id);
+  return (
+    <SidebarSection
+      title={labels.myCalendarsSection}
+      collapsed={collapsed}
+      onToggleCollapsed={toggleCollapsed}
+      collapseLabel={labels.myCalendarsCollapse}
+      expandLabel={labels.myCalendarsExpand}
+      toggleAll={sectionToggleAll({
+        ids,
+        isOn: (id) => !rowProps.hiddenCalendarIds.has(id),
+        onSetAll: (on) => onSetVisible(ids, on),
+        showLabel: labels.myCalendarsShowAll,
+        hideLabel: labels.myCalendarsHideAll,
+      })}
+    >
+      <CalendarSidebarRows {...rowProps} />
+    </SidebarSection>
+  );
+}
 
 /** My calendars / Shared with me rows: visibility, create target, edit, marks. */
 export function CalendarSidebarRows({

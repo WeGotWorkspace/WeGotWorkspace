@@ -96,6 +96,7 @@ import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-pre
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
+import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 import {
   calendarEventWrite,
@@ -369,6 +370,11 @@ export function useCalendarController({
       next.delete(calendarId);
       return next;
     });
+  }, []);
+
+  /** Shows or hides several calendars at once (My calendars' show/hide-all dot). */
+  const setCalendarsVisible = useCallback((calendarIds: readonly string[], visible: boolean) => {
+    setHiddenCalendarIds((current) => withIds(current, calendarIds, !visible));
   }, []);
 
   const toggleCalendarVisibility = useCallback((calendarId: string) => {
@@ -1427,6 +1433,7 @@ export function useCalendarController({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    setCalendarsVisible,
     ensureCalendarVisible,
     selectDefaultCalendar,
     visibleCalendarIds,

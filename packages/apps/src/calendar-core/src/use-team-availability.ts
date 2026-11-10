@@ -37,6 +37,7 @@ import {
 } from "@/calendar-core/src/calendar-availability-overlay";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
+import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import type { TeamAvailabilityCoverage } from "@/calendar-core/src/calendar-availability-notice";
 import {
   patchCalendarViewPrefs,
@@ -323,32 +324,22 @@ export function useTeamAvailability({
     };
   }, [presetMode, revision, shownKey, viewer, visibleKey]);
 
-  const updateShown = useCallback((change: (next: Set<string>) => void) => {
+  const updateShown = useCallback((change: (current: ReadonlySet<string>) => Set<string>) => {
     setShownIds((current) => {
-      const next = new Set(current);
-      change(next);
+      const next = change(current);
       patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
       return next;
     });
   }, []);
 
   const toggleShown = useCallback(
-    (id: string) =>
-      updateShown((next) => {
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-      }),
+    (id: string) => updateShown((current) => withIds(current, [id], !current.has(id))),
     [updateShown],
   );
 
   const setShown = useCallback(
     (ids: readonly string[], shown: boolean) =>
-      updateShown((next) => {
-        for (const id of ids) {
-          if (shown) next.add(id);
-          else next.delete(id);
-        }
-      }),
+      updateShown((current) => withIds(current, ids, shown)),
     [updateShown],
   );
 

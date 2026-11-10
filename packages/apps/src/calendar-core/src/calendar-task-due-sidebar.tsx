@@ -7,6 +7,7 @@ import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sid
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import {
   sectionToggleAll,
+  withIds,
   type SidebarSectionToggleAll,
 } from "@/sidebar-section/src/section-toggle-all";
 import {
@@ -51,14 +52,7 @@ function taskListsToggleAll({
   return sectionToggleAll({
     ids,
     isOn: (id) => !hiddenListIds.has(id),
-    onSetAll: (on) => {
-      const next = new Set(hiddenListIds);
-      for (const id of ids) {
-        if (on) next.delete(id);
-        else next.add(id);
-      }
-      onSetHiddenListIds(next);
-    },
+    onSetAll: (on) => onSetHiddenListIds(withIds(hiddenListIds, ids, !on)),
     showLabel,
     hideLabel,
   });
@@ -112,49 +106,60 @@ type RemindersLabels = Pick<
   | "tasksSectionHideAll"
   | "tasksSectionCollapse"
   | "tasksSectionExpand"
+  | "sharedTaskListsSection"
   | "viewOnlyCalendarBadge"
 >;
 
 /**
- * The Reminders section: the user's own lists, with a show/hide-all dot and a
- * fold remembered on this device. Nothing renders without lists.
+ * Reminders (the user's own lists, with a show/hide-all dot and a fold
+ * remembered on this device), then Shared reminders. An empty section is left out.
  */
-export function CalendarRemindersSidebarSection({
+export function CalendarRemindersSidebar({
   lists,
+  sharedLists = [],
   hiddenListIds,
   onSetHiddenListIds,
   onToggleVisibility,
   labels,
 }: {
   lists: readonly TaskListSidebarEntry[];
+  sharedLists?: readonly TaskListSidebarEntry[];
   hiddenListIds: ReadonlySet<string>;
   onSetHiddenListIds: (next: ReadonlySet<string>) => void;
   onToggleVisibility: (listId: string) => void;
   labels: RemindersLabels;
 }) {
   const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("remindersCollapsed");
-  if (lists.length === 0) return null;
+  const rowProps = {
+    hiddenListIds,
+    viewOnlyLabel: labels.viewOnlyCalendarBadge,
+    onToggleVisibility,
+  };
   return (
-    <SidebarSection
-      title={labels.tasksSection}
-      collapsed={collapsed}
-      onToggleCollapsed={toggleCollapsed}
-      collapseLabel={labels.tasksSectionCollapse}
-      expandLabel={labels.tasksSectionExpand}
-      toggleAll={taskListsToggleAll({
-        lists,
-        hiddenListIds,
-        onSetHiddenListIds,
-        showLabel: labels.tasksSectionShowAll,
-        hideLabel: labels.tasksSectionHideAll,
-      })}
-    >
-      <CalendarTaskDueSidebarRows
-        lists={lists}
-        hiddenListIds={hiddenListIds}
-        viewOnlyLabel={labels.viewOnlyCalendarBadge}
-        onToggleVisibility={onToggleVisibility}
-      />
-    </SidebarSection>
+    <>
+      {lists.length > 0 ? (
+        <SidebarSection
+          title={labels.tasksSection}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          collapseLabel={labels.tasksSectionCollapse}
+          expandLabel={labels.tasksSectionExpand}
+          toggleAll={taskListsToggleAll({
+            lists,
+            hiddenListIds,
+            onSetHiddenListIds,
+            showLabel: labels.tasksSectionShowAll,
+            hideLabel: labels.tasksSectionHideAll,
+          })}
+        >
+          <CalendarTaskDueSidebarRows lists={lists} {...rowProps} />
+        </SidebarSection>
+      ) : null}
+      {sharedLists.length > 0 ? (
+        <SidebarSection title={labels.sharedTaskListsSection}>
+          <CalendarTaskDueSidebarRows lists={sharedLists} {...rowProps} />
+        </SidebarSection>
+      ) : null}
+    </>
   );
 }

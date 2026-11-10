@@ -187,6 +187,32 @@ export const SeededMonthSidebar: Story = {
     ).toBeTruthy();
     expectSearchLeftOfViewSelect(canvasElement);
     expectNoSearchChrome(canvasElement);
+
+    // My calendars heading: show/hide-all dot and a fold, beside the New event menu.
+    const mine = sidebarSection(canvasElement, defaultCalendarLabels.myCalendarsSection);
+    const hideAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsHideAll,
+    });
+    await expect(hideAll).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(hideAll);
+    const showAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsShowAll,
+    });
+    await expect(showAll).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(within(mine).getByRole("checkbox", { name: "Show Personal" }));
+    await expect(showAll).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(showAll);
+    await expect(
+      within(mine).getByRole("checkbox", { name: defaultCalendarLabels.myCalendarsHideAll }),
+    ).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsCollapse }),
+    );
+    await expect(within(mine).queryByText("Personal")).toBeNull();
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsExpand }),
+    );
+    await expect(within(mine).getByText("Personal")).toBeTruthy();
   },
 };
 
