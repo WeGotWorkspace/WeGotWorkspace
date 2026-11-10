@@ -85,7 +85,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'reason' => 'precheck',
         ])
             ->assertStatus(503)
-            ->assertJson(['error' => 'relay_unavailable']);
+            ->assertExactJson(['error' => 'relay_unavailable', 'code' => 'relay_unavailable']);
 
         $this->assertRelayEvent('bob', 'precheck', 'unavailable');
         $this->assertSame(0, Notification::query()->count());
@@ -135,7 +135,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'sessionKey' => $sessionKey,
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'relay_denied']);
+            ->assertExactJson(['error' => 'relay_denied', 'code' => 'relay_denied', 'message' => 'Ask the host to let you in before using the relay.']);
         $this->assertRelayEvent($this->guestActor($sessionKey), 'failed', 'denied');
 
         $this->admitGuest($token, 'host-peer', 'guest-peer');
@@ -169,7 +169,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'sessionKey' => $guest['sessionKey'],
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'relay_denied']);
+            ->assertExactJson(['error' => 'relay_denied', 'code' => 'relay_denied', 'message' => 'Ask the host to let you in before using the relay.']);
 
         $this->joinAsMember('host-peer', $this->userBearerToken());
 
@@ -207,7 +207,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'reason' => 'failed',
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'relay_denied']);
+            ->assertExactJson(['error' => 'relay_denied', 'code' => 'relay_denied', 'message' => 'Ask the host to let you in before using the relay.']);
     }
 
     public function test_relay_refuses_a_peer_the_actor_does_not_own(): void
@@ -269,7 +269,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'reason' => 'because',
         ])
             ->assertStatus(400)
-            ->assertJson(['error' => 'invalid_reason']);
+            ->assertExactJson(['error' => 'invalid_reason', 'code' => 'invalid_reason']);
 
         $this->withBearer($token)->postJson($this->meetRoomPath('/relay'), [
             'peerId' => 'host-peer',
@@ -277,7 +277,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             'reason' => 'failed',
         ])
             ->assertNotFound()
-            ->assertJson(['error' => 'unknown_peer']);
+            ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer']);
 
         $this->assertSame(0, RtcRelayEvent::query()->count());
     }

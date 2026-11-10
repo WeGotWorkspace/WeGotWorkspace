@@ -250,7 +250,7 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
         $this->withBearer($this->token)
             ->putCollaboration($this->documentUrl(), "# Doc, edited\n", "\x05", ['If-Match' => $etag])
             ->assertStatus(409)
-            ->assertExactJson(['error' => 'external_write']);
+            ->assertExactJson(['error' => 'external_write', 'code' => 'external_write']);
 
         $this->assertSame("# Outside\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
         $this->assertSame(self::YJS, Storage::disk('wgw_files')->get(self::SIDECAR_KEY));

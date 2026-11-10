@@ -73,18 +73,18 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $this->join('dave', $groupChannelId, 'peer-dave', 'Dave')->assertOk();
         // Same group channel: a non-member still cannot walk in.
         $this->join('carol', $groupChannelId, 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_internal_non_member_is_forced_onto_the_knock_path(): void
     {
         // Direct join rejected server-side, no matter what the client names itself.
         $this->join('carol', $this->channelId, 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         // Knocking at an empty room: nobody can admit → room_not_active.
         $this->join('carol', $this->channelId, 'peer-carol', self::KNOCK_PREFIX.'Carol')
-            ->assertNotFound()->assertJsonPath('error', 'room_not_active');
+            ->assertNotFound()->assertExactJson(['error' => 'room_not_active', 'code' => 'room_not_active']);
 
         // With a member in the call the knock is accepted (pending admission).
         $this->join('alice', $this->channelId, 'peer-alice', 'Alice')->assertOk();
@@ -98,9 +98,9 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $this->sendChat('alice', $this->channelId, 'peer-alice', 'payroll is on Friday')->assertOk();
 
         $this->guestJoin($this->channelId, 'peer-guest', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin($this->channelId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
 
         $sessionKey = bin2hex(random_bytes(16));
         $this->flushHeaders()
@@ -112,7 +112,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             'from' => 'peer-guest',
             'sessionKey' => $sessionKey,
             'text' => 'hello',
-        ])->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        ])->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
 
         $this->flushHeaders()
             ->getJson('/api/v1/chat/channels/'.$this->channelId.'/messages')
@@ -133,18 +133,18 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         // Even with a member present, guests never enter DMs — knock or not.
         $this->guestJoin($dmId, 'peer-guest', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin($dmId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->flushHeaders()
             ->getJson('/api/v1/rooms/'.$dmId.'/events?peerId=peer-guest&sessionKey='.bin2hex(random_bytes(16)))
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
 
         // DM members join directly, as on any channel room.
         $this->join('bob', $dmId, 'peer-bob', 'Bob')->assertOk();
         // An internal non-member stays on the knock path (members could admit).
         $this->join('carol', $dmId, 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_guest_is_refused_on_a_named_meeting_while_internal_non_members_may_knock(): void
@@ -159,7 +159,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         // The collection uri is not a guest door. The room code is.
         $this->guestJoin($meetingId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin($roomCode, 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
 
         // Signed-in people who are not members can still knock on an empty meeting.
@@ -195,10 +195,10 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         $this->join('alice', 'g744-8kfg-adjz', 'peer-alice', 'Alice')->assertOk();
         $this->join('carol', 'g744-8kfg-adjz', 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
         $this->guestJoin('g744-8kfg-adjz', 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
         $this->guestJoin('g744-8kfg-adjz', 'peer-walkin', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
         $sessionKey = (string) $this->guestJoin('g744-8kfg-adjz', 'peer-reader', self::KNOCK_PREFIX.'Reader')
             ->assertOk()
             ->json('sessionKey');
@@ -234,29 +234,29 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // The guest-link room code is the same channel for the policy.
         $this->join('alice', 'standup-guests', 'peer-alice', 'Alice')->assertOk();
         $this->join('carol', 'standup-guests', 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
         $this->guestJoin('standup-guests', 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
 
         // …and the channel id itself resolves to the same policy.
         $this->join('carol', $meetingId, 'peer-carol2', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_plain_room_names_are_closed_to_guests(): void
     {
         // The invite UI refuses these ids. The API does too.
         $this->guestJoin('daily-room', 'peer-guest', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin('empty-room', 'peer-guest2', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin('chat-nosuchchannel', 'peer-guest3', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         // Outside the mint alphabet (0 / i), so not a guest door.
         $this->guestJoin('team-sync-2026', 'peer-guest4', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->guestJoin('abcd-efgh-ijkl', 'peer-guest5', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
 
         // An unreserved ad-hoc code has no host who can admit, so a direct
         // guest join still passes. A reserved code does not — see below.
@@ -283,7 +283,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->json('sessionKey');
 
         $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         $this->sendControl('alice', $room, 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-guest'])
             ->assertOk();
@@ -293,7 +293,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         // Admission is bound to the guest session that knocked.
         $this->guestJoin($room, 'peer-guest', 'Impostor')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_guest_must_knock_on_a_reserved_ad_hoc_code(): void
@@ -305,21 +305,21 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         ])->assertCreated();
 
         $this->guestJoin($room, 'peer-walkin', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         $sessionKey = (string) $this->guestJoin($room, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
             ->assertOk()
             ->json('sessionKey');
         $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         // Someone who did not reserve the room cannot admit, even after joining.
         $this->join('carol', $room, 'peer-carol', 'Carol')->assertOk();
         $this->sendControl('carol', $room, 'peer-carol', ['kind' => 'admit', 'peerId' => 'peer-guest'])
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
         $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         $this->join('alice', $room, 'peer-alice', 'Alice')->assertOk();
         $this->sendControl('alice', $room, 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-guest'])
@@ -327,12 +327,12 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $rejoin = $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)->assertOk();
         $this->assertContains('peer-alice', array_column($rejoin->json('peers'), 'id'));
         $this->guestJoin($room, 'peer-guest', 'Impostor')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         // Knocking again clears the admission.
         $this->guestJoin($room, 'peer-guest', self::KNOCK_PREFIX.'Visitor', $sessionKey)->assertOk();
         $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_admit_from_a_non_member_does_not_count(): void
@@ -343,13 +343,13 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // A knocked-in internal non-member cannot admit themselves.
         $this->sendControl('carol', $this->channelId, 'peer-carol', ['kind' => 'admit', 'peerId' => 'peer-carol'])
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Waiting to be admitted — the call cannot be joined yet.']);
         $this->join('carol', $this->channelId, 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         // A guest cannot ride an admit control aimed at a peer id they never joined with.
         $this->guestJoin($this->channelId, 'peer-guest', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
     }
 
     public function test_re_knock_resets_a_previous_admission(): void
@@ -363,7 +363,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // Knocking again (e.g. after leaving) starts a fresh, unadmitted knock.
         $this->join('carol', $this->channelId, 'peer-carol', self::KNOCK_PREFIX.'Carol')->assertOk();
         $this->join('carol', $this->channelId, 'peer-carol', 'Carol')
-            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+            ->assertStatus(403)->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
     }
 
     public function test_admitted_internal_non_member_rejoins_without_knock(): void

@@ -6,7 +6,12 @@ namespace App\Exceptions;
 
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-final class ApiHttpException extends HttpException
+/**
+ * The API error for everything except the realtime routes. Body:
+ * `{ error: <sentence>, code?: <machine code> }`. Laravel does not report it
+ * (it is an `HttpException`).
+ */
+final class ApiHttpException extends HttpException implements RendersApiError
 {
     /**
      * @param  list<string>  $invalidProperties  Offending property paths for validation
@@ -34,5 +39,25 @@ final class ApiHttpException extends HttpException
     public function invalidProperties(): array
     {
         return $this->invalidProperties;
+    }
+
+    public function apiErrorStatus(): int
+    {
+        return $this->getStatusCode();
+    }
+
+    public function apiErrorBody(): array
+    {
+        $body = ['error' => $this->getMessage()];
+        if ($this->apiErrorCode !== null) {
+            $body['code'] = $this->apiErrorCode;
+        }
+
+        return $body;
+    }
+
+    public function apiErrorHeaders(): array
+    {
+        return $this->getHeaders();
     }
 }

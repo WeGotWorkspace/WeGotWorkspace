@@ -24,7 +24,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
 
         $this->getJson($this->meetRoomPath('/events?peerId=peer-b&sessionKey='.$guestA['sessionKey']))
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
     }
 
     public function test_guest_cannot_send_as_another_guests_peer(): void
@@ -40,7 +40,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
             'sessionKey' => $guestA['sessionKey'],
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
     }
 
     public function test_guest_cannot_leave_another_guests_peer(): void
@@ -52,7 +52,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
             'sessionKey' => $guestA['sessionKey'],
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
     }
 
     public function test_wrong_session_key_on_poll_returns_unauthorized(): void
@@ -61,7 +61,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
 
         $this->getJson($this->meetRoomPath('/events?peerId=peer-a&sessionKey='.bin2hex(random_bytes(32))))
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_poll_unknown_peer_returns_not_found(): void
@@ -70,7 +70,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
 
         $this->getJson($this->meetRoomPath('/events?peerId=missing-peer&sessionKey='.$guest['sessionKey']))
             ->assertNotFound()
-            ->assertJson(['error' => 'unknown_peer']);
+            ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
 
     public function test_invalid_room_id_returns_bad_request(): void
@@ -80,7 +80,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
             'name' => 'Guest',
         ])
             ->assertStatus(400)
-            ->assertJson(['error' => 'invalid_room']);
+            ->assertExactJson(['error' => 'invalid_room', 'code' => 'invalid_room']);
     }
 
     public function test_invalid_peer_id_returns_bad_request(): void
@@ -90,7 +90,7 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
             'name' => 'Guest',
         ])
             ->assertStatus(400)
-            ->assertJson(['error' => 'invalid_peer']);
+            ->assertExactJson(['error' => 'invalid_peer', 'code' => 'invalid_peer']);
     }
 
     public function test_guest_can_join_without_bearer_token(): void
