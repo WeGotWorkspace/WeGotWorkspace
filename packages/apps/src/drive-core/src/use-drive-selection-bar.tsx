@@ -15,6 +15,7 @@ import {
 
 type UseDriveSelectionBarArgs = {
   labels: DriveUILabels;
+  /** Rows to find the selection in: from any view, not only the open folder. */
   files: DriveFile[];
   selectedIds: string[];
   selectionMode: boolean;

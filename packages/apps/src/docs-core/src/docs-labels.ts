@@ -18,7 +18,7 @@ export const docsLabels = {
   homeStarredEmpty: "No starred documents yet.",
   homeTrashEmpty: "Trash is empty.",
   homeLoading: "Loading documents…",
-  homeLoadMore: "Load more",
+  homeLoadingMore: filesBrowserSidebarLabels.loadingMore,
   homeLoadError: "Could not load documents.",
   homeNotAvailableOffline: "This document is not available offline.",
   /** Shared with me is read from the server only (#1563). */
@@ -68,8 +68,9 @@ export const docsLabels = {
   },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
+  homeNewDocumentMenu: "More create options",
   homeCreateError: "Could not create a new document.",
-  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "My Files"). */
+  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "All Files"). */
   homeAllDocs: filesBrowserSidebarLabels.homeDocs,
   homeSharedWithMe: driveLabels.sidebarSharedWithMe,
   homeRecent: driveLabels.sidebarRecent,
@@ -146,6 +147,8 @@ export const docsLabels = {
   /** Suggest-mode header toggle (Tasks “Show completed” state-button pattern). */
   editMode: "Edit",
   suggestMode: "Suggest",
+  suggestModeActive: "Suggesting",
+  sourceSwitch: "Markdown",
   editingModeAria: "Editing mode",
   toastSwitchedToEditMode: "Switched to Edit mode",
   toastSwitchedToSuggestMode: "Switched to Suggest mode",
@@ -181,6 +184,8 @@ export const docsLabels = {
   suggestionsToggleHide: "Hide suggestions",
   suggestionsAccept: "Accept suggestion",
   suggestionsReject: "Reject suggestion",
+  suggestionsAcceptShort: "Accept",
+  suggestionsRejectShort: "Reject",
   /**
    * The single real-time indicator. Deliberately free of transport vocabulary —
    * no "mesh", "signaling", "ICE", "peer" or "TURN" may appear here.

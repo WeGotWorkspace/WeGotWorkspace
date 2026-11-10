@@ -100,8 +100,24 @@ export const Result: Story = {
   args: { result },
   play: async () => {
     await expect(await screen.findByText(L.importedNotes(2))).toBeInTheDocument();
+    await expect(screen.getByText(L.importSkippedHeading(3))).toBeInTheDocument();
     await expect(screen.getByText(L.importSkipReason("bodyTooLarge"))).toBeInTheDocument();
     await expect(screen.getByText(L.importImagesNotImported(3))).toBeInTheDocument();
+  },
+};
+
+/** Nothing imported: the summary warns instead of showing a check. */
+export const ResultNothingImported: Story = {
+  args: {
+    result: {
+      imported: [],
+      skipped: [
+        { fileName: "meeting-notes.md", reason: "failed", status: 403 },
+        { fileName: "a-very-long-file-name-exported-from-another-app-2024.md", reason: "empty" },
+      ],
+      droppedTags: [],
+      imagesNotImported: 0,
+    },
   },
 };
 

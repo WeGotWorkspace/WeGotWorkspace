@@ -14,7 +14,7 @@ const UNDO_DELAY_MS = 2_500;
 
 async function seedAndStar(page: Page, name: string): Promise<void> {
   await putDriveFile(`users/${E2E_USERNAME}/${name}`, `Seeded ${RUN}\n`, "text/markdown");
-  await page.goto("/drive");
+  await page.goto("/drive?view=folder&path=My%20Drive");
   const row = rowOf(page, name);
   await expect(row).toBeVisible({ timeout: 30_000 });
   await row.getByRole("button", { name: "More actions" }).click();

@@ -1,45 +1,69 @@
-import type { ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  Briefcase,
+  Building2,
+  Cake,
+  Link2,
+  MapPin,
+  Network,
+  StickyNote,
+  UserRound,
+} from "lucide-react";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import {
   ContactAddressRows,
   ContactEmailRows,
   ContactPhoneRows,
   ContactUrlRows,
+  contactAddressStreetInputId,
+  contactChannelValueInputId,
 } from "./contact-channel-editors";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import {
+  DetailFieldAddButton,
+  DetailFieldAddRow,
+  DetailFieldList,
+  DetailFieldRow,
+} from "@/detail-field-row/src/detail-field-row";
+import { DropdownMenu, type DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
-import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
+import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { cn } from "@/lib/utils";
-import { Tag, TagGroup, type TagItem } from "@/tag/src/tag";
+import { TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
+import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
-import type {
-  ContactAddressDraft,
-  ContactChannelContext,
-  ContactEditDraft,
-  ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
 import {
-  contactDisplayName,
-  contactListSubtitle,
-  contactPersonName,
-  channelDisplayLabels,
-  contactBirthdayDisplay,
-  contactPhoneDisplayValue,
-  mapEntriesSorted,
-  phoneToTelHref,
-  safeContactExternalHref,
-} from "@/contacts-core/src/contacts-display-utils";
+  contactCardToEditDraft,
+  emptyContactEditDraft,
+  type ContactAddressDraft,
+  type ContactChannelContext,
+  type ContactEditDraft,
+  type ContactPhoneType,
+} from "@/contacts-core/src/contacts-edit-utils";
+import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
+import "@/note-detail-view/src/note-detail-view.css";
 
 type ContactsDetailViewProps = {
   labels: ContactsUILabels;
   card?: ContactCard;
   createMode: boolean;
-  editMode: boolean;
+  /** No write rights on the card: the same sheet, display-only. */
+  readOnly: boolean;
+  /** The values being edited. Before it exists the sheet shows the card's own values. */
   editDraft: ContactEditDraft | null;
   displayName: string;
   onDraftChange: (patch: Partial<ContactEditDraft>) => void;
@@ -60,9 +84,16 @@ type ContactsDetailViewProps = {
   onRemovePhone: (id: string) => void;
   onRemoveEmail: (id: string) => void;
   onRemoveAddress: (id: string) => void;
+  /** Each adds an empty row and returns its id, so the sheet can focus it. */
+  onAddPhone: () => string | undefined;
+  onAddEmail: () => string | undefined;
+  onAddAddress: () => string | undefined;
+  onAddUrl: () => string | undefined;
+  /** Above the name: the address book switcher (Notes-style eyebrow). */
+  eyebrow?: ReactNode;
   /**
-   * Group membership chips (Notes TagGroup). Omit to hide — group cards and
-   * create-mode have no membership tags.
+   * Group membership chips, washed in their address book's colour. Omit to hide:
+   * group cards and create mode have no membership tags.
    */
   groupTags?: {
     assigned: ContactDetailGroupChip[];
@@ -77,511 +108,129 @@ type ContactsDetailViewProps = {
   className?: string;
 };
 
-function groupToTagItem(chip: ContactDetailGroupChip, removable: boolean): TagItem {
-  const { group } = chip;
-  return {
-    id: group.id,
-    label: contactDisplayName(group),
-    icon: <ContactsGroupIcon />,
-    removable,
-  };
+/** Fields that stay out of sight while empty; "Add field" brings them in. */
+type OptionalField = "middleName" | "jobTitle" | "department" | "birthday";
+
+function optionalFieldHasValue(draft: ContactEditDraft, field: OptionalField): boolean {
+  if (field === "middleName") return Boolean(draft.nameGiven2.trim());
+  if (field === "jobTitle") return Boolean(draft.title.trim());
+  if (field === "department") return Boolean(draft.department.trim());
+  return Boolean(draft.birthday.trim());
 }
 
-type AddressDisplayLines = {
-  street: string;
-  localityLine: string;
-  region: string;
-  country: string;
-};
-
-function readAddressComponentValue(
-  components: NonNullable<ContactCard["addresses"]>[string]["components"],
-  kind: string,
-): string {
-  return (components ?? [])
-    .filter((component) => component.kind === kind)
-    .map((component) => component.value?.trim() ?? "")
-    .filter(Boolean)
-    .join(" ");
+function optionalFieldInputId(field: OptionalField): string {
+  return `contact-field-${field}`;
 }
 
-function readLegacyAddressField(
-  address: NonNullable<ContactCard["addresses"]>[string],
-  field: "street" | "locality" | "region" | "postcode" | "country",
-): string {
-  const value = (address as Record<string, unknown>)[field];
-  return typeof value === "string" ? value.trim() : "";
+function filled<T>(rows: T[], value: (row: T) => string): boolean {
+  return rows.some((row) => value(row).trim());
 }
 
-function readCardAddressStreet(address: NonNullable<ContactCard["addresses"]>[string]): string {
-  const components = address.components ?? [];
-  const name = readAddressComponentValue(components, "name");
-  const number = readAddressComponentValue(components, "number");
-  if (number && name) return `${number} ${name}`.trim();
-  if (name) return name;
-  if (number) return number;
-  const legacyStreet = readLegacyAddressField(address, "street");
-  if (legacyStreet) return legacyStreet;
-  if (typeof address.full === "string" && address.full.trim()) return address.full.trim();
-  const fromComponents = components
-    .map((part) => part.value?.trim())
-    .filter(Boolean)
-    .join(", ");
-  return fromComponents;
-}
-
-function formatLocalityLine(postalCode: string, locality: string): string {
-  return [postalCode, locality]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
-function addressDisplayFromCard(
-  address: NonNullable<ContactCard["addresses"]>[string],
-): AddressDisplayLines {
-  const components = address.components ?? [];
-  return {
-    street: readCardAddressStreet(address),
-    localityLine: formatLocalityLine(
-      readAddressComponentValue(components, "postcode") ||
-        readLegacyAddressField(address, "postcode"),
-      readAddressComponentValue(components, "locality") ||
-        readLegacyAddressField(address, "locality"),
-    ),
-    region:
-      readAddressComponentValue(components, "region") || readLegacyAddressField(address, "region"),
-    country:
-      readAddressComponentValue(components, "country") ||
-      readLegacyAddressField(address, "country"),
-  };
-}
-
-function AddressDisplayBlock({ lines }: { lines: AddressDisplayLines }) {
-  const rows = [lines.street, lines.localityLine, lines.region, lines.country].filter(Boolean);
-  if (rows.length === 0) return null;
-  return (
-    <div className="contacts-detail-view__address-lines">
-      {lines.street ? <span>{lines.street}</span> : null}
-      {lines.localityLine ? <span>{lines.localityLine}</span> : null}
-      {lines.region ? <span>{lines.region}</span> : null}
-      {lines.country ? <span>{lines.country}</span> : null}
-    </div>
+function addressFilled(row: ContactAddressDraft): boolean {
+  return [row.street, row.postalCode, row.locality, row.region, row.country].some((part) =>
+    part.trim(),
   );
 }
 
-function ChannelReadRow({
-  contextLabels,
-  emptyLabel,
-  children,
+/** A group chip in its address book's colour: a light wash, the name mixed into ink. */
+function groupTagColors(color: string | undefined): TagItem["colors"] {
+  if (!color) return undefined;
+  return {
+    backgroundColor: `color-mix(in oklch, ${color} 16%, transparent)`,
+    color: `color-mix(in oklch, ${color} 55%, var(--workspace-foreground))`,
+  };
+}
+
+/**
+ * A name part as wide as its text, so first, middle and last name read as one line:
+ * in the title, or as ghost fields in a company's Name row. The hidden copy
+ * (`data-value`) sizes it.
+ */
+function NamePartInput({
+  id,
+  value,
+  placeholder,
+  ariaLabel = placeholder,
+  readOnly,
+  autoFocus,
+  variant = "title",
+  onChange,
 }: {
-  contextLabels?: string[];
-  emptyLabel?: string;
-  children: ReactNode;
+  id: string;
+  value: string;
+  placeholder: string;
+  /** Defaults to the placeholder; set it when the placeholder is shortened. */
+  ariaLabel?: string;
+  readOnly: boolean;
+  autoFocus?: boolean;
+  variant?: "title" | "field";
+  onChange: (value: string) => void;
 }) {
-  const hasLabels = Boolean(contextLabels?.length);
+  if (readOnly && !value.trim()) return null;
+  const shared = {
+    id,
+    value,
+    placeholder,
+    "aria-label": ariaLabel,
+    readOnly,
+    autoFocus,
+    onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value),
+  };
   return (
-    <li className="contacts-detail-view__channel-row">
-      {hasLabels ? (
-        <div className="contacts-detail-view__channel-type">
-          {contextLabels?.map((label, index) => (
-            <Tag key={`${label}-${index}`} label={label} />
-          ))}
-        </div>
-      ) : emptyLabel ? (
-        <div className="contacts-detail-view__channel-type">
-          <span className="contacts-detail-view__label--none">{emptyLabel}</span>
-        </div>
-      ) : (
-        <span className="contacts-detail-view__channel-type" aria-hidden="true" />
+    <span
+      className={cn(
+        "contacts-detail-view__name-part",
+        variant === "field" && "contacts-detail-view__name-part--field",
       )}
-      <div className="contacts-detail-view__channel-value">{children}</div>
-    </li>
+      data-value={value || placeholder}
+    >
+      {variant === "field" ? (
+        <Input variant="ghost" size="sm" {...shared} />
+      ) : (
+        <input className="contacts-detail-view__name-input" {...shared} />
+      )}
+    </span>
   );
 }
 
-function contactViewIdentityLines(card: ContactCard): string[] {
-  if (card.kind === "group") return [];
-  const organization = mapEntriesSorted(card.organizations)[0]?.[1]?.name;
-  const jobTitleEntry =
-    mapEntriesSorted(card.titles).find(([, title]) => (title.kind ?? "title") === "title") ??
-    mapEntriesSorted(card.titles)[0];
-  const jobTitle = jobTitleEntry?.[1]?.name?.trim() ?? "";
-  const jobDepartment = mapEntriesSorted(card.organizations)[0]?.[1]?.units?.[0]?.name;
-  const orgName = typeof organization === "string" ? organization.trim() : "";
-  const deptName = typeof jobDepartment === "string" ? jobDepartment.trim() : "";
-  const lines: string[] = [];
-  if (card.kind === "org") {
-    const subtitle = contactListSubtitle(card);
-    if (subtitle) lines.push(subtitle);
-    if (jobTitle) lines.push(jobTitle);
-    if (deptName) lines.push(deptName);
-    return lines;
-  }
-  if (jobTitle) lines.push(jobTitle);
-  const orgLine = [deptName, orgName].filter(Boolean).join(" · ");
-  if (orgLine) lines.push(orgLine);
-  return lines;
-}
-
-function DetailSection({
-  title,
-  children,
-  hidden,
+function SingleFieldInput({
+  id,
+  value,
+  label,
+  readOnly,
+  onChange,
 }: {
-  title: string;
-  children: ReactNode;
-  hidden?: boolean;
+  id: string;
+  value: string;
+  label: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
 }) {
-  if (hidden) return null;
   return (
-    <section className="contacts-detail-view__section">
-      <h2 className={cn("field-label-row__label", "contacts-detail-view__section-title")}>
-        {title}
-      </h2>
-      <div className="contacts-detail-view__section-body">{children}</div>
-    </section>
+    <Input
+      id={id}
+      variant="ghost"
+      size="sm"
+      aria-label={label}
+      placeholder={label}
+      value={value}
+      readOnly={readOnly}
+      onChange={(event) => onChange(event.target.value)}
+    />
   );
 }
 
-type ContactsDetailEditFormProps = {
-  labels: ContactsUILabels;
-  card?: ContactCard;
-  editDraft: ContactEditDraft;
-  locale: string;
-  onDraftChange: (patch: Partial<ContactEditDraft>) => void;
-  onUpdatePhone: ContactsDetailViewProps["onUpdatePhone"];
-  onUpdateEmail: ContactsDetailViewProps["onUpdateEmail"];
-  onUpdatePhoneContext: ContactsDetailViewProps["onUpdatePhoneContext"];
-  onUpdateEmailContext: ContactsDetailViewProps["onUpdateEmailContext"];
-  onUpdateAddress: ContactsDetailViewProps["onUpdateAddress"];
-  onUpdateAddressContext: ContactsDetailViewProps["onUpdateAddressContext"];
-  onUpdateUrl: ContactsDetailViewProps["onUpdateUrl"];
-  onUpdateUrlContext: ContactsDetailViewProps["onUpdateUrlContext"];
-  onRemoveUrl: ContactsDetailViewProps["onRemoveUrl"];
-  onRemovePhone: ContactsDetailViewProps["onRemovePhone"];
-  onRemoveEmail: ContactsDetailViewProps["onRemoveEmail"];
-  onRemoveAddress: ContactsDetailViewProps["onRemoveAddress"];
-};
-
-function ContactsDetailEditForm({
-  labels,
-  card,
-  editDraft,
-  locale,
-  onDraftChange,
-  onUpdatePhone,
-  onUpdateEmail,
-  onUpdatePhoneContext,
-  onUpdateEmailContext,
-  onUpdateAddress,
-  onUpdateAddressContext,
-  onUpdateUrl,
-  onUpdateUrlContext,
-  onRemoveUrl,
-  onRemovePhone,
-  onRemoveEmail,
-  onRemoveAddress,
-}: ContactsDetailEditFormProps) {
-  const showAsCompany = editDraft.showAsCompany;
-  const showBirthdayEditor = card?.kind !== "group";
-  const nameFields = (
-    <>
-      <div className="contacts-detail-view__name-row">
-        <FieldLabelRow label={labels.nameGiven} htmlFor="contact-given-name">
-          <Input
-            id="contact-given-name"
-            value={editDraft.nameGiven}
-            onChange={(event) => onDraftChange({ nameGiven: event.target.value })}
-          />
-        </FieldLabelRow>
-        <FieldLabelRow label={labels.nameSurname} htmlFor="contact-surname">
-          <Input
-            id="contact-surname"
-            value={editDraft.nameSurname}
-            onChange={(event) => onDraftChange({ nameSurname: event.target.value })}
-          />
-        </FieldLabelRow>
-      </div>
-      {editDraft.showGiven2 ? (
-        <FieldLabelRow label={labels.nameGiven2} htmlFor="contact-given2-name">
-          <Input
-            id="contact-given2-name"
-            value={editDraft.nameGiven2}
-            onChange={(event) => onDraftChange({ nameGiven2: event.target.value })}
-          />
-        </FieldLabelRow>
-      ) : null}
-    </>
-  );
-  const organizationField = (
-    <FieldLabelRow label={labels.organizationName} htmlFor="contact-organization">
-      <Input
-        id="contact-organization"
-        value={editDraft.organization}
-        onChange={(event) => onDraftChange({ organization: event.target.value })}
-      />
-    </FieldLabelRow>
-  );
-  const jobFields = (
-    <div className="contacts-detail-view__job-row">
-      <FieldLabelRow label={labels.jobTitle} htmlFor="contact-job-title">
-        <Input
-          id="contact-job-title"
-          value={editDraft.title}
-          onChange={(event) => onDraftChange({ title: event.target.value })}
-        />
-      </FieldLabelRow>
-      <FieldLabelRow label={labels.jobDepartment} htmlFor="contact-job-department">
-        <Input
-          id="contact-job-department"
-          value={editDraft.department}
-          onChange={(event) => onDraftChange({ department: event.target.value })}
-        />
-      </FieldLabelRow>
-    </div>
-  );
-  const birthdayField = showBirthdayEditor ? (
-    <FieldLabelRow label={labels.sectionBirthday}>
-      <LocaleDatePicker
-        value={editDraft.birthday}
-        locale={locale}
-        size="md"
-        label={labels.sectionBirthday}
-        onChange={(next) => onDraftChange({ birthday: next })}
-      />
-    </FieldLabelRow>
-  ) : null;
-  const companyToggle = (
-    <FieldLabelRow label={labels.companyContact}>
-      <Switch
-        checked={editDraft.showAsCompany}
-        onCheckedChange={(checked) => onDraftChange({ showAsCompany: checked })}
-        aria-label={labels.companyContact}
-      />
-    </FieldLabelRow>
-  );
-
-  return (
-    <>
-      <DetailSection title={labels.sectionName}>
-        <div className="contacts-detail-view__field-stack">
-          {showAsCompany ? (
-            <>
-              {organizationField}
-              {nameFields}
-              {jobFields}
-              {companyToggle}
-              {birthdayField}
-            </>
-          ) : (
-            <>
-              {nameFields}
-              {jobFields}
-              {organizationField}
-              {companyToggle}
-              {birthdayField}
-            </>
-          )}
-        </div>
-      </DetailSection>
-      <DetailSection title={labels.sectionPhones}>
-        <div className="contacts-detail-view__editable-list">
-          <ContactPhoneRows
-            phones={editDraft.phones}
-            labels={labels}
-            onUpdatePhone={onUpdatePhone}
-            onUpdatePhoneContext={onUpdatePhoneContext}
-            onRemovePhone={onRemovePhone}
-          />
-        </div>
-      </DetailSection>
-      <DetailSection title={labels.sectionEmails}>
-        <div className="contacts-detail-view__editable-list">
-          <ContactEmailRows
-            emails={editDraft.emails}
-            labels={labels}
-            onUpdateEmail={onUpdateEmail}
-            onUpdateEmailContext={onUpdateEmailContext}
-            onRemoveEmail={onRemoveEmail}
-          />
-        </div>
-      </DetailSection>
-      <DetailSection title={labels.sectionAddresses}>
-        <div className="contacts-detail-view__editable-list contacts-detail-view__address-list">
-          <ContactAddressRows
-            addresses={editDraft.addresses}
-            labels={labels}
-            onUpdateAddress={onUpdateAddress}
-            onUpdateAddressContext={onUpdateAddressContext}
-            onRemoveAddress={onRemoveAddress}
-          />
-        </div>
-      </DetailSection>
-      <DetailSection title={labels.sectionUrls}>
-        <div className="contacts-detail-view__editable-list">
-          <ContactUrlRows
-            urls={editDraft.urls}
-            labels={labels}
-            onUpdateUrl={onUpdateUrl}
-            onUpdateUrlContext={onUpdateUrlContext}
-            onRemoveUrl={onRemoveUrl}
-          />
-        </div>
-      </DetailSection>
-      <DetailSection title={labels.sectionNotes}>
-        <Textarea
-          id="contact-notes"
-          className="contacts-detail-view__notes"
-          aria-label={labels.sectionNotes}
-          value={editDraft.notes}
-          onChange={(event) => onDraftChange({ notes: event.target.value })}
-        />
-      </DetailSection>
-    </>
-  );
-}
-
-function ContactsDetailReadBody({
-  labels,
-  card,
-}: {
-  labels: ContactsUILabels;
-  card?: ContactCard;
-}) {
-  const personName = card ? contactPersonName(card) : "";
-  const notes = mapEntriesSorted(card?.notes)[0]?.[1]?.note;
-  const notesText = typeof notes === "string" ? notes.trim() : "";
-  const birthdayDisplay = card ? contactBirthdayDisplay(card) : "";
-  const readPhones = mapEntriesSorted(card?.phones).map(([id, phone]) => ({
-    id,
-    number: contactPhoneDisplayValue(phone),
-    contextLabels: channelDisplayLabels(phone.contexts, labels, {
-      features: phone.features,
-      customLabel: phone.label,
-    }),
-  }));
-  const readEmails = mapEntriesSorted(card?.emails).map(([id, email]) => ({
-    id,
-    address: email.address?.trim() || "",
-    contextLabels: channelDisplayLabels(email.contexts, labels, {
-      customLabel: email.label,
-    }),
-  }));
-  const readAddresses = mapEntriesSorted(card?.addresses).map(([id, address]) => ({
-    id,
-    lines: addressDisplayFromCard(address),
-    contextLabels: channelDisplayLabels(address.contexts, labels, {
-      customLabel: typeof address.label === "string" ? address.label : undefined,
-    }),
-  }));
-  const readUrls = mapEntriesSorted(card?.links)
-    .filter(([, link]) => link.kind !== "contact")
-    .map(([id, link]) => ({
-      id,
-      uri: link.uri?.trim() ?? "",
-      contextLabels: channelDisplayLabels(link.contexts, labels, {
-        customLabel: link.label,
-      }),
-    }));
-
-  return (
-    <>
-      <DetailSection title={labels.sectionName} hidden={!personName || card?.kind !== "group"}>
-        <p className="contacts-detail-view__text">{personName}</p>
-      </DetailSection>
-      {birthdayDisplay ? (
-        <DetailSection title={labels.sectionBirthday}>
-          <p className="contacts-detail-view__text">{birthdayDisplay}</p>
-        </DetailSection>
-      ) : null}
-      <DetailSection title={labels.sectionPhones} hidden={readPhones.length === 0}>
-        <ul className="contacts-detail-view__channel-list">
-          {readPhones.map((row) => {
-            const telHref = phoneToTelHref(row.number);
-            return (
-              <ChannelReadRow
-                key={row.id}
-                contextLabels={row.contextLabels}
-                emptyLabel={labels.channelLabelNone}
-              >
-                {telHref ? (
-                  <a className="contacts-detail-view__link" href={telHref}>
-                    {row.number}
-                  </a>
-                ) : (
-                  <span>{row.number}</span>
-                )}
-              </ChannelReadRow>
-            );
-          })}
-        </ul>
-      </DetailSection>
-      <DetailSection title={labels.sectionEmails} hidden={readEmails.length === 0}>
-        <ul className="contacts-detail-view__channel-list">
-          {readEmails.map((row) => (
-            <ChannelReadRow
-              key={row.id}
-              contextLabels={row.contextLabels}
-              emptyLabel={labels.channelLabelNone}
-            >
-              <span>{row.address}</span>
-            </ChannelReadRow>
-          ))}
-        </ul>
-      </DetailSection>
-      <DetailSection title={labels.sectionAddresses} hidden={readAddresses.length === 0}>
-        <ul className="contacts-detail-view__channel-list">
-          {readAddresses.map((row) => (
-            <ChannelReadRow
-              key={row.id}
-              contextLabels={row.contextLabels}
-              emptyLabel={labels.channelLabelNone}
-            >
-              <AddressDisplayBlock lines={row.lines} />
-            </ChannelReadRow>
-          ))}
-        </ul>
-      </DetailSection>
-      <DetailSection title={labels.sectionUrls} hidden={readUrls.length === 0}>
-        <ul className="contacts-detail-view__channel-list">
-          {readUrls.map((row) => {
-            const href = safeContactExternalHref(row.uri);
-            return (
-              <ChannelReadRow
-                key={row.id}
-                contextLabels={row.contextLabels}
-                emptyLabel={labels.channelLabelNone}
-              >
-                {href ? (
-                  <a
-                    className="contacts-detail-view__link"
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {row.uri}
-                  </a>
-                ) : (
-                  <span>{row.uri}</span>
-                )}
-              </ChannelReadRow>
-            );
-          })}
-        </ul>
-      </DetailSection>
-      <DetailSection title={labels.sectionNotes} hidden={!notesText}>
-        <p className="contacts-detail-view__text">{notesText}</p>
-      </DetailSection>
-    </>
-  );
-}
-
+/**
+ * The open contact, laid out like an open task or note (`NoteDetailView` sheet): the
+ * address book above the name, the name as the title, its groups as tags, one row
+ * per field, and the notes at the very bottom. Every change saves itself; there is
+ * no separate edit mode. Rare fields stay hidden while empty ("Add field").
+ */
 export function ContactsDetailView({
   labels,
   card,
   createMode,
-  editMode,
+  readOnly,
   editDraft,
   displayName,
   onDraftChange,
@@ -597,81 +246,391 @@ export function ContactsDetailView({
   onRemovePhone,
   onRemoveEmail,
   onRemoveAddress,
+  onAddPhone,
+  onAddEmail,
+  onAddAddress,
+  onAddUrl,
   groupTags,
+  eyebrow,
   locale = "en-US",
   className,
 }: ContactsDetailViewProps) {
-  const isEditing = editMode && !!editDraft;
+  const cardDraft = useMemo(
+    () => (card ? contactCardToEditDraft(card) : emptyContactEditDraft()),
+    [card],
+  );
+  const draft = editDraft ?? cardDraft;
+  // Until the draft exists the values are the card's: nothing to type into yet.
+  const locked = readOnly || !editDraft;
+  const contactKey = createMode ? "create" : (card?.id ?? "");
+  const [revealed, setRevealed] = useState<{ key: string; fields: OptionalField[] }>({
+    key: contactKey,
+    fields: [],
+  });
+  const revealedFields = revealed.key === contactKey ? revealed.fields : [];
+  const [focusId, setFocusId] = useState<string | null>(null);
+  // A field added from "Add field": the menu must not take focus back to its button.
+  const menuFocusIdRef = useRef<string | null>(null);
+  const overrides = useAddressBookColorOverrides();
+
+  useLayoutEffect(() => {
+    if (!focusId) return;
+    const element = document.getElementById(focusId);
+    if (!element) return;
+    setFocusId(null);
+    element.focus();
+  }, [focusId, draft]);
+
+  const isGroup = card?.kind === "group";
+  const isCompany = draft.showAsCompany;
+  const showField = (field: OptionalField) =>
+    optionalFieldHasValue(draft, field) || (!locked && revealedFields.includes(field));
+  // A company has no job title of its own.
+  const fieldAvailable = (field: OptionalField) => !isGroup && !(isCompany && field === "jobTitle");
+
+  const reveal = (field: OptionalField) => {
+    setRevealed({ key: contactKey, fields: [...revealedFields, field] });
+    if (field === "middleName") onDraftChange({ showGiven2: true });
+    return optionalFieldInputId(field);
+  };
+
+  const addAndFocus = (add: () => string | undefined, inputId: (id: string) => string) => {
+    const id = add();
+    const target = id ? inputId(id) : null;
+    setFocusId(target);
+    return target;
+  };
+
+  const fromMenu = (target: string | null) => {
+    menuFocusIdRef.current = target;
+  };
+
+  const optionalFields: Array<{ field: OptionalField; label: string; icon: ReactNode }> = [
+    { field: "middleName", label: labels.nameGiven2, icon: <UserRound /> },
+    { field: "jobTitle", label: labels.jobTitle, icon: <Briefcase /> },
+    { field: "department", label: labels.jobDepartment, icon: <Network /> },
+    { field: "birthday", label: labels.sectionBirthday, icon: <Cake /> },
+  ];
+  const addFieldItems: DropdownMenuItemProps[] = [
+    ...optionalFields
+      .filter(({ field }) => fieldAvailable(field) && !showField(field))
+      .map(({ field, label, icon }) => ({
+        id: field,
+        label,
+        icon,
+        onClick: () => fromMenu(reveal(field)),
+      })),
+    ...(draft.addresses.length === 0
+      ? [
+          {
+            id: "address",
+            label: labels.address,
+            icon: <MapPin />,
+            onClick: () => fromMenu(addAndFocus(onAddAddress, contactAddressStreetInputId)),
+          },
+        ]
+      : []),
+    ...(draft.urls.length === 0
+      ? [
+          {
+            id: "url",
+            label: labels.urlAddress,
+            icon: <Link2 />,
+            onClick: () => fromMenu(addAndFocus(onAddUrl, contactChannelValueInputId)),
+          },
+        ]
+      : []),
+  ];
+
+  const tags = groupTags?.assigned.map((chip): TagItem => ({
+    id: chip.group.id,
+    label: contactDisplayName(chip.group),
+    icon: <ContactsGroupIcon />,
+    removable: !groupTags.readonly && chip.writable,
+    colors: groupTagColors(groupAddressBookColor(chip.group, overrides)),
+  }));
+
+  // Name and organisation, the rare fields, company: one block. Read-only and empty: none.
+  const hasBasics =
+    !isGroup &&
+    (!locked ||
+      Boolean(draft.organization.trim()) ||
+      optionalFields.some(({ field }) => optionalFieldHasValue(draft, field)));
+
+  /** Phones, e-mails, addresses, websites: each its own block, with room between. */
+  const section = (show: boolean, rows: ReactNode) =>
+    show ? (
+      <DetailFieldList className="contacts-detail-view__fields">{rows}</DetailFieldList>
+    ) : null;
+
+  const optionalRow = (field: OptionalField, label: string, icon: ReactNode, control: ReactNode) =>
+    showField(field) ? (
+      <DetailFieldRow key={field} icon={icon} title={label}>
+        {control}
+      </DetailFieldRow>
+    ) : null;
+
+  /** First, middle (once it has a value or was added) and last name, on one line. */
+  const nameParts = (variant: "title" | "field") => (
+    <>
+      <NamePartInput
+        id="contact-given-name"
+        variant={variant}
+        value={draft.nameGiven}
+        placeholder={labels.nameGiven}
+        readOnly={locked}
+        autoFocus={createMode && !isCompany}
+        onChange={(nameGiven) => onDraftChange({ nameGiven })}
+      />
+      {showField("middleName") ? (
+        <NamePartInput
+          id={optionalFieldInputId("middleName")}
+          variant={variant}
+          value={draft.nameGiven2}
+          placeholder={labels.nameGiven2Placeholder}
+          ariaLabel={labels.nameGiven2}
+          readOnly={locked}
+          onChange={(nameGiven2) => onDraftChange({ nameGiven2, showGiven2: true })}
+        />
+      ) : null}
+      <NamePartInput
+        id="contact-surname"
+        variant={variant}
+        value={draft.nameSurname}
+        placeholder={labels.nameSurname}
+        readOnly={locked}
+        onChange={(nameSurname) => onDraftChange({ nameSurname })}
+      />
+    </>
+  );
+
+  const title = isGroup ? (
+    <h1 className="contacts-detail-view__title contacts-detail-view__title--static">
+      {card ? contactDisplayName(card) : displayName}
+    </h1>
+  ) : (
+    <h1 className="contacts-detail-view__title">
+      {isCompany ? (
+        <NamePartInput
+          id="contact-organization"
+          value={draft.organization}
+          placeholder={labels.companyName}
+          readOnly={locked}
+          autoFocus={createMode}
+          onChange={(organization) => onDraftChange({ organization })}
+        />
+      ) : (
+        nameParts("title")
+      )}
+    </h1>
+  );
 
   return (
-    <article className={cn("contacts-detail-view", className)}>
+    <article
+      className={cn("contacts-detail-view note-detail-view paper-sheet", className)}
+      style={{ "--contacts-detail-avatar-size": "4.5rem" } as CSSProperties}
+    >
       <header className="contacts-detail-view__header">
-        <div className="contacts-detail-view__identity">
-          <ContactUserAvatar
-            card={card}
-            displayName={displayName}
-            size="xl"
-            compact
-            className="contacts-detail-view__avatar"
-          />
-          {!isEditing && card ? (
-            <div className="contacts-detail-view__heading">
-              <h1 className="contacts-detail-view__title">{contactDisplayName(card)}</h1>
-              {contactViewIdentityLines(card).map((line, index) => (
-                <p key={`${index}-${line}`} className="contacts-detail-view__subtitle">
-                  {line}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {createMode && isEditing ? (
-            <h1 className="contacts-detail-view__title">{labels.newContact}</h1>
+        <ContactUserAvatar
+          card={card}
+          displayName={displayName}
+          size="xl"
+          compact
+          className="contacts-detail-view__avatar"
+        />
+        <div className="contacts-detail-view__heading">
+          <NoteDetailEyebrow>{eyebrow}</NoteDetailEyebrow>
+          {title}
+          {groupTags && tags ? (
+            <TagGroup
+              className="note-detail-view__tag-group contacts-detail-view__tag-group"
+              size="lg"
+              tags={tags}
+              suggestions={groupTags.suggestions.map((group) => ({
+                id: group.id,
+                label: contactDisplayName(group),
+                colors: groupTagColors(groupAddressBookColor(group, overrides)),
+              }))}
+              readonly={groupTags.readonly}
+              allowCreate={groupTags.allowCreate}
+              onAddTag={groupTags.readonly ? undefined : groupTags.onAdd}
+              onRemoveTag={groupTags.readonly ? undefined : groupTags.onRemove}
+              addPlaceholder={labels.addGroupPlaceholder}
+              addAriaLabel={labels.addGroup}
+              removeAriaLabelFor={(label) => `Remove group ${label}`}
+            />
           ) : null}
         </div>
-        {groupTags ? (
-          <TagGroup
-            className="contacts-detail-view__tag-group"
-            size="lg"
-            tags={groupTags.assigned.map((chip) =>
-              groupToTagItem(chip, !groupTags.readonly && chip.writable),
-            )}
-            suggestions={groupTags.suggestions.map((group) => ({
-              id: group.id,
-              label: contactDisplayName(group),
-            }))}
-            readonly={groupTags.readonly}
-            allowCreate={groupTags.allowCreate}
-            onAddTag={groupTags.readonly ? undefined : groupTags.onAdd}
-            onRemoveTag={groupTags.readonly ? undefined : groupTags.onRemove}
-            addPlaceholder={labels.addGroupPlaceholder}
-            addAriaLabel={labels.addGroup}
-            removeAriaLabelFor={(label) => `Remove group ${label}`}
-          />
-        ) : null}
       </header>
 
-      {isEditing && editDraft ? (
-        <ContactsDetailEditForm
+      {hasBasics ? (
+        <DetailFieldList className="contacts-detail-view__fields">
+          {isCompany ? (
+            <DetailFieldRow icon={<UserRound />} title={labels.sectionName}>
+              <div className="contacts-detail-view__name-fields">{nameParts("field")}</div>
+            </DetailFieldRow>
+          ) : locked && !draft.organization.trim() ? null : (
+            <DetailFieldRow icon={<Building2 />} title={labels.organizationName}>
+              <SingleFieldInput
+                id="contact-organization"
+                value={draft.organization}
+                label={labels.organizationName}
+                readOnly={locked}
+                onChange={(organization) => onDraftChange({ organization })}
+              />
+            </DetailFieldRow>
+          )}
+          {isGroup ? null : (
+            <>
+              {isCompany
+                ? null
+                : optionalRow(
+                    "jobTitle",
+                    labels.jobTitle,
+                    <Briefcase />,
+                    <SingleFieldInput
+                      id={optionalFieldInputId("jobTitle")}
+                      value={draft.title}
+                      label={labels.jobTitle}
+                      readOnly={locked}
+                      onChange={(next) => onDraftChange({ title: next })}
+                    />,
+                  )}
+              {optionalRow(
+                "department",
+                labels.jobDepartment,
+                <Network />,
+                <SingleFieldInput
+                  id={optionalFieldInputId("department")}
+                  value={draft.department}
+                  label={labels.jobDepartment}
+                  readOnly={locked}
+                  onChange={(department) => onDraftChange({ department })}
+                />,
+              )}
+              {optionalRow(
+                "birthday",
+                labels.sectionBirthday,
+                <Cake />,
+                <LocaleDatePicker
+                  variant="ghost"
+                  size="sm"
+                  className="contacts-detail-view__birthday"
+                  value={draft.birthday}
+                  locale={locale}
+                  label={labels.sectionBirthday}
+                  placeholder={labels.sectionBirthday}
+                  disabled={locked}
+                  onChange={(birthday) => onDraftChange({ birthday })}
+                />,
+              )}
+            </>
+          )}
+          {locked ? null : (
+            <DetailFieldRow icon={<Building2 />} title={labels.companyContact} center>
+              <Switch
+                checked={draft.showAsCompany}
+                onCheckedChange={(checked) => onDraftChange({ showAsCompany: checked })}
+                aria-label={labels.companyContact}
+              />
+            </DetailFieldRow>
+          )}
+        </DetailFieldList>
+      ) : null}
+
+      {section(
+        !locked || filled(draft.phones, (row) => row.number),
+        <ContactPhoneRows
+          phones={draft.phones}
           labels={labels}
-          card={card}
-          editDraft={editDraft}
-          locale={locale}
-          onDraftChange={onDraftChange}
+          readOnly={locked}
+          onAdd={() => addAndFocus(onAddPhone, contactChannelValueInputId)}
           onUpdatePhone={onUpdatePhone}
-          onUpdateEmail={onUpdateEmail}
           onUpdatePhoneContext={onUpdatePhoneContext}
+          onRemovePhone={onRemovePhone}
+        />,
+      )}
+      {section(
+        !locked || filled(draft.emails, (row) => row.address),
+        <ContactEmailRows
+          emails={draft.emails}
+          labels={labels}
+          readOnly={locked}
+          onAdd={() => addAndFocus(onAddEmail, contactChannelValueInputId)}
+          onUpdateEmail={onUpdateEmail}
           onUpdateEmailContext={onUpdateEmailContext}
+          onRemoveEmail={onRemoveEmail}
+        />,
+      )}
+      {section(
+        draft.addresses.length > 0 && (!locked || draft.addresses.some(addressFilled)),
+        <ContactAddressRows
+          addresses={draft.addresses}
+          labels={labels}
+          readOnly={locked}
+          onAdd={
+            draft.addresses.length > 0
+              ? () => addAndFocus(onAddAddress, contactAddressStreetInputId)
+              : undefined
+          }
           onUpdateAddress={onUpdateAddress}
           onUpdateAddressContext={onUpdateAddressContext}
+          onRemoveAddress={onRemoveAddress}
+        />,
+      )}
+      {section(
+        !locked ? draft.urls.length > 0 : filled(draft.urls, (row) => row.uri),
+        <ContactUrlRows
+          urls={draft.urls}
+          labels={labels}
+          readOnly={locked}
+          onAdd={
+            draft.urls.length > 0
+              ? () => addAndFocus(onAddUrl, contactChannelValueInputId)
+              : undefined
+          }
           onUpdateUrl={onUpdateUrl}
           onUpdateUrlContext={onUpdateUrlContext}
           onRemoveUrl={onRemoveUrl}
-          onRemovePhone={onRemovePhone}
-          onRemoveEmail={onRemoveEmail}
-          onRemoveAddress={onRemoveAddress}
-        />
-      ) : (
-        <ContactsDetailReadBody labels={labels} card={card} />
+        />,
+      )}
+
+      {locked || addFieldItems.length === 0 ? null : (
+        <DetailFieldList className="contacts-detail-view__fields">
+          <DetailFieldAddRow>
+            <DropdownMenu
+              items={addFieldItems}
+              onCloseAutoFocus={(event) => {
+                const target = menuFocusIdRef.current;
+                if (!target) return;
+                menuFocusIdRef.current = null;
+                event.preventDefault();
+                // The page is inert while the menu is open: focus once it is not.
+                requestAnimationFrame(() => document.getElementById(target)?.focus());
+              }}
+              trigger={<DetailFieldAddButton label={labels.addField} />}
+            />
+          </DetailFieldAddRow>
+        </DetailFieldList>
+      )}
+
+      {locked && !draft.notes.trim() ? null : (
+        <DetailFieldList className="contacts-detail-view__fields">
+          <DetailFieldRow icon={<StickyNote />} title={labels.sectionNotes} stacked>
+            <TextareaAutosize
+              id="contact-notes"
+              className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
+              value={draft.notes}
+              onChange={(event) => onDraftChange({ notes: event.target.value })}
+              placeholder={labels.notesPlaceholder}
+              aria-label={labels.sectionNotes}
+              readOnly={locked}
+              minRows={1}
+              // Grows with the notes, however long: the pane scrolls, not the field.
+              maxRows={Number.POSITIVE_INFINITY}
+            />
+          </DetailFieldRow>
+        </DetailFieldList>
       )}
     </article>
   );

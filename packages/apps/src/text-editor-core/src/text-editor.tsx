@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import type { Editor } from "@tiptap/react";
-import { cn } from "@/lib/utils";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { textEditorDemoContent } from "@/text-editor-core/src/text-editor-fixtures";
 import {
@@ -10,7 +9,7 @@ import {
 } from "@/text-editor-core/src/text-editor-format-bar";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import type { TextEditorSheetVariant } from "@/text-editor-core/src/text-editor-sheet";
-import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
+import { TextEditorFrame } from "@/text-editor-core/src/text-editor-frame";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { TextEditorPageSetup } from "@/lib/page-format";
@@ -105,13 +104,12 @@ export function TextEditor({
     return resolveTextEditorFormatBarConfig(config);
   })();
 
-  const formatLabel = format === "markdown" ? "Markdown" : format === "text" ? "Text" : "HTML";
-
   const formatBarElement = formatBarConfig ? (
     <TextEditorFormatBar
       editor={editor}
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
+      size={formatBarConfig.size}
       className={formatBarConfig.className}
       onInsertImage={onInsertImage}
     />
@@ -131,37 +129,22 @@ export function TextEditor({
   );
 
   return (
-    <div
-      className={cn(
-        "text-editor flex w-full flex-col",
-        sheetFill ? "h-full min-h-0 flex-1" : "h-full w-full",
-        viewSource && "text-editor--view-source",
-        className,
-      )}
-    >
-      {viewSource ? (
-        <div className="text-editor__body min-h-0 flex-1">
-          <TextEditorSource
-            value={sourceValue}
-            onChange={onSourceChange}
-            onFocus={onSourceFocus}
-            onBlur={onSourceBlur}
-            editable={editable}
-            formatLabel={formatLabel}
-            className="text-editor__source min-h-0"
-          />
-          <div className="text-editor__formatted flex min-h-0 flex-1 flex-col">
-            {formatBarElement}
-            {sheetElement}
-          </div>
-        </div>
-      ) : (
-        <>
-          {formatBarElement}
-          {sheetElement}
-        </>
-      )}
-    </div>
+    <TextEditorFrame
+      format={format}
+      pageSetup={pageSetup}
+      sheetFill={sheetFill}
+      viewSource={viewSource}
+      source={{
+        value: sourceValue,
+        onChange: onSourceChange,
+        onFocus: onSourceFocus,
+        onBlur: onSourceBlur,
+        editable,
+      }}
+      formatBar={formatBarElement}
+      sheet={sheetElement}
+      className={className}
+    />
   );
 }
 

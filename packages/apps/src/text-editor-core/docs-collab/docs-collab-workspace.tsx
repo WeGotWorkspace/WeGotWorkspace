@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { MessageSquare } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
 import {
+  type DocsCollabUiPermissions,
   resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
@@ -13,7 +13,7 @@ import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -58,7 +58,8 @@ import { notifyDocumentGone } from "./docs-collab-utils";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
-import { docsCollabHeaderActions } from "./docs-collab-header-actions";
+import { docsCollabHeaderActions, docsCollabSourceToggle } from "./docs-collab-header-actions";
+import { DocsFooterTools } from "@/docs-core/src/docs-footer-tools";
 import { mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 import { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
 import { DocsCollabStatusIndicator } from "./docs-collab-status-indicator";
@@ -68,8 +69,7 @@ import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { useDocsCollabAwarenessPresence } from "./use-docs-collab-awareness-presence";
 import { useDocsComments } from "./use-docs-comments";
 import { useDocsSuggestions } from "./use-docs-suggestions";
-import { useDocsCollab } from "./use-docs-collab";
-import type { DocsCollabUrls } from "./use-docs-collab";
+import { type DocsCollabUrls, useDocsCollab } from "./use-docs-collab";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createDocsThreadsLiveClient } from "./docs-threads-live";
 import { createDocsThreadsMemory } from "./docs-threads-memory";
@@ -115,6 +115,8 @@ export type DocsCollabWorkspaceProps = {
   driveUsername?: string;
   /** Doc virtual path (`/users/…/file.md`) for `.attachments/{docFnId}/` uploads. */
   docApiPath?: string;
+  /** Opens the rename dialog; the pencil next to the title shows only when set (and editable). */
+  onRename?: () => void;
 };
 
 function countWords(text: string): number {
@@ -144,6 +146,7 @@ export function DocsCollabWorkspace({
   driveOperations,
   driveUsername,
   docApiPath,
+  onRename,
 }: DocsCollabWorkspaceProps = {}) {
   const { userName, promptDismissed } = useDocsCollabUserName(userNameProp);
 
@@ -171,6 +174,7 @@ export function DocsCollabWorkspace({
       driveOperations={driveOperations}
       driveUsername={driveUsername}
       docApiPath={docApiPath}
+      onRename={onRename}
     />
   );
 }
@@ -188,6 +192,7 @@ function DocsCollabWorkspaceInner({
   driveOperations,
   driveUsername,
   docApiPath,
+  onRename,
 }: {
   userName: string;
   documentTitle?: string;
@@ -201,6 +206,7 @@ function DocsCollabWorkspaceInner({
   driveOperations?: DriveAPIOperations;
   driveUsername?: string;
   docApiPath?: string;
+  onRename?: () => void;
 }) {
   const labels = docsLabels;
   const reportDocumentGoneRef = useRef<() => void>(() => undefined);
@@ -591,6 +597,19 @@ function DocsCollabWorkspaceInner({
     editor.commands.setEditMode();
   }, [editor, viewSource]);
 
+  const headerActionsInput = {
+    labels,
+    editor,
+    viewSource,
+    onToggleViewSource: () => setViewSource((on) => !on),
+    sourceLockedByCollab,
+    reviewPanelOpen,
+    download: collabSession && !snapshotPreview ? download : undefined,
+    share:
+      showShare && onShare ? { label: shareLabel ?? labels.share, onClick: onShare } : undefined,
+    review: { itemCount: reviewItemCount, onToggle: handleToggleReview },
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <>
@@ -603,8 +622,7 @@ function DocsCollabWorkspaceInner({
               onCloseMobile={() => setSidebarOpen(false)}
               appSwitchSubtitle="Docs"
               footer={
-                <WorkspaceAppSettingsFooter
-                  appId="docs"
+                <WorkspaceSidebarAccountFooter
                   session={session}
                   detailLine={session.user.username}
                   onLogout={onLogout}
@@ -625,49 +643,39 @@ function DocsCollabWorkspaceInner({
               title={resolvedDocumentTitle}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
-              titleTrailing={
-                <IconButton
-                  label={
-                    viewSource
-                      ? "Review is disabled in source view"
-                      : reviewPanelOpen
-                        ? labels.reviewToggleHide
-                        : reviewItemCount > 0
-                          ? `${labels.reviewToggleShow} (${reviewItemCount})`
-                          : labels.reviewToggleShow
-                  }
-                  icon={<MessageSquare />}
-                  size="md"
-                  variant="outline"
-                  active={reviewPanelOpen}
-                  disabled={viewSource}
-                  className="docs-workspace__review-toggle"
-                  data-count={reviewItemCount > 0 ? reviewItemCount : undefined}
-                  aria-pressed={reviewPanelOpen}
-                  onClick={handleToggleReview}
-                />
+              // Rename sits on the name it changes (same pencil as the non-collab header).
+              titleSuffix={
+                onRename && permissions.editable ? (
+                  <IconButton
+                    label={labels.rename}
+                    icon={<Pencil />}
+                    size="sm"
+                    variant="outline"
+                    className="docs-workspace__rename"
+                    onClick={onRename}
+                  />
+                ) : undefined
               }
               actions={
                 <DocsHeaderActions
-                  pageSetup={{ ...pageSetup, labels }}
                   leading={
+                    collabSession ? (
+                      <DocsCollabPresenceChrome
+                        variant="header"
+                        className="docs-workspace__header-presence"
+                        localUser={{ displayName: collabSession.user.name }}
+                        peers={presencePeers}
+                        connectingPeers={connectingPeers}
+                        warningPeers={warningPeers}
+                      />
+                    ) : undefined
+                  }
+                  trailing={
                     permissions.editable ? (
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
                     ) : undefined
                   }
-                  actions={docsCollabHeaderActions({
-                    labels,
-                    editor,
-                    viewSource,
-                    onToggleViewSource: () => setViewSource((on) => !on),
-                    sourceLockedByCollab,
-                    reviewPanelOpen,
-                    download: collabSession && !snapshotPreview ? download : undefined,
-                    share:
-                      showShare && onShare
-                        ? { label: shareLabel ?? labels.share, onClick: onShare }
-                        : undefined,
-                  })}
+                  actions={docsCollabHeaderActions(headerActionsInput)}
                 />
               }
             />
@@ -691,7 +699,7 @@ function DocsCollabWorkspaceInner({
                   formatBar={
                     editorFormat === "text" || formatBarMode === "hidden"
                       ? false
-                      : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false }
+                      : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false, size: "lg" }
                   }
                   onContentChange={handleMarkdownChange}
                   onEditorReady={handleEditorReady}
@@ -715,16 +723,10 @@ function DocsCollabWorkspaceInner({
               <WorkspaceDetailFooter
                 className="docs-workspace__stats-footer"
                 start={
-                  collabSession ? (
-                    <DocsCollabPresenceChrome
-                      localUser={{
-                        displayName: collabSession.user.name,
-                      }}
-                      peers={presencePeers}
-                      connectingPeers={connectingPeers}
-                      warningPeers={warningPeers}
-                    />
-                  ) : undefined
+                  <DocsFooterTools
+                    pageSetup={{ ...pageSetup, labels }}
+                    source={docsCollabSourceToggle(headerActionsInput)}
+                  />
                 }
                 tags={
                   <>

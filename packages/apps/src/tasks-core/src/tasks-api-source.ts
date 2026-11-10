@@ -8,6 +8,7 @@ import type {
   TasksAPIOperations,
 } from "@/tasks-core/src/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
+import { applyTaskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
 import {
   filterSharePrincipals,
   mergeShareWith,
@@ -101,7 +102,7 @@ function createMockTasksOperations(
             ...patch,
             taskListId: listId,
             categories: patch.categories ?? task.categories,
-            alerts: patch.alerts !== undefined ? (patch.alerts ?? undefined) : task.alerts,
+            alerts: applyTaskAlertsPatch(task.alerts, patch.alerts),
           };
           return updated;
         }),

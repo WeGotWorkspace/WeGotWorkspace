@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { ImportDialog, type ImportDialogResult } from "@/import-dialog/src/import-dialog";
+import { DialogFooter } from "@/ui/dialog";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { ProgressRing } from "@/ui/progress";
 import { cn } from "@/lib/utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
@@ -38,6 +30,7 @@ export type NotesImportDialogLabels = Pick<
   | "importProgress"
   | "importedNotes"
   | "importSkippedHeading"
+  | "importNotesHeading"
   | "importDroppedTags"
   | "importImagesNotImported"
   | "importSkipReason"
@@ -71,43 +64,27 @@ function initialNotebookId(
   return notebooks.find((notebook) => notebook.isDefault)?.id ?? notebooks[0]?.id ?? null;
 }
 
-function ImportResultView({
-  result,
-  labels,
-}: {
-  result: NotesMarkdownImportResult;
-  labels: NotesImportDialogLabels;
-}): ReactElement {
-  return (
-    <div className="notes-import-dialog__result" role="status">
-      <p className="notes-import-dialog__result-count">
-        {labels.importedNotes(result.imported.length)}
-      </p>
-      {result.skipped.length > 0 ? (
-        <section className="notes-import-dialog__skipped" aria-label={labels.importSkippedHeading}>
-          <h3 className="notes-import-dialog__skipped-heading">{labels.importSkippedHeading}</h3>
-          <ul className="notes-import-dialog__skipped-list">
-            {result.skipped.map((item, index) => (
-              <li key={`${item.fileName}-${index}`} className="notes-import-dialog__skipped-item">
-                <span className="notes-import-dialog__file-name">{item.fileName}</span>
-                <span className="notes-import-dialog__reason">
-                  {labels.importSkipReason(item.reason, item.status)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {result.droppedTags.length > 0 ? (
-        <p className="notes-import-dialog__note">{labels.importDroppedTags(result.droppedTags)}</p>
-      ) : null}
-      {result.imagesNotImported > 0 ? (
-        <p className="notes-import-dialog__note">
-          {labels.importImagesNotImported(result.imagesNotImported)}
-        </p>
-      ) : null}
-    </div>
-  );
+function importResultView(
+  result: NotesMarkdownImportResult,
+  labels: NotesImportDialogLabels,
+): ImportDialogResult {
+  const notes = [
+    result.droppedTags.length > 0 ? labels.importDroppedTags(result.droppedTags) : null,
+    result.imagesNotImported > 0 ? labels.importImagesNotImported(result.imagesNotImported) : null,
+  ].filter((note): note is string => note !== null);
+  return {
+    summary: labels.importedNotes(result.imported.length),
+    nothingImported: result.imported.length === 0,
+    skipped: {
+      heading: labels.importSkippedHeading(result.skipped.length),
+      rows: result.skipped.map((item, index) => ({
+        key: `${item.fileName}-${index}`,
+        name: item.fileName,
+        reason: labels.importSkipReason(item.reason, item.status),
+      })),
+    },
+    notes: { heading: labels.importNotesHeading, items: notes },
+  };
 }
 
 export function NotesImportDialog({
@@ -156,105 +133,100 @@ export function NotesImportDialog({
     result.skipped.some((item) => item.reason === "failed");
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent
-        className={cn("notes-dialog-surface notes-import-dialog", contentClassName)}
-        onOpenAutoFocus={(event) => {
-          // Start on Import: focusing the notebook picker pops its tooltip over the field label.
-          const submit = formRef.current?.querySelector<HTMLButtonElement>('button[type="submit"]');
-          if (!submit || submit.disabled) return;
-          event.preventDefault();
-          submit.focus();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>{labels.importDialogTitle}</DialogTitle>
-          <DialogDescription>{labels.importFilesSelected(files.length)}</DialogDescription>
-        </DialogHeader>
-        {result ? (
-          <>
-            <ImportResultView result={result} labels={labels} />
-            <DialogFooter>
-              {canRetry ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  label={labels.importRetry}
-                  onClick={() => onImport(files, lastDestination.current!)}
-                />
-              ) : null}
-              <Button type="button" variant="primary" label={labels.importDone} onClick={onClose} />
-            </DialogFooter>
-          </>
-        ) : (
-          <form
-            ref={formRef}
-            className="notes-import-dialog__form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!canSubmit) return;
-              const destination: NotesImportDestination = creating
-                ? { mode: "create", name: name.trim() }
-                : { mode: "existing", notebook: selected! };
-              lastDestination.current = destination;
-              onImport(files, destination);
-            }}
-          >
-            {error ? <Callout severity="error" title={error} /> : null}
-            {busy && progress ? (
-              <div className="notes-import-dialog__progress" aria-live="polite">
-                <ProgressRing
-                  value={total === 0 ? 0 : (progress.done / total) * 100}
-                  label={labels.importDialogTitle}
-                  valueText={labels.importProgress(progress.done, total)}
-                />
-                <span>{labels.importProgress(progress.done, total)}</span>
-              </div>
-            ) : null}
-            <FieldLabelRow label={labels.importDestinationLegend}>
-              <NotesNotebookSelect
-                notebooks={[...notebooks]}
-                value={
-                  creating || !selected
-                    ? { name: "" }
-                    : { id: selected.id, name: selected.name, color: selected.color }
-                }
-                labels={labels}
-                ariaLabel={labels.importDestinationLegend}
+    <ImportDialog
+      open={open}
+      title={labels.importDialogTitle}
+      description={labels.importFilesSelected(files.length)}
+      progress={
+        busy && progress
+          ? {
+              value: total === 0 ? 0 : (progress.done / total) * 100,
+              text: labels.importProgress(progress.done, total),
+            }
+          : null
+      }
+      error={error}
+      result={result ? importResultView(result, labels) : null}
+      busy={busy}
+      onClose={onClose}
+      className={cn("notes-dialog-surface notes-import-dialog", contentClassName)}
+      onOpenAutoFocus={(event) => {
+        // Start on Import: focusing the notebook picker pops its tooltip over the field label.
+        const submit = formRef.current?.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (!submit || submit.disabled) return;
+        event.preventDefault();
+        submit.focus();
+      }}
+    >
+      {result ? (
+        <DialogFooter>
+          {canRetry ? (
+            <Button
+              type="button"
+              variant="outline"
+              label={labels.importRetry}
+              onClick={() => onImport(files, lastDestination.current!)}
+            />
+          ) : null}
+          <Button type="button" variant="primary" label={labels.importDone} onClick={onClose} />
+        </DialogFooter>
+      ) : (
+        <form
+          ref={formRef}
+          className="notes-import-dialog__form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!canSubmit) return;
+            const destination: NotesImportDestination = creating
+              ? { mode: "create", name: name.trim() }
+              : { mode: "existing", notebook: selected! };
+            lastDestination.current = destination;
+            onImport(files, destination);
+          }}
+        >
+          <FieldLabelRow label={labels.importDestinationLegend}>
+            <NotesNotebookSelect
+              notebooks={[...notebooks]}
+              value={
+                creating || !selected
+                  ? { name: "" }
+                  : { id: selected.id, name: selected.name, color: selected.color }
+              }
+              labels={labels}
+              ariaLabel={labels.importDestinationLegend}
+              size="sm"
+              disabled={busy}
+              createSelected={creating}
+              onNotebookChange={(notebook) => {
+                setNotebookId(notebook.id);
+                setCreating(false);
+              }}
+              onCreateNotebook={() => setCreating(true)}
+            />
+          </FieldLabelRow>
+          {creating ? (
+            <FieldLabelRow label={labels.importNewNotebookName} htmlFor="notes-import-name">
+              <Input
+                id="notes-import-name"
                 size="sm"
+                value={name}
                 disabled={busy}
-                createSelected={creating}
-                onNotebookChange={(notebook) => {
-                  setNotebookId(notebook.id);
-                  setCreating(false);
-                }}
-                onCreateNotebook={() => setCreating(true)}
+                onChange={(event) => setName(event.target.value)}
               />
             </FieldLabelRow>
-            {creating ? (
-              <FieldLabelRow label={labels.importNewNotebookName} htmlFor="notes-import-name">
-                <Input
-                  id="notes-import-name"
-                  size="sm"
-                  value={name}
-                  disabled={busy}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </FieldLabelRow>
-            ) : null}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                label={labels.dialogCancel}
-                disabled={busy}
-                onClick={onClose}
-              />
-              <Button type="submit" label={labels.importSubmit} disabled={!canSubmit} />
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              label={labels.dialogCancel}
+              disabled={busy}
+              onClick={onClose}
+            />
+            <Button type="submit" label={labels.importSubmit} disabled={!canSubmit} />
+          </DialogFooter>
+        </form>
+      )}
+    </ImportDialog>
   );
 }

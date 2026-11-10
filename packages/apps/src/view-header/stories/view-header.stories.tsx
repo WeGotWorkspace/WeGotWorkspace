@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
+import { expect } from "storybook/test";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
@@ -56,6 +57,23 @@ export const Default: Story = {
     ),
     searchPlaceholder: "Search notes...",
     onSearchInput: () => {},
+  },
+};
+
+/** Multi-select steps the floating search aside; it stays mounted so the query is kept. */
+export const SearchHidden: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...Default.args,
+    searchValue: "roadmap",
+    searchHidden: true,
+  },
+  play: async ({ canvasElement }) => {
+    const stack = canvasElement.querySelector(".view-header__search-stack") as HTMLElement;
+    await expect(stack).toHaveAttribute("data-hidden", "true");
+    await expect(stack.inert).toBe(true);
+    await expect(getComputedStyle(stack).opacity).toBe("0");
+    await expect(stack.querySelector("input")).toHaveValue("roadmap");
   },
 };
 

@@ -102,7 +102,7 @@
 
 /* Split shells share this class on `workspace-columns` (a row). */
 .workspace-columns.meet-workspace {
-  @apply flex-row overflow-hidden;
+  @apply flex-row;
 }
 
 .meet-workspace__title {
@@ -348,20 +348,11 @@
   border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 }
 
-/* Device menu: quiet group labels, hairline between segments. Checks are MenuItem. */
-.meet-device-menu .dropdown-menu__menu-item,
+/* Device menu: group labels in the quiet label ink, on the item text inset.
+ * Rows, checks and separators are the shared dropdown's. */
 .meet-device-menu .meet-device-menu__label {
-  padding-inline: 0.625rem;
-}
-
-.meet-device-menu .meet-device-menu__label {
-  @apply py-1 text-xs font-semibold tracking-normal;
-  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
-}
-
-.meet-device-menu .dropdown-menu-ui__separator {
-  @apply my-1 h-px;
-  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  @apply px-2.5 py-1 text-xs font-semibold tracking-normal;
+  color: var(--workspace-label-color);
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
@@ -394,23 +385,25 @@
   color: var(--meet-text);
 }
 
+/*
+ * A tile is dark media paper in both themes, with no edge. It is a derive scope
+ * (workspace-derive.css), so its buttons, frost and tag turn dark with it.
+ */
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile {
-  @apply relative overflow-hidden border;
+  @apply relative overflow-hidden;
+  --workspace-surface: var(--media-surface);
+  --workspace-foreground: var(--media-ink);
+  --workspace-accent: var(--media-ink);
+  --workspace-accent-foreground: var(--media-surface);
   border-radius: var(--control-radius);
-  background-color: var(--workspace-accent);
-  border-color: var(--meet-border);
-  transition:
-    box-shadow 160ms ease,
-    border-color 160ms ease;
+  background-color: var(--workspace-surface);
+  color: var(--workspace-foreground);
+  transition: box-shadow 160ms ease;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile--speaking {
-  border-color: var(--meet-live);
   /* Inset — same radius as the tile. Outer 0 0 0 1px is clipped square by overflow-hidden. */
   box-shadow: inset 0 0 0 2px var(--meet-live);
-  transition:
-    box-shadow 160ms ease,
-    border-color 160ms ease;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile--spotlight {
@@ -429,13 +422,12 @@
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__display-name {
   @apply text-lg font-semibold;
-  color: var(--meet-text);
+  color: var(--workspace-foreground);
 }
 
+/* Speaking is the suite Tag in the live colour (colours set on the Tag). */
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__speaking {
-  @apply absolute left-2 top-2 z-10 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium;
-  background-color: var(--meet-live);
-  color: var(--meet-live-foreground, #111);
+  @apply absolute left-2.5 top-2.5 z-10;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__speaking-dot {
@@ -445,7 +437,7 @@
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__caption {
   @apply text-xs;
-  color: var(--meet-muted);
+  color: var(--workspace-label-color);
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile--compact {
@@ -457,12 +449,13 @@
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__fill {
-  @apply absolute inset-0 z-[1] flex items-center justify-center;
-  background-color: var(--workspace-accent);
+  /* Camera off: the avatar, with any status line under it. */
+  @apply absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2;
+  background-color: var(--workspace-surface);
   background-image: linear-gradient(
     165deg,
-    color-mix(in oklch, var(--workspace-accent-foreground) 18%, var(--workspace-accent)),
-    color-mix(in oklch, var(--workspace-accent) 62%, var(--meet-surface, var(--workspace-surface)))
+    color-mix(in oklch, var(--workspace-foreground) 8%, var(--workspace-surface)),
+    var(--workspace-surface)
   );
 }
 
@@ -473,7 +466,7 @@
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__stream {
   @apply absolute inset-0 h-full w-full object-contain object-center;
-  background-color: var(--workspace-accent);
+  background-color: var(--workspace-surface);
   border-radius: var(--control-radius);
 }
 
@@ -481,38 +474,41 @@
   @apply pointer-events-none opacity-0;
 }
 
+/* The name is the suite Tag, frosted so it reads over any video. */
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name {
-  @apply pointer-events-none absolute bottom-2 left-2 z-10 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white backdrop-blur;
+  @apply pointer-events-none absolute bottom-2.5 left-2.5 z-10 max-w-[calc(100%-4.5rem)];
+  --tag-bg: var(--frost-background);
+  --tag-fg: var(--workspace-foreground);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
 }
 
+/* Pin and mute: frosted floating chrome over the video, like the toolbars. */
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__control {
   @apply absolute z-10;
-  --button-outline-color: #fff;
-  --button-outline-hover-color: #fff;
-  --button-outline-border-color: rgb(255 255 255 / 0.28);
-  --button-outline-hover-background: rgb(255 255 255 / 0.16);
-  --button-outline-active-background: rgb(255 255 255 / 0.16);
-  --button-active-color: #fff;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mute,
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state {
-  @apply bottom-2 right-2;
+  @apply bottom-2.5 right-2.5;
 }
 
 /* Read-only mic. Same slot as the mute button, without being a control. */
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state {
-  @apply inline-flex size-7 items-center justify-center rounded-md border;
-  color: var(--button-outline-color, #fff);
-  border-color: var(--button-outline-border-color, rgb(255 255 255 / 0.28));
+  @apply inline-flex size-8 items-center justify-center;
+  border-radius: var(--control-radius);
+  color: var(--workspace-foreground);
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state svg {
-  @apply size-3.5;
+  @apply size-4;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__pin {
-  @apply right-2 top-2;
+  @apply right-2.5 top-2.5;
 }
 
 /* Fine pointers: idle pin/mute appear on hover. Pinned or muted stays visible. */
@@ -672,7 +668,7 @@
   border-color: var(--meet-border);
 }
 
-.meet-workspace__chat-main > .meet-call-knock-wait {
+.meet-workspace__chat-top-dock > .meet-call-knock-wait {
   @apply mx-3 mt-2;
 }
 
@@ -730,9 +726,8 @@
 }
 
 .meet-workspace--split {
-  --meet-thread-panel-width: 22rem;
-  --meet-chat-panel-width: 22rem;
-  --workspace-panel-width: 22rem;
+  /* Chat and thread rail: as wide as the Notes and Tasks list. */
+  --workspace-panel-width: var(--workspace-list-pane-width);
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
   --app-sidebar-border-color: var(--border);
@@ -769,11 +764,6 @@
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
   --workspace-main-bg: var(--meet-surface);
-  --workspace-main-header-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --chat-list-surface: var(--workspace-surface);
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-accent: var(--workspace-accent-strong);
@@ -787,8 +777,6 @@
   --chat-surface: var(--workspace-surface);
   --chat-list-surface: var(--workspace-surface);
   --chat-hover: color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface));
-  --chat-reaction-bg: var(--button-outline-hover-background);
-  --chat-reaction-selected-bg: var(--button-outline-active-background);
   --chat-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --button-ghost-hover-background: color-mix(
     in oklab,
@@ -868,6 +856,7 @@
 
 .meet-workspace__header-kind-icon {
   @apply size-4 shrink-0;
+  color: var(--workspace-label-color);
 }
 
 .meet-workspace__header-actions {
@@ -907,9 +896,7 @@
 }
 
 /*
- * Call chrome fill is the shared selected outline wash
- * (`--button-outline-active-background`). Button tokens on this element
- * stay local so a selected toggle still reads against that fill.
+ * The call stage sits on the same paper as the chat beside it.
  * `--meet-screen-bg` stays black for video pixels.
  */
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
@@ -921,49 +908,21 @@
   --color-foreground: var(--workspace-foreground);
 }
 
-:is(.meet-call-bar, .meet-call-stage--expanded, .meet-call-expanded) {
-  --meet-call-surface: var(--button-outline-active-background);
+:is(.meet-call-stage--expanded, .meet-call-expanded) {
+  --meet-call-surface: var(--workspace-surface);
   background-color: var(--meet-call-surface);
 }
 
+/*
+ * "Meeting started": the sticky list header in its selection variant, stuck to
+ * the header and floating over the messages; the day labels stick right under it.
+ */
 .meet-call-bar {
-  @apply shrink-0 border-b;
   container: meet-call-bar / inline-size;
-  border-color: var(--meet-call-border);
-  /* Same fill and ink as the app sidebar, not the light call-stage wash. */
-  background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
-  color: var(--app-sidebar-color, var(--workspace-sidebar-foreground));
-}
-
-.meet-call-bar__row {
-  @apply flex flex-wrap items-center justify-between gap-3 px-4 py-2.5;
-}
-
-.meet-call-bar__start {
-  @apply flex min-w-0 items-center gap-3;
-}
-
-.meet-call-bar__mark {
-  @apply flex size-4 shrink-0 items-center justify-center;
-  color: var(--workspace-accent);
-}
-
-.meet-call-bar__copy {
-  @apply min-w-0;
-}
-
-.meet-call-bar__title {
-  @apply truncate text-sm font-semibold;
-  color: inherit;
-}
-
-.meet-call-bar__meta {
-  @apply truncate text-xs tabular-nums;
-  color: color-mix(in oklch, currentColor 72%, transparent);
 }
 
 .meet-call-bar__avatars {
-  @apply flex list-none items-center pl-1;
+  @apply flex list-none items-center;
 }
 
 .meet-call-bar__avatars > li + li {
@@ -971,7 +930,7 @@
 }
 
 .meet-call-bar__avatars .user-avatar {
-  --user-avatar-presence-ring: var(--meet-call-surface);
+  --user-avatar-presence-ring: var(--workspace-surface);
 }
 
 /* Dark call surfaces: the tinted mark would mix its ink into the dark wash. */
@@ -994,19 +953,6 @@
   border-color: var(--meet-mark);
 }
 
-.meet-call-bar__invite {
-  @apply flex shrink-0 items-center;
-}
-
-.meet-call-bar__actions {
-  @apply flex items-center gap-1.5;
-}
-
-.meet-call-bar__divider {
-  @apply mx-0 h-5 w-px shrink-0;
-  background-color: var(--meet-call-border);
-}
-
 @container meet-call-bar (max-width: 40rem) {
   .meet-call-bar__avatars {
     @apply hidden;
@@ -1019,53 +965,6 @@
       @apply hidden;
     }
   }
-}
-
-.meet-call-bar__tiles {
-  @apply flex gap-2 overflow-x-auto px-3 py-2;
-  background-color: var(--meet-call-surface);
-}
-
-.meet-call-bar__tiles .meet-peer-tile {
-  @apply h-28 w-44 shrink-0;
-}
-
-/* Call tiles use brand Dark, including the camera-off fill that covers the wrapper. */
-.meet-workspace :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) .meet-peer-tile {
-  background-color: var(--workspace-accent);
-  border-color: var(--meet-call-border);
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
-  .meet-peer-tile--speaking {
-  border-color: var(--meet-live);
-  box-shadow: inset 0 0 0 2px var(--meet-live);
-  transition:
-    box-shadow 160ms ease,
-    border-color 160ms ease;
-}
-
-.meet-workspace :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) .meet-peer-tile__fill {
-  background-color: var(--workspace-accent);
-  background-image: linear-gradient(
-    165deg,
-    color-mix(in oklch, var(--workspace-accent-foreground) 18%, var(--workspace-accent)),
-    color-mix(in oklch, var(--workspace-accent) 62%, var(--meet-surface, var(--workspace-surface)))
-  );
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
-  .meet-peer-tile__speaking {
-  background-color: var(--meet-live);
-  color: var(--meet-live-foreground, #111);
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
-  .meet-peer-tile__caption {
-  color: rgb(255 255 255 / 0.72);
 }
 
 .meet-workspace__members {
@@ -1155,22 +1054,78 @@
 }
 
 .meet-workspace__chat-column {
-  @apply flex h-full min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden;
+  @apply relative flex h-full min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden;
 }
 
+/* The open conversation starts on the header's sidebar-toggle icon: the header
+   padding (px-4 / md:px-6) plus half the toggle's spare width around its 14px
+   icon. It is capped so the hover actions and the reaction picker stay close to
+   the text. */
+.meet-workspace__chat-main {
+  @apply relative;
+  --chat-header-padding-x: 1rem;
+  --chat-content-start: calc(
+    var(--chat-header-padding-x) + (var(--workspace-header-control-height, 2.5rem) - 0.875rem) / 2
+  );
+  --list-item-padding-x: calc(var(--chat-content-start) - var(--list-item-inset, 0.5rem));
+  --chat-max-width: 52rem;
+}
+
+@media (min-width: 768px) {
+  .meet-workspace__chat-main {
+    --chat-header-padding-x: 1.5rem;
+  }
+}
+
+/* The call band floats over the top of the messages, the composer's mirror: it
+   publishes `--chat-top-dock-height` and the list keeps its first line clear. */
+.meet-workspace__chat-top-dock {
+  @apply absolute inset-x-0 top-0 z-10;
+}
+
+/* Floats over the messages (they scroll on beneath it): the typing line, then the
+   frosted composer. Only the visible chrome takes the pointer. */
+.meet-workspace__chat-dock {
+  @apply pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col;
+}
+
+/* The composer card spans the messages' content: avatar edge to text end. */
 .meet-workspace__chat-composer {
-  @apply min-w-0 max-w-full shrink-0 px-4 pb-3 pt-1;
+  /* Below it, the header's own padding. Inline: avatar edge to text end, as the
+     messages (and the thread composer). */
+  @apply pointer-events-auto min-w-0 max-w-full pb-4 md:pb-6;
+  padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
 }
 
-/* Fixed-height row so the indicator never shifts the composer. */
+@media (min-width: 768px) {
+  .meet-workspace__chat-composer {
+    padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.5rem));
+  }
+}
+
+/* The capped conversation: the composer ends where the messages' text does. */
+.meet-workspace__chat-main .meet-workspace__chat-composer > .chat-composer {
+  max-width: calc(var(--chat-max-width) - 2 * var(--list-item-padding-x));
+}
+
+/* Fixed-height row so a typing label never moves the composer. */
 .meet-workspace__typing {
-  @apply h-5 shrink-0 truncate px-4 text-xs italic;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+  @apply flex h-7 shrink-0 items-center;
+  /* On the message text line. */
+  padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
+}
+
+.meet-workspace__typing-pill {
+  @apply pointer-events-auto inline-flex max-w-full truncate rounded-full px-2.5 py-0.5 text-xs italic;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  color: var(--workspace-label-color);
 }
 
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
-  @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;
+  @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden;
   background-color: var(--workspace-surface);
   color: var(--workspace-foreground);
   --chat-surface: var(--workspace-surface);
@@ -1183,6 +1138,11 @@
     var(--workspace-foreground) 8%,
     transparent
   );
+}
+
+/* The in-call chat is a pane of the stage, not a sidebar: square corners. */
+.meet-call-stage__chat {
+  @apply rounded-none;
 }
 
 .meet-workspace__rail .chat-thread-panel__header {
@@ -1457,21 +1417,19 @@
   --button-active-color: inherit;
 }
 
-/* Calendar inbox: one flush rail. Overlay below 1160px; flex when docked.
- * Popover chrome matches AppSidebar: `shadow-2xl` + panel-scrim (`bg-black/30`). */
+/*
+ * Chat rail: overlay below 1160px, flex when docked. Shape, edge and shadow come
+ * from the shared `.workspace-app-layout__panel` (the AppSidebar mirrored); the
+ * overlay uses the same overlay shadow as the mobile AppSidebar.
+ */
 .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-  @apply absolute inset-y-0 end-0 z-20 rounded-none border-l sidebar:static sidebar:shadow-none;
-  width: var(--workspace-panel-width);
-  max-width: var(--workspace-panel-width);
+  @apply absolute inset-y-0 end-0 z-20 sidebar:relative;
   height: 100%;
-  border-color: var(--docs-collab-sidebar-panel-border-color);
-  /* Motion stays on `.workspace-app-layout__panel` (translate, margin, border-width). */
 }
 
 @media (min-width: 72.5rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply shadow-none;
-    position: static;
+    position: relative;
     inset: auto;
   }
 
@@ -1482,7 +1440,11 @@
 
 @container workspace-columns (max-width: 72.49rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply absolute inset-y-0 end-0 shadow-2xl;
+    @apply absolute inset-y-0 end-0;
+  }
+
+  .meet-workspace .meet-workspace__rail.workspace-app-layout__panel[data-open="true"] {
+    box-shadow: var(--sidebar-panel-overlay-shadow-end);
   }
 
   .meet-workspace .workspace-app-layout__panel-scrim {
@@ -1492,8 +1454,7 @@
 
 @container workspace-columns (min-width: 72.5rem) {
   .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-    @apply shadow-none;
-    position: static;
+    position: relative;
     inset: auto;
   }
 
@@ -1505,7 +1466,11 @@
 @supports not (container-type: inline-size) {
   @media (max-width: 72.49rem) {
     .meet-workspace .meet-workspace__rail.workspace-app-layout__panel {
-      @apply absolute inset-y-0 end-0 shadow-2xl;
+      @apply absolute inset-y-0 end-0;
+    }
+
+    .meet-workspace .meet-workspace__rail.workspace-app-layout__panel[data-open="true"] {
+      box-shadow: var(--sidebar-panel-overlay-shadow-end);
     }
 
     .meet-workspace .workspace-app-layout__panel-scrim {

@@ -89,7 +89,7 @@ describe("docsCollabHeaderActions", () => {
       viewSource: false,
       download: { busy: false, downloadWord: vi.fn() },
     });
-    expect(actions.map((a) => a.id)).toEqual(["print", "download", "view-source"]);
+    expect(actions.map((a) => a.id)).toEqual(["print", "download"]);
     expect(actions[1].disabled).toBe(false);
   });
 

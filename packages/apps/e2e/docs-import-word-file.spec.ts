@@ -23,7 +23,7 @@ async function driveFileText(name: string): Promise<string | null> {
 }
 
 async function openImportMenu(page: Page) {
-  await page.getByRole("button", { name: "More ways to make a document" }).click();
+  await page.getByRole("button", { name: "More create options" }).click();
   return page.getByRole("menuitem", { name: IMPORT_TITLE });
 }
 

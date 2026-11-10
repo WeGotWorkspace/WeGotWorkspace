@@ -73,51 +73,46 @@ export const Default: Story = {
   ),
 };
 
-export const AccountFooterWithSettings: Story = {
+/** Suite norm: no Settings row in the sections (it is an icon button by the primary
+ * button); the footer is the account only. */
+export const SectionsAndAccountFooter: Story = {
   parameters: {
     layout: "fullscreen",
-    routerPath: "/calendar",
+    routerPath: "/notes",
   },
   render: () => (
     <div className="h-dvh" style={{ ["--workspace-accent" as string]: "var(--color-we-got-sand)" }}>
       <AppSidebar
         open
         onCloseMobile={() => {}}
-        footer={
-          <WorkspaceSidebarAccountFooter
-            session={namedSession}
-            settingsItem={{ label: "Settings", onClick: () => {} }}
-            onLogout={() => {}}
-          />
-        }
+        footer={<WorkspaceSidebarAccountFooter session={namedSession} onLogout={() => {}} />}
       >
         <SidebarSection
-          title="Calendars"
           items={[
             {
-              label: "Personal",
+              label: "All Items",
               icon: <Folder className="size-4" />,
               selected: true,
               onClick: () => {},
             },
-            {
-              label: "Work",
-              icon: <Folder className="size-4" />,
-              onClick: () => {},
-            },
           ]}
+        />
+        <SidebarSection
+          title="Notebooks"
+          items={[{ label: "Work", icon: <Folder className="size-4" />, onClick: () => {} }]}
         />
       </AppSidebar>
     </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
+    // Settings is an icon button beside the primary button, never a row or footer item.
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
 
-export const AccountFooterWithoutSettings: Story = {
+export const AccountFooter: Story = {
   render: () => (
     <div className="w-64 border">
       <WorkspaceSidebarAccountFooter session={namedSession} onLogout={() => {}} />

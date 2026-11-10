@@ -53,6 +53,7 @@ function mergeSuggestionWithThread(
   return {
     ...suggestion,
     ...suggestionAuthorFromThread(journal?.createdBy),
+    hasThread: Boolean(journal),
     timestamp: journal?.createdAt || suggestion.timestamp,
     messages: thread?.messages ?? [],
     reactions: thread?.reactions,
