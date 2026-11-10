@@ -1,6 +1,6 @@
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSharePrincipal, CalendarShareWith } from "@/calendar-core/src/calendar-share";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 
 export type CalendarShareSectionProps = {

@@ -1,4 +1,4 @@
-import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
 
 /** OpenAPI CalendarRights, plus draft `mayWriteAll` when a client sends RFC-shaped grants. */

@@ -11,14 +11,14 @@ import {
   isSessionEventOrganizer,
   sessionEventInviteeStatus,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import { CalendarEventFormSecondary } from "@/calendar-core/src/calendar-event-form-secondary";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
 import { CalendarEventFormFooter } from "@/calendar-core/src/calendar-event-form-footer";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {

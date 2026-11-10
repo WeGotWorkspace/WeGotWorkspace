@@ -5,7 +5,7 @@ import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/Even
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { resolveCalendarSurfaceEvents } from "@/calendar-core/src/calendar-surface-events";
-import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import {
   createCalendarEventsApi,
   persistEventId,

@@ -7,7 +7,7 @@ import {
   normalizeParticipantAddress,
   type CalendarAttendee,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import {
   contactDisplayName,
   filterCardsBySearch,

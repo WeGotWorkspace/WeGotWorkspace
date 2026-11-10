@@ -4,7 +4,7 @@ import type {
   CalendarEventDraft,
   CalendarEventPatch,
   CalendarPatch,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import {
   createCalendarEventLive,
   createCalendarLive,

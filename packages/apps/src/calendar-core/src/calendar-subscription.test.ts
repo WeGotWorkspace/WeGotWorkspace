@@ -6,7 +6,7 @@ import {
   isSubscribedCalendar,
   writableCalendarId,
 } from "@/calendar-core/src/calendar-subscription";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 const personal: CalendarInfo = {
   id: "default",

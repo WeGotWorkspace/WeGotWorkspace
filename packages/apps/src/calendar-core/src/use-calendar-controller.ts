@@ -11,7 +11,7 @@ import type {
   CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import {
   isViewShowingToday,
   rangeToPlainDateTimeStrings,

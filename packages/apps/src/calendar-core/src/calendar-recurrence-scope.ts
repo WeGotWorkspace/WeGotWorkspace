@@ -14,7 +14,7 @@ import {
   type JSCalendarPatchObject,
   type JSCalendarRecurrenceRule,
 } from "@/lib/jmap-client";
-import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+import type { CalendarEventDraft, CalendarEventPatch } from "@/lib/models/calendar-types";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { linksFromMeetingUrl, meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
 import {

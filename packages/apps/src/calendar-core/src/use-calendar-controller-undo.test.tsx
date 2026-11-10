@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 const toastApi = {

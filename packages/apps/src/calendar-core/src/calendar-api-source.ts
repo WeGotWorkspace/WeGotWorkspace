@@ -26,9 +26,9 @@ import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
 } from "@/calendar-core/src/calendar-share";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarApiSource = {

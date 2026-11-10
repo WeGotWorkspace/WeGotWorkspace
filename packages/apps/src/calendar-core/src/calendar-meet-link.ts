@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { JSCalendarLink } from "@/lib/jmap-client";
 import type {
   WgwMeetPatchRoomRequest,

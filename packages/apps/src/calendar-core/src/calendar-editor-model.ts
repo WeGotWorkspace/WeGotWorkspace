@@ -11,8 +11,8 @@ import {
   attendeesFromParticipants,
   type CalendarAttendee,
   type JmapParticipant,
-} from "@/calendar-core/src/calendar-attendees";
-import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-attendees";
+import type { CalendarEventDraft, CalendarEventPatch } from "@/lib/models/calendar-types";
 import {
   alertMapsEqual,
   alertsFromWire,

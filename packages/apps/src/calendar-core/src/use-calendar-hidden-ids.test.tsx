@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 
 const baseCalendars: CalendarInfo[] = [

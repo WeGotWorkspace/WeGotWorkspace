@@ -21,10 +21,10 @@ import type {
   CalendarAPIOperations,
   CalendarEventDraft,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import { calendarInviteesFromShareDirectory } from "@/calendar-core/src/calendar-meet-channel-email";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { Card } from "@/card/src/card";

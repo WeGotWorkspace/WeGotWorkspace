@@ -39,7 +39,7 @@ import {
 } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarMeetChannelPicker } from "@/calendar-core/src/calendar-meet-channel-picker";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";

@@ -1,5 +1,5 @@
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarInfo } from "@/lib/models/calendar-types";
 
 export const ICS_FILE_ACCEPT = ".ics,text/calendar";
 

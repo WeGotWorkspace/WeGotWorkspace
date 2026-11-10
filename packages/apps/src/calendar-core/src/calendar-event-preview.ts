@@ -7,10 +7,7 @@ import {
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
-import {
-  listedInviteeAttendees,
-  type CalendarAttendee,
-} from "@/calendar-core/src/calendar-attendees";
+import { listedInviteeAttendees, type CalendarAttendee } from "@/lib/models/calendar-attendees";
 import {
   calendarEventToForm,
   emptyCalendarEventForm,
