@@ -378,15 +378,7 @@ export function useCalendarController({
   }, []);
 
   const toggleCalendarVisibility = useCallback((calendarId: string) => {
-    setHiddenCalendarIds((current) => {
-      const next = new Set(current);
-      if (next.has(calendarId)) {
-        next.delete(calendarId);
-      } else {
-        next.add(calendarId);
-      }
-      return next;
-    });
+    setHiddenCalendarIds((current) => withIds(current, [calendarId], !current.has(calendarId)));
   }, []);
 
   const visibleCalendarIds = useMemo(
