@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/react";
-import { MessageSquare, Printer, Users } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHeaderAction } from "@/docs-core/src/docs-header-actions";
-import { docsDownloadHeaderAction } from "@/docs-core/src/docs-download-action";
+import { docsShareMenuHeaderAction } from "@/docs-core/src/docs-share-menu-action";
 import type { DocsDownloadState } from "@/docs-core/src/use-docs-download";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 
@@ -42,28 +42,13 @@ function sourceToggleLabel(input: DocsCollabHeaderActionsInput): string {
 export function docsCollabHeaderActions(input: DocsCollabHeaderActionsInput): DocsHeaderAction[] {
   const { labels, editor, viewSource, share, download, review } = input;
   return [
-    {
-      id: "print",
-      label: labels.print,
-      icon: <Printer />,
-      disabled: !editor || viewSource,
-      onClick: () => printTextEditorSheet(editor),
-    },
-    ...(download
-      ? [docsDownloadHeaderAction({ labels, download, disabled: !editor || viewSource })]
-      : []),
-    ...(share
-      ? [
-          {
-            id: "share",
-            label: share.label,
-            icon: <Users />,
-            showLabel: true,
-            className: "docs-workspace__share-button",
-            onClick: share.onClick,
-          },
-        ]
-      : []),
+    docsShareMenuHeaderAction({
+      labels,
+      invite: share,
+      download,
+      onPrint: () => printTextEditorSheet(editor),
+      contentUnavailable: !editor || viewSource,
+    }),
     ...(review
       ? [
           {

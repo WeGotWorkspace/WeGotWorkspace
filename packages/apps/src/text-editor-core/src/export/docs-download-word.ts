@@ -12,15 +12,7 @@ import {
 } from "@/text-editor-core/src/export/text-editor-export-blocks";
 import { collectExportImages } from "@/text-editor-core/src/export/text-editor-export-images";
 import type { DocxPage } from "@/text-editor-core/src/export/docs-docx-writer";
-
-const DOC_EXTENSION = /\.(md|markdown|txt|html?)$/i;
-const UNSAFE_FILE_CHARS = /[\\/:*?"<>|\p{Cc}]+/gu;
-
-/** `Quote.md` → `Quote.docx`. Path and control characters become `-`. */
-export function docsExportFileName(title: string, extension: string): string {
-  const base = title.trim().replace(DOC_EXTENSION, "").replace(UNSAFE_FILE_CHARS, "-").trim();
-  return `${base || "Document"}.${extension}`;
-}
+import { docsExportFileName } from "@/text-editor-core/src/export/docs-export-file-name";
 
 /** The Doc's paper; paper *None* uses the locale default (A4, Letter for US and Canada). */
 export function docsExportPage(

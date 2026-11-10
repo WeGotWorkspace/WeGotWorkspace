@@ -11,13 +11,16 @@ import {
 import { docsPageSetupMenuItems, docsPaperLabel } from "@/docs-core/src/docs-page-setup-menu-items";
 import { cn } from "@/lib/utils";
 
-export type DocsHeaderMenuItem = {
-  id: string;
-  label: string;
-  icon?: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-};
+export type DocsHeaderMenuItem =
+  | {
+      type?: undefined;
+      id: string;
+      label: string;
+      icon?: ReactNode;
+      onClick: () => void;
+      disabled?: boolean;
+    }
+  | { type: "separator"; id: string };
 
 export type DocsHeaderAction = ActionBarAction & {
   className?: string;
@@ -31,15 +34,19 @@ export type DocsHeaderAction = ActionBarAction & {
 };
 
 function menuItemEntries(items: readonly DocsHeaderMenuItem[]): DropdownMenuEntry[] {
-  return items.map((item) => ({
-    id: item.id,
-    label: item.label,
-    icon: item.icon ? (
-      <span className="docs-workspace__header-actions-menu-icon">{item.icon}</span>
-    ) : undefined,
-    onClick: item.onClick,
-    disabled: item.disabled,
-  }));
+  return items.map((item) =>
+    item.type === "separator"
+      ? item
+      : {
+          id: item.id,
+          label: item.label,
+          icon: item.icon ? (
+            <span className="docs-workspace__header-actions-menu-icon">{item.icon}</span>
+          ) : undefined,
+          onClick: item.onClick,
+          disabled: item.disabled,
+        },
+  );
 }
 
 export type DocsHeaderActionsProps = {
@@ -104,14 +111,25 @@ function renderActionButton(action: DocsHeaderAction) {
         items={menuItemEntries(action.items)}
         contentClassName="min-w-[11rem] p-1.5"
         trigger={
-          <IconButton
-            label={action.label}
-            icon={action.icon}
-            size="md"
-            variant="outline"
-            disabled={action.disabled}
-            className={action.className}
-          />
+          action.showLabel ? (
+            <Button
+              label={action.label}
+              icon={action.icon}
+              size="md"
+              variant="outline"
+              disabled={action.disabled}
+              className={action.className}
+            />
+          ) : (
+            <IconButton
+              label={action.label}
+              icon={action.icon}
+              size="md"
+              variant="outline"
+              disabled={action.disabled}
+              className={action.className}
+            />
+          )
         }
       />
     );
