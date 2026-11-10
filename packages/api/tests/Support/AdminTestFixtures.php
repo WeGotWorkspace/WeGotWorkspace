@@ -6,7 +6,6 @@ namespace Tests\Support;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -63,8 +62,9 @@ trait AdminTestFixtures
 
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
     }
 
     protected function carolBearerToken(): string

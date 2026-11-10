@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support\Ownership;
 
-use App\Services\Auth\AdminRoleResolver;
+use Tests\Support\LegacyAdministratorsTeam;
 
 /**
  * Fixture principals of the ownership matrix (spec "Fixture principals").
@@ -30,7 +30,7 @@ final class OwnershipPrincipals
     /** A group the actor leaves after its token is issued. */
     public const ALUMNI = 'alumni';
 
-    public const ADMIN_GROUP_URI = AdminRoleResolver::ADMIN_GROUP_URI;
+    public const ADMIN_GROUP_URI = LegacyAdministratorsTeam::URI;
 
     public static function groupUri(string $slug): string
     {

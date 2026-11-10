@@ -28,11 +28,12 @@ final class AdminUserCreateRequest extends FormRequest
             'email' => ['sometimes', 'nullable', 'string', 'max:255'],
             'groups' => ['sometimes', 'array'],
             'groups.*' => ['string', 'max:255'],
+            'isAdmin' => ['sometimes', 'boolean'],
         ];
     }
 
     /**
-     * @return array{username: string, password: string, displayName: string, email: string|null, groups: list<string>}
+     * @return array{username: string, password: string, displayName: string, email: string|null, groups: list<string>, isAdmin: bool}
      */
     public function payload(): array
     {
@@ -45,6 +46,7 @@ final class AdminUserCreateRequest extends FormRequest
             'displayName' => trim(is_string($validated['displayName'] ?? null) ? $validated['displayName'] : ''),
             'email' => is_string($email) ? trim($email) : null,
             'groups' => $this->stringList($validated['groups'] ?? []),
+            'isAdmin' => (bool) ($validated['isAdmin'] ?? false),
         ];
     }
 }

@@ -437,7 +437,7 @@ final class DriveShareAtPathQuery
 
             if (! $editable) {
                 $entry['editConstraint'] = 'groupOnly';
-                $entry['editHint'] = 'Change the group grant or remove this member from the group.';
+                $entry['editHint'] = 'Change the team grant or remove this member from the team.';
             }
 
             $entries[] = $entry;

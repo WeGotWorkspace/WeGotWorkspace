@@ -14,6 +14,7 @@ use App\Services\Chat\ChatCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -24,7 +25,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
 {
     private const GROUP = 'crew';
 
-    private const ADMIN_ONLY = 'Only an instance admin can delete a group collection.';
+    private const ADMIN_ONLY = 'Only an instance admin can delete a team collection.';
 
     protected function setUp(): void
     {
@@ -39,8 +40,9 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertNotNull($alice);
         $this->assertNotNull($bob);
 
-        $admins = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($admins, $alice);
+        $this->grantAdminRole($alice);
         $crew = $this->seedWgwGroup('principals/groups/'.self::GROUP, 'Crew');
         $this->addPrincipalToGroup($crew, $alice);
         $this->addPrincipalToGroup($crew, $bob);
@@ -57,8 +59,8 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
 
         $this->asUser('bob')->getJson('/api/v1/chat/channels')->assertOk();
         $defaultId = ChatCollectionUris::groupDefaultUri(self::GROUP);
-        $this->assertProtectedRest('bob', '/api/v1/chat/channels/'.$defaultId, 'Group default channels cannot be deleted.');
-        $this->assertProtectedRest('alice', '/api/v1/chat/channels/'.$defaultId, 'Group default channels cannot be deleted.');
+        $this->assertProtectedRest('bob', '/api/v1/chat/channels/'.$defaultId, 'Team default channels cannot be deleted.');
+        $this->assertProtectedRest('alice', '/api/v1/chat/channels/'.$defaultId, 'Team default channels cannot be deleted.');
 
         $created = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
             'name' => 'Crew talk', 'kind' => 'channel', 'groupSlug' => self::GROUP,
@@ -99,8 +101,8 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $general = '/api/v1/notes/notebooks/'.CalendarCollectionUris::NOTE_GENERAL;
         $provisioned = '/api/v1/notes/notebooks/'.CalendarCollectionUris::groupNotebookApiId(self::GROUP);
         $this->assertProtectedRest('bob', $general, 'The General notebook cannot be deleted.');
-        $this->assertProtectedRest('bob', $provisioned, 'The group notebook cannot be deleted.');
-        $this->assertProtectedRest('alice', $provisioned, 'The group notebook cannot be deleted.');
+        $this->assertProtectedRest('bob', $provisioned, 'The team notebook cannot be deleted.');
+        $this->assertProtectedRest('alice', $provisioned, 'The team notebook cannot be deleted.');
 
         $created = $this->asUser('bob')->postJson('/api/v1/notes/notebooks', [
             'name' => 'Crew notes', 'groupSlug' => self::GROUP,
@@ -143,8 +145,8 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $inbox = '/api/v1/tasks/tasklists/'.CalendarCollectionUris::TASK_INBOX;
         $provisioned = '/api/v1/tasks/tasklists/'.CalendarCollectionUris::groupTaskListApiId(self::GROUP);
         $this->assertProtectedRest('bob', $inbox, 'The Inbox task list cannot be deleted.');
-        $this->assertProtectedRest('bob', $provisioned, 'The group task list cannot be deleted.');
-        $this->assertProtectedRest('alice', $provisioned, 'The group task list cannot be deleted.');
+        $this->assertProtectedRest('bob', $provisioned, 'The team task list cannot be deleted.');
+        $this->assertProtectedRest('alice', $provisioned, 'The team task list cannot be deleted.');
 
         $created = $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', [
             'name' => 'Crew tasks', 'groupSlug' => self::GROUP,
@@ -192,8 +194,8 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         );
         $this->assertProtectedCalendar('bob', CalendarCollectionUris::EVENT_DEFAULT, 'The default calendar cannot be deleted.');
         $provisioned = CalendarCollectionUris::groupCalendarApiId(self::GROUP);
-        $this->assertProtectedCalendar('bob', $provisioned, 'The group calendar cannot be deleted.');
-        $this->assertProtectedCalendar('alice', $provisioned, 'The group calendar cannot be deleted.');
+        $this->assertProtectedCalendar('bob', $provisioned, 'The team calendar cannot be deleted.');
+        $this->assertProtectedCalendar('alice', $provisioned, 'The team calendar cannot be deleted.');
 
         $calendarId = $this->jmapCreate('bob', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
         $member = $this->jmapCalendar('bob', $calendarId);

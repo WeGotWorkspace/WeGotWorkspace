@@ -1,16 +1,6 @@
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import type { WgwSettingsStateResponse } from "@/lib/api/wgw/types";
 
-/** Same principal URI the API uses for admin role (`AdminRoleResolver::ADMIN_GROUP_URI`). */
-export const WGW_ADMIN_GROUP_URI = "principals/groups/administrators";
-
-/** True when `/settings/state` groups include the administrators group (home + app switch gate). */
-export function settingsGroupsIncludeAdmin(
-  groups: ReadonlyArray<{ id: string }> | null | undefined,
-): boolean {
-  return Boolean(groups?.some((group) => group.id === WGW_ADMIN_GROUP_URI));
-}
-
 export type WeGotWorkspaceHomeState = {
   showAdmin: boolean;
   showCalendar: boolean;
@@ -52,7 +42,8 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
     const userDisplayName = state.user.displayName?.trim() || state.user.username?.trim() || "User";
     const showUserMenu = Boolean(state.user.username?.trim() || state.user.email?.trim());
     return {
-      showAdmin: settingsGroupsIncludeAdmin(state.groups),
+      // Admin is a role per user, not membership of a Team (#1925).
+      showAdmin: state.isAdmin === true,
       showCalendar: state.apps?.calendars !== false,
       showContacts: state.apps?.contacts !== false,
       showTasks: state.apps?.tasks !== false,
