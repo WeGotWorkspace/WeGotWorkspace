@@ -34,7 +34,6 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     taskLists,
     operations,
     showMutationError,
-    show,
     view,
     ensureTaskListVisible,
   } = shell;
@@ -66,7 +65,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     setTasks,
     operations,
     ensureTaskListVisible,
-    show,
+    show: shell.show,
     showMutationError,
   });
 
