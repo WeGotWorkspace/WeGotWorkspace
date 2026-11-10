@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
-import { readIcsFile } from "@/lib/ics-import/ics-file";
+import { icsHasComponent, readIcsFile } from "@/lib/ics-import/ics-file";
 import type { IcsImportDestination } from "@/lib/ics-import/ics-import-dialog";
 import { TASKS_IMPORT_OFFLINE_MESSAGE } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { runTasksIcsImport, tasksImportNeedsResultStep } from "@/tasks-core/src/tasks-ics-import";
@@ -48,7 +48,6 @@ export type TasksIcsImportState = {
 function importFailureMessage(error: unknown, L: UseTasksIcsImportOptions["labels"]): string {
   if (error instanceof TasksRequestError) {
     if (error.status === 413) return L.importFileTooLarge;
-    if (error.status === 400 && error.message.includes("VTODO")) return L.importNoTasksInFile;
     return error.message.trim() || L.importFailed;
   }
   if (error instanceof Error && error.message === TASKS_IMPORT_OFFLINE_MESSAGE) {
@@ -98,6 +97,11 @@ export function useTasksIcsImport({
           const icsText = await readIcsFile(file);
           if (icsText.trim() === "") {
             setImportDialogError(L.importFileInvalid);
+            return;
+          }
+          // Checked here, before a new list is created for nothing.
+          if (!icsHasComponent(icsText, "VTODO")) {
+            setImportDialogError(L.importNoTasksInFile);
             return;
           }
           const createTaskList = operations.createTaskList;

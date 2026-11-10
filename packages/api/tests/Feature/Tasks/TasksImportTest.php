@@ -132,6 +132,22 @@ final class TasksImportTest extends WgwDatabaseTestCase
         $this->assertNull($this->storedObject('minutely@example.test'));
     }
 
+    public function test_tasks_without_uid_are_errors_and_siblings_import(): void
+    {
+        $noUidA = "BEGIN:VTODO\r\nSUMMARY:No id one\r\nEND:VTODO";
+        $noUidB = "BEGIN:VTODO\r\nSUMMARY:No id two\r\nEND:VTODO";
+
+        $response = $this->importIcs($this->calendar($noUidA, $noUidB, $this->vtodo('has-id@example.test', 'Has id')))
+            ->assertCreated()
+            ->assertJsonCount(1, 'list')
+            ->assertJsonCount(2, 'errors')
+            ->assertJsonPath('errors.0.message', 'This task has no UID.')
+            ->assertJsonPath('errors.0.code', 'bad_request');
+
+        $this->assertSame(['No id one', 'No id two'], collect($response->json('errors'))->pluck('title')->sort()->values()->all());
+        $this->assertNotNull($this->storedObject('has-id@example.test'));
+    }
+
     public function test_existing_uid_is_an_error_and_not_overwritten(): void
     {
         $this->importIcs($this->calendar($this->vtodo('dup@example.test', 'Original')))->assertCreated();

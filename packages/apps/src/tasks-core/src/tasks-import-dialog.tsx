@@ -63,6 +63,13 @@ function TasksImportResult({ result, L }: { result: TaskImportResponse; L: Tasks
   );
 }
 
+/** The list in view when it is writable (shared lists too), else the usual default. */
+function importDefaultListId(writable: TaskList[], preferredId?: string): string | undefined {
+  if (writable.length === 0) return undefined;
+  if (preferredId && writable.some((list) => list.id === preferredId)) return preferredId;
+  return defaultTaskListId(writable);
+}
+
 export function TasksImportDialog({
   open,
   file,
@@ -103,9 +110,7 @@ export function TasksImportDialog({
         submit: L.importSubmit,
       }}
       collections={collections}
-      defaultCollectionId={
-        writable.length > 0 ? defaultTaskListId(writable, preferredTaskListId) : undefined
-      }
+      defaultCollectionId={importDefaultListId(writable, preferredTaskListId)}
       swatches={TASK_LIST_DOT_COLORS}
       defaultColor={DEFAULT_TASK_LIST_COLOR}
       busy={busy}

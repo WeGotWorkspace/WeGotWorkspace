@@ -36,7 +36,7 @@ The code Calendar and Tasks share is generalised, not copied: the UID-group spli
 
 `TaskImportError` is `{index, message, code?, uid?, title?}`. `index` is the UID group's position in the file, as in Calendar. `uid` and `title` (the VTODO `SUMMARY`) are extra so the client can name the task that failed. `skipped.events` counts VEVENT UID groups (a series with overrides counts once).
 
-Per group, in order: component cap (`VObjectPayloadGuard::readICalendar`), recurrence guard (`RecurrenceRuleGuard`), existing UID in the target list (`409`-style error entry with `code: already_exists`, nothing overwritten), then one transaction that stores the group, syncs search and maps the stored tasks. The `tasks` mutation event fires once per stored object after its transaction. No notifications.
+Per group, in order: component cap (`VObjectPayloadGuard::readICalendar`), recurrence guard (`RecurrenceRuleGuard`), a UID present, existing UID in the target list (`409`-style error entry with `code: already_exists`, nothing overwritten), then one transaction that stores the group, syncs search and maps the stored tasks. The `tasks` mutation event fires once per stored object after its transaction. No notifications.
 
 ## Client behaviour
 
@@ -51,7 +51,8 @@ Per group, in order: component cap (`VObjectPayloadGuard::readICalendar`), recur
 
 ## Edge cases
 
-- A VEVENT-only file: 400 *No VTODO data found*; the dialog shows *This file has no tasks.*
+- A file without VTODOs: the client sees it in the file text and shows *This file has no tasks.* before it creates a list or calls the API. The server still answers 400 *No VTODO data found* for such a body.
 - A list created for the import stays when the import then fails (same as Calendar). The result step says so implicitly by selecting it.
 - A duplicate import of the same file: every group is an `already_exists` error; status 400 with the list/errors body; the client shows the result step, not a generic failure.
-- Missing `UID` on a VTODO: the splitter seeds a stable UID for grouping (existing behaviour); the stored ICS is as-is.
+- Missing `UID` on a VTODO: the splitter seeds a stable id for grouping, but the stored ICS stays as-is, so CalDAV would index an empty UID and a second one would collide. Such a group is an error entry *This task has no UID.* (`bad_request`); the other groups still import.
+- The list in view is preselected when it is writable, shared lists included.

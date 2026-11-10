@@ -17,6 +17,7 @@ use App\Services\VObject\ICalendarUidGroupSplitter;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Sabre\VObject\Component\VCalendar;
 
 /**
  * Import the VTODO UID groups of an ICS file into one task list (#1624).
@@ -99,7 +100,9 @@ final class TaskImportService
         array $group,
         VObjectPayloadGuard $guard,
     ): array {
-        RecurrenceRuleGuard::assertAllowed($guard->readICalendar($group['ics'], self::DOMAIN));
+        $calendar = $guard->readICalendar($group['ics'], self::DOMAIN);
+        RecurrenceRuleGuard::assertAllowed($calendar);
+        self::assertHasUid($calendar);
 
         $calendarId = (int) $instance->calendarid;
         [$objectUri, $tasks] = DB::connection('wgw')->transaction(
@@ -133,6 +136,20 @@ final class TaskImportService
         $this->eventDispatch->fireMutation($username, self::DOMAIN, 'created', $this->davPath($username, $instance, $objectUri));
 
         return $tasks;
+    }
+
+    /**
+     * The splitter seeds a group id for a VTODO without UID, but the ICS is
+     * stored as-is, so CalDAV would index it with an empty UID and a second one
+     * would collide. Report it per task instead.
+     */
+    private static function assertHasUid(VCalendar $calendar): void
+    {
+        foreach ($calendar->select('VTODO') as $todo) {
+            if (trim((string) ($todo->UID ?? '')) === '') {
+                throw new ApiHttpException(400, 'This task has no UID.', 'bad_request');
+            }
+        }
     }
 
     private function assertUidIsNew(int $calendarId, string $uid): void

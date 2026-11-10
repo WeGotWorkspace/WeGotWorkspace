@@ -21,6 +21,11 @@ export function icsFileFromList(fileList: FileList | null): File | null {
   return filterIcsFiles(fileList)[0] ?? null;
 }
 
+/** True when the ICS text has at least one component of this type (e.g. `VTODO`). */
+export function icsHasComponent(icsText: string, componentName: "VEVENT" | "VTODO"): boolean {
+  return new RegExp(`^BEGIN:${componentName}\\s*$`, "im").test(icsText);
+}
+
 export async function readIcsFile(file: File): Promise<string> {
   return file.text();
 }

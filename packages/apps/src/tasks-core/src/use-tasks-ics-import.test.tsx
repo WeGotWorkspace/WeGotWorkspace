@@ -17,7 +17,8 @@ vi.mock("@/hooks/use-app-toast", () => ({
 }));
 
 const L = defaultTasksLabels;
-const file = new File(["BEGIN:VCALENDAR"], "groceries.ics", { type: "text/calendar" });
+const ics = "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:t1\r\nEND:VTODO\r\nEND:VCALENDAR";
+const file = new File([ics], "groceries.ics", { type: "text/calendar" });
 const task = { id: "t1", title: "Buy milk", taskListId: "work" } as Task;
 
 function operations(overrides: Partial<TasksAPIOperations>): TasksAPIOperations {
@@ -115,7 +116,7 @@ describe("useTasksIcsImport", () => {
       color: "#22c55e",
     });
 
-    expect(importTasks).toHaveBeenCalledWith("BEGIN:VCALENDAR", { taskListId: "list-new" });
+    expect(importTasks).toHaveBeenCalledWith(ics, { taskListId: "list-new" });
     expect(onImported).toHaveBeenCalledWith({
       taskListId: "list-new",
       createdList: created,
@@ -127,7 +128,7 @@ describe("useTasksIcsImport", () => {
     const created = { id: "list-new", name: "Groceries" } as TaskList;
     const importTasks = vi
       .fn()
-      .mockRejectedValue(new TasksRequestError("No VTODO data found.", 400, "bad_request"));
+      .mockRejectedValue(new TasksRequestError("Server error.", 500, "server_error"));
 
     const { hook, onImported } = await submit(
       operations({ createTaskList: vi.fn().mockResolvedValue(created), importTasks }),
@@ -139,6 +140,36 @@ describe("useTasksIcsImport", () => {
       createdList: created,
       tasks: [],
     });
+    expect(hook.result.current.importDialogError).toBe("Server error.");
+  });
+
+  it("stops before creating a list when the file has no tasks", async () => {
+    const createTaskList = vi.fn();
+    const importTasks = vi.fn();
+    const onImported = vi.fn();
+    const eventsOnly = new File(
+      ["BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:e1\r\nEND:VEVENT\r\nEND:VCALENDAR"],
+      "events.ics",
+    );
+    const hook = renderHook(() =>
+      useTasksIcsImport({
+        operations: operations({ createTaskList, importTasks }),
+        labels: L,
+        onImported,
+      }),
+    );
+    act(() => hook.result.current.beginImport(eventsOnly));
+    await act(async () => {
+      hook.result.current.submitImportDialog(eventsOnly, {
+        mode: "create",
+        name: "Events",
+        color: "#22c55e",
+      });
+    });
+
+    expect(createTaskList).not.toHaveBeenCalled();
+    expect(importTasks).not.toHaveBeenCalled();
+    expect(onImported).not.toHaveBeenCalled();
     expect(hook.result.current.importDialogError).toBe(L.importNoTasksInFile);
   });
 

@@ -63,6 +63,32 @@ describe("TasksImportDialog", () => {
     expect(onImport).toHaveBeenCalledWith(file, { mode: "existing", collectionId: "work" });
   });
 
+  it("preselects a writable shared list in view", () => {
+    const onImport = vi.fn();
+    const sharedWritable = {
+      ...bootstrap.data.taskLists[2]!,
+      id: "shared-team",
+      name: "Shared team",
+      isSharee: true,
+      myRights: { ...bootstrap.data.taskLists[2]!.myRights!, mayWriteAll: true },
+    };
+    renderDialog(
+      <TasksImportDialog
+        open
+        file={file}
+        labels={L}
+        taskLists={[...bootstrap.data.taskLists, sharedWritable]}
+        preferredTaskListId="shared-team"
+        onClose={vi.fn()}
+        onImport={onImport}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));
+
+    expect(onImport).toHaveBeenCalledWith(file, { mode: "existing", collectionId: "shared-team" });
+  });
+
   it("offers writable lists only, then New list", () => {
     const viewOnly = {
       ...bootstrap.data.taskLists[2]!,

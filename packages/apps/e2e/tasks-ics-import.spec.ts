@@ -1,130 +1,182 @@
-import { expect, test } from "./helpers/live-test";
+import { expect, test, type BrowserContext } from "./helpers/live-test";
 import {
   cleanUpCase,
   openTasksTab,
   openUser,
   OWNER,
+  POLL_MS,
   serverState,
   setTabOffline,
+  showAllTasks,
   shownLists,
   shownTitles,
-  showAllTasks,
   tabCache,
   type Tab,
 } from "./helpers/tasks-matrix";
 
 /**
- * #1624: Import tasks reads an `.ics` file into a new list. The tasks reach a
- * second open tab without a reload, sit in the offline cache of the importing
- * tab, the menu item is disabled offline, and a repeat import reports every
- * task as already in the list.
+ * #1624: importing an `.ics` file into Tasks through the New menu.
+ *
+ * Tab A imports a file with two VTODOs and one VEVENT into a new list named
+ * after the file. The result step reports the skipped event. Tab B, open on
+ * the same account, gets the list and both tasks without a reload. Tab A's
+ * offline cache holds both tasks, and the menu item is disabled while
+ * offline. Importing the same file again imports nothing and names each task
+ * as already in the list.
  */
 
-const SYNC_BOUND_MS = 20_000;
+/** The import's mutation event reaches another tab on push, or at the latest on the next poll. */
+const OTHER_TAB_BOUND_MS = POLL_MS + 5_000;
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15_000 });
 
-async function chooseFile(tab: Tab, name: string, body: string) {
-  await tab.getByRole("button", { name: "More create options" }).click();
-  await tab.getByRole("menuitem", { name: "Import tasks" }).click();
-  await tab
-    .locator('[data-testid="tasks-ics-file-input"]')
-    .setInputFiles({ name, mimeType: "text/calendar", buffer: Buffer.from(body) });
-}
-
-test("importing an ICS file creates a list that syncs, caches and survives a re-import", async ({
-  browser,
-}) => {
+test("an ICS file imports into a new list and reaches a second tab", async ({ browser }) => {
   const id = `ics${Date.now().toString(36)}`;
-  const first = `first ${id}`;
-  const second = `second ${id}`;
-  const listName = `L ${id}`;
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//wgw e2e//EN",
-    "BEGIN:VTODO",
-    `UID:${id}-1@e2e.test`,
-    "DTSTAMP:20260101T000000Z",
-    `SUMMARY:${first}`,
-    "END:VTODO",
-    "BEGIN:VTODO",
-    `UID:${id}-2@e2e.test`,
-    "DTSTAMP:20260101T000000Z",
-    `SUMMARY:${second}`,
-    "END:VTODO",
-    "BEGIN:VEVENT",
-    `UID:${id}-3@e2e.test`,
-    "DTSTAMP:20260101T000000Z",
-    "DTSTART:20260102T090000Z",
-    `SUMMARY:event ${id}`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-    "",
-  ];
-  const ics = lines.join("\r\n");
+  const listName = `import ${id}`;
+  const titles = [`first ${id}`, `second ${id}`].sort();
+  const file = {
+    name: `${listName}.ics`,
+    mimeType: "text/calendar",
+    buffer: Buffer.from(icsFile(id, titles)),
+  };
   const events: string[] = [];
-  const context = await openUser(browser, OWNER);
+  let context: BrowserContext | null = null;
 
   try {
-    const a = await openTasksTab(context, "a", events);
-    const b = await openTasksTab(context, "b", events);
-    await showAllTasks(a);
+    context = await openUser(browser, OWNER);
+    const a = await openTasksTab(context, "A", events);
+    const b = await openTasksTab(context, "B", events);
     await showAllTasks(b);
 
-    await chooseFile(a, `${listName}.ics`, ics);
+    // Import into a new list named after the file.
+    await chooseFile(a, file);
     const dialog = a.getByRole("dialog", { name: "Import tasks" });
-    await dialog.getByRole("button", { name: /^Destination list/ }).click();
+    await dialog.getByRole("button", { name: /^Destination list:/ }).click();
     await a.getByRole("menuitem", { name: "New list" }).click();
-    await expect(dialog.getByRole("textbox", { name: "List name" })).toHaveValue(listName);
+    await expect(dialog.getByLabel("List name")).toHaveValue(listName);
     await dialog.getByRole("button", { name: "Import", exact: true }).click();
 
-    await expect(dialog.getByText("Imported 2 tasks")).toBeVisible();
-    await expect(dialog.getByText("1 event was skipped. Import it in Calendar.")).toBeVisible();
+    // The skipped event keeps the dialog on its result step.
+    const result = dialog.getByRole("status");
+    await expect(result).toContainText("Imported 2 tasks");
+    await expect(result).toContainText("1 event was skipped. Import it in Calendar.");
     await dialog.getByRole("button", { name: "Done" }).click();
-    await expect(dialog).toBeHidden();
+    await expect(dialog).toHaveCount(0);
+
     await expect.poll(() => shownLists(a, id)).toEqual([listName]);
-    await expect.poll(() => shownTitles(a, id)).toEqual([first, second].sort());
+    await expect(a.getByRole("heading", { level: 2, name: listName })).toBeVisible();
+    await expect.poll(() => shownTitles(a, id)).toEqual(titles);
 
     // Tab B sees the list and both tasks without a reload.
-    await expect.poll(() => shownLists(b, id), { timeout: SYNC_BOUND_MS }).toEqual([listName]);
-    await showAllTasks(b);
-    await expect
-      .poll(() => shownTitles(b, id), { timeout: SYNC_BOUND_MS })
-      .toEqual([first, second].sort());
+    await expect.poll(() => shownLists(b, id), { timeout: OTHER_TAB_BOUND_MS }).toEqual([listName]);
+    await expect.poll(() => shownTitles(b, id), { timeout: OTHER_TAB_BOUND_MS }).toEqual(titles);
 
-    // Tab A's offline cache holds both tasks, none pending.
+    // Both tasks are in tab A's offline cache, already synced.
     await expect
-      .poll(async () => (await tabCache(a, id)).tasks.map((t) => t.title).sort())
-      .toEqual([first, second].sort());
-    expect((await tabCache(a, id)).tasks.every((t) => !t.pending)).toBe(true);
+      .poll(async () => {
+        const cache = await tabCache(a, id);
+        return cache.tasks.map((task) => `${task.title} pending=${task.pending}`).sort();
+      })
+      .toEqual(titles.map((title) => `${title} pending=false`));
 
-    // Offline: the cache still shows the tasks and Import is disabled.
+    // After a reload the list and tasks come back.
     await a.reload();
     await showAllTasks(a);
+    await expect.poll(() => shownTitles(a, id)).toEqual(titles);
+
+    // Offline, the item is disabled with a reason and opens no file picker.
     await setTabOffline(a, true);
-    await expect.poll(() => shownTitles(a, id)).toEqual([first, second].sort());
     await a.getByRole("button", { name: "More create options" }).click();
     const item = a.getByRole("menuitem", { name: /Import tasks/ });
-    await expect(item).toBeDisabled();
+    await expect(item).toHaveAttribute("aria-disabled", "true");
     await expect(item).toContainText("Needs an internet connection");
+    const chooser = a.waitForEvent("filechooser", { timeout: 1_500 }).catch(() => null);
+    await item.click({ force: true });
+    expect(await chooser).toBeNull();
     await a.keyboard.press("Escape");
-
-    // Online again: importing the same file into the same list adds nothing.
     await setTabOffline(a, false);
-    await chooseFile(a, `${listName}.ics`, ics);
-    await dialog.getByRole("button", { name: /^Destination list/ }).click();
-    await a.getByRole("menuitem", { name: listName }).click();
+
+    // The same file again, from the list in view: nothing new, each task named.
+    await a
+      .getByRole("region", { name: "My lists" })
+      .getByRole("button", { name: listName })
+      .click();
+    await expect(a.getByRole("heading", { level: 2, name: listName })).toBeVisible();
+    await chooseFile(a, file);
+    await expect(
+      dialog.getByRole("button", { name: `Destination list: ${listName}` }),
+    ).toBeVisible();
     await dialog.getByRole("button", { name: "Import", exact: true }).click();
-    await expect(dialog.getByText("No tasks were imported.")).toBeVisible();
-    await expect(dialog.getByText("Already in this list")).toHaveCount(2);
+    await expect(result).toContainText("No tasks were imported.");
+    for (const title of titles) {
+      await expect(result).toContainText(`${title} — Already in this list`);
+    }
     await dialog.getByRole("button", { name: "Done" }).click();
 
-    const state = await serverState(id);
-    expect(state.lists.map((l) => l.name)).toEqual([listName]);
-    expect(state.tasks.map((t) => t.title).sort()).toEqual([first, second].sort());
+    const server = await serverState(id);
+    expect(server.lists.map((list) => list.name)).toEqual([listName]);
+    expect(server.tasks.map((task) => task.title).sort()).toEqual(titles);
+    expect(events.filter((event) => !isExpected(event))).toEqual([]);
   } finally {
-    await context.close();
+    await context?.close();
     await cleanUpCase(id);
   }
 });
+
+/** Open the New menu, choose Import tasks and hand the file to its picker. */
+async function chooseFile(
+  tab: Tab,
+  file: { name: string; mimeType: string; buffer: Buffer },
+): Promise<void> {
+  await tab.getByRole("button", { name: "More create options" }).click();
+  const chooser = tab.waitForEvent("filechooser");
+  await tab.getByRole("menuitem", { name: "Import tasks" }).click();
+  await (await chooser).setFiles(file);
+  await expect(tab.getByRole("dialog", { name: "Import tasks" })).toBeVisible();
+}
+
+/** Two VTODOs and one VEVENT, with UIDs unique to the run. */
+function icsFile(id: string, titles: string[]): string {
+  const todos = titles.map((title, index) =>
+    [
+      "BEGIN:VTODO",
+      `UID:${id}-task-${index}@e2e.test`,
+      "DTSTAMP:20261110T000000Z",
+      `SUMMARY:${title}`,
+      "STATUS:NEEDS-ACTION",
+      "END:VTODO",
+    ].join("\r\n"),
+  );
+  const event = [
+    "BEGIN:VEVENT",
+    `UID:${id}-event@e2e.test`,
+    "DTSTAMP:20261110T000000Z",
+    "DTSTART:20261120T090000Z",
+    "DTEND:20261120T100000Z",
+    `SUMMARY:event ${id}`,
+    "END:VEVENT",
+  ].join("\r\n");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//WGW e2e//Tasks import//EN",
+    ...todos,
+    event,
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
+}
+
+/**
+ * Noise the spec causes on purpose: the second import answers 400 by design,
+ * and going offline cuts open requests (push stream, probes) in both tabs.
+ * Page errors and any other API error still fail the spec.
+ */
+function isExpected(event: string): boolean {
+  return (
+    /^A 400: POST \/api\/v1\/tasks\/items\/import/.test(event) ||
+    /console: Failed to load resource: the server responded with a status of 400/.test(event) ||
+    /console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED/.test(event) ||
+    / request failed:/.test(event)
+  );
+}

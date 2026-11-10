@@ -88,6 +88,7 @@ None — every choice for this work is made.
 - [ ] Vitest: run helper (existing list, new list), hook result states, dialog result step, live client 400-with-errors parsing.
 - [ ] Storybook: Tasks import dialog destination step and result step, light and dark.
 - [ ] Browser e2e: VTODO file into an existing list and a new list; mixed file (skipped line); duplicate import (already-exists reasons); after a refresh and in a second tab; Calendar import still works.
+- [ ] Live Playwright spec `packages/apps/e2e/tasks-ics-import.spec.ts` (live tier): new-list import with the skipped line, second tab without reload, offline cache, reload, disabled offline item, duplicate import.
 
 ## Doc updates (only if user wants)
 
