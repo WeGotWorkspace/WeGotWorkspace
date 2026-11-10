@@ -134,7 +134,9 @@ describe("MeetPeerTile mute", () => {
     const { container } = renderTile({ name: "Alex Morgan", speaking: true });
     expect(screen.getByText(meetLabels.speaking)).toBeTruthy();
     expect(container.querySelector(".meet-peer-tile--speaking")).toBeTruthy();
-    expect(screen.getByText(meetLabels.speaking).className).toContain("meet-peer-tile__speaking");
+    expect(screen.getByText(meetLabels.speaking).closest(".tag")?.className).toContain(
+      "meet-peer-tile__speaking",
+    );
   });
 
   it("keeps the camera-off initial visible when an audio stream is still attached", () => {

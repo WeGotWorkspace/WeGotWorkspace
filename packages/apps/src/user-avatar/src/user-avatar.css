@@ -68,8 +68,13 @@
     var(--user-avatar-hue) 14%,
     var(--_user-avatar-surface)
   );
-  /* `--scheme-ink` (not `--color-we-got-dark`) so the glyph stays readable in dark mode. */
-  --user-avatar-tile-fg: color-mix(in oklab, var(--user-avatar-hue) 32%, var(--scheme-ink));
+  /* The local ink, as the fill mixes into the local paper: the glyph stays readable
+     in dark mode and on dark media paper (video tiles) in light mode. */
+  --user-avatar-tile-fg: color-mix(
+    in oklab,
+    var(--user-avatar-hue) 32%,
+    var(--workspace-foreground, var(--scheme-ink))
+  );
   --user-avatar-bg: var(--user-avatar-tile-bg);
   --user-avatar-fg: var(--user-avatar-tile-fg);
   --user-avatar-hover-bg: color-mix(
@@ -109,6 +114,15 @@
   border-width: var(--user-avatar-border-width, 1px);
   border-style: solid;
   border-color: var(--user-avatar-border, var(--control-border-color));
+}
+
+/* Tint: the usual rounded square without the hairline, washed in the selection
+   colour (the suite sky, both themes) at a soft mix, the same for every person.
+   Ink initials on it. */
+.user-avatar--tint .user-avatar__mark {
+  border-width: 0;
+  background-color: color-mix(in oklab, var(--scheme-selection) 40%, var(--workspace-surface));
+  color: var(--workspace-foreground);
 }
 
 .user-avatar__presence {

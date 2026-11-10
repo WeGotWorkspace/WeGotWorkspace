@@ -11,7 +11,7 @@ import {
   useDocsCollab,
   useDocsCollabAwarenessPresence,
 } from "@/text-editor-core/docs-collab";
-import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
+import type { DocsCollabPresenceChromeProps, DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
 import {
   useDocsExternalWritePrompt,
@@ -189,10 +189,17 @@ export function NoteCollabSession({
 }
 
 /**
- * Notes footer collab chrome — thin wrapper around shared
+ * Notes collab presence — thin wrapper around shared
  * {@link DocsCollabPresenceChrome} that reads peers from {@link NoteCollabSession}.
+ * The detail action bar uses the `header` variant (same avatars as the Docs header).
  */
-export function NoteCollabChrome({ className }: { className?: string }) {
+export function NoteCollabChrome({
+  className,
+  variant,
+}: {
+  className?: string;
+  variant?: DocsCollabPresenceChromeProps["variant"];
+}) {
   const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
   const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
   const presencePeers = useMemo(
@@ -208,6 +215,7 @@ export function NoteCollabChrome({ className }: { className?: string }) {
   return (
     <DocsCollabPresenceChrome
       className={className}
+      variant={variant}
       localUser={{ displayName: session.user.name }}
       peers={presencePeers}
       connectingPeers={connectingPeers}

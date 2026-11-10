@@ -62,9 +62,9 @@ describe("theme preference", () => {
     stubSystemDark(false);
     const dispose = syncDocumentTheme();
     const meta = () => document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    expect(meta()?.content).toBe("#fff5e9");
+    expect(meta()?.content).toBe("#f6f7f9");
     writeThemePreference("dark");
-    expect(meta()?.content).toBe("#1c1c1c");
+    expect(meta()?.content).toBe("#10161b");
     dispose();
   });
 });

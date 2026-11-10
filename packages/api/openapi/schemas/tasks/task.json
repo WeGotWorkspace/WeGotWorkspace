@@ -244,7 +244,10 @@
       },
       "alerts": {
         "type": ["object", "null"],
-        "additionalProperties": { "$ref": "#/components/schemas/TaskAlert" }
+        "description": "Merged per alert id; null clears all alerts, an alert set to null removes that one",
+        "additionalProperties": {
+          "oneOf": [{ "$ref": "#/components/schemas/TaskAlert" }, { "type": "null" }]
+        }
       },
       "participants": {
         "type": "object",

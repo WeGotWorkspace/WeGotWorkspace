@@ -94,7 +94,7 @@ test.describe("Drive inbound sync with more than 500 files", () => {
     await seedFolder();
 
     const seen = watchSync(page);
-    await page.goto("/drive");
+    await page.goto("/drive?view=folder&path=My%20Drive");
     await expect(page.getByText(FOLDER, { exact: true }).first()).toBeVisible({ timeout: 30_000 });
     await expect
       .poll(() => idsFetched(seen), { timeout: 90_000 })

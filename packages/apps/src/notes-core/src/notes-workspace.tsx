@@ -1,4 +1,4 @@
-import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, StickyNote } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
@@ -30,15 +30,15 @@ import {
   dismissSidebarOverlay,
   sidebarSelectMarker,
 } from "@/workspace-shell/src/sidebar-breakpoint";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
-import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { NotesDetailNotebookSelect } from "@/notes-core/src/notes-detail-notebook-select";
+import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
 import { viewerHasNoTeam } from "@/share-ui/collection-share";
-import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import { projectNoteTitle } from "@/notes-core/src/note-title-projection";
@@ -421,16 +421,15 @@ export function NotesWorkspace({
         initialDetailOpenMobile={Boolean(initialNoteId)}
         detailScrollResetKey={showSingleNoteDetail && active ? active.id : ""}
         workspaceRoot={{
-          className: cn("notes-workspace", className),
+          className: cn("notes-workspace note-detail-desk", className),
           style: notesDetailTintStyle(notesDetailTint) as CSSProperties | undefined,
         }}
         sidebar={(c) => (
           <AppSidebar
+            settingsAppId="notes"
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
-            footer={
-              <WorkspaceAppSettingsFooter appId="notes" session={session} onLogout={onLogout} />
-            }
+            footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
             primaryButton={
               <NotesNewMenu
                 labels={L}
@@ -506,7 +505,7 @@ export function NotesWorkspace({
                         aria-pressed={selected}
                         {...dropHandlers}
                       >
-                        <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
+                        <Tag label={tag} size="lg" />
                       </button>
                     </li>
                   ),
@@ -558,16 +557,10 @@ export function NotesWorkspace({
               starred={starred}
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
-              notebooks={selectNotebooks}
-              onMoveToNotebook={moveActiveNoteToNotebook}
-              onCreateNotebook={
-                canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
-              }
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
-              notebookColor={activeNotebook?.color}
-              readOnly={shareReadOnly}
               canArchive={noteCanArchive}
+              presence={collabSessionActive ? <NoteCollabChrome variant="header" /> : undefined}
             />
           ) : c.detailOpenMobile ? (
             <ActionBar onBack={closeMobileDetail} backLabel={viewLabel} />
@@ -632,21 +625,28 @@ export function NotesWorkspace({
                 body={active.body}
                 collab={accessLost ? undefined : noteBodyCollab}
                 readOnly={noteReadOnly}
+                eyebrow={
+                  <>
+                    <NotesDetailNotebookSelect
+                      active={active}
+                      labels={L}
+                      archived={archived}
+                      notebooks={selectNotebooks}
+                      onMoveToNotebook={moveActiveNoteToNotebook}
+                      onCreateNotebook={
+                        canManageNotebooks ? () => openCreateNotebook([active.id]) : undefined
+                      }
+                      notebookColor={activeNotebook?.color}
+                      readOnly={shareReadOnly}
+                    />
+                    <NotesDetailLastEdited
+                      lastEdited={formatNoteLastEdited(active)}
+                      editedLabel={L.editedLabel}
+                    />
+                  </>
+                }
               />
             </>
-          );
-        }}
-        detailFooter={() => {
-          if (!showSingleNoteDetail || !active) return null;
-          return (
-            <WorkspaceDetailFooter
-              className="notes-detail-footer"
-              start={collabSessionActive ? <NoteCollabChrome /> : undefined}
-              tags={notesLastEditedTag({
-                lastEdited: formatNoteLastEdited(active),
-                editedLabel: L.editedLabel,
-              })}
-            />
           );
         }}
       />

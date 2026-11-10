@@ -27,7 +27,6 @@ export const docxImportLabels = {
     `This document was made from “${name}”. These parts of the Word file are not in it:`,
   close: "OK",
   importWordFile: "Import Word file",
-  newDocumentMenu: "More ways to make a document",
   importing: (name: string) => `Importing “${name}”…`,
   importFailed: (name: string) => `Could not import “${name}”. Nothing was created.`,
   importDialogTitle: "Import Word file",

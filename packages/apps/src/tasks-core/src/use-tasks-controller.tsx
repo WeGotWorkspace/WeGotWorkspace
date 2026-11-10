@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksAPIOperations, TasksUIData } from "@/tasks-core/src/tasks-types";
-import { buildDisplayTasks } from "@/tasks-core/src/tasks-task-utils";
+import { buildDisplayTasks, filterTasksBySearch } from "@/tasks-core/src/tasks-task-utils";
 import { useTasksExitAnimation } from "@/tasks-core/src/use-tasks-exit-animation";
 import { useTasksIcsImport, type TasksImportedChange } from "@/tasks-core/src/use-tasks-ics-import";
 import { useTasksList } from "@/tasks-core/src/use-tasks-list";
@@ -37,21 +37,8 @@ export function useTasksController({
     initialView,
     onViewChange,
   });
-  const list = useTasksList({ shell });
   const exitAnimation = useTasksExitAnimation();
-  const mutations = useTasksMutations({ shell, list, exitAnimation });
-  const projectMutations = useTasksProjectMutations({ shell });
   const { clearHiddenTasks } = exitAnimation;
-  const openedTaskDeepLinkRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!initialTaskId) return;
-    if (openedTaskDeepLinkRef.current === initialTaskId) return;
-    if (!data.tasks.some((task) => task.id === initialTaskId)) return;
-    openedTaskDeepLinkRef.current = initialTaskId;
-    mutations.editTask(initialTaskId);
-  }, [data.tasks, initialTaskId, mutations]);
-
   const { setTaskLists, setTasks, ensureTaskListVisible, selectView: selectShellView } = shell;
   const handleTasksImported = useCallback(
     ({ taskListId, createdList, tasks }: TasksImportedChange) => {
@@ -75,16 +62,6 @@ export function useTasksController({
     onImported: handleTasksImported,
   });
 
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-
-  useWorkspaceListKeyboardShortcuts({
-    searchInputRef,
-    selectedCount: 0,
-    onRequestDeleteSelection: () => {},
-    onUndoQueuedAction: list.undoLatest,
-    listNavigationEnabled: false,
-  });
-
   useEffect(() => {
     clearHiddenTasks();
   }, [clearHiddenTasks, shell.view]);
@@ -105,6 +82,39 @@ export function useTasksController({
       shell.visibleTasks,
     ],
   );
+
+  // The list search: a task matches on its title, notes or tags.
+  const [searchQuery, setSearchQuery] = useState("");
+  const listTasks = useMemo(
+    () => filterTasksBySearch(displayTasks, searchQuery),
+    [displayTasks, searchQuery],
+  );
+  const visibleIds = useMemo(() => listTasks.map((task) => task.id), [listTasks]);
+
+  const list = useTasksList({ shell, visibleIds });
+  const mutations = useTasksMutations({ shell, list, exitAnimation });
+  const projectMutations = useTasksProjectMutations({ shell });
+  const openedTaskDeepLinkRef = useRef<string | null>(null);
+  const { openTask } = list;
+
+  useEffect(() => {
+    if (!initialTaskId) return;
+    if (openedTaskDeepLinkRef.current === initialTaskId) return;
+    if (!data.tasks.some((task) => task.id === initialTaskId)) return;
+    openedTaskDeepLinkRef.current = initialTaskId;
+    openTask(initialTaskId);
+  }, [data.tasks, initialTaskId, openTask]);
+
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useWorkspaceListKeyboardShortcuts({
+    searchInputRef,
+    selectedCount: list.selectedIds.length,
+    selectionMode: list.selectionMode,
+    onRequestDeleteSelection: mutations.requestDeleteSelected,
+    onNavigateList: list.navigateListByKeyboard,
+    onUndoQueuedAction: list.undoLatest,
+  });
 
   const toggleShowCompletedTasks = useCallback(() => {
     if (!shell.showCompletedTasks) {
@@ -131,8 +141,8 @@ export function useTasksController({
     showCompletedToggle: shell.showCompletedToggle,
     toggleShowCompletedTasks,
     displayTasks,
-    sidebarOpen: shell.sidebarOpen,
-    setSidebarOpen: shell.setSidebarOpen,
+    workspaceLayoutRef: shell.workspaceLayoutRef,
+    searchInputRef,
     createListId: shell.createListId,
     hiddenTaskListIds: shell.hiddenTaskListIds,
     toggleTaskListVisibility: shell.toggleTaskListVisibility,
@@ -141,14 +151,24 @@ export function useTasksController({
     itemDragHandlers: list.itemDragHandlers,
     sidebarDropZoneProps: list.sidebarDropZoneProps,
     confirmDialog: mutations.confirmDialog,
-    editDialog: mutations.editDialog,
-    editingTask: mutations.editingTask,
-    closeEditTask: mutations.closeEditTask,
-    saveEditedTask: mutations.saveEditedTask,
+    activeId: list.activeId,
+    activeTask: list.activeTask,
+    closeTask: list.closeTask,
+    selectedIds: list.selectedIds,
+    selectionMode: list.selectionMode,
+    handleSelect: list.handleSelect,
+    enterSelectionFor: list.enterSelectionFor,
+    selectionBar: mutations.selectionBar,
+    selectionBarButtons: mutations.selectionBarButtons,
+    moveDialog: mutations.moveDialog,
+    setMoveDialog: mutations.setMoveDialog,
+    searchQuery,
+    setSearchQuery,
+    listTasks,
+    autosaveTask: mutations.autosaveTask,
     selectView,
     createTaskFromForm: mutations.createTaskFromForm,
     toggleTaskComplete: mutations.toggleTaskComplete,
-    editTask: mutations.editTask,
     requestDeleteTask: mutations.requestDeleteTask,
     moveToList: mutations.moveToList,
     handleTaskExitAnimationEnd: mutations.handleTaskExitAnimationEnd,

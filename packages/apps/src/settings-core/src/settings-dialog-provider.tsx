@@ -38,6 +38,18 @@ export function useSettingsDialog(): SettingsDialogApi {
   return useContext(SettingsDialogContext);
 }
 
+/**
+ * Where focus goes back to when the dialog closes: the element that opened it, or,
+ * for an option in a menu (which is gone once the menu closes), the menu's trigger.
+ */
+function focusReturnTarget(active: Element | null): HTMLElement | null {
+  if (!(active instanceof HTMLElement)) return null;
+  const menu = active.closest('[role="menu"]');
+  const triggerId = menu?.getAttribute("aria-labelledby");
+  const trigger = triggerId ? document.getElementById(triggerId) : null;
+  return trigger instanceof HTMLElement ? trigger : active;
+}
+
 export function SettingsDialogProvider({ children }: { children: ReactNode }): ReactNode {
   const router = useRouter();
   const [panel, setPanel] = useState<SettingsPanel | null>(null);
@@ -45,8 +57,7 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   const restoreFocusRef = useRef(true);
 
   const openRegisteredPanel = useCallback((next: SettingsPanel) => {
-    const active = document.activeElement;
-    openerRef.current = active instanceof HTMLElement ? active : null;
+    openerRef.current = focusReturnTarget(document.activeElement);
     restoreFocusRef.current = true;
     setPanel(next);
   }, []);

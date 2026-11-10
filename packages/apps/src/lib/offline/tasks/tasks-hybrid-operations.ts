@@ -28,6 +28,7 @@ import {
   applyTaskPatch,
   taskCreateFromTask,
   taskEtag,
+  withExplicitAlertsClear,
 } from "@/lib/offline/tasks/tasks-patch-merge";
 import {
   createTempTaskId,
@@ -141,7 +142,12 @@ async function queueOfflinePatch(
   const etag = concurrencyEtag(existing, opts);
   const optimistic = applyTaskPatch(existing, patch);
   await upsertTaskInCache(username, optimistic, true);
-  await enqueueCoalescedTaskUpdate(username, taskId, patch, etag);
+  await enqueueCoalescedTaskUpdate(
+    username,
+    taskId,
+    withExplicitAlertsClear(patch, existing),
+    etag,
+  );
   return optimistic;
 }
 

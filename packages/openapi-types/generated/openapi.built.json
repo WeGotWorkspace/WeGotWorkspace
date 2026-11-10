@@ -6541,8 +6541,16 @@
                             "object",
                             "null"
                         ],
+                        "description": "Merged per alert id; null clears all alerts, an alert set to null removes that one",
                         "additionalProperties": {
-                            "$ref": "#/components/schemas/TaskAlert"
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/TaskAlert"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
                         }
                     },
                     "participants": {

@@ -21,6 +21,7 @@ export function filterDriveVisibleItems({
   liveSearchResults,
   starredItems,
   sharedItems,
+  allItems,
   starred,
   view,
   searchQuery,
@@ -32,6 +33,8 @@ export function filterDriveVisibleItems({
   liveSearchResults: DriveFile[] | null;
   starredItems: DriveFile[] | null;
   sharedItems?: DriveFile[] | null;
+  /** All Files rows from the index; null lists the loaded files instead. */
+  allItems?: readonly DriveFile[] | null;
   starred: Record<string, boolean>;
   view: ViewKey;
   searchQuery: string;
@@ -43,6 +46,9 @@ export function filterDriveVisibleItems({
   const q = searchQuery.trim().toLowerCase();
   // The Uploads view lists the queue across folders, never folder rows or server search.
   if (view.type === "uploads") return (uploadFiles ?? []).filter((f) => matchesLocalSearch(f, q));
+  if (view.type === "all" && allItems && !liveSearchResults) {
+    return allItems.filter((f) => matchesLocalSearch(f, q));
+  }
   const sourceFiles = liveSearchResults ?? files;
   const starredSourceFiles = operations ? (starredItems ?? []) : sourceFiles;
   const filtered = sourceFiles.filter((f) => {
@@ -59,7 +65,8 @@ export function filterDriveVisibleItems({
               (isDriveTrashApiPath(f.apiPath, currentUsername) ||
                 f.apiPath.startsWith("/groups/"))))
         );
-    else if (view.type === "recent") inView = !isDriveUnderTrash(f.parent) && f.kind !== "folder";
+    else if (view.type === "recent" || view.type === "all")
+      inView = !isDriveUnderTrash(f.parent) && f.kind !== "folder";
     else if (view.type === "starred") {
       if (operations) return false;
       inView = !!starred[f.id] && !isDriveUnderTrash(f.parent);

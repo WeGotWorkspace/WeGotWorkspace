@@ -93,7 +93,7 @@ async function deleteTask(taskId: string): Promise<void> {
 }
 
 function taskTitle(page: Page, title: string) {
-  return page.locator(".tasks-main-view__title", { hasText: title });
+  return page.locator(".tasks-list-row .list-item__title", { hasText: title });
 }
 
 async function openTasks(page: Page): Promise<void> {
@@ -156,7 +156,7 @@ test.describe("Tasks inbound sync (live app)", () => {
     await expect(taskTitle(page, renamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
   });
 
-  test("an open Edit dialog keeps its draft when tasks sync in (#1858)", async ({ page }) => {
+  test("an open task keeps what was typed when tasks sync in (#1858)", async ({ page }) => {
     const stamp = Date.now();
     const listId = await defaultTaskListId();
     const edited = await createTask(listId, `e2e-draft-edited-${stamp}`);
@@ -165,14 +165,15 @@ test.describe("Tasks inbound sync (live app)", () => {
 
     await openTasks(page);
     await taskTitle(page, edited.title).click({ timeout: 30_000 });
-    const dialog = page.getByRole("dialog", { name: "Edit task" });
-    await expect(dialog).toBeVisible();
-    const notes = dialog.getByRole("textbox", { name: "Notes" });
-    const name = dialog.getByRole("textbox", { name: "Task name" });
-    const draft = `Draft, not saved ${stamp}`;
+    const detail = page.locator(".tasks-detail-view");
+    const notes = detail.getByRole("textbox", { name: "Notes" });
+    const name = detail.getByRole("textbox", { name: "Task name" });
+    await expect(name).toHaveValue(edited.title);
+    // The pane saves the notes by itself after a typing pause.
+    const draft = `Typed notes ${stamp}`;
     await notes.fill(draft);
 
-    // Another task changes elsewhere: the list repaints behind the dialog.
+    // Another task changes elsewhere: the list repaints beside the open task.
     const otherRenamed = `e2e-draft-other-renamed-${stamp}`;
     await renameTask(other.id, otherRenamed);
     await expect(taskTitle(page, otherRenamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
@@ -184,8 +185,6 @@ test.describe("Tasks inbound sync (live app)", () => {
     await expect(name).toHaveValue(editedRenamed, { timeout: FOLLOW_TIMEOUT_MS });
     await expect(notes).toHaveValue(draft);
 
-    await dialog.getByRole("button", { name: "Save" }).click();
-    await expect(dialog).toBeHidden();
     await expect
       .poll(
         async () => {

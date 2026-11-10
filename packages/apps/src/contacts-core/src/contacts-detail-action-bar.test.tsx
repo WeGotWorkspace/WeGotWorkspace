@@ -1,31 +1,9 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsDetailActionBar } from "./contacts-detail-action-bar";
 import { defaultContactsLabels } from "./contacts-labels";
-
-const twoBooks = [
-  { id: "default", name: "Ada", isDefault: true },
-  { id: "group-eng", name: "Engineering" },
-];
-
-function stubSelectEnv() {
-  Element.prototype.scrollIntoView = vi.fn();
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
-}
 
 afterEach(() => {
   cleanup();
@@ -36,11 +14,8 @@ function renderActionBar(props: Partial<ComponentProps<typeof ContactsDetailActi
     <TooltipProvider>
       <ContactsDetailActionBar
         labels={defaultContactsLabels}
-        canEdit
-        editMode={false}
         createMode={false}
         closeMobileDetail={() => {}}
-        onEdit={() => {}}
         onDelete={() => {}}
         onDownload={() => {}}
         onSave={() => {}}
@@ -60,66 +35,24 @@ describe("ContactsDetailActionBar", () => {
     expect(back.className).toContain("button--variant-outline");
   });
 
-  it("shows a labeled edit action first in read mode", () => {
+  it("shows download and delete only, with no edit action (the sheet is always editable)", () => {
     const { container } = renderActionBar();
-    const row = container.querySelector(".action-bar__row");
-    expect(row).toBeTruthy();
-
-    const actions = within(row as HTMLElement);
-    const buttons = actions.getAllByRole("button");
-    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      defaultContactsLabels.edit,
-      defaultContactsLabels.downloadVCard,
-      defaultContactsLabels.delete,
-    ]);
-
-    const edit = buttons[0];
-    expect(edit.getAttribute("aria-label")).toBe(defaultContactsLabels.edit);
-    expect(edit.textContent).toContain(defaultContactsLabels.edit);
-    expect(edit.querySelector(".button__label")?.textContent).toBe(defaultContactsLabels.edit);
-    expect(edit.className).toContain("action-bar__action--labeled");
-    expect(edit.className).toContain("action-bar__action--icon-narrow");
-    expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
-    expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
-    expect(buttons[1].className).toContain("action-bar__action--collapse-narrow");
-    expect(buttons[2].className).toContain("action-bar__action--collapse-narrow");
-    expect(container.querySelector(".action-bar__menu--narrow")).toBeTruthy();
-  });
-
-  it("pins edit before the address-book switcher and washes delete with severity-danger", () => {
-    stubSelectEnv();
-    const { container } = renderActionBar({
-      moveAddressBook: {
-        books: twoBooks,
-        value: "default",
-        onMove: vi.fn(),
-      },
-    });
-
     const right = container.querySelector(".action-bar__right");
     expect(right).toBeTruthy();
-    const rightChildren = Array.from(right!.children).map((child) => child.className);
-    expect(rightChildren[0]).toContain("action-bar__row");
-    expect(rightChildren[1]).toContain("action-bar__right-leading");
-    expect(rightChildren[2]).toContain("action-bar__row");
-
     const buttons = within(right as HTMLElement)
       .getAllByRole("button")
       .filter((button) => !button.closest(".action-bar__menu"));
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      defaultContactsLabels.edit,
       defaultContactsLabels.downloadVCard,
       defaultContactsLabels.delete,
     ]);
-    expect(buttons[0].className).toContain("action-bar__action--labeled");
-    expect(buttons[2].className).toContain("button--severity-danger");
-    expect(
-      screen.getByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
-    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultContactsLabels.edit })).toBeNull();
+    expect(buttons[1].className).toContain("button--severity-danger");
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 
-  it("keeps read actions visible while editing with correct disabled states", () => {
-    const { container } = renderActionBar({ editMode: true });
+  it("collapses download and delete into the narrow menu and never disables download", () => {
+    const { container } = renderActionBar();
     const row = container.querySelector(".action-bar__row");
     expect(row).toBeTruthy();
 
@@ -127,30 +60,30 @@ describe("ContactsDetailActionBar", () => {
     const download = actions.getByRole("button", {
       name: defaultContactsLabels.downloadVCard,
     }) as HTMLButtonElement;
-    const edit = actions.getByRole("button", {
-      name: defaultContactsLabels.edit,
-    }) as HTMLButtonElement;
     const deleteButton = actions.getByRole("button", {
       name: defaultContactsLabels.delete,
     }) as HTMLButtonElement;
 
-    expect(download.disabled).toBe(true);
-    expect(edit.disabled).toBe(false);
+    expect(download.disabled).toBe(false);
     expect(deleteButton.disabled).toBe(false);
+    expect(download.className).toContain("action-bar__action--collapse-narrow");
+    expect(deleteButton.className).toContain("action-bar__action--collapse-narrow");
+    expect(container.querySelector(".action-bar__menu--narrow")).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultContactsLabels.save })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultContactsLabels.cancel })).toBeNull();
   });
 
-  it("toggles edit off via the active edit button", () => {
-    const onCancel = vi.fn();
-    const { container } = renderActionBar({ editMode: true, onCancel });
-    const row = container.querySelector(".action-bar__row");
-    expect(row).toBeTruthy();
+  it("calls download and delete from the bar", () => {
+    const onDownload = vi.fn();
+    const onDelete = vi.fn();
+    const { container } = renderActionBar({ onDownload, onDelete });
+    const row = within(container.querySelector(".action-bar__row") as HTMLElement);
 
-    const actions = within(row as HTMLElement);
-    fireEvent.click(actions.getByRole("button", { name: defaultContactsLabels.edit }));
+    fireEvent.click(row.getByRole("button", { name: defaultContactsLabels.downloadVCard }));
+    fireEvent.click(row.getByRole("button", { name: defaultContactsLabels.delete }));
 
-    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onDownload).toHaveBeenCalledOnce();
+    expect(onDelete).toHaveBeenCalledOnce();
   });
 
   it("puts download and delete in the overflow menu and keeps them working", () => {
@@ -178,70 +111,24 @@ describe("ContactsDetailActionBar", () => {
 
     expect(onDownload).toHaveBeenCalledOnce();
     expect(onDelete).toHaveBeenCalledOnce();
-    expect(
-      screen.getByRole("button", { name: defaultContactsLabels.edit }).className,
-    ).not.toContain("action-bar__action--collapse-narrow");
   });
 
   it("shows save and cancel actions in create mode", () => {
-    renderActionBar({ createMode: true, editMode: false });
-    expect(screen.getByRole("button", { name: defaultContactsLabels.save })).toBeTruthy();
-    expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
+    const onSave = vi.fn();
+    const onCancel = vi.fn();
+    renderActionBar({ createMode: true, onSave, onCancel });
+    fireEvent.click(screen.getByRole("button", { name: defaultContactsLabels.save }));
+    fireEvent.click(screen.getByRole("button", { name: defaultContactsLabels.cancel }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: defaultContactsLabels.downloadVCard })).toBeNull();
   });
 
-  it("hides the address-book switcher without two destinations", () => {
-    renderActionBar({
-      moveAddressBook: {
-        books: [{ id: "default", name: "Ada", isDefault: true }],
-        value: "default",
-        onMove: vi.fn(),
-      },
-    });
-    expect(
-      screen.queryByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
-    ).toBeNull();
-  });
-});
-
-describe("ContactsDetailActionBar address-book move", () => {
-  beforeEach(stubSelectEnv);
-  afterEach(() => {
-    cleanup();
-  });
-
-  it("moves when choosing another writable address book and never offers create", () => {
-    const onMove = vi.fn();
-    renderActionBar({
-      moveAddressBook: {
-        books: twoBooks,
-        value: "default",
-        onMove,
-      },
-    });
-
-    const trigger = screen.getByRole("combobox", {
-      name: defaultContactsLabels.personalAddressBook,
-    });
-    expect(trigger.getAttribute("aria-label")).toBe(defaultContactsLabels.personalAddressBook);
-    expect(trigger.className).toContain("contacts-address-book-select");
-    expect(trigger.className).toContain("color-swatch-trigger");
-    expect(trigger.className).toContain("contacts-address-book-select--swatch");
-    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
-    fireEvent.click(trigger);
-
-    const options = screen.getAllByRole("option");
-    expect(options.map((option) => option.textContent?.trim())).toEqual([
-      defaultContactsLabels.personalAddressBook,
-      "Engineering",
-    ]);
-    expect(screen.queryByRole("option", { name: /create|new address book/i })).toBeNull();
-
-    fireEvent.click(screen.getByRole("option", { name: "Engineering" }));
-    expect(onMove).toHaveBeenCalledWith("group-eng");
+  it("disables save in create mode until the new contact can be saved", () => {
+    renderActionBar({ createMode: true, canSaveCreate: false });
+    const save = screen.getByRole("button", {
+      name: defaultContactsLabels.save,
+    }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
   });
 });

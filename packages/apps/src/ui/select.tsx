@@ -78,7 +78,7 @@ const SelectContent = React.forwardRef<
   const assignContentRef = React.useCallback(
     (node: React.ElementRef<typeof SelectPrimitive.Content> | null) => {
       contentRef.current = node;
-      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (node) bridgePortalThemeFromOpenTrigger(node, { frost: true });
       if (typeof ref === "function") ref(node);
       else if (ref) ref.current = node;
     },
@@ -87,7 +87,7 @@ const SelectContent = React.forwardRef<
 
   React.useLayoutEffect(() => {
     const content = contentRef.current;
-    if (content) bridgePortalThemeFromOpenTrigger(content);
+    if (content) bridgePortalThemeFromOpenTrigger(content, { frost: true });
   }, []);
 
   return (
@@ -95,7 +95,7 @@ const SelectContent = React.forwardRef<
       <SelectPrimitive.Content
         ref={assignContentRef}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-select-content-transform-origin)",
+          "select-ui__content relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-y-auto overflow-x-hidden text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-select-content-transform-origin)",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -106,7 +106,7 @@ const SelectContent = React.forwardRef<
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           className={cn(
-            "p-1",
+            "p-1.5",
             position === "popper" &&
               "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
           )}

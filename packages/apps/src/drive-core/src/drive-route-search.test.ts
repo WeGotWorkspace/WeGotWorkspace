@@ -64,3 +64,19 @@ describe("drive-route-search uploads view", () => {
     expect(driveHrefFromView({ type: "uploads" })).toBe("/drive?view=uploads");
   });
 });
+
+describe("drive-route-search All Files home", () => {
+  it("opens All Files without params and keeps Personal as a folder link", () => {
+    expect(driveViewFromSearch({})).toEqual({ type: "all" });
+    expect(driveViewFromSearch({ view: "all" })).toEqual({ type: "all" });
+    expect(driveHrefFromView({ type: "all" })).toBe("/drive");
+    expect(driveSearchFromView({ type: "folder", path: "My Drive" })).toEqual({
+      view: "folder",
+      path: "My Drive",
+    });
+    expect(driveViewFromSearch({ view: "folder", path: "My Drive" })).toEqual({
+      type: "folder",
+      path: "My Drive",
+    });
+  });
+});
