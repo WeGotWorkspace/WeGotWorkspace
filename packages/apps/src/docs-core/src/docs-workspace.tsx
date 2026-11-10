@@ -16,6 +16,8 @@ import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-se
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { docsDownloadHeaderAction } from "@/docs-core/src/docs-download-action";
+import { useDocsDownload } from "@/docs-core/src/use-docs-download";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -256,6 +258,7 @@ function DocsMainHeader({
   onToggleViewSource: () => void;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
+  const download = useDocsDownload(editor, title, pageSetup.pageSetup, controller.labels);
   const showShare = Boolean(apiPath.trim() && mayShare === true);
   const showSourceLabel = guestView
     ? controller.labels.viewSourceReadOnly
@@ -278,6 +281,11 @@ function DocsMainHeader({
                 disabled: !editor || viewSource,
                 onClick: () => printTextEditorSheet(editor),
               },
+              docsDownloadHeaderAction({
+                labels: controller.labels,
+                download,
+                disabled: !editor || viewSource,
+              }),
               ...(showShare
                 ? [
                     {
