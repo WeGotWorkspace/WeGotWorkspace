@@ -22,6 +22,7 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
+import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-core/docs-collab";
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
@@ -256,6 +257,10 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       successVersion={successVersion}
       render={() => (
         <div>
+          {/* Shown once when a Doc made by Save as Markdown opens (#1983). */}
+          {filePath ? (
+            <DocxImportReportForDoc docPath={filePath} surfaceClassName="docs-dialog-surface" />
+          ) : null}
           {routeDocument.status === "resolving" || routeDocument.status === "not-found" ? (
             <DocsRouteStatus document={routeDocument} onRetry={retryRouteDocument} />
           ) : filePath === null ? (

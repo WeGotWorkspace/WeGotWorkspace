@@ -9,6 +9,10 @@ import {
   upsertDocsListingResult,
   writeDocsListingToCache,
 } from "@/lib/offline/docs-listing-offline-store";
+import {
+  DOCS_HOME_LIST_CATEGORIES,
+  DOCS_HOME_LIST_EXTENSIONS,
+} from "@/docs-core/src/docs-home-constants";
 
 const username = "alice";
 
@@ -107,8 +111,8 @@ describe("docs listing offline store", () => {
   it("upserts an offline-created document into all-docs and drive-scoped caches", async () => {
     const allDocsFilters = {
       sources: ["file"] as const,
-      extensions: ["md", "markdown", "txt"] as const,
-      categories: ["document"] as const,
+      extensions: DOCS_HOME_LIST_EXTENSIONS,
+      categories: DOCS_HOME_LIST_CATEGORIES,
     };
     await writeDocsListingToCache(username, allDocsFilters, {
       results: [result(1, "users/alice/existing.md", 100)],
@@ -137,8 +141,8 @@ describe("docs listing offline store", () => {
   it("removes a trashed document from all-docs and drive-scoped caches", async () => {
     const allDocsFilters = {
       sources: ["file"] as const,
-      extensions: ["md", "markdown", "txt"] as const,
-      categories: ["document"] as const,
+      extensions: DOCS_HOME_LIST_EXTENSIONS,
+      categories: DOCS_HOME_LIST_CATEGORIES,
     };
     await writeDocsListingToCache(username, allDocsFilters, {
       results: [result(1, "users/alice/keep.md", 100), result(2, "users/alice/remove.md", 200)],
@@ -161,8 +165,8 @@ describe("docs listing offline store", () => {
   it("renames a document in all-docs and drive-scoped caches", async () => {
     const allDocsFilters = {
       sources: ["file"] as const,
-      extensions: ["md", "markdown", "txt"] as const,
-      categories: ["document"] as const,
+      extensions: DOCS_HOME_LIST_EXTENSIONS,
+      categories: DOCS_HOME_LIST_CATEGORIES,
     };
     await writeDocsListingToCache(username, allDocsFilters, {
       results: [result(1, "users/alice/keep.md", 100), result(2, "users/alice/old-name.md", 200)],

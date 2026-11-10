@@ -6,6 +6,7 @@ import type { DriveFile } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { mergeDocsHomeBrowseWithShared, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
+import { isSaveAsMarkdownOnlyFile } from "@/docs-core/src/docx-import/save-as-markdown-source";
 
 export type DocsHomeViewFlags = {
   isSharedView: boolean;
@@ -215,7 +216,11 @@ export function docsHomeOfflineSyncingIds(
   offlineAvailableIds: ReadonlySet<string>,
 ): Set<string> {
   if (!bodySyncRunning) return new Set();
-  return new Set(files.filter((file) => !offlineAvailableIds.has(file.id)).map((file) => file.id));
+  return new Set(
+    files
+      .filter((file) => !offlineAvailableIds.has(file.id) && !isSaveAsMarkdownOnlyFile(file))
+      .map((file) => file.id),
+  );
 }
 
 /**

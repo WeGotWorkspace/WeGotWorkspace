@@ -1,0 +1,14 @@
+@import "../../../styles.css" reference;
+
+/* Import report: one line per dropped part, count first. Colours come from the dialog surface. */
+.docx-import-report__list {
+  @apply flex list-none flex-col gap-1 p-0 text-sm;
+}
+
+.docx-import-report__count {
+  @apply inline-block min-w-6 font-semibold tabular-nums;
+}
+
+.docx-import-report__steps {
+  @apply text-sm;
+}
