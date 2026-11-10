@@ -32,7 +32,7 @@ export type CalendarEventFormSecondaryProps = {
   hideInvitees?: boolean;
   hideAlarms?: boolean;
   hideNotes?: boolean;
-  /** Saved event being edited, for the invitee Free/Busy tags (#1614). */
+  /** Saved event being edited, for the invitee busy warnings (#1614). */
   availabilityEventId?: string;
   onFieldChange: CalendarEventFormFieldChange;
 };
