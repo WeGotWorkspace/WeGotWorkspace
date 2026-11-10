@@ -261,6 +261,9 @@ final class OpenApiContract
         if ($openApiPath === '/tasks/tasklists/changes' && $method === 'GET') {
             return 'since=0';
         }
+        if ($openApiPath === '/tasks/items/import' && $method === 'POST') {
+            return 'taskListId=inbox';
+        }
         if ($openApiPath === '/tasks/items/query' && $method === 'POST') {
             return '';
         }

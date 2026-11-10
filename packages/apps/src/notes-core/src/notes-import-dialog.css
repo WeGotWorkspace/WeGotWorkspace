@@ -1,0 +1,46 @@
+@import "../../styles.css" reference;
+
+.notes-import-dialog__form {
+  @apply flex min-w-0 max-w-full flex-col gap-4;
+}
+
+.notes-import-dialog .notes-notebook-select {
+  @apply w-full;
+}
+
+.notes-import-dialog__progress {
+  @apply flex items-center gap-2 text-sm;
+}
+
+.notes-import-dialog__result {
+  @apply flex min-w-0 max-w-full flex-col gap-3 text-sm;
+}
+
+.notes-import-dialog__result-count {
+  @apply font-medium;
+}
+
+.notes-import-dialog__skipped {
+  @apply flex flex-col gap-1;
+}
+
+.notes-import-dialog__skipped-heading {
+  @apply text-sm font-medium;
+}
+
+.notes-import-dialog__skipped-list {
+  @apply flex max-h-48 flex-col gap-1 overflow-y-auto;
+}
+
+.notes-import-dialog__skipped-item {
+  @apply flex min-w-0 flex-col;
+}
+
+.notes-import-dialog__file-name {
+  @apply truncate;
+}
+
+.notes-import-dialog__reason,
+.notes-import-dialog__note {
+  @apply text-muted-foreground;
+}

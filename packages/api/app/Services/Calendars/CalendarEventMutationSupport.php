@@ -11,10 +11,10 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
-use App\Services\Calendars\Conversion\CalendarIcsSplitSupport;
 use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\VObject\ICalendarUidGroupSplitter;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +82,10 @@ final class CalendarEventMutationSupport
     /**
      * Import VEVENT UID groups from an ICS file. Does not run iTIP/iMIP.
      *
-     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>}
+     * VTODOs are left out and counted per UID in skipped.tasks, so the client
+     * can point to Tasks import.
+     *
+     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>, skipped: array{tasks: int}}
      */
     public function importFromIcs(string $username, string $icsText, string $calendarId): array
     {
@@ -96,14 +99,15 @@ final class CalendarEventMutationSupport
             throw new ApiHttpException(403, 'Calendar is not writable.', 'forbidden');
         }
 
-        (new VObjectPayloadGuard)->assertIcsSize($icsText);
+        (new VObjectPayloadGuard)->assertIcsImportSize($icsText, 'calendars');
 
         try {
-            $groups = CalendarIcsSplitSupport::splitUidGroups($icsText);
+            $split = ICalendarUidGroupSplitter::split($icsText, 'VEVENT');
         } catch (\InvalidArgumentException $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'bad_request');
         }
 
+        $groups = $split['groups'];
         if ($groups === []) {
             throw new ApiHttpException(400, 'No VEVENT data found.', 'bad_request');
         }
@@ -128,7 +132,11 @@ final class CalendarEventMutationSupport
             }
         }
 
-        return ['list' => $list, 'errors' => $errors];
+        return [
+            'list' => $list,
+            'errors' => $errors,
+            'skipped' => ['tasks' => $split['skipped']['VTODO'] ?? 0],
+        ];
     }
 
     /**

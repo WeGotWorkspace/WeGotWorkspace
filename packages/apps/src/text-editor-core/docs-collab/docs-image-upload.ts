@@ -87,30 +87,39 @@ export async function resolveDriveFileNodeId(
   return resolveFileNodeId(session, apiPath, user.username, opts?.signal);
 }
 
-export async function uploadDocAttachmentImage(
-  docApiPath: string,
+/**
+ * Hidden image folder for one note (#1623): `/{principal}/.attachments/note-{uid}`.
+ * The principal is the group for a group notebook, else the importer. Not a
+ * Doc folder, so the server does not apply Doc ACL inheritance to it.
+ */
+export function noteAttachmentsFolderPath(principalPrefix: string, noteId: string): string | null {
+  const prefix = drivePrincipalPrefix(principalPrefix);
+  const id = noteId.trim().toLowerCase();
+  if (!prefix || !/^[0-9a-z-]+$/.test(id)) return null;
+  return `${prefix}/${ATTACHMENTS_DIR}/note-${id}`;
+}
+
+/**
+ * Upload one image into a hidden `.attachments` subfolder and name it
+ * `{nodeId}.{ext}`. Shared by Docs and Notes; the caller picks the folder.
+ */
+export async function uploadHiddenAttachmentImage(
+  folderPath: string,
   file: File,
-  opts?: {
-    signal?: AbortSignal;
-    /** The Doc's FileNode id, when the caller holds it: skips the lookup by path. */
-    docNodeId?: string;
-  },
+  opts?: { signal?: AbortSignal; username?: string },
 ): Promise<{ nodeId: string; alt: string }> {
   if (!isDocsImageFile(file)) {
     throw new Error("Only browser-previewable images can be uploaded.");
   }
-  const session = await driveJmapSession();
-  const user = await fetchDriveUser(opts);
-  const docPath = normalizeApiVirtualPath(docApiPath);
-  const docNodeId =
-    opts?.docNodeId ?? (await resolveFileNodeId(session, docPath, user.username, opts?.signal));
-  const folderPath = docAttachmentsFolderPath(docPath, docNodeId);
-  if (!folderPath) {
-    throw new Error("Document path has no drive principal prefix.");
+  const folder = normalizeApiVirtualPath(folderPath);
+  const prefix = drivePrincipalPrefix(folder);
+  if (!prefix || !folder.startsWith(`${prefix}/${ATTACHMENTS_DIR}/`)) {
+    throw new Error("Attachment folder must be under a drive principal's .attachments.");
   }
-  const attachmentsRoot = `${drivePrincipalPrefix(docPath)}/${ATTACHMENTS_DIR}`;
-  await ensureDirectory(attachmentsRoot, user.username, opts?.signal);
-  const parentId = await ensureDirectory(folderPath, user.username, opts?.signal);
+  const session = await driveJmapSession();
+  const username = opts?.username ?? (await fetchDriveUser(opts)).username;
+  await ensureDirectory(`${prefix}/${ATTACHMENTS_DIR}`, username, opts?.signal);
+  const parentId = await ensureDirectory(folder, username, opts?.signal);
 
   if (file.size > session.maxSizeUpload) {
     throw new Error(`File "${file.name}" exceeds maxSizeUpload.`);
@@ -144,4 +153,48 @@ export async function uploadDocAttachmentImage(
   }
   const alt = file.name.replace(/\.[^.]+$/, "") || file.name;
   return { nodeId: node.id, alt };
+}
+
+export async function uploadDocAttachmentImage(
+  docApiPath: string,
+  file: File,
+  opts?: {
+    signal?: AbortSignal;
+    /** The Doc's FileNode id, when the caller holds it: skips the lookup by path. */
+    docNodeId?: string;
+  },
+): Promise<{ nodeId: string; alt: string }> {
+  if (!isDocsImageFile(file)) {
+    throw new Error("Only browser-previewable images can be uploaded.");
+  }
+  const session = await driveJmapSession();
+  const user = await fetchDriveUser(opts);
+  const docPath = normalizeApiVirtualPath(docApiPath);
+  const docNodeId =
+    opts?.docNodeId ?? (await resolveFileNodeId(session, docPath, user.username, opts?.signal));
+  const folderPath = docAttachmentsFolderPath(docPath, docNodeId);
+  if (!folderPath) {
+    throw new Error("Document path has no drive principal prefix.");
+  }
+  return uploadHiddenAttachmentImage(folderPath, file, {
+    signal: opts?.signal,
+    username: user.username,
+  });
+}
+
+/** Upload an image for a note into its hidden folder (see {@link noteAttachmentsFolderPath}). */
+export async function uploadNoteAttachmentImage(
+  target: { groupSlug?: string | null },
+  noteId: string,
+  file: File,
+  opts?: { signal?: AbortSignal },
+): Promise<{ nodeId: string; alt: string }> {
+  const user = await fetchDriveUser(opts);
+  const slug = target.groupSlug?.trim();
+  const principal = slug ? `/groups/${slug}` : `/users/${user.username}`;
+  const folderPath = noteAttachmentsFolderPath(principal, noteId);
+  if (!folderPath) {
+    throw new Error("Note has no attachment folder.");
+  }
+  return uploadHiddenAttachmentImage(folderPath, file, { ...opts, username: user.username });
 }
