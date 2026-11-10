@@ -88,8 +88,9 @@ function distinct(values: Iterable<string>): number {
 }
 
 /**
- * Only the parts the report reads are inflated: a .docx with large images then
- * costs no more memory here than the XML it carries.
+ * Only the parts the report reads are kept: a .docx with large images then
+ * costs no more memory here than the XML it carries. Every part is still inflated
+ * and counted against the cap.
  */
 function isScannedPart(name: string): boolean {
   return /^word\/(document|comments|footnotes|endnotes|header\d*|footer\d*)\.xml$/.test(name);
@@ -122,14 +123,23 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
     }
   }
   if (eocd < 0) throw corrupt();
+  // Any all-ones field makes JSZip follow a zip64 record this walk does not read.
+  for (const at of [4, 6, 8, 10]) if (u16(eocd + at) === 0xffff) throw corrupt();
+  const centralSize = u32(eocd + 12);
   const entryCount = u16(eocd + 10);
   let cursor = u32(eocd + 16);
-  if (cursor < 0 || cursor === 0xffffffff || entryCount === 0xffff) throw corrupt();
+  if (cursor < 0 || centralSize < 0 || cursor === 0xffffffff || centralSize === 0xffffffff) {
+    throw corrupt();
+  }
+  // JSZip shifts every offset by any gap between the directory and the end record.
+  if (eocd !== cursor + centralSize) throw corrupt();
 
   const kept: Record<string, Uint8Array[]> = {};
   let unpackedBytes = 0;
-  for (let i = 0; i < entryCount; i += 1) {
-    if (u32(cursor) !== CENTRAL_SIGNATURE) throw corrupt();
+  let entries = 0;
+  // Like JSZip: read records for as long as the signature matches, whatever the count says.
+  while (u32(cursor) === CENTRAL_SIGNATURE) {
+    entries += 1;
     const method = u16(cursor + 10);
     const compressedSize = u32(cursor + 20);
     const nameLength = u16(cursor + 28);
@@ -138,15 +148,17 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
     const localOffset = u32(cursor + 42);
     if (compressedSize < 0 || localOffset < 0 || nameLength < 0) throw corrupt();
     if (compressedSize === 0xffffffff || localOffset === 0xffffffff) throw corrupt();
-    const name = strFromU8(bytes.subarray(cursor + 46, cursor + 46 + nameLength));
     cursor += 46 + nameLength + extraLength + commentLength;
 
-    if (name.endsWith("/")) continue;
+    // Every entry counts, folders included (a real folder has no data). JSZip names an
+    // entry by its local header, so that name decides which parts are kept.
     if (method !== 0 && method !== 8) throw corrupt();
     if (u32(localOffset) !== LOCAL_SIGNATURE) throw corrupt();
-    const start = localOffset + 30 + u16(localOffset + 26) + u16(localOffset + 28);
+    const localNameLength = u16(localOffset + 26);
+    const start = localOffset + 30 + localNameLength + u16(localOffset + 28);
     const end = start + compressedSize;
     if (end > bytes.length) throw corrupt();
+    const name = strFromU8(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength));
 
     const chunks: Uint8Array[] | null = isScannedPart(name) ? [] : null;
     if (chunks) kept[name] = chunks;
@@ -167,6 +179,7 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
       }
     }
   }
+  if (entries !== entryCount || cursor !== eocd) throw corrupt();
   const parts: Record<string, Uint8Array> = {};
   for (const [name, chunks] of Object.entries(kept)) {
     const whole = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));

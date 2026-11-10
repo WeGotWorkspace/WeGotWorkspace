@@ -162,6 +162,53 @@ describe("saveDocxAsMarkdown", () => {
     expect(scanDocx(bomb, 65_536)).toEqual({ ok: false, refusal: "too-large" });
   }, 10_000);
 
+  describe("reads the same entries as the converter's zip reader", () => {
+    const CAP = 65_536;
+    const twoParts = () =>
+      zipSync({
+        "word/document.xml": strToU8("<w:document/>"),
+        "word/styles.xml": new Uint8Array(CAP * 4),
+      });
+    const eocdOf = (zip: Uint8Array) => zip.length - 22;
+    const view = (zip: Uint8Array) => new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+    const refused = (zip: Uint8Array) => expect(scanDocx(zip, CAP).ok).toBe(false);
+
+    it("refuses an end record that counts fewer entries than the directory holds", () => {
+      const zip = twoParts();
+      view(zip).setUint16(eocdOf(zip) + 8, 1, true);
+      view(zip).setUint16(eocdOf(zip) + 10, 1, true);
+      refused(zip);
+    });
+
+    it("counts an entry whose central name looks like a folder", () => {
+      const zip = twoParts();
+      const dv = view(zip);
+      const records: number[] = [];
+      for (let i = 0; i + 46 <= zip.length; i += 1) {
+        if (dv.getUint32(i, true) === 0x02014b50) records.push(i);
+      }
+      const last = records[records.length - 1];
+      zip[last + 46 + dv.getUint16(last + 28, true) - 1] = "/".charCodeAt(0);
+      expect(scanDocx(zip, CAP)).toEqual({ ok: false, refusal: "too-large" });
+    });
+
+    it("refuses a gap between the directory and the end record", () => {
+      const zip = twoParts();
+      const gap = new Uint8Array(10);
+      const shifted = new Uint8Array(zip.length + gap.length);
+      shifted.set(zip.subarray(0, eocdOf(zip)));
+      shifted.set(gap, eocdOf(zip));
+      shifted.set(zip.subarray(eocdOf(zip)), eocdOf(zip) + gap.length);
+      refused(shifted);
+    });
+
+    it("refuses a zip64 marker in the end record", () => {
+      const zip = twoParts();
+      view(zip).setUint16(eocdOf(zip) + 4, 0xffff, true);
+      refused(zip);
+    });
+  });
+
   it("refuses a file the converter cannot read, and writes nothing", async () => {
     const { io } = fakeIo(reportDocx);
     await expect(
