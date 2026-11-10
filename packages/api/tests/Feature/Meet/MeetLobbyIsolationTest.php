@@ -43,7 +43,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
                 'sessionKey' => $knocker['sessionKey'],
             ])
                 ->assertForbidden()
-                ->assertJson(['error' => 'forbidden']);
+                ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Waiting to be admitted — the call cannot be joined yet.']);
         }
 
         // Nothing reached the member, so no browser could answer the lobby.
@@ -165,7 +165,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             'sessionKey' => $knocker['sessionKey'],
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Waiting to be admitted — the call cannot be joined yet.']);
 
         $this->poll('host-peer', $host['sessionKey'])
             ->assertOk()
@@ -192,7 +192,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
         ] as $payload) {
             $this->control($knocker['sessionKey'], $payload, 'knock-peer')
                 ->assertForbidden()
-                ->assertJson(['error' => 'forbidden']);
+                ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Waiting to be admitted — the call cannot be joined yet.']);
         }
 
         // A knock that names someone else is not this row's announcement.
@@ -202,7 +202,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             'knock-peer',
         )
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Waiting to be admitted — the call cannot be joined yet.']);
 
         $this->poll('host-peer', $host['sessionKey'])
             ->assertOk()
@@ -226,7 +226,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
         ] as $payload) {
             $this->control($guest['sessionKey'], $payload, 'guest-peer')
                 ->assertForbidden()
-                ->assertJson(['error' => 'forbidden']);
+                ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
         }
 
         $this->withBearer($host)
@@ -300,7 +300,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             'sessionKey' => $viewer['sessionKey'],
         ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
 
         $this->postJson($this->meetRoomPath('/messages'), [
             'from' => 'knock-peer',

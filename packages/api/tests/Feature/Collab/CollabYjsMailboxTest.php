@@ -84,7 +84,7 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
 
         $this->send($this->carolBearerToken(), $carol, $bob, 'yjs', $this->payload(1))
             ->assertStatus(403)
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
     }
 
     public function test_a_reader_may_ask_for_a_state_vector_diff(): void
@@ -105,7 +105,7 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
 
         $this->send($this->userBearerToken(), $bob, '*', 'yjs-sv', $this->payload(1))
             ->assertStatus(400)
-            ->assertJson(['error' => 'invalid_peer']);
+            ->assertExactJson(['error' => 'invalid_peer', 'code' => 'invalid_peer']);
     }
 
     public function test_a_slash_heavy_payload_under_the_cap_is_accepted(): void
@@ -129,7 +129,7 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
         $this->send($this->userBearerToken(), $bob, $carol, 'yjs', [
             'u' => str_repeat('A', 70_000),
             'n' => 1,
-        ])->assertStatus(413)->assertJson(['error' => 'payload_too_large']);
+        ])->assertStatus(413)->assertExactJson(['error' => 'payload_too_large', 'code' => 'payload_too_large']);
     }
 
     public function test_the_eleventh_send_in_a_second_is_rate_limited(): void
@@ -147,7 +147,7 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
 
             $this->send($this->userBearerToken(), $bob, $carol, 'yjs', $this->payload(11))
                 ->assertStatus(429)
-                ->assertJson(['error' => 'rate_limited']);
+                ->assertExactJson(['error' => 'rate_limited', 'code' => 'rate_limited']);
         } finally {
             Carbon::setTestNow();
         }
