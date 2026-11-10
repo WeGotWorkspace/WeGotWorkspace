@@ -1,4 +1,4 @@
-import type { ChatMention, ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
+import type { ChatMention, ChatMentionPrincipal } from "@/lib/models/chat-types";
 
 export type ChatMentionQuery = {
   query: string;

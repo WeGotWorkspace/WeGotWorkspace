@@ -29,7 +29,7 @@ import { copyShareText } from "@/share-ui/share-path-utils";
 import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
 import { buildMeetCollectionInviteLink } from "@/lib/meetings/meet-route-search";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannelKind } from "@/meet-core/src/meet-types";
+import type { MeetChannelKind } from "@/lib/models/meet-types";
 import { workspaceOnlySharePrincipals } from "@/calendar-core/src/calendar-meet-channel-email";
 import "@/share-ui/share-ui.css";
 import "./meet-channel-dialog.css";

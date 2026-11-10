@@ -4,8 +4,8 @@ import type {
   ChatAuthorPresenceMap,
   ChatMentionPrincipal,
   ChatSendPayload,
-} from "@/chat-ui/src/chat-types";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+} from "@/lib/models/chat-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import { MeetWorkspaceThread } from "@/meet-core/src/meet-workspace-thread";
 
 /**

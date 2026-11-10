@@ -37,7 +37,7 @@ import {
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
-import type { MeetChannel, MeetChannelWriteInput } from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChannelWriteInput } from "@/lib/models/meet-types";
 import {
   buildMeetCollectionInviteLink,
   buildMeetGuestCallLink,

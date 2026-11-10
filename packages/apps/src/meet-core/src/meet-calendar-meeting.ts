@@ -15,7 +15,7 @@ import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetChannelIdsEqual, meetCollectionIdFromPublic } from "@/lib/meetings/meet-public-id";
 import { buildMeetCollectionInviteLink } from "@/lib/meetings/meet-route-search";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 /** Instant Meet creates use 30 minutes, not the calendar editor's 60-minute default. */
 export const INSTANT_MEETING_DURATION_MINUTES = 30;

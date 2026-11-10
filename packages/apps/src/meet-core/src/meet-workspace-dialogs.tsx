@@ -2,11 +2,7 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { MeetChannelDialog, MeetDeleteConfirmDialog } from "@/meet-core/src/meet-channel-dialog";
 import { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";
-import type {
-  MeetChannel,
-  MeetChatOperations,
-  MeetDirectoryGroup,
-} from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChatOperations, MeetDirectoryGroup } from "@/lib/models/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
 import type { MeetChannelActions } from "@/meet-core/src/use-meet-channel-actions";
 import type { MeetChannelDialogs } from "@/meet-core/src/use-meet-channel-dialogs";

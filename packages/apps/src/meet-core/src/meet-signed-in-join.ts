@@ -2,7 +2,7 @@ import { parseMeetInvitePath } from "@/lib/meetings/calendar-meet-link";
 import { meetUpcomingJoinTarget } from "@/meet-core/src/meet-calendar-meeting";
 import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
 import { meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 type MeetJoinChannel = Pick<MeetChannel, "id" | "kind" | "guestRoomCode">;
 

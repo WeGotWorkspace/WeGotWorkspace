@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
-import type { MeetAPIOperations, MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetChannel } from "@/lib/models/meet-types";
 
 const NO_OMIT_CHANNEL_IDS: readonly string[] = [];
 

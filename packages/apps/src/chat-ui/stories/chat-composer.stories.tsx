@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMentionMenu } from "@/chat-ui/src/chat-mention-menu";
-import type { ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { ChatSendPayload } from "@/lib/models/chat-types";
 import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import { CHAT_STORY_PRINCIPALS } from "@/chat-ui/stories/chat-stories.fixtures";
 

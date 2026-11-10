@@ -1,6 +1,6 @@
 import { isMeetRoomCode, meetChannelCallRoom } from "@/lib/meetings/calendar-meet-link";
 import { meetCollectionIdFromPublic } from "@/lib/meetings/meet-public-id";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 /**
  * Deterministic RTC room id for a chat channel — agreed convention with the API

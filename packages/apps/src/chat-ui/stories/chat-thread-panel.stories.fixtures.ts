@@ -1,4 +1,4 @@
-import type { ChatMentionPrincipal, ChatMessage } from "@/chat-ui/src/chat-types";
+import type { ChatMentionPrincipal, ChatMessage } from "@/lib/models/chat-types";
 
 export const THREAD_CURRENT_USER_ID = "demo.user";
 

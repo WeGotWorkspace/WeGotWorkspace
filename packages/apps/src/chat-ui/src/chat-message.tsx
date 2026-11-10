@@ -1,14 +1,11 @@
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import { useState, type ReactNode } from "react";
 import { MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
-import {
-  UserAvatar,
-  avatarColorForUserId,
-  type UserAvatarPresence,
-} from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { ChatLinkPreview } from "@/chat-ui/src/chat-link-preview";
 import { ChatReactionBar, CHAT_REACTION_EMOJIS } from "@/chat-ui/src/chat-reaction-bar";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
@@ -19,7 +16,7 @@ import {
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime } from "@/chat-ui/src/chat-message-group";
-import type { ChatMessage as ChatMessageModel } from "@/chat-ui/src/chat-types";
+import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";
 import "@/chat-ui/src/chat-ui.css";

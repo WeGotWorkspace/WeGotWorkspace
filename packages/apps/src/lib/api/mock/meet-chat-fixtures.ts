@@ -1,4 +1,4 @@
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import { mapChatPreviews } from "@/meet-core/src/meet-chat-urls";
 import { meetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
 import type {
@@ -6,7 +6,7 @@ import type {
   ChatMention,
   ChatReaction,
   MeetUnfurlMap,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 
 const GENERAL = "channel-general";

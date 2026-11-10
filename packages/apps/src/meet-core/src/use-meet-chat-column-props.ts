@@ -3,7 +3,7 @@ import type {
   ChatAuthorPresenceMap,
   ChatMentionPrincipal,
   ChatSendPayload,
-} from "@/chat-ui/src/chat-types";
+} from "@/lib/models/chat-types";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import {
   meetCallStageShowsStage,
@@ -11,7 +11,7 @@ import {
 } from "@/meet-core/src/meet-call-stage-layout";
 import { mergeMeetRoomChatIntoChannel } from "@/meet-core/src/meet-chat-line";
 import type { MeetChatColumnProps } from "@/meet-core/src/meet-chat-column";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import type { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 
 export type MeetChatColumnWiring = {
