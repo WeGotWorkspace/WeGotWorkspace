@@ -340,7 +340,10 @@ export function createDocsImageNodeView(
       return (
         mutation.type === "attributes" &&
         mutation.target === img &&
-        (mutation.attributeName === "src" || mutation.attributeName === "hidden")
+        // `data-loading` is ours too (print waits on it); not a document change.
+        (mutation.attributeName === "src" ||
+          mutation.attributeName === "hidden" ||
+          mutation.attributeName === "data-loading")
       );
     },
   };
