@@ -85,6 +85,7 @@ import {
 } from "./use-docs-external-write-prompt";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { useDocsDownload } from "@/docs-core/src/use-docs-download";
+import { countWords, defaultTitleFromRoom } from "./docs-collab-workspace-utils";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -118,20 +119,6 @@ export type DocsCollabWorkspaceProps = {
   /** Opens the rename dialog; the pencil next to the title shows only when set (and editable). */
   onRename?: () => void;
 };
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
-
-function defaultTitleFromRoom(room: string | undefined): string {
-  const normalized = room?.trim().replace(/\/+$/, "");
-  if (!normalized) return "document.md";
-  const slash = normalized.lastIndexOf("/");
-  const name = slash >= 0 ? normalized.slice(slash + 1) : normalized;
-  return name || "document.md";
-}
 
 export function DocsCollabWorkspace({
   userName: userNameProp,
