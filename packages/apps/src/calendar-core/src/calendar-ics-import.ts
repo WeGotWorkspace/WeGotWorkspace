@@ -1,5 +1,6 @@
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import { icsHasComponent } from "@/lib/ics-import/ics-file";
 
 export {
   ICS_FILE_ACCEPT,
@@ -17,9 +18,16 @@ export type CalendarIcsImportDestination =
 export type CalendarIcsImportResult = {
   list: JmapCalendarEvent[];
   errors: Array<{ index: number; message: string }>;
+  /** Tasks (VTODOs) in the file that Calendar left out. */
+  skippedTasks: number;
   calendarId: string;
   createdCalendar?: CalendarInfo;
 };
+
+/** True when the file has tasks (VTODOs) but no events, so Tasks import fits it. */
+export function icsHasOnlyTasks(icsText: string): boolean {
+  return icsHasComponent(icsText, "VTODO") && !icsHasComponent(icsText, "VEVENT");
+}
 
 export async function runCalendarIcsImport(
   operations: CalendarAPIOperations,
@@ -48,6 +56,7 @@ export async function runCalendarIcsImport(
   return {
     list: result.list,
     errors: result.errors,
+    skippedTasks: result.skipped?.tasks ?? 0,
     calendarId,
     createdCalendar,
   };

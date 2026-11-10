@@ -11883,10 +11883,14 @@ export interface components {
             /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
             code?: string;
         };
-        /** @description REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. */
+        /** @description REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. skipped counts components the import left out. */
         CalendarEventImportResponse: {
             list: components["schemas"]["CalendarEvent"][];
             errors: components["schemas"]["CalendarEventImportError"][];
+            skipped: {
+                /** @description VTODOs in the file (one per UID) that were not imported. Import them in Tasks. */
+                tasks: number;
+            };
         };
         /** @description Meet room id. Calendar and ad-hoc Start use xxxx-xxxx-xxxx (createMeetRoomCode). */
         MeetRoomCode: string;

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import {
+  icsHasOnlyTasks,
   readIcsFile,
   runCalendarIcsImport,
   type CalendarIcsImportDestination,
@@ -17,6 +18,8 @@ export type UseCalendarIcsImportOptions = {
     | "toastImportPartial"
     | "toastImportSuccess"
     | "toastImportOffline"
+    | "importTasksSkipped"
+    | "importFileHasOnlyTasks"
   >;
   onCalendarCreated?: (calendar: CalendarInfo) => void;
   onMutated?: () => void;
@@ -68,8 +71,9 @@ export function useCalendarIcsImport({
       setImportDialogBusy(true);
       setImportDialogError(null);
       void (async () => {
+        let icsText = "";
         try {
-          const icsText = await readIcsFile(file);
+          icsText = await readIcsFile(file);
           if (icsText.trim() === "") {
             setImportDialogError(L.importFileInvalid);
             return;
@@ -82,10 +86,19 @@ export function useCalendarIcsImport({
             setImportDialogError(L.toastImportFailed);
             return;
           }
-          show(result.errors.length > 0 ? L.toastImportPartial : L.toastImportSuccess);
+          const title = result.errors.length > 0 ? L.toastImportPartial : L.toastImportSuccess;
+          if (result.skippedTasks > 0) {
+            show(title, { description: L.importTasksSkipped(result.skippedTasks) });
+          } else {
+            show(title);
+          }
           setImportFile(null);
           onMutated?.();
         } catch (error) {
+          if (icsHasOnlyTasks(icsText)) {
+            setImportDialogError(L.importFileHasOnlyTasks);
+            return;
+          }
           const message =
             error instanceof Error && error.message.trim() !== ""
               ? error.message
