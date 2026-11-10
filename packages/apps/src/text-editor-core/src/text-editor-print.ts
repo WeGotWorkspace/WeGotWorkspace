@@ -65,17 +65,18 @@ function imagePending(img: HTMLImageElement): boolean {
   return img.hasAttribute("src") && !img.complete;
 }
 
-/** Resolve once no image in the sheet is loading, or after `timeoutMs`. */
+/** Resolve once no image in the sheet is loading, `cancelled()` is true, or after `timeoutMs`. */
 export function waitForSheetImages(
   surface: HTMLElement,
   timeoutMs = PRINT_IMAGE_WAIT_MS,
+  cancelled: () => boolean = () => false,
 ): Promise<void> {
   const pending = () => Array.from(surface.querySelectorAll("img")).some(imagePending);
   if (!pending()) return Promise.resolve();
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve) => {
     const check = () => {
-      if (!pending() || Date.now() >= deadline) resolve();
+      if (cancelled() || !pending() || Date.now() >= deadline) resolve();
       else window.setTimeout(check, PRINT_IMAGE_POLL_MS);
     };
     window.setTimeout(check, PRINT_IMAGE_POLL_MS);
@@ -95,10 +96,10 @@ function printInLightTheme(root: HTMLElement): () => void {
   };
 }
 
-function printAfterLayout(): void {
+function printAfterLayout(cancelled: () => boolean): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      window.print();
+      if (!cancelled()) window.print();
     });
   });
 }
@@ -147,5 +148,13 @@ export function printTextEditorSheet(editor: Editor | null) {
   window.addEventListener("afterprint", cleanup);
   window.setTimeout(cleanup, 120_000 + PRINT_IMAGE_WAIT_MS);
 
-  void waitForSheetImages(surface).then(printAfterLayout);
+  // The sheet can unmount, or `afterprint` can already have run, while images load.
+  const cancelled = () => cleanedUp || !surface.isConnected;
+  void waitForSheetImages(surface, PRINT_IMAGE_WAIT_MS, cancelled).then(() => {
+    if (cancelled()) {
+      cleanup();
+      return;
+    }
+    printAfterLayout(cancelled);
+  });
 }

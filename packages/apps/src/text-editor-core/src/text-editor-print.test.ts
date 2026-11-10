@@ -161,6 +161,28 @@ describe("printTextEditorSheet", () => {
     window.dispatchEvent(new Event("afterprint"));
     editorRoot.remove();
   });
+
+  it("does not print and restores the page when the editor unmounts while an image loads", async () => {
+    document.documentElement.dataset.theme = "dark";
+    const { editorRoot, prose } = buildEditorDom();
+    const img = document.createElement("img");
+    img.dataset.loading = "true";
+    prose.appendChild(img);
+
+    try {
+      printTextEditorSheet(createMockEditor(editorRoot, prose));
+      expect(document.documentElement.dataset.theme).toBe("light");
+
+      editorRoot.remove();
+      await vi.advanceTimersByTimeAsync(200);
+
+      expect(window.print).not.toHaveBeenCalled();
+      expect(document.documentElement.dataset.theme).toBe("dark");
+      expect(document.body.classList.contains("text-editor-print-active")).toBe(false);
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
 });
 
 describe("waitForSheetImages", () => {
