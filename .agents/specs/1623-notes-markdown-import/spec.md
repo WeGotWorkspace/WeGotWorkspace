@@ -69,7 +69,9 @@ Per file, in order, one file at a time:
 3. When the final body is not empty: one `PATCH /notes/items/{id}` with `body` and `If-Match` from the create response.
 4. Only now — after the body write, or right after the create for a title-only note — is the note written to the offline cache and announced to other tabs. Earlier, another tab would load the empty body. A failed cache write does not fail the file; the next refresh loads the note.
 
-A per-file error never stops the batch and never touches existing notes (only the note this file created is written to). When a step after the create fails, that note is deleted (best effort) and its uid released, so the file is truly skipped and a retry makes a fresh note. A file that can no longer be read is skipped as "Could not read this file". When a file failed, the result view offers *Retry* with the same files and destination.
+A per-file error never stops the batch and never touches existing notes (only the note this file created is written to). When a step after the create fails, that note is deleted (best effort) and its uid released, so the file is truly skipped and a retry makes a fresh note. One exception: when the body write failed, the note is read back first. A write can land while its response is lost, and the retry then gets 412. If the stored body is no longer empty, the file counts as imported and nothing is deleted. Only a note whose stored body is still empty (or that cannot be read back) is deleted. A file that can no longer be read is skipped as "Could not read this file".
+
+When a file failed, the result view offers *Retry* with the same files and destination. Retry leaves out every file that already became a note in this dialog, so a reported note is never written or deleted again. The result after a Retry counts the whole dialog: earlier notes, dropped tags and missing images stay, and the skipped list is the latest try's. Only the notes the Retry added are passed on to the list.
 
 ### Image storage (shared with Docs)
 

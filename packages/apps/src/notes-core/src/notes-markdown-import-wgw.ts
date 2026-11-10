@@ -3,6 +3,7 @@ import type { NotesMarkdownImportOperations } from "@/notes-core/src/notes-types
 import {
   createNote as createVjournalNote,
   deleteNote as deleteVjournalNote,
+  getNote as getVjournalNote,
   noteFromVjournal,
   patchNote as patchVjournalNote,
 } from "@/lib/api/wgw/notes-vjournal";
@@ -40,6 +41,10 @@ export function createWgwNotesMarkdownImport(username: string): NotesMarkdownImp
     },
     deleteNote: async (note, opts) => {
       await deleteVjournalNote(note.id, opts);
+    },
+    readBody: async (note, notebook, opts) => {
+      const row = await getVjournalNote(note.id, opts);
+      return { note: noteFromVjournal(row, [notebook]), body: row.body ?? "" };
     },
     publishNote: (note) => publishSavedNote(username, note),
     uploadImage: async (note, file, opts) => {

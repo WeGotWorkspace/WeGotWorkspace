@@ -56,6 +56,10 @@ export function useNotesMarkdownImport({
   const createdNotebook = useRef<NotesNotebookCollection | null>(null);
   // Set synchronously: `importBusy` is only visible after the next paint.
   const running = useRef(false);
+  // Files that became a note in this dialog. Retry leaves them out: running
+  // them again would rewrite (or, on a new failure, delete) a reported note.
+  const importedFiles = useRef(new WeakSet<File>());
+  const earlierResult = useRef<NotesMarkdownImportResult | null>(null);
 
   const beginImport = useCallback(
     (fileList: FileList | readonly File[] | null) => {
@@ -65,6 +69,8 @@ export function useNotesMarkdownImport({
         return;
       }
       uids.current = new WeakMap();
+      importedFiles.current = new WeakSet();
+      earlierResult.current = null;
       createdNotebook.current = null;
       setImportError(null);
       setImportProgress(null);
@@ -104,15 +110,16 @@ export function useNotesMarkdownImport({
       }
       if (running.current) return;
       running.current = true;
+      const pending = files.filter((file) => !importedFiles.current.has(file));
       setImportBusy(true);
       setImportError(null);
       setImportResult(null);
-      setImportProgress({ done: 0, total: files.length });
+      setImportProgress({ done: 0, total: pending.length });
       void (async () => {
         try {
           const notebook = await resolveNotebook(destination);
-          const result = await runNotesMarkdownImport({
-            files,
+          const batch = await runNotesMarkdownImport({
+            files: pending,
             notebook,
             operations: markdownImport,
             uidFor: (file) => {
@@ -124,10 +131,13 @@ export function useNotesMarkdownImport({
               return uid;
             },
             releaseUid: (file) => uids.current.delete(file),
+            onFileImported: (file) => importedFiles.current.add(file),
             onProgress: setImportProgress,
             sleep,
           });
-          if (result.imported.length > 0) onImported?.(notebook, result.imported);
+          if (batch.imported.length > 0) onImported?.(notebook, batch.imported);
+          const result = mergeImportResults(earlierResult.current, batch);
+          earlierResult.current = result;
           if (isCleanMarkdownImport(result)) {
             show(L.importedNotes(result.imported.length), {
               icon: createElement(Upload, { className: "size-4" }),
@@ -159,5 +169,22 @@ export function useNotesMarkdownImport({
     beginImport,
     closeImportDialog,
     submitImport,
+  };
+}
+
+/**
+ * The result of a Retry counts the whole dialog: notes, dropped tags and
+ * missing images from earlier tries stay; skipped files are only this try's.
+ */
+function mergeImportResults(
+  previous: NotesMarkdownImportResult | null,
+  batch: NotesMarkdownImportResult,
+): NotesMarkdownImportResult {
+  if (!previous) return batch;
+  return {
+    imported: [...previous.imported, ...batch.imported],
+    skipped: batch.skipped,
+    droppedTags: [...new Set([...previous.droppedTags, ...batch.droppedTags])],
+    imagesNotImported: previous.imagesNotImported + batch.imagesNotImported,
   };
 }

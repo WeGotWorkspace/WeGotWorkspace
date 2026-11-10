@@ -29,6 +29,7 @@ function operationsMock(): NotesMarkdownImportOperations {
     writeBody: vi.fn(async (note) => note),
     deleteNote: vi.fn(async () => {}),
     publishNote: vi.fn(async () => {}),
+    readBody: vi.fn(async (note) => ({ note, body: "" })),
   };
 }
 
@@ -107,6 +108,43 @@ describe("useNotesMarkdownImport", () => {
     expect(calls[0][0].uid).toBe(calls[1][0].uid);
     expect(calls[1][0].notebook.id).toBe("nb-Imported");
     expect(createNotebook).toHaveBeenCalledOnce();
+  });
+
+  it("Retry leaves out files that already imported and keeps their count", async () => {
+    const markdownImport = operationsMock();
+    const write = vi.mocked(markdownImport.writeBody);
+    write.mockImplementation(async (note) => {
+      if (note.title === "B" && write.mock.calls.length === 2) {
+        throw Object.assign(new Error("down"), { status: 500 });
+      }
+      return note;
+    });
+    const { hook, onImported } = setup(markdownImport);
+    const a = new File(["# A\ntext a"], "a.md");
+    const b = new File(["# B\ntext b"], "b.md");
+    act(() => hook.result.current.beginImport([a, b]));
+
+    act(() => hook.result.current.submitImport([a, b], { mode: "existing", notebook: work }));
+    await waitFor(() => expect(hook.result.current.importResult).not.toBeNull());
+    expect(hook.result.current.importResult?.imported.map((note) => note.title)).toEqual(["A"]);
+    expect(markdownImport.deleteNote).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(markdownImport.deleteNote).mock.calls[0][0].title).toBe("B");
+
+    // Retry hands every file back; only b.md runs again.
+    write.mockImplementation(async (note) => {
+      if (note.title === "A") throw Object.assign(new Error("down"), { status: 500 });
+      return note;
+    });
+    act(() => hook.result.current.submitImport([a, b], { mode: "existing", notebook: work }));
+    await waitFor(() => expect(toastApi.show).toHaveBeenCalled());
+
+    const created = vi.mocked(markdownImport.createNote).mock.calls.map((call) => call[0].title);
+    expect(created).toEqual(["A", "B", "B"]);
+    expect(write.mock.calls.map((call) => call[0].title)).toEqual(["A", "B", "B"]);
+    expect(markdownImport.deleteNote).toHaveBeenCalledTimes(1);
+    expect(toastApi.show).toHaveBeenCalledWith(L.importedNotes(2), expect.anything());
+    expect(onImported).toHaveBeenCalledTimes(2);
+    expect(onImported.mock.calls[1][1].map((note: Note) => note.title)).toEqual(["B"]);
   });
 
   it("ignores a second submit while a batch is running", async () => {

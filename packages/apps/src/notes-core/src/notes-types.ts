@@ -128,6 +128,15 @@ export type NotesMarkdownImportOperations = {
   ) => Promise<{ nodeId: string }>;
   /** Removes a note the import created but could not finish (best effort). */
   deleteNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<void>;
+  /**
+   * Reads the note back with its stored Markdown body. Used after a body write
+   * failed, to tell a write whose response was lost from one that never landed.
+   */
+  readBody: (
+    note: Note,
+    notebook: NotesNotebookCollection,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<{ note: Note; body: string }>;
   /** Writes a finished note without a body write (title only) to the cache and tells other tabs. */
   publishNote: (note: Note) => Promise<void>;
   /** One body write with `If-Match` from the create; also publishes the note. */

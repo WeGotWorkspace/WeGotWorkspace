@@ -45,6 +45,8 @@ export type RunNotesMarkdownImportOptions = {
   uidFor: (file: File) => string;
   /** Called after a half-made note was deleted: the next try needs a fresh uid. */
   releaseUid?: (file: File) => void;
+  /** Called for each file that became a note, so a Retry can leave it out. */
+  onFileImported?: (file: File, note: Note) => void;
   onProgress?: (progress: NotesMarkdownImportProgress) => void;
   signal?: AbortSignal;
   /** Waits between network retries (tests pass a no-op). */
@@ -122,6 +124,28 @@ async function uploadImages(
   return sources;
 }
 
+/**
+ * After a failed body write: did it land anyway (the response was lost, then
+ * the retry got 412)? A note whose stored body is no longer empty is kept;
+ * deleting it would lose a saved import. Null when it is still empty or the
+ * read failed.
+ */
+async function landedNote(
+  note: Note,
+  options: RunNotesMarkdownImportOptions,
+): Promise<Note | null> {
+  try {
+    const stored = await options.operations.readBody(note, options.notebook, {
+      signal: options.signal,
+    });
+    if (stored.body.trim() === "") return null;
+    await options.operations.publishNote(stored.note);
+    return stored.note;
+  } catch {
+    return null;
+  }
+}
+
 async function importOneFile(
   file: File,
   options: RunNotesMarkdownImportOptions,
@@ -142,6 +166,17 @@ async function importOneFile(
 
   const { operations, notebook, signal } = options;
   let created: Note | null = null;
+  let sources: (string | null)[] = [];
+  let writingBody = false;
+  const succeed = (note: Note) => {
+    result.imported.push(note);
+    options.onFileImported?.(file, note);
+    for (const tag of parsed.droppedTags) {
+      if (!result.droppedTags.includes(tag)) result.droppedTags.push(tag);
+    }
+    result.imagesNotImported +=
+      parsed.relativeImageCount + sources.filter((src) => src === null).length;
+  };
   try {
     created = await withRetry(
       () =>
@@ -158,26 +193,32 @@ async function importOneFile(
       signal,
     );
     const empty = created;
-    const sources = await uploadImages(empty, parsed, options, sleep);
+    sources = await uploadImages(empty, parsed, options, sleep);
     const body = finalizeImportedBody(parsed, sources);
     let note = empty;
     if (body.trim() !== "") {
+      writingBody = true;
       note = await withRetry(
         () => operations.writeBody(empty, body, notebook, { signal }),
         sleep,
         signal,
       );
+      writingBody = false;
     } else {
       await operations.publishNote(note);
     }
-    result.imported.push(note);
-    for (const tag of parsed.droppedTags) {
-      if (!result.droppedTags.includes(tag)) result.droppedTags.push(tag);
-    }
-    result.imagesNotImported +=
-      parsed.relativeImageCount + sources.filter((src) => src === null).length;
+    succeed(note);
   } catch (error) {
     if (signal?.aborted) throw error;
+    const status = importErrorStatus(error);
+    const sessionLost = error instanceof SessionLostError || status === 401;
+    if (created && writingBody && !sessionLost) {
+      const landed = await landedNote(created, options);
+      if (landed) {
+        succeed(landed);
+        return;
+      }
+    }
     // A file reported as skipped must not leave a half-made note behind.
     if (created) {
       try {
@@ -187,8 +228,7 @@ async function importOneFile(
         // Best effort: the note stays, and a retry finds it by its uid.
       }
     }
-    const status = importErrorStatus(error);
-    if (error instanceof SessionLostError || status === 401) {
+    if (sessionLost) {
       result.skipped.push({ fileName, reason: "failed", status: 401 });
       throw new SessionLostError();
     }

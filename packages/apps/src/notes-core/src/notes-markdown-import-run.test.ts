@@ -65,6 +65,11 @@ function fakeServer() {
     publishNote: vi.fn(async (note) => {
       calls.push(`publish:${note.id}`);
     }),
+    readBody: vi.fn(async (note) => {
+      calls.push(`read:${note.id}`);
+      const stored = notes.get(note.id) ?? note;
+      return { note: stored, body: stored.body.join("\n\n") };
+    }),
   };
   return { calls, notes, operations };
 }
@@ -211,6 +216,35 @@ describe("runNotesMarkdownImport", () => {
     });
     expect(result.imported.map((note) => note.title)).toEqual(["Good"]);
     expect(result.skipped).toEqual([{ fileName: "broken.md", reason: "unreadable" }]);
+  });
+
+  it("keeps a note whose body write landed but whose response was lost", async () => {
+    const { calls, notes, operations } = fakeServer();
+    const write = vi.mocked(operations.writeBody);
+    const realWrite = write.getMockImplementation()!;
+    // The PATCH is saved, the response is lost; the retry with the old etag gets 412.
+    write.mockImplementationOnce(async (...args) => {
+      await realWrite(...args);
+      throw new TypeError("Failed to fetch");
+    });
+    write.mockRejectedValueOnce(new HttpError(412));
+    const onFileImported = vi.fn();
+    const file = md("a.md", "# A\nSaved text");
+    const result = await runNotesMarkdownImport({
+      files: [file],
+      notebook,
+      operations,
+      uidFor: uidsByName(),
+      onFileImported,
+      sleep: noSleep,
+    });
+
+    expect(operations.deleteNote).not.toHaveBeenCalled();
+    expect(notes.get("uid-a.md")?.body).toEqual(["Saved text"]);
+    expect(result.imported.map((note) => note.title)).toEqual(["A"]);
+    expect(result.skipped).toEqual([]);
+    expect(onFileImported).toHaveBeenCalledWith(file, expect.objectContaining({ id: "uid-a.md" }));
+    expect(calls).toContain("publish:uid-a.md");
   });
 
   it("deletes the note and frees its uid when the body write fails", async () => {
