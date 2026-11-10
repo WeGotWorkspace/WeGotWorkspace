@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Front;
 
 use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\UiSessionService;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
 use Tests\Support\WgwTestDisks;
@@ -63,8 +63,9 @@ final class PluginSurfaceRemovedTest extends WgwDatabaseTestCase
 
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
 
         WgwTestDisks::refresh($this->dataDir);
         unset($_COOKIE['sabre_ui_auth']);

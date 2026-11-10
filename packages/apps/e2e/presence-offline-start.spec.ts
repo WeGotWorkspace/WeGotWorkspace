@@ -19,7 +19,8 @@ test("presence starts after an offline start once the connection returns", async
     member.page.on("pageerror", (error) => pageErrors.push(error.message));
 
     let configurationAborts = 0;
-    await member.context.route("**/api/v1/rooms/p_workspace/configuration", async (route) => {
+    // admin and member share the dev Team; its room is the one presence asks first (#1921).
+    await member.context.route("**/api/v1/rooms/p_*/configuration", async (route) => {
       configurationAborts += 1;
       await route.abort("internetdisconnected");
     });
@@ -28,7 +29,7 @@ test("presence starts after an offline start once the connection returns", async
     await expect.poll(() => configurationAborts).toBeGreaterThan(0);
 
     await member.context.setOffline(true);
-    await member.context.unroute("**/api/v1/rooms/p_workspace/configuration");
+    await member.context.unroute("**/api/v1/rooms/p_*/configuration");
     await member.context.setOffline(false);
 
     const memberRowOnAdmin = admin.page

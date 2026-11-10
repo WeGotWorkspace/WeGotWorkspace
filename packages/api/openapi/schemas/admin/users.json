@@ -16,6 +16,10 @@
       },
       "enabled": {
         "type": "boolean"
+      },
+      "isAdmin": {
+        "type": "boolean",
+        "description": "Grant or remove the admin role. A change revokes the user's refresh tokens. An admin cannot remove their own role, and the last admin cannot lose it."
       }
     },
     "example": {
@@ -50,6 +54,10 @@
       },
       "enabled": {
         "type": "boolean"
+      },
+      "isAdmin": {
+        "type": "boolean",
+        "description": "Whether the user has the admin role."
       }
     },
     "required": [
@@ -59,7 +67,8 @@
       "displayName",
       "groups",
       "createdAt",
-      "enabled"
+      "enabled",
+      "isAdmin"
     ]
   }
 }

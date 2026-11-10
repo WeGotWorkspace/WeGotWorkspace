@@ -1,4 +1,4 @@
-import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
@@ -215,13 +215,13 @@ export const defaultTasksLabels: TasksUILabels = {
   editList: "Edit list",
   viewOnlyListBadge: "View only",
   shareListSectionTitle: "Team access",
-  shareListSectionHint: "Grant read or read-and-write access to people or groups.",
-  shareListAddPlaceholder: "Add people or groups…",
+  shareListSectionHint: sharePrincipalCopy.sectionHint,
+  shareListAddPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareListSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareListOffline: "Sharing changes require a connection.",
   shareListFailed: "Could not update sharing.",
   removeListShareTitle: "Remove access?",
-  removeListShareConfirm: "This person or group will lose access to this list. Continue?",
+  removeListShareConfirm: sharePrincipalCopy.removeConfirm("list"),
   removeSharedList: "Remove list",
   removeSharedListConfirmTitle: "Remove this list?",
   removeSharedListConfirmDescription:
@@ -289,9 +289,9 @@ export const defaultTasksLabels: TasksUILabels = {
   projectScopeReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
   changeListOwnerConfirmTitle: "Change owner?",
   changeListOwnerConfirmToGroup: (groupName) =>
-    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that group lose access unless they have a share.`,
+    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeListOwnerConfirmToPersonal:
-    "This list will move to your personal lists. Tasks and existing shares stay. Other group members lose access unless they have a share.",
+    "This list will move to your personal lists. Tasks and existing shares stay. Other team members lose access unless they have a share.",
   changeListOwnerConfirm: "Change owner",
   createProjectButton: "Create",
   saveProjectButton: "Save",

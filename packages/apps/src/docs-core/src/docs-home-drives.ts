@@ -21,6 +21,7 @@ import {
   resolveDriveRootDisplayLabel,
   type DriveGroupRoot,
 } from "@/drive-core/src/drive-group-roots";
+import { driveGroupUiPath } from "@/drive-core/src/drive-path-utils";
 
 const NEW_DOCUMENT_BASE = "Untitled";
 
@@ -143,7 +144,7 @@ export function resolveDocsHomeCreateDialogBrowsePath(selectedDrivePrefix: strin
     // Only the group root — Docs sidebar scopes by drive, not nested folders.
     const slug = selectedDrivePrefix.slice("groups/".length).split("/").filter(Boolean)[0];
     // Drive UI path root remains "My Drive" / "Groups/…" for apiPathFromUiPath.
-    return slug ? `Groups/${slug}` : DOCS_DRIVE_UI_PERSONAL_PATH;
+    return slug ? driveGroupUiPath(slug) : DOCS_DRIVE_UI_PERSONAL_PATH;
   }
   // users/…, empty, or unknown → personal Drive UI path key (display: Personal).
   return DOCS_DRIVE_UI_PERSONAL_PATH;
