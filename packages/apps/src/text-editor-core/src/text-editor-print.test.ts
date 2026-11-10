@@ -57,11 +57,21 @@ function cn(...parts: Array<string | false | undefined>) {
 }
 
 describe("printTextEditorSheet", () => {
+  // Printing waits for images and two frames, so it finishes later. Fake timers and
+  // instant frames keep each test's print inside that test; `afterEach` runs what is left.
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
     vi.spyOn(window, "print").mockImplementation(() => {});
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.documentElement.classList.remove("text-editor-print-active");
     document.documentElement.style.removeProperty("--text-editor-print-page-margin");
@@ -135,31 +145,21 @@ describe("printTextEditorSheet", () => {
   });
 
   it("waits for a Drive image that is still loading before printing", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 0;
-    });
-    try {
-      const { editorRoot, prose } = buildEditorDom();
-      const img = document.createElement("img");
-      img.dataset.loading = "true";
-      prose.appendChild(img);
+    const { editorRoot, prose } = buildEditorDom();
+    const img = document.createElement("img");
+    img.dataset.loading = "true";
+    prose.appendChild(img);
 
-      printTextEditorSheet(createMockEditor(editorRoot, prose));
-      await vi.advanceTimersByTimeAsync(1_000);
-      expect(window.print).not.toHaveBeenCalled();
+    printTextEditorSheet(createMockEditor(editorRoot, prose));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(window.print).not.toHaveBeenCalled();
 
-      delete img.dataset.loading;
-      await vi.advanceTimersByTimeAsync(200);
-      expect(window.print).toHaveBeenCalledTimes(1);
+    delete img.dataset.loading;
+    await vi.advanceTimersByTimeAsync(200);
+    expect(window.print).toHaveBeenCalledTimes(1);
 
-      window.dispatchEvent(new Event("afterprint"));
-      editorRoot.remove();
-    } finally {
-      vi.unstubAllGlobals();
-      vi.useRealTimers();
-    }
+    window.dispatchEvent(new Event("afterprint"));
+    editorRoot.remove();
   });
 });
 
