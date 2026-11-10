@@ -57,6 +57,12 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - **Main header**: **`ViewHeader`** with section label/description from shell model and **`sidebarOpen` / toggle** from controller.
 - **Main body**: Switch or conditional render **one pane per section**; avoid mounting all panes at once unless needed.
 
+## User-visible copy (`*-labels.ts`)
+
+- Keep the app's copy in one **`*-labels.ts`** with a typed defaults object. Take common strings (dialog verbs, sharing, sync state, list chrome) from **`workspaceLabels`** in [`lib/workspace/workspace-labels.ts`](../../../packages/apps/src/lib/workspace/workspace-labels.ts) instead of typing "Cancel" or "Remove access?" again. Only move a string to the base when it means the same everywhere.
+- Merge caller overrides with **`mergeWorkspaceLabels(defaults, overrides)`**; the app's `merge*Labels` is a one-line binding (see `mergeNotesLabels`).
+- [`workspace-labels.snapshot.test.ts`](../../../packages/apps/src/lib/workspace/workspace-labels.snapshot.test.ts) snapshots every resolved label bag. Add a new bag there; when you change copy on purpose, update the snapshot with `-u`.
+
 ## Refactoring another app toward this shape
 
 - [ ] If nav / layout state is tangled with data fetching, peel **`use*Shell`** (or similar) out of **`use*Controller`** once it earns its own file.

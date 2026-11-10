@@ -1,4 +1,5 @@
 import type { ShareUIPermission } from "@/share-ui/share-access-map";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 /**
  * Principal-sharing copy used by every app's share dialog (Drive, Docs, Calendar,
@@ -27,12 +28,12 @@ export const shareLabels = {
   publicLevelView: "Can view",
   publicLevelAddFiles: "Can add files",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
-  teamSectionTitle: "Team access",
+  teamSectionTitle: workspaceLabels.sharing.teamAccess,
   teamSectionHint: "Grant access to a whole team, or pick individual teammates.",
   guestSectionTitle: "Invite guests by email",
   guestSectionHint: "Each guest gets their own permission — invite once, control per person.",
   footerHint: "Access can also be granted on parent folders.",
-  copyLink: "Copy link",
+  copyLink: workspaceLabels.sharing.copyLink,
   regenerateLink: "Generate new link",
   regenerateLinkHint: "Generate a new link (invalidates the current one)",
   requirePassword: "Require password",
@@ -44,7 +45,7 @@ export const shareLabels = {
   regeneratePassword: "Generate new password",
   regeneratePasswordHint: "Generate a new password (invalidates the current one)",
   regeneratePasswordToViewHint: "Generate a new password to view and copy it",
-  confirmCancel: "Cancel",
+  confirmCancel: workspaceLabels.dialog.cancel,
   confirmContinue: "Continue",
   disablePublicLinkTitle: "Disable public link?",
   disablePublicLinkConfirm: "Anyone with the current link will lose access. Continue?",
@@ -61,7 +62,7 @@ export const shareLabels = {
   inviteGuest: "Invite guest",
   removeGuest: "Remove guest",
   removeGrant: "Remove access",
-  removeGrantTitle: "Remove access?",
+  removeGrantTitle: workspaceLabels.sharing.removeAccessTitle,
   removeGrantConfirm: sharePrincipalCopy.removeConfirm("item"),
   enablePublicAccess: "Enable public access",
   noAccess: "No access",
