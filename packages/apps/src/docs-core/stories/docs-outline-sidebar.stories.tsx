@@ -4,7 +4,6 @@ import { expect, userEvent, within } from "storybook/test";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import type { DocsOutlineItem } from "@/docs-core/src/docs-outline";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import "@/docs-core/src/docs-workspace.css";
 
 const OUTLINE: DocsOutlineItem[] = [
@@ -21,7 +20,6 @@ function DocsOutlineSidebarHarness({
   showBackToHome?: boolean;
   items?: DocsOutlineItem[];
 }) {
-  registerBuiltinSettings();
   const [active, setActive] = useState<number | null>(0);
   return (
     <div className="docs-workspace w-64 p-3">
@@ -47,26 +45,16 @@ export default meta;
 type Story = StoryObj<typeof DocsOutlineSidebarHarness>;
 
 /**
- * The editor sidebar has no primary button, so Settings is a row: the first
- * section holds the way back to the documents, then Settings, above the outline.
+ * The way back to the documents, then the outline. No Settings row: Docs settings sit on
+ * the documents list.
  */
 export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const back = canvas.getByRole("button", { name: docsLabels.sidebarBackToHome });
-    const settings = canvas.getByRole("button", { name: "Settings" });
-    // Same section, Settings after the way back.
-    await expect(back.closest(".sidebar-section")).toBe(settings.closest(".sidebar-section"));
-    // Only the way back is a filled chip; Settings is a plain row.
     await expect(back).toHaveClass(/docs-outline-sidebar__back/);
-    await expect(settings).not.toHaveClass(/docs-outline-sidebar__back/);
-    await expect(getComputedStyle(settings).backgroundColor).not.toBe(
-      getComputedStyle(back).backgroundColor,
-    );
-    await expect(
-      back.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
     await expect(canvas.getByText(docsLabels.sidebarOutline)).toBeInTheDocument();
     const goals = canvas.getByRole("button", { name: "Goals" });
     await userEvent.click(goals);
@@ -74,13 +62,14 @@ export const Default: Story = {
   },
 };
 
-/** A shared guest has no way back: Settings is the section's only row. */
+/** A shared guest has no way back: just the outline. */
 export const GuestWithoutBack: Story = {
   tags: ["vitest-ci"],
   args: { showBackToHome: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole("button", { name: docsLabels.sidebarBackToHome })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
+    await expect(canvas.getByText(docsLabels.sidebarOutline)).toBeInTheDocument();
   },
 };
