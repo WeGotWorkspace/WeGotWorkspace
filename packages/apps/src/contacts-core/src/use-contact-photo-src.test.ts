@@ -4,7 +4,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { useContactPhotoSrc } from "./use-contact-photo-src";
 
 const { downloadContactBlobMock } = vi.hoisted(() => ({

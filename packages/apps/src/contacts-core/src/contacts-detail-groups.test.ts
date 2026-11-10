@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { contactDetailGroupTags } from "./contacts-detail-groups";
 import {
   cardWithAddedGroupMember,

@@ -10,7 +10,7 @@ import type {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
-import type { TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { TasksUIData } from "@/lib/models/tasks-types";
 
 export type CalendarWorkspaceProps = {
   data: CalendarUIData;

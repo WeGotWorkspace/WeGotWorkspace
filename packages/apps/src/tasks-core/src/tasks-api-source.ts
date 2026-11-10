@@ -1,12 +1,7 @@
 import { createTasksAppBootstrap, type TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import type {
-  Task,
-  TaskList,
-  TaskListPatch,
-  TasksAPIOperations,
-} from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TaskListPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
 import {
   filterSharePrincipals,

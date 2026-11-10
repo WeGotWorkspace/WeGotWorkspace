@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TasksTaskFormFields, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";

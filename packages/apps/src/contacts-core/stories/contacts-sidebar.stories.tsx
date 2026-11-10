@@ -7,7 +7,7 @@ import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-bo
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { sortOwnedSidebarAddressBooks } from "@/contacts-core/src/use-contacts-sidebar-model";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { CONTACTS_VIEW_PREFS_STORAGE_KEY } from "@/contacts-core/src/contacts-view-prefs";
 import { ContactsStoryScope } from "./contacts-story-scope";
 

@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import type { ContactsUIData } from "./contacts-types";
+import type { ContactsUIData } from "@/lib/models/contacts-types";
 import { useContactsController } from "./use-contacts-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({

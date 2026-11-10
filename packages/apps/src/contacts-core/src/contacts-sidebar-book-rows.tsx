@@ -25,7 +25,7 @@ import {
   contactsGroupViewKey,
   groupsInAddressBook,
 } from "@/contacts-core/src/contacts-group-utils";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type ContactsSidebarBookRowsProps = {
   books: ContactsAddressBookRow[];

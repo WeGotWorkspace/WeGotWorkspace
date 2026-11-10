@@ -5,7 +5,7 @@ import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks/tasks-hybrid-opera
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks/tasks-offline-store";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
-import type { Task, TaskList, TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TasksUIData } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,
   type TaskDueOverlayMarker,

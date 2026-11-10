@@ -11,7 +11,7 @@ import {
   isProtectedTaskList,
   taskListDotColor,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { TaskListPatch } from "@/tasks-core/src/tasks-types";
+import type { TaskListPatch } from "@/lib/models/tasks-types";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 
 type UseTasksProjectMutationsArgs = {

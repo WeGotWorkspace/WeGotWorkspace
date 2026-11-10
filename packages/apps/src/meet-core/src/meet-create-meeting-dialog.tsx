@@ -22,7 +22,7 @@ import type {
   CalendarEventDraft,
   CalendarInfo,
 } from "@/calendar-core/src/calendar-types";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
 import { calendarInviteesFromShareDirectory } from "@/calendar-core/src/calendar-meet-channel-email";

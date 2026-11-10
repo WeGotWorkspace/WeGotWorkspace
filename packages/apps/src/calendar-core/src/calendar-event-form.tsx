@@ -12,7 +12,7 @@ import {
   sessionEventInviteeStatus,
   type CalendarInvitee,
 } from "@/calendar-core/src/calendar-attendees";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { CalendarEventFormSecondary } from "@/calendar-core/src/calendar-event-form-secondary";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";

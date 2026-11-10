@@ -23,7 +23,7 @@ import {
   taskListDotColor,
 } from "./tasks-task-utils";
 import { defaultTasksLabels } from "./tasks-labels";
-import type { Task } from "./tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 
 const sampleTasks: Task[] = [
   {

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { emptyTaskForm, taskToFormValue } from "@/tasks-core/src/tasks-task-form";
 import { offsetReminderAlert, taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
-import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { TasksAPIOperations } from "@/lib/models/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({

@@ -17,7 +17,7 @@ import {
   type CalendarInviteeSearchRow,
 } from "@/calendar-core/src/calendar-contact-attendee";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import {

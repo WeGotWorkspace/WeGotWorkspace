@@ -20,7 +20,7 @@ import type { ContactsApiSource } from "@/contacts-core/src/contacts-api-source"
 import { ContactsConflictDialog } from "@/contacts-core/src/contacts-conflict-dialog";
 import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";
 import { useContactsAPI } from "@/contacts-core/src/use-contacts-api";
 import {

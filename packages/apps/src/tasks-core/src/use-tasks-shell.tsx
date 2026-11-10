@@ -16,7 +16,7 @@ import {
   filterTasksByView,
   shouldApplyCompletedTaskFilter,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { Task, TasksAPIOperations, TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { Task, TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
 import { useTasksHiddenIds } from "@/tasks-core/src/use-tasks-hidden-ids";
 
 export type UseTasksShellArgs = {

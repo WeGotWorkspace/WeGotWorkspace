@@ -7,7 +7,7 @@ import {
 import type { CalendarAlarmsCardLabels } from "@/calendar-core/src/calendar-alarms-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskAlert } from "@/lib/models/tasks-types";
 
 /** Tasks OpenAPI offsets are typically due-relative (`relativeTo: "end"`). */
 export const TASK_ALERT_DEFAULT_RELATED_TO = "end" as const;

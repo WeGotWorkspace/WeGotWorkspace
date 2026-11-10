@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { TasksUIData } from "@/lib/models/tasks-types";
 import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
 
 const mockLoadHybrid = vi.fn();

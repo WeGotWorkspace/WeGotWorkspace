@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
-import type { NotesUIData } from "./notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 
 const { mockRequestConfirm, mockShow, mockShowError } = vi.hoisted(() => ({

@@ -1,6 +1,6 @@
 import { MOCK_CALENDAR_ANCHOR } from "@/lib/api/mock/calendar-bootstrap";
 import { createSharedTasksLists } from "@/lib/api/mock/tasks-bootstrap";
-import type { Task, TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { Task, TasksUIData } from "@/lib/models/tasks-types";
 
 /** Overlay fixture pinned to the Calendar story anchor so dues paint on every view. */
 export function createCalendarTaskDueOverlayFixture(

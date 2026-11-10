@@ -3,8 +3,8 @@ import type {
   ContactCard,
   ContactCardCreate,
   ContactCardPatch,
-} from "@/contacts-core/src/contacts-types";
-import type { ContactsAPIOperations, ContactsUIData } from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
+import type { ContactsAPIOperations, ContactsUIData } from "@/lib/models/contacts-types";
 import {
   contactCardToEditDraft,
   editDraftToPatch,

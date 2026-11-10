@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Check, CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import type { TaskEditDialogState } from "@/tasks-core/src/tasks-edit-dialog";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";

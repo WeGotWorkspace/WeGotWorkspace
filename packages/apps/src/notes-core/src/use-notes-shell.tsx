@@ -13,7 +13,11 @@ import {
   notesCanCreateInView,
   noteShowsTags,
 } from "./notes-note-utils";
-import type { NotesAPIOperations, NotesNotebookCollection, NotesUIData } from "./notes-types";
+import type {
+  NotesAPIOperations,
+  NotesNotebookCollection,
+  NotesUIData,
+} from "@/lib/models/notes-types";
 import { noteFlagMap, syncNoteFlagMap } from "./notes-flag-map";
 import { useNotesHiddenIds } from "./use-notes-hidden-ids";
 import { collectionsFromNotesData } from "./use-notes-sidebar-model";
