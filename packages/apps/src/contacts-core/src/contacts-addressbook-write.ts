@@ -1,6 +1,6 @@
-import type { AddressBook, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { AddressBook, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { readDefaultCollectionId } from "@/lib/default-collection-prefs";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 
 /** Owned personal book — `default` / `isDefault`, never an inbound sharee. */
 export function isPersonalAddressBook(

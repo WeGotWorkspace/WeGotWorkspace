@@ -14,7 +14,7 @@ import {
   readOfflineMeetChatUsername,
   resolveMeetChatOfflineUsername,
 } from "@/lib/offline/offline-session";
-import type { MeetAppBootstrap, MeetUIData } from "@/meet-core/src/meet-types";
+import type { MeetAppBootstrap, MeetUIData } from "@/lib/models/meet-types";
 import {
   createDefaultMeetChatApiSource,
   type MeetChatApiSource,

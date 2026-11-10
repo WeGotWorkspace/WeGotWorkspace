@@ -7,7 +7,7 @@ import {
   contactsViewAfterAddressBookMove,
   groupsToDropOnAddressBookMove,
 } from "@/contacts-core/src/contacts-address-book-move";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 const jane = {
   "@type": "Card",

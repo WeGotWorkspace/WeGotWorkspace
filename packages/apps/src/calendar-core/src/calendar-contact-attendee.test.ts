@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
-import { normalizeParticipantAddress } from "@/calendar-core/src/calendar-attendees";
+import type { ContactCard } from "@/lib/models/contacts-types";
+import { normalizeParticipantAddress } from "@/lib/models/calendar-attendees";
 import {
   calendarInviteeSearchRows,
   contactEmailToAttendee,

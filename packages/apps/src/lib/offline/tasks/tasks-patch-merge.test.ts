@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import { applyTaskPatch, coalesceTaskPatches } from "@/lib/offline/tasks/tasks-patch-merge";
 import { offsetReminderAlert, taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
 

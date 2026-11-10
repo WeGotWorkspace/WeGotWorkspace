@@ -1,10 +1,10 @@
 import { Bell, StickyNote, Users } from "lucide-react";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Textarea } from "@/ui/textarea";

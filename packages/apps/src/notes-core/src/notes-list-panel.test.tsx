@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {

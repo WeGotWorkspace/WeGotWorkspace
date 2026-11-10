@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link2, MapPin } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -11,14 +11,14 @@ import {
   isSessionEventOrganizer,
   sessionEventInviteeStatus,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/calendar-attendees";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { CalendarEventFormSecondary } from "@/calendar-core/src/calendar-event-form-secondary";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
 import { CalendarEventFormFooter } from "@/calendar-core/src/calendar-event-form-footer";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {

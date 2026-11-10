@@ -1,10 +1,10 @@
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type {
   CalendarDirectoryGroup,
   CalendarInfo,
   CalendarSharePrincipal,
   CalendarShareWith,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import type { JmapCalendar } from "@/lib/jmap-client";
 import {
   displayNameForSharePrincipal,
@@ -17,14 +17,14 @@ import {
   sharesTeamWithViewer,
   shareRightsAllowWrite,
   shareRightsForPermission,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 
 export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 export type {
   CalendarSharePrincipal,
   CalendarShareRights,
   CalendarShareWith,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 
 export const calendarRightsAllowWrite = shareRightsAllowWrite;
 export const calendarShareRightsForPermission = shareRightsForPermission;

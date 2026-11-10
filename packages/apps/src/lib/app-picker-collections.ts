@@ -4,7 +4,7 @@ import { listTaskLists } from "@/lib/api/wgw/tasks";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
 import { readDefaultCollectionId, type DefaultCollectionApp } from "@/lib/default-collection-prefs";
 import { JmapNotesClient, type JmapAddressBook, type JmapNotebook } from "@/lib/jmap-client";
-import { shareRightsAllowWrite } from "@/share-ui/collection-share";
+import { shareRightsAllowWrite } from "@/lib/sharing/collection-share";
 import { connectedContacts } from "@/lib/api/wgw/contacts";
 import { notesJmapClient } from "@/lib/api/wgw/notes-jmap";
 

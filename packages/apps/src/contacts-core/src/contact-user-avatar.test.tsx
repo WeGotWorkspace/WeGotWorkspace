@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactUserAvatar } from "@/contacts-core/src/contact-user-avatar";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 const groupCard = {
   "@type": "Card",

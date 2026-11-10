@@ -1,4 +1,4 @@
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 /**
  * Generic, spec-faithful JSContact (RFC 9553) PatchObject merge for the offline

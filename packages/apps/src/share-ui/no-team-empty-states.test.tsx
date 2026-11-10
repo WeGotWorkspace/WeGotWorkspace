@@ -5,7 +5,7 @@ import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw/openapi-ty
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 import { ShareTeamSection } from "@/share-ui/share-team-section";

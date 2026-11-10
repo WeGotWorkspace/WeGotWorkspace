@@ -15,7 +15,7 @@ import {
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 
 function NotesListNotebookMark({

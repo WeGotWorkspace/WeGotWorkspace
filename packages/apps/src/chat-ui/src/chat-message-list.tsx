@@ -8,7 +8,7 @@ import { groupChatMessages, groupChatMessagesByDay } from "@/chat-ui/src/chat-me
 import type {
   ChatAuthorPresenceMap,
   ChatMessage as ChatMessageModel,
-} from "@/chat-ui/src/chat-types";
+} from "@/lib/models/chat-types";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-ui.css";

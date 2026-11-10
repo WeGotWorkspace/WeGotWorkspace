@@ -7,7 +7,7 @@ import { useContainerRescue } from "@/rescue-ui/use-container-rescue";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 import { canWriteTaskList } from "@/tasks-core/src/tasks-task-utils";
-import type { Task, TaskList, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TasksAPIOperations } from "@/lib/models/tasks-types";
 
 type UseTasksRescueArgs = {
   username: string | null;

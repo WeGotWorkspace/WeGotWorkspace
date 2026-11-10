@@ -2,7 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarUIData } from "@/lib/models/calendar-types";
 import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 

@@ -1,6 +1,6 @@
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { createHybridCalendarOperations } from "@/lib/offline/calendars-hybrid-operations";
 import {
   readCalendarBootstrapFromCache,

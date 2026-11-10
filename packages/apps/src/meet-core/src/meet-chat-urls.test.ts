@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractChatUrls, mapChatPreviews, normalizeChatUrl } from "@/meet-core/src/meet-chat-urls";
-import type { MeetUnfurlMap } from "@/meet-core/src/meet-types";
+import type { MeetUnfurlMap } from "@/lib/models/meet-types";
 
 const UNFURL: MeetUnfurlMap = {
   "https://docs.example.com/notes/sprint": {

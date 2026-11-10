@@ -6,7 +6,7 @@ import type {
   CalendarAPIOperations,
   CalendarEventDraft,
   CalendarEventPatch,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import { calendarEventToForm, formToFullPatch } from "@/calendar-core/src/calendar-editor-model";
 
 type EventWrites = Pick<CalendarAPIOperations, "createEvent" | "patchEvent" | "deleteEvent">;

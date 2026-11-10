@@ -37,7 +37,7 @@ import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
@@ -60,7 +60,7 @@ import {
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";

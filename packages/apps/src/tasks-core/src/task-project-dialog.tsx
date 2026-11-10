@@ -22,10 +22,10 @@ import {
   PERSONAL_SCOPE_VALUE,
 } from "@/ui/owner-scope-field";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import { TaskProjectColorPicker } from "@/tasks-core/src/task-project-color-picker";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
-import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
+import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";

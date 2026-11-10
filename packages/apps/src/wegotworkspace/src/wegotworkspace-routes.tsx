@@ -24,7 +24,7 @@ import {
   meetRoomFromSearch,
   parseMeetRouteSearch,
   validateMeetRouteSearch,
-} from "@/meet-core/src/meet-route-search";
+} from "@/lib/meetings/meet-route-search";
 import {
   MEET_MEETINGS_ROUTE,
   meetIsAdHocMeetingId,

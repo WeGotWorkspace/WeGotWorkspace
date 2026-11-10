@@ -12,7 +12,7 @@ import {
   meetRoomFromSearch,
   meetSearchFromRoom,
   parseMeetRouteSearch,
-} from "@/meet-core/src/meet-route-search";
+} from "@/lib/meetings/meet-route-search";
 
 describe("meet route search", () => {
   it("ignores former rtc debug search keys", () => {

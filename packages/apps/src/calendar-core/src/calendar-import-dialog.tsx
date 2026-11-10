@@ -28,7 +28,7 @@ import {
   type CalendarIcsImportDestination,
 } from "@/calendar-core/src/calendar-ics-import";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import "./calendar-import-dialog.css";
 
 export type CalendarImportDialogProps = {

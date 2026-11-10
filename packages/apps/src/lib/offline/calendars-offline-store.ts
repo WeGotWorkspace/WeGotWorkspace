@@ -4,7 +4,7 @@ import type {
   CalendarDirectoryGroup,
   CalendarEventPatch,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import { rememberOfflineCalendarsUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {

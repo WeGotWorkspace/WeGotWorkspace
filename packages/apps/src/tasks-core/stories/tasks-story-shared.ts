@@ -1,4 +1,4 @@
-import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { TasksAPIOperations } from "@/lib/models/tasks-types";
 
 /** No-op Tasks API operations for Storybook workspaces (Branding + Apps variants). */
 export const tasksStoryOperations: TasksAPIOperations = {

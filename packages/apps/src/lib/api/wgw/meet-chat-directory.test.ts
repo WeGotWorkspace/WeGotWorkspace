@@ -11,7 +11,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
 import { wgwFetch } from "@/lib/api/wgw/http";
 import { fetchMeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { meetDirectMessagePeople } from "@/meet-core/src/meet-direct-messages";
 
 describe("fetchMeetChatDirectory", () => {

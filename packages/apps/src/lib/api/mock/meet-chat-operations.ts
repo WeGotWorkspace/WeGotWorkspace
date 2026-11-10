@@ -7,13 +7,13 @@ import type {
   MeetChatOperations,
   MeetChatState,
   MeetUnfurlMap,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import {
   filterSharePrincipals,
   mergeShareWith,
   type CollectionSharePrincipal,
   type CollectionShareWith,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 
 export type MeetChatOperationsHandle = MeetChatOperations & {
   getState: () => MeetChatState;
