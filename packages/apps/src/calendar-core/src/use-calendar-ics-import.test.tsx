@@ -159,4 +159,60 @@ describe("useCalendarIcsImport", () => {
     expect(toastApi.showError).toHaveBeenCalledWith(defaultCalendarLabels.toastImportOffline);
     expect(result.current.importDialogError).toContain("internet");
   });
+  it("names the tasks it skipped in the success toast", async () => {
+    const importEvents = vi.fn().mockResolvedValue({
+      list: [{ id: "imported-1", title: "Imported" }],
+      errors: [],
+      skipped: { tasks: 2 },
+    });
+    const { result } = renderHook(() =>
+      useCalendarIcsImport({
+        labels: defaultCalendarLabels,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          importEvents,
+        },
+      }),
+    );
+
+    const file = new File(["BEGIN:VCALENDAR"], "mixed.ics");
+    act(() => result.current.beginImport(file));
+    await act(async () => {
+      result.current.submitImportDialog(file, { mode: "existing", calendarId: "default" });
+    });
+
+    expect(toastApi.show).toHaveBeenCalledWith(defaultCalendarLabels.toastImportSuccess, {
+      description: "2 tasks were skipped. Import them in Tasks.",
+    });
+  });
+
+  it("points a tasks-only file to Tasks", async () => {
+    const importEvents = vi.fn().mockRejectedValue(new Error("No VEVENT data found."));
+    const { result } = renderHook(() =>
+      useCalendarIcsImport({
+        labels: defaultCalendarLabels,
+        operations: {
+          createEvent: vi.fn(),
+          patchEvent: vi.fn(),
+          deleteEvent: vi.fn(),
+          importEvents,
+        },
+      }),
+    );
+
+    const file = new File(
+      ["BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:t1\r\nEND:VTODO\r\nEND:VCALENDAR"],
+      "todos.ics",
+    );
+    act(() => result.current.beginImport(file));
+    await act(async () => {
+      result.current.submitImportDialog(file, { mode: "existing", calendarId: "default" });
+    });
+
+    expect(result.current.importDialogError).toBe(defaultCalendarLabels.importFileHasOnlyTasks);
+    expect(importEvents).not.toHaveBeenCalled();
+    expect(toastApi.showError).not.toHaveBeenCalled();
+  });
 });

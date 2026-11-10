@@ -1,14 +1,12 @@
 import type { SaveAsMarkdownIo } from "@/docs-core/src/docx-import/save-docx-as-markdown";
-import { createDriveFileKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both";
+import { createDriveNodeKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both";
 import {
-  destroyFileNodes,
   downloadFileNodeBlob,
   driveJmapSession,
   fetchDriveUser,
-  resolveFileNodeId,
   uploadJmapBlob,
 } from "@/lib/api/wgw/drive-jmap";
-import { normalizeApiVirtualPath, parentAndName } from "@/lib/files/api-path";
+import { normalizeApiVirtualPath } from "@/lib/files/api-path";
 import { uploadDocAttachmentImage } from "@/text-editor-core/docs-collab/docs-image-upload";
 
 const MARKDOWN_TYPE = "text/markdown";
@@ -23,26 +21,21 @@ export function createDocxImportDriveIo(signal?: AbortSignal): SaveAsMarkdownIo 
       const blob = await downloadFileNodeBlob(session, path, user.username, signal);
       return new Uint8Array(await blob.arrayBuffer());
     },
-    createEmptyDoc(parentPath, name) {
-      return createDriveFileKeepingBoth(
+    async createEmptyDoc(parentPath, name) {
+      const created = await createDriveNodeKeepingBoth(
         normalizeApiVirtualPath(parentPath),
         new File([], name, { type: MARKDOWN_TYPE }),
         { signal },
       );
+      if (!created.nodeId) throw new Error("FileNode/set did not return the new Doc's id.");
+      return { name: created.name, nodeId: created.nodeId };
     },
-    async uploadImage(docPath, image) {
-      return (await uploadDocAttachmentImage(docPath, image, { signal })).nodeId;
+    async uploadImage(docPath, nodeId, image) {
+      return (await uploadDocAttachmentImage(docPath, image, { signal, docNodeId: nodeId })).nodeId;
     },
-    async writeDoc(docPath, markdown) {
+    async writeDoc(nodeId, markdown) {
       // Write onto the node we created, by id: never onto a file that took the name since.
       const session = await driveJmapSession();
-      const user = await fetchDriveUser({ signal });
-      const nodeId = await resolveFileNodeId(
-        session,
-        normalizeApiVirtualPath(docPath),
-        user.username,
-        signal,
-      );
       const blobId = await uploadJmapBlob(
         session,
         new Blob([markdown], { type: MARKDOWN_TYPE }),
@@ -54,9 +47,13 @@ export function createDocxImportDriveIo(signal?: AbortSignal): SaveAsMarkdownIo 
         { signal },
       );
     },
-    async removeDoc(docPath) {
-      const path = normalizeApiVirtualPath(docPath);
-      await destroyFileNodes([path], { refreshState: false }, parentAndName(path).destination);
+    async removeDoc(docPath, nodeId) {
+      const session = await driveJmapSession();
+      await session.fileNodes.setFileNodes(
+        { accountId: session.accountId, destroy: [nodeId] },
+        { signal },
+      );
+      session.cache.forgetSubtree(normalizeApiVirtualPath(docPath));
     },
   };
 }

@@ -1,4 +1,5 @@
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { setPendingDocxImportReport } from "@/docs-core/src/docx-import/docx-import-report-store";
@@ -36,7 +37,12 @@ const file = (title: string, extra: Partial<DriveFile> = {}): DriveFile =>
 function setup(enabled = true) {
   const onOpenDocsFile = vi.fn();
   const hook = renderHook(() =>
-    useSaveAsMarkdownAction({ enabled, onOpenDocsFile, dialogSurfaceClassName: "x" }),
+    useSaveAsMarkdownAction({
+      enabled,
+      onOpenDocsFile,
+      username: "ann",
+      dialogSurfaceClassName: "x",
+    }),
   );
   return { hook, onOpenDocsFile };
 }
@@ -57,6 +63,17 @@ describe("useSaveAsMarkdownAction", () => {
     expect(ids(file("Plan.doc"))).toEqual([]);
     expect(ids(file("Plan.docx", { kind: "folder" }))).toEqual([]);
     expect(ids(file("Plan.docx", { mayManageStructure: false }))).toEqual([]);
+  });
+
+  it("hides the action where create rights are unknown outside the own drive", () => {
+    const { hook } = setup();
+    const ids = (f: DriveFile) => hook.result.current.actionsFor(f).map((a) => a.label);
+    const group = { apiPath: "/groups/team/Plan.docx" };
+    expect(ids(file("Plan.docx", group))).toEqual([]);
+    expect(ids(file("Plan.docx", { ...group, mayManageStructure: false }))).toEqual([]);
+    expect(ids(file("Plan.docx", { ...group, mayManageStructure: true }))).toEqual([
+      "Save as Markdown",
+    ]);
   });
 
   it("is hidden when disabled (guests, no create rights)", () => {
@@ -135,8 +152,23 @@ describe("DocxImportReportForDoc", () => {
       <DocxImportReportForDoc docPath="/users/ann/Once.md" surfaceClassName="x" />,
     );
     expect((await screen.findByRole("dialog")).textContent).toContain("1 text box");
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     first.unmount();
     render(<DocxImportReportForDoc docPath="/users/ann/Once.md" surfaceClassName="x" />);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("still shows the report when effects run twice (StrictMode)", async () => {
+    setPendingDocxImportReport("/users/ann/Strict.md", {
+      sourceName: "Strict.docx",
+      lines: [{ id: "textBoxes", count: 2, label: "text boxes" }],
+    });
+    render(
+      <StrictMode>
+        <DocxImportReportForDoc docPath="/users/ann/Strict.md" surfaceClassName="x" />
+      </StrictMode>,
+    );
+    expect((await screen.findByRole("dialog")).textContent).toContain("2 text boxes");
   });
 });

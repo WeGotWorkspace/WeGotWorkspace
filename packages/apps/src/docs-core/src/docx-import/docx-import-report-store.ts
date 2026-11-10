@@ -12,10 +12,12 @@ export function setPendingDocxImportReport(docPath: string, report: DocxImportRe
   pending.set(normalizeApiVirtualPath(docPath), report);
 }
 
-/** The report for this Doc, removed so it is shown only once. */
-export function takePendingDocxImportReport(docPath: string): DocxImportReport | null {
-  const key = normalizeApiVirtualPath(docPath);
-  const report = pending.get(key) ?? null;
-  pending.delete(key);
-  return report;
+/** The report for this Doc, left in place so a repeated effect (StrictMode) sees it too. */
+export function peekPendingDocxImportReport(docPath: string): DocxImportReport | null {
+  return pending.get(normalizeApiVirtualPath(docPath)) ?? null;
+}
+
+/** Drops the report once it was shown, so it appears only once. */
+export function clearPendingDocxImportReport(docPath: string): void {
+  pending.delete(normalizeApiVirtualPath(docPath));
 }

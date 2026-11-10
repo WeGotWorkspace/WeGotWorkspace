@@ -160,6 +160,7 @@ export function DriveWorkspace({
   const saveAsMarkdown = useSaveAsMarkdownAction({
     enabled: controller.structureEnabled && controller.uploadEnabled && !wgwIsGuestSession(),
     onOpenDocsFile,
+    username: controller.currentUsername,
     dialogSurfaceClassName: "drive-dialog-surface",
   });
   const saveAsMarkdownActionsFor = saveAsMarkdown.actionsFor;

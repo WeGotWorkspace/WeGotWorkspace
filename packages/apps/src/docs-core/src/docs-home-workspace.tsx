@@ -58,7 +58,10 @@ import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";
 import { WordFilePickerInput } from "@/docs-core/src/docx-import/word-file-picker-input";
 import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
-import { isSaveAsMarkdownOnlyFile } from "@/docs-core/src/docx-import/save-as-markdown-source";
+import {
+  isSaveAsMarkdownOnlyFile,
+  saveAsMarkdownSourceKindFromName,
+} from "@/docs-core/src/docx-import/save-as-markdown-source";
 import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import "@/docs-core/src/docs-workspace.css";
@@ -371,7 +374,11 @@ export function DocsHomeWorkspace({
     (file: DriveFile) => {
       // Word files and Google links are listed for Save as Markdown, not opened (#1983).
       if (isSaveAsMarkdownOnlyFile(file)) {
-        show(docxImportLabels.openDocxInDocs);
+        show(
+          saveAsMarkdownSourceKindFromName(file.title) === "gdoc"
+            ? docxImportLabels.googleLinkDescription(file.title)
+            : docxImportLabels.openDocxInDocs,
+        );
         return;
       }
       if (!canOpenOffline(file)) return;
@@ -383,6 +390,7 @@ export function DocsHomeWorkspace({
   const saveAsMarkdown = useSaveAsMarkdownAction({
     enabled: Boolean(onCreateDocument) && !isTrashView && !wgwIsGuestSession(),
     onOpenDocsFile: onOpenFile,
+    username,
     dialogSurfaceClassName: "docs-dialog-surface",
   });
 

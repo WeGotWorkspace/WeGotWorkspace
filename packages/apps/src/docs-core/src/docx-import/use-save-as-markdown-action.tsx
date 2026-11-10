@@ -15,6 +15,8 @@ type UseSaveAsMarkdownActionArgs = {
   enabled: boolean;
   /** Opens the new Doc; without it the action is not offered. */
   onOpenDocsFile?: (apiPath: string) => void;
+  /** Signed-in username: files in their own drive may be saved beside without fetched rights. */
+  username?: string;
   /** Portaled dialog theme class of the host app. */
   dialogSurfaceClassName: string;
 };
@@ -26,6 +28,7 @@ type UseSaveAsMarkdownActionArgs = {
 export function useSaveAsMarkdownAction({
   enabled,
   onOpenDocsFile,
+  username,
   dialogSurfaceClassName,
 }: UseSaveAsMarkdownActionArgs): {
   actionsFor: (file: DriveFile) => DriveFileMenuAction[];
@@ -47,7 +50,7 @@ export function useSaveAsMarkdownAction({
 
   const actionsFor = useCallback(
     (file: DriveFile): DriveFileMenuAction[] => {
-      const kind = saveAsMarkdownSourceKind(file);
+      const kind = saveAsMarkdownSourceKind(file, username);
       if (!enabled || !onOpenDocsFile || !kind || !file.apiPath || file.upload) return [];
       const base = {
         id: SAVE_AS_MARKDOWN_ACTION_ID,
@@ -67,7 +70,7 @@ export function useSaveAsMarkdownAction({
         },
       ];
     },
-    [enabled, onOpenDocsFile, online, run, running],
+    [enabled, onOpenDocsFile, online, run, running, username],
   );
 
   const dialogs = (

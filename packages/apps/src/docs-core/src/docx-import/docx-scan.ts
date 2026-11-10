@@ -1,4 +1,4 @@
-import { strFromU8, unzipSync } from "fflate";
+import { Inflate, strFromU8 } from "fflate";
 import { splitElements } from "@/docs-core/src/docx-import/docx-alternate-content";
 
 /**
@@ -14,7 +14,7 @@ import { splitElements } from "@/docs-core/src/docx-import/docx-alternate-conten
 export type DocxRefusal =
   "ole-container" | "not-a-zip" | "corrupt-zip" | "not-a-docx" | "too-large";
 
-/** Sum of the declared unpacked sizes of every part. mammoth inflates them all. */
+/** Sum of the bytes every part really inflates to (never the declared sizes). mammoth inflates them all. */
 export const DOCX_MAX_UNPACKED_BYTES = 256 * 1024 * 1024;
 
 /** What the converter drops or changes; each count feeds one import report line. */
@@ -88,30 +88,125 @@ function distinct(values: Iterable<string>): number {
 }
 
 /**
- * Only the parts the report reads are inflated: a .docx with large images then
- * costs no more memory here than the XML it carries.
+ * Only the parts the report reads are kept: a .docx with large images then
+ * costs no more memory here than the XML it carries. Every part is still inflated
+ * and counted against the cap.
  */
 function isScannedPart(name: string): boolean {
   return /^word\/(document|comments|footnotes|endnotes|header\d*|footer\d*)\.xml$/.test(name);
 }
 
-export function scanDocx(bytes: Uint8Array): DocxScan {
+const TOO_LARGE = Symbol("too-large");
+const SLICE_BYTES = 8 * 1024;
+const EOCD_SIGNATURE = 0x06054b50;
+const CENTRAL_SIGNATURE = 0x02014b50;
+const LOCAL_SIGNATURE = 0x04034b50;
+
+/**
+ * Reads the entries the way mammoth's JSZip does: from the central directory
+ * (method, compressed size, local header offset), never from the local headers, so
+ * what is counted is what gets inflated. Inflates every entry in 8 KiB slices (a
+ * deflate stream expands about 1032:1 at most) and throws {@link TOO_LARGE} as soon as
+ * the real output passes the cap. Only the parts the report reads are kept.
+ */
+function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<string, Uint8Array> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const corrupt = () => new Error("corrupt zip");
+  const u16 = (at: number) => (at + 2 <= bytes.length ? view.getUint16(at, true) : -1);
+  const u32 = (at: number) => (at + 4 <= bytes.length ? view.getUint32(at, true) : -1);
+
+  let eocd = -1;
+  for (let at = bytes.length - 22; at >= Math.max(0, bytes.length - 22 - 0xffff); at -= 1) {
+    if (u32(at) === EOCD_SIGNATURE) {
+      eocd = at;
+      break;
+    }
+  }
+  if (eocd < 0) throw corrupt();
+  // Any all-ones field makes JSZip follow a zip64 record this walk does not read.
+  for (const at of [4, 6, 8, 10]) if (u16(eocd + at) === 0xffff) throw corrupt();
+  const centralSize = u32(eocd + 12);
+  const entryCount = u16(eocd + 10);
+  let cursor = u32(eocd + 16);
+  if (cursor < 0 || centralSize < 0 || cursor === 0xffffffff || centralSize === 0xffffffff) {
+    throw corrupt();
+  }
+  // JSZip shifts every offset by any gap between the directory and the end record.
+  if (eocd !== cursor + centralSize) throw corrupt();
+
+  const kept: Record<string, Uint8Array[]> = {};
+  let unpackedBytes = 0;
+  let entries = 0;
+  // Like JSZip: read records for as long as the signature matches, whatever the count says.
+  while (u32(cursor) === CENTRAL_SIGNATURE) {
+    entries += 1;
+    const method = u16(cursor + 10);
+    const compressedSize = u32(cursor + 20);
+    const nameLength = u16(cursor + 28);
+    const extraLength = u16(cursor + 30);
+    const commentLength = u16(cursor + 32);
+    const localOffset = u32(cursor + 42);
+    if (compressedSize < 0 || localOffset < 0 || nameLength < 0) throw corrupt();
+    if (compressedSize === 0xffffffff || localOffset === 0xffffffff) throw corrupt();
+    cursor += 46 + nameLength + extraLength + commentLength;
+
+    // Every entry counts, folders included (a real folder has no data). JSZip names an
+    // entry by its local header, so that name decides which parts are kept.
+    if (method !== 0 && method !== 8) throw corrupt();
+    if (u32(localOffset) !== LOCAL_SIGNATURE) throw corrupt();
+    const localNameLength = u16(localOffset + 26);
+    const start = localOffset + 30 + localNameLength + u16(localOffset + 28);
+    const end = start + compressedSize;
+    if (end > bytes.length) throw corrupt();
+    const name = strFromU8(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength));
+
+    const chunks: Uint8Array[] | null = isScannedPart(name) ? [] : null;
+    if (chunks) kept[name] = chunks;
+    const onChunk = (chunk: Uint8Array) => {
+      unpackedBytes += chunk.length;
+      if (unpackedBytes > maxUnpackedBytes) throw TOO_LARGE;
+      chunks?.push(chunk);
+    };
+    if (method === 0) {
+      for (let at = start; at < end; at += SLICE_BYTES) {
+        onChunk(bytes.subarray(at, Math.min(end, at + SLICE_BYTES)));
+      }
+    } else if (compressedSize > 0) {
+      const inflate = new Inflate((chunk) => onChunk(chunk));
+      for (let at = start; at < end; at += SLICE_BYTES) {
+        const next = Math.min(end, at + SLICE_BYTES);
+        inflate.push(bytes.subarray(at, next), next === end);
+      }
+    }
+  }
+  if (entries !== entryCount || cursor !== eocd) throw corrupt();
+  const parts: Record<string, Uint8Array> = {};
+  for (const [name, chunks] of Object.entries(kept)) {
+    const whole = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+    let offset = 0;
+    for (const chunk of chunks) {
+      whole.set(chunk, offset);
+      offset += chunk.length;
+    }
+    parts[name] = whole;
+  }
+  return parts;
+}
+
+export function scanDocx(
+  bytes: Uint8Array,
+  maxUnpackedBytes: number = DOCX_MAX_UNPACKED_BYTES,
+): DocxScan {
   if (startsWith(bytes, OLE_MAGIC)) return { ok: false, refusal: "ole-container" };
   if (!startsWith(bytes, ZIP_MAGIC)) return { ok: false, refusal: "not-a-zip" };
 
   let parts: Record<string, Uint8Array>;
-  let unpackedBytes = 0;
   try {
-    parts = unzipSync(bytes, {
-      filter: (file) => {
-        unpackedBytes += file.originalSize;
-        return unpackedBytes <= DOCX_MAX_UNPACKED_BYTES && isScannedPart(file.name);
-      },
-    });
-  } catch {
+    parts = unpackCounting(bytes, maxUnpackedBytes);
+  } catch (error) {
+    if (error === TOO_LARGE) return { ok: false, refusal: "too-large" };
     return { ok: false, refusal: "corrupt-zip" };
   }
-  if (unpackedBytes > DOCX_MAX_UNPACKED_BYTES) return { ok: false, refusal: "too-large" };
   const documentXml = parts["word/document.xml"];
   if (!documentXml) return { ok: false, refusal: "not-a-docx" };
 

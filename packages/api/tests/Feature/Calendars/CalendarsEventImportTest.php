@@ -83,7 +83,15 @@ final class CalendarsEventImportTest extends WgwDatabaseTestCase
 
         $response->assertCreated()
             ->assertJsonCount(1, 'list')
-            ->assertJsonPath('list.0.title', 'An event');
+            ->assertJsonPath('list.0.title', 'An event')
+            ->assertJsonPath('skipped.tasks', 1);
+    }
+
+    public function test_event_only_file_skips_no_tasks(): void
+    {
+        $this->importIcs($this->multiEventIcs())
+            ->assertCreated()
+            ->assertJsonPath('skipped.tasks', 0);
     }
 
     public function test_partial_vevent_failure_returns_201_with_errors(): void

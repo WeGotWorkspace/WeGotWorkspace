@@ -2,6 +2,7 @@ import { strToU8, zipSync } from "fflate";
 import { readDocxFixture } from "@/docs-core/src/docx-import/__tests__/fixtures/docx-fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
+import { DOCX_MAX_UNPACKED_BYTES, scanDocx } from "@/docs-core/src/docx-import/docx-scan";
 import type { DocxConversion } from "@/docs-core/src/docx-import/docx-to-markdown";
 import {
   DOC_MAX_MARKDOWN_BYTES,
@@ -14,6 +15,7 @@ import {
 
 const reportDocx = readDocxFixture("report.docx");
 const PLACEHOLDER = `drive:fn-${"0".repeat(31)}1`;
+const NODE_ID = "fn-doc";
 const UPLOADED = `fn-${"a".repeat(32)}`;
 
 function fakeIo(bytes: Uint8Array, overrides: Partial<SaveAsMarkdownIo> = {}) {
@@ -26,18 +28,18 @@ function fakeIo(bytes: Uint8Array, overrides: Partial<SaveAsMarkdownIo> = {}) {
     }),
     createEmptyDoc: vi.fn(async (parent: string, name: string) => {
       calls.push(`create ${parent} ${name}`);
-      return name.replace(".md", " (1).md");
+      return { name: name.replace(".md", " (1).md"), nodeId: NODE_ID };
     }),
-    uploadImage: vi.fn(async (docPath: string, file: File) => {
-      calls.push(`upload ${docPath} ${file.name} ${file.type}`);
+    uploadImage: vi.fn(async (docPath: string, nodeId: string, file: File) => {
+      calls.push(`upload ${docPath} ${nodeId} ${file.name} ${file.type}`);
       return UPLOADED;
     }),
-    writeDoc: vi.fn(async (docPath: string, markdown: string) => {
-      calls.push(`write ${docPath}`);
-      written[docPath] = markdown;
+    writeDoc: vi.fn(async (nodeId: string, markdown: string) => {
+      calls.push(`write ${nodeId}`);
+      written[nodeId] = markdown;
     }),
-    removeDoc: vi.fn(async (docPath: string) => {
-      calls.push(`remove ${docPath}`);
+    removeDoc: vi.fn(async (docPath: string, nodeId: string) => {
+      calls.push(`remove ${docPath} ${nodeId}`);
     }),
     ...overrides,
   };
@@ -58,11 +60,11 @@ describe("saveDocxAsMarkdown", () => {
     expect(calls).toEqual([
       "read /users/ann/Letters/Plan.docx",
       "create /users/ann/Letters Plan.md",
-      "upload /users/ann/Letters/Plan (1).md image-1.png image/png",
-      "write /users/ann/Letters/Plan (1).md",
+      "upload /users/ann/Letters/Plan (1).md fn-doc image-1.png image/png",
+      "write fn-doc",
     ]);
     expect(result.docPath).toBe("/users/ann/Letters/Plan (1).md");
-    expect(written[result.docPath]).toBe(`# Plan\n\n![Logo](drive:${UPLOADED})\n`);
+    expect(written[NODE_ID]).toBe(`# Plan\n\n![Logo](drive:${UPLOADED})\n`);
     expect(result.report.sourceName).toBe("Plan.docx");
     expect(result.report.lines.map((line) => line.id)).toEqual([
       "comments",
@@ -86,7 +88,7 @@ describe("saveDocxAsMarkdown", () => {
     const result = await saveDocxAsMarkdown("/users/ann/Plan.docx", io, async () =>
       conversion(`Before ![Logo \\] x](${PLACEHOLDER}) after\n\n${html}\n`),
     );
-    expect(written[result.docPath]).toBe("Before  after\n\n<table><tr><td></td></tr></table>\n");
+    expect(written[NODE_ID]).toBe("Before  after\n\n<table><tr><td></td></tr></table>\n");
     expect(result.report.lines.at(-1)).toMatchObject({ id: "failedImages", count: 1 });
   });
 
@@ -119,6 +121,96 @@ describe("saveDocxAsMarkdown", () => {
     expect(io.writeDoc).not.toHaveBeenCalled();
   });
 
+  it("refuses a zip bomb whose headers declare a small size, without converting", async () => {
+    const bomb = zipSync({
+      "word/document.xml": strToU8("<w:document/>"),
+      "word/media/huge.bin": new Uint8Array(DOCX_MAX_UNPACKED_BYTES + 1024),
+    });
+    expect(bomb.byteLength).toBeLessThan(DOCX_MAX_UNPACKED_BYTES / 100);
+    // Claim 10 bytes in every central-directory entry; the deflate stream is unchanged.
+    const view = new DataView(bomb.buffer, bomb.byteOffset, bomb.byteLength);
+    for (let i = 0; i + 46 <= bomb.length; i += 1) {
+      if (view.getUint32(i, true) === 0x02014b50) view.setUint32(i + 24, 10, true);
+    }
+    const { io } = fakeIo(bomb);
+    const convert = vi.fn();
+    await expect(saveDocxAsMarkdown("/users/ann/x.docx", io, convert)).rejects.toMatchObject({
+      refusal: "too-large",
+    });
+    expect(convert).not.toHaveBeenCalled();
+    expect(io.createEmptyDoc).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it("counts by the central directory when a local header claims the entry is stored", async () => {
+    const bomb = zipSync({
+      "word/document.xml": new Uint8Array(DOCX_MAX_UNPACKED_BYTES + 1024),
+    });
+    // Patch only the local header's method to 0 (stored); the central directory says deflate.
+    const view = new DataView(bomb.buffer, bomb.byteOffset, bomb.byteLength);
+    expect(view.getUint32(0, true)).toBe(0x04034b50);
+    view.setUint16(8, 0, true);
+    const { io } = fakeIo(bomb);
+    const convert = vi.fn();
+    await expect(saveDocxAsMarkdown("/users/ann/x.docx", io, convert)).rejects.toMatchObject({
+      refusal: "too-large",
+    });
+    expect(convert).not.toHaveBeenCalled();
+    expect(io.createEmptyDoc).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it("stops inflating after the slice that passes the cap", () => {
+    const bomb = zipSync({ "word/document.xml": new Uint8Array(DOCX_MAX_UNPACKED_BYTES) });
+    expect(bomb.byteLength).toBeGreaterThan(8 * 1024);
+    expect(scanDocx(bomb, 65_536)).toEqual({ ok: false, refusal: "too-large" });
+  }, 10_000);
+
+  describe("reads the same entries as the converter's zip reader", () => {
+    const CAP = 65_536;
+    const twoParts = () =>
+      zipSync({
+        "word/document.xml": strToU8("<w:document/>"),
+        "word/styles.xml": new Uint8Array(CAP * 4),
+      });
+    const eocdOf = (zip: Uint8Array) => zip.length - 22;
+    const view = (zip: Uint8Array) => new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+    const refused = (zip: Uint8Array) => expect(scanDocx(zip, CAP).ok).toBe(false);
+
+    it("refuses an end record that counts fewer entries than the directory holds", () => {
+      const zip = twoParts();
+      view(zip).setUint16(eocdOf(zip) + 8, 1, true);
+      view(zip).setUint16(eocdOf(zip) + 10, 1, true);
+      refused(zip);
+    });
+
+    it("counts an entry whose central name looks like a folder", () => {
+      const zip = twoParts();
+      const dv = view(zip);
+      const records: number[] = [];
+      for (let i = 0; i + 46 <= zip.length; i += 1) {
+        if (dv.getUint32(i, true) === 0x02014b50) records.push(i);
+      }
+      const last = records[records.length - 1];
+      zip[last + 46 + dv.getUint16(last + 28, true) - 1] = "/".charCodeAt(0);
+      expect(scanDocx(zip, CAP)).toEqual({ ok: false, refusal: "too-large" });
+    });
+
+    it("refuses a gap between the directory and the end record", () => {
+      const zip = twoParts();
+      const gap = new Uint8Array(10);
+      const shifted = new Uint8Array(zip.length + gap.length);
+      shifted.set(zip.subarray(0, eocdOf(zip)));
+      shifted.set(gap, eocdOf(zip));
+      shifted.set(zip.subarray(eocdOf(zip)), eocdOf(zip) + gap.length);
+      refused(shifted);
+    });
+
+    it("refuses a zip64 marker in the end record", () => {
+      const zip = twoParts();
+      view(zip).setUint16(eocdOf(zip) + 4, 0xffff, true);
+      refused(zip);
+    });
+  });
+
   it("refuses a file the converter cannot read, and writes nothing", async () => {
     const { io } = fakeIo(reportDocx);
     await expect(
@@ -147,7 +239,7 @@ describe("saveDocxAsMarkdown", () => {
     await expect(
       saveDocxAsMarkdown("/users/ann/x.docx", io, async () => ({ markdown: "hi", images: [] })),
     ).rejects.toThrow("network");
-    expect(calls.at(-1)).toBe("remove /users/ann/x (1).md");
+    expect(calls.at(-1)).toBe("remove /users/ann/x (1).md fn-doc");
   });
 });
 
@@ -169,12 +261,10 @@ describe("importDocxFile", () => {
         images: [],
       }),
     );
-    expect(calls).toEqual([
-      "create /users/ann/Docs Board letter.md",
-      "write /users/ann/Docs/Board letter (1).md",
-    ]);
+    expect(calls).toEqual(["create /users/ann/Docs Board letter.md", `write ${NODE_ID}`]);
     expect(io.readSource).not.toHaveBeenCalled();
-    expect(written[result.docPath]).toBe("# Letter\n");
+    expect(result.docPath).toBe("/users/ann/Docs/Board letter (1).md");
+    expect(written[NODE_ID]).toBe("# Letter\n");
     expect(result.report.sourceName).toBe("Letter.docx");
   });
 
