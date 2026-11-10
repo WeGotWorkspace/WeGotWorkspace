@@ -305,7 +305,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
   importTasksSkipped: (count) =>
-    `${count} ${count === 1 ? "task was" : "tasks were"} skipped. Import them in Tasks.`,
+    count === 1
+      ? "1 task was skipped. Import it in Tasks."
+      : `${count} tasks were skipped. Import them in Tasks.`,
   importFileHasOnlyTasks: "This file has tasks, not events. Import it in Tasks.",
   myCalendarsSection: "My calendars",
   sharedWithMeSection: "Shared with me",

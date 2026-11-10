@@ -14,7 +14,7 @@ The code Calendar and Tasks share is generalised, not copied: the UID-group spli
 - Raising the whole-body import limit, or the signal for stored over-cap objects (#931).
 - Showing subtasks or repeating tasks in the Tasks UI. The data is stored, not shown.
 - Export, subscriptions, account imports, drag-and-drop import.
-- Telling Calendar users about VTODOs in a calendar import is not part of the Tasks PR. A separate small PR adds it (see *Calendar follow-up* below).
+- Telling Calendar users about VTODOs in a calendar import, in the Tasks import PR (#1989). The issue keeps it out of the Tasks import; it lands as its own small PR (#2002) into the same integration branch (see *Calendar follow-up* below).
 
 ## Affected packages
 
@@ -59,8 +59,8 @@ Per group, in order: component cap (`VObjectPayloadGuard::readICalendar`), recur
 
 ## Calendar follow-up
 
-Calendar import now tells people about the tasks in their file, using the shared splitter's count:
+A separate PR (#2002), after the Tasks import (#1989). Calendar import now tells people about the tasks in their file, using the shared splitter's count:
 
 - `POST /calendars/events/import` returns `skipped: {tasks: int}`, counting VTODO UID groups. The status rule is unchanged.
-- When events were imported and `skipped.tasks > 0`, the success toast adds "N tasks were skipped. Import them in Tasks."
-- A file with VTODOs and no VEVENTs still gets 400 from the server. The client checks the file text and shows "This file has tasks, not events. Import it in Tasks." in the dialog.
+- When events were imported and `skipped.tasks > 0`, the success toast adds "N tasks were skipped. Import them in Tasks." (for one: "1 task was skipped. Import it in Tasks.").
+- A file with VTODOs and no VEVENTs still gets 400 from the server. The client checks the file text before it creates a calendar or calls the API, and shows "This file has tasks, not events. Import it in Tasks." in the dialog.
