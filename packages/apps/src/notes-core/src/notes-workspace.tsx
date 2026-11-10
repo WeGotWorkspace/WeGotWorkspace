@@ -60,7 +60,7 @@ import {
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";

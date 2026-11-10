@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import type { CalendarFeedInfo, CalendarFeedMode } from "@/calendar-core/src/calendar-types";
+import type { CalendarFeedInfo, CalendarFeedMode } from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import "@/share-ui/share-ui.css";
 import "./calendar-publish-section.css";

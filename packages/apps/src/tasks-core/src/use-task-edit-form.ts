@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import {
   emptyTaskForm,
   taskToFormValue,

@@ -27,7 +27,7 @@ import {
   NOTES_CHANGES_POLL_MS,
   useNotesLiveInbound,
 } from "@/notes-core/src/use-notes-live-inbound";
-import type { NotesUIData } from "@/notes-core/src/notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 import { uploadPendingNoteBodies } from "./notes-pending-bodies";
 

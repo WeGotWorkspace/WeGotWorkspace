@@ -5,7 +5,7 @@ import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-a
 import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import { contactsGroupViewKey } from "@/contacts-core/src/contacts-group-utils";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type ContactsSidebarGroupRowsProps = {
   groups: ContactCard[];

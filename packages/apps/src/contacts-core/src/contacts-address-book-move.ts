@@ -5,7 +5,7 @@ import {
   groupsContainingCard,
   isContactGroupCard,
 } from "@/contacts-core/src/contacts-group-utils";
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 export function canShowContactAddressBookMove(args: {
   createMode: boolean;

@@ -1,4 +1,4 @@
-import type { AddressBook, ContactCard } from "@/contacts-core/src/contacts-types";
+import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 import {
   listCachedCardsForAddressBook,
   listPendingContactCardIds,

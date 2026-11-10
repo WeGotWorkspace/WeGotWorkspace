@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { formToDraft } from "@/calendar-core/src/calendar-editor-model";
-import { CALENDAR_MEET_LINK_KEY } from "@/calendar-core/src/calendar-meet-link";
+import { CALENDAR_MEET_LINK_KEY } from "@/lib/meetings/calendar-meet-link";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { buildMeetMeetingInviteLink } from "@/meet-core/src/meet-route-search";
+import { buildMeetMeetingInviteLink } from "@/lib/meetings/meet-route-search";
 import {
   calendarEventLooksScheduled,
   calendarEventsForMeetingChannel,

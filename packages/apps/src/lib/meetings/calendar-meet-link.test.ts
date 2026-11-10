@@ -22,7 +22,7 @@ import {
   resolveCalendarMeetReserveScope,
   resolveMeetReserveExpiresAt,
   roomCodeFromMeetingUrl,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 
 const ORIGIN = "https://workspace.example.com";
 const ROOM = "h8y8-ewp6-al8n";

@@ -10,7 +10,7 @@ import {
   shouldApplyCompletedTaskFilter,
   shouldHideCompletedTaskAfterExit,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 
 const task = (id: string, status: Task["workflowStatus"] = "needs-action"): Task => ({
   "@type": "Task",

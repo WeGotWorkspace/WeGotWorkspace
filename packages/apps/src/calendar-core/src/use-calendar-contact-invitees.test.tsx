@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";

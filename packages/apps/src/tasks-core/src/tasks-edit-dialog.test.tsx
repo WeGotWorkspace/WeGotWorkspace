@@ -6,7 +6,7 @@ import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { taskToFormValue } from "@/tasks-core/src/tasks-task-form";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { rebaseTaskForm } from "@/tasks-core/src/use-task-edit-form";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";

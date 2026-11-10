@@ -2,7 +2,7 @@ import type {
   AddressBookMutationPatch,
   ContactCardCreate,
   ContactCardPatch,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 import { contactCardSet, ContactStateMismatchError } from "@/lib/api/wgw/contacts-set";
 import { getCard, patchAddressBook } from "@/lib/api/wgw/contacts";
 import { JmapSetItemError } from "@/lib/jmap-client";

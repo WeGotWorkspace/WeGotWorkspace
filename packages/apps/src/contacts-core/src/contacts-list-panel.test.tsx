@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
 import { contactListRowOffset, flattenContactListRows } from "./contacts-list-window";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 const reorderIds = vi.hoisted(() => vi.fn());
 

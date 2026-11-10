@@ -16,7 +16,7 @@ New (or extended) table behind `POST /meetings/rooms` / `GET /meetings/rooms/{id
 
 | Column | Rule |
 |--------|------|
-| `id` / room code | Meet room-code pattern `xxxx-xxxx-xxxx` (same as [`createMeetRoomCode`](../../packages/apps/src/meet-core/src/meet-room-id.ts)). Idempotent POST on this id. |
+| `id` / room code | Meet room-code pattern `xxxx-xxxx-xxxx` (same as [`createMeetRoomCode`](../../packages/apps/src/lib/meetings/meet-room-id.ts)). Idempotent POST on this id. |
 | `ownerPrincipal` | Personal calendar → `u:{username}`. Group calendar (`scope === "group"` / `groupSlug`) → `groups/{slug}`, **not** the member who clicked. Ad-hoc `/meet` start → acting user. |
 | `createdBy` | **First-class column.** Set on every insert, including inbound ICS-hook inserts. Value = authenticated actor who reserved (Add Meet / ad-hoc start / DAV or JMAP writer). A group-calendar ACL writer need not be a group member — Meet has no calendar-event “organizer” check. |
 | `expiresAt` | **Nullable.** `null` = no inactivity GC while the link stays attached. Finite clocks below. |

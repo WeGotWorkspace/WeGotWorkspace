@@ -4,11 +4,11 @@ import {
   listedInviteeAttendees,
   type CalendarAttendee,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
-import { parseMeetInvitePath } from "@/calendar-core/src/calendar-meet-link";
-import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
-import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
+import { parseMeetInvitePath } from "@/lib/meetings/calendar-meet-link";
+import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
+import { buildMeetGuestCallLink } from "@/lib/meetings/meet-route-search";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 
 /**

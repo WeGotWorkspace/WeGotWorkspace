@@ -9,7 +9,7 @@ import {
   offsetReminderAlert,
   taskAlertsFromList,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
 import "@/tasks-core/src/tasks-workspace.css";

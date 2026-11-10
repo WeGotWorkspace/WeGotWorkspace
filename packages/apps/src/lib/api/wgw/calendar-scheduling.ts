@@ -1,8 +1,5 @@
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
-import type {
-  CalendarInvitee,
-  CalendarParticipationStatus,
-} from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee, CalendarParticipationStatus } from "@/lib/models/calendar-attendees";
 
 export type CalendarSchedulingNotification = {
   id: string;

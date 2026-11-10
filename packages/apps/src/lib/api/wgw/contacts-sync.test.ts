@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AddressBook, ContactCard } from "@/contacts-core/src/contacts-types";
+import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { JmapMethodError } from "@/lib/jmap-client";
 import {

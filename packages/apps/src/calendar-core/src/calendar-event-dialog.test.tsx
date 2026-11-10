@@ -11,7 +11,7 @@ import { inviteeSearchRowMeta } from "@/calendar-core/src/calendar-invitees-card
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 const bootstrap = createCalendarAppBootstrap();
 

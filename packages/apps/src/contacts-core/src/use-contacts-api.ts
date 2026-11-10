@@ -23,7 +23,7 @@ import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queu
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import type { ContactsUIData } from "@/contacts-core/src/contacts-types";
+import type { ContactsUIData } from "@/lib/models/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
 import { useContactsLiveInbound } from "./use-contacts-live-inbound";
 

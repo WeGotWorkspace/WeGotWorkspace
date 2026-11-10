@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
   CalendarSchedulingGoneError,
   type CalendarSchedulingNotification,

@@ -21,7 +21,7 @@ import {
   openCalendarMeetHref,
   type CalendarMeetChannelOption,
   type CalendarMeetRequestOptions,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { isWireDmChannel, listChatChannels } from "@/lib/api/wgw/meet-chat";
 

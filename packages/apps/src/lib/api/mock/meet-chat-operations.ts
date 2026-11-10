@@ -7,7 +7,7 @@ import type {
   MeetChatOperations,
   MeetChatState,
   MeetUnfurlMap,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import {
   filterSharePrincipals,
   mergeShareWith,

@@ -1,6 +1,6 @@
 import { FilePreview } from "@/file-preview/src/file-preview";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
-import type { ChatLinkPreview as ChatLinkPreviewModel } from "@/chat-ui/src/chat-types";
+import type { ChatLinkPreview as ChatLinkPreviewModel } from "@/lib/models/chat-types";
 import { chatFileKindFromName } from "@/chat-ui/src/chat-file-kind";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { cn } from "@/lib/utils";

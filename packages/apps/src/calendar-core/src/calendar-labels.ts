@@ -1,6 +1,6 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type CalendarUILabels = {

@@ -13,7 +13,7 @@ import {
   canDeleteNotebook,
   findNotebookCollection,
 } from "@/notes-core/src/notes-notebook-write";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 
 function notebookPatchFromDialog(

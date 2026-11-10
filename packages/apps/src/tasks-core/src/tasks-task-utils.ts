@@ -1,4 +1,4 @@
-import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskAlert } from "@/lib/models/tasks-types";
 import {
   isTaskPriorityNone,
   normalizeTaskPriority,

@@ -19,7 +19,7 @@ import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksConflictDialog } from "@/tasks-core/src/tasks-conflict-dialog";
 import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { useTasksAPI } from "@/tasks-core/src/use-tasks-api";
 import { useTasksRescue } from "@/tasks-core/src/use-tasks-rescue";

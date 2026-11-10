@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { downloadContactBlob } from "@/lib/api/wgw/contacts";
 
 import { contactPhotoBlobId, contactPhotoUrl } from "./contacts-display-utils";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 function isDirectPhotoUrl(url: string): boolean {
   return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");

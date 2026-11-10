@@ -4,7 +4,7 @@ import type {
   ChatMentionPrincipal,
   ChatMessage,
   ChatUnfurlMap,
-} from "@/chat-ui/src/chat-types";
+} from "@/lib/models/chat-types";
 import { mapChatPreviews } from "@/meet-core/src/meet-chat-urls";
 
 export const CHAT_STORY_CURRENT_USER_ID = "demo.user";
