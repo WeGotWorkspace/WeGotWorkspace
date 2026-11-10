@@ -79,7 +79,7 @@ export function useImportWordFile({
         label: labels.importWordFile,
         icon: <FileUp aria-hidden />,
         disabled: !online || running,
-        description: online ? undefined : labels.offlineReason,
+        description: online ? labels.importGoogleHint : labels.offlineReason,
         onClick: () => inputRef.current?.click(),
       },
     ];
