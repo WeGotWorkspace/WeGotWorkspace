@@ -1,5 +1,5 @@
 import { render, within } from "@testing-library/react";
-import { CheckCircle2, Star, Trash2 } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar";
@@ -16,10 +16,10 @@ describe("FloatingActionBar", () => {
               { label: "Delete", icon: <Trash2 />, onClick: vi.fn(), severity: "danger" },
               {
                 label: "Done",
-                icon: <CheckCircle2 />,
+                icon: null,
                 onClick: vi.fn(),
                 separatorBefore: true,
-                variant: "primary",
+                showLabel: true,
               },
             ]}
           />
@@ -36,10 +36,14 @@ describe("FloatingActionBar", () => {
     const outlineButtons = container.querySelectorAll(
       ".floating-action-bar__actions .button--variant-outline",
     );
-    expect(outlineButtons.length).toBe(2);
+    // Done is outline too: its label spelled out, no icon.
+    expect(outlineButtons.length).toBe(3);
     expect(
-      container.querySelector(".floating-action-bar__actions .button--variant-primary"),
-    ).toBeTruthy();
+      container.querySelector(".floating-action-bar__actions .button--variant-selection"),
+    ).toBeNull();
+    const done = within(container as HTMLElement).getByRole("button", { name: "Done" });
+    expect(done.querySelector(".button__label")?.textContent).toBe("Done");
+    expect(done.querySelector("svg")).toBeNull();
     expect(
       container.querySelector(".floating-action-bar__actions .button--variant-ghost"),
     ).toBeNull();
@@ -48,7 +52,11 @@ describe("FloatingActionBar", () => {
     ).toBeTruthy();
     expect(container.querySelector(".floating-action-bar__spacer")).toBeTruthy();
 
-    expect(within(container as HTMLElement).getByText("2 Items")).toBeTruthy();
+    // Compact count: check + number, with a separator before the actions.
+    const count = container.querySelector(".floating-action-bar__count");
+    expect(count?.querySelector("svg")).toBeTruthy();
+    expect(within(count as HTMLElement).getByText("2 Items").className).toBe("sr-only");
+    expect(count?.nextElementSibling?.className).toBe("floating-action-bar__spacer");
   });
 
   it("uses singular Item copy for one selection", () => {
@@ -57,6 +65,6 @@ describe("FloatingActionBar", () => {
         <FloatingActionBar items={1} buttons={[{ label: "Star", icon: <Star /> }]} />
       </TooltipProvider>,
     );
-    expect(within(container as HTMLElement).getByText("1 Item")).toBeTruthy();
+    expect(within(container as HTMLElement).getByText("1 Item").className).toBe("sr-only");
   });
 });

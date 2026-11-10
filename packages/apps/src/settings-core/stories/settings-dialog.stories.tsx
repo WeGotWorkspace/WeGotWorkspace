@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { pushWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";
+import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 
 registerBuiltinSettings();
 
@@ -20,18 +21,24 @@ function MockApiStory({ children }: { children: ReactNode }) {
   return children;
 }
 
-const namedSession = {
-  ...mockWorkspaceSession,
-  user: {
-    ...mockWorkspaceSession.user,
-    displayName: "Demo User",
-    username: "demo.user",
-  },
-};
+/** An app sidebar's primary button: the app's Settings is the last option of its menu. */
+function SidebarPrimary({ appId }: { appId: WorkspaceAppId }) {
+  return (
+    <AppSidebarPrimaryProvider settingsAppId={appId}>
+      <SidebarSegmentedNewMenu mainLabel="New" menuLabel="More options" onMainAction={() => {}} />
+    </AppSidebarPrimaryProvider>
+  );
+}
 
-const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
+async function openSettings(canvasElement: HTMLElement) {
+  await userEvent.click(within(canvasElement).getByRole("button", { name: "More options" }));
+  const body = within(canvasElement.ownerDocument.body);
+  await userEvent.click(await body.findByRole("menuitem", { name: "Settings" }));
+}
+
+const meta: Meta<typeof SidebarPrimary> = {
   title: "Features/Settings/Dialog",
-  component: WorkspaceAppSettingsFooter,
+  component: SidebarPrimary,
   parameters: {
     layout: "padded",
   },
@@ -46,40 +53,38 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
+type Story = StoryObj<typeof SidebarPrimary>;
 
+/** Settings alone makes the primary a split button. */
 export const VisibleForCalendar: Story = {
   args: {
     appId: "calendar",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
-    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "More options" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByRole("menuitem", { name: "Settings" })).resolves.toBeTruthy();
   },
 };
 
+/** No settings panel: a plain primary button, no menu. */
 export const HiddenForDrive: Story = {
   args: {
     appId: "drive",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+    await expect(canvas.queryByRole("button", { name: "More options" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "New" })).toBeTruthy();
   },
 };
 
 export const CalendarPanel: Story = {
   args: {
     appId: "calendar",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Calendar" })).resolves.toBeTruthy();
     await expect(body.findByRole("combobox", { name: "Timezone" })).resolves.toBeTruthy();
@@ -98,11 +103,9 @@ export const CalendarPanel: Story = {
 export const TasksPanel: Story = {
   args: {
     appId: "tasks",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Tasks" })).resolves.toBeTruthy();
     const trigger = await body.findByRole("button", { name: /Default list: Inbox/i });
@@ -113,11 +116,9 @@ export const TasksPanel: Story = {
 export const ContactsPanel: Story = {
   args: {
     appId: "contacts",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Contacts" })).resolves.toBeTruthy();
     const trigger = await body.findByRole("button", { name: /Default address book: Personal/i });
@@ -128,11 +129,9 @@ export const ContactsPanel: Story = {
 export const NotesPanel: Story = {
   args: {
     appId: "notes",
-    session: namedSession,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Notes" })).resolves.toBeTruthy();
     const trigger = await body.findByRole("button", { name: /Default notebook: The Journal/i });

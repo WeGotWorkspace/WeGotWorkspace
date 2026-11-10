@@ -59,6 +59,23 @@ describe("TextEditorFormatBar", () => {
     editor.destroy();
   });
 
+  it("sizes every control from the size prop", () => {
+    const editor = createEditor();
+    const { container } = renderFormatBar(
+      <TextEditorFormatBar editor={editor} showPrint={false} size="lg" />,
+    );
+
+    expect(container.querySelector(".text-editor-format-bar")?.getAttribute("data-size")).toBe(
+      "lg",
+    );
+    expect(screen.getByRole("button", { name: "Bold" }).className).toMatch(/icon-button--size-lg/);
+    expect(screen.getByRole("button", { name: "Text, heading level" }).className).toMatch(
+      /button--size-lg/,
+    );
+
+    editor.destroy();
+  });
+
   it("keeps Link in the quote/divider cluster without a preceding separator", () => {
     const editor = createEditor();
     renderFormatBar(<TextEditorFormatBar editor={editor} showPrint={false} />);

@@ -299,9 +299,9 @@ export async function openTasksTab(
   return page;
 }
 
-/** The list is painted: the composer is there and the first load is done. */
+/** The list is painted: the quick add field is there and the first load is done. */
 export async function waitForTasks(tab: Tab): Promise<void> {
-  await tab.getByRole("textbox", { name: "Task name" }).waitFor({ timeout: 60_000 });
+  await tab.getByRole("textbox", { name: "Quick add task" }).waitFor({ timeout: 60_000 });
   await tab.getByRole("button", { name: "All Tasks" }).waitFor({ timeout: 60_000 });
 }
 
@@ -395,7 +395,7 @@ export async function setStoredToken(tab: Tab, token: string | null): Promise<vo
 /** Titles the tab's "All Tasks" view shows (completed tasks are hidden there). */
 export async function shownTitles(tab: Tab, caseId: string): Promise<string[]> {
   const titles = await tab
-    .locator(".tasks-main-view__title")
+    .locator(".tasks-list-row .list-item__title")
     .evaluateAll((els) => els.map((el) => (el.textContent ?? "").trim()));
   return titles.filter((title) => title.includes(caseId)).sort();
 }

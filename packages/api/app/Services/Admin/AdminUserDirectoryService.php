@@ -13,7 +13,7 @@ final class AdminUserDirectoryService
     public function __construct(private GroupDirectoryService $groups) {}
 
     /**
-     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string, enabled: bool}>
+     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string, enabled: bool, isAdmin: bool}>
      */
     public function listSummaries(): array
     {
@@ -42,6 +42,7 @@ final class AdminUserDirectoryService
                 'groups' => $memberOf,
                 'createdAt' => '',
                 'enabled' => $user->isEnabled(),
+                'isAdmin' => $user->is_admin === true,
             ];
         }
 

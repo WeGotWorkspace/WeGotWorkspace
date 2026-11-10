@@ -5,80 +5,44 @@
 }
 
 .chat-reaction-bar__reaction {
-  /* Quiet filled chip: same outline wash as other theme chips, no hairline. */
-  @apply inline-flex h-6 items-center gap-1 border-0 px-1.5 text-xs transition-colors;
-  border-radius: var(--control-radius);
-  background-color: var(--chat-reaction-bg, var(--button-outline-hover-background));
+  /* Filled capsule, the tag chip's look: a translucent ink wash, so it stays a
+     step darker than whatever is behind it (the paper or a hovered row). No
+     hairline. Hover steps from 8% to 12%. */
+  @apply inline-flex h-7 items-center gap-1.5 border-0 px-2.5 text-xs transition-colors;
+  border-radius: var(--control-radius-pill);
+  --chat-reaction-wash: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+  --chat-reaction-wash-strong: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  background-color: var(--chat-reaction-wash);
   color: var(--chat-text, var(--workspace-foreground));
 }
 
-.chat-reaction-bar__reaction:hover {
-  background-color: var(--button-outline-active-background);
+.chat-reaction-bar__reaction:hover:not(:disabled) {
+  background-color: var(--chat-reaction-wash-strong);
 }
 
 .chat-reaction-bar__reaction[data-reacted="true"] {
-  background-color: var(--chat-reaction-selected-bg, var(--button-outline-active-background));
+  /* Your own reaction: the ink as a hairline ring, so it reads without a hue. */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
 }
 
-.chat-reaction-bar__reaction[data-reacted="true"]:hover {
-  background-color: var(
-    --button-outline-active-hover-background,
-    var(--button-outline-active-background)
-  );
-}
-
+/* Add a reaction: the same capsule, a smile in the label ink. */
 .chat-reaction-bar__reaction--add {
-  @apply justify-center border border-dashed px-2;
-  border-color: var(--control-border-color);
-  background-color: transparent;
-  color: var(--chat-muted, var(--workspace-foreground));
+  @apply justify-center px-2;
+  color: var(--chat-muted, var(--workspace-label-color));
+}
+
+.chat-reaction-bar__reaction--add:hover {
+  color: var(--chat-text, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction-add-icon {
-  @apply size-3.5;
+  @apply size-4;
 }
 
 .chat-reaction-bar__reaction-emoji {
-  @apply text-sm leading-none;
+  @apply text-[0.9375rem] leading-none;
 }
 
 .chat-reaction-bar__reaction-count {
-  @apply text-[11px] font-medium tabular-nums;
-}
-
-.chat-reaction-bar__picker {
-  @apply relative w-auto p-1.5;
-}
-
-/* Portaled picker sits off the trigger — keep a pointer bridge so the gap
-   does not drop hover before the cursor reaches the emoji grid. */
-.chat-reaction-bar__picker[data-side="top"]::after,
-.chat-reaction-bar__picker[data-side="bottom"]::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  height: 0.5rem;
-}
-
-.chat-reaction-bar__picker[data-side="top"]::after {
-  top: 100%;
-}
-
-.chat-reaction-bar__picker[data-side="bottom"]::after {
-  bottom: 100%;
-}
-
-.chat-reaction-bar__picker-grid {
-  @apply flex flex-wrap gap-0.5;
-}
-
-.chat-reaction-bar__picker-item {
-  @apply flex size-8 items-center justify-center rounded-md text-base transition-colors;
-}
-
-.chat-reaction-bar__picker-item:hover {
-  background-color: var(
-    --chat-hover,
-    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
-  );
+  @apply text-xs font-medium tabular-nums;
 }

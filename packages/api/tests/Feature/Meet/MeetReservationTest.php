@@ -39,7 +39,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'u:bob',
             ])
             ->assertForbidden()
-            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a team calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }
@@ -55,7 +55,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'groups/design',
             ])
             ->assertForbidden()
-            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a team calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }
@@ -71,7 +71,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'groups/design',
             ])
             ->assertForbidden()
-            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a team calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }

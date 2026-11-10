@@ -25,12 +25,12 @@ describe("validateNewGroup", () => {
   it("requires a name and rejects an existing id or case-insensitive name", () => {
     expect(validateNewGroup(data.groups, "   ")).toEqual({
       ok: false,
-      message: "Group name is required",
+      message: "Team name is required",
     });
     expect(requiredGroupName("  Ops  ")).toEqual({ ok: true, name: "Ops" });
-    expect(validateNewGroup(data.groups, " Administrators ")).toEqual({
+    expect(validateNewGroup(data.groups, " Support ")).toEqual({
       ok: false,
-      message: "Group already exists",
+      message: "Team already exists",
     });
   });
 
@@ -61,14 +61,14 @@ describe("local group membership", () => {
     expect(renamed[0]).toBe(appended[0]);
 
     const withAlice = applyGroupMembership(data.users, groupId, ["alice"]);
-    expect(withAlice[0]?.groups).toEqual(["principals/groups/administrators", groupId]);
+    expect(withAlice[0]?.groups).toEqual(["principals/groups/support", groupId]);
     expect(withAlice[1]).toBe(data.users[1]);
 
     const unchanged = applyGroupMembership(withAlice, groupId, ["alice"]);
     expect(unchanged[0]).toBe(withAlice[0]);
 
     const removed = applyGroupMembership(withAlice, groupId, []);
-    expect(removed[0]?.groups).toEqual(["principals/groups/administrators"]);
+    expect(removed[0]?.groups).toEqual(["principals/groups/support"]);
   });
 
   it("drops a group and strips it from every user", () => {
@@ -76,8 +76,6 @@ describe("local group membership", () => {
     const users = applyGroupMembership(data.users, groupId, ["carol"]);
     expect(groupsWithout(groups, groupId)).toEqual(data.groups);
     expect(usersWithoutGroup(users, groupId)[1]?.groups).toEqual([]);
-    expect(usersWithoutGroup(users, groupId)[0]?.groups).toEqual([
-      "principals/groups/administrators",
-    ]);
+    expect(usersWithoutGroup(users, groupId)[0]?.groups).toEqual(["principals/groups/support"]);
   });
 });

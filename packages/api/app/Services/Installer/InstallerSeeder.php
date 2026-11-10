@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
-use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
-use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Support\AppPaths;
 
 final class InstallerSeeder
@@ -19,7 +17,6 @@ final class InstallerSeeder
         private AppPaths $paths,
         private UserCalendarCollectionsProvisioner $calendarCollections,
         private AddressBookProvisioner $addressBooks,
-        private GroupFilesHomeProvisioner $groupFiles,
     ) {}
 
     public function seed(
@@ -29,6 +26,7 @@ final class InstallerSeeder
         ?string $email,
         bool $enableCalendars,
         bool $enableContacts,
+        bool $isAdmin = false,
     ): void {
         $email = $email !== null && $email !== '' ? $email : $username.'@localhost';
         $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -37,6 +35,7 @@ final class InstallerSeeder
             'username' => $username,
             'digesta1' => '',
             'digest' => $hash,
+            'is_admin' => $isAdmin,
         ]);
 
         $principalUri = 'principals/'.$username;
@@ -64,7 +63,7 @@ final class InstallerSeeder
         }
 
         $this->ensureUserFilesDirectory($username);
-        $this->joinAdminGroup($principalUri);
+        $this->ensureGroupsContainerPrincipal();
     }
 
     public function ensureGroupsContainerPrincipal(): void
@@ -73,26 +72,6 @@ final class InstallerSeeder
             ['uri' => AdminConstants::GROUP_CONTAINER_URI],
             ['email' => null, 'displayname' => 'Groups'],
         );
-    }
-
-    private function joinAdminGroup(string $memberPrincipalUri): void
-    {
-        $this->ensureGroupsContainerPrincipal();
-
-        $group = Principal::query()->firstOrCreate(
-            ['uri' => AdminConstants::ADMIN_GROUP_URI],
-            ['email' => null, 'displayname' => 'Administrators'],
-        );
-        $this->groupFiles->ensureForSlug(substr(AdminConstants::ADMIN_GROUP_URI, strlen(AdminConstants::GROUP_PREFIX)));
-        $member = Principal::query()->where('uri', $memberPrincipalUri)->first();
-        if ($member === null) {
-            return;
-        }
-
-        GroupMember::query()->firstOrCreate([
-            'principal_id' => (int) $group->id,
-            'member_id' => (int) $member->id,
-        ]);
     }
 
     private function ensureUserFilesDirectory(string $username): void

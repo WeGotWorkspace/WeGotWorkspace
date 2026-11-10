@@ -20,7 +20,7 @@ describe("runtime index.html", () => {
 
   it("carries the dark first-paint background from index.html", () => {
     expect(firstPaintStyle).toMatch(
-      /html\[data-theme="dark"\] body \{\s*background-color: #141414;/,
+      /html\[data-theme="dark"\] body \{\s*background-color: #0e1216;/,
     );
     expect(html).toContain(firstPaintStyle);
   });

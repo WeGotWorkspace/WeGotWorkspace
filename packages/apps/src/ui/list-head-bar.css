@@ -1,0 +1,46 @@
+@import "../styles.css" reference;
+
+/*
+ * List head bar (suite list norm): the sticky, frosted, rounded bar above list
+ * content. A table header row (`thead.list-head-bar`) and a grid section heading
+ * (`h3.list-head-bar`) look the same. It sticks with a little air at the top of
+ * the scroller, and content scrolls visibly under the glass. Labels read like
+ * sidebar section labels.
+ *
+ * A `thead` gets its height from its cells and cannot take border-radius, so the
+ * rounding is a clip-path for both.
+ */
+.list-head-bar {
+  position: sticky;
+  top: var(--list-head-sticky-gap, 0.75rem);
+  z-index: 2;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  font-family: var(
+    --field-label-font-family,
+    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
+  );
+  color: var(--workspace-label-color, var(--workspace-foreground));
+}
+
+/* Block bars (grid section headings) size themselves like a list row. */
+.list-head-bar:not(thead) {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  height: var(--list-row-height, 3rem);
+  padding-inline: var(--list-row-padding-x, 1rem);
+}
+
+/* Header cells take the bar's type; without this a `th` falls back to bold. */
+thead.list-head-bar th {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}

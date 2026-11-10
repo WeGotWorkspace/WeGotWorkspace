@@ -1,76 +1,32 @@
-import { useCallback, useMemo, useState } from "react";
-import { Check, CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { useCallback } from "react";
+import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
-import type { TaskEditDialogState } from "@/tasks-core/src/tasks-edit-dialog";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
-import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
+import { TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
-  dueEditSendsShowWithoutTime,
   isTaskCompleted,
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
-  taskAlertsEqual,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
   tasksCompleteToastMessage,
   tasksMoveToastMessage,
 } from "@/tasks-core/src/tasks-toast-messages";
-import type { TasksCreateInput } from "@/tasks-core/src/tasks-task-form";
-import {
-  moveTasksBack,
-  moveTasksToList,
-  revertTaskStatus,
-} from "@/tasks-core/src/tasks-undo-writes";
+import { moveTasksBack, moveTasksToList, statusWrites } from "@/tasks-core/src/tasks-undo-writes";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
+import { useTaskDetailAutosave } from "@/tasks-core/src/use-task-detail-autosave";
+import { useTasksSelectionActions } from "@/tasks-core/src/use-tasks-selection-actions";
 
 type UseTasksMutationsArgs = {
   shell: TasksShellState;
   list: TasksListState;
   exitAnimation: TasksExitAnimationState;
 };
-
-function taskEditValues(input: TasksTaskFormValue) {
-  const due = input.due ?? null;
-  return {
-    title: input.title.trim(),
-    description: input.description.trim() || null,
-    workflowStatus: input.workflowStatus ?? "needs-action",
-    priority: input.priority === TASK_PRIORITY_NONE ? null : input.priority,
-    due,
-    showWithoutTime: due ? (input.showWithoutTime ?? true) : undefined,
-    timeZone: due && input.showWithoutTime === false ? (input.timeZone ?? null) : null,
-    alerts: input.alerts,
-  };
-}
-
-function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): TaskPatch {
-  const patch: TaskPatch = {};
-  if (next.title !== (task.title ?? "")) patch.title = next.title;
-  if (next.description !== (task.description?.trim() || null)) {
-    patch.description = next.description;
-  }
-  if (next.due !== (task.due ?? null)) patch.due = next.due;
-  if (dueEditSendsShowWithoutTime(task, next.due, next.showWithoutTime)) {
-    patch.showWithoutTime = next.showWithoutTime;
-  }
-  if (next.due && next.timeZone !== (task.timeZone ?? null)) patch.timeZone = next.timeZone;
-  if (!next.due && (task.due ?? null) !== null) {
-    patch.due = null;
-    patch.showWithoutTime = true;
-    patch.timeZone = null;
-  }
-  if (next.workflowStatus !== (task.workflowStatus ?? "needs-action")) {
-    patch.workflowStatus = next.workflowStatus;
-  }
-  if (next.priority !== normalizeTaskPriority(task.priority)) patch.priority = next.priority;
-  if (!taskAlertsEqual(next.alerts, task.alerts)) patch.alerts = next.alerts ?? null;
-  return patch;
-}
 
 export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutationsArgs) {
   const {
@@ -89,7 +45,6 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "tasks-dialog-surface",
   });
-  const [editDialog, setEditDialog] = useState<TaskEditDialogState>(null);
 
   const patchTask = useCallback(
     async (taskId: string, patch: TaskPatch, opts?: { signal?: AbortSignal; ifMatch?: string }) => {
@@ -117,7 +72,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       showWithoutTime,
       timeZone,
       alerts,
-    }: TasksCreateInput) => {
+    }: TasksTaskFormValue) => {
       if (!operations || !title.trim()) return;
       const targetList = taskLists.find((list) => list.id === listId);
       if (!canWriteTaskList(targetList)) return;
@@ -179,44 +134,57 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L.toastTaskAdded, operations, setTasks, shell, showMutationError, taskLists],
   );
 
-  const toggleTaskComplete = useCallback(
-    (taskId: string) => {
-      const task = tasks.find((item) => item.id === taskId);
-      if (!task || !operations) return;
-      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
+  const { autosaveTask, setStatusInOrder } = useTaskDetailAutosave({
+    tasks,
+    taskLists,
+    setTasks,
+    operations,
+    patchTask,
+    showMutationError,
+  });
 
-      const beforeStatus = task.workflowStatus ?? "needs-action";
-      const completing = !isTaskCompleted(task);
+  /**
+   * Completes (or reopens) tasks as one undoable write: one task from its circle,
+   * or a selection. Read-only lists are skipped.
+   */
+  const setTasksCompleted = useCallback(
+    (ids: readonly string[], completing: boolean) => {
+      if (!operations) return;
+      const changed = tasks.filter(
+        (task) =>
+          ids.includes(task.id) &&
+          isTaskCompleted(task) !== completing &&
+          canWriteTaskList(taskLists.find((list) => list.id === task.taskListId)),
+      );
+      if (changed.length === 0) return;
       const nextStatus = completing ? "completed" : "needs-action";
-      const toastMessage = tasksCompleteToastMessage(completing, L);
+      const before = new Map(
+        changed.map((task) => [task.id, task.workflowStatus ?? "needs-action"] as const),
+      );
 
-      if (completing) {
-        beginTaskExit(taskId);
-      } else {
-        cancelTaskExit(taskId);
+      for (const task of changed) {
+        if (completing) beginTaskExit(task.id);
+        else cancelTaskExit(task.id);
       }
-
       setTasks((prev) =>
-        prev.map((item) => (item.id === taskId ? { ...item, workflowStatus: nextStatus } : item)),
+        prev.map((item) => (before.has(item.id) ? { ...item, workflowStatus: nextStatus } : item)),
       );
 
       const rollback = () => {
-        cancelTaskExit(taskId);
+        for (const taskId of before.keys()) cancelTaskExit(taskId);
         setTasks((prev) =>
           prev.map((item) =>
-            item.id === taskId ? { ...item, workflowStatus: beforeStatus } : item,
+            before.has(item.id) ? { ...item, workflowStatus: before.get(item.id)! } : item,
           ),
         );
       };
 
       queueMutation({
-        key: `tasks:complete:${taskId}`,
-        toastMessage,
+        key: `tasks:complete:${[...before.keys()].sort().join(",")}`,
+        toastMessage: tasksCompleteToastMessage(completing, changed.length, L),
         icon: completing ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />,
-        execute: async (signal) => {
-          await patchTask(taskId, { workflowStatus: nextStatus }, { signal });
-        },
-        revert: () => revertTaskStatus(operations, setTasks, taskId, beforeStatus),
+        // On each task's save chain: after typed text that is still saving.
+        ...statusWrites(setStatusInOrder, before, nextStatus),
         undo: rollback,
         undoToastMessage: L.toastCompleteUndone,
       });
@@ -226,7 +194,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       beginTaskExit,
       cancelTaskExit,
       operations,
-      patchTask,
+      setStatusInOrder,
       queueMutation,
       setTasks,
       taskLists,
@@ -234,74 +202,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     ],
   );
 
-  const editTask = useCallback((taskId: string) => {
-    setEditDialog({ taskId });
-  }, []);
-
-  const closeEditTask = useCallback(() => {
-    setEditDialog(null);
-  }, []);
-
-  const editingTask = useMemo(() => {
-    if (!editDialog) return null;
-    return tasks.find((item) => item.id === editDialog.taskId) ?? null;
-  }, [editDialog, tasks]);
-
-  const saveEditedTask = useCallback(
-    async (input: TasksTaskFormValue) => {
-      if (!editDialog || !operations) return;
-      const taskId = editDialog.taskId;
+  const toggleTaskComplete = useCallback(
+    (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
-      if (!task || !input.title.trim()) return;
-      if (!canWriteTaskList(taskLists.find((list) => list.id === task.taskListId))) return;
-
-      const next = taskEditValues(input);
-      const listChanged = input.listId !== task.taskListId;
-      const patch = taskEditPatch(task, next);
-
-      const hasPatch = Object.keys(patch).length > 0;
-      if (!hasPatch && !listChanged) {
-        setEditDialog(null);
-        return;
-      }
-
-      const snapshot = task;
-      const optimistic: Task = { ...task, ...next, taskListId: input.listId };
-
-      setTasks((prev) => prev.map((item) => (item.id === taskId ? optimistic : item)));
-      setEditDialog(null);
-      shell.show(L.toastTaskUpdated, { icon: <Check className="size-4" /> });
-
-      // A move that landed stays when the patch after it fails.
-      let rollback: Task = snapshot;
-      try {
-        // The patch starts from the version the move produced, not the one
-        // this dialog opened on, or the server refuses it as a conflict (#1814).
-        const moved = listChanged
-          ? await operations.moveTaskToList(taskId, input.listId)
-          : undefined;
-        if (moved) rollback = moved;
-        if (hasPatch) {
-          await patchTask(taskId, patch, {
-            ifMatch: (moved as (Task & { etag?: string }) | undefined)?.etag,
-          });
-        }
-      } catch {
-        setTasks((prev) => prev.map((item) => (item.id === taskId ? rollback : item)));
-        showMutationError();
-      }
+      if (task) setTasksCompleted([taskId], !isTaskCompleted(task));
     },
-    [
-      editDialog,
-      L.toastTaskUpdated,
-      operations,
-      patchTask,
-      setTasks,
-      shell,
-      showMutationError,
-      taskLists,
-      tasks,
-    ],
+    [setTasksCompleted, tasks],
   );
 
   const deleteTasks = useCallback(
@@ -328,7 +234,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
 
       queueMutation({
         key: `tasks:delete:${ids.slice().sort().join(",")}`,
-        toastMessage: L.toastDeleted,
+        toastMessage: L.toastTasksDeleted(removed.length),
         icon: <Trash2 className="size-4" />,
         // A delete cannot be taken back on the server: it waits, and Undo cancels it.
         irreversible: true,
@@ -341,16 +247,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         undoToastMessage: L.toastDeleteUndone,
       });
     },
-    [
-      L.toastDeleteUndone,
-      L.toastDeleted,
-      cancelTaskExit,
-      operations,
-      queueMutation,
-      setTasks,
-      taskLists,
-      tasks,
-    ],
+    [L, cancelTaskExit, operations, queueMutation, setTasks, taskLists, tasks],
   );
 
   const requestDeleteTask = useCallback(
@@ -405,6 +302,17 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L, operations, queueMutation, setTasks, taskLists, tasks],
   );
 
+  const { moveDialog, setMoveDialog, requestDeleteSelected, selectionBar, selectionBarButtons } =
+    useTasksSelectionActions({
+      L,
+      list,
+      tasks,
+      taskLists,
+      requestConfirm,
+      deleteTasks,
+      setTasksCompleted,
+    });
+
   const handleTaskExitAnimationEnd = useCallback(
     (taskId: string) => {
       exitAnimation.finishTaskExit(taskId, shouldHideCompletedTaskAfterExit(view));
@@ -415,11 +323,13 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   return {
     createTaskFromForm,
     toggleTaskComplete,
-    editTask,
-    editDialog,
-    editingTask,
-    closeEditTask,
-    saveEditedTask,
+    setTasksCompleted,
+    requestDeleteSelected,
+    moveDialog,
+    setMoveDialog,
+    selectionBar,
+    selectionBarButtons,
+    autosaveTask,
     requestDeleteTask,
     moveToList,
     confirmDialog,

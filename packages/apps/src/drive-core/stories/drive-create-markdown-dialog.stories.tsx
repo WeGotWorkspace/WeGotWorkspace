@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import {
+  DriveCreateMarkdownDialog,
+  type DriveCreateDialogKind,
+} from "@/drive-core/src/drive-create-markdown-dialog";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
@@ -8,11 +12,15 @@ import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 
 function CreateMarkdownDialogHarness({
+  kind = "document",
   defaultName = "Untitled.md",
   initialBrowsePath = "My Drive",
+  onConfirm = STORY_NOOP,
 }: {
+  kind?: DriveCreateDialogKind;
   defaultName?: string;
   initialBrowsePath?: string;
+  onConfirm?: (name: string, destinationPath: string) => void;
 }) {
   const [open, setOpen] = useState(true);
   const files = getDriveStoryFilesInMyDrive();
@@ -21,6 +29,7 @@ function CreateMarkdownDialogHarness({
     <DriveStoryScope className="max-w-lg p-6">
       <DriveCreateMarkdownDialog
         open={open}
+        kind={kind}
         labels={driveLabels}
         defaultName={defaultName}
         initialBrowsePath={initialBrowsePath}
@@ -30,7 +39,7 @@ function CreateMarkdownDialogHarness({
         currentUsername="alice"
         groupRootNames={new Set(["Engineering"])}
         onClose={() => setOpen(false)}
-        onConfirm={STORY_NOOP}
+        onConfirm={onConfirm}
       />
     </DriveStoryScope>
   );
@@ -76,4 +85,38 @@ export const WithMockFiles: Story = {
       />
     </DriveStoryScope>
   ),
+};
+
+const onCreateFolder = fn();
+
+/**
+ * New folder (Drive): the same dialog, no extension. The picker opens on the
+ * folder in view and that folder is chosen, so Create folder works at once.
+ */
+export const NewFolder: Story = {
+  tags: ["vitest-ci"],
+  render: () => (
+    <CreateMarkdownDialogHarness
+      kind="folder"
+      defaultName=""
+      initialBrowsePath="My Drive"
+      onConfirm={onCreateFolder}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = within(
+      await body.findByRole("dialog", { name: driveLabels.createFolderDialogTitle }),
+    );
+    const create = dialog.getByRole("button", { name: driveLabels.createFolderDialogConfirm });
+    await expect(create).toBeDisabled();
+    await userEvent.type(
+      dialog.getByPlaceholderText(driveLabels.createFolderDialogNamePlaceholder),
+      "Plans",
+    );
+    await expect(dialog.queryByText(".md")).not.toBeInTheDocument();
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+    await expect(onCreateFolder).toHaveBeenCalledWith("Plans", "My Drive");
+  },
 };

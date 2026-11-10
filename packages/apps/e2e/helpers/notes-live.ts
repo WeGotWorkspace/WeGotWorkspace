@@ -7,11 +7,11 @@ export const E2E_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 export const E2E_NOTEBOOK_ID = "notes-general";
 
 /**
- * A notebook other than the default one: the admin's group notebook, which
- * every dev install has. On a seeded account the first listed note is often
+ * A notebook other than the default one: the dev Team's notebook, which
+ * every dev install has (#1925). On a seeded account the first listed note is often
  * outside the default notebook too.
  */
-export const E2E_OTHER_NOTEBOOK_ID = "group-administrators";
+export const E2E_OTHER_NOTEBOOK_ID = "group-team";
 
 type ServerNoteRow = {
   id: string;

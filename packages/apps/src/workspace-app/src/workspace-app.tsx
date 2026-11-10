@@ -47,6 +47,8 @@ export type WorkspaceAppProps = {
   sidebar: (chrome: WorkspaceAppChrome) => ReactNode;
   list: (chrome: WorkspaceAppChrome) => {
     header: ReactNode;
+    /** Above the scrolling list, shown even when it is empty (e.g. a quick add field). */
+    listTop?: ReactNode;
     listContent: ReactNode;
     hasItems: boolean;
     emptyLabel: string;
@@ -200,6 +202,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
         {sidebar(chrome)}
         <CollectionListWorkspace
           header={listProps.header}
+          listTop={listProps.listTop}
           listContent={listProps.listContent}
           hasItems={listProps.hasItems}
           emptyLabel={listProps.emptyLabel}

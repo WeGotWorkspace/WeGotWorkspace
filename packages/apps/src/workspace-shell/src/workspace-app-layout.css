@@ -1,7 +1,10 @@
 @import "../../styles.css" reference;
 
 .workspace-columns {
-  @apply flex h-dvh w-full overflow-hidden relative;
+  /* Clip, not hidden: a hidden box still scrolls programmatically, so focusing
+     into a panel that is still sliding in shoved the whole row (sidebar too)
+     sideways, then the scroll snapped back as the panel arrived. */
+  @apply flex h-dvh w-full overflow-clip relative;
   font-family: var(--font-sans);
   background-color: var(--workspace-root-bg, var(--workspace-surface));
   container: workspace-columns / inline-size;
@@ -34,14 +37,16 @@
 
 .workspace-app-layout__main-header {
   /*
-   * Block padding (`p-4 md:p-6`) is the suite chrome rhythm — AppSidebar header
-   * mirrors it with `py-4 md:py-6` so the app-switch tile tops with IconButtons.
+   * The suite header strip (`--workspace-header-*`): list, detail and side-panel
+   * headers share the height, and the AppSidebar head the padding, so the bottom
+   * rules line up and the app-switch tile tops with the IconButtons.
    */
-  @apply shrink-0 border-b p-4 md:p-6;
-  border-color: var(
-    --workspace-main-header-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
+  @apply shrink-0 border-b px-4 md:px-6;
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
+  /* Same hairline as the sidebar edge. */
+  border-color: var(--workspace-divider-color);
 }
 
 .workspace-app-layout__main-scroll {
@@ -75,55 +80,33 @@
 
 .workspace-sidebar-account-footer {
   padding-inline: var(--app-sidebar-padding-x, 1rem);
+  padding-block-end: 0.75rem;
+}
+
+/*
+ * Signed-in user in any sidebar: a frosted card (no border); log-out is a ghost
+ * button inside it. Inside the account footer the wrapper owns the inset.
+ */
+.app-sidebar .workspace-app-layout__user-footer {
+  margin: 0.5rem var(--app-sidebar-padding-x, 1rem) 0.75rem;
+  padding: 0.625rem 0.625rem 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+  --workspace-user-footer-text-color: var(--workspace-foreground);
+  color: var(--workspace-user-footer-text-color);
+  --user-avatar-presence-ring: color-mix(
+    in oklch,
+    var(--workspace-foreground) 7%,
+    var(--workspace-sidebar-surface)
+  );
 }
 
 .workspace-sidebar-account-footer .workspace-app-layout__user-footer {
-  padding-inline: 0;
-}
-
-.workspace-sidebar-account-footer__settings {
-  @apply border-t py-2;
-  border-color: var(
-    --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
-}
-
-.workspace-sidebar-account-footer__settings-button {
-  @apply relative flex w-full min-w-0 items-center gap-2 rounded text-left text-sm font-medium;
-  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
-  /* Same glyph inset as collection / menu rows so the icon column lines up. */
-  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
-  border: 1px solid transparent;
-  background-color: transparent;
-  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
-}
-
-.workspace-sidebar-account-footer__settings-button:hover {
-  color: var(
-    --button-outline-hover-color,
-    var(--button-outline-color, var(--workspace-foreground))
-  );
-  background-color: var(
-    --button-outline-hover-background,
-    color-mix(in oklab, var(--workspace-foreground) 4%, var(--workspace-surface))
-  );
-}
-
-.workspace-sidebar-account-footer__settings-button:focus-visible {
-  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
-  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
-}
-
-.workspace-sidebar-account-footer__settings-icon {
-  @apply inline-flex shrink-0 items-center justify-center self-center;
-  width: 1rem;
-  min-width: 1rem;
-  height: 1rem;
-}
-
-.workspace-sidebar-account-footer__settings-label {
-  @apply min-w-0 truncate;
+  margin: 0.5rem 0 0;
 }
 
 /*
@@ -174,9 +157,22 @@
   }
 }
 
-/* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
+/*
+ * Right-hand panel: the AppSidebar mirrored (suite SST). Same fill, hairline,
+ * inner-edge radius and shadow, on the opposite edge, with the same slide.
+ * Products only set `--workspace-panel-width`. Raised over main so the shadow
+ * falls on the content.
+ */
 .workspace-app-layout__panel {
-  @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width];
+  @apply relative z-[1] flex min-h-0 shrink-0 flex-col overflow-hidden will-change-transform transition-[translate,margin,border-width];
+  flex-basis: var(--workspace-panel-width, auto);
+  width: var(--workspace-panel-width, auto);
+  max-width: var(--workspace-panel-width, none);
+  background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
+  border-inline-start: 1px solid var(--workspace-divider-color, var(--border));
+  border-start-start-radius: var(--sidebar-panel-radius);
+  border-end-start-radius: var(--sidebar-panel-radius);
+  box-shadow: var(--sidebar-panel-shadow-end);
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
 }
@@ -188,6 +184,7 @@
 .workspace-app-layout__panel[data-open="false"] {
   @apply translate-x-full border-l-0 pointer-events-none;
   margin-right: calc(-1 * var(--workspace-panel-width, 0px));
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

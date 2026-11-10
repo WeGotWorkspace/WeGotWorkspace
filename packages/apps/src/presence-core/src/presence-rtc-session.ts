@@ -11,6 +11,7 @@ import {
   getPrincipalLinkRegistry,
   type PrincipalLinkRegistry,
 } from "@/lib/rtc/session/principal-link-registry";
+import { HttpSignalingError } from "@/lib/rtc/signaling/http-client";
 import type { RtcPeerDescriptor, RtcPollIntervals, RtcSettings } from "@/lib/rtc/types";
 import { parsePresenceEnvelope } from "@/presence-core/src/presence-envelope";
 import type {
@@ -37,11 +38,27 @@ const ALONE_STEADY_POLL_MS = 4_000;
  */
 const IDLE_STEADY_POLL_MS = 20000;
 
+/** What one presence session writes into the suite-level principal link registry. */
+export type PrincipalLinkSink = Pick<
+  PrincipalLinkRegistry,
+  | "registerLink"
+  | "retain"
+  | "setConnectingUsernames"
+  | "setPrincipalPoller"
+  | "receive"
+  | "markSendFailed"
+>;
+
 export type PresenceRtcSessionOptions = {
   room: string;
   rtcSettings: RtcSettings;
-  /** Injected in tests; the live app publishes into the suite-level singleton. */
-  linkRegistry?: PrincipalLinkRegistry;
+  /**
+   * Injected in tests. The live app passes one Team room's share of the
+   * suite-level registry (`TeamPrincipalLinks`), or the singleton itself.
+   */
+  linkRegistry?: PrincipalLinkSink;
+  /** The server refused this room (403): the user left the Team (#1921). */
+  onRefused?: () => void;
 };
 
 /**
@@ -55,7 +72,12 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   private readonly mesh: RtcPeerMesh;
 
-  private readonly registry: PrincipalLinkRegistry;
+  private readonly registry: PrincipalLinkSink;
+
+  /** Stretches the slow steady polls when a user has several Team rooms (#1921). */
+  private steadyScale = 1;
+
+  readonly room: string;
 
   private readonly pollIntervals: RtcPollIntervals = {
     connectingMs: 400,
@@ -63,6 +85,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
   };
 
   constructor(options: PresenceRtcSessionOptions) {
+    this.room = options.room;
     this.registry = options.linkRegistry ?? getPrincipalLinkRegistry();
     const binding = createDataBinding({
       label: DC_LABEL,
@@ -105,6 +128,9 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.emit({ type: "roster" });
       },
       onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
+      onPollError: (error) => {
+        if (error instanceof HttpSignalingError && error.status === 403) options.onRefused?.();
+      },
       onPollData: () => {
         this.syncPrincipalLinks();
         this.updatePollCadence();
@@ -121,11 +147,30 @@ export class PresenceRtcSession implements PresenceMeshSession {
   private updatePollCadence(): void {
     const peers = this.mesh.getRoomPeers();
     if (peers.length === 0) {
-      this.pollIntervals.steadyMs = ALONE_STEADY_POLL_MS;
+      this.pollIntervals.steadyMs = ALONE_STEADY_POLL_MS * this.steadyScale;
       return;
     }
     const allLinked = peers.every((peer) => this.isLinked(peer.id));
-    this.pollIntervals.steadyMs = allLinked ? IDLE_STEADY_POLL_MS : ACTIVE_STEADY_POLL_MS;
+    // Only the two slow states stretch: a peer that is still connecting keeps the fast cadence.
+    this.pollIntervals.steadyMs = allLinked
+      ? IDLE_STEADY_POLL_MS * this.steadyScale
+      : ACTIVE_STEADY_POLL_MS;
+  }
+
+  /**
+   * A user in N Team rooms polls each of them. The composite session sets
+   * `max(1, N / 2)` here, so all rooms together poll at most twice as often
+   * as one room (#1921 load check).
+   */
+  setSteadyScale(scale: number): void {
+    this.steadyScale = Math.max(1, scale);
+    this.updatePollCadence();
+  }
+
+  /** This tab's peer id in the room, once joined. Used for the leave beacon. */
+  ownPeers(): { room: string; peerId: string }[] {
+    const peerId = this.mesh.getMyId();
+    return peerId ? [{ room: this.room, peerId }] : [];
   }
 
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void {

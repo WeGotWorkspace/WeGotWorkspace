@@ -87,3 +87,21 @@
   @apply rounded-sm px-0.5;
   background: var(--text-editor-highlight);
 }
+
+/* Dark: same chips as the editor's track-change marks. */
+:root[data-theme="dark"] .docs-collab-highlight--insertion {
+  border-bottom: 0;
+  border-radius: 0.25rem;
+  padding-inline: 0.125rem;
+  --docs-collab-highlight-bg: var(--track-ins-bg);
+  --docs-collab-highlight-fg: var(--track-ins-fg);
+  box-shadow: inset 0 0 0 1px var(--track-ins-edge);
+}
+
+:root[data-theme="dark"] .docs-collab-highlight--deletion {
+  border-radius: 0.25rem;
+  padding-inline: 0.125rem;
+  --docs-collab-highlight-bg: var(--track-del-bg);
+  --docs-collab-highlight-fg: var(--track-del-fg);
+  text-decoration-color: var(--track-del-fg);
+}

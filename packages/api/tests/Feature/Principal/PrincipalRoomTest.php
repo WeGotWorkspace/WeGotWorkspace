@@ -18,7 +18,8 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class PrincipalRoomTest extends WgwDatabaseTestCase
 {
-    private const WORKSPACE_ROOM_ID = 'p_workspace';
+    /** A Team that alice and bob share; the room machinery is the same for every Team. */
+    private const TEAM_ROOM_ID = 'p_groups.team';
 
     private const GROUP_ROOM_ID = 'p_groups.design';
 
@@ -32,11 +33,17 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
 
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('bob', displayName: 'Bob');
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        foreach (['alice', 'bob'] as $username) {
+            $principal = Principal::forUsername($username);
+            $this->assertNotNull($principal);
+            $this->addPrincipalToGroup($team, $principal);
+        }
     }
 
     public function test_unauthenticated_join_is_denied(): void
     {
-        $this->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice'])
+        $this->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice'])
             ->assertUnauthorized()
             ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
     }
@@ -50,22 +57,33 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         ]);
 
         $this->withBearer($guestToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Visitor'])
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Visitor'])
             ->assertUnauthorized()
             ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
         $this->withBearer($guestToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/configuration')
             ->assertUnauthorized()
             ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
         $this->assertSame(0, PrincipalPeer::query()->count());
     }
 
-    public function test_any_authenticated_user_may_join_the_workspace_room(): void
+    public function test_nobody_may_join_the_old_workspace_room(): void
+    {
+        $this->grantAdminRole('alice');
+
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->postJson('/api/v1/rooms/p_workspace/participants', ['name' => 'Alice'])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+        $this->assertSame(0, PrincipalPeer::query()->count());
+    }
+
+    public function test_a_team_member_joins_the_team_room_with_a_username_peer_id(): void
     {
         $token = $this->issueBearerTokenFor('alice');
 
         $join = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice']);
         $join->assertOk();
         $join->assertJsonStructure(['peerId', 'peers']);
 
@@ -79,11 +97,11 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $bobToken = $this->issueBearerTokenFor('bob');
 
         $this->withBearer($aliceToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [])
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', [])
             ->assertOk();
 
         $bobJoin = $this->withBearer($bobToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Bob']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Bob']);
         $bobJoin->assertOk();
         $bobJoin->assertJsonPath('peers.0.name', 'alice');
     }
@@ -94,11 +112,11 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $bobToken = $this->issueBearerTokenFor('bob');
 
         $this->withBearer($aliceToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice'])
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice'])
             ->assertOk();
 
         $bobJoin = $this->withBearer($bobToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Bob']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Bob']);
         $bobJoin->assertOk();
         $bobJoin->assertJsonPath('peers.0.user', 'alice');
         $bobJoin->assertJsonPath('peers.0.name', 'Alice');
@@ -142,7 +160,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
 
         $offerPayload = ['type' => 'offer', 'sdp' => 'v=0'];
         $this->withBearer($aliceToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events', [
                 'peerId' => $alicePeerId,
                 'to' => $bobPeerId,
                 'type' => 'offer',
@@ -152,7 +170,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->assertJson(['ok' => true]);
 
         $poll = $this->withBearer($bobToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$bobPeerId.'&since=0');
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$bobPeerId.'&since=0');
         $poll->assertOk();
         $poll->assertJsonPath('peers.0.id', $alicePeerId);
         $messages = $poll->json('messages');
@@ -164,7 +182,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $offerId = (int) $messages[0]['id'];
 
         $this->withBearer($bobToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events', [
                 'peerId' => $bobPeerId,
                 'to' => $alicePeerId,
                 'type' => 'answer',
@@ -172,7 +190,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ])->assertOk();
 
         $this->withBearer($aliceToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events', [
                 'peerId' => $alicePeerId,
                 'to' => $bobPeerId,
                 'type' => 'ice',
@@ -181,7 +199,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
 
         // Since-cursor semantics: bob's next poll from the offer id returns only the ice message.
         $second = $this->withBearer($bobToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$bobPeerId.'&since='.$offerId);
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$bobPeerId.'&since='.$offerId);
         $second->assertOk();
         $secondMessages = $second->json('messages');
         $this->assertCount(1, $secondMessages);
@@ -197,7 +215,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $bobPeerId = $this->joinWorkspace($bobToken, 'Bob');
 
         $this->withBearer($aliceToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events', [
                 'peerId' => $alicePeerId,
                 'to' => $bobPeerId,
                 'type' => 'bye',
@@ -213,14 +231,14 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $peerId = $this->joinWorkspace($token, 'Alice');
 
         $first = $this->withBearer($token)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$peerId.'&since=0');
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$peerId.'&since=0');
         $first->assertOk();
         $first->assertJsonStructure(['peers', 'messages', 'rosterSig']);
         $sig = (string) $first->json('rosterSig');
         $this->assertNotSame('', $sig);
 
         $this->withBearer($token)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$peerId.'&since=0&sig='.urlencode($sig))
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$peerId.'&since=0&sig='.urlencode($sig))
             ->assertNoContent();
     }
 
@@ -233,16 +251,16 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $bobPeerId = $this->joinWorkspace($bobToken, 'Bob');
 
         $rosterPoll = $this->withBearer($aliceToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0');
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0');
         $rosterPoll->assertOk();
         $sig = (string) $rosterPoll->json('rosterSig');
 
         $this->withBearer($aliceToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0&sig='.urlencode($sig))
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0&sig='.urlencode($sig))
             ->assertNoContent();
 
         $this->withBearer($bobToken)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events', [
                 'peerId' => $bobPeerId,
                 'to' => $alicePeerId,
                 'type' => 'offer',
@@ -250,7 +268,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ])->assertOk();
 
         $withMessage = $this->withBearer($aliceToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0&sig='.urlencode($sig));
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0&sig='.urlencode($sig));
         $withMessage->assertOk();
         $this->assertCount(1, $withMessage->json('messages'));
     }
@@ -263,7 +281,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $alicePeerId = $this->joinWorkspace($aliceToken, 'Alice');
 
         $this->withBearer($bobToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$alicePeerId.'&since=0')
             ->assertForbidden();
     }
 
@@ -276,12 +294,12 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $bobPeerId = $this->joinWorkspace($bobToken, 'Bob');
 
         $this->withBearer($aliceToken)
-            ->deleteJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants/'.$alicePeerId)
+            ->deleteJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants/'.$alicePeerId)
             ->assertOk()
             ->assertJson(['ok' => true]);
 
         $this->withBearer($bobToken)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$bobPeerId.'&since=0')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$bobPeerId.'&since=0')
             ->assertOk()
             ->assertJsonPath('peers', []);
     }
@@ -291,18 +309,18 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $token = $this->issueBearerTokenFor('alice');
 
         $first = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice']);
         $first->assertOk();
         $firstPeerId = (string) $first->json('peerId');
 
         $second = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice']);
         $second->assertOk();
         $secondPeerId = (string) $second->json('peerId');
         $this->assertNotSame($firstPeerId, $secondPeerId);
 
         $this->withBearer($token)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertOk()
             ->assertJsonPath('peers.0.id', $secondPeerId);
     }
@@ -312,7 +330,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $token = $this->issueBearerTokenFor('alice');
 
         $first = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice']);
         $first->assertOk();
         $firstPeerId = (string) $first->json('peerId');
 
@@ -321,14 +339,14 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->update(['seen_at' => time() - 20]);
 
         $second = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice']);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => 'Alice']);
         $second->assertOk();
         $secondPeerId = (string) $second->json('peerId');
         $this->assertNotSame($firstPeerId, $secondPeerId);
         $this->assertSame([], $second->json('peers'));
 
         $this->withBearer($token)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
             ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
@@ -339,7 +357,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->joinWorkspace($token, 'Alice');
 
         $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/messages', ['body' => 'hi'])
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/messages', ['body' => 'hi'])
             ->assertStatus(405);
     }
 
@@ -350,7 +368,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         ]);
 
         $this->withBearer($this->issueBearerTokenFor('alice'))
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/configuration')
             ->assertOk()
             ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478')
             ->assertJsonPath('rtc.turnAvailable', false);
@@ -362,7 +380,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $browser = str_repeat('ab', 16);
 
         $first = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', [
                 'name' => 'Alice',
                 'browserId' => $browser,
             ]);
@@ -370,7 +388,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $firstPeerId = (string) $first->json('peerId');
 
         $second = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', [
                 'name' => 'Alice',
                 'browserId' => $browser,
             ]);
@@ -381,7 +399,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->assertSame($browser, PrincipalPeer::query()->where('peer_id', $secondPeerId)->value('browser_id'));
 
         $this->withBearer($token)
-            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
             ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
@@ -391,7 +409,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $token = $this->issueBearerTokenFor('alice');
 
         $laptop = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', [
                 'name' => 'Alice',
                 'browserId' => str_repeat('11', 16),
             ]);
@@ -399,7 +417,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $laptopPeerId = (string) $laptop->json('peerId');
 
         $tablet = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', [
                 'name' => 'Alice',
                 'browserId' => str_repeat('22', 16),
             ]);
@@ -410,12 +428,12 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
 
     public function test_configuration_requires_an_actor(): void
     {
-        $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+        $this->getJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/configuration')
             ->assertUnauthorized()
             ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
     }
 
-    public function test_a_member_gets_turn_credentials_for_the_workspace_room(): void
+    public function test_a_member_gets_turn_credentials_for_a_team_room(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
@@ -424,7 +442,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $token = $this->issueBearerTokenFor('alice');
         $peerId = $this->joinWorkspace($token, 'Alice');
 
-        $response = $this->withBearer($token)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/relay', [
+        $response = $this->withBearer($token)->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/relay', [
             'peerId' => $peerId,
             'target' => '*',
             'reason' => 'precheck',
@@ -438,7 +456,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_relay_in_the_workspace_room_is_unavailable_without_a_secret(): void
+    public function test_relay_in_a_team_room_is_unavailable_without_a_secret(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
@@ -447,7 +465,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $token = $this->issueBearerTokenFor('alice');
         $peerId = $this->joinWorkspace($token, 'Alice');
 
-        $this->withBearer($token)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/relay', [
+        $this->withBearer($token)->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/relay', [
             'peerId' => $peerId,
             'target' => '*',
             'reason' => 'precheck',
@@ -459,7 +477,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
     private function joinWorkspace(string $token, string $name): string
     {
         $join = $this->withBearer($token)
-            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => $name]);
+            ->postJson('/api/v1/rooms/'.self::TEAM_ROOM_ID.'/participants', ['name' => $name]);
         $join->assertOk();
 
         return (string) $join->json('peerId');

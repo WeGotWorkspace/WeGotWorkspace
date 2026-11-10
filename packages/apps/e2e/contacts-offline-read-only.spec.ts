@@ -132,12 +132,11 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       // Offline edit of the shared card.
       await tab.getByText(ORIGINAL, { exact: true }).first().click();
       await setTabOffline(tab, true);
-      await tab.getByRole("button", { name: "Edit", exact: true }).click();
+      // No Edit button: the open contact is editable as is.
       await tab.getByLabel("First name").fill(OFFLINE_GIVEN);
       await expect(tab.getByText(OFFLINE, { exact: true }).first()).toBeVisible();
-      // Let the debounced autosave queue the edit, then leave edit mode.
+      // Let the debounced autosave queue the edit.
       await tab.waitForTimeout(1_500);
-      await tab.getByRole("button", { name: "Edit", exact: true }).click();
 
       // The owner makes the share view-only; the teammate reconnects.
       await shareBook(false);

@@ -1,4 +1,4 @@
-import { FileSliders, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { ChevronDown, FileSliders, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import {
@@ -21,7 +21,7 @@ export function DocsPageSetupIcon({ pageSetup }: { pageSetup: TextEditorPageSetu
 export function DocsPageSetupMenu({ disabled = false, ...props }: DocsPageSetupMenuProps) {
   return (
     <DropdownMenu
-      align="end"
+      align="start"
       sideOffset={10}
       disabled={disabled}
       items={docsPageSetupMenuItems(props)}
@@ -32,6 +32,7 @@ export function DocsPageSetupMenu({ disabled = false, ...props }: DocsPageSetupM
           aria-label={docsPageSetupButtonLabel(props.pageSetup, props.labels)}
           title={docsPageSetupButtonLabel(props.pageSetup, props.labels)}
           icon={<DocsPageSetupIcon pageSetup={props.pageSetup} />}
+          trailingIcon={<ChevronDown />}
           size="md"
           variant="outline"
           disabled={disabled}

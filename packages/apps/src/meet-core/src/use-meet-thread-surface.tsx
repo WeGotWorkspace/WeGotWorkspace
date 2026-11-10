@@ -68,7 +68,6 @@ export function useMeetThreadSurface({
               initialContent={cachedThread.parent.body}
               onSend={(payload) => onSaveEdit(cachedThread.parent.id, payload)}
               onCancel={onCancelEdit}
-              hint={null}
             />
           ) : undefined
         }

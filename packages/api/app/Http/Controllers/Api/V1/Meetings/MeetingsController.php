@@ -37,7 +37,7 @@ final class MeetingsController
         $roomId = (string) $validated['room'];
         $ownerPrincipal = (string) $validated['ownerPrincipal'];
         if (! $this->reservations->canClaimOwnerPrincipal($username, $ownerPrincipal)) {
-            throw new MeetResponseException(403, 'forbidden', 'You can only reserve a room for your own principal or a group calendar you can write.');
+            throw new MeetResponseException(403, 'forbidden', 'You can only reserve a room for your own principal or a team calendar you can write.');
         }
         $existing = $this->reservations->find($roomId);
         $actor = $this->reservations->actorPrincipal($username);
