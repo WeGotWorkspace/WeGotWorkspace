@@ -12,7 +12,7 @@ A snapshot test resolves every label bag (strings, nested records, and function 
 
 ## Non-goals
 
-- No visible text change. Inconsistencies found on the way (for example "Add people or groups" vs "Add people or groups…", "could not sync" vs "couldn’t sync") stay as they are and are listed for the product lead.
+- No visible text change. Inconsistencies found on the way (for example "could not sync" vs "couldn’t sync") stay as they are and are listed for the product lead.
 - No renaming of app label keys. Keys such as `removeNotebookShareTitle` or `cancel` stay, so callsites, stories and `labels` overrides keep working.
 - No i18n layer, no runtime locale switching.
 - Strings that look the same but mean different things ("None" as an alarm choice vs a paper size, "New" as a tab vs a button, "Today", "Location") are not moved.
@@ -24,6 +24,7 @@ A snapshot test resolves every label bag (strings, nested records, and function 
 
 ## Technical constraints
 
+- People-picker copy (placeholder, section hint, remove confirm) stays in `sharePrincipalCopy` (`share-ui/share-labels.ts`), which #1980 added; the base does not duplicate it.
 - `as const` label bags (`docsLabels`, `driveLabels`, `meetLabels`, `chatUiLabels`, `shareLabels`) derive their type with `typeof`. The base is declared `as const` too, so a moved value keeps its literal type and these derived types do not change.
 - One app per commit, so a label-file conflict with the import/export branch stays local to one commit.
 - The merge binding keeps today's behaviour: no overrides returns the defaults; overrides are a shallow spread over the defaults.
