@@ -2,106 +2,10 @@ import { mkdir, readFile, copyFile } from "node:fs/promises";
 import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
 import { expect, test, type Page } from "./helpers/live-test";
-import {
-  docsUrlForFile,
-  loginToDocs,
-  myDriveDocSearchPath,
-  seedDocAtPath,
-} from "./helpers/docs-live";
+import { openExportDoc } from "./helpers/docs-export-live";
 
 /** Optional: where to keep the downloaded files for a manual or LibreOffice check. */
 const OUT_DIR = process.env.WGW_E2E_DOWNLOAD_DIR;
-
-/** Draw a 480 × 240 PNG in the page, upload it next to the Doc and return its FileNode id. */
-async function uploadPngNextTo(page: Page, docName: string, imageName: string): Promise<string> {
-  return page.evaluate(
-    async ({ docName, imageName }) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 480;
-      canvas.height = 240;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("no canvas");
-      ctx.fillStyle = "#1d4ed8";
-      ctx.fillRect(0, 0, 480, 240);
-      const png = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob"))), "image/png"),
-      );
-      const auth = { Authorization: `Bearer ${localStorage.getItem("wgw.api.access_token")}` };
-      const session = await (await fetch("/api/v1/jmap/session", { headers: auth })).json();
-      const accountId = session.primaryAccounts["urn:ietf:params:jmap:filenode"];
-      const jmap = async (methodCalls: unknown[]) =>
-        (
-          await fetch("/api/v1/jmap", {
-            method: "POST",
-            headers: { ...auth, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:filenode"],
-              methodCalls,
-            }),
-          })
-        ).json();
-      const named = await jmap([
-        ["FileNode/query", { accountId, filter: { name: docName } }, "q0"],
-        [
-          "FileNode/get",
-          { accountId, "#ids": { resultOf: "q0", name: "FileNode/query", path: "/ids" } },
-          "g0",
-        ],
-      ]);
-      const doc = named.methodResponses[1][1].list.find(
-        (node: { name: string }) => node.name === docName,
-      );
-      const upload = await (
-        await fetch(`/api/v1/jmap/upload/${accountId}`, {
-          method: "POST",
-          headers: { ...auth, "Content-Type": "image/png" },
-          body: png,
-        })
-      ).json();
-      const set = await jmap([
-        [
-          "FileNode/set",
-          {
-            accountId,
-            create: { i0: { parentId: doc.parentId, name: imageName, blobId: upload.blobId } },
-          },
-          "s0",
-        ],
-      ]);
-      const created = set.methodResponses[0][1].created?.i0;
-      if (!created?.id) throw new Error(`image create failed: ${JSON.stringify(set)}`);
-      return created.id as string;
-    },
-    { docName, imageName },
-  );
-}
-
-function docMarkdown(imageId: string): string {
-  return [
-    "# Quote for Acme",
-    "",
-    "Prices below. See [our site](https://example.com) for **terms**.",
-    "",
-    "## Scope",
-    "",
-    "- Design",
-    "  - Logo",
-    "- Build",
-    "",
-    "1. Kick-off",
-    "2. Delivery",
-    "",
-    "| Item | Price |",
-    "| --- | --- |",
-    "| Design | 100 |",
-    "| Build | 200 |",
-    "",
-    `![Company logo](drive:${imageId})`,
-    "",
-    "Closing line.",
-    "",
-  ].join("\n");
-}
 
 async function downloadWord(
   page: Page,
@@ -150,24 +54,10 @@ test.describe("Docs: download as Word (live app)", () => {
     page,
     context,
   }) => {
-    const stamp = Date.now();
-    const fileName = `e2e-export-${stamp}.md`;
-    const apiPath = `/${myDriveDocSearchPath(fileName)}`;
-
-    // A helper file in the same folder gives the image its parent; the Doc itself is
-    // written once, so no earlier version of it is cached.
-    const anchorName = `e2e-export-anchor-${stamp}.txt`;
-    await seedDocAtPath(`/${myDriveDocSearchPath(anchorName)}`, "anchor\n");
-    await loginToDocs(page);
-    const imageId = await uploadPngNextTo(page, anchorName, `e2e-export-logo-${stamp}.png`);
-    await seedDocAtPath(apiPath, docMarkdown(imageId));
-
-    await page.goto(docsUrlForFile(apiPath));
-    await expect(page.locator(".ProseMirror")).toContainText("Closing line.", { timeout: 30_000 });
-    await expect(page.locator(".ProseMirror img[src^='blob:']")).toBeVisible();
+    const { baseName } = await openExportDoc(page, "e2e-export");
 
     const online = await downloadWord(page, "online");
-    expect(online.name).toBe(`e2e-export-${stamp}.docx`);
+    expect(online.name).toBe(`${baseName}.docx`);
     expectFullDoc(readDocx(online.bytes));
     const shareButton = page
       .locator(".docs-workspace__header-actions-row")
@@ -178,7 +68,7 @@ test.describe("Docs: download as Word (live app)", () => {
     await context.setOffline(true);
     try {
       const offline = await downloadWord(page, "offline");
-      expect(offline.name).toBe(`e2e-export-${stamp}.docx`);
+      expect(offline.name).toBe(`${baseName}.docx`);
       expectFullDoc(readDocx(offline.bytes));
     } finally {
       await context.setOffline(false);

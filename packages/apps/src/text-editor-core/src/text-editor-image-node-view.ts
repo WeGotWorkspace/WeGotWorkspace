@@ -217,6 +217,7 @@ export function createDocsImageNodeView(
     const alt = imageAlt(next);
     const generation = ++token;
     cancelled = false;
+    delete img.dataset.loading;
 
     if (prompt.kind === "insecure") {
       revoke();
@@ -240,6 +241,8 @@ export function createDocsImageNodeView(
     revoke();
     img.removeAttribute("src");
     clearExternalPrompt(chrome);
+    // Print waits for images marked as loading (see `text-editor-print.ts`).
+    img.dataset.loading = "true";
     void (async () => {
       try {
         const blob = await fetchContent(nodeId);
@@ -249,6 +252,8 @@ export function createDocsImageNodeView(
       } catch {
         if (cancelled || generation !== token) return;
         img.removeAttribute("src");
+      } finally {
+        if (generation === token) delete img.dataset.loading;
       }
     })();
   };
@@ -335,7 +340,10 @@ export function createDocsImageNodeView(
       return (
         mutation.type === "attributes" &&
         mutation.target === img &&
-        (mutation.attributeName === "src" || mutation.attributeName === "hidden")
+        // `data-loading` is ours too (print waits on it); not a document change.
+        (mutation.attributeName === "src" ||
+          mutation.attributeName === "hidden" ||
+          mutation.attributeName === "data-loading")
       );
     },
   };
