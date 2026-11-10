@@ -7,13 +7,9 @@ import {
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { sectionToggleAll } from "@/sidebar-section/src/section-toggle-all";
 import { Input } from "@/ui/input";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { JmapTeamMember } from "@/lib/jmap-client/availability/types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import {
-  availabilityColor,
-  availabilityColorToken,
-} from "@/calendar-core/src/calendar-availability-overlay";
+import { availabilityColor } from "@/calendar-core/src/calendar-availability-overlay";
 import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availability";
 import "./calendar-availability-sidebar.css";
 
@@ -140,15 +136,6 @@ export function CalendarAvailabilitySidebar({
             visible={shown}
             visibilityLabel={visibilityLabel(member, shown, labels)}
             onToggleVisibility={() => onToggleShown(member.id)}
-            nameLeading={
-              <UserAvatar
-                displayName={member.name}
-                compact
-                size="xs"
-                color={availabilityColorToken(member.id, colors)}
-                className="calendar-availability-sidebar__avatar"
-              />
-            }
             badges={
               shown && incompleteIds.has(member.id) ? (
                 <CollectionSidebarMark
