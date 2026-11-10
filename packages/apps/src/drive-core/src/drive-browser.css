@@ -372,6 +372,12 @@
   height: var(--list-row-height, 3rem);
 }
 
+/* The sort button's hover pill reaches past the cell by its own padding; a clipping
+   cell cut it off on one side. Its label truncates by itself. */
+.drive-workspace .drive-list-head__cell:has(> .sortable-column-header) {
+  overflow: visible;
+}
+
 .drive-workspace .drive-list-head__cell--align-end {
   text-align: right;
 }
