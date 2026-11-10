@@ -1,4 +1,4 @@
-import { FileCode, FileText, Printer, Share2, UserPlus } from "lucide-react";
+import { FileCode, FileText, Printer, SquareArrowOutUpRight, UserPlus } from "lucide-react";
 import type { DocsHeaderAction, DocsHeaderMenuItem } from "@/docs-core/src/docs-header-actions";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsDownloadState } from "@/docs-core/src/use-docs-download";
@@ -76,7 +76,7 @@ export function docsShareMenuHeaderAction({
   return {
     id: "share",
     label: invite?.label ?? labels.share,
-    icon: <Share2 />,
+    icon: <SquareArrowOutUpRight />,
     // After the Suggest switch, before the review toggle.
     placement: "end",
     showLabel: true,
