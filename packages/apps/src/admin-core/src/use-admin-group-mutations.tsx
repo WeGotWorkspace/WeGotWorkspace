@@ -31,15 +31,15 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
           displayName: decision.name,
         });
         applyAdminData(next);
-        showSuccess("Group created");
+        showSuccess("Team created");
         return true;
       } catch (error) {
-        showError(mutationErrorMessage(error, "Could not create group"));
+        showError(mutationErrorMessage(error, "Could not create team"));
         return false;
       }
     }
     setGroups((prev) => appendLocalGroup(prev, { id: decision.id, name: decision.name }));
-    showSuccess("Group created");
+    showSuccess("Team created");
     return true;
   };
 
@@ -56,16 +56,16 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
           members: memberUsernames(users, input.memberUserIds),
         });
         applyAdminData(next);
-        showSuccess("Group saved");
+        showSuccess("Team saved");
         return true;
       } catch (error) {
-        showError(mutationErrorMessage(error, "Could not update group"));
+        showError(mutationErrorMessage(error, "Could not update team"));
         return false;
       }
     }
     setGroups((prev) => renameGroup(prev, groupId, required.name));
     setUsers((prev) => applyGroupMembership(prev, groupId, input.memberUserIds));
-    showSuccess("Group saved");
+    showSuccess("Team saved");
     return true;
   };
 
@@ -74,16 +74,16 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
       try {
         const next = await operations.deleteGroup(groupId);
         applyAdminData(next);
-        showSuccess("Group deleted");
+        showSuccess("Team deleted");
         return true;
       } catch (error) {
-        showError(mutationErrorMessage(error, "Could not delete group"));
+        showError(mutationErrorMessage(error, "Could not delete team"));
         return false;
       }
     }
     setGroups((prev) => groupsWithout(prev, groupId));
     setUsers((prev) => usersWithoutGroup(prev, groupId));
-    showSuccess("Group deleted");
+    showSuccess("Team deleted");
     return true;
   };
 

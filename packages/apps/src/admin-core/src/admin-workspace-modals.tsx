@@ -116,7 +116,7 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
       />
       <GroupDialog
         open={newGroupOpen}
-        title="New group"
+        title="New team"
         users={controller.users}
         onOpenChange={setNewGroupOpen}
         onSubmit={async (payload) => {
@@ -127,7 +127,7 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
       />
       <GroupDialog
         open={Boolean(editingGroup)}
-        title="Edit group"
+        title="Edit team"
         initial={editingGroup ?? undefined}
         users={controller.users}
         onOpenChange={(next) => {
@@ -146,7 +146,7 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
       >
         <AlertDialogContent className="admin-dialog-surface">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete group?</AlertDialogTitle>
+            <AlertDialogTitle>Delete team?</AlertDialogTitle>
             <AlertDialogDescription>
               {deletingGroup
                 ? `“${deletingGroup.displayName}” will be removed. Members keep their accounts.`

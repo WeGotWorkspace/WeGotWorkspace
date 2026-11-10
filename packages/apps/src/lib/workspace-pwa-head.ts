@@ -55,7 +55,7 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
   },
   contacts: {
     title: "Contacts",
-    description: "People and groups in your workspace.",
+    description: "People and teams in your workspace.",
     appTitle: "Contacts",
     manifest: "/manifests/contacts.webmanifest",
   },

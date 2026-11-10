@@ -40,7 +40,7 @@ final class AdminGroupManagementService
         $uri = AdminConstants::GROUP_PREFIX.$slug;
 
         if (Principal::query()->where('uri', $uri)->exists()) {
-            throw new \InvalidArgumentException('That group already exists.');
+            throw new \InvalidArgumentException('That team already exists.');
         }
 
         $this->groupFiles->ensureForSlug($slug);
@@ -71,7 +71,7 @@ final class AdminGroupManagementService
         $uri = $this->groupUriFromSlug($groupSlug);
         $principal = Principal::query()->where('uri', $uri)->first();
         if ($principal === null) {
-            throw new \InvalidArgumentException('Group not found.');
+            throw new \InvalidArgumentException('Team not found.');
         }
 
         if ($displayName !== null) {
@@ -90,7 +90,7 @@ final class AdminGroupManagementService
         $uri = $this->groupUriFromSlug($groupSlug);
         $principal = Principal::query()->where('uri', $uri)->first();
         if ($principal === null) {
-            throw new \InvalidArgumentException('Group not found.');
+            throw new \InvalidArgumentException('Team not found.');
         }
 
         $this->deleteAddressBookShares($uri);
@@ -124,7 +124,7 @@ final class AdminGroupManagementService
         $slug = preg_replace('/[^a-z0-9_-]+/', '-', $slug) ?? '';
         $slug = trim($slug, '-');
         if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug)) {
-            throw new \InvalidArgumentException('Group slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
+            throw new \InvalidArgumentException('Team slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
         }
 
         return $slug;

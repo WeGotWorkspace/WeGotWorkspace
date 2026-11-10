@@ -4354,7 +4354,7 @@ export interface paths {
         put?: never;
         /**
          * Create share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.
          */
         post: {
             parameters: {
@@ -4482,7 +4482,7 @@ export interface paths {
         head?: never;
         /**
          * Update share
-         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
+         * @description A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.
          */
         patch: {
             parameters: {

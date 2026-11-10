@@ -25,12 +25,12 @@ describe("validateNewGroup", () => {
   it("requires a name and rejects an existing id or case-insensitive name", () => {
     expect(validateNewGroup(data.groups, "   ")).toEqual({
       ok: false,
-      message: "Group name is required",
+      message: "Team name is required",
     });
     expect(requiredGroupName("  Ops  ")).toEqual({ ok: true, name: "Ops" });
     expect(validateNewGroup(data.groups, " Support ")).toEqual({
       ok: false,
-      message: "Group already exists",
+      message: "Team already exists",
     });
   });
 

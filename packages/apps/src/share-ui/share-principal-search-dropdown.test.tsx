@@ -25,7 +25,7 @@ describe("SharePrincipalSearchDropdown", () => {
         ]}
         onSelect={() => {}}
       >
-        <input aria-label="Add people or groups" />
+        <input aria-label="Add people or teams" />
       </SharePrincipalSearchDropdown>,
     );
 
@@ -64,7 +64,7 @@ describe("SharePrincipalSearchDropdown", () => {
               onSelect={() => {}}
             >
               <input
-                aria-label="Add people or groups"
+                aria-label="Add people or teams"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -75,7 +75,7 @@ describe("SharePrincipalSearchDropdown", () => {
     }
 
     render(<Harness />);
-    const input = screen.getByRole("textbox", { name: "Add people or groups" });
+    const input = screen.getByRole("textbox", { name: "Add people or teams" });
     input.focus();
     expect(screen.getByRole("listbox")).toBeTruthy();
 

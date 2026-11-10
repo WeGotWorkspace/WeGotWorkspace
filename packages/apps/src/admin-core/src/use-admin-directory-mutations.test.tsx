@@ -55,7 +55,7 @@ describe("useAdminGroupMutations", () => {
     });
     expect(result.current.groups).toHaveLength(1);
     expect(result.current.users.find((user) => user.id === "carol")?.groups).toEqual([]);
-    expect(showSuccess).toHaveBeenCalledWith("Group deleted");
+    expect(showSuccess).toHaveBeenCalledWith("Team deleted");
   });
 
   it("treats the old Administrators Team like any Team and passes member usernames", async () => {
@@ -80,6 +80,6 @@ describe("useAdminGroupMutations", () => {
       members: ["alice", "carol"],
     });
     expect(result.current.applyAdminData).toHaveBeenCalledWith(data);
-    expect(showSuccess).toHaveBeenCalledWith("Group saved");
+    expect(showSuccess).toHaveBeenCalledWith("Team saved");
   });
 });
