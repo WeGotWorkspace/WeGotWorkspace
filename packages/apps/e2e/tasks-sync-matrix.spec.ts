@@ -314,7 +314,7 @@ async function grantAccess(
   edit: boolean,
 ) {
   const dialog = await openListDialog(tab, f.listA);
-  await dialog.getByPlaceholder("Add people or groups…").fill(query);
+  await dialog.getByPlaceholder("Add people or teams…").fill(query);
   await tab.getByRole("option").filter({ hasText: option }).first().click();
   const access = dialog.getByRole("combobox", { name: "Can view" });
   await access.waitFor({ timeout: 10_000 });

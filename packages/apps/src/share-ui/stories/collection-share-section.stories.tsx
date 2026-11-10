@@ -11,12 +11,12 @@ import { noPeopleOrTeamsFoundCopy, noTeamYetCopy } from "@/share-ui/share-labels
 
 const COPY = {
   title: "Team access",
-  hint: "Grant read or read-and-write access to people or groups.",
-  placeholder: "Add people or groups…",
+  hint: "Grant read or read-and-write access to people or teams.",
+  placeholder: "Add people or teams…",
   empty: noPeopleOrTeamsFoundCopy,
   offline: "Sharing changes require a connection.",
   removeTitle: "Remove access?",
-  removeConfirm: "This person or group will lose access. Continue?",
+  removeConfirm: "This person or team will lose access. Continue?",
 };
 
 const PRINCIPALS: CollectionSharePrincipal[] = [

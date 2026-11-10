@@ -352,6 +352,26 @@ describe("PrincipalTabCoordinator", () => {
     expect(a.onEnvelopeFromLeader).not.toHaveBeenCalled();
   });
 
+  it("passes the leader's targetPeerIds through to followers", () => {
+    const a = handlers();
+    const b = handlers();
+    const leaderA = new PrincipalTabCoordinator(a, "tab-a");
+    const leaderB = new PrincipalTabCoordinator(b, "tab-b");
+    leaderA.start();
+    leaderB.start();
+    advanceElectionGrace();
+
+    leaderA.publishRosterState({
+      peers: [{ id: "peer-1", name: "Bob", user: "bob" }],
+      selfPeerId: "peer-self",
+      targetPeerIds: { bob: ["peer-1"] },
+    });
+
+    expect(b.onRosterFromLeader).toHaveBeenCalledWith(
+      expect.objectContaining({ targetPeerIds: { bob: ["peer-1"] } }),
+    );
+  });
+
   it("exports the expected channel name", () => {
     expect(PRINCIPAL_TAB_CHANNEL).toBe("wgw.principal.tab");
   });

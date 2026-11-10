@@ -1,5 +1,16 @@
 import type { ShareUIPermission } from "@/share-ui/share-access-map";
 
+/**
+ * Principal-sharing copy used by every app's share dialog (Drive, Docs, Calendar,
+ * Tasks, Notes, Meet, Contacts). App label modules reference these instead of copying them.
+ */
+export const sharePrincipalCopy = {
+  addPlaceholder: "Add people or teams…",
+  sectionHint: "Grant read or read-and-write access to people or teams.",
+  removeConfirm: (item: string) =>
+    `This person or team will lose access to this ${item}. Continue?`,
+} as const;
+
 /** Wherever people are picked, for a viewer who is in no Team (#1924). */
 export const noTeamYetCopy = "You're not in a Team yet. Ask your admin to add you.";
 
@@ -17,7 +28,7 @@ export const shareLabels = {
   publicLevelAddFiles: "Can add files",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
   teamSectionTitle: "Team access",
-  teamSectionHint: "Grant access to a whole group, or pick individual teammates.",
+  teamSectionHint: "Grant access to a whole team, or pick individual teammates.",
   guestSectionTitle: "Invite guests by email",
   guestSectionHint: "Each guest gets their own permission — invite once, control per person.",
   footerHint: "Access can also be granted on parent folders.",
@@ -51,10 +62,10 @@ export const shareLabels = {
   removeGuest: "Remove guest",
   removeGrant: "Remove access",
   removeGrantTitle: "Remove access?",
-  removeGrantConfirm: "This person or group will lose access to this item. Continue?",
+  removeGrantConfirm: sharePrincipalCopy.removeConfirm("item"),
   enablePublicAccess: "Enable public access",
   noAccess: "No access",
-  addTeamGrantPlaceholder: "Add people or groups…",
+  addTeamGrantPlaceholder: sharePrincipalCopy.addPlaceholder,
   pendingGuest: "Pending",
   membersSuffix: (count: number) => `${count} members`,
   inheritedFrom: (label: string) => `Inherited from ${label}`,

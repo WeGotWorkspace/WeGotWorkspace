@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { isProtectedGroup } from "@/admin-core/src/admin-workspace-utils";
 import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
@@ -80,7 +79,16 @@ export function AdminUsersPane({
                   size="md"
                   className="flex-1"
                   nameAccessory={
-                    !enabled ? <Tag label="Disabled" className="admin-user-status-tag" /> : null
+                    user.isAdmin || !enabled ? (
+                      <span className="admin-user-tags">
+                        {user.isAdmin ? (
+                          <Tag label="Admin" className="admin-user-role-tag" />
+                        ) : null}
+                        {!enabled ? (
+                          <Tag label="Disabled" className="admin-user-status-tag" />
+                        ) : null}
+                      </span>
+                    ) : null
                   }
                 />
                 <div className="admin-list-row__actions">
@@ -123,9 +131,9 @@ export function AdminUsersPane({
         </ul>
       </Card>
       <Card
-        title="Groups"
+        title="Teams"
         action={
-          <IconActionButton label="New group" onClick={onNewGroup}>
+          <IconActionButton label="New team" onClick={onNewGroup}>
             <Plus className="size-4" />
           </IconActionButton>
         }
@@ -146,14 +154,12 @@ export function AdminUsersPane({
                 >
                   <Pencil className="size-4" />
                 </IconActionButton>
-                {!isProtectedGroup(group.id) ? (
-                  <IconActionButton
-                    label={`Delete ${group.displayName}`}
-                    onClick={() => onDeleteGroup(group.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </IconActionButton>
-                ) : null}
+                <IconActionButton
+                  label={`Delete ${group.displayName}`}
+                  onClick={() => onDeleteGroup(group.id)}
+                >
+                  <Trash2 className="size-4" />
+                </IconActionButton>
               </div>
             </li>
           ))}

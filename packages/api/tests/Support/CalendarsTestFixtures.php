@@ -7,7 +7,6 @@ namespace Tests\Support;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Calendars\CollectionKind;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -46,8 +45,9 @@ trait CalendarsTestFixtures
 
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
         if ($this->calendarFixtureUsersShareATeam()) {
             $this->joinCalendarFixtureTeam('bob', 'carol');
         }

@@ -164,14 +164,15 @@ server-side clarifications marked **[chunk D]** inline:
 
 ## Typing indicators (chunk K)
 
-Typing signals ride the **workspace presence mesh** (`presence-core`, PR #690)
-— WebRTC data channels on the suite-level principal room — never the
-REST/JMAP sync path. Nothing is persisted; a signal is stale after seconds by
+Typing signals ride the **presence mesh** (`presence-core`, PR #690) —
+WebRTC data channels on the member's Team rooms — never the REST/JMAP sync
+path. Nothing is persisted; a signal is stale after seconds by
 design.
 
 **Transport reality (verified):** `PresenceProvider` mounts **above the
-router** (`wegotworkspace-app.tsx`) and joins the workspace-wide principal
-room (`p_workspace`) for every authenticated member — eagerly on desktop,
+router** (`wegotworkspace-app.tsx`) and joins one principal room per own
+Team (`p_groups.{slug}`, #1921; the old `p_workspace` room is refused) for
+every authenticated member, merging the rosters by username — eagerly on desktop,
 deferred-until-visible on mobile. Typing indicators therefore work **whether
 or not an RTC call is up**; they do _not_ require the Meet call stage. They
 are absent (silently, no errors) when there is no transport:
@@ -181,12 +182,12 @@ are absent (silently, no errors) when there is no transport:
   transient join failure) — outbound sends are dropped by the store guard;
 - **mock/Storybook trees** — no `PresenceProvider`, hook context is null.
 
-**Known v1 scope limit:** the broadcast goes to every peer in the workspace
-mesh, not just channel members — receivers only _render_ it for the channel
-they are viewing, but "someone is typing in channel X" metadata is technically
-observable by any authenticated member with a modified client. Acceptable at
-self-hosted team scale; a member-scoped fan-out would need channel-ACL
-knowledge inside the mesh.
+**Known v1 scope limit:** the broadcast goes to every peer in the member's
+Team rooms, not just channel members — receivers only _render_ it for the
+channel they are viewing, but "someone is typing in channel X" metadata is
+technically observable by any Team mate with a modified client. Members who
+share no Team with the sender never receive it (#1921). A member-scoped
+fan-out would need channel-ACL knowledge inside the mesh.
 
 | Module                                                  | Role                                                                                                                                                                    |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
