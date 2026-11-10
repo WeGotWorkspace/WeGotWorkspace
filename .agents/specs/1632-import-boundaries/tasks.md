@@ -1,0 +1,10 @@
+# Tasks — import boundaries (#1632)
+
+Derived from [plan.md](./plan.md).
+
+| Chunk                   | Task                                                                                    | Key paths                                                                                             | Verify                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `chunk-a-boundary-rule` | Rule tests: layers, resolution, violation kinds, allowlist, RuleTester, report counting | `packages/apps/scripts/eslint-import-boundaries.test.mjs`                                             | `pnpm --filter @wgw/apps exec vitest run --project unit scripts/eslint-import-boundaries.test.mjs` |
+| `chunk-a-boundary-rule` | Local rule with layer map and `CORE_ALLOWLIST`; replace the #1642 direction blocks      | `packages/apps/scripts/eslint-import-boundaries.mjs`, `packages/apps/eslint.config.js`                | `pnpm --filter @wgw/apps run lint`                                                                 |
+| `chunk-a-boundary-rule` | `lint:boundaries` report (per edge, two-way pairs, `--json`)                            | `packages/apps/scripts/lint-boundaries.mjs`, `packages/apps/package.json`                             | `pnpm --filter @wgw/apps run lint:boundaries`                                                      |
+| `chunk-a-boundary-rule` | Layering doc, apps-ui link, POLICY row                                                  | `.agents/skills/apps-ui/import-boundaries.md`, `.agents/skills/apps-ui/SKILL.md`, `.agents/POLICY.md` | `pnpm run check:agent-docs`                                                                        |
