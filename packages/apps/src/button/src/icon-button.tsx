@@ -5,10 +5,12 @@ import "@/button/src/icon-button.css";
 import {
   BUTTON_BASE_CLASSNAME,
   BUTTON_ICON_SLOT_CLASSNAME,
+  BUTTON_PRESSED_SELECTION_CLASSNAME,
   BUTTON_SEVERITY_CLASSNAMES,
   BUTTON_VARIANT_CLASSNAMES,
   ICON_BUTTON_ACTIVE_CLASSNAME,
   ICON_BUTTON_SIZE_CLASSNAMES,
+  type ButtonPressedStyle,
   type ButtonSeverity,
   type ButtonVariant,
   type IconButtonSize,
@@ -25,6 +27,8 @@ export type IconButtonProps = Omit<
   active?: boolean;
   /** Semantic actions: danger (destructive) or success (resolve/accept) fg + wash. */
   severity?: ButtonSeverity;
+  /** Look when active: quiet wash (default) or the suite selection. */
+  pressedStyle?: ButtonPressedStyle;
   showTooltip?: boolean;
   tooltipClassName?: string;
 };
@@ -37,6 +41,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     variant = "outline",
     active = false,
     severity,
+    pressedStyle = "wash",
     showTooltip = true,
     tooltipClassName,
     className,
@@ -56,6 +61,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         active && ICON_BUTTON_ACTIVE_CLASSNAME,
         BUTTON_VARIANT_CLASSNAMES[variant],
         severity ? BUTTON_SEVERITY_CLASSNAMES[severity] : undefined,
+        pressedStyle === "selection" && BUTTON_PRESSED_SELECTION_CLASSNAME,
         className,
       )}
       style={style}

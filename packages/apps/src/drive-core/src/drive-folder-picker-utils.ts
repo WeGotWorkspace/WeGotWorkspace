@@ -2,9 +2,10 @@ import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { canBrowserPreviewImage, inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
 import { canMoveDriveItemsToFolder, driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import { DRIVE_TRASH_UI_PATH } from "@/drive-core/src/drive-path-utils";
-
-const GROUPS_ROOT = "Groups";
+import {
+  DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT,
+  DRIVE_TRASH_UI_PATH,
+} from "@/drive-core/src/drive-path-utils";
 
 /** Move / New-doc vs Insert-image on the shared Drive folder picker. */
 export type DrivePickerMode = "folder-destination" | "file-select";
@@ -22,6 +23,17 @@ export function resolveDriveFolderPickerStartPath(
   if (view.type === "folder" && !isTrashPath(view.path)) return view.path;
   if (singleItemParent && !isTrashPath(singleItemParent)) return singleItemParent;
   return "My Drive";
+}
+
+/**
+ * Creating from a list that is not a place (Recent, Shared with me, Starred,
+ * Trash, Uploads…) first opens Personal, so the new item lands somewhere the
+ * person can see it. All Files and real folders stay put.
+ */
+export function driveCreateJumpsToPersonal(view: ViewKey): boolean {
+  if (view.type === "all") return false;
+  if (view.type === "folder") return isTrashPath(view.path);
+  return true;
 }
 
 /**

@@ -58,7 +58,7 @@ final class UnifiedSearchService
         $allowedSources = array_values(array_intersect(['file', 'note', 'caldav', 'carddav'], $sources));
         $normalizedFilters = $this->normalizeFilters($filters);
         $tokens = $this->tokens->tokenize($query, SearchTokenService::MAX_QUERY_TOKENS);
-        $browseMode = $query === '' && $this->isBrowseMode($allowedSources, $normalizedFilters);
+        $browseMode = $query === '' && $this->isBrowseMode($allowedSources);
         if (! $browseMode && ($query === '' || $tokens === [])) {
             return [
                 'query' => $query,
@@ -212,15 +212,14 @@ final class UnifiedSearchService
     }
 
     /**
+     * Browse (no query) lists files only: every allowed source must be `file`.
+     * Extensions and categories narrow it but are not required.
+     *
      * @param  list<string>  $allowedSources
-     * @param  array{extensions?: list<string>}  $normalizedFilters
      */
-    private function isBrowseMode(array $allowedSources, array $normalizedFilters): bool
+    private function isBrowseMode(array $allowedSources): bool
     {
         if ($allowedSources === []) {
-            return false;
-        }
-        if (! isset($normalizedFilters['extensions']) || $normalizedFilters['extensions'] === []) {
             return false;
         }
 

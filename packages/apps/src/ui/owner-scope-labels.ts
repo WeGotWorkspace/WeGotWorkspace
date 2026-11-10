@@ -15,7 +15,7 @@ export type OwnerScopeFieldLabels = {
 export const defaultOwnerScopeLabels: OwnerScopeFieldLabels = {
   label: "Owner",
   personal: () => "Only Me",
-  group: (name) => `${name} (Group)`,
+  group: (name) => `${name} (Team)`,
   readOnlyLabel: "Owner",
 };
 

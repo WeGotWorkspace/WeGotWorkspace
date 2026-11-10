@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useRef,
   type DragEvent,
   type HTMLAttributes,
@@ -8,7 +9,23 @@ import {
 import { listItemIdFromTarget } from "@/list-item/src/list-item-id";
 
 export const LIST_ITEM_LONG_PRESS_DELAY_MS = 450;
-const TOUCH_MOVE_CANCEL_PX = 8;
+/** A touch that travels further than this, in any direction, is a scroll or a swipe. */
+const TOUCH_SLOP_PX = 8;
+
+export type TouchStartPoint = { x: number; y: number };
+type TouchPoints = ArrayLike<{ clientX: number; clientY: number }>;
+
+export function touchStartPoint(touches: TouchPoints): TouchStartPoint | null {
+  const touch = touches.length > 0 ? touches[0] : undefined;
+  return touch ? { x: touch.clientX, y: touch.clientY } : null;
+}
+
+/** True once the finger has moved past the slop: horizontal (swipe) or vertical (scroll). */
+export function touchMovedPastSlop(start: TouchStartPoint | null, touches: TouchPoints): boolean {
+  const touch = touches.length > 0 ? touches[0] : undefined;
+  if (!touch || !start) return false;
+  return Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > TOUCH_SLOP_PX;
+}
 
 export type DelegatedListItemEvents = {
   onItemClick?: (id: string, event: MouseEvent) => void;
@@ -57,24 +74,28 @@ export function useDelegatedListItemEvents({
   onItemLongPress,
   onItemDragStart,
   onItemDragEnd,
-}: UseDelegatedListItemEventsArgs): HTMLAttributes<HTMLDivElement> {
+}: UseDelegatedListItemEventsArgs): {
+  listProps: HTMLAttributes<HTMLDivElement>;
+  /** For rows: a swipe began, so this touch is not a long press. */
+  cancelPress: () => void;
+} {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
+  const touchStartRef = useRef<TouchStartPoint | null>(null);
   const pressIdRef = useRef<string | null>(null);
 
-  const cancelLongPress = () => {
+  const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
     longPressTimer.current = null;
-  };
+  }, []);
 
-  const resetTouchIntent = () => {
+  const resetTouchIntent = useCallback(() => {
     cancelLongPress();
-    touchStartYRef.current = null;
+    touchStartRef.current = null;
     pressIdRef.current = null;
-  };
+  }, [cancelLongPress]);
 
-  return {
+  const listProps: HTMLAttributes<HTMLDivElement> = {
     onClick: (event) => {
       const id = listItemIdFromTarget(event.target);
       if (!id) return;
@@ -109,7 +130,7 @@ export function useDelegatedListItemEvents({
           const id = listItemIdFromTarget(event.target);
           if (!id || !onItemLongPress) return;
           pressIdRef.current = id;
-          touchStartYRef.current = event.touches[0]?.clientY ?? null;
+          touchStartRef.current = touchStartPoint(event.touches);
           longPressFired.current = false;
           longPressTimer.current = setTimeout(() => {
             const pressedId = pressIdRef.current;
@@ -122,10 +143,7 @@ export function useDelegatedListItemEvents({
       : undefined,
     onTouchMove: isTouch
       ? (event: TouchEvent<HTMLDivElement>) => {
-          const startY = touchStartYRef.current;
-          const touch = event.touches[0];
-          if (!touch || startY === null) return;
-          if (Math.abs(touch.clientY - startY) > TOUCH_MOVE_CANCEL_PX) cancelLongPress();
+          if (touchMovedPastSlop(touchStartRef.current, event.touches)) cancelLongPress();
         }
       : undefined,
     onTouchEnd: isTouch ? resetTouchIntent : undefined,
@@ -136,4 +154,6 @@ export function useDelegatedListItemEvents({
         }
       : undefined,
   };
+
+  return { listProps, cancelPress: resetTouchIntent };
 }

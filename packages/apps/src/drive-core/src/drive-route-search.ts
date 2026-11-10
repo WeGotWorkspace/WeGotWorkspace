@@ -20,6 +20,7 @@ export function validateDriveRouteSearch(search: Record<string, unknown>): Drive
 /** Map router search params to the drive workspace view. */
 export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   const viewType = search.view?.trim();
+  if (viewType === "all") return { type: "all" };
   if (viewType === "recent") return { type: "recent" };
   if (viewType === "starred") return { type: "starred" };
   if (viewType === "shared") return { type: "shared" };
@@ -30,7 +31,8 @@ export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   }
   const path = search.path?.trim();
   if (path) return { type: "folder", path: normalizeDriveFolderUiPath(path) };
-  return { type: "folder", path: "My Drive" };
+  // The Drive home is All Files.
+  return { type: "all" };
 }
 
 /** Drive workspace URL for a view (`/drive?…`). */
@@ -57,9 +59,7 @@ export function driveSearchFromView(view: ViewKey): DriveRouteSearch {
     }
     return { view: "access" };
   }
-  if (view.type === "folder") {
-    if (view.path === "My Drive") return {};
-    return { view: "folder", path: view.path };
-  }
+  if (view.type === "all") return {};
+  if (view.type === "folder") return { view: "folder", path: view.path };
   return { view: view.type };
 }

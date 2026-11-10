@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
@@ -326,9 +327,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
     "Events on this calendar will be permanently deleted. This cannot be undone.",
   changeCalendarOwnerConfirmTitle: "Change owner?",
   changeCalendarOwnerConfirmToGroup: (groupName) =>
-    `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that group lose access unless they have a share.`,
+    `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeCalendarOwnerConfirmToPersonal:
-    "This calendar will move to your personal calendars. Events and existing shares stay. Other group members lose access unless they have a share.",
+    "This calendar will move to your personal calendars. Events and existing shares stay. Other team members lose access unless they have a share.",
   changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
@@ -484,7 +485,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
   eventAttendeesRemove: "Remove participant",
-  eventAttendeesSearchEmpty: "No people found",
+  eventAttendeesSearchEmpty: noPeopleOrTeamsFoundCopy,
   eventAttendeesTeammate: "Teammate",
   eventAttendeesContactWork: "Work",
   eventAttendeesContactHome: "Home",
@@ -507,14 +508,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastInvitationCancelled: "This invitation was cancelled",
   pendingSync: "Pending sync",
   shareCalendarSectionTitle: "Team access",
-  shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
-  shareCalendarAddPlaceholder: "Add people or groups…",
-  shareCalendarSearchEmpty: "No people or groups found",
+  shareCalendarSectionHint: sharePrincipalCopy.sectionHint,
+  shareCalendarAddPlaceholder: sharePrincipalCopy.addPlaceholder,
+  shareCalendarSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareCalendarOffline: "Sharing changes require a connection.",
   shareCalendarFailed: "Could not update sharing.",
   sharedCalendar: "Shared with you",
   removeCalendarShareTitle: "Remove access?",
-  removeCalendarShareConfirm: "This person or group will lose access to this calendar. Continue?",
+  removeCalendarShareConfirm: sharePrincipalCopy.removeConfirm("calendar"),
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,

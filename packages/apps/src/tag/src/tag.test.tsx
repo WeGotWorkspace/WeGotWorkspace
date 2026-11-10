@@ -38,15 +38,15 @@ describe("TagGroup inline add", () => {
     expect((still as HTMLInputElement).value).toBe("");
   });
 
-  it("places the add control before existing tags", () => {
+  it("places the add control after the existing tags", () => {
     const { container } = renderTagGroup(
       <TagGroup tags={["ideas", "draft"]} readonly={false} onAddTag={() => {}} />,
     );
 
     const group = container.querySelector(".tag-group");
     const order = [...(group?.children ?? [])].map((node) => node.className);
-    expect(order[0]).toContain("tag-group__add-button");
-    expect(order.slice(1).every((className) => className.includes("tag"))).toBe(true);
+    expect(order[order.length - 1]).toContain("tag-group__add-button");
+    expect(order.slice(0, -1).every((className) => className.includes("tag"))).toBe(true);
   });
 
   it("closes an empty add field on blur after a successful add", async () => {

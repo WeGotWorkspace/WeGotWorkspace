@@ -11,6 +11,10 @@ export type DriveFile = Note & {
   parent: string;
   kind: FileKind;
   size: string;
+  /** Last change in epoch ms, for sorting (`date` is display text). */
+  modifiedMs?: number;
+  /** Size in bytes, for sorting (`size` is display text; unset for folders). */
+  sizeBytes?: number;
   apiPath?: string;
   /**
    * FileNode id (`fn-…`) when the listing named it: signed-in JMAP listings and
@@ -34,6 +38,8 @@ export type DriveFile = Note & {
 };
 
 export type ViewKey =
+  /** Every file across the drives (All Files), the Drive home. */
+  | { type: "all" }
   | { type: "folder"; path: string }
   | { type: "recent" }
   | { type: "starred" }

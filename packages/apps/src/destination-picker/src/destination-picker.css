@@ -31,11 +31,18 @@
 }
 
 .destination-picker__scroll {
-  @apply min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden;
+  @apply min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden outline-none;
+  border-radius: var(--control-radius);
+}
+
+.destination-picker__scroll:focus-visible {
+  @apply ring-2 ring-inset ring-ring;
 }
 
 .destination-picker__scroll .destination-list-table {
   @apply w-full table-fixed text-sm;
+  border-collapse: separate;
+  border-spacing: 0 0.125rem;
   color: var(--workspace-foreground);
 }
 
@@ -49,9 +56,10 @@
   padding-right: 0.75rem;
 }
 
+/* Rounded like list and sidebar rows, no separators. */
 .destination-picker__scroll .destination-list-row {
   @apply w-full cursor-pointer transition-colors;
-  border-bottom: 1px solid var(--border);
+  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
 }
 
 .destination-picker__scroll
@@ -63,7 +71,15 @@
 
 .destination-picker__scroll .destination-list-row--selected,
 .destination-picker__scroll .destination-list-row--selected:hover {
-  background-color: var(--button-outline-active-background);
+  background: var(--workspace-selected-background);
+}
+
+.destination-picker__scroll .destination-list-row > td {
+  height: var(--list-row-height, 3rem);
+}
+
+.destination-picker__scroll .destination-list-row:not(:last-child) > td {
+  border-bottom: 1px solid var(--workspace-divider-color);
 }
 
 .destination-picker__scroll .destination-list-destination-icon {

@@ -179,12 +179,62 @@ describe("useDocsSuggestions", () => {
       }),
     );
 
+    // The suggesting session creates the root; reactions wait for it.
+    await waitFor(() => {
+      expect(result.current.suggestions[0]?.hasThread).toBe(true);
+    });
     await act(async () => {
       await result.current.toggleReaction(changeId!, "👍");
     });
 
     expect(result.current.suggestions[0]?.reactions).toEqual([{ emoji: "👍", userIds: ["u-1"] }]);
 
+    editor.destroy();
+  });
+
+  it("never creates a peer's suggestion root from a reaction or reply, so the card keeps its author", async () => {
+    // A peer's suggestion: this session did not make the mark, so it never creates the root.
+    const sessionIds = vi.spyOn(trackChanges, "getSessionTrackChangeIds").mockReturnValue([]);
+    const ydoc = new Y.Doc();
+    const awareness = new Awareness(ydoc);
+    const currentUser = { id: "u-2", name: "Blake" };
+    const threadsClient = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, currentUser);
+    const create = vi.spyOn(threadsClient, "create");
+    const editor = createCollabEditor(ydoc, awareness);
+    const changeId = getDocsTrackChangeGroups(editor)[0]?.changeId;
+    expect(changeId).toBeTruthy();
+
+    const { result } = renderHook(() =>
+      useDocsSuggestions(editor, { ydoc, currentUser, threadsClient }),
+    );
+    await waitFor(() => {
+      expect(result.current.suggestions[0]?.hasThread).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.toggleReaction(changeId!, "👍");
+      await result.current.addReply(changeId!, "Looks good");
+    });
+
+    expect(create).not.toHaveBeenCalled();
+    expect(threadsClient.snapshot().some((thread) => thread.changeId === changeId)).toBe(false);
+    expect(result.current.suggestions[0]?.reactions ?? []).toEqual([]);
+
+    // Once the author's session has made the root, the peer's reaction lands on it.
+    threadsClient.seedSuggestion({ changeId: changeId!, messages: [], reactions: [] });
+    const { result: reloaded } = renderHook(() =>
+      useDocsSuggestions(editor, { ydoc, currentUser, threadsClient }),
+    );
+    await waitFor(() => {
+      expect(reloaded.current.suggestions[0]?.hasThread).toBe(true);
+    });
+    await act(async () => {
+      await reloaded.current.toggleReaction(changeId!, "👍");
+    });
+    expect(reloaded.current.suggestions[0]?.reactions).toEqual([{ emoji: "👍", userIds: ["u-2"] }]);
+    expect(create).not.toHaveBeenCalled();
+
+    sessionIds.mockRestore();
     editor.destroy();
   });
 

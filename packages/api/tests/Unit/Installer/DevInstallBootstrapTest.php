@@ -11,6 +11,7 @@ use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\DevSeedGuard;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -72,6 +73,11 @@ final class DevInstallBootstrapTest extends TestCase
         $this->assertSame('Member', $member->displayname);
         $this->assertSame('member@localhost', $member->email);
         $this->assertSame('SabreDAV', DB::connection('wgw')->table('app_settings')->where('name', 'auth_realm')->value('value'));
+        // #1925: admin is a role; admin and member share the dev Team, not an `administrators` group.
+        $this->assertSame(1, (int) DB::connection('wgw')->table('users')->where('username', 'admin')->value('is_admin'));
+        $this->assertSame(0, (int) DB::connection('wgw')->table('users')->where('username', 'member')->value('is_admin'));
+        $this->assertSame(0, DB::connection('wgw')->table('principals')->where('uri', 'principals/groups/administrators')->count());
+        $this->assertEqualsCanonicalizing(['principals/admin', 'principals/member'], $this->devTeamMembers());
         $seeded = DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count();
         $this->assertGreaterThan(0, $seeded);
         $this->assertSame(
@@ -80,8 +86,11 @@ final class DevInstallBootstrapTest extends TestCase
         );
 
         $this->assertTrue(app(AppPaths::class)->isInstalled());
+        // Membership changed by hand in Admin survives the next `pnpm dev`.
+        app(GroupDirectoryService::class)->setMembership('principals/groups/team', 'member', false);
         $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
         $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'member')->count());
+        $this->assertSame(['principals/admin'], $this->devTeamMembers());
         $this->assertSame(
             $seeded,
             DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count(),
@@ -173,6 +182,20 @@ final class DevInstallBootstrapTest extends TestCase
             }
         }
         @rmdir($dir);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function devTeamMembers(): array
+    {
+        return DB::connection('wgw')->table('groupmembers')
+            ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
+            ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
+            ->where('g.uri', 'principals/groups/team')
+            ->pluck('m.uri')
+            ->map(static fn (mixed $uri): string => (string) $uri)
+            ->all();
     }
 }
 

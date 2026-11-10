@@ -127,6 +127,8 @@ export function driveFileFromEntry(
         : `File · ${size}`,
     category: entry.type === "dir" ? "Folder" : "File",
     date,
+    ...(entry.time > 0 ? { modifiedMs: entry.time * 1000 } : {}),
+    ...(entry.type === "dir" ? {} : { sizeBytes: Math.max(0, entry.size) }),
     title: entry.name,
     excerpt: entry.path,
     body: [],
@@ -256,4 +258,23 @@ export function suggestNewMarkdownFileName(files: readonly DriveFile[]): string 
     index += 1;
   }
   return candidate;
+}
+
+/** A folder shown right away while its create request is on the way. */
+export function optimisticDriveFolder(title: string, parent: string): DriveFile {
+  return {
+    id: `f-${Date.now()}`,
+    notebook: "Folder",
+    category: "Folder",
+    date: "Now",
+    modifiedMs: Date.now(),
+    title,
+    excerpt: "0 items",
+    body: [],
+    tags: [],
+    wordCount: 0,
+    parent,
+    kind: "folder",
+    size: "—",
+  };
 }

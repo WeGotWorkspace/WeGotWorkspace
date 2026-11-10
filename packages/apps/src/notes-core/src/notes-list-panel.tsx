@@ -93,12 +93,9 @@ export function NotesListPanel({
     visibleNotes.map((note) => note.id),
   );
 
-  const headerCount =
-    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleNotes.length;
-  const headerCountLabel =
-    selectionMode || selectedIds.length > 1
-      ? L.listSelected(headerCount)
-      : L.listItems(headerCount);
+  const multiSelecting = selectionMode || selectedIds.length > 1;
+  const headerCount = multiSelecting ? selectedIds.length : visibleNotes.length;
+  const headerCountLabel = multiSelecting ? L.listSelected(headerCount) : L.listItems(headerCount);
 
   return {
     header: (
@@ -152,6 +149,7 @@ export function NotesListPanel({
         searchValue={searchQuery}
         onSearchInput={setSearchQuery}
         searchInputRef={searchInputRef}
+        searchHidden={multiSelecting}
       />
     ),
     listContent: listLoading ? (

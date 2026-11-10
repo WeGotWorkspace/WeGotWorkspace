@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
@@ -57,6 +58,8 @@ export type TasksUILabels = {
   dueToday: string;
   dueYesterday: string;
   dueTomorrow: string;
+  /** The list row's due day, with `when` relative and mid-sentence ("in 3 days"). */
+  dueRelative: (when: string) => string;
   noDue: string;
   descriptionLabel: string;
   remindMe: string;
@@ -65,8 +68,8 @@ export type TasksUILabels = {
   remindingBefore: (durations: string) => string;
   remindingAfter: (durations: string) => string;
   remindingAfterClause: (durations: string) => string;
-  dueAddTime: string;
-  dueDateOnly: string;
+  /** The due time dropdown's empty choice: a due day without a time. */
+  dueAllDay: string;
   dueTimeLabel: string;
   remindAtTimeOfTask: string;
   kanbanToggle: string;
@@ -107,9 +110,6 @@ export type TasksUILabels = {
   deleteConfirmBody: string;
   cancel: string;
   toastSaved: string;
-  toastDeleted: string;
-  toastTaskCompleted: string;
-  toastTaskReopened: string;
   toastTaskAdded: string;
   toastTaskUpdated: string;
   toastTaskMoved: (count: number, listName: string) => string;
@@ -124,6 +124,28 @@ export type TasksUILabels = {
   tasksDisabledTitle: string;
   tasksDisabledMessage: string;
   pendingSync: string;
+  /** List pane: the quick add field at the top of the list. */
+  quickAddPlaceholder: string;
+  quickAddLabel: string;
+  searchPlaceholder: string;
+  emptyList: string;
+  /** Detail pane: the notes field and the field rows. */
+  detailNotesPlaceholder: string;
+  /** One alarm row, numbered from 1. */
+  detailAlarm: (number: number) => string;
+  /** Multi-select: the selection bar, the detail pane and the move dialog. */
+  selectionLabel: string;
+  selectionTitle: (count: number) => string;
+  selectionComplete: string;
+  selectionMoveToList: string;
+  selectionMoveDescription: string;
+  selectionDone: string;
+  moveConfirm: string;
+  deleteSelectedTitle: (count: number) => string;
+  deleteSelectedBody: (count: number) => string;
+  toastTasksCompleted: (count: number) => string;
+  toastTasksReopened: (count: number) => string;
+  toastTasksDeleted: (count: number) => string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -172,13 +194,13 @@ export const defaultTasksLabels: TasksUILabels = {
   editList: "Edit list",
   viewOnlyListBadge: "View only",
   shareListSectionTitle: "Team access",
-  shareListSectionHint: "Grant read or read-and-write access to people or groups.",
-  shareListAddPlaceholder: "Add people or groups…",
-  shareListSearchEmpty: "No people or groups found",
+  shareListSectionHint: sharePrincipalCopy.sectionHint,
+  shareListAddPlaceholder: sharePrincipalCopy.addPlaceholder,
+  shareListSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareListOffline: "Sharing changes require a connection.",
   shareListFailed: "Could not update sharing.",
   removeListShareTitle: "Remove access?",
-  removeListShareConfirm: "This person or group will lose access to this list. Continue?",
+  removeListShareConfirm: sharePrincipalCopy.removeConfirm("list"),
   removeSharedList: "Remove list",
   removeSharedListConfirmTitle: "Remove this list?",
   removeSharedListConfirmDescription:
@@ -217,6 +239,7 @@ export const defaultTasksLabels: TasksUILabels = {
   dueToday: "Today",
   dueYesterday: "Yesterday",
   dueTomorrow: "Tomorrow",
+  dueRelative: (when) => `Due ${when}`,
   noDue: "No due date",
   descriptionLabel: "Notes",
   remindMe: "Remind me",
@@ -225,8 +248,7 @@ export const defaultTasksLabels: TasksUILabels = {
   remindingBefore: (durations) => `Reminding ${durations} before`,
   remindingAfter: (durations) => `Reminding ${durations} after`,
   remindingAfterClause: (durations) => `${durations} after`,
-  dueAddTime: "Add time",
-  dueDateOnly: "Date only",
+  dueAllDay: "All day",
   dueTimeLabel: "Time",
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
@@ -246,9 +268,9 @@ export const defaultTasksLabels: TasksUILabels = {
   projectScopeReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
   changeListOwnerConfirmTitle: "Change owner?",
   changeListOwnerConfirmToGroup: (groupName) =>
-    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that group lose access unless they have a share.`,
+    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeListOwnerConfirmToPersonal:
-    "This list will move to your personal lists. Tasks and existing shares stay. Other group members lose access unless they have a share.",
+    "This list will move to your personal lists. Tasks and existing shares stay. Other team members lose access unless they have a share.",
   changeListOwnerConfirm: "Change owner",
   createProjectButton: "Create",
   saveProjectButton: "Save",
@@ -269,9 +291,6 @@ export const defaultTasksLabels: TasksUILabels = {
   deleteConfirmBody: "This task will be removed from your list.",
   cancel: "Cancel",
   toastSaved: "Saved",
-  toastDeleted: "Task deleted",
-  toastTaskCompleted: "Task completed",
-  toastTaskReopened: "Marked incomplete",
   toastTaskAdded: "Task added",
   toastTaskUpdated: "Task updated",
   toastTaskMoved: (count, listName) =>
@@ -287,6 +306,28 @@ export const defaultTasksLabels: TasksUILabels = {
   tasksDisabledTitle: "Tasks unavailable",
   tasksDisabledMessage: "Tasks are disabled for this workspace.",
   pendingSync: "Pending sync",
+  quickAddPlaceholder: "Create a task… (Press Enter)",
+  quickAddLabel: "Quick add task",
+  searchPlaceholder: "Search tasks...",
+  emptyList: "No tasks",
+  detailNotesPlaceholder: "Add notes…",
+  detailAlarm: (number) => `Alarm ${number}`,
+  selectionLabel: "Multiple selection",
+  selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
+  selectionComplete: "Mark complete",
+  selectionMoveToList: "Move to list",
+  selectionMoveDescription: "Choose a list for the selected tasks.",
+  selectionDone: "Done",
+  moveConfirm: "Move",
+  deleteSelectedTitle: (count) => (count === 1 ? "Delete task?" : `Delete ${count} tasks?`),
+  deleteSelectedBody: (count) =>
+    count === 1
+      ? "This task will be removed from your list."
+      : "These tasks will be removed from their lists.",
+  toastTasksCompleted: (count) => (count === 1 ? "Task completed" : `${count} tasks completed`),
+  toastTasksReopened: (count) =>
+    count === 1 ? "Marked incomplete" : `${count} tasks marked incomplete`,
+  toastTasksDeleted: (count) => (count === 1 ? "Task deleted" : `${count} tasks deleted`),
   conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `Your offline edits to “${title}” conflict with a newer version on the server.`,

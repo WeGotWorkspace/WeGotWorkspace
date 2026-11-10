@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 
@@ -21,15 +21,21 @@ export type DriveModalStoryPreset = "newFolder" | "rename" | "deleteTrash" | "de
 
 export function useDrivePaneStoryController(options?: DrivePaneStoryHarnessOptions) {
   const bootstrap = useMemo(() => createDriveAppBootstrap(), []);
+  // Pane stories show a folder's rows: Personal unless a story names another folder
+  // (the Drive home itself is All Files).
+  const viewPath = options?.viewPath ?? "My Drive";
+  const [view, setViewState] = useState<ViewKey>({ type: "folder", path: viewPath });
 
   const controller = useDriveController({
     data: bootstrap.data,
     session: bootstrap.session,
     operations: options?.operations,
     listLoading: options?.listLoading ?? false,
+    view,
+    onViewChange: setViewState,
   });
 
-  const { setFiles, setView } = controller;
+  const { setFiles } = controller;
   const lastFilesOverrideKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -42,10 +48,8 @@ export function useDrivePaneStoryController(options?: DrivePaneStoryHarnessOptio
   }, [options?.filesOverride, setFiles]);
 
   useEffect(() => {
-    if (options?.viewPath) {
-      setView({ type: "folder", path: options.viewPath });
-    }
-  }, [options?.viewPath, setView]);
+    setViewState({ type: "folder", path: viewPath });
+  }, [viewPath]);
 
   return controller;
 }

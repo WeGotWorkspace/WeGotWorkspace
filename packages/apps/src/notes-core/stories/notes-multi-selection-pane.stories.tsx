@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Archive, ArchiveRestore, CheckCircle2, Notebook, Star, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Notebook, Star, Trash2 } from "lucide-react";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { NotesStoryScope } from "./notes-story-scope";
@@ -58,10 +58,10 @@ function NotesMultiSelectionPaneHarness({
             {
               id: "done",
               label: L.selectionDone,
-              icon: <CheckCircle2 className="size-4" />,
+              icon: null,
               onClick: () => {},
               separatorBefore: true,
-              variant: "primary",
+              showLabel: true,
             },
           ]}
         />

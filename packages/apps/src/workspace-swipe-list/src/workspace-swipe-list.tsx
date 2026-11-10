@@ -1,4 +1,11 @@
-import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useMemo,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { SwipeableList, Type as SwipeListType } from "react-swipeable-list";
 import { ListItemEventDelegationContext } from "@/list-item/src/list-item-delegation";
 import { ListSelectionProvider } from "@/list-item/src/list-item-selection";
@@ -47,7 +54,8 @@ export function WorkspaceSwipeList({
     onItemDragEnd,
   };
   const delegate = hasDelegatedListItemEvents(events);
-  const listProps = useDelegatedListItemEvents({ isTouch, ...events });
+  const { listProps, cancelPress } = useDelegatedListItemEvents({ isTouch, ...events });
+  const delegation = useMemo(() => ({ cancelPress }), [cancelPress]);
   const swipeChildren = Children.toArray(children).map(preserveSwipeItemId);
   const body = isTouch ? (
     <SwipeableList type={SwipeListType.IOS} fullSwipe>
@@ -67,7 +75,9 @@ export function WorkspaceSwipeList({
     </div>
   );
   const framed = delegate ? (
-    <ListItemEventDelegationContext.Provider value>{list}</ListItemEventDelegationContext.Provider>
+    <ListItemEventDelegationContext.Provider value={delegation}>
+      {list}
+    </ListItemEventDelegationContext.Provider>
   ) : (
     list
   );

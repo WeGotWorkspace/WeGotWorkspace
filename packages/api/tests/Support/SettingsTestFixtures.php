@@ -6,7 +6,6 @@ namespace Tests\Support;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\File;
@@ -59,7 +58,7 @@ trait SettingsTestFixtures
         $this->seedWgwUser('alice', email: 'alice@example.test', displayName: 'Alice');
         $this->seedWgwUser('carol', email: 'carol@example.test', displayName: 'Carol');
 
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $teamGroup = $this->seedWgwGroup('principals/groups/team', 'Team');
         $supportGroup = $this->seedWgwGroup('principals/groups/support', 'Support');
 
@@ -71,6 +70,7 @@ trait SettingsTestFixtures
         $this->assertNotNull($carol);
 
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
         $this->addPrincipalToGroup($teamGroup, $bob);
         $this->addPrincipalToGroup($teamGroup, $alice);
         $this->addPrincipalToGroup($supportGroup, $bob);

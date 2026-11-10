@@ -73,10 +73,9 @@ export async function writeTasksBootstrapToCache(
   const lists = tasksListsTable(db);
   const pendingRows = await items.filter((row) => row.pendingSync).toArray();
   await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+  // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
   if (bootstrap.data.groups) {
     await db.meta.put({ key: META_GROUPS, value: JSON.stringify(bootstrap.data.groups) });
-  } else {
-    await db.meta.delete(META_GROUPS);
   }
   rememberOfflineTasksUsername(username);
   await lists.clear();

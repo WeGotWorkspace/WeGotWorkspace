@@ -24,6 +24,7 @@ import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-core/docs-collab";
+import { useDocsFileRename } from "@/docs-core/src/use-docs-file-rename";
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
 import { useDocsAPI } from "@/docs-core/src/use-docs-api";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
@@ -127,6 +128,12 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   });
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
+
+  const collabRename = useDocsFileRename({
+    apiPath: filePath,
+    operations: driveOperations,
+    onRenamed: handleFileRenamed,
+  });
 
   const shareOperations = useMemo(
     () =>
@@ -290,6 +297,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 driveOperations={driveOperations}
                 driveUsername={session.user.username}
                 docApiPath={filePath}
+                onRename={collabRename.open}
                 onShare={
                   filePath
                     ? () =>
@@ -300,6 +308,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                     : undefined
                 }
               />
+              {collabRename.dialog}
               {shareOperations ? (
                 <ShareDialog
                   path={collabShareDialog.shareDialog.path}

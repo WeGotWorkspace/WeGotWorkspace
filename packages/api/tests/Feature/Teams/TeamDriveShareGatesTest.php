@@ -98,7 +98,7 @@ final class TeamDriveShareGatesTest extends WgwDatabaseTestCase
         foreach (['bob' => 'carol', 'alice' => 'carol'] as $caller => $refused) {
             $user = User::query()->where('username', $caller)->firstOrFail();
             Passport::actingAs($user, [McpScopes::DRIVE_SHARE], 'api', $client);
-            foreach ([[$refused, 'ghost', 'Unknown user.'], ['groups/other', 'groups/nope', 'Unknown group.']] as [$target, $unknown, $message]) {
+            foreach ([[$refused, 'ghost', 'Unknown user.'], ['groups/other', 'groups/nope', 'Unknown team.']] as [$target, $unknown, $message]) {
                 foreach ([$target, $unknown] as $name) {
                     WorkspaceServer::actingAs($user, 'api')
                         ->tool(DriveShareTool::class, [

@@ -16,6 +16,11 @@ h4.sidebar-section__title {
   @apply truncate min-w-0;
 }
 
+/* In the app sidebar the label sits behind its rows: same size, quieter ink. */
+.app-sidebar .sidebar-section__heading {
+  --field-label-color: var(--workspace-label-color);
+}
+
 .sidebar-section__list {
   @apply space-y-1;
 }
@@ -31,4 +36,10 @@ h4.sidebar-section__title {
   height: var(--control-height-xs, 1.75rem);
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
+}
+
+/* A short note in place of a section's rows (for example "not in a Team yet"). */
+.sidebar-section__note {
+  @apply text-sm text-muted-foreground;
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }

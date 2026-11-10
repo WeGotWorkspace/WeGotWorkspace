@@ -23,7 +23,7 @@ final class DocsThreadCollectionUris
         $root = $segments[0];
         $owner = strtolower(trim((string) ($segments[1] ?? '')));
         if ($owner === '') {
-            throw new ApiHttpException(400, 'Threads require a user or group file path.', 'bad_request');
+            throw new ApiHttpException(400, 'Threads require a user or team file path.', 'bad_request');
         }
         if ($root === 'users') {
             return 'principals/'.$owner;
@@ -32,6 +32,6 @@ final class DocsThreadCollectionUris
             return AdminConstants::GROUP_PREFIX.$owner;
         }
 
-        throw new ApiHttpException(400, 'Threads require a user or group file path.', 'bad_request');
+        throw new ApiHttpException(400, 'Threads require a user or team file path.', 'bad_request');
     }
 }
