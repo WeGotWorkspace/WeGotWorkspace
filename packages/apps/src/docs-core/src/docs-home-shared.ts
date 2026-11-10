@@ -1,15 +1,15 @@
 /**
  * Docs home "Shared with me" — filters member-shared Drive entries to the same
- * Markdown / plain-text allowlist used by Docs home browse (`DOCS_HOME_EXTENSIONS`).
+ * Markdown / plain-text allowlist used by Docs home browse (`DOCS_HOME_LIST_EXTENSIONS`).
  * Folders are omitted (Docs opens files, not folder browse).
  */
 import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
-import { DOCS_HOME_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
+import { DOCS_HOME_LIST_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 
-const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_EXTENSIONS);
+const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_LIST_EXTENSIONS);
 
 /** Sidebar / listing selection for Docs home (My Docs, Shared with me, virtual views, or a drive). */
 export type DocsHomeView =
@@ -20,7 +20,7 @@ export type DocsHomeView =
   | { type: "trash" }
   | { type: "drive"; pathPrefix: string };
 
-/** True when a file title/path has a Docs-home browse extension (md / markdown / txt). */
+/** True when a file title/path has a Docs-home list extension (md / markdown / txt, plus docx / gdoc for Save as Markdown). */
 export function isDocsHomeCompatibleExtension(fileName: string): boolean {
   return DOCS_HOME_EXTENSION_SET.has(extensionFromFileName(fileName));
 }

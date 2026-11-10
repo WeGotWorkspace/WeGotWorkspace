@@ -8,8 +8,8 @@ import {
 } from "@/drive-core/src/drive-search-utils";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import {
-  DOCS_HOME_CATEGORIES,
-  DOCS_HOME_EXTENSIONS,
+  DOCS_HOME_LIST_CATEGORIES,
+  DOCS_HOME_LIST_EXTENSIONS,
   DOCS_HOME_PAGE_SIZE,
   DOCS_HOME_SOURCES,
 } from "@/docs-core/src/docs-home-constants";
@@ -137,8 +137,8 @@ function browseFilters(scopePrefix: string, debouncedQuery: string): DocsListing
     pathPrefix: scopePrefix || undefined,
     query: debouncedQuery || undefined,
     sources: DOCS_HOME_SOURCES,
-    extensions: DOCS_HOME_EXTENSIONS,
-    categories: DOCS_HOME_CATEGORIES,
+    extensions: DOCS_HOME_LIST_EXTENSIONS,
+    categories: DOCS_HOME_LIST_CATEGORIES,
   };
 }
 
@@ -171,8 +171,8 @@ export function useDocsHomeList({
   const baseParams = useMemo(
     () => ({
       sources: [...DOCS_HOME_SOURCES],
-      extensions: [...DOCS_HOME_EXTENSIONS],
-      categories: [...DOCS_HOME_CATEGORIES],
+      extensions: [...DOCS_HOME_LIST_EXTENSIONS],
+      categories: [...DOCS_HOME_LIST_CATEGORIES],
       limit: pageSize,
       ...(scopePrefix ? { pathPrefix: scopePrefix } : {}),
     }),

@@ -55,6 +55,13 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
+import {
+  isSaveAsMarkdownOnlyFile,
+  saveAsMarkdownSourceKindFromName,
+} from "@/docs-core/src/docx-import/save-as-markdown-source";
+import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
@@ -94,7 +101,7 @@ export function DocsHomeWorkspace({
 }: DocsHomeWorkspaceProps) {
   const labels = mergeDocsLabels(labelOverrides);
   const username = session.user.username ?? "";
-  const { showError } = useAppToast();
+  const { show, showError } = useAppToast();
   const offlineUsername = offlineUsernameProp;
 
   const driveOperations = useMemo(() => {
@@ -363,11 +370,27 @@ export function DocsHomeWorkspace({
 
   const handleOpenFile = useCallback(
     (file: DriveFile) => {
+      // Word files and Google links are listed for Save as Markdown, not opened (#1983).
+      if (isSaveAsMarkdownOnlyFile(file)) {
+        show(
+          saveAsMarkdownSourceKindFromName(file.title) === "gdoc"
+            ? docxImportLabels.googleLinkDescription(file.title)
+            : docxImportLabels.openDocxInDocs,
+        );
+        return;
+      }
       if (!canOpenOffline(file)) return;
       if (file.apiPath) onOpenFile?.(file.apiPath);
     },
-    [canOpenOffline, onOpenFile],
+    [canOpenOffline, onOpenFile, show],
   );
+
+  const saveAsMarkdown = useSaveAsMarkdownAction({
+    enabled: Boolean(onCreateDocument) && !isTrashView && !wgwIsGuestSession(),
+    onOpenDocsFile: onOpenFile,
+    username,
+    dialogSurfaceClassName: "docs-dialog-surface",
+  });
 
   const createDialog = useDocsHomeCreateDialog({
     username,
@@ -433,6 +456,7 @@ export function DocsHomeWorkspace({
             onUndoQueuedAction={actions.undoLatest}
             shareOperations={shareOperations}
             username={username}
+            extraFileActions={saveAsMarkdown.actionsFor}
           />
         }
       />
@@ -445,6 +469,7 @@ export function DocsHomeWorkspace({
         operations={operations}
         createDialog={createDialog}
       />
+      {saveAsMarkdown.dialogs}
     </TooltipProvider>
   );
 }

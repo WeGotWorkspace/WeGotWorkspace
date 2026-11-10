@@ -74,6 +74,18 @@ function checkPackageName(source, name) {
   }
 }
 
+/**
+ * A package whose declared license is vague but whose LICENSE text was checked
+ * by hand. The override only applies while the declared value is unchanged.
+ */
+function overriddenLicense(name, expression) {
+  const override = policy.packageLicenseOverrides?.[name];
+  if (!override || normalizeLicenseExpression(expression) !== override.declared) {
+    return expression;
+  }
+  return override.license;
+}
+
 function checkLicense(source, name, licenseExpression) {
   checkPackageName(source, name);
 
@@ -81,6 +93,7 @@ function checkLicense(source, name, licenseExpression) {
   if (Array.isArray(licenseExpression)) {
     expression = licenseExpression.join(" OR ");
   }
+  expression = overriddenLicense(name, String(expression));
 
   if (!isLicenseAllowed(String(expression))) {
     recordViolation(source, name, String(expression), "license is not allowed by tools/license-policy.json");
