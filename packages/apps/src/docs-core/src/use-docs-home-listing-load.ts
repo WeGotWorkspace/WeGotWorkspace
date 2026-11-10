@@ -21,6 +21,7 @@ import {
   writeDocsListingToCache,
 } from "@/lib/offline/docs-listing-offline-store";
 import {
+  keepLiveNodeIds,
   useDocsListingCacheRefresh,
   useDocsListingReconnectRefresh,
 } from "@/docs-core/src/use-docs-listing-cache-refresh";
@@ -145,8 +146,9 @@ export function useDocsHomeListingLoad({
         cacheTimeoutMs,
       );
       if (!cached || cached.results.length === 0) return false;
+      const sameView = shownKeyRef.current === filtersKey; // live rows keep their id (#1976)
       shownKeyRef.current = filtersKey;
-      setResults(cached.results);
+      setResults((shown) => (sameView ? keepLiveNodeIds(shown, cached.results) : cached.results));
       setHasMore(cached.hasMore);
       setError(null);
       setIsOfflineListing(!online);
