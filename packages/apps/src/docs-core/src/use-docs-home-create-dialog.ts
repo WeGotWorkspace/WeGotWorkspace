@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { apiPathFromUiPath } from "@/drive-core/src/drive-path-utils";
@@ -53,6 +53,8 @@ export function useDocsHomeCreateDialog({
   );
 
   const [importFile, setImportFile] = useState<File | null>(null);
+  // Latest open request; a name lookup that finishes for an older one is ignored.
+  const openRequestRef = useRef(0);
 
   const openDialog = useCallback(
     (file: File | null) => {
@@ -62,8 +64,10 @@ export function useDocsHomeCreateDialog({
       setImportFile(file);
       const apiRoot = apiPathFromUiPath(browsePath, username, groupRootNames);
       const base = file ? markdownNameFor(file.name).replace(/\.md$/, "") : undefined;
+      const request = ++openRequestRef.current;
       void (async () => {
         const name = await resolveNewDocumentName(listingOperations, apiRoot, files, base);
+        if (request !== openRequestRef.current) return;
         setCreateDialogDefaultName(name);
         setCreateDialogOpen(true);
       })();
@@ -85,6 +89,7 @@ export function useDocsHomeCreateDialog({
   );
 
   const closeCreateDialog = useCallback(() => {
+    openRequestRef.current += 1;
     setCreateDialogOpen(false);
     setImportFile(null);
   }, []);
