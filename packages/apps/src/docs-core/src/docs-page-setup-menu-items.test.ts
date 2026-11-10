@@ -25,7 +25,7 @@ const NONE: TextEditorPageSetup = {
 };
 
 describe("docsPageSetupMenuItems", () => {
-  it("lists None first, then the paper sizes and orientation", () => {
+  it("lists None first, then the paper sizes, orientation and Fit to screen", () => {
     expect(rows(A4_LANDSCAPE).map((row) => row.label)).toEqual([
       "None",
       "A4",
@@ -35,6 +35,7 @@ describe("docsPageSetupMenuItems", () => {
       "Legal",
       "Portrait",
       "Landscape",
+      "Fit to screen",
     ]);
     expect(
       rows(A4_LANDSCAPE)
@@ -43,13 +44,35 @@ describe("docsPageSetupMenuItems", () => {
     ).toEqual(["A4", "Landscape"]);
   });
 
-  it("turns orientation off without paper", () => {
-    const list = rows(NONE);
+  it("turns orientation and Fit to screen off without paper", () => {
+    const list = rows({ ...NONE, fitToScreen: true });
     expect(list.filter((row) => row.checked).map((row) => row.label)).toEqual(["None"]);
     expect(list.filter((row) => row.disabled).map((row) => row.label)).toEqual([
       "Portrait",
       "Landscape",
+      "Fit to screen",
     ]);
+  });
+
+  it("toggles Fit to screen in its own section", () => {
+    const entries = docsPageSetupMenuItems({
+      pageSetup: A4_LANDSCAPE,
+      setPageSetup: vi.fn(),
+      labels: docsLabels,
+    });
+    expect(entries.at(-2)).toEqual({ type: "separator", id: "after-orientation" });
+
+    const turnOn = vi.fn();
+    rows(A4_LANDSCAPE, turnOn).at(-1)?.onClick?.();
+    expect(turnOn).toHaveBeenCalledWith({ fitToScreen: true });
+
+    const fitted = rows({ ...A4_LANDSCAPE, fitToScreen: true });
+    expect(fitted.at(-1)?.checked).toBe(true);
+    const turnOff = vi.fn();
+    rows({ ...A4_LANDSCAPE, fitToScreen: true }, turnOff)
+      .at(-1)
+      ?.onClick?.();
+    expect(turnOff).toHaveBeenCalledWith({ fitToScreen: false });
   });
 
   it("saves None as the paper choice", () => {

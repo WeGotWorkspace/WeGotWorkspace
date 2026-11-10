@@ -122,7 +122,11 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [filePath, followPath],
   );
 
-  const handleOpenHomeFile = useOpenDocsFile();
+  const handleOpenHomeFile = useOpenDocsFile({
+    canOpenById: wgwLiveApiEnabled() && !isGuestSession,
+    username: offlineUsername,
+    holdPathLookup,
+  });
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
 

@@ -1,10 +1,11 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
+import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const docsLabels = {
   toastSaved: "Document saved",
-  toastSynced: "Changes synced",
+  toastSynced: workspaceLabels.sync.changesSynced,
   emptyTitle: "No document open",
   emptyDescription: "Open a Markdown file from Drive to start editing.",
   /** Accessible name of the document editing surface. */
@@ -26,14 +27,14 @@ export const docsLabels = {
   offlineAvailable: driveLabels.offlineAvailable,
   syncingOffline: "Syncing offline",
   offlinePendingSync: driveLabels.offlinePendingSync,
-  syncFailedTitle: "Some changes could not sync",
+  syncFailedTitle: workspaceLabels.sync.failedTitle,
   syncFailedMessage:
     "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
   retrySync: "Retry sync",
   conflictTitle: "Document conflict",
   conflictDescription: (title: string) =>
     `"${title}" changed on the server while you were offline. Keep your version or use the server copy?`,
-  conflictKeepMine: "Keep mine",
+  conflictKeepMine: workspaceLabels.sync.keepMine,
   conflictUseServer: "Use server",
   documentGoneTitle: "This document is no longer available",
   documentGoneDescription:
@@ -67,7 +68,7 @@ export const docsLabels = {
   },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
-  homeNewDocumentMenu: "More create options",
+  homeNewDocumentMenu: workspaceLabels.list.moreCreateOptions,
   homeCreateError: "Could not create a new document.",
   /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "All Files"). */
   homeAllDocs: filesBrowserSidebarLabels.homeDocs,
@@ -84,7 +85,7 @@ export const docsLabels = {
   homeDeletePermanentlyTitle: "Delete permanently?",
   homeDeletePermanentlyOne: "This will permanently delete 1 file.",
   homeDeletePermanentlyMany: (count: number) => `This will permanently delete ${count} files.`,
-  homeDeletePermanentlyAction: "Delete",
+  homeDeletePermanentlyAction: workspaceLabels.dialog.delete,
   homeMoveToTrashTitle: "Move to Trash?",
   homeMoveToTrashOne: "This will move 1 file to Trash.",
   homeMoveToTrashMany: (count: number) => `This will move ${count} files to Trash.`,
@@ -213,5 +214,5 @@ export const docsLabels = {
 export type DocsUILabels = typeof docsLabels;
 
 export function mergeDocsLabels(overrides?: Partial<DocsUILabels>): DocsUILabels {
-  return { ...docsLabels, ...overrides };
+  return mergeWorkspaceLabels(docsLabels, overrides);
 }

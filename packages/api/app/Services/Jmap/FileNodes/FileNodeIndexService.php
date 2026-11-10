@@ -133,6 +133,31 @@ final class FileNodeIndexService
     }
 
     /**
+     * Live file (not folder) ids for many storage keys in one query.
+     *
+     * @param  list<string>  $keys
+     * @return array<string, string> storage key → node id; keys without a live file are left out
+     */
+    public function liveFileNodeIdsByKey(array $keys): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $ids = [];
+        $rows = JmapFileNode::query()
+            ->whereIn('storage_key', array_values(array_unique($keys)))
+            ->whereNull('deleted_at')
+            ->where('is_dir', false)
+            ->get(['storage_key', 'node_id']);
+        foreach ($rows as $row) {
+            $ids[(string) $row->storage_key] = (string) $row->node_id;
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return list<JmapFileNode>
      */
     public function liveChildren(string $parentNodeId): array

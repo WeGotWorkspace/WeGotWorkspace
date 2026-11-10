@@ -1,3 +1,6 @@
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
+
+/** Destructive-dialog keys an app label type can extend as-is (Notes does). */
 export type WorkspaceDestructiveDialogLabels = {
   dialogCancel: string;
   dialogDelete: string;
@@ -6,10 +9,10 @@ export type WorkspaceDestructiveDialogLabels = {
 };
 
 export const workspaceDestructiveDialogLabels: WorkspaceDestructiveDialogLabels = {
-  dialogCancel: "Cancel",
-  dialogDelete: "Delete",
-  dialogDeleteConfirmSuffix: "This action cannot be undone.",
-  dialogPermanentDeleteLeadIn: "This will permanently delete ",
+  dialogCancel: workspaceLabels.dialog.cancel,
+  dialogDelete: workspaceLabels.dialog.delete,
+  dialogDeleteConfirmSuffix: workspaceLabels.dialog.deleteConfirmSuffix,
+  dialogPermanentDeleteLeadIn: workspaceLabels.dialog.permanentDeleteLeadIn,
 };
 
 export function buildPermanentDeleteDescription({

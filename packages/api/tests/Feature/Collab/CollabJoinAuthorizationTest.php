@@ -46,7 +46,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
     {
         $this->joinRoom($this->carolBearerToken(), RoomTestHelper::fileRoomId(self::DOC_PATH), 'Carol')
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_join_denied_for_other_users_note_room_without_notebook_share(): void
@@ -55,7 +55,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
 
         $this->joinRoom($this->carolBearerToken(), RoomTestHelper::fileRoomId($noteUid), 'Carol')
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_join_denied_for_room_matching_neither_known_form(): void
@@ -63,7 +63,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
         // Normalizes to /docs/legacy-room.md, which is not under any drive root.
         $this->joinRoom($this->userBearerToken(), RoomTestHelper::fileRoomId('docs/legacy-room.md'), 'Bob')
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_link_guest_session_does_not_join_collaboration_on_its_own_link(): void
@@ -80,7 +80,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
         // Link guests stay on the read-only Docs shell: no live collaboration.
         $this->joinRoom($guestToken, RoomTestHelper::fileRoomId(self::DOC_PATH), 'Visitor')
             ->assertUnauthorized()
-            ->assertJsonPath('error', 'auth_required');
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join document collaboration.']);
         // The link itself keeps working for the guest.
         $this->withBearer($guestToken)
             ->getJson('/api/v1/files/children?path=/users/bob/workspace')
@@ -118,7 +118,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
 
         $this->joinRoom($this->carolBearerToken(), $roomId, 'Carol')
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_join_allowed_for_own_home_path_without_leading_slash(): void
@@ -132,7 +132,7 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
     {
         $this->joinRoom($this->carolBearerToken(), RoomTestHelper::fileRoomId(ltrim(self::DOC_PATH, '/')), 'Carol')
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_join_allowed_with_doc_share_grant(): void

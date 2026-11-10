@@ -151,6 +151,7 @@ export function useTasksController({
     itemDragHandlers: list.itemDragHandlers,
     sidebarDropZoneProps: list.sidebarDropZoneProps,
     confirmDialog: mutations.confirmDialog,
+    requestMoveTask: mutations.requestMoveTask,
     activeId: list.activeId,
     activeTask: list.activeTask,
     closeTask: list.closeTask,

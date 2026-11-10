@@ -31,6 +31,8 @@ type TasksDetailViewProps = {
   /** The done box left of the title, the same toggle as in the list. */
   onToggleComplete: (taskId: string) => void;
   onCreateList?: () => void;
+  /** Asks before the task moves to another list; `move` applies it. */
+  onConfirmMove?: (listName: string, move: () => void) => void;
 };
 
 /**
@@ -47,6 +49,7 @@ export function TasksDetailView({
   onSave,
   onToggleComplete,
   onCreateList,
+  onConfirmMove,
 }: TasksDetailViewProps) {
   const [form, setForm] = useTaskEditForm(task, readOnly);
   const formRef = useRef(form);
@@ -157,7 +160,12 @@ export function TasksDetailView({
           ariaLabel={L.addTaskList}
           triggerVariant="ghost"
           disabled={readOnly}
-          onNotebookChange={(list) => update((prev) => ({ ...prev, listId: list.id }), "now")}
+          onNotebookChange={(list) => {
+            if (list.id === form.listId) return;
+            const move = () => update((prev) => ({ ...prev, listId: list.id }), "now");
+            if (onConfirmMove) onConfirmMove(list.name, move);
+            else move();
+          }}
           onCreateNotebook={readOnly ? undefined : onCreateList}
         />
       }

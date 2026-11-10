@@ -44,10 +44,10 @@ final class DocsUnreadableDocAnswersTest extends WgwDatabaseTestCase
         foreach ([self::PATH, '/users/bob/docs/missing.md', '/users/nobody-here/docs/x.md'] as $path) {
             $this->withBearer($carol)->get($this->collabUrl($path))
                 ->assertNotFound()
-                ->assertExactJson(['error' => 'not_found']);
+                ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
             $this->withBearer($carol)->putCollaboration($this->collabUrl($path), 'overwrite')
                 ->assertNotFound()
-                ->assertExactJson(['error' => 'not_found']);
+                ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
         }
         $this->assertSame("# Plan\n\nInitial", $this->getDocContent($this->userBearerToken(), self::PATH)->streamedContent());
     }
@@ -56,7 +56,7 @@ final class DocsUnreadableDocAnswersTest extends WgwDatabaseTestCase
     {
         $this->withBearer($this->userBearerToken())->get($this->collabUrl('/users/bob/docs/../../carol/x.md'))
             ->assertNotFound()
-            ->assertExactJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
     }
 
     public function test_a_view_sharee_reads_but_may_not_save_and_loses_the_doc_on_revoke(): void
@@ -72,7 +72,7 @@ final class DocsUnreadableDocAnswersTest extends WgwDatabaseTestCase
         $this->withBearer($carol)->get($this->collabUrl(self::PATH))->assertOk();
         $this->withBearer($carol)->putCollaboration($this->collabUrl(self::PATH), 'blocked')
             ->assertForbidden()
-            ->assertExactJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
 
         $this->withBearer($this->userBearerToken())
             ->deleteJson('/api/v1/files/shares/'.$share->json('data.id'))
@@ -80,7 +80,7 @@ final class DocsUnreadableDocAnswersTest extends WgwDatabaseTestCase
 
         $this->withBearer($carol)->get($this->collabUrl(self::PATH))
             ->assertNotFound()
-            ->assertExactJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
     }
 
     public function test_a_share_link_guest_is_refused_live_collaboration_inside_and_outside_its_link(): void
@@ -98,7 +98,7 @@ final class DocsUnreadableDocAnswersTest extends WgwDatabaseTestCase
         foreach ([self::PATH, '/users/bob/docs/other.md'] as $path) {
             $this->withBearer($guest)->get($this->collabUrl($path))
                 ->assertForbidden()
-                ->assertExactJson(['error' => 'forbidden']);
+                ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
         }
     }
 

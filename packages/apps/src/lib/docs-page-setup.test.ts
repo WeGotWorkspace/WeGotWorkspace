@@ -42,6 +42,12 @@ describe("parseDocsPageSetupPrefs", () => {
     });
   });
 
+  it("keeps Fit to screen only as a yes or no", () => {
+    expect(parseDocsPageSetupPrefs('{"fitToScreen":true}')).toEqual({ fitToScreen: true });
+    expect(parseDocsPageSetupPrefs('{"fitToScreen":false}')).toEqual({ fitToScreen: false });
+    expect(parseDocsPageSetupPrefs('{"fitToScreen":"yes"}')).toEqual({});
+  });
+
   it("drops unknown values and survives bad JSON", () => {
     expect(parseDocsPageSetupPrefs('{"format":"b5","orientation":"portrait"}')).toEqual({
       orientation: "portrait",
@@ -58,6 +64,7 @@ describe("resolveDocsPageSetup", () => {
       format: "letter",
       orientation: "portrait",
       layout: "pages",
+      fitToScreen: true,
     });
     expect(resolveDocsPageSetup({}, ["nl-NL"]).format).toBe("a4");
   });
@@ -67,6 +74,7 @@ describe("resolveDocsPageSetup", () => {
       format: "legal",
       orientation: "landscape",
       layout: "pages",
+      fitToScreen: true,
     });
   });
 
@@ -76,6 +84,41 @@ describe("resolveDocsPageSetup", () => {
       orientation: "portrait",
       layout: "continuous",
     });
+  });
+});
+
+describe("Fit to screen", () => {
+  it("fits pages by default, and only pages: never a document without paper", () => {
+    expect(resolveDocsPageSetup({ format: "a4" }).fitToScreen).toBe(true);
+    expect(resolveDocsPageSetup({ format: "a4", fitToScreen: true }).fitToScreen).toBe(true);
+    expect(resolveDocsPageSetup({ format: "none", fitToScreen: true })).not.toHaveProperty(
+      "fitToScreen",
+    );
+    expect(resolveDocsPageSetup({ format: "a4", fitToScreen: false })).not.toHaveProperty(
+      "fitToScreen",
+    );
+  });
+
+  it("is one choice for every document on this device, own page setup or not", () => {
+    expect(
+      resolveDocPageSetup(
+        "/plan.md",
+        { fitToScreen: false },
+        {
+          "/plan.md": { format: "a4", orientation: "portrait", at: 1 },
+        },
+      ),
+    ).not.toHaveProperty("fitToScreen");
+    const overrides = {
+      "/plan.md": { format: "legal", orientation: "landscape", at: 1 },
+    } as const;
+    expect(
+      resolveDocPageSetup("/plan.md", { format: "a5", fitToScreen: true }, overrides, ["nl-NL"]),
+    ).toEqual({ format: "legal", orientation: "landscape", layout: "pages", fitToScreen: true });
+    expect(
+      resolveDocPageSetup("/other.md", { format: "a5", fitToScreen: true }, overrides, ["nl-NL"])
+        .fitToScreen,
+    ).toBe(true);
   });
 });
 
@@ -174,6 +217,7 @@ describe("per-document page setup", () => {
       format: "legal",
       orientation: "landscape",
       layout: "pages",
+      fitToScreen: true,
     });
     expect(
       resolveDocPageSetup("/users/ann/other.md", { format: "a5" }, overrides, ["nl-NL"]),
@@ -181,6 +225,7 @@ describe("per-document page setup", () => {
       format: "a5",
       orientation: "portrait",
       layout: "pages",
+      fitToScreen: true,
     });
     expect(resolveDocPageSetup(null, {}, overrides, ["en-US"]).format).toBe("letter");
   });
