@@ -1263,6 +1263,42 @@
     break-inside: avoid;
   }
 
+  /* A heading stays with the line after it; an image is never split. (#1617) */
+  .text-editor-prose :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  .text-editor-prose img {
+    break-inside: avoid;
+  }
+
+  /*
+   * Print and PDF show the document, not the review: no comment highlights and no
+   * suggestion markup. Pending suggestions print as accepted, like the Word download.
+   */
+  .text-editor-prose :is(.comment-mark, .comment-draft-anchor-selection, .legacy-suggestion-mark) {
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .text-editor-prose del[data-change-id] {
+    display: none !important;
+  }
+
+  .text-editor-prose :is(ins[data-change-id], span[data-format-change][data-change-id]) {
+    background: none !important;
+    border: 0 !important;
+    text-decoration: none !important;
+  }
+
+  /* Browsers drop background colours in print by default; keep highlights. */
+  .text-editor-prose mark {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   /* Other people's carets and selections are live presence, not document content. */
   .ProseMirror :is(.collaboration-carets__caret, .collaboration-carets__label) {
     display: none !important;
