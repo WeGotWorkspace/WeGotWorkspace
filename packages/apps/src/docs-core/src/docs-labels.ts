@@ -93,8 +93,8 @@ export const docsLabels = {
   saveError: "Could not save this document.",
   renameError: "Could not rename this document.",
   print: "Print",
-  download: "Download",
-  downloadWord: "Word (.docx)",
+  downloadMarkdown: "Download Markdown (.md)",
+  downloadWord: "Download Word (.docx)",
   downloadFailed: "Could not download this document.",
   downloadImagesMissing: (count: number) =>
     count === 1
@@ -102,6 +102,7 @@ export const docsLabels = {
       : `${count} images could not be included in the download.`,
   ...docsPageSetupLabels,
   share: driveLabels.detailShare,
+  inviteOthers: "Invite others",
   insertImageError: "Could not insert the image.",
   insertImageTitle: "Insert image",
   insertImageChooserDescription:

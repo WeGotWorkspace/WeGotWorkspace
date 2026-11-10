@@ -110,9 +110,9 @@ async function downloadWord(
   const download = page.waitForEvent("download");
   await page
     .locator(".docs-workspace__header-actions-row")
-    .getByRole("button", { name: "Download" })
+    .getByRole("button", { name: "Share" })
     .click();
-  await page.getByRole("menuitem", { name: "Word (.docx)" }).click();
+  await page.getByRole("menuitem", { name: "Download Word (.docx)" }).click();
   const file = await download;
   const target = await file.path();
   if (OUT_DIR) {
@@ -169,10 +169,10 @@ test.describe("Docs: download as Word (live app)", () => {
     const online = await downloadWord(page, "online");
     expect(online.name).toBe(`e2e-export-${stamp}.docx`);
     expectFullDoc(readDocx(online.bytes));
-    const downloadButton = page
+    const shareButton = page
       .locator(".docs-workspace__header-actions-row")
-      .getByRole("button", { name: "Download" });
-    await expect(downloadButton).toBeEnabled();
+      .getByRole("button", { name: "Share" });
+    await expect(shareButton).toBeEnabled();
 
     // Offline: the image comes from the blob the editor already shows.
     await context.setOffline(true);

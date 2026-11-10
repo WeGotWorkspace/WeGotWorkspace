@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TEXT_EDITOR_PAGE_FORMAT_SPECS } from "@/lib/page-format";
-import { docsExportFileName, docsExportPage } from "./docs-download-word";
+import { docsExportPage } from "./docs-download-word";
+import { docsExportFileName } from "./docs-export-file-name";
 
 describe("docsExportFileName", () => {
   it("replaces the Doc's extension", () => {
