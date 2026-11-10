@@ -1,8 +1,7 @@
-import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
 import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
-import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export type CalendarUILabels = {
   appTitle: string;
@@ -302,7 +301,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
   myCalendarsSection: "My calendars",
-  sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
+  sharedWithMeSection: "Shared with me",
   tasksSection: "Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
@@ -310,7 +309,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   taskDueListLabel: "List",
   subscribedCalendarsSection: "Subscriptions",
   teamCalendarBadge: "Team calendar",
-  viewOnlyCalendarBadge: workspaceLabels.sharing.viewOnly,
+  viewOnlyCalendarBadge: "View only",
   calendarDirectoryLabel: defaultOwnerScopeLabels.label,
   calendarDirectoryPersonal: defaultOwnerScopeLabels.personal,
   calendarDirectoryGroup: defaultOwnerScopeLabels.group,
@@ -320,18 +319,18 @@ export const defaultCalendarLabels: CalendarUILabels = {
   editCalendar: "Edit calendar",
   editCalendarTitle: "Edit calendar",
   createCalendarTitle: "New calendar",
-  calendarNameLabel: workspaceLabels.dialog.nameField,
-  calendarColorLabel: workspaceLabels.dialog.colorField,
+  calendarNameLabel: "Name",
+  calendarColorLabel: "Color",
   deleteCalendar: "Delete calendar",
   deleteCalendarConfirmTitle: "Delete calendar?",
   deleteCalendarConfirmDescription:
     "Events on this calendar will be permanently deleted. This cannot be undone.",
-  changeCalendarOwnerConfirmTitle: workspaceLabels.sharing.changeOwnerTitle,
+  changeCalendarOwnerConfirmTitle: "Change owner?",
   changeCalendarOwnerConfirmToGroup: (groupName) =>
-    `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that group lose access unless they have a share.`,
+    `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeCalendarOwnerConfirmToPersonal:
-    "This calendar will move to your personal calendars. Events and existing shares stay. Other group members lose access unless they have a share.",
-  changeCalendarOwnerConfirm: workspaceLabels.sharing.changeOwner,
+    "This calendar will move to your personal calendars. Events and existing shares stay. Other team members lose access unless they have a share.",
+  changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
   subscribeCalendarSubmit: "Subscribe",
@@ -352,7 +351,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarHttpsLabel: "Web address",
   publishCalendarBusyLabel: "Busy only",
   publishCalendarBusyHint: "Publish times only. Titles, people, and notes stay off the feed.",
-  copyHttpsUrl: workspaceLabels.sharing.copyLink,
+  copyHttpsUrl: "Copy link",
   openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",
   unpublishCalendarDescription:
@@ -433,7 +432,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Description",
-  eventDetailsEdit: workspaceLabels.dialog.edit,
+  eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
@@ -458,10 +457,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsOnDate: "Ends on date",
   eventRecurrenceEndsAfter: "Ends after",
   eventRecurrenceEndsCountSuffix: "times",
-  save: workspaceLabels.dialog.save,
-  saveChanges: workspaceLabels.dialog.save,
-  cancel: workspaceLabels.dialog.cancel,
-  delete: workspaceLabels.dialog.delete,
+  save: "Save",
+  saveChanges: "Save",
+  cancel: "Cancel",
+  delete: "Delete",
   invitationsSection: "Invitations",
   invitationsEmpty: "No pending invitations. Invites you receive will appear here.",
   invitationsEmptyResponded: "No responded invitations yet.",
@@ -507,27 +506,27 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUpdated: "Invitation updated",
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
-  pendingSync: workspaceLabels.sync.pending,
-  shareCalendarSectionTitle: workspaceLabels.sharing.teamAccess,
-  shareCalendarSectionHint: "Grant read or read-and-write access to people or groups.",
-  shareCalendarAddPlaceholder: workspaceLabels.sharing.addPeoplePlaceholderEllipsis,
+  pendingSync: "Pending sync",
+  shareCalendarSectionTitle: "Team access",
+  shareCalendarSectionHint: sharePrincipalCopy.sectionHint,
+  shareCalendarAddPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareCalendarSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareCalendarOffline: "Sharing changes require a connection.",
   shareCalendarFailed: "Could not update sharing.",
   sharedCalendar: "Shared with you",
-  removeCalendarShareTitle: workspaceLabels.sharing.removeAccessTitle,
-  removeCalendarShareConfirm: "This person or group will lose access to this calendar. Continue?",
-  conflictTitle: workspaceLabels.sync.conflictTitle,
+  removeCalendarShareTitle: "Remove access?",
+  removeCalendarShareConfirm: sharePrincipalCopy.removeConfirm("calendar"),
+  conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,
   conflictRemaining: (count) =>
     count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
-  conflictKeepMine: workspaceLabels.sync.keepMine,
+  conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
-  return mergeWorkspaceLabels(defaultCalendarLabels, overrides);
+  return { ...defaultCalendarLabels, ...overrides };
 }
 
 /** Tooltip / aria-label pair for header prev/next — same unit `shiftAnchor` steps. */

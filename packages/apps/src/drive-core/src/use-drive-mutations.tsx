@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
+import { driveRowsById } from "@/drive-core/src/use-drive-all-files";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
@@ -11,7 +12,8 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
-import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import { driveCreateJumpsToPersonal } from "@/drive-core/src/drive-folder-picker-utils";
+import { driveFileFromEntry, optimisticDriveFolder } from "@/drive-core/src/drive-file-utils";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { restoreDriveStars } from "@/drive-core/src/drive-undo-writes";
 import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortcut";
@@ -98,13 +100,12 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   } = list;
 
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
   const [renameDialog, setRenameDialog] = useState<null | { id: string; extension: string }>(null);
   const [renameName, setRenameName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<null | { ids: string[]; permanent: boolean }>(
     null,
   );
-  const [moveDialog, setMoveDialog] = useState<{ ids: string[] } | null>(null);
+  const [moveDialog, setMoveDialog] = useState<{ ids: string[]; rows: DriveFile[] } | null>(null);
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false);
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
@@ -139,8 +140,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     beginOptimisticUpdate,
     reloadStarredFromServer,
     view,
-    viewType: view.type,
     fileById,
+    allFiles: shell,
   });
 
   const toggleStar = (id: string) => {
@@ -187,10 +188,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const commitMoveToFolder = useCallback(
     (ids: string[], destinationPath: string) => {
       if (!structureEnabled) return;
-      const movable = canMoveDriveItemsToFolder(files, ids, destinationPath);
+      const movable = canMoveDriveItemsToFolder(driveRowsById(ids, fileById), ids, destinationPath);
       if (movable.length > 0) moveToFolder(movable, destinationPath);
     },
-    [files, moveToFolder, structureEnabled],
+    [fileById, moveToFolder, structureEnabled],
   );
 
   const folderDropZoneProps = useCallback(
@@ -220,9 +221,9 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const openMoveDialog = useCallback(
     (ids: string[]) => {
       if (!structureEnabled || ids.length === 0) return;
-      setMoveDialog({ ids });
+      setMoveDialog({ ids, rows: driveRowsById(ids, fileById) });
     },
-    [structureEnabled],
+    [fileById, structureEnabled],
   );
   const requestMoveSelected = () => openMoveDialog(selectedIds);
   const requestMoveItem = (file: DriveFile) => openMoveDialog([file.id]);
@@ -272,37 +273,28 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       });
   };
 
+  /** From Recent, Shared with me, Starred or Trash, open Personal before creating. */
+  const jumpToPersonalForCreate = useCallback(() => {
+    if (driveCreateJumpsToPersonal(view)) commitView({ type: "folder", path: "My Drive" });
+  }, [commitView, view]);
+
   const createFolder = () => {
     if (!structureEnabled) return;
-    setNewFolderName("");
+    jumpToPersonalForCreate();
     setNewFolderDialogOpen(true);
   };
 
-  const submitCreateFolder = () => {
-    const v = newFolderName.trim();
+  const submitCreateFolder = (name: string, destinationPath: string) => {
+    const v = name.trim();
     if (!v) return;
-    const targetParent = view.type === "folder" ? view.path : "My Drive";
-    const id = `f-${Date.now()}`;
-    setFiles((p) => [
-      {
-        id,
-        notebook: "Folder",
-        category: "Folder",
-        date: "Now",
-        title: v,
-        excerpt: "0 items",
-        body: [],
-        tags: [],
-        wordCount: 0,
-        parent: targetParent,
-        kind: "folder",
-        size: "—",
-      },
-      ...p,
-    ]);
+    const targetParent = destinationPath;
+    setFiles((p) => [optimisticDriveFolder(v, targetParent), ...p]);
+    // The new folder opens where it lives (All Files, or another folder picked).
+    if (view.type !== "folder" || view.path !== targetParent) {
+      commitView({ type: "folder", path: targetParent });
+    }
     show(`Folder “${v}” created`, { icon: <FolderPlus className="size-4" /> });
     setNewFolderDialogOpen(false);
-    setNewFolderName("");
     if (operations) {
       void operations
         .createFolder({
@@ -324,9 +316,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
 
   const createMarkdown = useCallback(() => {
     if (!onOpenDocsFile || !structureEnabled) return;
+    jumpToPersonalForCreate();
     setMarkdownDialogError(null);
     setMarkdownDialogOpen(true);
-  }, [onOpenDocsFile, structureEnabled]);
+  }, [jumpToPersonalForCreate, onOpenDocsFile, structureEnabled]);
 
   const closeMarkdownDialog = useCallback(() => {
     if (markdownDialogSubmitting) return;
@@ -373,6 +366,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
           notebook: "File · 0 KB",
           category: "File",
           date: "Now",
+          modifiedMs: Date.now(),
+          sizeBytes: 0,
           title: trimmed,
           excerpt: apiPath,
           body: [],
@@ -410,9 +405,9 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     requestDelete: setConfirmDelete,
   });
 
-  const { selectionBar } = useDriveSelectionBar({
+  const { selectionBar, selectionBarButtons } = useDriveSelectionBar({
     labels,
-    files,
+    files: driveRowsById(selectedIds, fileById),
     selectedIds,
     selectionMode,
     activeId,
@@ -429,8 +424,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   return {
     newFolderDialogOpen,
     setNewFolderDialogOpen,
-    newFolderName,
-    setNewFolderName,
     renameDialog,
     setRenameDialog,
     renameName,
@@ -459,6 +452,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     itemDragHandlers,
     folderDropZoneProps,
     selectionBar,
+    selectionBarButtons,
     requestDeleteSelected,
     requestDeleteItem,
     requestMoveSelected,

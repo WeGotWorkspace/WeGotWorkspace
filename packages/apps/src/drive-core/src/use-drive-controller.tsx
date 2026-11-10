@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { isKeyboardFieldTarget } from "@/lib/keyboard/is-keyboard-field-target";
 import type { ViewKey } from "@/drive-core/src/drive-models";
@@ -122,22 +122,6 @@ export function useDriveController({
     onUndoQueuedAction: list.undoLatest,
   });
 
-  const handleUnifiedSearchSelect = useMemo(
-    () =>
-      shell.createUnifiedSearchSelectHandler(list.openFile, {
-        setActiveId: list.setActiveId,
-        setSelectedIds: list.setSelectedIds,
-        setDetailOpen: list.setDetailOpen,
-      }),
-    [
-      list.openFile,
-      list.setActiveId,
-      list.setDetailOpen,
-      list.setSelectedIds,
-      shell.createUnifiedSearchSelectHandler,
-    ],
-  );
-
   return {
     labels: shell.labels,
     currentUsername: shell.currentUsername,
@@ -161,8 +145,6 @@ export function useDriveController({
     setViewMode: list.setViewMode,
     newFolderDialogOpen: mutations.newFolderDialogOpen,
     setNewFolderDialogOpen: mutations.setNewFolderDialogOpen,
-    newFolderName: mutations.newFolderName,
-    setNewFolderName: mutations.setNewFolderName,
     renameDialog: mutations.renameDialog,
     setRenameDialog: mutations.setRenameDialog,
     renameName: mutations.renameName,
@@ -195,9 +177,15 @@ export function useDriveController({
     inTrashView: shell.inTrashView,
     isUnderTrash: shell.isUnderTrash,
     visibleItems: list.visibleItems,
+    listSort: list.listSort,
+    toggleListSort: list.toggleListSort,
     folderListingPending: shell.folderListingPending,
     folderListingError: shell.folderListingError,
     retryFolderListing: shell.retryFolderListing,
+    allLoading: shell.allLoading,
+    allHasMore: shell.allHasMore,
+    allLoadingMore: shell.allLoadingMore,
+    loadMoreAll: shell.loadMoreAll,
     breadcrumbs: shell.breadcrumbs,
     viewLabel: shell.viewLabel,
     viewResetKey: shell.viewResetKey,
@@ -222,6 +210,7 @@ export function useDriveController({
     sidebarDropZoneProps: list.sidebarDropZoneProps,
     folderDropZoneProps: mutations.folderDropZoneProps,
     selectionBar: mutations.selectionBar,
+    selectionBarButtons: mutations.selectionBarButtons,
     requestDeleteSelected: mutations.requestDeleteSelected,
     requestDeleteItem: mutations.requestDeleteItem,
     requestMoveSelected: mutations.requestMoveSelected,
@@ -237,7 +226,6 @@ export function useDriveController({
     selectView: shell.selectView,
     listLoading: shell.listLoading,
     operations: shell.operations,
-    handleUnifiedSearchSelect,
   };
 }
 

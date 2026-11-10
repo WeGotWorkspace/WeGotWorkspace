@@ -1,7 +1,6 @@
-import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
-import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export type TasksUILabels = {
   appName: string;
@@ -59,6 +58,8 @@ export type TasksUILabels = {
   dueToday: string;
   dueYesterday: string;
   dueTomorrow: string;
+  /** The list row's due day, with `when` relative and mid-sentence ("in 3 days"). */
+  dueRelative: (when: string) => string;
   noDue: string;
   descriptionLabel: string;
   remindMe: string;
@@ -67,8 +68,8 @@ export type TasksUILabels = {
   remindingBefore: (durations: string) => string;
   remindingAfter: (durations: string) => string;
   remindingAfterClause: (durations: string) => string;
-  dueAddTime: string;
-  dueDateOnly: string;
+  /** The due time dropdown's empty choice: a due day without a time. */
+  dueAllDay: string;
   dueTimeLabel: string;
   remindAtTimeOfTask: string;
   kanbanToggle: string;
@@ -109,9 +110,6 @@ export type TasksUILabels = {
   deleteConfirmBody: string;
   cancel: string;
   toastSaved: string;
-  toastDeleted: string;
-  toastTaskCompleted: string;
-  toastTaskReopened: string;
   toastTaskAdded: string;
   toastTaskUpdated: string;
   toastTaskMoved: (count: number, listName: string) => string;
@@ -126,6 +124,28 @@ export type TasksUILabels = {
   tasksDisabledTitle: string;
   tasksDisabledMessage: string;
   pendingSync: string;
+  /** List pane: the quick add field at the top of the list. */
+  quickAddPlaceholder: string;
+  quickAddLabel: string;
+  searchPlaceholder: string;
+  emptyList: string;
+  /** Detail pane: the notes field and the field rows. */
+  detailNotesPlaceholder: string;
+  /** One alarm row, numbered from 1. */
+  detailAlarm: (number: number) => string;
+  /** Multi-select: the selection bar, the detail pane and the move dialog. */
+  selectionLabel: string;
+  selectionTitle: (count: number) => string;
+  selectionComplete: string;
+  selectionMoveToList: string;
+  selectionMoveDescription: string;
+  selectionDone: string;
+  moveConfirm: string;
+  deleteSelectedTitle: (count: number) => string;
+  deleteSelectedBody: (count: number) => string;
+  toastTasksCompleted: (count: number) => string;
+  toastTasksReopened: (count: number) => string;
+  toastTasksDeleted: (count: number) => string;
   conflictTitle: string;
   conflictDescription: (title: string) => string;
   conflictRemaining: (count: number) => string;
@@ -167,20 +187,20 @@ export const defaultTasksLabels: TasksUILabels = {
   sidebarPriority: "Priority",
   sidebarInbox: "Inbox",
   sidebarProjects: "My lists",
-  sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
+  sidebarSharedWithMe: "Shared with me",
   stateAll: "All Tasks",
-  newTaskMenu: workspaceLabels.list.moreCreateOptions,
+  newTaskMenu: "More create options",
   addList: "Create list",
   editList: "Edit list",
-  viewOnlyListBadge: workspaceLabels.sharing.viewOnly,
-  shareListSectionTitle: workspaceLabels.sharing.teamAccess,
-  shareListSectionHint: "Grant read or read-and-write access to people or groups.",
-  shareListAddPlaceholder: workspaceLabels.sharing.addPeoplePlaceholderEllipsis,
+  viewOnlyListBadge: "View only",
+  shareListSectionTitle: "Team access",
+  shareListSectionHint: sharePrincipalCopy.sectionHint,
+  shareListAddPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareListSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareListOffline: "Sharing changes require a connection.",
   shareListFailed: "Could not update sharing.",
-  removeListShareTitle: workspaceLabels.sharing.removeAccessTitle,
-  removeListShareConfirm: "This person or group will lose access to this list. Continue?",
+  removeListShareTitle: "Remove access?",
+  removeListShareConfirm: sharePrincipalCopy.removeConfirm("list"),
   removeSharedList: "Remove list",
   removeSharedListConfirmTitle: "Remove this list?",
   removeSharedListConfirmDescription:
@@ -219,6 +239,7 @@ export const defaultTasksLabels: TasksUILabels = {
   dueToday: "Today",
   dueYesterday: "Yesterday",
   dueTomorrow: "Tomorrow",
+  dueRelative: (when) => `Due ${when}`,
   noDue: "No due date",
   descriptionLabel: "Notes",
   remindMe: "Remind me",
@@ -227,8 +248,7 @@ export const defaultTasksLabels: TasksUILabels = {
   remindingBefore: (durations) => `Reminding ${durations} before`,
   remindingAfter: (durations) => `Reminding ${durations} after`,
   remindingAfterClause: (durations) => `${durations} after`,
-  dueAddTime: "Add time",
-  dueDateOnly: "Date only",
+  dueAllDay: "All day",
   dueTimeLabel: "Time",
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
@@ -241,39 +261,36 @@ export const defaultTasksLabels: TasksUILabels = {
   addTaskList: "List",
   newProject: "Create list",
   projectNameLabel: "List name",
-  projectColorLabel: workspaceLabels.dialog.colorField,
+  projectColorLabel: "Color",
   projectScopeLabel: defaultOwnerScopeLabels.label,
   projectScopePersonal: defaultOwnerScopeLabels.personal,
   projectScopeGroup: defaultOwnerScopeLabels.group,
   projectScopeReadOnlyLabel: defaultOwnerScopeLabels.readOnlyLabel,
-  changeListOwnerConfirmTitle: workspaceLabels.sharing.changeOwnerTitle,
+  changeListOwnerConfirmTitle: "Change owner?",
   changeListOwnerConfirmToGroup: (groupName) =>
-    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that group lose access unless they have a share.`,
+    `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeListOwnerConfirmToPersonal:
-    "This list will move to your personal lists. Tasks and existing shares stay. Other group members lose access unless they have a share.",
-  changeListOwnerConfirm: workspaceLabels.sharing.changeOwner,
-  createProjectButton: workspaceLabels.dialog.create,
-  saveProjectButton: workspaceLabels.dialog.save,
+    "This list will move to your personal lists. Tasks and existing shares stay. Other team members lose access unless they have a share.",
+  changeListOwnerConfirm: "Change owner",
+  createProjectButton: "Create",
+  saveProjectButton: "Save",
   toastProjectCreated: "List created",
   toastProjectRenamed: (name) => `Renamed to ${name}`,
   toastProjectSaveFailed: "Could not save list",
   addTaskStatus: "Status",
   addTaskButton: "Add task",
-  editTask: workspaceLabels.dialog.edit,
+  editTask: "Edit",
   editTaskTitle: "Edit task",
   editTaskPrompt: "Task title",
-  saveTaskButton: workspaceLabels.dialog.save,
+  saveTaskButton: "Save",
   markComplete: "Mark complete",
   markIncomplete: "Mark incomplete",
   taskActions: "Task actions",
-  delete: workspaceLabels.dialog.delete,
+  delete: "Delete",
   deleteConfirmTitle: "Delete task?",
   deleteConfirmBody: "This task will be removed from your list.",
-  cancel: workspaceLabels.dialog.cancel,
+  cancel: "Cancel",
   toastSaved: "Saved",
-  toastDeleted: "Task deleted",
-  toastTaskCompleted: "Task completed",
-  toastTaskReopened: "Marked incomplete",
   toastTaskAdded: "Task added",
   toastTaskUpdated: "Task updated",
   toastTaskMoved: (count, listName) =>
@@ -281,19 +298,41 @@ export const defaultTasksLabels: TasksUILabels = {
   toastCompleteUndone: "Completion undone.",
   toastDeleteUndone: "Deletion undone.",
   toastMoveUndone: "Move undone.",
-  toastListUpdated: workspaceLabels.list.listUpdated,
+  toastListUpdated: "List updated",
   toastListRefreshFailed: "Could not refresh tasks. Please try again.",
   createTaskTitle: "New task",
   untitledTask: "Untitled task",
   subtasksLabel: "Subtasks",
   tasksDisabledTitle: "Tasks unavailable",
   tasksDisabledMessage: "Tasks are disabled for this workspace.",
-  pendingSync: workspaceLabels.sync.pending,
-  conflictTitle: workspaceLabels.sync.conflictTitle,
+  pendingSync: "Pending sync",
+  quickAddPlaceholder: "Create a task… (Press Enter)",
+  quickAddLabel: "Quick add task",
+  searchPlaceholder: "Search tasks...",
+  emptyList: "No tasks",
+  detailNotesPlaceholder: "Add notes…",
+  detailAlarm: (number) => `Alarm ${number}`,
+  selectionLabel: "Multiple selection",
+  selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
+  selectionComplete: "Mark complete",
+  selectionMoveToList: "Move to list",
+  selectionMoveDescription: "Choose a list for the selected tasks.",
+  selectionDone: "Done",
+  moveConfirm: "Move",
+  deleteSelectedTitle: (count) => (count === 1 ? "Delete task?" : `Delete ${count} tasks?`),
+  deleteSelectedBody: (count) =>
+    count === 1
+      ? "This task will be removed from your list."
+      : "These tasks will be removed from their lists.",
+  toastTasksCompleted: (count) => (count === 1 ? "Task completed" : `${count} tasks completed`),
+  toastTasksReopened: (count) =>
+    count === 1 ? "Marked incomplete" : `${count} tasks marked incomplete`,
+  toastTasksDeleted: (count) => (count === 1 ? "Task deleted" : `${count} tasks deleted`),
+  conflictTitle: "Sync conflict",
   conflictDescription: (title) =>
     `Your offline edits to “${title}” conflict with a newer version on the server.`,
   conflictRemaining: (count) => `${count} more task${count === 1 ? "" : "s"} to review`,
-  conflictKeepMine: workspaceLabels.sync.keepMine,
+  conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server version",
   conflictDescriptionFieldMerge: (title) =>
     `Choose which values to keep for “${title}”. Unselected fields use the server version.`,
@@ -339,7 +378,7 @@ export const defaultTasksLabels: TasksUILabels = {
   rescueReview: "Review",
   noticeBarLabel: "Needs your attention",
   syncFailedNotice: "Some changes could not sync. They are saved on this device.",
-  retrySync: workspaceLabels.dialog.retry,
+  retrySync: "Retry",
   rescueMoved: (count, listName) =>
     count === 1 ? `Moved 1 task to “${listName}”` : `Moved ${count} tasks to “${listName}”`,
   rescueDiscarded: (count) => (count === 1 ? "Discarded 1 task" : `Discarded ${count} tasks`),
@@ -349,5 +388,5 @@ export const defaultTasksLabels: TasksUILabels = {
 };
 
 export function mergeTasksLabels(overrides?: Partial<TasksUILabels>): TasksUILabels {
-  return mergeWorkspaceLabels(defaultTasksLabels, overrides);
+  return { ...defaultTasksLabels, ...overrides };
 }

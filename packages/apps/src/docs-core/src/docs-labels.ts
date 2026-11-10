@@ -1,11 +1,10 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
-import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const docsLabels = {
   toastSaved: "Document saved",
-  toastSynced: workspaceLabels.sync.changesSynced,
+  toastSynced: "Changes synced",
   emptyTitle: "No document open",
   emptyDescription: "Open a Markdown file from Drive to start editing.",
   /** Accessible name of the document editing surface. */
@@ -18,7 +17,7 @@ export const docsLabels = {
   homeStarredEmpty: "No starred documents yet.",
   homeTrashEmpty: "Trash is empty.",
   homeLoading: "Loading documents…",
-  homeLoadMore: "Load more",
+  homeLoadingMore: filesBrowserSidebarLabels.loadingMore,
   homeLoadError: "Could not load documents.",
   homeNotAvailableOffline: "This document is not available offline.",
   /** Shared with me is read from the server only (#1563). */
@@ -27,14 +26,14 @@ export const docsLabels = {
   offlineAvailable: driveLabels.offlineAvailable,
   syncingOffline: "Syncing offline",
   offlinePendingSync: driveLabels.offlinePendingSync,
-  syncFailedTitle: workspaceLabels.sync.failedTitle,
+  syncFailedTitle: "Some changes could not sync",
   syncFailedMessage:
     "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
   retrySync: "Retry sync",
   conflictTitle: "Document conflict",
   conflictDescription: (title: string) =>
     `"${title}" changed on the server while you were offline. Keep your version or use the server copy?`,
-  conflictKeepMine: workspaceLabels.sync.keepMine,
+  conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
   documentGoneTitle: "This document is no longer available",
   documentGoneDescription:
@@ -68,8 +67,9 @@ export const docsLabels = {
   },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
+  homeNewDocumentMenu: "More create options",
   homeCreateError: "Could not create a new document.",
-  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "My Files"). */
+  /** Primary home — SST with Drive (`filesBrowserSidebarLabels`; Drive uses "All Files"). */
   homeAllDocs: filesBrowserSidebarLabels.homeDocs,
   homeSharedWithMe: driveLabels.sidebarSharedWithMe,
   homeRecent: driveLabels.sidebarRecent,
@@ -84,7 +84,7 @@ export const docsLabels = {
   homeDeletePermanentlyTitle: "Delete permanently?",
   homeDeletePermanentlyOne: "This will permanently delete 1 file.",
   homeDeletePermanentlyMany: (count: number) => `This will permanently delete ${count} files.`,
-  homeDeletePermanentlyAction: workspaceLabels.dialog.delete,
+  homeDeletePermanentlyAction: "Delete",
   homeMoveToTrashTitle: "Move to Trash?",
   homeMoveToTrashOne: "This will move 1 file to Trash.",
   homeMoveToTrashMany: (count: number) => `This will move ${count} files to Trash.`,
@@ -139,6 +139,8 @@ export const docsLabels = {
   /** Suggest-mode header toggle (Tasks “Show completed” state-button pattern). */
   editMode: "Edit",
   suggestMode: "Suggest",
+  suggestModeActive: "Suggesting",
+  sourceSwitch: "Markdown",
   editingModeAria: "Editing mode",
   toastSwitchedToEditMode: "Switched to Edit mode",
   toastSwitchedToSuggestMode: "Switched to Suggest mode",
@@ -174,6 +176,8 @@ export const docsLabels = {
   suggestionsToggleHide: "Hide suggestions",
   suggestionsAccept: "Accept suggestion",
   suggestionsReject: "Reject suggestion",
+  suggestionsAcceptShort: "Accept",
+  suggestionsRejectShort: "Reject",
   /**
    * The single real-time indicator. Deliberately free of transport vocabulary —
    * no "mesh", "signaling", "ICE", "peer" or "TURN" may appear here.
@@ -201,5 +205,5 @@ export const docsLabels = {
 export type DocsUILabels = typeof docsLabels;
 
 export function mergeDocsLabels(overrides?: Partial<DocsUILabels>): DocsUILabels {
-  return mergeWorkspaceLabels(docsLabels, overrides);
+  return { ...docsLabels, ...overrides };
 }

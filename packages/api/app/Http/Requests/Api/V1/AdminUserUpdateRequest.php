@@ -25,6 +25,7 @@ final class AdminUserUpdateRequest extends FormRequest
             'groups' => ['sometimes', 'array'],
             'groups.*' => ['string', 'max:255'],
             'enabled' => ['sometimes', 'boolean'],
+            'isAdmin' => ['sometimes', 'boolean'],
         ];
     }
 }

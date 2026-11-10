@@ -19,10 +19,10 @@ describe("docsLabels Drive SST re-exports", () => {
   });
 
   it("keeps Docs-specific home and rename dialog copy", () => {
-    expect(docsLabels.homeAllDocs).toBe("My Docs");
+    expect(docsLabels.homeAllDocs).toBe("All Docs");
     expect(docsLabels.homeMyDrive).toBe("Personal");
     expect(docsLabels.homeDrivesSection).toBe("My Drives");
-    expect(driveLabels.sidebarHome).toBe("My Files");
+    expect(driveLabels.sidebarHome).toBe("All Files");
     expect(driveLabels.sidebarMyDrive).toBe(docsLabels.homeMyDrive);
     expect(driveLabels.sidebarSharedDrives).toBe(docsLabels.homeDrivesSection);
     expect(docsLabels.renameDialogTitle).toBe("Rename document");

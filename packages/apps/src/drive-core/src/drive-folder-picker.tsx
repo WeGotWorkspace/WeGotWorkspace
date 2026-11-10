@@ -19,11 +19,18 @@ import {
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import {
   apiPathFromUiPath,
+  DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT,
   DRIVE_TRASH_UI_PATH,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
 } from "@/drive-core/src/drive-path-utils";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
+import { useListSort } from "@/hooks/use-list-sort";
+import {
+  DRIVE_LIST_DEFAULT_SORT,
+  DRIVE_LIST_SORT_COLUMNS,
+  sortDriveFiles,
+} from "@/drive-core/src/drive-list-sort";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -33,8 +40,6 @@ import { DestinationPickerFrame } from "@/destination-picker/src/destination-pic
 import { DestinationPickerList } from "@/destination-picker/src/destination-picker-list";
 import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
 import "@/drive-core/src/drive-folder-picker.css";
-
-const GROUPS_ROOT = "Groups";
 
 const PICKER_NOOP = () => {};
 const PICKER_DRAG_HANDLERS = {
@@ -70,7 +75,7 @@ function isTrashPickerPath(path: string) {
 
 function sharedDriveRootLabel(path: string, labels: DriveUILabels): string {
   const segment = path.split("/").pop();
-  return segment && segment !== "Groups" ? segment : labels.sidebarSharedDrives;
+  return segment && segment !== GROUPS_ROOT ? segment : labels.teamsRoot;
 }
 
 function resolvePickerRootTitle(
@@ -313,13 +318,18 @@ export function DriveFolderPicker({
     [browsePath, files, listingFiles, groupPaths, labels, moveIds, rootLabels],
   );
 
+  // Same column sort as Drive, for this dialog only (not remembered).
+  const { sort: listSort, toggleSort: toggleListSort } = useListSort({
+    columns: DRIVE_LIST_SORT_COLUMNS,
+    defaultSort: DRIVE_LIST_DEFAULT_SORT,
+  });
   const fileSelectItems = useMemo(() => {
     if (!fileSelect) return [];
     if (browsePath === DRIVE_FOLDER_PICKER_ROOT || browsePath === GROUPS_ROOT) {
       return rows.map((row) => row.file ?? createDrivePickerRootFile(row.path, row.title));
     }
-    return listingFiles;
-  }, [browsePath, fileSelect, listingFiles, rows]);
+    return sortDriveFiles(listingFiles, listSort);
+  }, [browsePath, fileSelect, listSort, listingFiles, rows]);
 
   const { filePreviews } = useDriveGridPreviews({
     items: fileSelectItems,
@@ -452,6 +462,8 @@ export function DriveFolderPicker({
         ) : (
           <DriveListView
             items={fileSelectItems}
+            sort={listSort}
+            onSort={toggleListSort}
             activeId={selectedFile?.id ?? null}
             selectedIds={selectedFile ? [selectedFile.id] : []}
             starred={{}}

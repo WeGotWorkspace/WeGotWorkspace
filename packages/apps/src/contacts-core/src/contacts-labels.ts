@@ -1,5 +1,6 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
-import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
+import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
 /**
  * User-visible copy for the contacts workspace (sidebar, list chrome, dialogs, toasts).
@@ -16,8 +17,6 @@ export type ContactsUILabels = {
   /** Owned/team collections heading — same pattern as Tasks “My lists” / Notes “My notebooks”. */
   sectionAddressBooks: string;
   sectionGroups: string;
-  expandAddressBookGroups: (name: string) => string;
-  collapseAddressBookGroups: (name: string) => string;
   viewOnly: string;
   editAddressBook: string;
   newContactMenu: string;
@@ -69,6 +68,8 @@ export type ContactsUILabels = {
   nameFull: string;
   nameGiven: string;
   nameGiven2: string;
+  /** Short placeholder for the middle name inside the name line. */
+  nameGiven2Placeholder: string;
   nameSurname: string;
   channelType: string;
   channelTypeNone: string;
@@ -94,6 +95,14 @@ export type ContactsUILabels = {
   addAddress: string;
   /** Placeholder on the trailing empty URL row. */
   addUrl: string;
+  addField: string;
+  /** One address, as an "Add field" choice. */
+  address: string;
+  callPhone: string;
+  sendEmail: string;
+  openWebsite: string;
+  notesPlaceholder: string;
+  companyName: string;
   urlAddress: string;
   addressStreet: string;
   addressLocality: string;
@@ -167,15 +176,13 @@ export const defaultContactsLabels: ContactsUILabels = {
   refreshList: "Refresh contacts",
   searchPlaceholder: "Search contacts...",
   sidebarAllContacts: "All contacts",
-  sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
+  sidebarSharedWithMe: "Shared with me",
   personalAddressBook: "Personal",
   sectionAddressBooks: "My address books",
   sectionGroups: "Groups",
-  expandAddressBookGroups: (name) => `Expand ${name}`,
-  collapseAddressBookGroups: (name) => `Collapse ${name}`,
-  viewOnly: workspaceLabels.sharing.viewOnly,
+  viewOnly: "View only",
   editAddressBook: "Address book settings",
-  newContactMenu: workspaceLabels.list.moreCreateOptions,
+  newContactMenu: "More create options",
   listSelected: (count) => `${count} Selected`,
   listContacts: (count) => `${count} Contacts`,
   emptyList: "No contacts",
@@ -184,12 +191,12 @@ export const defaultContactsLabels: ContactsUILabels = {
   renameGroupDescription: "The group name will update in your address books and sidebar.",
   deleteGroup: "Delete group",
   newGroup: "New group",
-  createGroupNameLabel: workspaceLabels.dialog.nameField,
+  createGroupNameLabel: "Name",
   createGroupAddressBookLabel: "Address book",
   createGroupAddressBookHint: "The group is stored in this address book. You cannot move it later.",
-  createGroupButton: workspaceLabels.dialog.create,
-  addGroup: "Add group",
-  addGroupPlaceholder: "Add group…",
+  createGroupButton: "Create",
+  addGroup: "Add to group",
+  addGroupPlaceholder: "Add to group…",
   toastGroupRenamed: (name) => `Renamed to “${name}”`,
   newContact: "New contact",
   createContact: "Create contact",
@@ -211,10 +218,10 @@ export const defaultContactsLabels: ContactsUILabels = {
   importCardTooLarge:
     "A single contact is larger than the server upload limit and cannot be split.",
   unknownContact: "Unknown contact",
-  edit: workspaceLabels.dialog.edit,
-  save: workspaceLabels.dialog.save,
-  cancel: workspaceLabels.dialog.cancel,
-  delete: workspaceLabels.dialog.delete,
+  edit: "Edit",
+  save: "Save",
+  cancel: "Cancel",
+  delete: "Delete",
   sectionName: "Name",
   sectionPhones: "Phones",
   sectionEmails: "Emails",
@@ -227,6 +234,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   nameFull: "Full name",
   nameGiven: "First name",
   nameGiven2: "Middle name",
+  nameGiven2Placeholder: "Middle",
   nameSurname: "Last name",
   channelType: "Type",
   channelTypeNone: "Other",
@@ -244,27 +252,34 @@ export const defaultContactsLabels: ContactsUILabels = {
   addPhone: "Add phone",
   addEmail: "Add email",
   addAddress: "Add address",
-  addUrl: "Add URL",
-  urlAddress: "URL",
+  addUrl: "Add website",
+  addField: "Add field",
+  address: "Address",
+  callPhone: "Call",
+  sendEmail: "Send email",
+  openWebsite: "Open website",
+  notesPlaceholder: "Add notes…",
+  companyName: "Company name",
+  urlAddress: "Website",
   addressStreet: "Street",
   addressLocality: "City",
   addressRegion: "State / region",
   addressPostalCode: "Postal code",
   addressCountry: "Country",
   addressLine: "Street address",
-  removeRow: workspaceLabels.dialog.remove,
+  removeRow: "Remove",
   toastCreated: "Contact created",
   toastSaved: "Contact saved",
   toastDeleted: "Contact deleted",
   toastSyncConflict: (name) =>
     `Could not sync changes to “${name}” because it was updated elsewhere.`,
   toastSyncConflictOpen: "Open contact",
-  pendingSync: workspaceLabels.sync.pending,
-  conflictTitle: workspaceLabels.sync.conflictTitle,
+  pendingSync: "Pending sync",
+  conflictTitle: "Sync conflict",
   conflictDescription: (name) =>
     `“${name}” was changed somewhere else while you had unsynced edits. Which version should win?`,
   conflictRemaining: (count) => `${count} more contact${count === 1 ? "" : "s"} to review`,
-  conflictKeepMine: workspaceLabels.sync.keepMine,
+  conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server version",
   conflictDescriptionFieldMerge: (name) =>
     `“${name}” was changed elsewhere. Choose which value to keep for each field below.`,
@@ -273,13 +288,13 @@ export const defaultContactsLabels: ContactsUILabels = {
   conflictApplyMerge: "Apply merged changes",
   syncFailedTitle: "Some changes couldn’t sync",
   syncFailedMessage: "We’ll keep your edits saved locally until they go through.",
-  retrySync: workspaceLabels.dialog.retry,
+  retrySync: "Retry",
   downloadVCard: "Download vCard",
-  selectionDelete: workspaceLabels.dialog.delete,
+  selectionDelete: "Delete",
   selectionRemoveFromGroup: "Remove from group",
   selectionDownload: "Download",
-  selectionDone: workspaceLabels.dialog.done,
-  swipeDelete: workspaceLabels.dialog.delete,
+  selectionDone: "Done",
+  swipeDelete: "Delete",
   swipeRemoveFromGroup: "Remove from group",
   toastRemovedFromGroup: (count) => `Removed ${count} contact${count === 1 ? "" : "s"} from group`,
   toastGroupCreated: (name) => `Group "${name}" created`,
@@ -292,18 +307,18 @@ export const defaultContactsLabels: ContactsUILabels = {
   deleteGroupDescription: (name) =>
     `Delete "${name}"? The group will be permanently deleted. Its contacts will not be affected.`,
   toastGroupDeleted: (name) => `Group "${name}" deleted`,
-  deleteConfirm: workspaceLabels.dialog.delete,
-  deleteCancel: workspaceLabels.dialog.cancel,
+  deleteConfirm: workspaceDestructiveDialogLabels.dialogDelete,
+  deleteCancel: workspaceDestructiveDialogLabels.dialogCancel,
   addressBookSettingsTitle: "Address book",
-  addressBookNameLabel: workspaceLabels.dialog.nameField,
-  addressBookColorLabel: workspaceLabels.dialog.colorField,
-  addressBookDialogDone: workspaceLabels.dialog.done,
+  addressBookNameLabel: "Name",
+  addressBookColorLabel: "Color",
+  addressBookDialogDone: "Done",
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",
-  shareAddressBookPlaceholder: workspaceLabels.sharing.addPeoplePlaceholder,
+  shareAddressBookPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareAddressBookEmpty: noPeopleOrTeamsFoundCopy,
   shareAddressBookOffline: "Sharing is unavailable offline.",
-  removeAddressBookShareTitle: workspaceLabels.sharing.removeAccessTitle,
+  removeAddressBookShareTitle: "Remove access?",
   removeAddressBookShareConfirm: "They will no longer see this address book.",
   removeSharedAddressBook: "Remove address book",
   removeSharedAddressBookConfirmTitle: "Remove this shared address book?",
@@ -314,12 +329,13 @@ export const defaultContactsLabels: ContactsUILabels = {
   moveContactDescription: (bookName) => `Move this contact to “${bookName}”?`,
   moveContactDescriptionWithGroups: (bookName) =>
     `Move this contact to “${bookName}”? They will be removed from groups in the current address book.`,
-  moveContactConfirm: workspaceLabels.dialog.move,
+  moveContactConfirm: "Move",
   toastMovedToAddressBook: (name) => `Moved to “${name}”`,
-  toastListUpdated: workspaceLabels.list.listUpdated,
+  toastListUpdated: "List updated",
   toastListRefreshFailed: "Could not refresh contacts. Please try again.",
 };
 
 export function mergeContactsLabels(overrides?: Partial<ContactsUILabels>): ContactsUILabels {
-  return mergeWorkspaceLabels(defaultContactsLabels, overrides);
+  if (!overrides) return defaultContactsLabels;
+  return { ...defaultContactsLabels, ...overrides };
 }

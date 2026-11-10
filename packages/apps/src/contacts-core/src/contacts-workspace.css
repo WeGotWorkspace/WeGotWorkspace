@@ -13,33 +13,14 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
 
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 70%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
-
   --contacts-pending-sync-color: var(--color-sync-pending);
-  --contacts-swipe-delete-color: var(--color-error);
-  --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-sans);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --checkbox-border-color: var(--workspace-accent);
-  --checkbox-checked-border: var(--workspace-accent);
-  /* Selected list row: same wash as sidebar item hover. Active-only stays the Drive tile wash. */
-  --list-item-selected-bg: var(--button-outline-hover-background);
-  --list-item-active-bg: var(--drive-item-selected-background);
 }
 
 /*
@@ -73,21 +54,21 @@
  * CSS and scroll together. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
-  --contacts-list-card-row-size: 5.5rem;
-  --contacts-list-header-row-size: 2.25rem;
+  --contacts-list-card-row-size: 6.75rem;
+  --contacts-list-header-row-size: var(--list-sticky-header-height);
   --list-item-intrinsic-block-size: var(--contacts-list-card-row-size);
 }
 
 .contacts-list-panel__list .list-item__button {
   box-sizing: border-box;
-  block-size: var(--contacts-list-card-row-size);
-  max-block-size: var(--contacts-list-card-row-size);
-  padding-block: 0.75rem;
+  /* The fixed row slot holds the row plus the gap below it. */
+  block-size: calc(var(--contacts-list-card-row-size) - var(--list-item-gap, 0.125rem));
+  max-block-size: calc(var(--contacts-list-card-row-size) - var(--list-item-gap, 0.125rem));
   overflow: hidden;
 }
 
 .contacts-list-panel__list .list-sticky-header {
-  box-sizing: border-box;
+  /* The frost variant draws it; the virtual list needs a fixed row slot. */
   block-size: var(--contacts-list-header-row-size);
   max-block-size: var(--contacts-list-header-row-size);
   overflow: hidden;
@@ -105,344 +86,178 @@
   background-color: color-mix(in oklch, var(--workspace-accent) 18%, transparent);
 }
 
+/* Row meta: the address book (dot + name). */
+.contacts-list-panel__book {
+  @apply inline-flex min-w-0 items-center gap-1.5;
+}
+
+.contacts-list-panel__book-name {
+  @apply truncate;
+}
+
+/* The company / email line: one line, not the two-line note preview. */
+.contacts-list-panel__list .list-item__body.list-item__body--preview {
+  @apply line-clamp-1;
+}
+
 .contacts-list-panel__pending-dot {
   @apply inline-flex shrink-0 items-center justify-center;
   color: var(--contacts-pending-sync-color);
 }
 
-.contacts-detail-view {
-  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
-  /* Label ↔ control: FieldLabelRow `space-y-1.5`. Groups: Calendar `gap-4` / `mb-4`. */
-  --contacts-field-gap: 0.375rem;
-  --contacts-field-stack-gap: 1rem;
-  max-width: 680px;
-  margin-inline: auto;
-  /* Overlay: 1rem = action-bar. Split: 1.5rem — list shares the viewport. */
-  @apply px-4 pt-6 pb-10 md:px-6;
-}
-
 /*
- * Pane scroll defaults to `px-6` / `md:px-12 md:pt-12`. Flush so it does not
- * stack with the form (mobile overlay and md+ split).
+ * The open contact: the Notes / Tasks detail sheet (`note-detail-view paper-sheet`)
+ * with the avatar beside the address book and the name. Fields are DetailFieldRows.
  */
-.contacts-workspace .workspace-detail-pane__scroll:has(.contacts-detail-view) {
-  @apply px-0 md:px-0 md:pt-0 md:pb-0;
-}
 
+/* The address book on top, from the left edge (above the avatar, as in Notes and
+ * Tasks). Below it the avatar beside the name and the group tags. The heading's
+ * parts share the header grid, so the avatar starts at the name's row and runs
+ * down beside the tags. */
 .contacts-detail-view__header {
-  @apply mb-8 flex flex-col items-stretch gap-3;
+  @apply mb-8 grid items-start gap-x-4;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
-.contacts-detail-view__identity {
-  --contacts-detail-avatar-size: 5rem;
-  @apply flex items-center gap-4;
+.contacts-detail-view__header > .contacts-detail-view__heading {
+  display: contents;
+}
+
+.contacts-detail-view__header > .contacts-detail-view__heading > * {
+  grid-column: 2;
+}
+
+.contacts-detail-view__header > .contacts-detail-view__heading > .note-detail-view__eyebrow {
+  grid-column: 1 / -1;
+}
+
+/* Its top on the top of the name's capitals: in Plus Jakarta Sans (line-height 1.3)
+   they start 0.31em below the top of the line. */
+.contacts-detail-view__header > .contacts-detail-view__avatar {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  margin-top: calc(var(--workspace-detail-title-size, 2.25rem) * 0.31);
+}
+
+/* No address book line (create): the name is the first row. */
+.contacts-detail-view__header:not(:has(.note-detail-view__eyebrow))
+  > .contacts-detail-view__avatar {
+  grid-row: 1 / span 2;
+}
+
+.contacts-detail-view__heading .contacts-detail-view__tag-group.note-detail-view__tag-group {
+  @apply mt-1 mb-0 pb-0;
 }
 
 .contacts-detail-view__avatar {
   @apply shrink-0;
 }
 
-.contacts-detail-view__identity .user-avatar--xl .user-avatar__mark {
+.contacts-detail-view__header .user-avatar--xl .user-avatar__mark,
+.contacts-detail-view__header .contacts-group-icon-slot--xl {
   width: var(--contacts-detail-avatar-size);
   height: var(--contacts-detail-avatar-size);
 }
 
-.contacts-detail-view__identity .contacts-group-icon-slot--xl {
-  width: var(--contacts-detail-avatar-size);
-  height: var(--contacts-detail-avatar-size);
+.contacts-detail-view__heading .note-detail-view__eyebrow {
+  @apply mb-0;
 }
 
-.contacts-detail-view__heading {
-  @apply flex min-w-0 flex-1 flex-col justify-center gap-1;
-}
-
+/* The name as the sheet title (`.note-detail-view__title` face): first and last
+ * name as two inputs that read as one line. */
 .contacts-detail-view__title {
-  font-family: var(--contacts-detail-title-font-family);
-  font-size: 1.75rem;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--workspace-foreground);
-  margin: 0;
-}
-
-.contacts-detail-view__subtitle {
-  @apply m-0 text-[0.9375rem] leading-snug;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
-}
-
-.contacts-detail-view__tag-group {
-  @apply w-full py-1;
-  /* Invert the detail pane: fill is the pane text, ink is the pane fill. */
-  --tag-bg: var(--workspace-foreground);
-  --tag-fg: var(--workspace-detail-bg, var(--workspace-surface));
-}
-
-.contacts-detail-view__tag-group .tag {
-  @apply border-0;
-  background-color: var(--tag-bg);
-  color: var(--tag-fg);
-}
-
-.contacts-detail-view__tag-group .tag__icon,
-.contacts-detail-view__tag-group .tag__label,
-.contacts-detail-view__tag-group .tag__remove,
-.contacts-detail-view__tag-group .contacts-group-icon {
-  color: var(--tag-fg);
-  @apply opacity-100;
-}
-
-.contacts-detail-view__notes {
-  @apply min-h-32 w-full;
-}
-
-.contacts-detail-view__section + .contacts-detail-view__section {
-  margin-top: 1.75rem;
-  padding-top: 1.75rem;
-  border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-}
-
-/**
- * Layout only — type/color come from `.field-label-row__label` (same as
- * sidebar section titles and form FieldLabelRow captions).
- */
-.contacts-detail-view__section-title {
-  @apply mb-3;
-}
-
-.contacts-detail-view__section-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.contacts-detail-view .field-label-row {
-  @apply mb-0 flex flex-col space-y-0;
-  gap: var(--contacts-field-gap);
-}
-
-.contacts-detail-view__field-stack {
-  @apply flex flex-col;
-  gap: var(--contacts-field-stack-gap);
-}
-
-.contacts-detail-view__name-row,
-.contacts-detail-view__job-row {
-  @apply grid grid-cols-1 md:grid-cols-2;
-  gap: var(--contacts-field-stack-gap);
-  min-width: 0;
-}
-
-.contacts-detail-view__name-row > *,
-.contacts-detail-view__job-row > * {
-  min-width: 0;
-}
-
-.contacts-detail-view__editable-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.contacts-detail-view__channel-list,
-.contacts-detail-view__address-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.contacts-detail-view__channel-row {
-  display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr);
-  column-gap: 1rem;
-  align-items: start;
-}
-
-.contacts-detail-view__channel-row--editable {
-  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
-  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
-  align-items: center;
-}
-
-.contacts-detail-view__channel-type {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-  flex-shrink: 0;
-  min-height: calc(0.9375rem * 1.35);
-}
-
-.contacts-detail-view__channel-type .field-label-row {
-  @apply w-full min-w-0;
-}
-
-.contacts-detail-view__channel-type .tag {
-  margin-block: calc((0.9375rem * 1.35 - var(--tag-height, 1.5rem)) / 2);
-}
-
-.contacts-detail-view__channel-row--editable .contacts-detail-view__channel-type {
-  padding-top: 0;
-}
-
-.contacts-detail-view__channel-value {
-  min-width: 0;
-  font-size: 0.9375rem;
-  line-height: 1.35;
+  @apply m-0 flex min-w-0 flex-wrap items-baseline gap-x-[0.25em] font-sans font-semibold leading-[1.3] tracking-tight;
+  font-size: var(--workspace-detail-title-size, 2.25rem);
   color: var(--workspace-foreground);
 }
 
-.contacts-detail-view__label--none {
-  font-style: italic;
-  font-size: 0.9375rem;
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+/* An input as wide as its text: a hidden copy of the value sizes the cell. */
+.contacts-detail-view__name-part {
+  @apply inline-grid min-w-0 max-w-full;
 }
 
-.contacts-detail-view__channel-row--editable .input,
-.contacts-detail-view__channel-row--editable input {
-  min-width: 0;
+.contacts-detail-view__name-part::after {
+  content: attr(data-value);
+  @apply invisible overflow-hidden whitespace-pre;
+  grid-area: 1 / 1;
 }
 
-.contacts-detail-view__channel-row .contacts-detail-view__context-select {
-  @apply w-full;
+.contacts-detail-view__name-input {
+  grid-area: 1 / 1;
+  @apply m-0 appearance-none rounded-none border-0 bg-transparent p-0 shadow-none outline-none;
+  /* The hidden copy sizes the cell; the input only fills it. */
+  width: 0;
+  min-width: 100%;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
 }
 
-.contacts-detail-view__address-row {
-  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
-  display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
-  column-gap: 1rem;
-  align-items: start;
+.contacts-detail-view__name-input::placeholder {
+  color: color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
 }
 
-.contacts-detail-view__address-type {
-  flex-shrink: 0;
-  padding-top: 0.125rem;
+.contacts-detail-view__name-input:read-only {
+  @apply cursor-default;
 }
 
-.contacts-detail-view__address-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-  font-size: 0.9375rem;
-  line-height: 1.35;
-  color: var(--workspace-foreground);
+/* A company contact: first and last name side by side in one field row. */
+/* A company's Name row: first, middle and last as ghost fields as wide as their
+ * text, on one line. The row, not each field, takes the ghost inset. */
+.contacts-detail-view__name-fields {
+  @apply flex min-w-0 flex-1 flex-wrap;
+  margin-inline-start: calc(-1 * var(--input-padding-x, 0.625rem));
 }
 
-.contacts-detail-view__address-entry {
-  @apply flex flex-col;
-  gap: var(--contacts-field-stack-gap);
+.contacts-detail-view__name-part--field::after {
+  padding-inline: 0.625rem;
+  border-inline: 1px solid transparent;
+  font-size: var(--input-font-size-sm, 0.875rem);
 }
 
-.contacts-detail-view__address-fields {
-  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
-  display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
-  column-gap: 1rem;
-  row-gap: var(--contacts-field-stack-gap);
-  min-width: 0;
+/* Neighbouring fields share some of their padding: words, not boxes, apart. */
+.contacts-detail-view__name-part--field + .contacts-detail-view__name-part--field {
+  margin-inline-start: -0.375rem;
 }
 
-.contacts-detail-view__address-fields > * {
-  grid-column: 2;
+.contacts-detail-view__name-part--field > .input.input--ghost {
+  grid-area: 1 / 1;
+  width: 0;
+  min-width: 100%;
+  margin-inline-start: 0;
 }
 
-.contacts-detail-view__address-locality-row {
-  @apply grid gap-x-2;
-  row-gap: var(--contacts-field-stack-gap);
-  grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr);
+/* An address as it is written: street, then postal code and city, region, country. */
+.contacts-detail-view__address {
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
 
-/* Same overlay split as workspace-app (`md` / 48rem): stack postal + city. */
-@media (max-width: 47.999rem) {
-  .contacts-detail-view__address-locality-row {
-    @apply grid-cols-1;
-  }
+.contacts-detail-view__address-line {
+  @apply flex min-w-0 gap-2;
 }
 
-.contacts-detail-view__channel-action {
-  @apply shrink-0;
-  width: var(--contacts-channel-action-size);
+.contacts-detail-view__address-line > .contacts-detail-view__address-postalCode {
+  @apply w-28 flex-none;
 }
 
-.contacts-detail-view__channel-action-spacer {
-  @apply block;
-  width: var(--contacts-channel-action-size);
-  height: var(--contacts-channel-action-size);
+.contacts-detail-view__address-line > .contacts-detail-view__address-locality {
+  @apply min-w-0 flex-1;
 }
 
-.contacts-detail-view__address-remove {
-  @apply self-end;
+/* The open contact sits on the plain pane: no sheet fill, no shadow (as Notes). */
+.contacts-detail-view.paper-sheet {
+  --paper-sheet-bg: transparent;
+  --paper-sheet-shadow: none;
 }
 
-.contacts-detail-view__address-row .contacts-detail-view__context-select {
-  width: 100%;
+/* Phones, e-mails, addresses, websites: each block a little apart. */
+.contacts-detail-view__fields + .contacts-detail-view__fields {
+  @apply mt-6;
 }
 
-.contacts-detail-view__editable-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.contacts-detail-view__context-select {
-  @apply w-28 shrink-0;
-}
-
-.select-trigger.contacts-detail-view__context-select {
-  @apply w-full shrink-0;
-}
-
-/* Inherit trigger face (md/sm = 0.875rem) — do not force base `--input-font-size` (1rem). */
-.contacts-detail-view__context-select-item {
-  font-size: inherit;
-}
-
-.contacts-detail-view__editable-row .input,
-.contacts-detail-view__editable-row input {
-  flex: 1;
-}
-
-.contacts-detail-view__value-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.contacts-detail-view__value-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.9375rem;
-  color: var(--workspace-foreground);
-}
-
-.contacts-detail-view__meta {
-  font-size: 0.75rem;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
-}
-
-.contacts-detail-view__link {
-  color: var(--workspace-accent-strong);
-  text-decoration: none;
-}
-
-.contacts-detail-view__link:hover {
-  text-decoration: underline;
-}
-
-.contacts-detail-view__text {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--workspace-foreground);
+/* Notes close the sheet: the last field, a ghost text area that grows with the text. */
+.detail-field-row .card__row-action > .contacts-detail-view__notes {
+  @apply min-w-0 flex-1;
 }
 
 .contacts-dialog-surface {

@@ -67,7 +67,7 @@ final class GroupFilesHomeProvisionerTest extends WgwDatabaseTestCase
         }
     }
 
-    public function test_installer_seed_creates_administrators_drive(): void
+    public function test_installer_seed_creates_no_administrators_team_or_drive(): void
     {
         app(InstallerSeeder::class)->seed(
             'drive-admin',
@@ -78,7 +78,8 @@ final class GroupFilesHomeProvisionerTest extends WgwDatabaseTestCase
             false,
         );
 
-        $this->assertTrue(is_dir($this->dataDir.'/files/groups/administrators'));
-        $this->assertFalse(is_dir($this->dataDir.'/files/groups/administrators/.notes'));
+        // #1925: admin is a role, so seeding a user creates no `administrators` group.
+        $this->assertFalse(is_dir($this->dataDir.'/files/groups/administrators'));
+        $this->assertDatabaseMissing('principals', ['uri' => 'principals/groups/administrators'], 'wgw');
     }
 }

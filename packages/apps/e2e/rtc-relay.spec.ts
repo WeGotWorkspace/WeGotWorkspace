@@ -106,8 +106,8 @@ test("forced relay — Docs", async ({ browser }) => {
 
 test("forced relay — Docs principal and collab stay on TURN", async ({ browser }) => {
   test.setTimeout(180_000);
-  // Both seeded users belong to principals/groups/administrators, so member can open this file.
-  const apiPath = `/groups/administrators/e2e-relay-hold-${uniqueId()}.md`;
+  // Both seeded users belong to the dev Team (principals/groups/team), so member can open this file.
+  const apiPath = `/groups/team/e2e-relay-hold-${uniqueId()}.md`;
   const sessions = await openUsers(browser, ["admin", "member"]);
   const [left, right] = sessions;
   const leftLog = collectRtcEvents(left.page);

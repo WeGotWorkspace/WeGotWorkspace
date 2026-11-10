@@ -59,6 +59,15 @@ export const COLOR_COMPONENT_CONTRACT = [
   "--app-sidebar-bg",
   "--app-sidebar-color",
   "--app-sidebar-border-color",
+  "--workspace-divider-color",
+  /* Selection and hover: the suite sky in both themes (`--scheme-selection-*`). */
+  "--scheme-selection",
+  "--workspace-selected-background",
+  "--workspace-selected-color",
+  "--workspace-hover-background",
+  "--workspace-ghost-hover-background",
+  "--workspace-selected-mark-background",
+  "--workspace-selected-mark-color",
 ] as const;
 
 /** Brand / system face primitives. */

@@ -64,6 +64,8 @@ export type AdminUser = {
   groups: string[];
   createdAt: string;
   enabled: boolean;
+  /** Admin is a role per user, not membership of a Team (#1925). */
+  isAdmin: boolean;
 };
 
 export type AdminGroup = {
@@ -267,6 +269,7 @@ export type AdminAPIOperations = {
       displayName: string;
       email?: string;
       groups?: string[];
+      isAdmin?: boolean;
     },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
@@ -278,6 +281,7 @@ export type AdminAPIOperations = {
       password?: string;
       groups?: string[];
       enabled?: boolean;
+      isAdmin?: boolean;
     },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;

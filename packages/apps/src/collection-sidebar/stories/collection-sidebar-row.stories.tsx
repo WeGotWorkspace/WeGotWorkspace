@@ -39,13 +39,48 @@ export const Default: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const checkbox = canvas.getByRole("checkbox", { name: "Hide Work" });
-    await expect(checkbox).toHaveClass("checkbox--size-sm");
+    // Suite norm: a coloured dot, not a checkbox box.
+    const dot = checkbox.querySelector(".collection-sidebar-row__visibility-dot") as HTMLElement;
+    await expect(getComputedStyle(dot).borderRadius).not.toBe("0px");
+    await expect(getComputedStyle(dot).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    // The dot stays 10px; its hit area is a row-tall square (40px, 44px on touch).
+    await expect(dot.getBoundingClientRect().width).toBe(10);
+    const hitArea = getComputedStyle(checkbox, "::before");
+    await expect(parseFloat(hitArea.width)).toBeGreaterThanOrEqual(40);
+    await expect(parseFloat(hitArea.height)).toBeGreaterThanOrEqual(40);
+    // Just above the dot still toggles; the name still selects.
+    const box = checkbox.getBoundingClientRect();
+    const above = document.elementFromPoint(box.left + box.width / 2, box.top - 10);
+    await expect(above?.closest(".collection-sidebar-row__visibility")).toBe(checkbox);
     await userEvent.click(canvas.getByRole("button", { name: "Work" }));
     await expect(args.onSelect).toHaveBeenCalledOnce();
     await expect(args.onToggleVisibility).not.toHaveBeenCalled();
     await userEvent.click(checkbox);
     await expect(args.onToggleVisibility).toHaveBeenCalledOnce();
     await expect(args.onSelect).toHaveBeenCalledOnce();
+  },
+};
+
+/** A hidden collection: the dot turns grey and the name dims with it. */
+export const Hidden: Story = {
+  tags: ["vitest-ci"],
+  args: { visible: false, selected: false },
+  play: async ({ canvasElement }) => {
+    const toggle = within(canvasElement).getByRole("checkbox", { name: "Show Work" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    const dot = toggle.querySelector(".collection-sidebar-row__visibility-dot") as HTMLElement;
+    const row = canvasElement.querySelector(".collection-sidebar-row") as HTMLElement;
+    await expect(getComputedStyle(dot).backgroundColor).not.toBe(
+      getComputedStyle(row).getPropertyValue("--collection-row-color"),
+    );
+    // The name dims to the quiet label ink (still 4.5:1), not to a faded opacity.
+    const title = row.querySelector(".collection-sidebar-row__title") as HTMLElement;
+    const label = document.createElement("span");
+    label.style.color = "var(--workspace-label-color)";
+    row.appendChild(label);
+    await expect(getComputedStyle(title).color).toBe(getComputedStyle(label).color);
+    label.remove();
+    await expect(Number(getComputedStyle(title).opacity)).toBe(1);
   },
 };
 

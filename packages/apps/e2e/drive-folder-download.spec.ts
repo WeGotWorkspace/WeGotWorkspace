@@ -57,7 +57,7 @@ test.describe("Drive folder download (live app)", () => {
   });
 
   test("the row menu is grouped and Download saves the folder as one zip", async ({ page }) => {
-    await page.goto("/drive");
+    await page.goto("/drive?view=folder&path=My%20Drive");
     await expect(page.getByText(FOLDER, { exact: true })).toBeVisible({ timeout: 30_000 });
 
     await openFolderMenu(page);

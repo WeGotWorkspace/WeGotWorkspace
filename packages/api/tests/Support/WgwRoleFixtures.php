@@ -6,7 +6,6 @@ namespace Tests\Support;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 
 /**
  * Seeds bob (user) and alice (admin) and issues bearer tokens for role-matrix tests.
@@ -35,8 +34,9 @@ trait WgwRoleFixtures
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($alice);
         $this->assertNotNull($bob);
-        $group = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $group = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($group, $alice);
+        $this->grantAdminRole($alice);
         $teamGroup = $this->seedWgwGroup('principals/groups/team', 'Team');
         $this->addPrincipalToGroup($teamGroup, $alice);
         $this->addPrincipalToGroup($teamGroup, $bob);

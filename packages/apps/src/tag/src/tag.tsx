@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Plus, Tag as TagIcon, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -125,7 +125,7 @@ export type TagGroupProps = {
   addAriaLabel?: string;
   /** Override the default `Remove tag {label}` name on chip dismiss. */
   removeAriaLabelFor?: (label: string) => string;
-  /** Default chip icon when an item does not supply its own. */
+  /** Chip icon when an item does not supply its own. Default: none (text-only chips). */
   tagIcon?: ReactNode;
   /** Density for chips + add control. Default `md` keeps compact call sites unchanged. */
   size?: TagSize;
@@ -175,6 +175,12 @@ function buildTagSuggestions(
   return filtered;
 }
 
+/** A–Z by label, case- and accent-insensitive (chips and suggestions alike). */
+const tagLabelCollator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+function sortTagItems(items: TagItem[]): TagItem[] {
+  return [...items].sort((a, b) => tagLabelCollator.compare(a.label, b.label));
+}
+
 function TagAddField({
   suggestions,
   appliedTags,
@@ -185,6 +191,7 @@ function TagAddField({
   ariaLabel,
   onConfirm,
   onCancel,
+  openedByKeyboard,
 }: {
   suggestions: TagItem[];
   appliedTags: TagItem[];
@@ -195,6 +202,8 @@ function TagAddField({
   ariaLabel: string;
   onConfirm: (idOrLabel: string) => void;
   onCancel: () => void;
+  /** Opened from the keyboard: the field shows the focus ring (mouse opens it quietly). */
+  openedByKeyboard: boolean;
 }) {
   const listId = useId();
   const hintId = useId();
@@ -220,6 +229,7 @@ function TagAddField({
     !acceptTag(trimmedQuery) &&
     !suggestions.some((item) => item.id === trimmedQuery);
   const showList = options.length > 0;
+  const showHint = rejected && !!rejectHint;
   const activeOption = options[highlight] ?? null;
 
   useEffect(() => {
@@ -289,7 +299,7 @@ function TagAddField({
       <input
         ref={inputRef}
         type="text"
-        className="tag-group__input"
+        className={cn("tag-group__input", openedByKeyboard && "tag-group__input--keyboard")}
         value={query}
         placeholder={placeholder}
         aria-label={ariaLabel}
@@ -310,36 +320,50 @@ function TagAddField({
           if (!query.trim()) onCancel();
         }}
       />
-      {rejected && rejectHint ? (
-        <p id={hintId} className="tag-group__hint">
-          {rejectHint}
-        </p>
-      ) : null}
-      {showList ? (
-        <ul id={listId} className="tag-group__suggestions" role="listbox" aria-label={ariaLabel}>
-          {options.map((option, index) => {
-            const active = index === highlight;
-            return (
-              <li key={option.id} role="presentation">
-                <button
-                  type="button"
-                  id={`${listId}-${option.id}`}
-                  role="option"
-                  aria-selected={active}
-                  className={cn("tag-group__suggestion", active && "tag-group__suggestion--active")}
-                  onMouseDown={(event) => {
-                    // Keep focus until commit; avoid blur-cancel racing the click.
-                    event.preventDefault();
-                    commit(option.itemId);
-                  }}
-                  onMouseEnter={() => setHighlight(index)}
-                >
-                  {option.create ? `Create “${option.label}”` : option.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+      {/* Hint and suggestions float below the field (frosted), so typing never
+          shifts the tags around it. */}
+      {showList || showHint ? (
+        <div className="tag-group__popover">
+          {showHint ? (
+            <p id={hintId} className="tag-group__hint">
+              {rejectHint}
+            </p>
+          ) : null}
+          {showList ? (
+            <ul
+              id={listId}
+              className="tag-group__suggestions"
+              role="listbox"
+              aria-label={ariaLabel}
+            >
+              {options.map((option, index) => {
+                const active = index === highlight;
+                return (
+                  <li key={option.id} role="presentation">
+                    <button
+                      type="button"
+                      id={`${listId}-${option.id}`}
+                      role="option"
+                      aria-selected={active}
+                      className={cn(
+                        "tag-group__suggestion",
+                        active && "tag-group__suggestion--active",
+                      )}
+                      onMouseDown={(event) => {
+                        // Keep focus until commit; avoid blur-cancel racing the click.
+                        event.preventDefault();
+                        commit(option.itemId);
+                      }}
+                      onMouseEnter={() => setHighlight(index)}
+                    >
+                      {option.create ? `Create “${option.label}”` : option.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
@@ -364,10 +388,13 @@ export function TagGroup({
   style,
 }: TagGroupProps) {
   const [adding, setAdding] = useState(false);
+  const [openedByKeyboard, setOpenedByKeyboard] = useState(false);
   const canAdd = !readonly && !!onAddTag;
-  const items = normalizeTagItems(tags);
-  const suggestionItems = normalizeTagItems(suggestions);
-  const defaultIcon = tagIcon ?? <TagIcon />;
+  // Suite norm: chips and suggestions read A–Z, whatever order the caller keeps.
+  const items = sortTagItems(normalizeTagItems(tags));
+  const suggestionItems = sortTagItems(normalizeTagItems(suggestions));
+  // Suite norm: plain text chips, no tag glyph unless a caller asks for one.
+  const defaultIcon = tagIcon;
 
   const closeAdd = () => setAdding(false);
 
@@ -376,32 +403,6 @@ export function TagGroup({
       className={cn("tag-group", size === "lg" && "tag-group--size-lg", className)}
       style={style}
     >
-      {canAdd && adding ? (
-        <TagAddField
-          suggestions={suggestionItems}
-          appliedTags={items}
-          allowCreate={allowCreate}
-          acceptTag={acceptTag}
-          rejectHint={rejectHint}
-          placeholder={addPlaceholder}
-          ariaLabel={addAriaLabel}
-          onConfirm={(idOrLabel) => {
-            onAddTag(idOrLabel);
-          }}
-          onCancel={closeAdd}
-        />
-      ) : null}
-      {canAdd && !adding ? (
-        <button
-          type="button"
-          className="tag-group__add-button"
-          aria-label={addAriaLabel}
-          onClick={() => setAdding(true)}
-        >
-          <Plus aria-hidden />
-          <span>{addAriaLabel}</span>
-        </button>
-      ) : null}
       {items.map((item) => {
         const removable = !readonly && item.removable !== false && !!onRemoveTag;
         return (
@@ -417,6 +418,37 @@ export function TagGroup({
           />
         );
       })}
+      {/* Add sits after the chips, so the row reads tags first. */}
+      {canAdd && adding ? (
+        <TagAddField
+          suggestions={suggestionItems}
+          appliedTags={items}
+          allowCreate={allowCreate}
+          acceptTag={acceptTag}
+          rejectHint={rejectHint}
+          placeholder={addPlaceholder}
+          ariaLabel={addAriaLabel}
+          onConfirm={(idOrLabel) => {
+            onAddTag(idOrLabel);
+          }}
+          onCancel={closeAdd}
+          openedByKeyboard={openedByKeyboard}
+        />
+      ) : null}
+      {canAdd && !adding ? (
+        <button
+          type="button"
+          className="tag-group__add-button"
+          aria-label={addAriaLabel}
+          onClick={(event) => {
+            // `detail` is 0 for Enter / Space, the click count for a pointer.
+            setOpenedByKeyboard(event.detail === 0);
+            setAdding(true);
+          }}
+        >
+          <span>{addAriaLabel}</span>
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -128,7 +128,7 @@ async function teammateEdits(
 }
 
 function title(tab: Tab, text: string) {
-  return tab.locator(".tasks-main-view__title", { hasText: text });
+  return tab.locator(".tasks-list-row .list-item__title", { hasText: text });
 }
 
 /** Resolves once a push request in any tab of the context got an event stream back. */

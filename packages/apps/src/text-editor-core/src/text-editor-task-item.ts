@@ -2,15 +2,16 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { NodeViewRenderer, NodeViewRendererProps } from "@tiptap/core";
 import type { Decoration, DecorationSource } from "@tiptap/pm/view";
 import TaskItem from "@tiptap/extension-task-item";
+import "@/ui/checkbox.css";
 
 /**
  * TipTap 3's TaskItem node view paints the accessible name into the sibling
  * `span` and hides that span with inline visually-hidden styles, leaving the
  * native checkbox as the visible control.
  *
- * Our editor hides that input (`sr-only`) and uses the span as the tokenized
- * checkbox box (Notes gold / Docs blue). Strip TipTap's hide so the painted
- * box stays visible; keep the name on the input `aria-label`.
+ * Our editor hides that input (`sr-only`) and uses the span as the painted box:
+ * the suite selection mark (`.checkbox--mark`, as the Tasks done boxes). Strip
+ * TipTap's hide so the box stays visible; keep the name on the input `aria-label`.
  */
 export function revealTaskItemCheckboxBox(dom: HTMLElement): void {
   const span = dom.querySelector(":scope > label > span");
@@ -18,6 +19,7 @@ export function revealTaskItemCheckboxBox(dom: HTMLElement): void {
   span.removeAttribute("style");
   span.textContent = "";
   span.setAttribute("aria-hidden", "true");
+  span.classList.add("checkbox--mark");
 }
 
 function revealIfElement(dom: Element): void {

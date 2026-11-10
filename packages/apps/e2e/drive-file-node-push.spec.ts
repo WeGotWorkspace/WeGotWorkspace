@@ -218,7 +218,7 @@ test("a WebDAV write reaches a folder shared with one person on push", async ({ 
 
   const [admin, member] = await openUsers(browser, [E2E_USERNAME, "member"]);
   try {
-    await admin.page.goto("/drive");
+    await admin.page.goto("/drive?view=folder&path=My%20Drive");
     await shareWithViewer(admin.page, `/users/${E2E_USERNAME}/${name}`, "member");
 
     await Promise.all([pushConnected(member.context), member.page.goto("/drive?view=shared")]);
