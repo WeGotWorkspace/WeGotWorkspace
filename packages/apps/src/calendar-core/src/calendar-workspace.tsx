@@ -63,6 +63,7 @@ import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
 import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
 import {
+  CalendarRemindersSidebarSection,
   CalendarTaskDueSidebarRows,
   partitionCalendarTaskDueSidebarLists,
 } from "@/calendar-core/src/calendar-task-due-sidebar";
@@ -150,7 +151,7 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
-  const { hiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
+  const { hiddenOverlayTaskListIds, setHiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
     useCalendarOverlayHiddenIds();
   const taskDueOverlay = useCalendarTaskDueOverlay({
     preset: taskDueBootstrap ?? null,
@@ -788,16 +789,13 @@ export function CalendarWorkspace({
               </SidebarSection>
             ) : null}
             <CalendarAvailabilitySidebar availability={availability} labels={L} />
-            {overlayOwnedLists.length > 0 ? (
-              <SidebarSection title={L.tasksSection}>
-                <CalendarTaskDueSidebarRows
-                  lists={overlayOwnedLists}
-                  hiddenListIds={hiddenOverlayTaskListIds}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  onToggleVisibility={toggleOverlayTaskListVisibility}
-                />
-              </SidebarSection>
-            ) : null}
+            <CalendarRemindersSidebarSection
+              lists={overlayOwnedLists}
+              hiddenListIds={hiddenOverlayTaskListIds}
+              onSetHiddenListIds={setHiddenOverlayTaskListIds}
+              onToggleVisibility={toggleOverlayTaskListVisibility}
+              labels={L}
+            />
             {overlaySharedLists.length > 0 ? (
               <SidebarSection title={L.sharedTaskListsSection}>
                 <CalendarTaskDueSidebarRows

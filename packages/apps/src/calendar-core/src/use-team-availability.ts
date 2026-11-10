@@ -36,6 +36,7 @@ import {
   type AvailabilityColors,
 } from "@/calendar-core/src/calendar-availability-overlay";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
 import type { TeamAvailabilityCoverage } from "@/calendar-core/src/calendar-availability-notice";
 import {
   patchCalendarViewPrefs,
@@ -100,6 +101,8 @@ export type TeamAvailabilityState = {
   members: JmapTeamMember[] | null;
   shownIds: ReadonlySet<string>;
   toggleShown: (id: string) => void;
+  /** Ticks or unticks several rows at once (the section's show/hide-all dot). */
+  setShown: (ids: readonly string[], shown: boolean) => void;
   collapsed: boolean;
   toggleCollapsed: () => void;
   /** Teammates whose weeks in view came back `complete: false`. */
@@ -190,9 +193,7 @@ export function useTeamAvailability({
   const [shownIds, setShownIds] = useState<ReadonlySet<string>>(() =>
     preset?.shownIds ? new Set(preset.shownIds) : readShownIds(),
   );
-  const [collapsed, setCollapsed] = useState(
-    () => readCalendarViewPrefs()?.availabilityCollapsed === true,
-  );
+  const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("availabilityCollapsed");
   const nowRef = useRef(now);
   nowRef.current = now;
 
@@ -322,22 +323,34 @@ export function useTeamAvailability({
     };
   }, [presetMode, revision, shownKey, viewer, visibleKey]);
 
-  const toggleShown = useCallback((id: string) => {
+  const updateShown = useCallback((change: (next: Set<string>) => void) => {
     setShownIds((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      change(next);
       patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
       return next;
     });
   }, []);
 
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((current) => {
-      patchCalendarViewPrefs({ availabilityCollapsed: !current });
-      return !current;
-    });
-  }, []);
+  const toggleShown = useCallback(
+    (id: string) =>
+      updateShown((next) => {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+      }),
+    [updateShown],
+  );
+
+  const setShown = useCallback(
+    (ids: readonly string[], shown: boolean) =>
+      updateShown((next) => {
+        for (const id of ids) {
+          if (shown) next.add(id);
+          else next.delete(id);
+        }
+      }),
+    [updateShown],
+  );
 
   const summary = useMemo(() => {
     const weekSet = new Set(visibleWeeks);
@@ -368,6 +381,7 @@ export function useTeamAvailability({
     members: orderedMembers,
     shownIds,
     toggleShown,
+    setShown,
     collapsed,
     toggleCollapsed,
     incompleteIds: summary.incompleteIds,

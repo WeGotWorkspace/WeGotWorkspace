@@ -43,6 +43,21 @@ h4.sidebar-section__title {
   margin-inline-start: auto;
 }
 
+/* Show/hide-all dot: sits in the rows' leading column, in a neutral ink. */
+.sidebar-section__heading--toggle-all {
+  justify-content: flex-start;
+}
+
+.sidebar-section__heading--toggle-all .sidebar-section__title {
+  flex: 1 1 auto;
+}
+
+.sidebar-section__heading .sidebar-section__toggle-all {
+  --visibility-dot-color: color-mix(in oklab, var(--workspace-foreground) 62%, transparent);
+  /* As tall as the heading, so it never reaches into the rows around it. */
+  --visibility-dot-hit-size: var(--control-height-xs, 1.75rem);
+}
+
 /* A short note in place of a section's rows (for example "not in a Team yet"). */
 .sidebar-section__note {
   @apply text-sm text-muted-foreground;

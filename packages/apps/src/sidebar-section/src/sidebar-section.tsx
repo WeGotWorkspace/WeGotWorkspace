@@ -2,6 +2,8 @@ import { useId, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { MenuItem, type MenuItemProps } from "@/menu-item/src/menu-item";
+import { VisibilityDot } from "@/collection-sidebar/src/visibility-dot";
+import type { SidebarSectionToggleAll } from "@/sidebar-section/src/section-toggle-all";
 import { cn } from "@/lib/utils";
 import "@/ui/field-label-row.css";
 import "@/sidebar-section/src/sidebar-section.css";
@@ -21,6 +23,8 @@ type SidebarSectionProps = {
   expandLabel?: string;
   /** Under the heading, above the list (e.g. a filter input). Hidden while collapsed. */
   beforeList?: ReactNode;
+  /** Shows a neutral show/hide-all dot before the title. */
+  toggleAll?: SidebarSectionToggleAll;
 };
 
 function itemListKey(item: MenuItemProps, index: number): string {
@@ -41,6 +45,7 @@ export function SidebarSection({
   collapseLabel,
   expandLabel,
   beforeList,
+  toggleAll,
 }: SidebarSectionProps) {
   const titleId = useId();
   const listId = useId();
@@ -52,7 +57,20 @@ export function SidebarSection({
       aria-labelledby={title ? titleId : undefined}
     >
       {title ? (
-        <div className="sidebar-section__heading">
+        <div
+          className={cn(
+            "sidebar-section__heading",
+            toggleAll && "sidebar-section__heading--toggle-all",
+          )}
+        >
+          {toggleAll ? (
+            <VisibilityDot
+              checked={toggleAll.checked}
+              label={toggleAll.label}
+              onToggle={toggleAll.onToggle}
+              className="sidebar-section__toggle-all"
+            />
+          ) : null}
           <h4 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
             {title}
           </h4>

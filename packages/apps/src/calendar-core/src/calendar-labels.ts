@@ -38,6 +38,10 @@ export type CalendarUILabels = {
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
+  tasksSectionShowAll: string;
+  tasksSectionHideAll: string;
+  tasksSectionCollapse: string;
+  tasksSectionExpand: string;
   /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
@@ -281,6 +285,8 @@ export type CalendarUILabels = {
   teamAvailabilityIncomplete: string;
   teamAvailabilityCollapse: string;
   teamAvailabilityExpand: string;
+  teamAvailabilityShowAll: string;
+  teamAvailabilityHideAll: string;
   calendarNoticeBarLabel: string;
   teamAvailabilityOfflineUpdated: (age: string) => string;
   teamAvailabilityOfflineUncached: string;
@@ -322,6 +328,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   myCalendarsSection: "My calendars",
   sharedWithMeSection: "Shared with me",
   tasksSection: "Reminders",
+  tasksSectionShowAll: "Show all reminders",
+  tasksSectionHideAll: "Hide all reminders",
+  tasksSectionCollapse: "Collapse Reminders",
+  tasksSectionExpand: "Expand Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
@@ -553,6 +563,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityIncomplete: "Some busy times could not be loaded.",
   teamAvailabilityCollapse: "Collapse Team availability",
   teamAvailabilityExpand: "Expand Team availability",
+  teamAvailabilityShowAll: "Show all teammates' availability",
+  teamAvailabilityHideAll: "Hide all teammates' availability",
   calendarNoticeBarLabel: "Calendar notices",
   teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
   teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
