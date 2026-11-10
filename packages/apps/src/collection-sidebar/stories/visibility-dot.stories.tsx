@@ -41,7 +41,7 @@ export const Mixed: Story = {
     checked: "mixed",
     label: "Show all reminders",
     style: {
-      "--visibility-dot-color": "color-mix(in oklab, var(--workspace-foreground) 62%, transparent)",
+      "--visibility-dot-color": "var(--workspace-foreground)",
     } as CSSProperties,
   },
   play: async ({ canvasElement }) => {
