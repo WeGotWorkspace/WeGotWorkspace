@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Settings;
 
 use App\Models\Principal;
+use App\Services\Auth\AdminRoleResolver;
 use App\Services\Mcp\McpEnabled;
 use App\Support\ApiUrlBuilder;
 
@@ -14,6 +15,7 @@ final class SettingsStateService
         private GroupDirectoryService $groups,
         private ApiUrlBuilder $urls,
         private McpEnabled $mcp,
+        private AdminRoleResolver $adminRoles,
     ) {}
 
     /**
@@ -32,6 +34,7 @@ final class SettingsStateService
                 'email' => $email,
             ],
             'groups' => $this->groups->groupsForUser($username),
+            'isAdmin' => $this->adminRoles->isAdmin($username),
             'logoutUrl' => $this->urls->logout(),
             'mcpEnabled' => $this->mcp->isOn(),
         ];

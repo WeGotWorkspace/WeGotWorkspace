@@ -92,16 +92,21 @@
 }
 
 .drive-detail-panel__meta-row {
-  @apply flex justify-between gap-4 py-1.5 border-b;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+  @apply flex items-center justify-between gap-4 py-2 border-b;
+  border-color: var(--workspace-divider-color);
 }
 
+/* Labels read like the list header labels; values like list cells. */
 .drive-detail-panel__meta-label {
-  @apply text-[11px] uppercase tracking-wider;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  @apply text-sm font-medium;
+  font-family: var(
+    --field-label-font-family,
+    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
+  );
+  color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
 .drive-detail-panel__meta-value {
-  @apply capitalize;
-  color: var(--workspace-foreground);
+  @apply min-w-0 truncate text-right tabular-nums;
+  color: var(--workspace-item-color, var(--workspace-foreground));
 }

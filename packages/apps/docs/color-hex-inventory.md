@@ -55,7 +55,6 @@ Product sheets below now use `--color-success`, `--color-error`, `--color-warnin
 | File                                   | Hex                                                             | Recommendation                                            |
 | -------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
 | `chat-ui.css` / message / link-preview | accent and mention use `--workspace-accent` / `--color-warning` | done                                                      |
-| `unified-search-results-dropdown.css`  | row accents fall back to `--workspace-accent`                   | done                                                      |
 | `contacts-conflict-dialog.css`         | `#0e7490`                                                       | **semantic alias** → chat/Meet accent or workspace accent |
 
 ## Drive / share leftovers

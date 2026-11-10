@@ -81,6 +81,8 @@ export type CalendarEventFormProps = {
   contactCards?: ContactCard[];
   onRefreshContactCards?: () => void;
   canSubmitEmail?: boolean;
+  /** The viewer is in no Team and has nobody to pick (#1924). */
+  noTeam?: boolean;
   sessionEmail?: string;
   onRsvp?: (
     status: CalendarSchedulingRespondStatus,
@@ -122,6 +124,7 @@ export function CalendarEventForm({
   contactCards = [],
   onRefreshContactCards,
   canSubmitEmail = true,
+  noTeam = false,
   sessionEmail,
   onRsvp,
   recurrenceId,
@@ -347,6 +350,7 @@ export function CalendarEventForm({
             readOnly={readOnly}
             fieldsDisabled={fieldsDisabled}
             canSubmitEmail={canSubmitEmail}
+            noTeam={noTeam}
             sessionEmail={sessionEmail}
             controlSize={controlSize}
             meetEmailGuestHint={

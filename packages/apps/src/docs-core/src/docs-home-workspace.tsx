@@ -18,7 +18,12 @@ import {
   useDocsHomeOfflineAvailability,
   useDocsHomeOpenGuard,
 } from "@/docs-core/src/use-docs-home-offline-availability";
-import { docsHomeBrowsePathPrefix, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
+import {
+  docsHomeBrowsePathPrefix,
+  docsHomeCreateJumpsToPersonal,
+  type DocsHomeView,
+} from "@/docs-core/src/docs-home-shared";
+import { docsPersonalDrivePathPrefix } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import { useDocsHomeGroupRoots } from "@/docs-core/src/use-docs-home-group-roots";
@@ -378,6 +383,15 @@ export function DocsHomeWorkspace({
     groupRootSlugs,
   });
 
+  const { handleCreateDocument } = createDialog;
+  const handleNewDocument = useCallback(() => {
+    const personal = docsPersonalDrivePathPrefix(username);
+    if (personal && docsHomeCreateJumpsToPersonal(view)) {
+      selectView({ type: "drive", pathPrefix: personal });
+    }
+    handleCreateDocument();
+  }, [handleCreateDocument, selectView, username, view]);
+
   return (
     <TooltipProvider delayDuration={200}>
       <WorkspaceAppLayout
@@ -387,8 +401,9 @@ export function DocsHomeWorkspace({
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
             showNewDocument={Boolean(onCreateDocument)}
-            onNewDocument={createDialog.handleCreateDocument}
+            onNewDocument={handleNewDocument}
             newDocumentLabel={labels.homeNewDocument}
+            newDocumentMenuLabel={labels.homeNewDocumentMenu}
             session={session}
             onLogout={onLogout}
             primaryItems={primaryItems}

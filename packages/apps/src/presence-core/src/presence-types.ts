@@ -11,9 +11,6 @@ export type PresenceChannelMessage = {
   parentId?: string | null;
 };
 
-/** Logical room token for the workspace-wide principal room (`p_workspace`). */
-export const PRESENCE_WORKSPACE_ROOM = "workspace";
-
 /**
  * Backoff for a presence boot that could not reach the API while the browser reports
  * online (#1832). The last delay repeats while the browser reports online, since the
@@ -21,7 +18,10 @@ export const PRESENCE_WORKSPACE_ROOM = "workspace";
  */
 export const PRESENCE_BOOT_RETRY_DELAYS_MS = [5_000, 15_000, 45_000] as const;
 
-/** Logical room token for a group principal room (`p_groups.{slug}`). */
+/**
+ * Logical room token for a Team's presence room (`p_groups.{slug}`). Presence has
+ * one room per Team (#1921); there is no instance-wide room.
+ */
 export function presenceGroupRoom(slug: string): string {
   return `groups.${slug}`;
 }
@@ -155,7 +155,14 @@ export type PresenceMeshSession = {
   broadcast(envelope: PresenceEnvelope): void;
   sendTo(peerId: string, envelope: PresenceEnvelope): void;
   getRoomPeers(): RtcPeerDescriptor[];
+  /**
+   * Peers to send a targeted envelope to for one lower-cased username. A multi-room
+   * session answers from one room only, so a tab sharing several rooms gets one copy.
+   */
+  peersForUsername?(username: string): RtcPeerDescriptor[];
   /** True while this peer's data channel is open, so envelopes reach it. */
   isLinked(peerId: string): boolean;
   onEvent(listener: (event: PresenceMeshEvent) => void): () => void;
+  /** This tab's own peers per room, for the leave beacon. Absent on follower proxies. */
+  ownPeers?(): { room: string; peerId: string }[];
 };

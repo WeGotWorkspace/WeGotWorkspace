@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import type { ChatMessage as ChatMessageModel } from "@/chat-ui/src/chat-types";
@@ -77,6 +77,46 @@ export const Reactions: Story = {
     actions,
     presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
     onToggleReaction: fn(),
+  },
+};
+
+/** Reactions, an add-reaction chip and the replies chip share one row under the body. */
+export const ReactionsAndReplies: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    message: { ...CHAT_STORY_MESSAGE_DOCS, replyCount: 3 },
+    currentUserId: CHAT_STORY_CURRENT_USER_ID,
+    actions,
+    presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
+    onOpenThread: fn(),
+    onToggleReaction: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const replies = canvas.getByRole("button", { name: "3 replies" });
+    // The count reads as words on the chip, not a bare number.
+    await expect(replies.textContent?.trim()).toBe("3 replies");
+    const footer = replies.closest(".chat-message__footer") as HTMLElement;
+    await expect(footer).not.toBeNull();
+    // Chips are a translucent ink wash, a step darker than the row behind them.
+    await expect(getComputedStyle(replies).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    await expect(getComputedStyle(replies).backgroundColor).toMatch(/\/ 0\.0?8\)|, 0\.0?8\)/);
+    await expect(within(footer).getByRole("button", { name: /react/i })).toBeInTheDocument();
+    await expect(within(footer).getByRole("button", { pressed: true })).toBeInTheDocument();
+    await userEvent.click(replies);
+    await expect(args.onOpenThread).toHaveBeenCalledTimes(1);
+
+    // Hover actions float on the row, not inside the body or the chip row.
+    const row = canvasElement.querySelector(".chat-message") as HTMLElement;
+    const bar = row.querySelector(":scope > .chat-message__actions") as HTMLElement;
+    await expect(bar).not.toBeNull();
+    await expect(getComputedStyle(bar).position).toBe("absolute");
+    await expect(footer.contains(bar)).toBe(false);
+    // Same chrome and control size as the other floating toolbars.
+    await expect(getComputedStyle(bar).paddingTop).toBe("6px");
+    for (const button of bar.querySelectorAll(".button")) {
+      await expect(button.classList).toContain("icon-button--size-lg");
+    }
   },
 };
 

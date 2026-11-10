@@ -33,6 +33,8 @@ export function driveFilesFromUploadQueue(
       notebook: size,
       category: "File",
       date: new Date(item.createdAt).toLocaleDateString(),
+      modifiedMs: new Date(item.createdAt).getTime(),
+      sizeBytes: item.bytesTotal,
       title: item.name,
       excerpt: "",
       body: [],

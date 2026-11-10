@@ -71,7 +71,7 @@ describe("OwnerScopeField", () => {
 
     const trigger = screen.getByRole("combobox", { name: defaultOwnerScopeLabels.label });
     expect(trigger).toHaveProperty("disabled", true);
-    expect(trigger.textContent).toContain("Administrators (Group)");
+    expect(trigger.textContent).toContain("Administrators (Team)");
 
     fireEvent.click(trigger);
     expect(screen.queryByRole("option")).toBeNull();

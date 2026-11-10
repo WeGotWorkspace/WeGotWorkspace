@@ -3,7 +3,6 @@ import type { Editor } from "@tiptap/react";
 import { Send, X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
-import { TextEditorFormatBar } from "@/text-editor-core/src/text-editor-format-bar";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { getTextEditorContent } from "@/text-editor-core/src/text-editor-content";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
@@ -30,8 +29,6 @@ export type ChatComposerProps = {
    * `false` when it empties, blurs, or a message is sent. Callers throttle.
    */
   onTypingChange?: (typing: boolean) => void;
-  /** Caption under the card. Pass `null` to hide (e.g. inline edit). */
-  hint?: string | null;
   className?: string;
 };
 
@@ -43,7 +40,6 @@ export function ChatComposer({
   onSend,
   onCancel,
   onTypingChange,
-  hint = chatUiLabels.sendHint,
   className,
 }: ChatComposerProps) {
   const onSendRef = useRef(onSend);
@@ -110,19 +106,11 @@ export function ChatComposer({
     focusTextEditorFromChromeEvent(event, editor);
   };
 
+  // One line to start, growing with the text. Markdown comes from typing (`**bold**`,
+  // `- list`) and the editor shortcuts; there is no format bar.
   return (
     <div className={cn("chat-ui chat-composer", className)}>
       <div className="chat-composer__card" onMouseDown={onCardMouseDown}>
-        <TextEditorFormatBar
-          editor={editor}
-          groups={["marksBasic", "blocksBasic", "link"]}
-          showPrint={false}
-          formattingDisabled={disabled}
-          className="chat-composer__bar"
-        />
-        <div className="chat-composer__sheet">
-          <TextEditorSheet editor={editor} variant="inline" slashMenu={false} />
-        </div>
         {mentions.query ? (
           <div className="chat-composer__mentions">
             <ChatMentionMenu
@@ -134,7 +122,10 @@ export function ChatComposer({
             />
           </div>
         ) : null}
-        <div className="chat-composer__footer">
+        <div className="chat-composer__row">
+          <div className="chat-composer__sheet">
+            <TextEditorSheet editor={editor} variant="inline" slashMenu={false} />
+          </div>
           {onCancel ? (
             <IconButton
               label={chatUiLabels.cancel}
@@ -157,7 +148,6 @@ export function ChatComposer({
           />
         </div>
       </div>
-      {hint ? <p className="chat-composer__hint">{hint}</p> : null}
     </div>
   );
 }

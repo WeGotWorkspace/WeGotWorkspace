@@ -7,12 +7,12 @@ namespace Tests\Feature\Teams;
 use App\Exceptions\ApiHttpException;
 use App\Models\GroupMember;
 use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamColleagues;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class TeamColleaguesTest extends WgwDatabaseTestCase
@@ -35,14 +35,16 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         }
         $this->teams['t1'] = $this->seedWgwGroup('principals/groups/t1', 'Team One');
         $this->teams['t2'] = $this->seedWgwGroup('principals/groups/t2', 'Team Two');
-        $this->teams['admins'] = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $this->teams['admins'] = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
 
-        // alice–bob share T1, bob–carol share T2, dave is in no Team, root is admin only.
+        // alice–bob share T1, bob–carol share T2, dave is in no Team, root has the admin role
+        // and is the only member of the old "Administrators" Team (an upgraded instance).
         $this->join('t1', 'alice');
         $this->join('t1', 'bob');
         $this->join('t2', 'bob');
         $this->join('t2', 'carol');
         $this->join('admins', 'root');
+        $this->grantAdminRole('root');
     }
 
     public function test_users_who_share_a_team_are_colleagues(): void
@@ -232,13 +234,12 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         $colleagues = $this->colleagues();
         self::assertTrue($colleagues->isColleague('root', 'dave'));
 
-        GroupMember::query()
-            ->where('principal_id', $this->teams['admins']->id)
-            ->where('member_id', $this->users['root']->id)
-            ->delete();
+        DB::connection('wgw')->table('users')->where('username', 'root')->update(['is_admin' => false]);
         $this->startNextRequest();
 
         self::assertFalse($colleagues->isColleague('root', 'dave'));
+        // Still a member of the old Team: that stays an ordinary Team.
+        self::assertTrue($colleagues->isOwnTeam('root', 'administrators'));
     }
 
     public function test_the_service_is_one_instance_per_request(): void

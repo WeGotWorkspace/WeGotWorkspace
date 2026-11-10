@@ -1,6 +1,7 @@
 import { MessageSquarePlus } from "lucide-react";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { IconButton } from "@/button/src/button";
+import type { TextEditorFormatBarSize } from "@/text-editor-core/src/text-editor-format-bar-config";
 
 export type DocsCollabCommentControlProps = {
   labels: Pick<
@@ -15,6 +16,8 @@ export type DocsCollabCommentControlProps = {
   /** Prefer an explicit title when comments are disabled (view-source vs share rights). */
   commentsDisabledTitle?: string;
   onAddCommentFromSelection: () => void;
+  /** Match the format bar it sits in. */
+  size?: TextEditorFormatBarSize;
   className?: string;
 };
 
@@ -25,6 +28,7 @@ export function DocsCollabCommentControl({
   commentsDisabled = false,
   commentsDisabledTitle,
   onAddCommentFromSelection,
+  size = "md",
   className,
 }: DocsCollabCommentControlProps) {
   const disabled = commentsDisabled || !canAddFromSelection;
@@ -41,7 +45,7 @@ export function DocsCollabCommentControl({
       disabled={disabled}
       onClick={onAddCommentFromSelection}
       icon={<MessageSquarePlus aria-hidden />}
-      size="md"
+      size={size}
       variant="outline"
       className={className}
     />

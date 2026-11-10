@@ -322,7 +322,7 @@ test("gap 3: Starred and Trash work offline, and what needs a connection says so
   await expect(docsHomeRow(page, unstar)).toBeVisible({ timeout: 15_000 });
   await sidebarView(page, "Trash").click();
   await expect(docsHomeRow(page, keep)).toBeVisible({ timeout: 15_000 });
-  await sidebarView(page, "My Docs").click();
+  await sidebarView(page, "All Docs").click();
   await expect(docsHomeRow(page, star)).toBeVisible({ timeout: 15_000 });
 
   await goOffline(context, page);
@@ -363,7 +363,7 @@ test("gap 3: Starred and Trash work offline, and what needs a connection says so
   await expect(page.getByText("Shared documents are not available offline.")).toBeVisible({
     timeout: 15_000,
   });
-  await sidebarView(page, "My Docs").click();
+  await sidebarView(page, "All Docs").click();
   await expect(docsHomeRow(page, trash)).toBeVisible({ timeout: 15_000 });
 
   await context.setOffline(false);
@@ -443,7 +443,7 @@ test("gap 5: Docs home offline shows no Failed to fetch and throws nothing", asy
   await goOffline(context, page);
 
   const failedToFetch = page.getByText("Failed to fetch");
-  for (const view of ["Shared with me", "Recent", "Starred", "Trash", "Personal", "My Docs"]) {
+  for (const view of ["Shared with me", "Recent", "Starred", "Trash", "Personal", "All Docs"]) {
     await sidebarView(page, view).click();
     await page.waitForTimeout(2000);
     await expect(failedToFetch, view).toHaveCount(0);

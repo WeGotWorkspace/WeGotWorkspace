@@ -18,6 +18,8 @@ export class FollowerPresenceSession implements PresenceMeshSession {
 
   private linkedPeerIds = new Set<string>();
 
+  private targetPeerIds: Record<string, string[]> | null = null;
+
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
   constructor(private readonly publishOut: (envelope: PresenceEnvelope, peerId?: string) => void) {}
@@ -44,6 +46,18 @@ export class FollowerPresenceSession implements PresenceMeshSession {
     return this.peers;
   }
 
+  /** The peers the leader picked for this user; all matching peers from a leader that sent none. */
+  peersForUsername(username: string): RtcPeerDescriptor[] {
+    const key = username.trim().toLowerCase();
+    const picked =
+      this.targetPeerIds && Object.prototype.hasOwnProperty.call(this.targetPeerIds, key)
+        ? this.targetPeerIds[key]
+        : undefined;
+    return this.peers.filter((peer) =>
+      picked ? picked.includes(peer.id) : (peer.user ?? "").trim().toLowerCase() === key,
+    );
+  }
+
   /** As the leader's mesh last reported it. */
   isLinked(peerId: string): boolean {
     return this.linkedPeerIds.has(peerId);
@@ -60,6 +74,7 @@ export class FollowerPresenceSession implements PresenceMeshSession {
     this.peers = snapshot.peers;
     this.selfPeerId = snapshot.selfPeerId;
     this.linkedPeerIds = new Set(snapshot.linkedPeerIds ?? []);
+    this.targetPeerIds = snapshot.targetPeerIds ?? null;
     this.emit({ type: "roster" });
   }
 

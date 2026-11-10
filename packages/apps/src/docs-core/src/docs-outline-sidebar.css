@@ -1,17 +1,51 @@
 @import "../../styles.css" reference;
 
-/** Prefix slot for hierarchical outline numbers (e.g. 1.1, 2.1.2). */
-.docs-outline-sidebar__number {
-  @apply block min-w-[2.75ch] text-xs tabular-nums;
-  font-family: var(--font-mono);
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+/* Tree outline (no numbers). Depth indents; top rows show a fold chevron or a dot. */
+.docs-outline-sidebar__chevron {
+  @apply block size-4 shrink-0;
 }
 
-/* Parent `.menu-item__icon-slot` uses 0.65 opacity; that multiplies the whole
- * subtree and drops outline nums below AA on cream. Restore full opacity. */
-.docs-workspace
-  .sidebar-section
-  .menu-item
-  .menu-item__icon-slot:has(.docs-outline-sidebar__number) {
+.docs-outline-sidebar__dot {
+  @apply block size-1.5 shrink-0 rounded-full;
+  margin-inline: 0.3125rem;
+  background-color: currentColor;
+  opacity: 0.6;
+}
+
+.sidebar-section .menu-item--selected .docs-outline-sidebar__dot {
+  background-color: var(--docs-outline-dot-active, currentColor);
   opacity: 1;
+  box-shadow: 0 0 0 3px
+    color-mix(in oklch, var(--docs-outline-dot-active, currentColor) 22%, transparent);
+}
+
+.docs-outline-sidebar__item--depth-1 {
+  padding-inline-start: calc(var(--app-sidebar-item-padding-x) + 1rem + 0.5rem) !important;
+}
+
+.docs-outline-sidebar__item--depth-2 {
+  padding-inline-start: calc(var(--app-sidebar-item-padding-x) + 2rem + 0.5rem) !important;
+}
+
+.docs-outline-sidebar__item--depth-3 {
+  padding-inline-start: calc(var(--app-sidebar-item-padding-x) + 3rem + 0.5rem) !important;
+}
+
+/* Back to documents: a filled chip row instead of a bare nav link. Settings,
+   below it, stays a plain row. */
+.menu-item.docs-outline-sidebar__back {
+  border-radius: var(--docs-chip-radius, 0.625rem);
+  background-color: var(
+    --docs-chip-bg,
+    color-mix(in oklch, var(--workspace-foreground) 7%, transparent)
+  );
+  color: var(--workspace-foreground);
+}
+
+.menu-item.docs-outline-sidebar__back .menu-item__icon-slot {
+  opacity: 0.9;
+}
+
+.docs-outline-sidebar__first + .sidebar-section {
+  border-top: 0 !important;
 }

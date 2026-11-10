@@ -6,6 +6,7 @@ import {
   formatChatDayLabel,
   formatChatDayLabelParts,
   formatChatTime,
+  formatChatTimeShort,
   groupChatMessages,
   groupChatMessagesByDay,
 } from "@/chat-ui/src/chat-message-group";
@@ -42,6 +43,13 @@ describe("groupChatMessages", () => {
       ["g1"],
       ["a3"],
     ]);
+  });
+});
+
+describe("formatChatTimeShort", () => {
+  it("drops the day period so it fits the avatar column", () => {
+    const short = formatChatTimeShort(Date.parse("2026-09-01T21:05:00.000Z"));
+    expect(short).toMatch(/^\d{1,2}:\d{2}$/);
   });
 });
 

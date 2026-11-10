@@ -79,16 +79,13 @@ final class UnifiedSearchRequest extends FormRequest
     }
 
     /**
-     * Browse mode lets the client omit `q` to list documents: `extensions` must be
-     * non-empty AND every requested source must be `file` (omitted sources, which
-     * default to all sources, do not qualify).
+     * Browse mode lets the client omit `q` to list files, newest first: every
+     * requested source must be `file` (omitted sources, which default to all
+     * sources, do not qualify). `extensions` narrows it to documents (Docs);
+     * without it the browse lists every file (Drive All Files).
      */
     public function isBrowseMode(): bool
     {
-        $extensions = $this->input('extensions');
-        if (! is_array($extensions) || $extensions === []) {
-            return false;
-        }
         $sources = $this->input('sources');
         if (! is_array($sources) || $sources === []) {
             return false;
@@ -109,7 +106,7 @@ final class UnifiedSearchRequest extends FormRequest
             if (! $this->isBrowseMode()) {
                 $q = $this->input('q');
                 if (! is_string($q) || trim($q) === '') {
-                    $validator->errors()->add('q', 'The q field is required unless browsing by extension.');
+                    $validator->errors()->add('q', 'The q field is required unless browsing files.');
                 }
             }
 

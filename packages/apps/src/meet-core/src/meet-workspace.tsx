@@ -8,6 +8,7 @@ import {
   filterSharePrincipals,
   sharePrincipalsFromDirectory,
   sharesTeamWithViewer,
+  viewerHasNoTeam,
 } from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
@@ -39,6 +40,7 @@ import {
   meetCallChromeVisible,
   meetCallHeaderStartVisible,
   meetCallInviteAction,
+  meetCallInviteStartOptions,
   meetCallIsActive,
   meetCallLiveAudioOnly,
   meetCallStageShowsStage,
@@ -54,7 +56,7 @@ import {
   findMeetDirectMessagePerson,
   meetDirectMessagePeople,
 } from "@/meet-core/src/meet-direct-messages";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChannel } from "@/meet-core/src/meet-types";
 import {
   meetInitialCallLayoutForChannel,
   useMeetCallLayout,
@@ -269,6 +271,7 @@ export function MeetWorkspace({
       ? selectedDm.displayName
       : (visitMeeting?.title ?? meetLabels.productName);
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
+  const noTeam = viewerHasNoTeam(data.groups);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
     () =>
@@ -402,6 +405,15 @@ export function MeetWorkspace({
   }, [resolvedParent?.id]);
   const closeResolvedThread = onCloseThread ?? chat.closeThread;
   const openResolvedThread = onOpenThread ?? chat.openThread;
+  // Replies and Reply toggle: the open thread's own button closes it again.
+  const toggleResolvedThread = useCallback(
+    (message: ChatMessage) => {
+      const rootId = message.parentId ?? message.threadId ?? message.id;
+      if (resolvedParent?.id === rootId) closeResolvedThread();
+      else openResolvedThread(message);
+    },
+    [closeResolvedThread, openResolvedThread, resolvedParent?.id],
+  );
   const expandCallChatPanel = useCallback(() => setCallChatOpen(true), []);
   const chatPlaceholder = selected
     ? meetChannelComposerPlaceholder(selected)
@@ -420,7 +432,7 @@ export function MeetWorkspace({
     callRoom: callStageRoom,
     liveCallChannelId,
     stageLayout: resolvedStageLayout,
-    onOpenThread: openResolvedThread,
+    onOpenThread: toggleResolvedThread,
     onExpandChatPanel: expandCallChatPanel,
     onSendThreadReply,
     onError: notifyChatError,
@@ -600,6 +612,7 @@ export function MeetWorkspace({
             todayMeetings={todayMeetings}
             leftoverUpcoming={leftoverUpcoming}
             directMessagePeople={dmPeople}
+            noTeam={noTeam}
             selectedId={selectedId}
             onSelect={setSelectedId}
             authorPresence={data.authorPresence}
@@ -622,6 +635,15 @@ export function MeetWorkspace({
             conversationOpen={conversationOpen}
             showStart={showHeaderStart}
             onStartCall={onCallInvite}
+            join={
+              conversationOpen && callInvite === "join"
+                ? {
+                    audioOnly: callAudioOnly,
+                    onJoin: (options) =>
+                      onCallInvite(options ?? meetCallInviteStartOptions(callAudioOnly)),
+                  }
+                : null
+            }
             onEditChannel={dialogs.openEdit}
           />
         }
@@ -639,10 +661,7 @@ export function MeetWorkspace({
                 session={session}
                 previewPeerIds={selectedId ? (callParticipantsByChannel?.[selectedId] ?? []) : []}
                 directory={data.directory}
-                invite={callInvite}
-                audioOnly={callAudioOnly}
                 onLeave={visitCallToggle}
-                onInvite={onCallInvite}
               />
             }
             chat={conversationOpen ? resolvedChat : null}
@@ -651,6 +670,7 @@ export function MeetWorkspace({
         }
       />
       <MeetWorkspaceDialogs
+        noTeam={noTeam}
         dialogs={dialogs}
         actions={channelActions}
         session={session}

@@ -74,11 +74,11 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     });
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
+    fireEvent.click(screen.getByRole("button", { name: "Teams" }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/settings/memberships");
     });
-    expect(screen.getByRole("heading", { name: "Memberships" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Offline" }));
     await waitFor(() => {
@@ -94,13 +94,13 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
 
     cleanup();
     await renderSettingsApp("/settings/memberships");
-    expect(screen.getByRole("heading", { name: "Memberships" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeTruthy();
   });
 
   it("moves between sections with browser back and forward", async () => {
     const { history } = await renderSettingsApp("/settings");
 
-    fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
+    fireEvent.click(screen.getByRole("button", { name: "Teams" }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/settings/memberships");
     });
@@ -114,7 +114,7 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/settings/memberships");
     });
-    expect(screen.getByRole("heading", { name: "Memberships" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeTruthy();
 
     history.forward();
     await waitFor(() => {

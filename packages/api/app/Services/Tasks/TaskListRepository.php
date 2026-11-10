@@ -94,12 +94,12 @@ final class TaskListRepository
 
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -202,7 +202,7 @@ final class TaskListRepository
             throw new ApiHttpException(403, 'The Inbox task list cannot be deleted.', 'forbidden');
         }
         if ($this->isProvisionedGroupTaskList($instance, $groupSlug)) {
-            throw new ApiHttpException(403, 'The group task list cannot be deleted.', 'forbidden');
+            throw new ApiHttpException(403, 'The team task list cannot be deleted.', 'forbidden');
         }
         $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         if ($instance->objects()->where('componenttype', 'VTODO')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
@@ -316,7 +316,7 @@ final class TaskListRepository
             throw new ApiHttpException(403, 'The inbox list cannot change owner.', 'forbidden');
         }
         if ($this->isProvisionedGroupTaskList($instance, $currentGroupSlug)) {
-            throw new ApiHttpException(403, 'The group list cannot change owner.', 'forbidden');
+            throw new ApiHttpException(403, 'The team list cannot change owner.', 'forbidden');
         }
     }
 

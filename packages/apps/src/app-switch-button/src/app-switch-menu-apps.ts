@@ -33,7 +33,7 @@ const APP_SWITCH_UTILITY_APPS_ALL = APP_SWITCH_WORKSPACE_APPS.filter((app) =>
 
 /**
  * Utility row for the app switch menu. Admin is omitted when the user lacks
- * the same administrators-group capability used by the home grid.
+ * the same admin-role capability used by the home grid.
  */
 export function appSwitchUtilityApps(showAdmin: boolean): AppSwitchMenuApp[] {
   if (showAdmin) return APP_SWITCH_UTILITY_APPS_ALL;

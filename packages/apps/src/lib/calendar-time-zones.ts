@@ -1,7 +1,10 @@
 /**
- * Curated IANA zones shared by Calendar event editors and Calendar display settings.
- * Lives in `lib/` so settings-core can list them without importing calendar-core.
+ * IANA zones shared by the Calendar event editor, the Tasks due field and Calendar
+ * display settings. Lives in `lib/` so settings-core can list them without
+ * importing calendar-core.
  */
+
+/** Fallback when the runtime cannot list its zones (`Intl.supportedValuesOf`). */
 
 export const COMMON_EVENT_TIME_ZONES = [
   "UTC",
@@ -51,21 +54,28 @@ export type TimeZoneOption = {
   label: string;
 };
 
-export function commonTimeZoneOptions(
-  locale: string,
-  currentTimeZone?: string | null,
-): TimeZoneOption[] {
-  const options: TimeZoneOption[] = COMMON_EVENT_TIME_ZONES.map((id) => ({
-    value: id,
-    label: formatTimeZoneLabel(id, locale),
-  }));
+let allTimeZoneIdsCache: readonly string[] | null = null;
+
+/** Every IANA zone the runtime knows, plus UTC (which `Intl` leaves out). */
+export function allTimeZoneIds(): readonly string[] {
+  if (allTimeZoneIdsCache) return allTimeZoneIdsCache;
+  const ids =
+    typeof Intl.supportedValuesOf === "function"
+      ? Intl.supportedValuesOf("timeZone")
+      : [...COMMON_EVENT_TIME_ZONES];
+  allTimeZoneIdsCache = [...new Set(["UTC", ...ids])];
+  return allTimeZoneIdsCache;
+}
+
+/**
+ * Every zone, sorted by its label, plus the current value when the runtime does
+ * not list it (an older or legacy id read from the server).
+ */
+export function timeZoneOptions(locale: string, currentTimeZone?: string | null): TimeZoneOption[] {
+  const ids = [...allTimeZoneIds()];
   const current = currentTimeZone?.trim();
-  if (
-    current &&
-    !COMMON_EVENT_TIME_ZONES.includes(current as CommonEventTimeZone) &&
-    current !== "UTC"
-  ) {
-    options.push({ value: current, label: formatTimeZoneLabel(current, locale) });
-  }
-  return options;
+  if (current && !ids.includes(current)) ids.push(current);
+  return ids
+    .map((id) => ({ value: id, label: formatTimeZoneLabel(id, locale) }))
+    .sort((a, b) => a.label.localeCompare(b.label, locale));
 }

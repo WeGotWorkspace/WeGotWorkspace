@@ -1,4 +1,6 @@
+import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
 import { workspaceDestructiveDialogLabels } from "@/lib/workspace/destructive-dialog";
+import { sharePrincipalCopy } from "@/share-ui/share-labels";
 
 /**
  * User-visible copy for the contacts workspace (sidebar, list chrome, dialogs, toasts).
@@ -15,8 +17,6 @@ export type ContactsUILabels = {
   /** Owned/team collections heading — same pattern as Tasks “My lists” / Notes “My notebooks”. */
   sectionAddressBooks: string;
   sectionGroups: string;
-  expandAddressBookGroups: (name: string) => string;
-  collapseAddressBookGroups: (name: string) => string;
   viewOnly: string;
   editAddressBook: string;
   newContactMenu: string;
@@ -68,6 +68,8 @@ export type ContactsUILabels = {
   nameFull: string;
   nameGiven: string;
   nameGiven2: string;
+  /** Short placeholder for the middle name inside the name line. */
+  nameGiven2Placeholder: string;
   nameSurname: string;
   channelType: string;
   channelTypeNone: string;
@@ -93,6 +95,14 @@ export type ContactsUILabels = {
   addAddress: string;
   /** Placeholder on the trailing empty URL row. */
   addUrl: string;
+  addField: string;
+  /** One address, as an "Add field" choice. */
+  address: string;
+  callPhone: string;
+  sendEmail: string;
+  openWebsite: string;
+  notesPlaceholder: string;
+  companyName: string;
   urlAddress: string;
   addressStreet: string;
   addressLocality: string;
@@ -170,8 +180,6 @@ export const defaultContactsLabels: ContactsUILabels = {
   personalAddressBook: "Personal",
   sectionAddressBooks: "My address books",
   sectionGroups: "Groups",
-  expandAddressBookGroups: (name) => `Expand ${name}`,
-  collapseAddressBookGroups: (name) => `Collapse ${name}`,
   viewOnly: "View only",
   editAddressBook: "Address book settings",
   newContactMenu: "More create options",
@@ -187,8 +195,8 @@ export const defaultContactsLabels: ContactsUILabels = {
   createGroupAddressBookLabel: "Address book",
   createGroupAddressBookHint: "The group is stored in this address book. You cannot move it later.",
   createGroupButton: "Create",
-  addGroup: "Add group",
-  addGroupPlaceholder: "Add group…",
+  addGroup: "Add to group",
+  addGroupPlaceholder: "Add to group…",
   toastGroupRenamed: (name) => `Renamed to “${name}”`,
   newContact: "New contact",
   createContact: "Create contact",
@@ -226,6 +234,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   nameFull: "Full name",
   nameGiven: "First name",
   nameGiven2: "Middle name",
+  nameGiven2Placeholder: "Middle",
   nameSurname: "Last name",
   channelType: "Type",
   channelTypeNone: "Other",
@@ -243,8 +252,15 @@ export const defaultContactsLabels: ContactsUILabels = {
   addPhone: "Add phone",
   addEmail: "Add email",
   addAddress: "Add address",
-  addUrl: "Add URL",
-  urlAddress: "URL",
+  addUrl: "Add website",
+  addField: "Add field",
+  address: "Address",
+  callPhone: "Call",
+  sendEmail: "Send email",
+  openWebsite: "Open website",
+  notesPlaceholder: "Add notes…",
+  companyName: "Company name",
+  urlAddress: "Website",
   addressStreet: "Street",
   addressLocality: "City",
   addressRegion: "State / region",
@@ -299,8 +315,8 @@ export const defaultContactsLabels: ContactsUILabels = {
   addressBookDialogDone: "Done",
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",
-  shareAddressBookPlaceholder: "Add people or groups",
-  shareAddressBookEmpty: "No matches",
+  shareAddressBookPlaceholder: sharePrincipalCopy.addPlaceholder,
+  shareAddressBookEmpty: noPeopleOrTeamsFoundCopy,
   shareAddressBookOffline: "Sharing is unavailable offline.",
   removeAddressBookShareTitle: "Remove access?",
   removeAddressBookShareConfirm: "They will no longer see this address book.",

@@ -404,7 +404,8 @@ export function noteFromVjournal(
 
 export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> {
   const session = await wgwFetchPrincipal();
-  let groups: NotesAppBootstrap["data"]["groups"] = [];
+  // Stays undefined when the Teams could not be loaded: not the same as "no Team".
+  let groups: NotesAppBootstrap["data"]["groups"];
   const settingsRes = await wgwFetch("/settings/state");
   if (settingsRes.ok) {
     const settings = (await wgwReadJson(settingsRes)) as {

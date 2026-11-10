@@ -1,3 +1,4 @@
+import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
 import {
   isTaskPriorityNone,
@@ -151,39 +152,34 @@ export function formatDueDateShort(date: Date): string {
   });
 }
 
-export function formatComposerDueDateLabel(
-  date: Date,
-  labels: { dueToday: string; dueYesterday: string; dueTomorrow: string },
-  now: Date = new Date(),
-): string {
-  const dueDay = startOfLocalDay(date);
-  const today = startOfLocalDay(now);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (dueDay.getTime() === today.getTime()) return labels.dueToday;
-  if (dueDay.getTime() === yesterday.getTime()) return labels.dueYesterday;
-  if (dueDay.getTime() === tomorrow.getTime()) return labels.dueTomorrow;
-  return formatDueDateShort(date);
-}
-
-export function formatDueTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-export function formatComposerDueLabel(
+/** The due day relative to today, for the list row ("Due tomorrow", "Due in 3 days"). */
+export function formatTaskDueRelative(
   due: string | null | undefined,
-  showWithoutTime: boolean | null | undefined,
-  labels: { dueToday: string; dueYesterday: string; dueTomorrow: string },
+  labels: { dueRelative: (when: string) => string },
   now: Date = new Date(),
 ): string | null {
   const date = parseDueDateValue(due);
-  if (!date) return null;
-  const datePart = formatComposerDueDateLabel(date, labels, now);
-  if (taskDueIsDateOnly(due, showWithoutTime)) return datePart;
-  return `${datePart}, ${formatDueTime(date)}`;
+  return date ? labels.dueRelative(formatRelativeDay(date, now, { capitalised: false })) : null;
+}
+
+export type TaskDueSeverity = "warn" | "error";
+
+/**
+ * How urgent the due day is: today warns, an earlier day is an error; none for a
+ * done or undated task. Counts calendar days, as the Today and Overdue views do.
+ */
+export function taskDueSeverity(
+  due: string | null | undefined,
+  done: boolean,
+  now: Date = new Date(),
+): TaskDueSeverity | null {
+  const date = parseDueDateValue(due);
+  if (!date || done) return null;
+  const day = startOfLocalDay(date).getTime();
+  const today = startOfLocalDay(now).getTime();
+  if (day < today) return "error";
+  if (day === today) return "warn";
+  return null;
 }
 
 function startOfLocalDay(date: Date): Date {

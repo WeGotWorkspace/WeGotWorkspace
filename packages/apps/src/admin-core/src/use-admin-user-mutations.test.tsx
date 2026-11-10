@@ -38,10 +38,16 @@ describe("useAdminUserMutations", () => {
           username: " Bob ",
           displayName: " Bob ",
           email: " bob@example.test ",
+          isAdmin: false,
         }),
       ).toBe(true);
       expect(
-        await result.current.createUser({ username: "alice", displayName: "A", email: "" }),
+        await result.current.createUser({
+          username: "alice",
+          displayName: "A",
+          email: "",
+          isAdmin: false,
+        }),
       ).toBe(false);
     });
     expect(result.current.users.map((user) => user.username)).toContain("Bob");
@@ -65,6 +71,7 @@ describe("useAdminUserMutations", () => {
           username: "bob",
           displayName: "Bob",
           email: "  ",
+          isAdmin: true,
         }),
       ).toBe(true);
     });
@@ -75,10 +82,50 @@ describe("useAdminUserMutations", () => {
       displayName: "Bob",
       email: undefined,
       groups: [],
+      isAdmin: true,
     });
     expect(applyAdminData).toHaveBeenCalledWith(next);
     expect(showSuccess).toHaveBeenCalledWith("User created");
     vi.restoreAllMocks();
+  });
+
+  it("refuses to remove the signed-in admin's own role and sends the role only when it changes", async () => {
+    const data = createAdminAppBootstrap().data;
+    const updateUser = vi.fn().mockResolvedValue(data);
+    const { result, showError } = renderUsers({ updateUser });
+    await act(async () => {
+      expect(
+        await result.current.updateUser("alice", {
+          displayName: "Alice",
+          email: "alice@example.test",
+          isAdmin: false,
+        }),
+      ).toBe(false);
+      expect(
+        await result.current.updateUser("carol", {
+          displayName: "Carol",
+          email: "carol@example.test",
+          isAdmin: false,
+        }),
+      ).toBe(true);
+      expect(
+        await result.current.updateUser("carol", {
+          displayName: "Carol",
+          email: "carol@example.test",
+          isAdmin: true,
+        }),
+      ).toBe(true);
+    });
+    expect(showError).toHaveBeenCalledWith("You cannot remove your own administrator access.");
+    expect(updateUser).toHaveBeenNthCalledWith(1, "carol", {
+      displayName: "Carol",
+      email: "carol@example.test",
+    });
+    expect(updateUser).toHaveBeenNthCalledWith(2, "carol", {
+      displayName: "Carol",
+      email: "carol@example.test",
+      isAdmin: true,
+    });
   });
 
   it("refuses to disable the signed-in account and enables someone else locally", async () => {

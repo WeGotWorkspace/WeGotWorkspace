@@ -267,6 +267,25 @@ describe("portal-theme-vars", () => {
     expect(menu.style.backgroundColor).toBe("rgb(255, 242, 243)");
   });
 
+  it("hands a frosted menu the sidebar paper as its surface token, not a fill", () => {
+    const sidebar = document.createElement("aside");
+    sidebar.className = "app-sidebar";
+    sidebar.style.backgroundColor = "rgb(255, 242, 243)";
+    const trigger = document.createElement("button");
+    trigger.className = "app-switch-button__trigger";
+    trigger.dataset.state = "open";
+    sidebar.append(trigger);
+    document.body.append(sidebar);
+
+    const menu = document.createElement("div");
+    menu.id = "frosted-menu";
+    trigger.setAttribute("aria-controls", menu.id);
+    document.body.append(menu);
+    bridgePortalThemeFromOpenTrigger(menu, { frost: true });
+    expect(menu.style.backgroundColor).toBe("");
+    expect(menu.style.getPropertyValue("--workspace-surface").trim()).toBe("rgb(255, 242, 243)");
+  });
+
   it("overwrites seed washes with concrete colors when the engine resolves them", () => {
     const source = document.createElement("div");
     // Hex washes resolve even in jsdom (no color-mix required).

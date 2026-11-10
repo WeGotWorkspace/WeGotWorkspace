@@ -1,4 +1,11 @@
-import { useId, useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -11,11 +18,15 @@ import { NoteTitleCaretsLayer } from "@/note-detail-view/src/note-title-carets";
 import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets";
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";
+import "@/note-detail-view/src/note-detail-desk.css";
 
 function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
   const root = titleEl.closest(".note-detail-view");
-  const body = root?.querySelector<HTMLElement>(".note-text-editor-body [contenteditable='true']");
+  const body = root?.querySelector<HTMLElement>(
+    ".note-text-editor-body [contenteditable='true'], .note-detail-view__body-start",
+  );
   body?.focus();
 }
 
@@ -69,7 +80,12 @@ export type NoteDetailViewProps = {
   onAutoFocusTitleConsumed?: () => void;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
-  body: string[];
+  body?: string[];
+  /**
+   * Replaces the body editor (e.g. a task's notes and fields). Enter in the title moves
+   * to the element with `note-detail-view__body-start`.
+   */
+  children?: ReactNode;
   /**
    * Collab config for the body. When provided, the body uses the Docs Yjs stack
    * (parent {@link NoteCollabSession}). View-only shares keep the surface with
@@ -78,6 +94,10 @@ export type NoteDetailViewProps = {
   collab?: NoteCollabConfig;
   /** When `true`, body and tags are display-only. Default `false` (editing on). */
   readOnly?: boolean;
+  /** Above the title, e.g. the notebook switcher. */
+  eyebrow?: ReactNode;
+  /** Left of the title, on its first line (a task's done box). */
+  titleLeading?: ReactNode;
   className?: string;
 };
 
@@ -100,11 +120,14 @@ export function NoteDetailView({
   onAutoFocusTitleConsumed,
   pullQuote,
   body,
+  children,
   collab,
   readOnly = false,
+  eyebrow,
+  titleLeading,
   className,
 }: NoteDetailViewProps) {
-  const markdown = noteBodyToMarkdown(body);
+  const markdown = noteBodyToMarkdown(body ?? []);
   // Keep the shared Yjs surface for view-only (presence + live body); TipTap
   // `editable` enforces read-only. Solo editor is for Storybook / no collab.
   const useCollabSurface = collab != null;
@@ -138,35 +161,45 @@ export function NoteDetailView({
     onAutoFocusTitleConsumed?.();
   }
 
+  const titleInput = (
+    <div className="note-detail-view__title-field">
+      <TextareaAutosize
+        ref={titleRef}
+        id={titleFieldId}
+        className="note-detail-view__title"
+        value={titleField.value}
+        placeholder={titlePlaceholder}
+        readOnly={titleReadOnly}
+        autoFocus={autoFocusTitle && !titleReadOnly}
+        minRows={1}
+        maxRows={12}
+        wrap="soft"
+        onChange={titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)}
+        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
+        onBlur={titleReadOnly ? undefined : handleTitleBlur}
+      />
+      <NoteTitleCaretsLayer
+        textareaRef={titleRef}
+        carets={remoteTitleCarets}
+        value={titleField.value}
+      />
+    </div>
+  );
+
   return (
     <article className={cn("note-detail-view paper-sheet", className)}>
+      <NoteDetailEyebrow>{eyebrow}</NoteDetailEyebrow>
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>
-      <div className="note-detail-view__title-field">
-        <TextareaAutosize
-          ref={titleRef}
-          id={titleFieldId}
-          className="note-detail-view__title"
-          value={titleField.value}
-          placeholder={titlePlaceholder}
-          readOnly={titleReadOnly}
-          autoFocus={autoFocusTitle && !titleReadOnly}
-          minRows={1}
-          maxRows={12}
-          wrap="soft"
-          onChange={
-            titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)
-          }
-          onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
-          onBlur={titleReadOnly ? undefined : handleTitleBlur}
-        />
-        <NoteTitleCaretsLayer
-          textareaRef={titleRef}
-          carets={remoteTitleCarets}
-          value={titleField.value}
-        />
-      </div>
+      {titleLeading ? (
+        <div className="note-detail-view__title-row">
+          <div className="note-detail-view__title-leading">{titleLeading}</div>
+          {titleInput}
+        </div>
+      ) : (
+        titleInput
+      )}
       {showTags ? (
         <TagGroup
           className="note-detail-view__tag-group"
@@ -187,10 +220,13 @@ export function NoteDetailView({
         </p>
       ) : null}
 
-      {useCollabSurface ? (
+      {children ? (
+        children
+      ) : useCollabSurface ? (
         <NoteCollabEditorSurface
           editable={!readOnly}
-          autofocus={autoFocusTitle ? false : undefined}
+          // Opening a note never puts the caret in the body; click to edit.
+          autofocus={false}
         />
       ) : (
         <NoteTextEditorBody

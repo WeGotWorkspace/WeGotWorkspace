@@ -246,7 +246,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
     <div
       ref={rootRef}
       className={cn(
-        "meet-mini-player floating-action-bar floating-action-bar--dark",
+        "meet-mini-player floating-action-bar",
         position && "meet-mini-player--moved",
         dragging && "meet-mini-player--dragging",
       )}
@@ -288,7 +288,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           <UserAvatar
             displayName={preview?.name || snapshot.displayName || "You"}
             compact
-            size="md"
+            size="lg"
           />
         )}
       </button>
@@ -319,14 +319,14 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           onClick={returnToCall}
           icon={<Maximize2 />}
           label={meetLabels.returnToCall}
-          size="md"
+          size="lg"
           variant="ghost"
         />
         <IconButton
           onClick={() => void store.leaveRef.current?.()}
           icon={<PhoneOff />}
           label={meetLabels.hangUp}
-          size="md"
+          size="lg"
           variant="destructive"
         />
       </div>

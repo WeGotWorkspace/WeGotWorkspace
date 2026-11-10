@@ -4,6 +4,7 @@ import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 import {
   docsHomeBrowsePathPrefix,
+  docsHomeCreateJumpsToPersonal,
   filterDocsHomeSharedByQuery,
   isDocsHomeCompatibleExtension,
   isDocsHomeCompatibleSharedFile,
@@ -167,5 +168,15 @@ describe("mergeDocsHomeBrowseWithShared", () => {
       parent: "Shared with me",
       isShared: true,
     });
+  });
+});
+
+describe("docsHomeCreateJumpsToPersonal", () => {
+  it("opens Personal first from Shared with me, Recent, Starred and Trash only", () => {
+    for (const type of ["shared", "recent", "starred", "trash"] as const) {
+      expect(docsHomeCreateJumpsToPersonal({ type })).toBe(true);
+    }
+    expect(docsHomeCreateJumpsToPersonal({ type: "all" })).toBe(false);
+    expect(docsHomeCreateJumpsToPersonal({ type: "drive", pathPrefix: "groups/team" })).toBe(false);
   });
 });

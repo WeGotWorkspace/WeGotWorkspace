@@ -54,17 +54,14 @@
 }
 
 .docs-collab-sidebar-panel__header {
-  /*
-   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`)
-   * and `.app-sidebar__header` (`py-4 md:py-6`) so docked / drawer side panels
-   * line up with the main ViewHeader strip on sm and lg.
-   */
-  @apply shrink-0 border-b py-4 md:py-6;
+  /* Same strip as every pane header (`--workspace-header-*`). */
+  @apply shrink-0 border-b;
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
-  border-color: var(
-    --docs-collab-sidebar-panel-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
-  );
+  /* Same hairline as the sidebar edge and every other pane header. */
+  border-color: var(--workspace-divider-color);
   background-color: var(--docs-collab-sidebar-panel-bg, var(--app-sidebar-bg, var(--sidebar-bg)));
   backdrop-filter: blur(8px);
 }
@@ -95,8 +92,12 @@
 }
 
 .docs-collab-sidebar-panel__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto py-5;
+  @apply min-h-0 flex-1 overflow-y-auto py-5 outline-none;
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
+}
+
+.docs-collab-sidebar-panel__scroll:focus-visible {
+  @apply ring-2 ring-inset ring-ring;
 }
 
 /* No extra horizontal inset — scroll already matches header title inset. */

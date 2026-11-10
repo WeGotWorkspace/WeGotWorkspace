@@ -6,12 +6,12 @@ namespace Tests\Feature\Security\PreLaunch;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\Group;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -33,10 +33,11 @@ final class HighFindingsTest extends WgwDatabaseTestCase
 
         $this->seedWgwUser('alice', email: 'alice@example.test', displayName: 'Alice');
         $this->seedWgwUser('bob', email: 'bob@example.test', displayName: 'Bob');
-        $admins = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
         $this->addPrincipalToGroup($admins, $alice);
+        $this->grantAdminRole($alice);
     }
 
     protected function tearDown(): void
@@ -134,19 +135,18 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->assertUnauthorized();
     }
 
-    /** H3b: removing someone from administrators must remove admin access on the next refresh. */
+    /** H3b: removing someone's admin role must remove admin access on the next refresh. */
     public function test_h3_demoted_admin_loses_admin_on_refresh(): void
     {
         $alice = $this->login('alice');
         $this->seedWgwUser('carol', displayName: 'Carol');
         $carolPrincipal = Principal::forUsername('carol');
         $this->assertNotNull($carolPrincipal);
-        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
-        $this->addPrincipalToGroup($admins, $carolPrincipal);
+        $this->grantAdminRole($carolPrincipal);
 
         // carol (second admin) demotes alice.
         $this->withBearer($this->login('carol')['access_token'])
-            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->patchJson('/api/v1/admin/users/alice', ['isAdmin' => false])
             ->assertOk();
 
         $refreshed = $this->postRefresh($alice['refresh_token']);
@@ -169,11 +169,10 @@ final class HighFindingsTest extends WgwDatabaseTestCase
         $this->seedWgwUser('carol', displayName: 'Carol');
         $carolPrincipal = Principal::forUsername('carol');
         $this->assertNotNull($carolPrincipal);
-        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
-        $this->addPrincipalToGroup($admins, $carolPrincipal);
+        $this->grantAdminRole($carolPrincipal);
 
         $this->withBearer($this->login('carol')['access_token'])
-            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->patchJson('/api/v1/admin/users/alice', ['isAdmin' => false])
             ->assertOk();
 
         $this->withBearer($alice['access_token'])

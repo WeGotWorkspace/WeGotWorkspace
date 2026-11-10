@@ -40,7 +40,7 @@ final class AdminGroupManagementService
         $uri = AdminConstants::GROUP_PREFIX.$slug;
 
         if (Principal::query()->where('uri', $uri)->exists()) {
-            throw new \InvalidArgumentException('That group already exists.');
+            throw new \InvalidArgumentException('That team already exists.');
         }
 
         $this->groupFiles->ensureForSlug($slug);
@@ -66,12 +66,12 @@ final class AdminGroupManagementService
     /**
      * @param  list<string>|null  $members  Usernames or principal URIs
      */
-    public function update(string $groupSlug, ?string $displayName, ?array $members, string $actingAdmin): void
+    public function update(string $groupSlug, ?string $displayName, ?array $members): void
     {
         $uri = $this->groupUriFromSlug($groupSlug);
         $principal = Principal::query()->where('uri', $uri)->first();
         if ($principal === null) {
-            throw new \InvalidArgumentException('Group not found.');
+            throw new \InvalidArgumentException('Team not found.');
         }
 
         if ($displayName !== null) {
@@ -81,20 +81,16 @@ final class AdminGroupManagementService
         }
 
         if ($members !== null) {
-            $this->groups->replaceMembers($uri, $members, $actingAdmin);
+            $this->groups->replaceMembers($uri, $members);
         }
     }
 
     public function delete(string $groupSlug): void
     {
         $uri = $this->groupUriFromSlug($groupSlug);
-        if ($uri === AdminConstants::ADMIN_GROUP_URI) {
-            throw new \InvalidArgumentException('The administrators group cannot be deleted.');
-        }
-
         $principal = Principal::query()->where('uri', $uri)->first();
         if ($principal === null) {
-            throw new \InvalidArgumentException('Group not found.');
+            throw new \InvalidArgumentException('Team not found.');
         }
 
         $this->deleteAddressBookShares($uri);
@@ -128,7 +124,7 @@ final class AdminGroupManagementService
         $slug = preg_replace('/[^a-z0-9_-]+/', '-', $slug) ?? '';
         $slug = trim($slug, '-');
         if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug)) {
-            throw new \InvalidArgumentException('Group slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
+            throw new \InvalidArgumentException('Team slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
         }
 
         return $slug;

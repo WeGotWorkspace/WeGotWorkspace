@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Hash } from "lucide-react";
 import { CollectionState } from "@/collection-state/src/collection-state";
+import { publishElementHeight } from "@/lib/publish-element-height";
 import { cn } from "@/lib/utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
@@ -20,6 +21,29 @@ function MeetWorkspaceSurface({
       inert={parked || undefined}
       aria-hidden={parked}
     >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The call band floats over the top of the messages (the composer's mirror). Its
+ * height goes to the chat column as `--chat-top-dock-height`, so the list keeps
+ * its first line and sticky day labels clear of it.
+ */
+function MeetChatTopDock({ children }: { children?: ReactNode }) {
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(
+    () =>
+      publishElementHeight(
+        dockRef.current?.parentElement,
+        dockRef.current,
+        "--chat-top-dock-height",
+      ),
+    [],
+  );
+  return (
+    <div ref={dockRef} className="meet-workspace__chat-top-dock">
       {children}
     </div>
   );
@@ -55,7 +79,7 @@ export function MeetWorkspaceMainSurfaces({
   return (
     <div className="meet-workspace__surfaces">
       <MeetWorkspaceSurface className="meet-workspace__chat-main" parked={showExpandedStage}>
-        {callBar}
+        <MeetChatTopDock>{callBar}</MeetChatTopDock>
         {chat}
       </MeetWorkspaceSurface>
       {keepCallChrome ? (

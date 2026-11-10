@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
-import { shareLabels } from "@/share-ui/share-labels";
+import { noPeopleOrTeamsFoundCopy, shareLabels } from "@/share-ui/share-labels";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { cn } from "@/lib/utils";
-import "@/unified-search-dropdown/src/unified-search-results-dropdown.css";
+import "@/share-ui/share-ui.css";
 
 export type ShareSearchOption = {
   id: string;
@@ -31,7 +31,7 @@ export function SharePrincipalSearchDropdown({
   searching = false,
   results,
   className,
-  emptyLabel = "No people or groups found",
+  emptyLabel = noPeopleOrTeamsFoundCopy,
   listLabel = shareLabels.teamSectionTitle,
   minQueryLength = 2,
   children,
@@ -59,7 +59,6 @@ export function SharePrincipalSearchDropdown({
             "share-dialog z-[60] max-w-none border-0 bg-transparent p-0 shadow-none outline-none",
             "w-[var(--radix-popover-trigger-width)]",
             "data-[state=open]:animate-none data-[state=closed]:animate-none",
-            "unified-search-results-dropdown",
             "share-dialog__principal-search-dropdown",
             className,
           )}
@@ -69,7 +68,7 @@ export function SharePrincipalSearchDropdown({
         >
           {searching ? (
             <div
-              className="unified-search-results-dropdown__state"
+              className="share-principal-search-dropdown__state"
               role="status"
               aria-live="polite"
             >
@@ -77,7 +76,7 @@ export function SharePrincipalSearchDropdown({
               <span>Searching…</span>
             </div>
           ) : results.length === 0 ? (
-            <div className="unified-search-results-dropdown__state">{emptyLabel}</div>
+            <div className="share-principal-search-dropdown__state">{emptyLabel}</div>
           ) : (
             <div
               className="share-principal-search-dropdown__list"

@@ -9,6 +9,8 @@ export type CalendarShareSectionProps = {
   knownPrincipals?: readonly CalendarSharePrincipal[];
   disabled?: boolean;
   online?: boolean;
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
   onSearchPrincipals: (query: string) => Promise<CalendarSharePrincipal[]>;
   onPatchShareWith: (calendarId: string, shareWith: CalendarShareWith) => Promise<void>;
 };
@@ -19,6 +21,7 @@ export function CalendarShareSection({
   knownPrincipals = [],
   disabled = false,
   online = true,
+  noTeam = false,
   onSearchPrincipals,
   onPatchShareWith,
 }: CalendarShareSectionProps) {
@@ -29,6 +32,7 @@ export function CalendarShareSection({
       knownPrincipals={knownPrincipals}
       disabled={disabled}
       online={online}
+      noTeam={noTeam}
       dialogClassName="calendar-dialog-surface"
       copy={{
         title: labels.shareCalendarSectionTitle,

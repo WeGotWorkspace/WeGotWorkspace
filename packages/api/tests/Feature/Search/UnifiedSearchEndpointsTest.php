@@ -248,6 +248,52 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $this->assertSame(['groups/team/team-doc.md'], $teamDriveKeys);
     }
 
+    public function test_unified_search_browse_lists_every_file_across_drives_without_extensions(): void
+    {
+        $teamGroup = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $alice = Principal::forUsername('alice');
+        $this->assertNotNull($alice);
+        $this->addPrincipalToGroup($teamGroup, $alice);
+
+        $storage = app(WgwStorage::class);
+        $storage->files()->put('users/alice/notes.md', '# Notes');
+        $storage->files()->put('users/alice/photo.png', 'png-bytes');
+        $storage->files()->put('groups/team/budget.csv', 'a,b');
+        $storage->files()->put('users/bob/private.txt', 'bob only');
+
+        $this->reindexAll();
+
+        $token = $this->issueBearerToken();
+        $response = $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file'],
+                'limit' => 50,
+            ]));
+
+        $response->assertOk()->assertJsonPath('data.query', '');
+        $keys = array_column((array) $response->json('data.results'), 'sourceKey');
+        $this->assertContains('users/alice/notes.md', $keys);
+        $this->assertContains('users/alice/photo.png', $keys);
+        $this->assertContains('groups/team/budget.csv', $keys);
+        $this->assertNotContains('users/bob/private.txt', $keys);
+    }
+
+    public function test_unified_search_requires_a_query_unless_browsing_files(): void
+    {
+        $token = $this->issueBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query(['limit' => 10]))
+            ->assertStatus(400);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file', 'note'],
+                'limit' => 10,
+            ]))
+            ->assertStatus(400);
+    }
+
     public function test_unified_search_browse_mode_respects_auth_scope(): void
     {
         $storage = app(WgwStorage::class);

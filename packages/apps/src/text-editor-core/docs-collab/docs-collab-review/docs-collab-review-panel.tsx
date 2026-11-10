@@ -168,7 +168,8 @@ export function DocsCollabReviewPanel({
               labels={labels}
               currentUserId={currentUserId}
               active={activeChangeId === suggestion.changeId}
-              canMutate={canMutateSuggestion}
+              canMutate={canMutateComments && canMutateSuggestion}
+              canReview={canReviewSuggestions && canMutateSuggestion}
               onSelect={() => onSelectSuggestion(suggestion.changeId)}
               onAccept={() => {
                 if (canReviewSuggestions && canMutateSuggestion) {

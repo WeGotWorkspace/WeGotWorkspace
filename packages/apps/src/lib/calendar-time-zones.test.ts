@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
-import {
-  COMMON_EVENT_TIME_ZONES,
-  commonTimeZoneOptions,
-  formatTimeZoneLabel,
-} from "@/lib/calendar-time-zones";
+import { allTimeZoneIds, formatTimeZoneLabel, timeZoneOptions } from "@/lib/calendar-time-zones";
 
-describe("commonTimeZoneOptions", () => {
-  it("lists curated zones and appends an uncommon current value", () => {
-    const options = commonTimeZoneOptions("en-US", "Pacific/Honolulu");
-    expect(options.some((option) => option.value === "UTC")).toBe(true);
-    expect(COMMON_EVENT_TIME_ZONES.includes("Pacific/Honolulu" as never)).toBe(false);
-    expect(options.at(-1)?.value).toBe("Pacific/Honolulu");
+describe("timeZoneOptions", () => {
+  it("lists every runtime zone plus UTC, sorted by label", () => {
+    const options = timeZoneOptions("en-US");
+    const values = options.map((option) => option.value);
+    expect(values).toContain("UTC");
+    expect(values).toContain("Pacific/Honolulu");
+    expect(values).toContain("Europe/Amsterdam");
+    expect(options.length).toBe(allTimeZoneIds().length);
+    const labels = options.map((option) => option.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, "en-US")));
     expect(formatTimeZoneLabel("UTC", "en-US")).toBe("UTC");
+  });
+
+  it("keeps a current value the runtime does not list", () => {
+    const options = timeZoneOptions("en-US", "Legacy/Zone");
+    expect(options.some((option) => option.value === "Legacy/Zone")).toBe(true);
   });
 });
