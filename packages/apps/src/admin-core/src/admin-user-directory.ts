@@ -29,6 +29,7 @@ export function localCreatedUser(input: {
   displayName: string;
   email: string;
   createdAt: string;
+  isAdmin: boolean;
 }): AdminUser {
   return {
     id: input.username,
@@ -38,13 +39,14 @@ export function localCreatedUser(input: {
     groups: [],
     createdAt: input.createdAt,
     enabled: true,
+    isAdmin: input.isAdmin,
   };
 }
 
 export function mapUserProfile(
   users: readonly AdminUser[],
   userId: string,
-  input: { displayName: string; email: string },
+  input: { displayName: string; email: string; isAdmin?: boolean },
 ): AdminUser[] {
   return users.map((user) =>
     user.id === userId
@@ -52,6 +54,7 @@ export function mapUserProfile(
           ...user,
           displayName: input.displayName.trim(),
           email: input.email.trim(),
+          isAdmin: input.isAdmin ?? user.isAdmin,
         }
       : user,
   );

@@ -34,15 +34,13 @@ describe("notes workspace detail tint (computed)", () => {
     );
   });
 
-  it("does not force full-ink sheet text; check-mark contrast still follows the fill", () => {
+  it("does not force full-ink sheet text or a notebook check ink", () => {
     const light = renderPane("#fde68a");
     const lightRoot = light.container.querySelector(".notes-workspace") as HTMLElement;
     expect(
       getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
     ).not.toBe("var(--color-we-got-dark)");
-    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-we-got-dark)",
-    );
+    expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe("");
     light.unmount();
 
     const dark = renderPane("#1e3a5f");
@@ -50,9 +48,7 @@ describe("notes workspace detail tint (computed)", () => {
     expect(
       getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
     ).not.toBe("var(--color-we-got-dark)");
-    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-we-got-soft)",
-    );
+    expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe("");
     dark.unmount();
   });
 });

@@ -7,6 +7,12 @@
    plus the fallback chain below (never pure white). */
 .list-sticky-header {
   @apply sticky top-0 z-[5] flex items-baseline gap-2.5 border-b px-4 py-1.5 font-normal md:px-6;
+  /* One row height everywhere; the label line centred in it (a wrapping flex row
+     takes align-content, so emphasis and rest keep their shared baseline). */
+  box-sizing: border-box;
+  min-block-size: var(--list-sticky-header-height, 2.25rem);
+  flex-wrap: wrap;
+  align-content: center;
   font-size: var(--list-sticky-header-font-size, 0.875rem);
   color: var(--list-sticky-header-color, var(--workspace-foreground));
   background-color: var(
@@ -17,6 +23,46 @@
     --list-sticky-header-border,
     color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
+}
+
+/* Calm list header (Contacts letters, chat days): no rule under it; the pane fill
+   frosted so rows blur past beneath it; the label on the list row text line. The
+   same glass as the floating chrome (`--frost-blur`, `--scheme-frost-paper`), but
+   over the list pane's own fill and without the ink tint: it lies flush, it does
+   not float. */
+.list-sticky-header--frost {
+  --list-sticky-header-frost: color-mix(
+    in oklch,
+    var(--collection-list-pane-fill, var(--workspace-surface)) var(--scheme-frost-paper),
+    transparent
+  );
+  border-bottom: 0;
+  background-color: var(--list-sticky-header-frost);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
+}
+
+@media (min-width: 768px) {
+  .list-sticky-header--frost {
+    padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.5rem));
+  }
+}
+
+/* Selection tint over the frost (Meet's "Meeting started" band): the selected-row
+   sky wash (oklab, as the rows: an oklch mix with white turns pink). */
+.list-sticky-header--selection {
+  background-color: color-mix(
+    in oklab,
+    var(--scheme-selection) var(--scheme-selection-strength),
+    var(--list-sticky-header-frost)
+  );
+}
+
+/* Trailing content (avatars) on the row's far end, centred on the row. It may use
+   the row's block padding, so a 28px avatar stack keeps the 36px row. */
+.list-sticky-header__end {
+  @apply ms-auto -my-1.5 flex items-center self-center;
 }
 
 .list-sticky-header__emphasis {

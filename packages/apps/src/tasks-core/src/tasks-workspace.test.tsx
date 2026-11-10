@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
+import { filterTasksBySearch } from "@/tasks-core/src/tasks-task-utils";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -39,10 +40,11 @@ function renderWorkspace() {
   );
 }
 
-describe("TasksWorkspace show completed toggle", () => {
+describe("TasksWorkspace", () => {
   beforeEach(() => {
     cleanup();
     window.localStorage.clear();
+    Element.prototype.scrollIntoView = vi.fn();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -62,18 +64,55 @@ describe("TasksWorkspace show completed toggle", () => {
     renderWorkspace();
 
     const toggle = screen.getByRole("button", { name: defaultTasksLabels.showCompletedTasks });
-    expect(toggle.className).toContain("tasks-workspace__show-completed");
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(toggle.textContent).toContain(defaultTasksLabels.showCompletedTasks);
     expect(screen.queryByText("Ship v0.9")).toBeNull();
 
     fireEvent.click(toggle);
 
     const pressed = screen.getByRole("button", { name: defaultTasksLabels.hideCompletedTasks });
-    expect(pressed).toBeTruthy();
+    expect(pressed.getAttribute("aria-pressed")).toBe("true");
     expect(pressed.className).toContain("icon-button--active");
-    expect(pressed.textContent).toContain(defaultTasksLabels.showCompletedTasks);
-    expect(pressed.textContent).not.toContain(defaultTasksLabels.hideCompletedTasks);
     expect(screen.getByText("Ship v0.9")).toBeTruthy();
+  });
+
+  it("opens a task in the detail pane when its row is clicked", () => {
+    renderWorkspace();
+    expect(screen.getByText(defaultTasksLabels.selectTask)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Buy milk"));
+
+    const title = screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLTextAreaElement;
+    expect(title.value).toBe("Buy milk");
+    expect(screen.queryByText(defaultTasksLabels.selectTask)).toBeNull();
+  });
+
+  it("filters the rows by the search field", async () => {
+    renderWorkspace();
+    expect(screen.getByText("Review API spec")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(defaultTasksLabels.searchPlaceholder), {
+      target: { value: "milk" },
+    });
+
+    // The search field waits for a typing pause.
+    await waitFor(() => expect(screen.queryByText("Review API spec")).toBeNull());
+    expect(screen.getByText("Buy milk")).toBeTruthy();
+  });
+});
+
+describe("filterTasksBySearch", () => {
+  const tasks = bootstrap.data.tasks;
+
+  it("matches title and notes, ignoring case and outer spaces", () => {
+    expect(filterTasksBySearch(tasks, "  BUY milk ").map((task) => task.id)).toEqual([
+      "task-buy-milk",
+    ]);
+    const withNotes = tasks.filter((task) => task.description?.trim());
+    const word = withNotes[0]!.description!.trim().split(/\s+/)[0]!;
+    expect(filterTasksBySearch(tasks, word).map((task) => task.id)).toContain(withNotes[0]!.id);
+  });
+
+  it("returns every task for an empty query", () => {
+    expect(filterTasksBySearch(tasks, "   ")).toBe(tasks);
   });
 });

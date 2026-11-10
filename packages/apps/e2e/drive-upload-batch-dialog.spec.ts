@@ -9,7 +9,7 @@ function uploadInput(page: Page) {
 }
 
 async function openMyDrive(page: Page): Promise<void> {
-  await page.goto("/drive");
+  await page.goto("/drive?view=folder&path=My%20Drive");
   await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
   await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Loading folder…")).toHaveCount(0, { timeout: 30_000 });

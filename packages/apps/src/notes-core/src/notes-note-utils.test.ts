@@ -22,6 +22,7 @@ import {
   isPlaceholderNoteListLabel,
   noteHasListableBody,
   noteListExcerpt,
+  notePreviewFromMarkdown,
   noteListTitle,
   usableNoteListPreview,
   noteListLocationLabel,
@@ -142,6 +143,35 @@ describe("notes-note-utils", () => {
     expect(noteListExcerpt({ title: "", excerpt: "", body: [""] })).toBe("");
   });
 
+  it("builds a readable preview from markdown: no headings, code or tables", () => {
+    const markdown = [
+      "## Now reading",
+      "",
+      "*The Design of Everyday Things* — Don Norman",
+      "",
+      "## Up next",
+      "",
+      "1. *Shape Up*",
+      "2. **Working in Public**",
+      "",
+      "```",
+      "docker compose up -d",
+      "```",
+      "",
+      "| Day | Plan |",
+      "| --- | --- |",
+      "",
+      "Third attempt. Getting closer.",
+      "- [x] Coffee beans",
+    ].join("\n");
+    expect(notePreviewFromMarkdown(markdown)).toBe(
+      "The Design of Everyday Things — Don Norman · Shape Up · Working in Public · Third attempt. Getting closer. Coffee beans",
+    );
+    expect(noteListExcerpt({ excerpt: "", body: markdown.split("\n") })).toContain(
+      "Don Norman · Shape Up",
+    );
+  });
+
   it("never uses a local-* id as the list title", () => {
     const localId = "local-dbac4d6cfb5f48d6866278856920ed5a";
     expect(isPlaceholderNoteListLabel(localId, localId)).toBe(true);
@@ -177,7 +207,9 @@ describe("notes-note-utils", () => {
   it("strips checkbox markdown from list excerpts", () => {
     const body = ["Boodschappen Aug", "- [ ] Bananen", "- [ ] Fruit", "- [ ] Pasta"];
     expect(noteListTitle({ excerpt: "", body })).toBe("Empty title");
-    expect(noteListExcerpt({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
+    expect(noteListExcerpt({ excerpt: "", body })).toBe(
+      "Boodschappen Aug · Bananen · Fruit · Pasta",
+    );
     expect(computeExcerpt(body)).toBe("Boodschappen Aug Bananen Fruit Pasta");
     // Stale excerpt that still has raw `[ ]` markers must not leak into the list row.
     const stale = noteListExcerpt({

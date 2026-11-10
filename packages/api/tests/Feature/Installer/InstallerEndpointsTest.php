@@ -187,6 +187,12 @@ final class InstallerEndpointsTest extends TestCase
         $this->assertSame('SabreDAV', $stmt->fetchColumn());
         $stmt = $db->query("SELECT value FROM app_settings WHERE name = 'base_uri'");
         $this->assertSame('/', $stmt->fetchColumn());
+        // #1925: the first user gets the admin role; no `administrators` group is created.
+        $stmt = $db->query("SELECT is_admin FROM users WHERE username = 'admin'");
+        $this->assertSame(1, (int) $stmt->fetchColumn());
+        $stmt = $db->query("SELECT COUNT(*) FROM principals WHERE uri LIKE 'principals/groups/%'");
+        $this->assertSame(0, (int) $stmt->fetchColumn());
+        $this->assertDirectoryDoesNotExist($this->installRoot.'/wgw-content/files/groups/administrators');
 
         $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()

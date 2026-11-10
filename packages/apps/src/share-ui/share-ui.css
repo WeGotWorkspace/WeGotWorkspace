@@ -29,8 +29,6 @@
   --card-panel-bg: color-mix(in oklab, var(--card, var(--workspace-surface)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
   --input-height: var(--control-height-sm, 2rem);
-  /* Match outline IconButtons to Input/Select (--control-border-color). */
-  --button-outline-border-color: var(--control-border-color);
 }
 
 .share-dialog {
@@ -257,15 +255,29 @@
 
 /* Portaled via Popover — keep tokens when rendered outside `.share-dialog` content. */
 .share-dialog__principal-search-dropdown {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--workspace-surface);
+  color: var(--workspace-foreground);
+  box-shadow: var(--control-shadow);
+  width: 100%;
   max-height: min(40dvh, 280px);
   overflow: auto;
-  --unified-search-dropdown-width: 100%;
   --share-dialog-accent: var(--workspace-accent);
   --share-dialog-muted: var(
     --muted-foreground,
     color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
   );
   --input-height: var(--control-height-sm, 2rem);
+}
+
+.share-principal-search-dropdown__state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.92rem;
 }
 
 .share-principal-search-dropdown__list {

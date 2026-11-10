@@ -1,0 +1,151 @@
+@import "../../styles.css" reference;
+
+/*
+ * Fields of an open item on the detail sheet (Tasks, Contacts): one quiet row per
+ * field, split by the suite hairline. CardRow on the sheet: no hover wash, the title
+ * as a fixed label column so every value starts on one line.
+ */
+.detail-field-list {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.detail-field-row.card__row {
+  @apply gap-3 rounded-none px-0 py-2.5;
+  /* Label, icon and the first line of the value share a baseline, also when the
+     value wraps onto more lines (phones, an address). */
+  align-items: baseline;
+  border-bottom: 1px solid var(--workspace-divider-color);
+}
+
+/* A switch has no text baseline: centre the row on it. */
+.detail-field-row--center.card__row {
+  align-items: center;
+}
+
+.detail-field-row--center .detail-field-row__icon::before {
+  content: none;
+}
+
+.detail-field-row.card__row:hover {
+  background: none;
+}
+
+.detail-field-row .card__row-main {
+  flex: 0 0 8rem;
+  min-width: 0;
+}
+
+/* Phones: a narrower label column leaves the values room. */
+@media (max-width: 767px) {
+  .detail-field-row .card__row-main {
+    flex-basis: 6.25rem;
+  }
+}
+
+/* The label at the value's size (the ghost dropdown, 14px). */
+.detail-field-row .card__row-title {
+  @apply text-sm font-normal;
+  line-height: 1.25;
+  color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
+}
+
+/* A dropdown in the label column (a phone's type): quiet like the plain label. */
+.detail-field-row .card__row-title-group > .collection-ghost-select {
+  @apply font-normal;
+  color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
+}
+
+.detail-field-row .card__row-action {
+  @apply min-w-0 flex-1 flex-wrap;
+}
+
+/* A ghost field as the value takes the row's width. */
+.detail-field-row .card__row-action > .input {
+  @apply min-w-0 flex-1;
+}
+
+.detail-field-row__icon {
+  @apply flex size-5 items-center justify-center text-sm;
+  color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
+}
+
+/* A zero-width character gives the icon box a text baseline to line up on. */
+.detail-field-row__icon::before {
+  content: "\200b";
+}
+
+.detail-field-row__icon > svg {
+  @apply size-4;
+}
+
+.detail-field-row__trailing {
+  @apply ms-auto flex shrink-0 items-center self-center;
+}
+
+/* A destructive action (remove) wears its danger wash at rest, not only on hover. */
+.detail-field-row__trailing .button.button--severity-danger,
+.detail-field-row__trailing .button.button--severity-danger:hover {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+/* On a mouse the trailing actions wait for the row (hover or focus). Touch has
+ * no hover, so there they always show. */
+@media (hover: hover) and (pointer: fine) {
+  .detail-field-row__trailing {
+    @apply opacity-0 transition-opacity;
+  }
+
+  .detail-field-row:hover .detail-field-row__trailing,
+  .detail-field-row:focus-within .detail-field-row__trailing {
+    @apply opacity-100;
+  }
+}
+
+/* "Add phone": a quiet ghost button over the icon and label columns. */
+.detail-field-row--add.card__row {
+  @apply py-1.5;
+}
+
+.detail-field-row__add {
+  @apply inline-flex items-center gap-3 text-sm outline-none;
+  min-block-size: var(--control-height-sm);
+  margin-inline-start: -0.625rem;
+  padding: 0.25rem 0.625rem;
+  border: 0;
+  border-radius: var(--control-radius-button);
+  background: transparent;
+  color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.detail-field-row__add:hover {
+  background-color: var(--workspace-ghost-hover-background);
+  color: var(--workspace-foreground);
+}
+
+.detail-field-row__add:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.detail-field-row__add .detail-field-row__icon::before {
+  content: none;
+}
+
+/* Long text (notes): the value on its own line under the label, from the label's
+ * text to the row's end. 2rem = the icon box (1.25rem) + the row gap (0.75rem). */
+.detail-field-row.detail-field-row--stacked.card__row {
+  @apply flex-wrap gap-y-1;
+}
+
+.detail-field-row.detail-field-row--stacked .card__row-main {
+  @apply flex-1;
+}
+
+.detail-field-row.detail-field-row--stacked .card__row-action {
+  flex: 1 0 100%;
+  padding-inline-start: 2rem;
+}

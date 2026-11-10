@@ -9,7 +9,6 @@ use App\Dav\Server\AppScheduleInbox;
 use App\Dav\Server\AppSharedCalendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
-use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -65,11 +64,8 @@ final class CalendarReportReadAccessTest extends WgwDatabaseTestCase
         $this->seedWgwUser('dave', email: 'dave@example.test', displayName: 'Dave');
         $this->seedWgwUser('root', email: 'root@example.test', displayName: 'Root');
         $this->seedSharedTeam('eng', 'alice', 'bob', 'carol');
-        $admins = Principal::query()->where('uri', AdminConstants::ADMIN_GROUP_URI)->first()
-            ?? $this->seedWgwGroup(AdminConstants::ADMIN_GROUP_URI, 'Administrators');
-        $root = Principal::forUsername('root');
-        $this->assertNotNull($root);
-        $this->addPrincipalToGroup($admins, $root);
+        // Admin is a role on the user (#1925); root shares no Team with alice.
+        $this->grantAdminRole('root');
 
         $calendarId = $this->seedCalendar('alice', 'default');
         $caldav = new CalPDO(DB::connection('wgw')->getPdo());

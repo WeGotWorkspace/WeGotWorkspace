@@ -1,0 +1,132 @@
+@import "../../styles.css" reference;
+
+/* The task field controls (due, status, priority, reminders) in the task detail
+   rows: the shared ghost dropdown (`ui/collection-ghost-select`), with their
+   menus, popovers and dialogs. */
+
+.tasks-priority-flag {
+  @apply inline-flex shrink-0 items-center;
+}
+
+.tasks-priority-flag svg {
+  stroke: var(--tasks-priority-flag-stroke) !important;
+  fill: var(--tasks-priority-flag-fill) !important;
+}
+
+/* A field value reads as plain text: regular weight, a small leading icon. */
+.tasks-field__ghost {
+  @apply font-normal;
+}
+
+.tasks-field__ghost > svg:first-child {
+  @apply size-3.5 shrink-0;
+}
+
+/* Due: day, time and time zone side by side. Each ghost pulls into the gutter by its
+   own padding, so the values start on one line also when they wrap (phones), and
+   the padding alone spaces them. */
+.tasks-field__due {
+  @apply flex min-w-0 flex-wrap items-center gap-x-0 gap-y-1;
+}
+
+/* Due today warns, an earlier day is an error (as the list row). */
+.tasks-field__due[data-severity="warn"] > .collection-ghost-select {
+  color: var(--color-warning-text);
+}
+
+.tasks-field__due[data-severity="error"] > .collection-ghost-select {
+  color: var(--color-error-text);
+}
+
+/* The values wrap rather than shrink. The ghost's negative start margin makes this
+   box 10px narrower than its values, so a lone ghost capped at 100% would cut its
+   value ("Tod…"); the short date and time labels never need to truncate. */
+.tasks-field__due > * {
+  flex: none;
+  max-width: none;
+}
+
+/* The time as a ghost: a chromeless native time field between the clock and the
+   chevron, any time typed or picked (the browser's own picker, no clock glyph). */
+.tasks-field__time .tasks-field__time-input[type="time"] {
+  @apply w-auto min-w-0 border-0 bg-transparent p-0;
+  height: auto;
+  min-height: 0;
+  font: inherit;
+  color: inherit;
+  box-shadow: none;
+  cursor: pointer;
+  /* As wide as the time, so the chevron sits where it does on the other ghosts. */
+  field-sizing: content;
+}
+
+.tasks-field__time .tasks-field__time-input[type="time"]:focus-visible {
+  @apply ring-0;
+}
+
+.tasks-field__time:has(.tasks-field__time-input:focus-visible) {
+  @apply ring-2 ring-ring;
+}
+
+.tasks-field__time .tasks-field__time-input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.tasks-field__time .tasks-field__time-input[type="time"]::-webkit-datetime-edit {
+  padding-inline-end: 0;
+}
+
+.tasks-field__select-option {
+  @apply flex items-center gap-2;
+}
+
+.tasks-field__due-popover {
+  @apply w-auto overflow-hidden p-0;
+}
+
+.tasks-field__due-popover .rdp-nav .rdp-button_previous,
+.tasks-field__due-popover .rdp-nav .rdp-button_next {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+}
+
+.tasks-field__due-popover .rdp-chevron,
+.tasks-field__due-popover .rdp-nav .rdp-button_previous svg,
+.tasks-field__due-popover .rdp-nav .rdp-button_next svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  flex-shrink: 0;
+}
+
+.tasks-field__due-clear {
+  @apply border-t p-2;
+  border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+}
+
+.tasks-field__due-clear-button {
+  @apply w-full justify-center;
+}
+
+.tasks-field__remind {
+  @apply relative inline-flex shrink-0 items-center overflow-visible;
+}
+
+.tasks-field__remind--row {
+  @apply pointer-events-none items-center;
+}
+
+.tasks-field__remind--row svg {
+  @apply size-3.5 shrink-0;
+  color: var(--button-active-color, var(--workspace-accent, var(--color-emerald)));
+  fill: currentColor;
+}
+
+/* Touch: 32px (2rem) menu rows. */
+@media (pointer: coarse) {
+  .tasks-field__select-item {
+    min-height: 2rem;
+    padding-block: 0.375rem;
+  }
+}

@@ -168,13 +168,20 @@ export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement
 /** Bridge theme vars from the trigger that owns `content` (no-op if none found). */
 export function bridgePortalThemeFromOpenTrigger(
   content: HTMLElement,
-  options?: { paintSurface?: boolean },
+  options?: {
+    paintSurface?: boolean;
+    /**
+     * Frosted menus: hand the surface paper over as `--workspace-surface` so the
+     * frost tints over it, instead of painting an opaque background.
+     */
+    frost?: boolean;
+  },
 ): void {
   const trigger = findTriggerForPortaledContent(content);
   if (!trigger) return;
   bridgePortalThemeVars(trigger, content);
   if (options?.paintSurface === false) return;
-  applyPortaledSurfaceBackground(trigger, content);
+  applyPortaledSurfaceBackground(trigger, content, { frost: options?.frost });
 }
 
 /**
@@ -190,13 +197,21 @@ export function portaledSurfaceElement(source: Element): HTMLElement | null {
   return surface instanceof HTMLElement ? surface : null;
 }
 
-/** Copy the open surface's painted background onto a portaled dropdown. */
-export function applyPortaledSurfaceBackground(source: Element, target: HTMLElement): void {
+/**
+ * Copy the open surface's painted background onto a portaled dropdown. A
+ * frosted menu gets it as its paper token only; its CSS paints the frost.
+ */
+export function applyPortaledSurfaceBackground(
+  source: Element,
+  target: HTMLElement,
+  options?: { frost?: boolean },
+): void {
   const surface = portaledSurfaceElement(source);
   if (!surface) return;
   const background = getComputedStyle(surface).backgroundColor.trim();
   if (!isResolvedCssColor(background)) return;
-  target.style.backgroundColor = background;
+  if (options?.frost) target.style.setProperty("--workspace-surface", background);
+  else target.style.backgroundColor = background;
   target.style.setProperty("--popover", background);
   target.style.setProperty("--color-popover", background);
 

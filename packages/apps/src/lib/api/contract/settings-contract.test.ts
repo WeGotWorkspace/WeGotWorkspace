@@ -15,6 +15,7 @@ const settingsStateFixture = {
     { id: "g1", displayName: "Editors" },
     { id: "g2", displayName: "Readers" },
   ],
+  isAdmin: false,
   logoutUrl: "/api/v1/auth/logout",
   mcpEnabled: true,
 } satisfies SettingsStateResponse;

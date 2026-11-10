@@ -78,16 +78,47 @@ const NOTE_LIST_TITLE_MAX = 80;
 /** Title-line placeholder when SUMMARY is empty. Body text stays on the excerpt line. */
 export const NOTE_LIST_EMPTY_TITLE = "Empty title";
 
+/** Enough text for a two-line list preview; the rest of a long note is never read. */
+const NOTE_LIST_PREVIEW_MAX = 240;
+
 /**
- * Body line for the list row. Uses the stored excerpt, then the body.
- * An empty title does not hide this line.
+ * Markdown as one readable preview line: headings, code blocks and tables are left
+ * out, each remaining block is plain text, and blocks that do not end a sentence
+ * (list items, short lines) are joined with a middle dot.
+ */
+export function notePreviewFromMarkdown(markdown: string): string {
+  let preview = "";
+  let inCode = false;
+  for (const raw of markdown.split("\n")) {
+    const line = raw.trim();
+    if (/^(```|~~~)/.test(line)) {
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode || !line || /^#{1,6}\s/.test(line) || line.startsWith("|")) continue;
+    const text = markdownToPlainText(line);
+    if (!text) continue;
+    if (!preview) preview = text;
+    else preview += /[.!?…:;]$/.test(preview) ? ` ${text}` : ` · ${text}`;
+    if (preview.length >= NOTE_LIST_PREVIEW_MAX) break;
+  }
+  return preview;
+}
+
+/**
+ * Preview under the list row title: the body as readable text (see
+ * {@link notePreviewFromMarkdown}), else the stored excerpt. An empty title does
+ * not hide it.
  */
 export function noteListExcerpt(
   note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
 ): string {
-  const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
-  if (excerpt) return excerpt;
-  return usableNoteListPreview(plainTextFromBody(note.body), note.id);
+  const fromBody = usableNoteListPreview(
+    notePreviewFromMarkdown(noteBodyToMarkdown(note.body ?? [])),
+    note.id,
+  );
+  if (fromBody) return fromBody;
+  return usableNoteListPreview(notePreviewFromMarkdown(note.excerpt ?? ""), note.id);
 }
 
 /** List-row heading: SUMMARY when set, otherwise {@link NOTE_LIST_EMPTY_TITLE}. */

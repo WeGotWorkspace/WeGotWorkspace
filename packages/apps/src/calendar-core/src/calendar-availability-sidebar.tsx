@@ -144,7 +144,7 @@ export function CalendarAvailabilitySidebar({
         );
       })}
       {rows.length === 0 ? (
-        <li className="calendar-availability-sidebar__empty">{labels.teamAvailabilityNoMatch}</li>
+        <li className="sidebar-section__note">{labels.teamAvailabilityNoMatch}</li>
       ) : null}
     </SidebarSection>
   );

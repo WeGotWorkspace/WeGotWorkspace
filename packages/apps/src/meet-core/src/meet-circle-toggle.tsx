@@ -8,7 +8,7 @@ type MeetCircleToggleProps = {
   OffIcon: ComponentType<{ className?: string }>;
   label: string;
   disabled?: boolean;
-  /** @deprecated Same `sm` IconButton as ViewHeader — size no longer changes. */
+  /** @deprecated Always the floating-toolbar `lg` size — size no longer changes. */
   large?: boolean;
 };
 
@@ -27,7 +27,7 @@ export function MeetCircleToggle({
       onClick={onClick}
       label={label}
       icon={<Icon />}
-      size="md"
+      size="lg"
       variant="outline"
       severity={on ? undefined : "danger"}
       aria-pressed={on}

@@ -59,6 +59,10 @@ export function driveFileFromSearchResult(
     id: `search:${result.sourceType}:${result.sourceKey}`,
     category: result.category ?? "File",
     date,
+    ...(typeof result.modifiedAt === "number" && result.modifiedAt > 0
+      ? { modifiedMs: result.modifiedAt * 1000 }
+      : {}),
+    ...(kind === "folder" ? {} : { sizeBytes: Math.max(0, result.size) }),
     title,
     excerpt: result.snippet ?? "",
     body: [],

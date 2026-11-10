@@ -10,7 +10,7 @@ import "./input.css";
 installKeyboardFocusModality();
 
 export type InputSize = ControlSize;
-export type InputVariant = "default" | "search" | "password";
+export type InputVariant = "default" | "search" | "password" | "ghost";
 
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
   /** Height, padding, and font-size. Radius is global `--control-radius`. Default `md` = 36px. */
@@ -180,7 +180,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
-        className={cn("input", controlSizeClassName("input", size), className)}
+        className={cn(
+          "input",
+          controlSizeClassName("input", size),
+          variant === "ghost" && "input--ghost",
+          className,
+        )}
         ref={ref}
         value={value}
         onChange={onChange}
