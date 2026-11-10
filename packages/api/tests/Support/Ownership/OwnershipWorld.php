@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Auth\JwtTokenService;
 use Illuminate\Testing\TestResponse;
 use LogicException;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -37,8 +38,9 @@ trait OwnershipWorld
             $this->seedOwnershipUser($username);
         }
 
-        $admins = $this->seedWgwGroup(OwnershipPrincipals::ADMIN_GROUP_URI, 'Administrators');
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($admins, $this->ownershipPrincipal(OwnershipPrincipals::ADMIN));
+        $this->grantAdminRole($this->ownershipPrincipal(OwnershipPrincipals::ADMIN));
 
         foreach (OwnershipPrincipals::memberships() as $slug => $members) {
             $group = $this->seedWgwGroup(OwnershipPrincipals::groupUri($slug), ucfirst($slug));
@@ -46,6 +48,10 @@ trait OwnershipWorld
                 $this->addPrincipalToGroup($group, $this->ownershipPrincipal($username));
             }
         }
+
+        // Carol shares with the actors in the grant scopes; Epic #1915 only lets colleagues
+        // share, so every fixture user also shares this Team (outside crew/outsiders/alumni).
+        $this->seedSharedTeamForEveryone();
 
         $this->ownershipTokens = [];
         $this->ownershipGuestToken = null;

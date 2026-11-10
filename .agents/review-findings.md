@@ -16,6 +16,13 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 - 2026-10-13: A migration `down()` that drops the only ciphertext copy is not a rollback. Restore the plaintext first, or say in the migration that `down()` is one-way.
 - 2026-10-13: Token hash helpers in one change must normalize the same way. Tests call the helper; a copied `hash()` stops tracking the implementation.
 - 2026-10-13: An encrypted column with both a cast and a manual decrypt reader has two failure modes. App code reads through the helper named on the property.
+- 2026-11-04: A plan claimed one existing filter could be reused for every resource, while only half of them had one (Drive and Docs had no dismissal filter). Name the insertion point per resource.
+- 2026-11-04: A plan put a 404 on a DAV node without reading the comment that explained why the node resolves everyone (Sabre's local delivery walks the principal tree), which would have broken iTIP.
+- 2026-11-04: A role stored as a group made a "shares a group" rule silently true for every admin. Check whether any role lives in the same table before writing a membership rule.
+- 2026-11-04: Two near-identical checks with opposite admin behaviour (`isColleague` / `sharesTeam`), and `null` meaning "everyone", fail open at the call site. Name the bypass in the method and return a value object.
+- 2026-11-04: A plan required a server push on membership writes, while JMAP push in this repo is pull-only (`JmapPushStateResolver` per caller, no fan-out). Check the transport before designing an invalidation.
+- 2026-11-04: A plan pointed an acceptance criterion at a method with no callers (`CalendarRepository::changes`). Cite the method the route actually dispatches to.
+- 2026-11-04: A change fingerprint over the viewer's own groups misses the case where someone else joins the viewer's group. Hash the set whose change you need to detect.
 
 ## Promoted
 
@@ -50,3 +57,4 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 | 2026-10-13 | A cost cap lived on one entry and not the others | Search length differed between the HTTP rule and the service, MCP tools had no max, and offset was unbounded | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | A long-lived refresh token in localStorage is readable by any script on the page | SPA refresh token moved to an HttpOnly cookie scoped to the auth routes; a body-supplied copy is rejected | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-18 | A DAV hook read a document and wrote a row before authorization | `beforeMethod:*` at priority 15 runs before DAVACL and preconditions, so a refused PUT on another user's file still read it and left a row (#1349) | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-11-08 | Sabre's ACL plugin does not check REPORT, and stock CalDAV ACLs grant free/busy and inbox read to every signed-in user | Calendar REPORTs listed another user's event hrefs and returned their busy times, outside the Team availability rules | [security/SKILL.md](skills/security/SKILL.md) |

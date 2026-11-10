@@ -15,7 +15,12 @@ type UserShell = AdminMutationSliceArgs<"users" | "setUsers" | "currentUser" | "
 export function useAdminUserMutations({ operations, shell, showSuccess, showError }: UserShell) {
   const { users, setUsers, currentUser, applyAdminData } = shell;
 
-  const createUser = async (input: { username: string; displayName: string; email: string }) => {
+  const createUser = async (input: {
+    username: string;
+    displayName: string;
+    email: string;
+    isAdmin: boolean;
+  }) => {
     const decision = validateCreateUser(users, input.username);
     if (!decision.ok) {
       showError(decision.message);
@@ -29,6 +34,7 @@ export function useAdminUserMutations({ operations, shell, showSuccess, showErro
           displayName: input.displayName.trim(),
           email: input.email.trim() || undefined,
           groups: [],
+          isAdmin: input.isAdmin,
         });
         applyAdminData(next);
         showSuccess("User created");
@@ -45,6 +51,7 @@ export function useAdminUserMutations({ operations, shell, showSuccess, showErro
         displayName: input.displayName,
         email: input.email,
         createdAt: new Date().toISOString(),
+        isAdmin: input.isAdmin,
       }),
     ]);
     showSuccess("User created");
@@ -53,13 +60,21 @@ export function useAdminUserMutations({ operations, shell, showSuccess, showErro
 
   const updateUser = async (
     userId: string,
-    input: { displayName: string; email: string; username?: string },
+    input: { displayName: string; email: string; username?: string; isAdmin?: boolean },
   ) => {
+    const user = users.find((candidate) => candidate.id === userId);
+    if (input.isAdmin === false && user?.isAdmin && user.username === currentUser) {
+      showError("You cannot remove your own administrator access.");
+      return false;
+    }
     if (operations?.updateUser) {
       try {
         const next = await operations.updateUser(input.username ?? userId, {
           displayName: input.displayName.trim(),
           email: input.email.trim() || "",
+          ...(input.isAdmin === undefined || input.isAdmin === user?.isAdmin
+            ? {}
+            : { isAdmin: input.isAdmin }),
         });
         applyAdminData(next);
         showSuccess("User updated");

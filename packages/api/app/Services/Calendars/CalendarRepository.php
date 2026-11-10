@@ -92,12 +92,12 @@ final class CalendarRepository
 
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -213,7 +213,7 @@ final class CalendarRepository
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
         }
         if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
-            throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
+            throw new ApiHttpException(403, 'The team calendar cannot be deleted.', 'forbidden');
         }
         $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
         if (($options['subscriptionDelete'] ?? false) !== true || ! $isSubscription) {
@@ -265,18 +265,6 @@ final class CalendarRepository
         }
 
         return $instance;
-    }
-
-    /** @return array<string, mixed> */
-    public function changes(string $username, ?string $since): array
-    {
-        $changes = $this->collections->changes(
-            $this->accessibleVeventInstances($username),
-            $since,
-            fn (CalendarInstance $instance): string => $this->apiIdForInstance($instance),
-        );
-
-        return ['oldState' => $changes['oldState'], 'newState' => $changes['newState'], 'hasMoreChanges' => false] + $changes;
     }
 
     public function instanceMayWrite(CalendarInstance $instance): bool
@@ -427,7 +415,7 @@ final class CalendarRepository
             throw new ApiHttpException(403, 'The default calendar cannot change owner.', 'forbidden');
         }
         if ($this->isProvisionedGroupCalendar($instance, $currentGroupSlug)) {
-            throw new ApiHttpException(403, 'The group calendar cannot change owner.', 'forbidden');
+            throw new ApiHttpException(403, 'The team calendar cannot change owner.', 'forbidden');
         }
     }
 
@@ -489,6 +477,7 @@ final class CalendarRepository
             $instance,
             $groupSlug,
             $shareWith,
+            $username,
         );
         if ($added === []) {
             return;

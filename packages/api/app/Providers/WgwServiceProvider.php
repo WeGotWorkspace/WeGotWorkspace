@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
+use App\Dav\Server\CalDavDeliveryRecipients;
+use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\SabreCredentialValidator;
 use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
@@ -21,6 +23,8 @@ use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Teams\TeamColleagues;
+use App\Services\Teams\TeamMembershipReader;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -49,9 +53,33 @@ final class WgwServiceProvider extends ServiceProvider
         // instances in Octane and queue workers, and route-cached controllers keep the instance
         // they were built with, so the cache is also cleared in place whenever a request starts.
         $this->app->scoped(DriveShareOwnerReach::class);
+        // The admin role (#1925) is cached the same way: a role change must count on the next request.
+        $this->app->scoped(AdminRoleResolver::class);
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(DriveShareOwnerReach::class)) {
                 $app->make(DriveShareOwnerReach::class)->forgetOwnerState();
+            }
+            if ($app->resolved(AdminRoleResolver::class)) {
+                $app->make(AdminRoleResolver::class)->forget();
+            }
+        });
+
+        // Colleague sets (Epic #1915), memoised for one request and cleared in place the same way.
+        $this->app->scoped(TeamColleagues::class, static fn ($app): TeamColleagues => new TeamColleagues(
+            $app->make(TeamMembershipReader::class),
+            static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
+        ));
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(TeamColleagues::class)) {
+                $app->make(TeamColleagues::class)->forgetRequestState();
+            }
+        });
+
+        // Principals one CalDAV local delivery may open (#1922): never carried into the next request.
+        $this->app->scoped(CalDavDeliveryRecipients::class);
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(CalDavDeliveryRecipients::class)) {
+                $app->make(CalDavDeliveryRecipients::class)->forget();
             }
         });
 

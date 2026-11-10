@@ -54,6 +54,13 @@ return [
             'lock_path' => storage_path('framework/cache/data'),
         ],
 
+        // Team availability week entries (#1908): 5-minute files, pruned
+        // hourly by wgw:availability:prune-cache. Never the default store.
+        'availability' => [
+            'driver' => 'file',
+            'path' => storage_path('framework/cache/availability'),
+        ],
+
         'memcached' => [
             'driver' => 'memcached',
             'persistent_id' => env('MEMCACHED_PERSISTENT_ID'),

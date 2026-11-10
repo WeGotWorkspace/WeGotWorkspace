@@ -10,6 +10,7 @@ use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 
 final class UnifiedSearchService
@@ -24,6 +25,7 @@ final class UnifiedSearchService
         private SearchDocumentStore $store,
         private DriveShareService $shares,
         private StoragePaths $paths,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ final class UnifiedSearchService
         $allowedSources = array_values(array_intersect(['file', 'note', 'caldav', 'carddav'], $sources));
         $normalizedFilters = $this->normalizeFilters($filters);
         $tokens = $this->tokens->tokenize($query, SearchTokenService::MAX_QUERY_TOKENS);
-        $browseMode = $query === '' && $this->isBrowseMode($allowedSources, $normalizedFilters);
+        $browseMode = $query === '' && $this->isBrowseMode($allowedSources);
         if (! $browseMode && ($query === '' || $tokens === [])) {
             return [
                 'query' => $query,
@@ -121,8 +123,38 @@ final class UnifiedSearchService
             'hasMore' => $offset >= self::MAX_OFFSET ? false : count($results) >= $limit,
             'sources' => $allowedSources === [] ? ['file', 'note', 'caldav', 'carddav'] : $allowedSources,
             'filters' => $normalizedFilters,
-            'results' => $this->annotateHasShares($username, $results),
+            'results' => $this->annotateNodeIds($this->annotateHasShares($username, $results)),
         ];
+    }
+
+    /**
+     * Adds `nodeId` (the FileNode id `/files/node` returns) to file results, so
+     * Docs opens a row by id without a path lookup first (#1976). One query per
+     * page; a file the FileNode index does not know yet gets no id.
+     *
+     * @param  list<array<string, mixed>>  $results
+     * @return list<array<string, mixed>>
+     */
+    private function annotateNodeIds(array $results): array
+    {
+        $keysByIndex = [];
+        foreach ($results as $index => $result) {
+            if (($result['sourceType'] ?? '') !== 'file') {
+                continue;
+            }
+            $sourceKey = trim((string) ($result['sourceKey'] ?? ''));
+            if ($sourceKey !== '') {
+                $keysByIndex[$index] = $this->paths->virtualToStorageKey('/'.$sourceKey);
+            }
+        }
+        $ids = $this->fileNodes->liveFileNodeIdsByKey(array_values($keysByIndex));
+        foreach ($keysByIndex as $index => $key) {
+            if (isset($ids[$key])) {
+                $results[$index]['nodeId'] = $ids[$key];
+            }
+        }
+
+        return $results;
     }
 
     /**
@@ -180,15 +212,14 @@ final class UnifiedSearchService
     }
 
     /**
+     * Browse (no query) lists files only: every allowed source must be `file`.
+     * Extensions and categories narrow it but are not required.
+     *
      * @param  list<string>  $allowedSources
-     * @param  array{extensions?: list<string>}  $normalizedFilters
      */
-    private function isBrowseMode(array $allowedSources, array $normalizedFilters): bool
+    private function isBrowseMode(array $allowedSources): bool
     {
         if ($allowedSources === []) {
-            return false;
-        }
-        if (! isset($normalizedFilters['extensions']) || $normalizedFilters['extensions'] === []) {
             return false;
         }
 

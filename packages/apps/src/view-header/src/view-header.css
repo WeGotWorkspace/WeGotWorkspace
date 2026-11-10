@@ -1,6 +1,5 @@
 @import "../../styles.css" reference;
 
-@import "../../ui/anchored-dropdown.css";
 /**
  * Toggle + title row. Soft outline + menu washes: shared
  * `workspace-derive.css` (Sand 14/18/24). Products set
@@ -59,6 +58,15 @@
 
 .view-header__title-suffix {
   @apply flex shrink-0 items-center;
+}
+
+/* An edit or rename button on the title (Docs, Meet) stays quiet until hovered. */
+.view-header__title-suffix > .button {
+  opacity: 0.7;
+}
+
+.view-header__title-suffix > .button:hover:not(:disabled) {
+  opacity: 1;
 }
 
 /**
@@ -240,6 +248,73 @@
   }
 }
 
+/*
+ * Search floats at the bottom of its column, in the selection bar's dock: a rounded,
+ * frosted field the list scrolls under. It steps aside while the selection bar is up.
+ * Containing block (and the scope for the selection-bar check): `.workspace-app-layout__main`
+ * or `.collection-list-pane`.
+ */
 .view-header__search-stack {
-  @apply mt-0.5;
+  position: absolute;
+  left: 50%;
+  bottom: var(--floating-dock-bottom);
+  z-index: 30;
+  width: min(28rem, calc(100% - 2rem));
+  translate: -50% 0;
+  transition:
+    opacity 200ms ease,
+    translate 200ms ease;
+}
+
+.view-header__search-stack > .collection-search-input.input {
+  margin: 0;
+  height: var(--floating-dock-height);
+  min-height: var(--floating-dock-height);
+  --input-padding-x: 1rem;
+  border-color: transparent;
+  border-radius: var(--floating-toolbar-radius);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  --input-background: var(--frost-background);
+  --input-background-hover: var(--frost-background);
+  --input-background-focus: var(--frost-background);
+  --input-border-hover: transparent;
+  --input-border-focus: transparent;
+  --input-shadow: var(--frost-shadow);
+}
+
+.view-header__search-stack > .collection-search-input.input:focus-within {
+  --input-shadow: var(--frost-shadow), 0 0 0 2px var(--ring);
+}
+
+/* The selection bar takes the dock (Notes hides its bar from md up, so search stays). */
+:is(.workspace-app-layout__main, .collection-list-pane):has(.floating-action-bar[data-state="open"])
+  .view-header__search-stack {
+  opacity: 0;
+  translate: -50% 0.5rem;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  :is(.workspace-app-layout__main, .collection-list-pane):has(
+      .floating-action-bar.md\:hidden[data-state="open"]
+    )
+    .view-header__search-stack:not([data-hidden="true"]) {
+    opacity: 1;
+    translate: -50% 0;
+    pointer-events: auto;
+  }
+}
+
+/* Explicitly stepped aside (multi-select); the md exception above skips it. */
+.view-header__search-stack[data-hidden="true"] {
+  opacity: 0;
+  translate: -50% 0.5rem;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-header__search-stack {
+    transition: none;
+  }
 }

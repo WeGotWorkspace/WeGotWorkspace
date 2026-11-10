@@ -5,7 +5,7 @@
 // home view on the next sync, without a reload. A Doc with a queued offline rename is not
 // dropped by that sync, nor by the next full live listing.
 import { expect, test, type Page } from "./helpers/live-test";
-import { docsHomeRow, gotoDocsHome, seedDocAtPath } from "./helpers/docs-live";
+import { cachedDocsViews, docsHomeRow, gotoDocsHome, seedDocAtPath } from "./helpers/docs-live";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
@@ -57,34 +57,6 @@ async function dav(method: string, apiPath: string, headers: Record<string, stri
     await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
   }
   throw new Error(`${method} ${apiPath} stayed rate limited`);
-}
-
-/** Listing paths of every cached Docs view, by cache key. */
-async function cachedViews(page: Page): Promise<string[][]> {
-  return page.evaluate(async () => {
-    const username = localStorage.getItem("wgw.offline.docs.username");
-    if (!username) return [];
-    return new Promise<string[][]>((resolve) => {
-      const request = indexedDB.open(`wgw-offline-${username}`);
-      request.onerror = () => resolve([]);
-      request.onsuccess = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains("docs_listing_rows")) return resolve([]);
-        const read = db
-          .transaction("docs_listing_rows", "readonly")
-          .objectStore("docs_listing_rows")
-          .getAll();
-        read.onsuccess = () => {
-          const views = new Map<string, string[]>();
-          for (const row of read.result as Array<{ cacheKey: string; sourceKey: string }>) {
-            views.set(row.cacheKey, [...(views.get(row.cacheKey) ?? []), row.sourceKey]);
-          }
-          resolve([...views.values()]);
-        };
-        read.onerror = () => resolve([]);
-      };
-    });
-  });
 }
 
 const moveOnServer = (from: string, to: string) =>
@@ -174,7 +146,7 @@ test.describe("Docs inbound sync (#1563)", () => {
 
       // Tab A: both Docs listed, and the Drive cache knows both nodes.
       await gotoDocsHome(page);
-      await openView(page, "My Docs");
+      await openView(page, "All Docs");
       for (const name of [DELETED, RENAMED_FROM]) {
         await expect(docsHomeRow(page, name)).toBeVisible({ timeout: 30_000 });
       }
@@ -186,7 +158,7 @@ test.describe("Docs inbound sync (#1563)", () => {
       // the cache notice from tab A can change what it shows.
       const tabB = await context.newPage();
       await gotoDocsHome(tabB);
-      await openView(tabB, "My Docs");
+      await openView(tabB, "All Docs");
       for (const name of [DELETED, RENAMED_FROM]) {
         await expect(docsHomeRow(tabB, name)).toBeVisible({ timeout: 30_000 });
       }
@@ -221,13 +193,13 @@ test.describe("Docs inbound sync (#1563)", () => {
     await dav("MKCOL", `${HOME}/${FOLDER_FROM}/`);
     await seedDocAtPath(`${HOME}/${FOLDER_FROM}/${MOVED}`, `# ${MOVED}\n`);
 
-    // Two views cached: Personal (My Drive), then My Docs (All).
+    // Two views cached: Personal (My Drive), then All Docs.
     await gotoDocsHome(page);
     await openView(page, "Personal");
     for (const name of [DELETED, RENAMED_FROM, MOVED, QUEUED_FROM]) {
       await expect(docsHomeRow(page, name)).toBeVisible({ timeout: 30_000 });
     }
-    await openView(page, "My Docs");
+    await openView(page, "All Docs");
     for (const name of [DELETED, RENAMED_FROM, MOVED, QUEUED_FROM]) {
       await expect(docsHomeRow(page, name)).toBeVisible({ timeout: 30_000 });
     }
@@ -260,7 +232,7 @@ test.describe("Docs inbound sync (#1563)", () => {
     await context.setOffline(false);
     await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 15_000 });
 
-    // My Docs follows without a reload.
+    // All Docs follows without a reload.
     await expect(docsHomeRow(page, DELETED)).toHaveCount(0, { timeout: 30_000 });
     await expect(docsHomeRow(page, RENAMED_FROM)).toHaveCount(0);
     await expect(docsHomeRow(page, RENAMED_TO)).toBeVisible();
@@ -272,7 +244,7 @@ test.describe("Docs inbound sync (#1563)", () => {
     const home = HOME.slice(1);
     await expect
       .poll(async () =>
-        (await cachedViews(page))
+        (await cachedDocsViews(page))
           .filter((keys) => keys.includes(`${home}/${RENAMED_TO}`))
           .map((keys) => keys.filter((key) => key.includes(RUN)).sort()),
       )
@@ -297,7 +269,7 @@ test.describe("Docs inbound sync (#1563)", () => {
     const listed = page.waitForResponse(
       (res) => res.url().includes("/api/v1/search/results") && res.ok(),
     );
-    await openView(page, "My Docs");
+    await openView(page, "All Docs");
     await listed;
     await expect(docsHomeRow(page, RENAMED_TO)).toBeVisible({ timeout: 30_000 });
     await expect(docsHomeRow(page, QUEUED_TO)).toBeVisible();

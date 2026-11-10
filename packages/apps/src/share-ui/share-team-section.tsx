@@ -20,7 +20,7 @@ import {
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
 import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
-import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
+import { formatSharePathLabel, noTeamYetCopy, shareLabels } from "@/share-ui/share-labels";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
 
@@ -54,6 +54,21 @@ export function ShareTeamSection({
   const [results, setResults] = useState<DriveSharePrincipalEntry[]>([]);
   const [searching, setSearching] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
+  const [noTeam, setNoTeam] = useState(false);
+  const { searchPrincipals } = mutations;
+
+  // An empty search lists the viewer's own Teams; none means they are in no Team (#1924).
+  useEffect(() => {
+    let live = true;
+    void searchPrincipals("")
+      .then((entries) => {
+        if (live) setNoTeam(!entries.some((entry) => entry.principalType === "group"));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [searchPrincipals]);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -95,12 +110,13 @@ export function ShareTeamSection({
       <ShareAccessCard
         titleIcon={<Users className="size-4" />}
         title={shareLabels.teamSectionTitle}
-        description={shareLabels.teamSectionHint}
+        description={noTeam ? noTeamYetCopy : shareLabels.teamSectionHint}
         addControl={
           <SharePrincipalSearchDropdown
             query={query}
             searching={searching}
             results={searchOptions}
+            emptyLabel={noTeam ? noTeamYetCopy : undefined}
             onSelect={(option) => {
               const entry = selectableResults.find((row) => row.principal === option.id);
               if (!entry) return;

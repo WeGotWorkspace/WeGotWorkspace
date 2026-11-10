@@ -67,6 +67,8 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `Note/queryChanges` | — | Always `cannotCalculateChanges` |
 | `ChatMessage/query` | `JournalObjectIds` per channel | Same contract as `Note/query` over the channels `ChatMessage/get` enumerates, tombstones included; supported condition `inChannel` |
 | `ChatMessage/queryChanges` | — | Always `cannotCalculateChanges` |
+| `TeamMember/get` | `AvailabilityTeamMembers` | Vendor `urn:wgw:jmap:availability`; the people the caller may read, with `version` and `state`. See [availability.md](availability.md) |
+| `TeamMember/getAvailability` | `AvailabilityCalculator` | Busy periods per person and UTC week; limits in the account capability. See [availability.md](availability.md) |
 
 Method-level error vocabulary (§3.6.2): `unknownMethod`, `invalidArguments`, `invalidResultReference`, `stateMismatch`, `cannotCalculateChanges`, `accountNotFound`, `forbidden`, `requestTooLarge`, `unsupportedFilter`, `unsupportedSort`, `serverFail`. SetError types reuse the REST layer's camelCase vocabulary (calendars) or are normalized from the legacy snake_case shapes at the adapter layer (contacts); unknown internal codes normalize to `serverFail` instead of inventing types.
 

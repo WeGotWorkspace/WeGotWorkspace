@@ -31,6 +31,8 @@ final class AddressBookMetadataStateTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpContactsFixtures();
         $this->setUpDavServer();
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_description_change_in_the_app_moves_state_for_owner_and_sharee(): void

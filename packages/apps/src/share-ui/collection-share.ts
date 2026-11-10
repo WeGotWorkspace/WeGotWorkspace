@@ -18,7 +18,22 @@ export type CollectionSharePrincipal = {
   displayName: string;
   principalType: SharePrincipalKind;
   memberCount?: number;
+  /** `false` for a user outside the viewer's Teams (admin directory): mention only, no DM or share. */
+  sharesTeam?: boolean;
 };
+
+/** DMs and shares follow real Team membership, admins included. */
+export function sharesTeamWithViewer(principal: { sharesTeam?: boolean }): boolean {
+  return principal.sharesTeam !== false;
+}
+
+/**
+ * The viewer's own Teams were loaded and there are none. A list that never
+ * loaded (undefined) is not "no Team", so mock data and loading states stay quiet.
+ */
+export function viewerHasNoTeam(ownTeams: readonly unknown[] | null | undefined): boolean {
+  return Array.isArray(ownTeams) && ownTeams.length === 0;
+}
 
 export function shareRightsAllowWrite(rights?: CollectionShareRights | null): boolean {
   if (!rights) return true;
@@ -103,7 +118,7 @@ export function filterSharePrincipals(
 }
 
 export function sharePrincipalsFromDirectory(args: {
-  users?: readonly { id: string; displayName: string }[];
+  users?: readonly { id: string; displayName: string; sharesTeam?: boolean }[];
   groups?: readonly { slug: string; displayName: string }[];
   excludeId?: string | null;
 }): CollectionSharePrincipal[] {
@@ -114,6 +129,7 @@ export function sharePrincipalsFromDirectory(args: {
       id: user.id,
       displayName: user.displayName.trim() || user.id,
       principalType: "user",
+      ...(user.sharesTeam === false ? { sharesTeam: false } : {}),
     }));
   const groups: CollectionSharePrincipal[] = (args.groups ?? []).map((group) => ({
     id: `${SHARE_GROUP_PREFIX}${group.slug}`,

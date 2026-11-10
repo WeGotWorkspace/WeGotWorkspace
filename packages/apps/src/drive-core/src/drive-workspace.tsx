@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, PanelRight } from "lucide-react";
+import { ChevronRight, Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -14,20 +14,21 @@ import {
 } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
 import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { DriveDetailPanel } from "@/drive-core/src/drive-detail-panel";
+import { driveItemLocationLabel } from "@/drive-core/src/drive-breadcrumbs";
 import {
   DriveFolderDownloadContext,
   startDriveItemDownload,
 } from "@/drive-core/src/drive-item-download";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
-import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { useDriveUploadPlaceholderActions } from "@/drive-core/src/use-drive-upload-placeholder-actions";
 import {
@@ -268,6 +269,9 @@ export function DriveWorkspace({
     isUnderTrash,
     setConfirmDelete,
     structureEnabled,
+    selectedIds,
+    selectionBarButtons,
+    folderPickerRootLabels,
   } = controller;
 
   const handleDetailClose = useCallback(() => {
@@ -283,13 +287,21 @@ export function DriveWorkspace({
   const shareEnabled = Boolean(shareOperations);
 
   const detailPanel = useMemo(() => {
+    const selection = {
+      selectedCount: selectedIds.length,
+      selectionActions: selectionBarButtons,
+    };
     if (!active) {
-      return <DriveDetailPanel labels={labels} file={null} onClose={handleDetailClose} />;
+      return (
+        <DriveDetailPanel labels={labels} file={null} onClose={handleDetailClose} {...selection} />
+      );
     }
     return (
       <DriveDetailPanel
+        {...selection}
         labels={labels}
         file={active}
+        locationLabel={driveItemLocationLabel(active, labels, folderPickerRootLabels)}
         preview={activePreview}
         isStarred={!!starred[active.id]}
         inTrash={inTrashView}
@@ -330,6 +342,9 @@ export function DriveWorkspace({
     );
   }, [
     active,
+    folderPickerRootLabels,
+    selectedIds.length,
+    selectionBarButtons,
     activeMayManageStructure,
     activeMayShare,
     activePreview,
@@ -370,13 +385,7 @@ export function DriveWorkspace({
                 groupSidebarItems={groupSidebarItems}
               />
             }
-            mainHeader={
-              <DriveMainHeader
-                controller={controller}
-                unifiedSearchEnabled={Boolean(operations)}
-                searchEnabled={searchEnabled}
-              />
-            }
+            mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
             main={
               <DriveMainPane
                 controller={controller}
@@ -489,12 +498,12 @@ function DriveSidebar({
 
   return (
     <AppSidebar
+      settingsAppId="drive"
       open={sidebarOpen}
       onCloseMobile={() => setSidebarOpen(false)}
       appSwitchDisabled={wgwIsGuestSession()}
       footer={
-        <WorkspaceAppSettingsFooter
-          appId="drive"
+        <WorkspaceSidebarAccountFooter
           session={session}
           detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession(), uploadEnabled)}
           onLogout={onLogout}
@@ -526,11 +535,9 @@ function DriveSidebar({
 
 function DriveMainHeader({
   controller,
-  unifiedSearchEnabled,
   searchEnabled,
 }: {
   controller: DriveController;
-  unifiedSearchEnabled: boolean;
   searchEnabled: boolean;
 }) {
   const {
@@ -543,30 +550,43 @@ function DriveMainHeader({
     searchQuery,
     setSearchQuery,
     searchInputRef,
-    handleUnifiedSearchSelect,
     detailOpen,
     setDetailOpen,
+    breadcrumbs,
+    selectView,
+    view,
   } = controller;
+
+  // The folder path lives in the header: parent folders lead, the open folder is the title.
+  const searching = searchEnabled && searchQuery.trim() !== "";
+  const trail = !searching && breadcrumbs.length > 1 ? breadcrumbs.slice(0, -1) : [];
+  const title = searching
+    ? labels.searchViewTitle
+    : trail.length > 0
+      ? breadcrumbs[breadcrumbs.length - 1].label
+      : viewLabel;
 
   return (
     <ViewHeader
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen((v) => !v)}
-      title={searchEnabled && searchQuery.trim() ? labels.searchViewTitle : viewLabel}
+      title={title}
+      titlePrefix={
+        trail.length > 0 ? (
+          <span className="drive-main-header__trail">
+            <PathBreadcrumb
+              items={trail}
+              currentPath={view.type === "folder" ? view.path : undefined}
+              onNavigate={(path) => selectView({ type: "folder", path })}
+            />
+            <ChevronRight className="drive-main-header__trail-separator" aria-hidden />
+          </span>
+        ) : undefined
+      }
       searchPlaceholder={searchEnabled ? labels.searchPlaceholder : undefined}
       searchValue={searchEnabled ? searchQuery : undefined}
       onSearchInput={searchEnabled ? setSearchQuery : undefined}
       searchInputRef={searchInputRef}
-      searchContent={
-        searchEnabled && unifiedSearchEnabled ? (
-          <UnifiedSearchApiDropdown
-            className="drive-main-header__search-dropdown anchored-dropdown-panel"
-            query={searchQuery}
-            limit={10}
-            onSelect={handleUnifiedSearchSelect}
-          />
-        ) : null
-      }
       actions={
         <div className="drive-main-header__actions">
           <ViewModeToggle

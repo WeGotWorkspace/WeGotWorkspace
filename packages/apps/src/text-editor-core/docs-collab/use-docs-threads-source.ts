@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { splitDocsFileThreads } from "./docs-threads-assemble";
 import type { DocsCommentThread } from "./docs-comments-types";
 import type { DocsSuggestionThread, DocsSuggestionWithThread } from "./docs-suggestions-types";
+import { isDocsThreadsCannotCalculateChanges } from "./docs-threads-errors";
 import {
   isDocsThreadsSnapshotClient,
   type DocsFileThread,
+  type DocsFileThreadChanges,
   type DocsThreadsClient,
 } from "./docs-threads-types";
 
@@ -48,6 +50,43 @@ function upsertThread(list: DocsFileThread[], thread: DocsFileThread): DocsFileT
   });
   next.push(thread);
   return sortThreads(next);
+}
+
+function hasChanges(changes: DocsFileThreadChanges): boolean {
+  return changes.created.length > 0 || changes.updated.length > 0 || changes.destroyed.length > 0;
+}
+
+/**
+ * One poll round on `since`; resolves with the state to poll on next. When the
+ * server no longer knows `since` (`cannotCalculateChanges`: expired, or from
+ * before a reset), it starts over with a fresh state and a full reload, like
+ * the other offline caches. The fresh state is taken before the reload, so a
+ * change in between shows up again on the next poll. A failed reload rejects,
+ * so the caller keeps the old state and the next round tries again.
+ */
+async function pollDocsThreadChanges(
+  client: DocsThreadsClient,
+  path: string,
+  since: string | null,
+  reload: () => Promise<void>,
+): Promise<string> {
+  let changes: DocsFileThreadChanges;
+  try {
+    changes = await client.changes(path, since);
+  } catch (error) {
+    if (!isDocsThreadsCannotCalculateChanges(error)) throw error;
+    try {
+      const fresh = await client.changes(path, null);
+      await reload();
+      return fresh.newState;
+    } catch (resyncError) {
+      // The second failure in a row: report it rather than retry in silence.
+      console.warn("[docs-threads] full reload after an expired sync state failed", resyncError);
+      throw resyncError;
+    }
+  }
+  if (hasChanges(changes)) await reload();
+  return changes.newState;
 }
 
 function immediateSnapshot(client: DocsThreadsClient | null): DocsFileThread[] {
@@ -113,17 +152,9 @@ export function useDocsThreadsSource({
           await reload();
           return;
         }
-        const changes = await client.changes(path, sinceRef.current);
-        sinceRef.current = changes.newState;
-        if (
-          cancelled ||
-          (changes.created.length === 0 &&
-            changes.updated.length === 0 &&
-            changes.destroyed.length === 0)
-        ) {
-          return;
-        }
-        await reload();
+        sinceRef.current = await pollDocsThreadChanges(client, path, sinceRef.current, () =>
+          cancelled ? Promise.resolve() : reload(),
+        );
       } catch {
         // Poll errors are retried on the next interval.
       }

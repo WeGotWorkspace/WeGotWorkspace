@@ -35,6 +35,8 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $provisioner = app(UserCalendarCollectionsProvisioner::class);
         $provisioner->ensureForPrincipal('principals/bob');
         $provisioner->ensureForPrincipal('principals/alice');
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_a_client_uuid_becomes_the_note_id(): void

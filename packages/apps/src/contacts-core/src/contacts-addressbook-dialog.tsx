@@ -39,6 +39,8 @@ export type { ContactsAddressBookDialogState };
 export type ContactsAddressBookDialogShare = {
   knownPrincipals?: readonly CollectionSharePrincipal[];
   online?: boolean;
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
   onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   onPatchShareWith: (bookId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
@@ -173,6 +175,7 @@ export function ContactsAddressBookDialog({
                     shareWith={dialog.shareWith}
                     knownPrincipals={share.knownPrincipals}
                     online={share.online}
+                    noTeam={share.noTeam}
                     dialogClassName={contentClassName}
                     copy={{
                       title: labels.shareAddressBookTitle,

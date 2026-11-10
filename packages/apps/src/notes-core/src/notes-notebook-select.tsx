@@ -1,24 +1,13 @@
-import type { CSSProperties, ReactElement } from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
+import type { ReactElement } from "react";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/ui/select";
-import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import type { ControlSize } from "@/ui/control-size";
+import { COLLECTION_SELECT_CREATE_VALUE, CollectionSelect } from "@/ui/collection-select";
 import { cn } from "@/lib/utils";
-import "@/notes-core/src/notes-notebook-select.css";
 
 /** Sentinel so Create stays out of the selected notebook value (Calendar Select pattern). */
-export const NOTES_CREATE_NOTEBOOK_VALUE = "__create_notebook__";
+export const NOTES_CREATE_NOTEBOOK_VALUE = COLLECTION_SELECT_CREATE_VALUE;
 
 export type NotesNotebookSelectItem = {
   id: string;
@@ -42,8 +31,10 @@ export type NotesNotebookSelectProps = {
   /**
    * `swatch` reuses ColorSwatchTrigger (icon + chevron, no caption) — same chrome as
    * CalendarEventCalendarPicker. `labeled` keeps the Select trigger with visible name.
+   * `ghost` is the notebook name in its own colour with a small chevron and no
+   * chrome (the note detail eyebrow).
    */
-  triggerVariant?: "labeled" | "swatch";
+  triggerVariant?: "labeled" | "swatch" | "ghost";
   /** Dialog fields use `sm` (32px). Toolbar / action bar keep default `md`. */
   size?: ControlSize;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
@@ -118,18 +109,6 @@ export function pendingMoveAfterNotebookCreate(
   return { ids: pendingNoteIds, notebook: created.name };
 }
 
-function NotebookSelectOption({ notebook }: { notebook: NotesNotebookSelectItem }) {
-  return (
-    <span
-      className="notes-notebook-select__option"
-      style={{ "--collection-row-color": notebookDotColor(notebook) } as CSSProperties}
-    >
-      <NotesNotebookColorIcon />
-      <span className="notes-notebook-select__name">{notebook.name}</span>
-    </span>
-  );
-}
-
 export function NotesNotebookSelect({
   notebooks,
   value,
@@ -146,70 +125,37 @@ export function NotesNotebookSelect({
   const selected = resolveNotebookSelectValue(items, value);
   // Prefer the notebook name so swatch chrome stays labeled for AT / tooltip.
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
-  const swatch = triggerVariant === "swatch";
-
-  const trigger = swatch ? (
-    <SelectPrimitive.Trigger asChild disabled={disabled}>
-      <ColorSwatchTrigger
-        label={accessibleName}
-        disabled={disabled}
-        size={size}
-        icon={
-          <span
-            className="notes-notebook-select__option"
-            style={{ "--collection-row-color": notebookDotColor(value) } as CSSProperties}
-          >
-            <NotesNotebookColorIcon />
-          </span>
-        }
-        className={cn("notes-notebook-select", "notes-notebook-select--swatch", className)}
-      />
-    </SelectPrimitive.Trigger>
-  ) : (
-    <SelectTrigger
-      size={size}
-      className={cn("notes-notebook-select", className)}
-      aria-label={accessibleName}
-      disabled={disabled}
-    >
-      <SelectValue />
-    </SelectTrigger>
-  );
 
   return (
-    <Select
+    <CollectionSelect
+      items={items.map((notebook) => ({
+        id: notebook.id,
+        name: notebook.name,
+        color: notebookDotColor(notebook),
+      }))}
       value={selected}
+      dot={<NotesNotebookColorDot />}
+      color={notebookDotColor(value)}
+      triggerLabel={value.name}
+      accessibleName={accessibleName}
+      triggerVariant={triggerVariant}
+      size={size}
+      className={cn(
+        "notes-notebook-select",
+        triggerVariant !== "labeled" && `notes-notebook-select--${triggerVariant}`,
+        className,
+      )}
+      menuClassName="collection-ghost-select__menu"
       disabled={disabled}
+      create={
+        onCreateNotebook ? { label: labels.addNotebook, onSelect: onCreateNotebook } : undefined
+      }
       onValueChange={(next) => {
-        if (next === NOTES_CREATE_NOTEBOOK_VALUE) {
-          onCreateNotebook?.();
-          return;
-        }
         const notebook = items.find((item) => item.id === next);
         if (!notebook) return;
         if (notebook.id === value.id || notebook.name === value.name) return;
         onNotebookChange(notebook);
       }}
-    >
-      <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent>{accessibleName}</TooltipContent>
-      </Tooltip>
-      <SelectContent>
-        {items.map((notebook) => (
-          <SelectItem key={notebook.id} value={notebook.id}>
-            <NotebookSelectOption notebook={notebook} />
-          </SelectItem>
-        ))}
-        {onCreateNotebook ? (
-          <>
-            {items.length > 0 ? (
-              <SelectSeparator className="notes-notebook-select__separator" />
-            ) : null}
-            <SelectItem value={NOTES_CREATE_NOTEBOOK_VALUE}>{labels.addNotebook}</SelectItem>
-          </>
-        ) : null}
-      </SelectContent>
-    </Select>
+    />
   );
 }

@@ -15,11 +15,12 @@ use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Calendars\CalendarShareInvites;
-use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Teams\TeamColleagues;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
@@ -46,12 +47,12 @@ final class ChatChannelRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
-        private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly ChatUnreadCounter $unreadCounter,
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
         private readonly WgwCalendarBackendFactory $backends,
         private readonly CalDavCollections $collections,
+        private readonly TeamColleagues $colleagues,
         private readonly ChatChannelIdAllocator $channelIds = new ChatChannelIdAllocator,
     ) {}
 
@@ -111,12 +112,12 @@ final class ChatChannelRepository
 
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -195,9 +196,12 @@ final class ChatChannelRepository
         // Internal workspace users only: guests have no principal row and
         // groups/externals are excluded by the username shape above.
         $peerPrincipal = Principal::forUsername($peer);
+        $unknown = new ApiHttpException(400, 'Unknown or invalid DM principal.', 'invalidProperties', ['principal']);
         if ($peerPrincipal === null) {
-            throw new ApiHttpException(400, 'Unknown or invalid DM principal.', 'invalidProperties', ['principal']);
+            throw $unknown;
         }
+        // Someone outside the caller's Teams (admins included) answers like an unknown user.
+        $this->colleagues->assertMayShareWith($caller, $peer, $unknown);
 
         $uri = ChatCollectionUris::dmUri($caller, $peer);
 
@@ -235,7 +239,7 @@ final class ChatChannelRepository
 
             // Both members write: the peer joins through the standard sharing
             // machinery (invite + normalized uri), exactly like channel sharees.
-            $this->shareInvites->apply($instance, null, [$peer => ['mayWrite' => true]]);
+            $this->shareInvites->apply($instance, null, [$peer => ['mayWrite' => true]], $caller);
             $this->normalizeShareeInstanceUris($instance);
             $this->nameDmShareeInstancesAfterOwner($instance, $caller);
 
@@ -256,7 +260,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be modified.');
-        $this->assertNotGroupDefault($instance, 'Group default channels cannot be modified.');
+        $this->assertNotGroupDefault($instance, 'Team default channels cannot be modified.');
         $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         // Sharees may only rename/recolor their own instance; topic lives in the
@@ -295,7 +299,7 @@ final class ChatChannelRepository
         }
 
         if (array_key_exists('shareWith', $payload)) {
-            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith'], $username);
             $this->normalizeShareeInstanceUris($instance);
         }
 
@@ -318,7 +322,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be deleted.');
-        $this->assertNotGroupDefault($instance, 'Group default channels cannot be deleted.');
+        $this->assertNotGroupDefault($instance, 'Team default channels cannot be deleted.');
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
@@ -355,22 +359,15 @@ final class ChatChannelRepository
         // Personal instance: owner or (uri-normalized) sharee copy.
         $instance = $this->findChannelInstance($this->collections->principalUri($username), $channelId);
         if ($instance !== null) {
-            if ($this->shareInvites->isSharee($instance)
-                && $this->shareVisibility->isDismissed($username, (int) $instance->calendarid)) {
-                return null;
-            }
-
-            return $instance;
+            // A dismissed share, or one hidden because the owner no longer shares a Team
+            // with the viewer (a DM is hidden on both sides), answers like a missing channel.
+            return $this->visibleOrNull($username, $instance);
         }
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
             $instance = $this->findChannelInstance(AdminConstants::GROUP_PREFIX.$slug, $channelId);
+            $instance = $instance === null ? null : $this->visibleOrNull($username, $instance);
             if ($instance !== null) {
-                if ($this->shareInvites->isSharee($instance)
-                    && $this->shareVisibility->isDismissed($username, (int) $instance->calendarid)) {
-                    continue;
-                }
-
                 return $instance;
             }
         }
@@ -534,12 +531,12 @@ final class ChatChannelRepository
             $principalUri = $this->collections->principalUri($username);
         } else {
             if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$newGroupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -642,6 +639,11 @@ final class ChatChannelRepository
         );
     }
 
+    private function visibleOrNull(string $username, CalendarInstance $instance): ?CalendarInstance
+    {
+        return $this->collectionAccess->withoutDismissedOrHidden($username, new EloquentCollection([$instance]))->first();
+    }
+
     /**
      * DM channels are immutable through the generic channel endpoints: no
      * rename/recolor, no further sharing, no owner transfer, no delete (not
@@ -673,11 +675,12 @@ final class ChatChannelRepository
 
     /**
      * Distinct channel roster: owner side (group members or the personal
-     * owner) plus sharees, group sharees expanded.
+     * owner) plus sharees, group sharees expanded. The display roster keeps every grant;
+     * `$visibleGrantsOnly` drops grants hidden by Epic #1915 (for notification recipients).
      *
      * @return list<string>
      */
-    public function rosterUsernames(CalendarInstance $instance, ?string $_groupSlug = null): array
+    public function rosterUsernames(CalendarInstance $instance, ?string $_groupSlug = null, bool $visibleGrantsOnly = false): array
     {
         $usernames = [];
 
@@ -688,6 +691,9 @@ final class ChatChannelRepository
 
         foreach ($this->backends->calBackend()->getInvites($this->collections->backendId($instance)) as $sharee) {
             if ((int) $sharee->access === SharingPlugin::ACCESS_SHAREDOWNER || ! is_string($sharee->principal)) {
+                continue;
+            }
+            if ($visibleGrantsOnly && ! $this->colleagues->grantIsVisible($ownerPrincipal, $sharee->principal)) {
                 continue;
             }
             foreach ($this->usernamesForPrincipalUri($sharee->principal) as $username) {

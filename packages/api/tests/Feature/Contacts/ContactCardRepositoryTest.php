@@ -35,6 +35,8 @@ final class ContactCardRepositoryTest extends WgwDatabaseTestCase
         $this->setUpContactsFixtures();
         $this->cards = app(ContactCardRepository::class);
         $this->books = app(AddressBookRepository::class);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     public function test_create_stores_a_vcard_and_returns_the_mapped_card(): void
@@ -535,6 +537,7 @@ final class ContactCardRepositoryTest extends WgwDatabaseTestCase
     private function bobGetsAnotherWritableShare(): void
     {
         $this->seedWgwUser('dave', displayName: 'Dave');
+        $this->seedSharedTeam('colleagues', 'dave');
         $this->books->update('dave', 'default', [
             'shareWith' => ['bob' => ['mayRead' => true, 'mayWrite' => true]],
         ]);

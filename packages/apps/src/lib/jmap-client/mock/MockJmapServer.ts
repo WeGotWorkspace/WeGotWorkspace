@@ -6,6 +6,7 @@ import type {
 } from "../calendars/types.js";
 import type { JmapFetch } from "../core/JmapClient.js";
 import {
+  AVAILABILITY_CAPABILITY,
   CALENDARS_CAPABILITY,
   CHAT_CAPABILITY,
   CONTACTS_CAPABILITY,
@@ -16,6 +17,11 @@ import {
   type JmapSession,
   type JmapSetError,
 } from "../core/types.js";
+import {
+  AVAILABILITY_LIMITS,
+  AvailabilityMethodError,
+  MockAvailability,
+} from "./MockAvailability.js";
 
 const SESSION_URL = "https://mock.example/jmap/session";
 const API_URL = "https://mock.example/jmap/api";
@@ -107,6 +113,8 @@ export class MockJmapServer {
   events = new Map<string, JmapCalendarEvent>();
   /** Notes, chat and contacts records, served by get/changes/query. */
   readonly records = new Map<MockRecordType, Map<string, MockRecord>>();
+  /** Team availability (`urn:wgw:jmap:availability`): seed people and their busy periods here. */
+  readonly availability = new MockAvailability(ACCOUNT_ID, (eventId) => this.events.has(eventId));
 
   #stateCounter = 1;
   #changeLog: ChangeLogEntry[] = [];
@@ -210,13 +218,17 @@ export class MockJmapServer {
         [CONTACTS_CAPABILITY]: {},
         [NOTES_CAPABILITY]: {},
         [CHAT_CAPABILITY]: {},
+        [AVAILABILITY_CAPABILITY]: {},
       },
       accounts: {
         [ACCOUNT_ID]: {
           name: "user@example.com",
           isPersonal: true,
           isReadOnly: false,
-          accountCapabilities: { [CALENDARS_CAPABILITY]: {} },
+          accountCapabilities: {
+            [CALENDARS_CAPABILITY]: {},
+            [AVAILABILITY_CAPABILITY]: { ...AVAILABILITY_LIMITS },
+          },
         },
       },
       primaryAccounts: {
@@ -224,6 +236,7 @@ export class MockJmapServer {
         [CONTACTS_CAPABILITY]: ACCOUNT_ID,
         [NOTES_CAPABILITY]: ACCOUNT_ID,
         [CHAT_CAPABILITY]: ACCOUNT_ID,
+        [AVAILABILITY_CAPABILITY]: ACCOUNT_ID,
       },
       username: "user@example.com",
       apiUrl: API_URL,
@@ -257,7 +270,10 @@ export class MockJmapServer {
         const result = this.#dispatch(name, args);
         methodResponses.push([name, result, callId]);
       } catch (error) {
-        const type = error instanceof MethodError ? error.type : "serverFail";
+        const type =
+          error instanceof MethodError || error instanceof AvailabilityMethodError
+            ? error.type
+            : "serverFail";
         methodResponses.push(["error", { type, description: String(error) }, callId]);
       }
     }
@@ -286,6 +302,7 @@ export class MockJmapServer {
 
   #dispatch(name: string, args: Record<string, unknown>): Record<string, unknown> {
     const [type, method] = name.split("/");
+    if (type === "TeamMember") return this.availability.handle(method, args);
     if (isMockRecordType(type)) {
       if (method === "get") return this.#get(this.#store(type), args);
       if (method === "changes") return this.#changes(type, args);

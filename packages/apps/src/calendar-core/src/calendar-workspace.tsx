@@ -11,7 +11,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Button, IconButton } from "@/button/src/button";
+import { IconButton } from "@/button/src/button";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import {
   CollectionSidebarMark,
@@ -31,7 +32,7 @@ import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-sear
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -69,10 +70,8 @@ import { parseTaskDueOverlayKey } from "@/calendar-core/src/calendar-task-due-ov
 import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
 import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
 import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
-import {
-  calendarDirectoryGroupsFromBootstrap,
-  personalOwnerLabel,
-} from "@/calendar-core/src/calendar-workspace-props";
+import { personalOwnerLabel } from "@/calendar-core/src/calendar-workspace-props";
+import { useCalendarSharePrincipals } from "@/calendar-core/src/use-calendar-share-principals";
 import {
   isSessionEventInvitee,
   isSessionEventOrganizer,
@@ -96,12 +95,7 @@ import {
   canWriteCalendarCollection,
   isCalendarEventFormReadOnly,
 } from "@/calendar-core/src/calendar-collection-write";
-import {
-  calendarSharePrincipalsFromDirectory,
-  filterCalendarSharePrincipals,
-  isSharedWithMeCalendar,
-  type CalendarShareWith,
-} from "@/calendar-core/src/calendar-share";
+import { isSharedWithMeCalendar, type CalendarShareWith } from "@/calendar-core/src/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ownedAndTeamCalendarsForSidebar,
@@ -364,31 +358,19 @@ export function CalendarWorkspace({
   );
   const invitationsLayout = useDocsCommentsLayout();
   const useInvitationsDrawer = invitationsLayout === "drawer";
-  const directoryGroups = calendarDirectoryGroupsFromBootstrap(data);
+  const { directoryGroups, sharePrincipals, searchSharePrincipals, noTeam, attendeePickerNoTeam } =
+    useCalendarSharePrincipals({
+      data,
+      invitees: invitations.invitees,
+      username: session.user.username,
+      operations,
+    });
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const editCalendar =
     calendarDialog?.mode === "edit"
       ? (calendars.find((calendar) => calendar.id === calendarDialog.calendarId) ?? null)
       : null;
-  const sharePrincipals = useMemo(
-    () =>
-      calendarSharePrincipalsFromDirectory({
-        invitees: invitations.invitees,
-        groups: directoryGroups,
-        excludeUsername: session.user.username,
-      }),
-    [directoryGroups, invitations.invitees, session.user.username],
-  );
-  const searchSharePrincipals = useCallback(
-    async (query: string) => {
-      if (operations?.searchSharePrincipals) {
-        return operations.searchSharePrincipals(query);
-      }
-      return filterCalendarSharePrincipals(query, sharePrincipals);
-    },
-    [operations, sharePrincipals],
-  );
   const patchShareWith = useCallback(
     async (calendarId: string, shareWith: CalendarShareWith) => {
       if (!operations?.patchCalendar) {
@@ -795,6 +777,22 @@ export function CalendarWorkspace({
     ],
   );
 
+  // Both calendar sections (mine, shared with me) take the same row props.
+  const calendarRowProps = {
+    hiddenCalendarIds,
+    defaultCalendarId,
+    canDeleteCalendars: Boolean(operations?.deleteCalendar),
+    canUnsubscribe: Boolean(operations?.unsubscribeCalendar),
+    editLabel: L.editCalendar,
+    subscribedLabel: L.subscribedCalendarBadge,
+    viewOnlyLabel: L.viewOnlyCalendarBadge,
+    pendingCalendarIds,
+    pendingSyncLabel: L.pendingSync,
+    onToggleVisibility: toggleCalendarVisibility,
+    onSelectDefault: selectDefaultCalendar,
+    onEdit: openEditCalendarDialog,
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
@@ -805,6 +803,7 @@ export function CalendarWorkspace({
         )}
         sidebar={
           <AppSidebar
+            settingsAppId="calendar"
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
             primaryButton={
@@ -843,22 +842,19 @@ export function CalendarWorkspace({
                   }
                 />
               ) : (
-                <Button
-                  label={L.today}
+                <SidebarSegmentedNewMenu
+                  mainLabel={L.today}
+                  menuLabel={L.newEventMenu}
                   icon={<CalendarDays />}
-                  onClick={() => {
+                  onMainAction={() => {
                     goToday();
                     dismissSidebarOverlay(() => setSidebarOpen(false));
                   }}
-                  size="md"
-                  pill
-                  variant="primary"
                 />
               )
             }
             footer={
-              <WorkspaceAppSettingsFooter
-                appId="calendar"
+              <WorkspaceSidebarAccountFooter
                 session={session}
                 detailLine={session.user.email}
                 onLogout={onLogout}
@@ -866,39 +862,11 @@ export function CalendarWorkspace({
             }
           >
             <SidebarSection title={L.myCalendarsSection}>
-              <CalendarSidebarRows
-                calendars={myCalendars}
-                hiddenCalendarIds={hiddenCalendarIds}
-                defaultCalendarId={defaultCalendarId}
-                canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                editLabel={L.editCalendar}
-                subscribedLabel={L.subscribedCalendarBadge}
-                viewOnlyLabel={L.viewOnlyCalendarBadge}
-                pendingCalendarIds={pendingCalendarIds}
-                pendingSyncLabel={L.pendingSync}
-                onToggleVisibility={toggleCalendarVisibility}
-                onSelectDefault={selectDefaultCalendar}
-                onEdit={openEditCalendarDialog}
-              />
+              <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
             </SidebarSection>
             {sharedWithMeCalendars.length > 0 ? (
               <SidebarSection title={L.sharedWithMeSection}>
-                <CalendarSidebarRows
-                  calendars={sharedWithMeCalendars}
-                  hiddenCalendarIds={hiddenCalendarIds}
-                  defaultCalendarId={defaultCalendarId}
-                  canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                  canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                  editLabel={L.editCalendar}
-                  subscribedLabel={L.subscribedCalendarBadge}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  pendingCalendarIds={pendingCalendarIds}
-                  pendingSyncLabel={L.pendingSync}
-                  onToggleVisibility={toggleCalendarVisibility}
-                  onSelectDefault={selectDefaultCalendar}
-                  onEdit={openEditCalendarDialog}
-                />
+                <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
               </SidebarSection>
             ) : null}
             {overlayOwnedLists.length > 0 ? (
@@ -1293,6 +1261,7 @@ export function CalendarWorkspace({
           contactCards={contactCards}
           onRefreshContactCards={refreshCards}
           canSubmitEmail={invitations.canSubmitEmail}
+          noTeam={attendeePickerNoTeam}
           sessionEmail={sessionEmail}
           sessionUsername={session.user.username}
           meetOperations={meetOperations}
@@ -1322,6 +1291,7 @@ export function CalendarWorkspace({
                 calendar: editCalendar,
                 knownPrincipals: sharePrincipals,
                 online,
+                noTeam,
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchShareWith,
               }

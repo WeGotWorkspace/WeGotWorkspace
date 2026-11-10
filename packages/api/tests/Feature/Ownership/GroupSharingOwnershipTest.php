@@ -205,6 +205,8 @@ final class GroupSharingOwnershipTest extends WgwDatabaseTestCase implements Own
         $domain = self::domainOf($case);
         $target = $this->seedCrew($domain, 'shared');
         $control = $domain === self::CONTACTS ? null : $this->seedCrew($domain, 'control');
+        // Epic #1915: only a member of a Team may share with it.
+        $this->seedSharedTeam(OwnershipPrincipals::OUTSIDERS, $this->usernameFor($case->actor));
 
         $this->assertShareResponse($case, $target, $this->shareAs($case->actor, $target, 'groups/'.OwnershipPrincipals::OUTSIDERS, write: false));
 

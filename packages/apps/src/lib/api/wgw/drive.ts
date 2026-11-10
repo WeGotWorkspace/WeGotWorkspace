@@ -11,7 +11,6 @@ import {
   wgwIsGuestSession,
   wgwReadJson,
 } from "@/lib/api/wgw/http";
-import { downloadWgwUnifiedSearchRecord } from "@/lib/api/wgw/search";
 import type {
   WgwDriveDirectoryEntry,
   WgwDriveListingResponse,
@@ -27,6 +26,7 @@ import type {
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import { DRIVE_READ_BLOB_MAX_BYTES, readResponseBlobWithin } from "@/lib/files/read-blob-limit";
 import { isShareTargetFile } from "@/share-ui/share-destination";
+import { fetchWgwUnifiedSearch } from "@/lib/api/wgw/search";
 import {
   createFileNodeFile,
   createFileNodeFolder,
@@ -62,6 +62,38 @@ export async function setDriveFileStar(
 
 function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
   return !entry.name.trim().startsWith(".");
+}
+
+/** Storage keys under a dot folder (`.Trash`, app data) never show in All Files. */
+function isHiddenStorageKey(sourceKey: string): boolean {
+  return sourceKey.split("/").some((segment) => segment.startsWith("."));
+}
+
+/**
+ * All Files: one page of the search index's files across every drive the
+ * viewer can read, resolved to the same entries a folder listing returns.
+ */
+async function listAllDriveFiles(
+  input: { offset: number; limit: number },
+  opts?: { signal?: AbortSignal },
+): Promise<{ entries: WgwDriveDirectoryEntry[]; nextOffset: number; hasMore: boolean }> {
+  const page = await fetchWgwUnifiedSearch({
+    sources: ["file"],
+    offset: input.offset,
+    limit: input.limit,
+    signal: opts?.signal,
+  });
+  const paths = page.results
+    .filter((result) => result.category !== "folder" && !isHiddenStorageKey(result.sourceKey))
+    .map((result) => `/${result.sourceKey.replace(/^\/+/, "")}`);
+  const entries =
+    paths.length > 0 ? await listFileNodeEntriesByPaths(paths, { signal: opts?.signal }) : [];
+  return {
+    entries: entries.filter((entry) => entry.type !== "dir" && isVisibleDriveEntry(entry)),
+    // The index pages over every result, folders included.
+    nextOffset: input.offset + page.results.length,
+    hasMore: page.hasMore,
+  };
 }
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
@@ -222,7 +254,7 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
 
 function createSharedDriveOperations(): Pick<
   DriveAPIOperations,
-  "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord"
+  "search" | "listStars" | "setStar"
 > {
   return {
     async search(query, opts) {
@@ -242,9 +274,6 @@ function createSharedDriveOperations(): Pick<
     },
     async setStar(input, opts) {
       await setDriveFileStar(input.path, input.starred, opts);
-    },
-    async downloadUnifiedSearchRecord(input, opts) {
-      await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });
     },
   };
 }
@@ -378,6 +407,9 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
 
   return {
     ...shared,
+    async listAllFiles(input, opts) {
+      return listAllDriveFiles(input, opts);
+    },
     async refreshState(opts) {
       const state = await fetchSignedInDriveState(cwd, opts);
       cwd = state.cwd;

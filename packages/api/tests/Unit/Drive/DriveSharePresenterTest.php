@@ -6,6 +6,7 @@ namespace Tests\Unit\Drive;
 
 use App\Models\DriveShare;
 use App\Services\Drive\CollabDocFormats;
+use App\Services\Drive\DriveShareGrantVisibility;
 use App\Services\Drive\DriveSharePathScope;
 use App\Services\Drive\DriveSharePresenter;
 use App\Storage\StoragePaths;
@@ -25,6 +26,7 @@ final class DriveSharePresenterTest extends TestCase
             new DriveSharePathScope(new StoragePaths),
             new CollabDocFormats,
             app(WgwStorage::class),
+            app(DriveShareGrantVisibility::class),
         );
     }
 

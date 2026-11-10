@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
+use App\Models\CalendarSubscription;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
@@ -33,7 +34,7 @@ final class CalendarCollectionAccess
 
     /**
      * Personal + group + inbound sharee instances for $username, filtered by
-     * component set, then highest-access-per-calendarid, then dismissals.
+     * component set, then highest-access-per-calendarid, then dismissed and hidden shares.
      *
      * @return Collection<int, CalendarInstance>
      */
@@ -46,9 +47,21 @@ final class CalendarCollectionAccess
             }
         }
 
+        return $this->visibleHighestAccess($username, $instances);
+    }
+
+    /**
+     * Hidden shares go first, so a hidden higher-ranked Team grant cannot displace a
+     * visible direct grant; then highest access per calendar; then dismissed shares.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function visibleHighestAccess(string $username, $instances)
+    {
         return $this->shareVisibility->rejectDismissedSharees(
             $username,
-            $this->preferHighestAccessPerCalendar($instances),
+            $this->preferHighestAccessPerCalendar($this->shareVisibility->rejectHiddenSharees($username, $instances)),
         );
     }
 
@@ -135,7 +148,7 @@ final class CalendarCollectionAccess
 
     public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
     {
-        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a group collection.');
+        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a team collection.');
     }
 
     /**
@@ -148,7 +161,7 @@ final class CalendarCollectionAccess
         $this->assertGroupOwnedAdmin(
             $username,
             $instance,
-            'Only an instance admin can move a group collection out of its group.',
+            'Only an instance admin can move a team collection out of its team.',
         );
     }
 
@@ -177,7 +190,7 @@ final class CalendarCollectionAccess
 
     /**
      * Lookup by id: the user's own collection first, then the groups they may
-     * use. A dismissed inbound share answers like a missing collection.
+     * use. A dismissed or hidden inbound share answers like a missing collection.
      *
      * @param  callable(string): ?CalendarInstance  $findIn  the instance with the id under a principal uri
      */
@@ -193,19 +206,20 @@ final class CalendarCollectionAccess
 
         return $instance === null
             ? null
-            : $this->withoutDismissed($username, new Collection([$instance]))->first();
+            : $this->withoutDismissedOrHidden($username, new Collection([$instance]))->first();
     }
 
     /**
-     * Drops inbound shares the user dismissed, for item lookups that collect
-     * candidate instances themselves.
+     * Drops inbound shares the user dismissed and shares hidden because the owner no
+     * longer shares a Team with them, for item lookups that collect candidate
+     * instances themselves.
      *
      * @param  Collection<int, CalendarInstance>  $instances
      * @return Collection<int, CalendarInstance>
      */
-    public function withoutDismissed(string $username, Collection $instances): Collection
+    public function withoutDismissedOrHidden(string $username, Collection $instances): Collection
     {
-        return $this->shareVisibility->rejectDismissedSharees($username, $instances);
+        return $this->shareVisibility->rejectInvisibleSharees($username, $instances);
     }
 
     /**
@@ -293,6 +307,59 @@ final class CalendarCollectionAccess
         }
 
         return $payload['isSubscribed'];
+    }
+
+    /**
+     * Read-only: the event calendars that count toward $username's Team
+     * availability, as they exist now. Personal ones are the owner's own
+     * (`ACCESS_SHAREDOWNER` under their principal); Team ones are owned by a
+     * Team they belong to. Shared-in copies and ICS subscriptions never count.
+     * Unlike {@see accessibleInstances()} this never provisions a missing Team
+     * collection, so a busy-period read inserts nothing.
+     *
+     * @return array{personal: list<CalendarInstance>, team: list<CalendarInstance>}
+     */
+    public function availabilitySourceInstances(string $username): array
+    {
+        $teamUris = array_map(
+            static fn (string $slug): string => AdminConstants::GROUP_PREFIX.$slug,
+            $this->groups->allowedGroupSlugs($username),
+        );
+        $owned = fn (array $principalUris) => CalendarInstance::query()
+            ->with('calendar')
+            ->whereIn('principaluri', $principalUris)
+            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::EventCalendar))
+            ->orderBy('calendarorder')
+            ->orderBy('id')
+            ->get();
+
+        $personalSubscriptions = CalendarSubscription::query()->where('username', $username)->pluck('calendar_uri')->all();
+        $personal = $owned([$this->principalUri($username)])
+            ->reject(fn (CalendarInstance $instance): bool => in_array((string) $instance->uri, $personalSubscriptions, true));
+        $team = $teamUris === [] ? new Collection : $owned($teamUris)
+            ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->uri));
+
+        return ['personal' => array_values($personal->all()), 'team' => array_values($team->all())];
+    }
+
+    /**
+     * A subscription made into a Team lives under the Team principal; its row
+     * names the member who added it, who has no personal instance of that uri.
+     */
+    private function isTeamSubscription(string $calendarUri): bool
+    {
+        foreach (CalendarSubscription::query()->where('calendar_uri', $calendarUri)->pluck('username') as $subscriber) {
+            $personalCopy = CalendarInstance::query()
+                ->where('principaluri', $this->principalUri((string) $subscriber))
+                ->where('uri', $calendarUri)
+                ->exists();
+            if (! $personalCopy) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

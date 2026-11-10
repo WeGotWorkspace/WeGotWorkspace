@@ -76,7 +76,8 @@ final class DriveSharePrincipalsTest extends WgwDatabaseTestCase
 
     public function test_principals_available_to_non_admin(): void
     {
-        $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shares/principals?query=alice')
+        // bob is not an admin and shares `team` with alice (#1918: colleagues only).
+        $this->withBearer($this->userBearerToken())->getJson('/api/v1/files/shares/principals?query=alice')
             ->assertOk()
             ->assertJsonFragment(['principal' => 'alice', 'principalType' => 'user']);
     }

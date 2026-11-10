@@ -36,6 +36,8 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
         $this->addPrincipalToGroup($team, $alice);
+        // Users here share with each other; Epic #1915 only lets colleagues share.
+        $this->seedSharedTeamForEveryone();
     }
 
     /**
@@ -122,7 +124,7 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
 
             $this->assertSame('forbidden', $args['notUpdated'][$calendarId]['type'] ?? null);
             $this->assertSame(
-                'Only an instance admin can move a group collection out of its group.',
+                'Only an instance admin can move a team collection out of its team.',
                 $args['notUpdated'][$calendarId]['description'] ?? null,
             );
         }

@@ -5,6 +5,7 @@ import { Calendar } from "@/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { cn } from "@/lib/utils";
 import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
+import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 
 import "./input.css";
 import "./locale-date-picker.css";
@@ -20,6 +21,13 @@ export type LocaleDatePickerProps = {
   popoverClassName?: string;
   /** Height, padding, and font-size. Default `md` = 36px. */
   size?: ControlSize;
+  /**
+   * `ghost`: the suite ghost trigger (a detail-sheet value, as the Tasks due date),
+   * no chrome. Default `default`: the bordered field.
+   */
+  variant?: "default" | "ghost";
+  /** Shown on the ghost trigger while no date is set. */
+  placeholder?: string;
 };
 
 function isoToJsDate(iso: string): Date | undefined {
@@ -60,6 +68,8 @@ export function LocaleDatePicker({
   className,
   popoverClassName,
   size = "md",
+  variant = "default",
+  placeholder = "",
 }: LocaleDatePickerProps) {
   const [open, setOpen] = useState(false);
   const selected = isoToJsDate(value);
@@ -68,20 +78,36 @@ export function LocaleDatePicker({
   return (
     <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "control-surface locale-date-picker",
-            controlSizeClassName("control-surface", size),
-            className,
-          )}
-          aria-label={`${label}: ${display}`}
-          lang={locale}
-          disabled={disabled}
-        >
-          <span className="locale-date-picker__label">{display}</span>
-          <CalendarDays className="locale-date-picker__icon" aria-hidden />
-        </button>
+        {variant === "ghost" ? (
+          <CollectionGhostButton
+            className={cn("locale-date-picker--ghost", className)}
+            aria-label={`${label}: ${display || placeholder}`}
+            lang={locale}
+            disabled={disabled}
+            label={
+              display ? (
+                display
+              ) : (
+                <span className="locale-date-picker__placeholder">{placeholder}</span>
+              )
+            }
+          />
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              "control-surface locale-date-picker",
+              controlSizeClassName("control-surface", size),
+              className,
+            )}
+            aria-label={`${label}: ${display}`}
+            lang={locale}
+            disabled={disabled}
+          >
+            <span className="locale-date-picker__label">{display}</span>
+            <CalendarDays className="locale-date-picker__icon" aria-hidden />
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="start"

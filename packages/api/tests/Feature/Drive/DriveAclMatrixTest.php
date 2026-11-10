@@ -444,6 +444,8 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
     public function test_pending_email_invite_does_not_grant_access_until_accepted_then_revoked(): void
     {
         $this->seedDave();
+        // Epic #1915: an accepted invite is a member grant, so dave must share a Team with alice.
+        $this->seedSharedTeam('workspace', 'dave');
 
         $invite = $this->withBearer($this->token('owner'))->postJson('/api/v1/files/shares/'.$this->shareId.'/invites', [
             'email' => 'dave@example.com',

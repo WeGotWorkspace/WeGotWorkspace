@@ -35,6 +35,7 @@ final class ChatDmsTest extends WgwDatabaseTestCase
 
     public function test_open_dm_provisions_channel_shared_to_both_sides(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $dm = $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
             ->assertOk()->json();
 
@@ -59,13 +60,14 @@ final class ChatDmsTest extends WgwDatabaseTestCase
         $this->assertSame(2, $peerView['memberCount']);
 
         // Both channel lists carry the dm row; outsiders never see it.
-        $this->assertSame([$dm['id']], array_column($this->asUser('alice')->getJson('/api/v1/chat/channels')->json('list'), 'id'));
-        $this->assertSame([$dm['id']], array_column($this->asUser('bob')->getJson('/api/v1/chat/channels')->json('list'), 'id'));
+        $this->assertSame([$dm['id']], array_column($this->nonTeamChannels('alice'), 'id'));
+        $this->assertSame([$dm['id']], array_column($this->nonTeamChannels('bob'), 'id'));
         $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$dm['id'])->assertNotFound();
     }
 
     public function test_open_dm_is_idempotent_from_both_directions(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $first = $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
             ->assertOk()->json('id');
 
@@ -78,8 +80,8 @@ final class ChatDmsTest extends WgwDatabaseTestCase
         $this->assertSame($first, $fromPeer);
 
         // Exactly one collection exists — no duplicate provisioning.
-        $this->assertCount(1, $this->asUser('alice')->getJson('/api/v1/chat/channels')->json('list'));
-        $this->assertCount(1, $this->asUser('bob')->getJson('/api/v1/chat/channels')->json('list'));
+        $this->assertCount(1, $this->nonTeamChannels('alice'));
+        $this->assertCount(1, $this->nonTeamChannels('bob'));
 
         // Distinct pairs get distinct collections.
         $other = $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'carol'])
@@ -112,6 +114,7 @@ final class ChatDmsTest extends WgwDatabaseTestCase
 
     public function test_dm_channels_are_immutable_via_generic_channel_endpoints(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $dmId = (string) $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
             ->assertOk()->json('id');
 
@@ -145,6 +148,7 @@ final class ChatDmsTest extends WgwDatabaseTestCase
 
     public function test_dm_messages_read_markers_and_unread_flow_through_existing_endpoints(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $dmId = (string) $this->asUser('alice')->postJson('/api/v1/chat/dms', ['principal' => 'bob'])
             ->assertOk()->json('id');
         $messagesPath = '/api/v1/chat/channels/'.$dmId.'/messages';
@@ -188,6 +192,7 @@ final class ChatDmsTest extends WgwDatabaseTestCase
 
     public function test_dm_flows_through_changes_feed_and_jmap_unchanged(): void
     {
+        $this->seedSharedTeam('colleagues', 'alice', 'bob', 'carol');
         $primedAlice = (string) $this->asUser('alice')->getJson('/api/v1/chat/channels/changes')->assertOk()->json('newState');
         $primedBob = (string) $this->asUser('bob')->getJson('/api/v1/chat/channels/changes')->assertOk()->json('newState');
 
@@ -229,5 +234,19 @@ final class ChatDmsTest extends WgwDatabaseTestCase
         $this->bearerTokens[$username] ??= $this->issueBearerTokenFor($username);
 
         return $this->withBearer($this->bearerTokens[$username]);
+    }
+
+    /**
+     * Channels outside Team scope. Opening a DM or sharing needs a shared Team (Epic #1915),
+     * and that Team brings its own default channel.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function nonTeamChannels(string $username): array
+    {
+        return array_values(array_filter(
+            (array) $this->asUser($username)->getJson('/api/v1/chat/channels')->json('list'),
+            static fn (array $channel): bool => ($channel['scope'] ?? null) !== 'group',
+        ));
     }
 }

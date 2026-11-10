@@ -39,6 +39,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'calendar_subscriptions',
             'calendar_feed_tokens',
             'calendar_share_dismissals',
+            'calendar_availability_owners',
+            'calendar_availability_prefs',
             'addressbook_shares',
             'addressbook_share_dismissals',
             'note_stars',
@@ -74,6 +76,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'calendarid'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_availability_owners', 'updated_at'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_availability_prefs', 'updated_at'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'owner_username'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));

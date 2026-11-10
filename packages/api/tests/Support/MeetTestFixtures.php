@@ -8,7 +8,6 @@ use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
@@ -45,8 +44,9 @@ trait MeetTestFixtures
 
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
     }
 
     protected function carolBearerToken(): string
@@ -105,10 +105,20 @@ trait MeetTestFixtures
         $this->assertTrue(str_starts_with($principalUri, AdminConstants::GROUP_PREFIX));
         $groupSlug = substr($principalUri, strlen(AdminConstants::GROUP_PREFIX));
 
+        // Epic #1915: only someone who shares a Team with the sharee may share with them.
+        $sharer = 'meet-sharer';
+        if (Principal::forUsername($sharer) === null) {
+            $this->seedWgwUser($sharer);
+        }
+        $this->seedSharedTeam('meet-sharers', $sharer, $sharee);
+        // Team membership is cached per request; forget it so the new member counts.
+        $this->app->forgetScopedInstances();
+
         app(CalendarShareInvites::class)->apply(
             $ownerInstance,
             $groupSlug,
             [$sharee => $write ? ['mayWrite' => true] : ['mayRead' => true]],
+            $sharer,
         );
     }
 
