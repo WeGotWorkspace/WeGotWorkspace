@@ -120,11 +120,13 @@ export const ListViewSelectionMode: Story = {
     if (!row) throw new Error("Expected Studio Assets row");
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
     await expect(row).toHaveAttribute("data-selection-mode", "true");
-    await expect(canvasElement.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+    // No checkboxes (those are for tasks): the selected row gets a bar instead.
+    await expect(canvasElement.querySelector(".selection-mark")).toBeNull();
+    await expect(row).toHaveClass("drive-list-row--selected");
   },
 };
 
-/** The accent fill is light in the dark theme; the checkmark must stay dark on it. */
+/** Dark theme: the selected row's leading bar is the bright sky selection fill. */
 export const ListViewSelectionModeDark: Story = {
   name: "List view selection mode (dark theme)",
   tags: ["vitest-ci"],
@@ -141,14 +143,23 @@ export const ListViewSelectionModeDark: Story = {
     const row = canvas.getByText("Studio Assets").closest("tr");
     if (!row) throw new Error("Expected Studio Assets row");
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
-    const icon = await waitFor(() => {
-      const found = canvasElement.querySelector<SVGElement>(
-        ".drive-selection-checkbox--selected .drive-selection-checkbox__icon",
-      );
-      if (!found) throw new Error("Expected a selected checkbox checkmark");
+    const cell = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>(".drive-list-row--selected > td");
+      if (!found) throw new Error("Expected a selected row");
       return found;
     });
-    // `--scheme-on-ink` in the dark theme, not a fixed white.
-    await expect(getComputedStyle(icon).color).toBe("rgb(17, 17, 17)");
+    const bar = getComputedStyle(cell, "::before");
+    await expect(bar.width).toBe("4px");
+    await expect(bar.left).toBe("6px");
+    // A brighter, more saturated sky than the selected row's wash.
+    // Washes mix in oklab (white paper has no hue), so read chroma from either form.
+    const chroma = (color: string) => {
+      const lch = /oklch\([\d.]+ ([\d.]+)/.exec(color);
+      if (lch) return Number(lch[1]);
+      const lab = /oklab\([\d.]+ (-?[\d.]+) (-?[\d.]+)/.exec(color);
+      return lab ? Math.hypot(Number(lab[1]), Number(lab[2])) : 0;
+    };
+    const rowColor = getComputedStyle(cell.closest("tr")!).backgroundColor;
+    await expect(chroma(bar.backgroundColor)).toBeGreaterThan(chroma(rowColor));
   },
 };

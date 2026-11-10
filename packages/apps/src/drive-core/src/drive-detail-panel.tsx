@@ -8,6 +8,11 @@ import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { DocsCollabSidebarPanel } from "@/text-editor-core/docs-collab/docs-collab-card";
+import { DRIVE_KIND_LABEL, formatDriveModified } from "@/drive-core/src/drive-list-sort";
+import {
+  MultiSelectionView,
+  type MultiSelectionViewAction,
+} from "@/multi-selection-view/src/multi-selection-view";
 import "./drive-detail-panel.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -29,6 +34,11 @@ export type DriveDetailPanelProps = {
   onShare?: () => void;
   /** Show header close via DocsCollabSidebarPanel titleTrailing (default on). */
   showCloseButton?: boolean;
+  /** Where the file lives, in the names the list and sidebar use (drive / folders). */
+  locationLabel?: string;
+  /** More than one selected: the panel shows the selection summary and its actions. */
+  selectedCount?: number;
+  selectionActions?: MultiSelectionViewAction[];
 };
 
 /**
@@ -52,12 +62,16 @@ export function DriveDetailPanel({
   canManageStructure,
   onShare,
   showCloseButton = true,
+  locationLabel,
+  selectedCount = 0,
+  selectionActions = [],
 }: DriveDetailPanelProps) {
-  const isEmpty = file == null;
+  const multiSelect = selectedCount > 1;
+  const isEmpty = file == null && !multiSelect;
   const canDownload = useCanDownloadDriveItem(file, inTrash);
 
   const actions =
-    !isEmpty && onDownload && onStar && onRename && onMove && onDelete
+    file && !multiSelect && onDownload && onStar && onRename && onMove && onDelete
       ? buildDriveFileActions(
           labels,
           {
@@ -92,7 +106,14 @@ export function DriveDetailPanel({
       emptyLabel={labels.detailEmpty}
       listClassName="drive-detail-panel__content"
     >
-      {file ? (
+      {multiSelect ? (
+        <MultiSelectionView
+          size="compact"
+          count={selectedCount}
+          label={labels.detailMultipleSelection}
+          actions={selectionActions}
+        />
+      ) : file ? (
         <>
           <div className="drive-detail-panel__preview">
             <FilePreview
@@ -107,13 +128,18 @@ export function DriveDetailPanel({
             />
           </div>
           <div className="drive-detail-panel__path">
-            <Tag label={file.parent} icon={<HardDrive className="size-3.5 opacity-70" />} />
+            <Tag
+              label={locationLabel ?? file.location ?? file.parent}
+              icon={<HardDrive className="size-3.5 opacity-70" />}
+            />
           </div>
           <h1 className="drive-detail-panel__title">{file.title}</h1>
           <dl className="drive-detail-panel__meta">
-            <Row label="Type" value={file.kind} />
-            <Row label="Size" value={file.size} />
-            <Row label="Modified" value={file.date} />
+            <Row label={labels.listColumnKind} value={DRIVE_KIND_LABEL[file.kind]} />
+            {file.kind === "folder" ? null : (
+              <Row label={labels.listColumnSize} value={file.size} />
+            )}
+            <Row label={labels.listColumnLastModified} value={formatDriveModified(file)} />
           </dl>
           {file.body.map((p, i) => (
             <p key={i} className="drive-detail-panel__body">

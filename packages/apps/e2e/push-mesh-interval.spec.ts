@@ -65,7 +65,8 @@ for (const mesh of ["up", "blocked"] as const) {
       contexts.push(writerContext, observerContext);
       for (const context of contexts) await context.addInitScript(spyOnMesh);
       const blockSignaling = () =>
-        observerContext.route("**/api/v1/rooms/p_workspace/**", (route) => route.abort());
+        // Every presence room (one per Team, #1921).
+        observerContext.route("**/api/v1/rooms/p_*/**", (route) => route.abort());
       if (mesh === "blocked") await blockSignaling();
       const requests = recordPushRequests(observerContext);
 

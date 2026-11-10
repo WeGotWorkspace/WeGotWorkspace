@@ -1,121 +1,105 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Bell } from "lucide-react";
-import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
-import { CardPanel } from "@/card/src/card-panel";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import {
+  AlarmOffsetMenuItems,
+  alarmOffsetLabel,
+  alarmOffsetSelectValue,
+} from "@/calendar-core/src/calendar-alarms-card";
+import {
+  alertsAfterOffsetChange,
+  isAlertOffsetSelectValue,
+} from "@/calendar-core/src/calendar-alerts";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent } from "@/ui/select";
+import {
+  TASK_FIELD_SELECT_CONTENT_CLASS,
+  TASK_FIELD_SELECT_ITEM_CLASS,
+} from "@/tasks-core/src/tasks-field-classes";
 import type { Task } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formValuesToTaskAlerts,
   remindButtonLabel,
+  TASK_ALERT_DEFAULT_RELATED_TO,
   taskAlertCount,
   taskAlertsToFormValues,
   tasksAlarmRowLabels,
 } from "@/tasks-core/src/tasks-alert-mapping";
-
-type TasksRemindVisualProps = {
-  count: number;
-  className?: string;
-  label?: string;
-  children: ReactNode;
-};
-
-/** Shared bell + count badge used by the composer/edit picker and list-row indicator. */
-function TasksRemindVisual({ count, className, label, children }: TasksRemindVisualProps) {
-  return (
-    <span
-      className={`tasks-main-view__remind${className ? ` ${className}` : ""}`}
-      {...(label ? { role: "img" as const, "aria-label": label } : {})}
-    >
-      {children}
-      {count > 1 ? (
-        <span className="tasks-main-view__remind-badge" aria-hidden>
-          {count}
-        </span>
-      ) : null}
-    </span>
-  );
-}
 
 type TasksRemindIndicatorProps = {
   labels: TasksUILabels;
   alerts: Task["alerts"] | undefined;
 };
 
-/** Display-only row mark. Hidden when the task has no alarms. */
+/** Display-only row mark: the bell alone (no count), named for screen readers. */
 export function TasksRemindIndicator({ labels, alerts }: TasksRemindIndicatorProps) {
-  const count = taskAlertCount(alerts);
-  if (count === 0) return null;
+  if (taskAlertCount(alerts) === 0) return null;
 
   const label = remindButtonLabel(labels, alerts);
 
   return (
-    <span className="tasks-main-view__meta-item">
-      <TasksRemindVisual count={count} className="tasks-main-view__remind--row">
-        <Bell className="size-3.5" aria-hidden />
-      </TasksRemindVisual>
-      <span>{label}</span>
+    <span
+      className="tasks-field__remind tasks-field__remind--row"
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <Bell className="size-3.5" aria-hidden />
     </span>
   );
 }
 
-type TasksRemindPickerProps = {
+type TaskAlarmControlsArgs = {
   labels: TasksUILabels;
   alerts: Task["alerts"] | undefined;
   onChange: (alerts: Task["alerts"] | undefined) => void;
   disabled?: boolean;
 };
 
-export function TasksRemindPicker({
+/**
+ * The task detail's alarm rows, as Calendar's alarm list: one ghost dropdown per alarm,
+ * then an empty one (None) to add the next. None on a set alarm removes it. Read-only
+ * shows the set alarms only (or one None).
+ */
+export function taskAlarmControls({
   labels,
   alerts,
   onChange,
   disabled = false,
-}: TasksRemindPickerProps) {
-  const [open, setOpen] = useState(false);
-  const formAlerts = taskAlertsToFormValues(alerts);
-  const count = taskAlertCount(alerts);
-  const buttonLabel = remindButtonLabel(labels, alerts);
+}: TaskAlarmControlsArgs): ReactNode[] {
+  const rows = taskAlertsToFormValues(alerts);
   const alarmLabels = tasksAlarmRowLabels(labels);
-
-  return (
-    <>
-      <TasksRemindVisual count={count} className="tasks-main-view__remind--composer">
-        <button
-          type="button"
-          disabled={disabled}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={`tasks-main-view__composer-select tasks-main-view__remind-button${count > 0 ? " tasks-main-view__remind-button--active" : ""}`}
-          onClick={() => setOpen(true)}
-        >
-          <span className="tasks-main-view__composer-select-option">
-            <Bell className="size-3.5" aria-hidden />
-            <span>{buttonLabel}</span>
-          </span>
-        </button>
-      </TasksRemindVisual>
-      <Dialog open={disabled ? false : open} onOpenChange={setOpen}>
-        <DialogContent
-          className="tasks-dialog-surface tasks-remind-dialog"
-          aria-describedby={undefined}
-        >
-          <DialogHeader>
-            <DialogTitle>{labels.remindMe}</DialogTitle>
-          </DialogHeader>
-          <div className="share-access-card calendar-alarms-card tasks-remind-dialog__alarms">
-            <CardPanel>
-              <CalendarAlarmsRows
-                alerts={formAlerts}
-                labels={alarmLabels}
-                disabled={disabled}
-                defaultRelatedTo="end"
-                onChange={(next) => onChange(formValuesToTaskAlerts(next))}
-              />
-            </CardPanel>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+  const slots = disabled && rows.length > 0 ? rows : [...rows, null];
+  return slots.map((alert, index) => (
+    <Select
+      key={alert?.id ?? "next"}
+      value={alarmOffsetSelectValue(alert)}
+      disabled={disabled}
+      onValueChange={(value) => {
+        if (!isAlertOffsetSelectValue(value)) return;
+        const next = alertsAfterOffsetChange({
+          alerts: rows,
+          rowId: alert?.id ?? null,
+          value,
+          defaultRelatedTo: TASK_ALERT_DEFAULT_RELATED_TO,
+        });
+        onChange(formValuesToTaskAlerts(next));
+      }}
+    >
+      <CollectionGhostSelectTrigger
+        className="tasks-field__ghost"
+        aria-label={labels.detailAlarm(index + 1)}
+        disabled={disabled}
+        leading={<Bell className="size-3.5" aria-hidden />}
+        label={alarmOffsetLabel(alert, alarmLabels)}
+      />
+      <SelectContent className={TASK_FIELD_SELECT_CONTENT_CLASS}>
+        <AlarmOffsetMenuItems
+          alert={alert}
+          labels={alarmLabels}
+          itemClassName={TASK_FIELD_SELECT_ITEM_CLASS}
+        />
+      </SelectContent>
+    </Select>
+  ));
 }

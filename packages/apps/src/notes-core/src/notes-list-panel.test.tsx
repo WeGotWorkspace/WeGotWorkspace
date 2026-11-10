@@ -13,10 +13,11 @@ afterEach(() => {
 
 const baseNote: Note = {
   id: "n-1",
+  title: "Hello",
   category: "Note",
   date: "2026-01-01T00:00:00.000Z",
-  excerpt: "Hello",
-  body: ["Hello"],
+  excerpt: "Body text",
+  body: ["Body text"],
   notebook: "Drafts",
   tags: [],
   wordCount: 1,
@@ -33,6 +34,7 @@ function ListHarness({
   listRefreshing = false,
   onRefreshList,
   onEditTag,
+  starred = {},
   slot = "list",
 }: {
   notes: Note[];
@@ -45,6 +47,7 @@ function ListHarness({
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   onEditTag?: () => void;
+  starred?: Record<string, boolean>;
   slot?: "list" | "header" | "both";
 }) {
   const panel = NotesListPanel({
@@ -65,7 +68,7 @@ function ListHarness({
     searchInputRef: createRef<HTMLInputElement>(),
     view,
     isTouch: false,
-    starred: {},
+    starred,
     archived: {},
     activeId,
     isItemDragging: () => false,
@@ -175,29 +178,36 @@ describe("NotesListPanel notebook labels", () => {
         ]}
       />,
     );
-    expect(screen.queryByText("Journal")).toBeNull();
-    expect(screen.queryByText("Work")).toBeNull();
+    // Suite list norm: the notebook name sits in the meta line, not behind an icon.
+    const meta = (id: string) =>
+      document.querySelector(`[data-list-item-id="${id}"] .list-item__meta`)?.textContent;
+    expect(meta("n-1")).toContain("Journal");
+    expect(meta("n-2")).toContain("Work");
     expect(screen.queryByText("Drafts")).toBeNull();
-    const journal = screen.getByRole("img", { name: "Journal" });
-    const work = screen.getByRole("img", { name: "Work" });
-    expect(journal.closest(".list-item__meta-trailing")).toBeTruthy();
-    expect(work.closest(".list-item__meta-trailing")).toBeTruthy();
-    expect(journal.closest(".list-item__subtitle")).toBeNull();
-    expect(journal.querySelector(".notes-list-panel__notebook-name")).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-list-item-id="n-1"] .list-item__meta .notes-notebook-color-dot',
+      ),
+    ).toBeTruthy();
   });
 
-  it("shows the notebook name in a tooltip on the icon", async () => {
-    render(
+  it("shows the date top right, a preview, and the notebook with its colour dot", () => {
+    const { container } = render(
       <ListHarness
         notes={[{ ...baseNote, notebook: "Drafts", notebookId: "notes-drafts" }]}
-        notebookCollections={[{ id: "notes-drafts", name: "Journal" }]}
+        notebookCollections={[{ id: "notes-drafts", name: "Journal", color: "#ea8c72" }]}
       />,
     );
-    fireEvent.pointerMove(screen.getByRole("img", { name: "Journal" }), { pointerType: "mouse" });
-    expect((await screen.findByRole("tooltip")).textContent).toBe("Journal");
+    const row = container.querySelector('[data-list-item-id="n-1"]')!;
+    expect(row.querySelector(".list-item__title-row .list-item__date")!.textContent).toBeTruthy();
+    expect(row.querySelector(".list-item__body--preview")!.textContent).toBe("Body text");
+    const notebook = row.querySelector(".list-item__meta .notes-list-panel__notebook")!;
+    expect(notebook.textContent).toBe("Journal");
+    const dot = notebook.querySelector(".notes-notebook-color-dot") as HTMLElement;
+    expect(dot.style.getPropertyValue("--collection-row-color")).toBe("#ea8c72");
   });
 
-  it("shows the group collection display name and color, not the group-… slug", () => {
+  it("shows the group collection display name, not the group-… slug", () => {
     const { container } = render(
       <ListHarness
         notes={[
@@ -222,19 +232,27 @@ describe("NotesListPanel notebook labels", () => {
         ]}
       />,
     );
-    expect(screen.queryByText("Administratorss")).toBeNull();
+    expect(screen.getByText("Administratorss").closest(".list-item__meta")).toBeTruthy();
     expect(screen.queryByText("group-administrators")).toBeNull();
-    expect(screen.queryByText("administrators")).toBeNull();
-    const location = screen.getByRole("img", { name: "Administratorss" });
-    expect(location.closest(".list-item__meta-trailing")).toBeTruthy();
-    expect(container.querySelector(".notes-list-panel__notebook-name")).toBeNull();
-    expect(location).toBeTruthy();
-    expect((location as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
-      "#ea8c72",
+    expect(container.querySelector(".list-item__meta .notes-notebook-color-dot")).toBeTruthy();
+  });
+
+  it("marks only starred notes with a star", () => {
+    const { container } = render(<ListHarness notes={[baseNote]} />);
+    expect(container.querySelector(".notes-list-panel__star-pip")).toBeNull();
+  });
+
+  it("puts the star right before the date, not in the meta line", () => {
+    const { container } = render(
+      <ListHarness notes={[baseNote]} starred={{ [baseNote.id]: true }} />,
     );
-    expect(location!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(location!.querySelector(".collection-sidebar-row__dot")).toBeNull();
-    expect(location!.querySelector(".notes-list-panel__notebook-dot")).toBeNull();
+    const trailing = container.querySelector(".list-item__title-row .list-item__title-trailing");
+    const star = trailing?.querySelector(".notes-list-panel__star-pip");
+    expect(star?.getAttribute("aria-label")).toBe(defaultNotesLabels.sidebarStarred);
+    expect(star?.closest(".list-item__date-leading")?.nextElementSibling?.className).toBe(
+      "list-item__date",
+    );
+    expect(container.querySelector(".list-item__meta .notes-list-panel__star-pip")).toBeNull();
   });
 });
 
@@ -294,17 +312,11 @@ describe("NotesListPanel selection paint", () => {
 });
 
 describe("NotesListPanel row placeholders", () => {
-  it("reserves a muted empty body when a titled note has no excerpt", () => {
+  it("shows the body as a preview and no placeholder when the body is empty", () => {
     const { container } = render(
       <ListHarness
         notes={[
-          {
-            ...baseNote,
-            id: "titled-empty",
-            title: "Hallo, hier toch?",
-            excerpt: "",
-            body: [""],
-          },
+          { ...baseNote, id: "titled-empty", title: "Hallo, hier toch?", excerpt: "", body: [""] },
           {
             ...baseNote,
             id: "titled-body",
@@ -317,35 +329,21 @@ describe("NotesListPanel row placeholders", () => {
     );
     const emptyRow = container.querySelector('[data-list-item-id="titled-empty"]');
     const filledRow = container.querySelector('[data-list-item-id="titled-body"]');
-    expect(emptyRow?.querySelector(".list-item__title")?.textContent).toBe("Hallo, hier toch?");
     expect(emptyRow?.querySelector(".list-item__title")?.getAttribute("data-empty")).toBe("false");
-    expect(emptyRow?.querySelector(".list-item__body")?.textContent).toBe("Empty item");
-    expect(emptyRow?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("true");
-    expect(filledRow?.querySelector(".list-item__body")?.textContent).toBe(
+    expect(emptyRow?.querySelector(".list-item__body")).toBeNull();
+    expect(screen.queryByText("Empty item")).toBeNull();
+    expect(filledRow?.querySelector(".list-item__body--preview")?.textContent).toBe(
       "Vivamus sagittis lacus",
     );
-    expect(filledRow?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("false");
   });
 
-  it("shows an untitled placeholder and still reserves the body line", () => {
-    const { container } = render(
-      <ListHarness notes={[{ ...baseNote, id: "blank", title: "", excerpt: "", body: [""] }]} />,
-    );
-    const row = container.querySelector('[data-list-item-id="blank"]');
-    const title = row?.querySelector(".list-item__title");
-    expect(title?.textContent).toBe("Empty title");
-    expect(title?.getAttribute("data-empty")).toBe("true");
-    expect(row?.querySelector(".list-item__body")?.textContent).toBe("Empty item");
-    expect(row?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("true");
-  });
-
-  it("keeps an empty title placeholder and shows the excerpt on the body line", () => {
+  it("shows a muted untitled placeholder and still previews the body", () => {
     const { container } = render(
       <ListHarness
         notes={[
           {
             ...baseNote,
-            id: "empty-title",
+            id: "blank",
             title: "",
             excerpt: "Vivamus sagittis lacus vel augue",
             body: ["Vivamus sagittis lacus vel augue"],
@@ -353,15 +351,13 @@ describe("NotesListPanel row placeholders", () => {
         ]}
       />,
     );
-    const row = container.querySelector('[data-list-item-id="empty-title"]');
+    const row = container.querySelector('[data-list-item-id="blank"]');
     const title = row?.querySelector(".list-item__title");
     expect(title?.textContent).toBe("Empty title");
     expect(title?.getAttribute("data-empty")).toBe("true");
-    expect(title?.textContent).not.toContain("Vivamus");
-    expect(row?.querySelector(".list-item__body")?.textContent).toBe(
+    expect(row?.querySelector(".list-item__body--preview")?.textContent).toBe(
       "Vivamus sagittis lacus vel augue",
     );
-    expect(row?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("false");
   });
 });
 
@@ -418,7 +414,7 @@ describe("NotesListPanel access chips", () => {
     expect(container.querySelector(".notes-list-panel__view-only-pip")).toBeNull();
   });
 
-  it("shows grantor username with Share2 meta like notebook rows", () => {
+  it("shows the grantor in the meta line, like a notebook name", () => {
     const { container } = render(
       <ListHarness
         notes={[
@@ -432,12 +428,7 @@ describe("NotesListPanel access chips", () => {
         ]}
       />,
     );
-    const meta = screen.getByRole("img", { name: "bob" });
-    expect(meta.closest(".list-item__meta-trailing")).toBeTruthy();
-    expect(screen.queryByText("bob")).toBeNull();
-    expect(meta.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(meta.querySelector(".collection-sidebar-row__dot")).toBeNull();
-    expect(meta.querySelector(".notes-list-panel__notebook-name")).toBeNull();
+    expect(screen.getByText("bob").closest(".list-item__meta")).toBeTruthy();
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();
   });

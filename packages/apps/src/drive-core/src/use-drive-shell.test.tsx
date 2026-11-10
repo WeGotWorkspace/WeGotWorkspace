@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import type { ViewKey } from "@/lib/files/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -20,6 +21,8 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const USER = "alice";
 const MY_DRIVE_CWD = `/users/${USER}`;
+/** Drive opens on All Files; the upload tests list Personal itself. */
+const MY_DRIVE_VIEW: ViewKey = { type: "folder", path: "My Drive" };
 
 function directoryEntry(name: string) {
   return {
@@ -429,7 +432,9 @@ describe("useDriveShell upload placeholders", () => {
     };
     // Boot data from the cached bootstrap: the server listing, without placeholders.
     const bootstrap = driveData(["old.txt"]);
-    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+    const { result } = renderHook(() =>
+      useDriveShell({ data: bootstrap, session, operations, view: MY_DRIVE_VIEW }),
+    );
 
     await waitFor(() =>
       expect(result.current.files.map((file) => [file.title, file.upload?.status])).toEqual([

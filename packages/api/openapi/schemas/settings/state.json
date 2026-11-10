@@ -8,6 +8,10 @@
       "groups": {
         "$ref": "#/components/schemas/SettingsUserGroupList"
       },
+      "isAdmin": {
+        "type": "boolean",
+        "description": "Whether the caller has the admin role. Admin is a role per user, not membership of a Team."
+      },
       "logoutUrl": {
         "type": "string"
       },
@@ -19,6 +23,7 @@
     "required": [
       "user",
       "groups",
+      "isAdmin",
       "logoutUrl",
       "mcpEnabled"
     ]

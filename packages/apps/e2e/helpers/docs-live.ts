@@ -5,8 +5,8 @@ import { E2E_PASSWORD, E2E_USERNAME } from "./notes-live";
 
 export { E2E_PASSWORD, E2E_USERNAME };
 
-/** Group folder the dev install seeds; the e2e user is a member. */
-export const E2E_GROUP_ROOT = "/groups/administrators";
+/** The dev Team `wgw:dev-install` puts admin and member in (#1925). */
+export const E2E_GROUP_ROOT = "/groups/team";
 
 export function myDriveDocSearchPath(fileName: string): string {
   return `users/${E2E_USERNAME}/${fileName}`;
@@ -86,6 +86,34 @@ export async function waitForDocsBodySynced(
       { timeout: 60_000 },
     )
     .toBe(true);
+}
+
+/** Listing paths of every cached Docs view, by cache key. */
+export async function cachedDocsViews(page: Page): Promise<string[][]> {
+  return page.evaluate(async () => {
+    const username = localStorage.getItem("wgw.offline.docs.username");
+    if (!username) return [];
+    return new Promise<string[][]>((resolve) => {
+      const request = indexedDB.open(`wgw-offline-${username}`);
+      request.onerror = () => resolve([]);
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("docs_listing_rows")) return resolve([]);
+        const read = db
+          .transaction("docs_listing_rows", "readonly")
+          .objectStore("docs_listing_rows")
+          .getAll();
+        read.onsuccess = () => {
+          const views = new Map<string, string[]>();
+          for (const row of read.result as Array<{ cacheKey: string; sourceKey: string }>) {
+            views.set(row.cacheKey, [...(views.get(row.cacheKey) ?? []), row.sourceKey]);
+          }
+          resolve([...views.values()]);
+        };
+        read.onerror = () => resolve([]);
+      };
+    });
+  });
 }
 
 /** Drop the docs offline IndexedDB so e2e starts from a clean cache. */

@@ -9,11 +9,10 @@ import {
   dueDateToApiValue,
   filterTasksByHiddenLists,
   filterTasksByView,
-  formatComposerDueDateLabel,
-  formatComposerDueLabel,
   INBOX_TASK_LIST_ID,
   parseDueDateValue,
   taskDueIsDateOnly,
+  taskDueSeverity,
   isInboxTaskList,
   isProtectedTaskList,
   mergeCreatedTask,
@@ -22,7 +21,6 @@ import {
   taskAlertsFromList,
   taskListDotColor,
 } from "./tasks-task-utils";
-import { defaultTasksLabels } from "./tasks-labels";
 import type { Task } from "@/lib/models/tasks-types";
 
 const sampleTasks: Task[] = [
@@ -235,18 +233,16 @@ describe("tasks-task-utils", () => {
     expect(mergeCreatedTask(optimistic, created).due).toBe("2026-07-15T00:00:00");
   });
 
-  it("formatComposerDueDateLabel shows relative labels for today, yesterday, and tomorrow", () => {
+  it("warns for a due today and errors for an earlier day, unless done", () => {
     const now = new Date(2026, 6, 8, 12, 0, 0);
-    const labels = {
-      dueToday: defaultTasksLabels.dueToday,
-      dueYesterday: defaultTasksLabels.dueYesterday,
-      dueTomorrow: defaultTasksLabels.dueTomorrow,
-    };
 
-    expect(formatComposerDueDateLabel(new Date(2026, 6, 8), labels, now)).toBe("Today");
-    expect(formatComposerDueDateLabel(new Date(2026, 6, 7), labels, now)).toBe("Yesterday");
-    expect(formatComposerDueDateLabel(new Date(2026, 6, 9), labels, now)).toBe("Tomorrow");
-    expect(formatComposerDueDateLabel(new Date(2026, 6, 15), labels, now)).toBe("Jul 15, 2026");
+    expect(taskDueSeverity("2026-07-08", false, now)).toBe("warn");
+    expect(taskDueSeverity("2026-07-08T09:00:00", false, now)).toBe("warn");
+    expect(taskDueSeverity("2026-07-07T23:59:00", false, now)).toBe("error");
+    expect(taskDueSeverity("2026-06-01", false, now)).toBe("error");
+    expect(taskDueSeverity("2026-07-09", false, now)).toBeNull();
+    expect(taskDueSeverity("2026-07-07", true, now)).toBeNull();
+    expect(taskDueSeverity(null, false, now)).toBeNull();
   });
 
   it("treats empty and missing alerts as equal and distinguishes maps", () => {
@@ -283,22 +279,6 @@ describe("tasks-task-utils", () => {
     expect(taskDueIsDateOnly("2026-07-08T15:45:00", false)).toBe(false);
     expect(taskDueIsDateOnly("2026-07-08T15:45:00", undefined)).toBe(false);
     expect(taskDueIsDateOnly("2026-07-08", undefined)).toBe(true);
-  });
-
-  it("includes time on the composer due label when a time is set", () => {
-    const now = new Date(2026, 6, 8, 12, 0, 0);
-    const labels = {
-      dueToday: defaultTasksLabels.dueToday,
-      dueYesterday: defaultTasksLabels.dueYesterday,
-      dueTomorrow: defaultTasksLabels.dueTomorrow,
-    };
-
-    expect(formatComposerDueLabel("2026-07-08", true, labels, now)).toBe("Today");
-    expect(formatComposerDueLabel("2026-07-15", true, labels, now)).toBe("Jul 15, 2026");
-
-    const timedToday = formatComposerDueLabel("2026-07-08T15:45:00", false, labels, now);
-    expect(timedToday).toEqual(expect.stringMatching(/^Today.+\d{1,2}:\d{2}/));
-    expect(timedToday).not.toBe("Today");
   });
 
   it("canChangeTaskListOwner allows personal owners and user-created group lists", () => {

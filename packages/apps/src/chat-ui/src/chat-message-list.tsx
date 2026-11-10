@@ -165,6 +165,7 @@ export function ChatMessageList({
                   label={day.label}
                   emphasis={day.emphasis}
                   rest={day.rest}
+                  variant="frost"
                 />
                 {day.groups.map((group) => (
                   <div key={group.id} className="chat-message-list__group">

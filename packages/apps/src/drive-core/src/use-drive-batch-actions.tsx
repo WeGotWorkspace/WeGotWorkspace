@@ -1,15 +1,18 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
+import { Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { settleAll, type QueueMutation } from "@/hooks/use-queued-mutation";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
   driveRestoreMoves,
-  moveDriveRows,
   restoreDriveStars,
   trashDriveRows,
 } from "@/drive-core/src/drive-undo-writes";
+import {
+  refreshOpenFolderAfterBatch,
+  useDriveMoveToFolder,
+} from "@/drive-core/src/use-drive-move-to-folder";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
   reloadDriveFolderListing,
@@ -22,18 +25,11 @@ import {
 import { DRIVE_TRASH_UI_PATH, isForeignDriveApiPath } from "@/lib/files/drive-path-utils";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
-
-/** A failed folder reload is not a failed batch. The renames already reached the server. */
-async function refreshOpenFolderAfterBatch(
-  refresh: (signal?: AbortSignal) => Promise<void>,
-  signal: AbortSignal,
-): Promise<void> {
-  try {
-    await refresh(signal);
-  } catch (error) {
-    console.error("Drive folder refresh failed", error);
-  }
-}
+import {
+  driveRowsById,
+  patchAllFilesRows,
+  type DriveAllFilesPatch,
+} from "@/drive-core/src/use-drive-all-files";
 
 async function finishDriveRestore(input: {
   operations: DriveAPIOperations;
@@ -45,6 +41,8 @@ async function finishDriveRestore(input: {
   setFiles: Dispatch<SetStateAction<DriveFile[]>>;
   show: (message: string) => void;
   showError: (message: string) => void;
+  /** All Files: reload once the files are back. */
+  reloadAllFiles?: () => void;
 }): Promise<void> {
   try {
     const { restored, failures } = await restoreCompletedDriveMoves({
@@ -65,6 +63,7 @@ async function finishDriveRestore(input: {
       input.groupRoots,
       input.setFiles,
     );
+    input.reloadAllFiles?.();
   }
 }
 
@@ -87,9 +86,10 @@ type UseDriveBatchActionsArgs = {
   beginOptimisticUpdate: BeginOptimisticUpdateFn<DriveFile>;
   reloadStarredFromServer: () => void;
   view: ViewKey;
-  viewType: ViewKey["type"];
-  /** Finds a row in any view, including Shared with me and Starred. */
+  /** Finds a row in any view, including All Files, Shared with me and Starred. */
   fileById: (id: string) => DriveFile | null;
+  /** All Files keeps its own rows: a write shows there at once, then they reload. */
+  allFiles?: { patchAllFiles?: DriveAllFilesPatch; reloadAllFiles?: () => void };
 };
 
 export function useDriveBatchActions({
@@ -111,9 +111,12 @@ export function useDriveBatchActions({
   beginOptimisticUpdate,
   reloadStarredFromServer,
   view,
-  viewType,
   fileById,
+  allFiles,
 }: UseDriveBatchActionsArgs) {
+  const viewType = view.type;
+  const patchAllFiles = allFiles?.patchAllFiles;
+  const reloadAllFiles = allFiles?.reloadAllFiles;
   const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
     (ids: string[]) => {
@@ -127,8 +130,10 @@ export function useDriveBatchActions({
     [activeId, setActiveId, setDetailOpen, setSelectedIds, setSelectionMode],
   );
 
+  // After a write: the open folder, or All Files, shows what the server now holds.
   const refreshOpenFolder = useCallback(
     async (signal?: AbortSignal) => {
+      if (view.type === "all") reloadAllFiles?.();
       if (!operations || view.type !== "folder") return;
       await reloadDriveFolderListing(
         operations,
@@ -139,13 +144,32 @@ export function useDriveBatchActions({
         signal,
       );
     },
-    [currentUsername, groupRootNames, operations, setFiles, view],
+    [currentUsername, groupRootNames, operations, reloadAllFiles, setFiles, view],
+  );
+
+  const restoreMoves = useCallback(
+    async (completedKeys: ReadonlySet<string>, moves: readonly DriveRestoreMove[]) => {
+      if (!operations) return;
+      await finishDriveRestore({
+        operations,
+        moves,
+        completedKeys,
+        username: currentUsername,
+        groupRoots: groupRootNames,
+        folderPath: view.type === "folder" ? view.path : "My Drive",
+        setFiles,
+        show,
+        showError,
+        reloadAllFiles: view.type === "all" ? reloadAllFiles : undefined,
+      });
+    },
+    [currentUsername, groupRootNames, operations, reloadAllFiles, setFiles, show, showError, view],
   );
 
   const moveToTrash = useCallback(
     (ids: string[]) => {
       if (ids.length === 0) return;
-      const rows = files.filter((file) => ids.includes(file.id));
+      const rows = driveRowsById(ids, fileById);
       if (rows.length === 0) return;
 
       const isForeign = (file: DriveFile) =>
@@ -164,6 +188,9 @@ export function useDriveBatchActions({
         prev.map((file) =>
           ids.includes(file.id) ? { ...file, parent: DRIVE_TRASH_UI_PATH } : file,
         ),
+      );
+      const restoreAll = patchAllFilesRows(view, patchAllFiles, reloadAllFiles, (all) =>
+        all.filter((file) => !ids.includes(file.id)),
       );
       clearSelectionForIds(ids);
 
@@ -188,6 +215,7 @@ export function useDriveBatchActions({
         icon: <Trash2 className="size-4" />,
         undoToastMessage: "Move to trash undone.",
         rollback: () => {
+          restoreAll();
           setFiles(previousFiles);
           setSelectedIds(previousSelectedIds);
           if (previousSelectedIds.length > 0) setSelectionMode(true);
@@ -206,42 +234,35 @@ export function useDriveBatchActions({
       runImmediateDriveBatch({
         ...batch,
         execute: run,
-        revert: async (completedKeys) => {
-          if (!operations) return;
-          await finishDriveRestore({
-            operations,
+        revert: (completedKeys) =>
+          restoreMoves(
             completedKeys,
-            username: currentUsername,
-            groupRoots: groupRootNames,
-            folderPath: view.type === "folder" ? view.path : "My Drive",
-            setFiles,
-            show,
-            showError,
-            moves: driveRestoreMoves(
+            driveRestoreMoves(
               rows,
               DRIVE_TRASH_UI_PATH,
               currentUsername,
               groupRootNames,
               trashedNameById,
             ),
-          });
-        },
+          ),
       });
     },
     [
       clearSelectionForIds,
       currentUsername,
+      fileById,
       files,
       groupRootNames,
       operations,
+      patchAllFiles,
       queueMutation,
       refreshOpenFolder,
+      reloadAllFiles,
+      restoreMoves,
       selectedIds,
       setFiles,
       setSelectedIds,
       setSelectionMode,
-      show,
-      showError,
       view,
     ],
   );
@@ -249,13 +270,16 @@ export function useDriveBatchActions({
   const reallyDelete = useCallback(
     (ids: string[]) => {
       if (ids.length === 0) return;
-      const rows = files.filter((file) => ids.includes(file.id));
+      const rows = driveRowsById(ids, fileById);
       if (rows.length === 0) return;
 
       const previousFiles = files;
       const previousSelectedIds = selectedIds;
 
       setFiles((prev) => prev.filter((file) => !ids.includes(file.id)));
+      const restoreAll = patchAllFilesRows(view, patchAllFiles, reloadAllFiles, (all) =>
+        all.filter((file) => !ids.includes(file.id)),
+      );
       clearSelectionForIds(ids);
 
       // A permanent delete cannot be taken back: it waits, and Undo cancels it.
@@ -267,6 +291,7 @@ export function useDriveBatchActions({
         icon: <Trash2 className="size-4" />,
         undoToastMessage: "Deletion undone.",
         rollback: () => {
+          restoreAll();
           setFiles(previousFiles);
           setSelectedIds(previousSelectedIds);
           if (previousSelectedIds.length > 0) setSelectionMode(true);
@@ -284,15 +309,19 @@ export function useDriveBatchActions({
     [
       clearSelectionForIds,
       currentUsername,
+      fileById,
       files,
       groupRootNames,
       operations,
+      patchAllFiles,
       queueMutation,
       refreshOpenFolder,
+      reloadAllFiles,
       selectedIds,
       setFiles,
       setSelectedIds,
       setSelectionMode,
+      view,
     ],
   );
 
@@ -366,65 +395,19 @@ export function useDriveBatchActions({
     viewType,
   ]);
 
-  const moveToFolder = useCallback(
-    (ids: string[], parent: string) => {
-      if (ids.length === 0) return;
-      const rows = files.filter((file) => ids.includes(file.id));
-      if (rows.length === 0) return;
-
-      const { rollback } = beginOptimisticUpdate({
-        ids,
-        updater: (file) => ({ ...file, parent }),
-      });
-
-      runImmediateDriveBatch({
-        queueMutation,
-        key: `drive:move:${parent}:${ids.slice().sort().join(",")}`,
-        toastMessage: `Moved ${ids.length} to ${parent.split("/").pop()}`,
-        icon: <FolderInput className="size-4" />,
-        undoToastMessage: "Move undone.",
-        rollback,
-        execute: async (stop, markCompleted) => {
-          if (!operations) return;
-          await moveDriveRows(
-            { operations, username: currentUsername, groupRoots: groupRootNames },
-            rows,
-            parent,
-            stop,
-            markCompleted,
-          );
-          await refreshOpenFolderAfterBatch(refreshOpenFolder, stop);
-        },
-        revert: async (completedKeys) => {
-          if (!operations) return;
-          await finishDriveRestore({
-            operations,
-            completedKeys,
-            username: currentUsername,
-            groupRoots: groupRootNames,
-            folderPath: view.type === "folder" ? view.path : "My Drive",
-            setFiles,
-            show,
-            showError,
-            moves: driveRestoreMoves(rows, parent, currentUsername, groupRootNames),
-          });
-        },
-      });
-    },
-    [
-      beginOptimisticUpdate,
-      currentUsername,
-      files,
-      groupRootNames,
-      operations,
-      queueMutation,
-      refreshOpenFolder,
-      setFiles,
-      show,
-      showError,
-      view,
-    ],
-  );
+  const moveToFolder = useDriveMoveToFolder({
+    currentUsername,
+    groupRootNames,
+    operations,
+    queueMutation,
+    beginOptimisticUpdate,
+    view,
+    fileById,
+    patchAllFiles,
+    reloadAllFiles,
+    refreshOpenFolder,
+    restoreMoves,
+  });
 
   return { moveToTrash, reallyDelete, batchStar, moveToFolder };
 }

@@ -1,46 +1,41 @@
-import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { remindButtonLabel, tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
+import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import { TasksRemindIndicator, TasksRemindPicker } from "@/tasks-core/src/tasks-remind-picker";
+import { TasksRemindIndicator, taskAlarmControls } from "@/tasks-core/src/tasks-remind-picker";
 import {
   absoluteReminderAlert,
   offsetReminderAlert,
   taskAlertsFromList,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
-import "@/tasks-core/src/tasks-main-view.css";
+import "@/tasks-core/src/tasks-field-controls.css";
 import "@/tasks-core/src/tasks-workspace.css";
 
-function renderPicker(overrides: Partial<ComponentProps<typeof TasksRemindPicker>> = {}) {
+function renderAlarms(overrides: Partial<Parameters<typeof taskAlarmControls>[0]> = {}) {
   const onChange = vi.fn();
-  render(
-    <TooltipProvider>
-      <TasksRemindPicker
-        labels={defaultTasksLabels}
-        alerts={undefined}
-        onChange={onChange}
-        {...overrides}
-      />
-    </TooltipProvider>,
-  );
-  return { onChange };
+  const rows = taskAlarmControls({
+    labels: defaultTasksLabels,
+    alerts: undefined,
+    onChange,
+    ...overrides,
+  });
+  render(<TooltipProvider>{rows}</TooltipProvider>);
+  return { onChange, rows };
 }
 
 const alarmLabels = tasksAlarmRowLabels(defaultTasksLabels);
 
-function remindButton(alerts?: Task["alerts"]) {
-  return screen.getByRole("button", { name: remindButtonLabel(defaultTasksLabels, alerts) });
+function alarmTriggers() {
+  return screen.getAllByRole("combobox", { name: /^Alarm \d+$/ });
 }
 
 function chooseOffset(optionLabel: string, index = 0) {
-  fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[index]!);
+  fireEvent.click(alarmTriggers()[index]!);
   fireEvent.click(screen.getByRole("option", { name: optionLabel }));
 }
 
-describe("TasksRemindPicker", () => {
+describe("taskAlarmControls", () => {
   beforeEach(() => {
     cleanup();
     Element.prototype.scrollIntoView = vi.fn();
@@ -59,77 +54,71 @@ describe("TasksRemindPicker", () => {
     });
   });
 
-  it("opens the shared alarms dialog from a labeled button", () => {
-    renderPicker();
+  it("starts with one empty alarm row, a ghost dropdown with the task presets", () => {
+    renderAlarms();
 
-    const trigger = remindButton();
-    expect(trigger.textContent).toContain("No reminders");
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(false);
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    const [trigger] = alarmTriggers();
+    expect(alarmTriggers()).toHaveLength(1);
+    expect(trigger!.textContent).toBe(alarmLabels.eventAlarmNone);
+    expect(trigger!.classList.contains("collection-ghost-select")).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
 
-    fireEvent.click(trigger);
-
-    const dialog = screen.getByRole("dialog", { name: defaultTasksLabels.remindMe });
-    expect(dialog.classList.contains("tasks-dialog-surface")).toBe(true);
-    expect(screen.getAllByRole("heading", { name: defaultTasksLabels.remindMe })).toHaveLength(1);
-    expect(screen.queryByRole("dialog", { name: "Alarms" })).toBeNull();
-    expect(dialog.querySelector(".ui-modal-header")).toBeTruthy();
-    const close = screen.getByRole("button", { name: "Close" });
-    expect(close.closest(".tasks-remind-dialog")).toBeTruthy();
-    expect(close.closest(".calendar-alarms-card")).toBeNull();
-    expect(document.querySelector(".tasks-remind-dialog__alarms")).toBeTruthy();
-
-    fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[0]!);
+    fireEvent.click(trigger!);
     expect(
       screen.getByRole("option", { name: defaultTasksLabels.remindAtTimeOfTask }),
     ).toBeTruthy();
     expect(screen.queryByRole("option", { name: "At time of event" })).toBeNull();
-    expect(screen.queryByRole("option", { name: /^Custom$/i })).toBeNull();
   });
 
-  it("adds a due-relative alarm and marks the icon active without a badge", () => {
-    const { onChange } = renderPicker();
+  it("adds a due-relative alarm from the empty row", () => {
+    const { onChange } = renderAlarms();
 
-    fireEvent.click(remindButton());
     chooseOffset(alarmLabels.eventAlarm30Min);
 
     expect(onChange).toHaveBeenCalledWith(taskAlertsFromList([offsetReminderAlert("-PT30M")]));
   });
 
-  it("shows a count badge and accessible name when more than one alarm is set", () => {
+  it("shows one row per alarm, then an empty one for the next", () => {
     const alerts = {
       alert1: offsetReminderAlert("-PT30M"),
       alert2: offsetReminderAlert("-PT1H"),
     };
-    renderPicker({ alerts });
+    renderAlarms({ alerts });
 
-    const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
-    expect(trigger.textContent).toContain("2 reminders");
-    expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
+    expect(alarmTriggers().map((trigger) => trigger.textContent)).toEqual([
+      alarmLabels.eventAlarm30Min,
+      alarmLabels.eventAlarm1Hour,
+      alarmLabels.eventAlarmNone,
+    ]);
+    expect(alarmTriggers().map((trigger) => trigger.getAttribute("aria-label"))).toEqual([
+      defaultTasksLabels.detailAlarm(1),
+      defaultTasksLabels.detailAlarm(2),
+      defaultTasksLabels.detailAlarm(3),
+    ]);
   });
 
-  it("clears the last alarm back to undefined", () => {
+  it("removes an alarm when its row is set to None", () => {
     const alerts = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
-    const { onChange } = renderPicker({ alerts });
+    const { onChange } = renderAlarms({ alerts });
 
-    const trigger = remindButton(alerts);
-    expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
-    expect(trigger.textContent).toContain("Reminding 30 mins before");
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
-
-    fireEvent.click(trigger);
     chooseOffset(alarmLabels.eventAlarmNone);
 
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
+  it("read-only shows the set alarms only, disabled", () => {
+    const alerts = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
+    renderAlarms({ alerts, disabled: true });
+
+    expect(alarmTriggers()).toHaveLength(1);
+    expect(alarmTriggers()[0]).toHaveProperty("disabled", true);
+  });
+
   it("shows leftover offsets as a disabled option without coercing them", () => {
     const alerts = taskAlertsFromList([offsetReminderAlert("-PT45M")]);
-    renderPicker({ alerts });
+    renderAlarms({ alerts });
 
-    fireEvent.click(remindButton(alerts));
-    fireEvent.click(screen.getAllByRole("combobox", { name: alarmLabels.eventAlarmOffset })[0]!);
+    fireEvent.click(alarmTriggers()[0]!);
 
     const foreign = screen.getByRole("option", { name: /45 minutes before/i });
     expect(foreign.hasAttribute("disabled") || foreign.getAttribute("data-disabled") !== null).toBe(
@@ -144,31 +133,32 @@ describe("TasksRemindIndicator", () => {
 
     expect(screen.queryByText("No reminders")).toBeNull();
     expect(screen.queryByRole("img", { name: /Reminding|No reminders/ })).toBeNull();
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 
-  it("shows the shared offset label next to the bell when one alarm is set", () => {
+  it("names the bell with the shared offset label when one alarm is set", () => {
     const alerts = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
-    expect(screen.getByText("Reminding 30 mins before")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind-row-chip")).toBeNull();
-    expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(screen.getByRole("img", { name: "Reminding 30 mins before" })).toBeTruthy();
+    expect(screen.queryByText("Reminding 30 mins before")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind--row")).toBeTruthy();
+    expect(document.querySelector(".tasks-field__remind-row-chip")).toBeNull();
+    expect(document.querySelector(".tasks-field__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows Remind me for a single absolute alarm", () => {
+  it("names the bell Remind me for a single absolute alarm", () => {
     const alerts = taskAlertsFromList([absoluteReminderAlert("2026-07-08T17:00:00")]);
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
-    expect(screen.getByText(defaultTasksLabels.remindMe)).toBeTruthy();
+    expect(screen.getByRole("img", { name: defaultTasksLabels.remindMe })).toBeTruthy();
     expect(screen.queryByText("No reminders")).toBeNull();
   });
 
-  it("shows the shared count label when more than one alarm is set", () => {
+  it("names the bell with the count for several alarms, but shows no number", () => {
     render(
       <TasksRemindIndicator
         labels={defaultTasksLabels}
@@ -179,8 +169,8 @@ describe("TasksRemindIndicator", () => {
       />,
     );
 
-    expect(screen.getByText("2 reminders")).toBeTruthy();
-    expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
+    expect(screen.getByRole("img", { name: "2 reminders" })).toBeTruthy();
+    expect(document.querySelector(".tasks-field__remind--row")?.textContent).toBe("");
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 });

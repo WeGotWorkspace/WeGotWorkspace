@@ -16,6 +16,11 @@ h4.sidebar-section__title {
   @apply truncate min-w-0;
 }
 
+/* In the app sidebar the label sits behind its rows: same size, quieter ink. */
+.app-sidebar .sidebar-section__heading {
+  --field-label-color: var(--workspace-label-color);
+}
+
 .sidebar-section__list {
   @apply space-y-1;
 }

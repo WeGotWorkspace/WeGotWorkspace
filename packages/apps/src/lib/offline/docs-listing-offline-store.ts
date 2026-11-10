@@ -33,12 +33,21 @@ function rowId(cacheKey: string, sourceKey: string): string {
   return `${cacheKey}::${sourceKey}`;
 }
 
+/**
+ * A cached row never carries `nodeId`: the file at that path may have been
+ * replaced since, and only a live response may vouch for an id.
+ */
+function withoutNodeId(result: WgwUnifiedSearchResult): WgwUnifiedSearchResult {
+  const { nodeId: _nodeId, ...rest } = result;
+  return rest;
+}
+
 function serializeResult(result: WgwUnifiedSearchResult): string {
-  return JSON.stringify(result);
+  return JSON.stringify(withoutNodeId(result));
 }
 
 function deserializeResult(payload: string): WgwUnifiedSearchResult {
-  return JSON.parse(payload) as WgwUnifiedSearchResult;
+  return withoutNodeId(JSON.parse(payload) as WgwUnifiedSearchResult);
 }
 
 export async function readDocsListingFromCache(

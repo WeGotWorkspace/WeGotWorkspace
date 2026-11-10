@@ -34,6 +34,7 @@ import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
 const session = docsHomeStorySession;
+const DOCS_HOME_SORT_STORAGE_KEY = "wgw.docs.listSort";
 const FIXTURES = DOCS_HOME_STORY_FIXTURES;
 const createPaginatedFetcher = createDocsHomePaginatedFetcher;
 const createMockHomeOperations = createMockDocsHomeOperations;
@@ -44,6 +45,14 @@ const meta: Meta<typeof DocsHomeWorkspace> = {
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
+  },
+  // Column sort is remembered per browser; start every story from the default order.
+  beforeEach: () => {
+    try {
+      localStorage.removeItem(DOCS_HOME_SORT_STORAGE_KEY);
+    } catch {
+      // Storage blocked: nothing remembered to clear.
+    }
   },
   args: {
     session,
@@ -69,7 +78,7 @@ export const Default: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByRole("button", { name: "New document" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "My Docs" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "All Docs" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Shared with me" })).toBeInTheDocument();
     await expect(canvas.getByText("My Drives")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Personal" })).toBeInTheDocument();
@@ -119,8 +128,9 @@ export const SharedWithMe: Story = {
 
     const cell = await canvas.findByText("Shared Notes.md");
     await userEvent.dblClick(cell);
+    // A share listing names no FileNode id: Docs opens the row by path (#1976).
     await waitFor(() =>
-      expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md"),
+      expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md", undefined),
     );
   },
 };
@@ -255,7 +265,54 @@ export const SelectVsOpen: Story = {
   },
 };
 
-/** The create button resolves a non-colliding name from the live My Drive listing. */
+/**
+ * Column headers sort the list (suite list norm). Docs opens newest first; a click on
+ * Name sorts A→Z, a second click Z→A.
+ */
+export const SortByColumn: Story = {
+  name: "Sort by column",
+  tags: ["vitest-ci"],
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Roadmap 2026");
+    const titles = () =>
+      Array.from(
+        canvasElement.querySelectorAll(
+          ".drive-list-row .drive-list-row__name .truncate.font-medium",
+        ),
+      ).map((cell) => cell.textContent?.trim() ?? "");
+    const byName = (a: string, b: string) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+
+    await expect(canvas.getByRole("columnheader", { name: /Last modified/ })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Name" }));
+    await waitFor(() =>
+      expect(canvas.getByRole("columnheader", { name: /Name/ })).toHaveAttribute(
+        "aria-sort",
+        "ascending",
+      ),
+    );
+    await expect(titles()).toEqual([...titles()].sort(byName));
+
+    await userEvent.click(canvas.getByRole("button", { name: "Name" }));
+    await waitFor(() =>
+      expect(canvas.getByRole("columnheader", { name: /Name/ })).toHaveAttribute(
+        "aria-sort",
+        "descending",
+      ),
+    );
+    await expect(titles()).toEqual([...titles()].sort((a, b) => byName(b, a)));
+  },
+};
+
+/** From All Docs the picker opens in Personal, ready to create; the name skips taken ones. */
 export const CreateUniqueName: Story = {
   name: "Create (unique name)",
   tags: ["vitest-ci"],
@@ -268,14 +325,14 @@ export const CreateUniqueName: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const createButton = await canvas.findByRole("button", { name: "New document" });
-    await userEvent.click(createButton);
+    await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
     const dialog = await body.findByRole("dialog", { name: "New document" });
     const dialogScope = within(dialog);
-    const personalRow = dialogScope.getByText("Personal").closest("tr");
-    await expect(personalRow).not.toHaveClass("destination-list-row--selected");
-    await expect(dialogScope.getByRole("button", { name: "Create" })).toBeDisabled();
-    await userEvent.click(personalRow!);
+    await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
+    // All Docs is a home, not a filter: no jump (the open dialog hides the page from the tree).
+    await expect(
+      canvas.getByRole("heading", { name: "All Docs", hidden: true }),
+    ).toBeInTheDocument();
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
@@ -283,9 +340,9 @@ export const CreateUniqueName: Story = {
   },
 };
 
-/** The New document picker lists drives with none selected until the user chooses one. */
+/** With a drive open in the sidebar, the picker opens in that drive. */
 export const CreateFromSelectedDrive: Story = {
-  name: "Create (chosen drive)",
+  name: "Create (open drive)",
   tags: ["vitest-ci"],
   args: {
     fetcher: createPaginatedFetcher(FIXTURES),
@@ -302,16 +359,38 @@ export const CreateFromSelectedDrive: Story = {
     await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
     const dialog = await body.findByRole("dialog", { name: "New document" });
     const dialogScope = within(dialog);
-
-    await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
-    const engineeringRow = dialogScope.getByText("engineering").closest("tr");
-    await expect(engineeringRow).not.toHaveClass("destination-list-row--selected");
-    await expect(dialog.querySelector(".destination-list-row--selected")).toBeNull();
-    await userEvent.click(engineeringRow!);
+    await expect(dialogScope.getByText("engineering")).toBeInTheDocument();
 
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/groups/engineering/Untitled 2.md"),
+    );
+  },
+};
+
+/** From Recent (or Shared with me, Starred, Trash) Docs opens Personal first. */
+export const CreateFromRecent: Story = {
+  name: "Create (from Recent)",
+  tags: ["vitest-ci"],
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+    operations: createMockHomeOperations([], ["Untitled.md"]),
+    onCreateDocument: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole("button", { name: "Recent" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
+    await expect(
+      await canvas.findByRole("heading", { name: "Personal", hidden: true }),
+    ).toBeInTheDocument();
+
+    const dialog = await body.findByRole("dialog", { name: "New document" });
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
     );
   },
 };

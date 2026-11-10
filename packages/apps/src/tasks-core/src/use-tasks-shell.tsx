@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { useDefaultCollectionId } from "@/lib/default-collection-prefs";
-import {
-  dismissSidebarOverlay,
-  isSidebarOverlayViewport,
-} from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import { useLeaveRemovedListView } from "@/tasks-core/src/use-leave-removed-list-view";
@@ -40,7 +38,8 @@ export function useTasksShell({
   const [tasks, setTasks] = useState<Task[]>(() => data.tasks);
   const [taskLists, setTaskLists] = useState(() => data.taskLists);
   const [view, setView] = useState<string>(() => initialView ?? DEFAULT_TASKS_VIEW);
-  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
+  // The two-pane layout owns the sidebar and the phone detail; views close them.
+  const workspaceLayoutRef = useRef<WorkspaceAppHandle>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const { hiddenTaskListIds, setHiddenTaskListIds } = useTasksHiddenIds(taskLists);
 
@@ -142,7 +141,8 @@ export function useTasksShell({
       const normalized = normalizeTasksView(nextView, taskLists);
       pendingViewRef.current = normalized;
       setView(normalized);
-      dismissSidebarOverlay(() => setSidebarOpen(false));
+      workspaceLayoutRef.current?.closeMobileDetail();
+      dismissSidebarOverlay(() => workspaceLayoutRef.current?.closeSidebar());
     },
     [taskLists],
   );
@@ -181,8 +181,7 @@ export function useTasksShell({
     setTaskLists,
     view,
     viewLabel,
-    sidebarOpen,
-    setSidebarOpen,
+    workspaceLayoutRef,
     visibleTasks,
     showCompletedTasks,
     showCompletedToggle,

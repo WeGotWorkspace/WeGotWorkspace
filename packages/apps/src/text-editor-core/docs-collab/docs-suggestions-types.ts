@@ -25,6 +25,12 @@ export type DocsSuggestionWithThread = DocsTrackChangeGroup &
     reactions?: DocsCommentReaction[];
     /** True when the suggestion journal is archived (accept/reject / orphan prune). */
     archived?: boolean;
+    /**
+     * False while the suggestion has no thread root yet. Only the suggesting
+     * session creates the root, so it (and the card's author) is that person:
+     * replies and reactions wait for it. Absent means it has one.
+     */
+    hasThread?: boolean;
   };
 
 export const DOCS_SUGGESTION_THREADS_MAP_KEY = "suggestionThreads";

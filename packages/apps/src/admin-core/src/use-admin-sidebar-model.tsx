@@ -21,7 +21,7 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
   return [
     {
       id: "users",
-      label: "Users & Groups",
+      label: "Users & Teams",
       description: "Directory principals and memberships",
       icon: <Users className="size-3.5" />,
     },

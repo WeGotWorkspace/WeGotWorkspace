@@ -104,8 +104,8 @@ export function useDriveGridPreviews({
     }
     const map = new Map<string, DriveFile>();
     for (const file of items) {
-      // Grid only renders media thumbnails; text/markdown body previews are detail-only.
-      if (isMediaPreviewable(file)) {
+      // Grid avatars show image thumbnails only; video and text previews are detail-only.
+      if (file.kind === "image" && isMediaPreviewable(file)) {
         map.set(file.id, file);
       }
     }

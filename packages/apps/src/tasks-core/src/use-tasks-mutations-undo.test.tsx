@@ -90,23 +90,25 @@ describe("useTasksMutations undo as a compensating write", () => {
     const { result } = renderTasks(operations);
 
     act(() => result.current.toggleTaskComplete(OPEN_TASK.id));
-
+    // Sent on the task's save chain (a microtask later), after any typed text.
+    await act(async () => undefined);
     expect(operations.patchTask).toHaveBeenCalledWith(
       OPEN_TASK.id,
       { workflowStatus: "completed" },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    await act(async () => undefined);
 
     pressUndo();
 
     await vi.waitFor(() => {
       expect(operations.patchTask).toHaveBeenCalledTimes(2);
     });
-    // Only the status, and no If-Match from before the write: the cached version is used.
-    expect(operations.patchTask).toHaveBeenLastCalledWith(OPEN_TASK.id, {
-      workflowStatus: "needs-action",
-    });
+    // Only the status, against the version the complete produced (not the one before it).
+    expect(operations.patchTask).toHaveBeenLastCalledWith(
+      OPEN_TASK.id,
+      { workflowStatus: "needs-action" },
+      expect.objectContaining({ ifMatch: expect.stringMatching(/^"server-/) }),
+    );
   });
 
   it("waits for a complete still on its way before sending the undo", async () => {
@@ -134,9 +136,11 @@ describe("useTasksMutations undo as a compensating write", () => {
     await vi.waitFor(() => {
       expect(operations.patchTask).toHaveBeenCalledTimes(2);
     });
-    expect(operations.patchTask).toHaveBeenLastCalledWith(OPEN_TASK.id, {
-      workflowStatus: "needs-action",
-    });
+    expect(operations.patchTask).toHaveBeenLastCalledWith(
+      OPEN_TASK.id,
+      { workflowStatus: "needs-action" },
+      expect.objectContaining({ ifMatch: expect.stringMatching(/^"server-/) }),
+    );
   });
 
   it("moves tasks at once and moves each one back to its own list on undo", async () => {
@@ -199,5 +203,51 @@ describe("useTasksMutations undo as a compensating write", () => {
       OPEN_TASK.id,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+});
+
+describe("useTasksMutations selection complete", () => {
+  const click = (keys: { metaKey?: boolean } = {}) =>
+    ({ metaKey: false, ctrlKey: false, shiftKey: false, ...keys }) as unknown as React.MouseEvent;
+
+  it("sends the old status back for the tasks that landed when a later one fails", async () => {
+    const operations = createOperations();
+    const { result } = renderTasks(operations);
+    const [first, second, third] = result.current.listTasks
+      .filter((task) => task.workflowStatus !== "completed")
+      .map((task) => task.id);
+    const before = new Map(
+      result.current.listTasks.map((task) => [task.id, task.workflowStatus ?? "needs-action"]),
+    );
+    act(() => result.current.handleSelect(first!, click()));
+    act(() => result.current.handleSelect(second!, click({ metaKey: true })));
+    act(() => result.current.handleSelect(third!, click({ metaKey: true })));
+
+    // The first complete lands, the second fails: the batch must not stay half done.
+    operations.patchTask
+      .mockImplementationOnce(async (taskId: string, patch: TaskPatch) => serverTask(taskId, patch))
+      .mockImplementationOnce(async () => {
+        throw new Error("412");
+      });
+    act(() => result.current.selectionBarButtons[0]!.onClick());
+
+    await vi.waitFor(() => {
+      expect(operations.patchTask).toHaveBeenCalledWith(
+        first,
+        { workflowStatus: before.get(first!) },
+        expect.anything(),
+      );
+    });
+    // The third was never sent, the second never landed: only the first goes back.
+    const sent = operations.patchTask.mock.calls.map(([id, patch]) => [id, patch.workflowStatus]);
+    expect(sent).toEqual([
+      [first, "completed"],
+      [second, "completed"],
+      [first, before.get(first!)],
+    ]);
+    const status = (id: string) =>
+      result.current.displayTasks.find((task) => task.id === id)?.workflowStatus;
+    expect(status(first!)).toBe(before.get(first!));
+    expect(status(second!)).toBe(before.get(second!));
   });
 });

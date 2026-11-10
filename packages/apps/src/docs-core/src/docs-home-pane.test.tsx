@@ -311,10 +311,13 @@ describe("DocsHomePane multi-select batch bar", () => {
     expect(screen.queryByText("2 Items")).toBeNull();
   });
 
-  it("shows checkboxes in list view after context menu enters selection mode", () => {
+  it("marks the row selected, without checkboxes, after context menu enters selection mode", () => {
     const { container } = renderPane("list", [FILE, FILE2]);
-    fireEvent.contextMenu(screen.getByText(FILE.title).closest("tr")!);
-    expect(container.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+    const row = screen.getByText(FILE.title).closest("tr")!;
+    fireEvent.contextMenu(row);
+    expect(row.getAttribute("data-selection-mode")).toBe("true");
+    expect(row.classList.contains("drive-list-row--selected")).toBe(true);
+    expect(container.querySelector(".selection-mark")).toBeNull();
   });
 });
 

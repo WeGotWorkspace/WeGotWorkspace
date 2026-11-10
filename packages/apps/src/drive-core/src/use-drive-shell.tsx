@@ -13,10 +13,12 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
+import { useDriveAllFiles } from "@/drive-core/src/use-drive-all-files";
 import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
+  driveGroupUiPath,
 } from "@/lib/files/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
@@ -30,16 +32,10 @@ import type {
   DriveAPIOperations,
   DriveShareOperations,
   DriveUIData,
-  DriveUnifiedSearchResult,
 } from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
-import {
-  apiPathFromSearchSourceKey,
-  driveFileFromSearchResult,
-  parentVirtualPath,
-} from "@/drive-core/src/drive-search-utils";
 
 export type UseDriveShellArgs = {
   data: DriveUIData;
@@ -49,14 +45,6 @@ export type UseDriveShellArgs = {
   listLoading?: boolean;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
-};
-
-export type DriveShellOpenFileHandler = (file: DriveFile) => void;
-
-export type DriveShellSelectionHandlers = {
-  setActiveId: (id: string | null) => void;
-  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
-  setDetailOpen: (open: boolean) => void;
 };
 
 export function useDriveShell({
@@ -74,7 +62,7 @@ export function useDriveShell({
     if (!operations) return DRIVE_MOCK_FILES;
     return mapDriveListingEntries(data, currentUsername);
   });
-  const [internalView, setInternalView] = useState<ViewKey>({ type: "folder", path: "My Drive" });
+  const [internalView, setInternalView] = useState<ViewKey>({ type: "all" });
   const isViewControlled = onViewChange !== undefined;
   const view = controlledView ?? internalView;
   const commitView = useCallback(
@@ -165,13 +153,13 @@ export function useDriveShell({
   const groupRootNamesRef = useRef(groupRootNames);
   groupRootNamesRef.current = groupRootNames;
   const sidebarGroupPaths = useMemo(
-    () => labeledGroupRoots.map((root) => `Groups/${root.slug}`),
+    () => labeledGroupRoots.map((root) => driveGroupUiPath(root.slug)),
     [labeledGroupRoots],
   );
   const sidebarGroupRoots = useMemo(
     () =>
       labeledGroupRoots.map((root) => ({
-        path: `Groups/${root.slug}`,
+        path: driveGroupUiPath(root.slug),
         label: root.label,
       })),
     [labeledGroupRoots],
@@ -323,6 +311,14 @@ export function useDriveShell({
     };
   }, [shareOperations, view.type, currentUsername, showError]);
 
+  const allFiles = useDriveAllFiles({
+    operations,
+    view,
+    currentUsername,
+    rootLabels: folderPickerRootLabels,
+    showError,
+  });
+
   const inTrashView = view.type === "folder" && view.path === DRIVE_TRASH_UI_PATH;
   const isUnderTrash = isDriveUnderTrash;
 
@@ -345,51 +341,6 @@ export function useDriveShell({
         ? `access:${view.scopePath ?? ""}`
         : view.type;
 
-  const createUnifiedSearchSelectHandler = useCallback(
-    (openFile: DriveShellOpenFileHandler, selection: DriveShellSelectionHandlers) =>
-      (result: DriveUnifiedSearchResult) => {
-        void (async () => {
-          try {
-            if (result.sourceType === "caldav" || result.sourceType === "carddav") {
-              await operations?.downloadUnifiedSearchRecord?.({
-                resultId: result.id,
-                sourceType: result.sourceType,
-                sourceKey: result.sourceKey,
-              });
-              return;
-            }
-            if (result.sourceType === "note") {
-              window.open("/notes", "_blank", "noopener,noreferrer");
-              return;
-            }
-            if (result.sourceType !== "file") return;
-            const apiPath = apiPathFromSearchSourceKey(result.sourceKey);
-            if (!apiPath) return;
-            const uiPath = uiPathFromApiPath(apiPath, currentUsername);
-            if (result.category === "folder") {
-              setSearchQuery("");
-              selectView({ type: "folder", path: uiPath });
-              return;
-            }
-            const file = driveFileFromSearchResult(result, uiPath, apiPath, currentUsername);
-            if (result.category === "image") {
-              selection.setActiveId(file.id);
-              selection.setSelectedIds([file.id]);
-              selection.setDetailOpen(true);
-              return;
-            }
-            openFile(file);
-          } catch {
-            const apiPath = apiPathFromSearchSourceKey(result.sourceKey);
-            if (!apiPath) return;
-            const uiPath = uiPathFromApiPath(apiPath, currentUsername);
-            selectView({ type: "folder", path: parentVirtualPath(uiPath) });
-          }
-        })();
-      },
-    [currentUsername, operations, selectView],
-  );
-
   return {
     labels: driveLabels,
     currentUsername,
@@ -409,6 +360,7 @@ export function useDriveShell({
     setStarred,
     starredItems,
     sharedItems,
+    ...allFiles,
     knownGroupRoots,
     groupRootNames,
     sidebarGroupPaths,
@@ -426,7 +378,6 @@ export function useDriveShell({
     operations,
     data,
     reloadStarredFromServer,
-    createUnifiedSearchSelectHandler,
   };
 }
 

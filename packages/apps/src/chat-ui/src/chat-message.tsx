@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
+import { MessageSquare, MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { type UserAvatarPresence } from "@/lib/models/user-presence";
 import { ChatLinkPreview } from "@/chat-ui/src/chat-link-preview";
-import { ChatReactionBar, CHAT_REACTION_EMOJIS } from "@/chat-ui/src/chat-reaction-bar";
+import { ChatReactionBar } from "@/chat-ui/src/chat-reaction-bar";
+import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import {
   chatMessageCanOpenThread,
@@ -14,9 +15,8 @@ import {
 } from "@/chat-ui/src/chat-thread-actions";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
-import { formatChatTime } from "@/chat-ui/src/chat-message-group";
+import { formatChatTime, formatChatTimeShort } from "@/chat-ui/src/chat-message-group";
 import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
-import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";
 import "@/chat-ui/src/chat-ui.css";
@@ -37,7 +37,7 @@ export type ChatMessageProps = {
   editing?: boolean;
   actions?: ChatMessageAction[];
   onToggleReaction?: (emoji: string) => void;
-  /** Opens the thread when the under-body “N replies” link is used. */
+  /** Opens the thread from the replies chip under the body. */
   onOpenThread?: () => void;
   /** False inside ThreadPanel — one level only (main → thread). */
   allowThread?: boolean;
@@ -95,50 +95,34 @@ export function ChatMessage({
   const showReactions = !deleted && message.reactions.length > 0 && onToggleReaction;
   const replyCount = message.replyCount ?? 0;
   const threadAllowed = allowThread && chatMessageCanOpenThread(message);
+  const showReplies = !deleted && !editing && threadAllowed && replyCount > 0;
   const resolvedActions = threadAllowed ? actions : omitChatNestedThreadActions(actions);
   const openThread = threadAllowed
     ? (onOpenThread ?? resolvedActions?.find((action) => action.id === "reply")?.onClick)
     : undefined;
   const hoverActions =
     resolvedActions && resolvedActions.length > 0 && !deleted && !editing ? (
-      <div className="chat-message__actions overlay-paper">
+      <div className="chat-message__actions">
         {resolvedActions.map((action) => {
           const Icon = ACTION_ICONS[action.id];
           const label = action.label ?? ACTION_LABELS[action.id];
           if (action.id === "react" && onToggleReaction) {
             return (
-              <Popover
+              <ReactionPicker
                 key={action.id}
                 open={reactionPickerOpen}
                 onOpenChange={setReactionPickerOpen}
-              >
-                <PopoverTrigger asChild>
-                  <IconButton label={label} icon={<Icon />} size="sm" variant="ghost" />
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  side="bottom"
-                  sideOffset={0}
-                  avoidCollisions={!showReactions}
-                  className="chat-reaction-bar__picker"
-                >
-                  <div className="chat-reaction-bar__picker-grid">
-                    {CHAT_REACTION_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className="chat-reaction-bar__picker-item"
-                        onClick={() => {
-                          onToggleReaction(emoji);
-                          setReactionPickerOpen(false);
-                        }}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                side="bottom"
+                align="end"
+                trigger={<IconButton label={label} icon={<Icon />} size="lg" variant="outline" />}
+                isPicked={(emoji) =>
+                  message.reactions?.some(
+                    (reaction) =>
+                      reaction.emoji === emoji && reaction.authors.includes(currentUserId),
+                  ) ?? false
+                }
+                onPick={onToggleReaction}
+              />
             );
           }
           return (
@@ -146,8 +130,8 @@ export function ChatMessage({
               key={action.id}
               label={label}
               icon={<Icon />}
-              size="sm"
-              variant="ghost"
+              size="lg"
+              variant="outline"
               onClick={action.onClick}
             />
           );
@@ -171,7 +155,7 @@ export function ChatMessage({
           compact
           size="md"
           presence={presence}
-          color={avatarColorForUserId(message.authorId)}
+          variant="tint"
           className="chat-message__avatar"
         />
       ) : (
@@ -193,7 +177,7 @@ export function ChatMessage({
           </header>
         ) : (
           <time className="chat-message__time" dateTime={new Date(message.createdAt).toISOString()}>
-            {formatChatTime(message.createdAt)}
+            {formatChatTimeShort(message.createdAt)}
           </time>
         )}
         {deleted ? (
@@ -203,18 +187,8 @@ export function ChatMessage({
         ) : (
           <div className="chat-message__body">
             <ChatMarkdownBody content={message.body} mentions={message.mentions} />
-            {showReactions ? null : hoverActions}
           </div>
         )}
-        {!deleted && !editing && threadAllowed && replyCount > 0 ? (
-          openThread ? (
-            <button type="button" className="chat-message__replies" onClick={openThread}>
-              {chatThreadReplyCountLabel(replyCount)}
-            </button>
-          ) : (
-            <span className="chat-message__replies">{chatThreadReplyCountLabel(replyCount)}</span>
-          )
-        ) : null}
         {!deleted && !editing && message.previews.length > 0 ? (
           <div className="chat-message__previews">
             {message.previews.map((preview) => (
@@ -222,18 +196,33 @@ export function ChatMessage({
             ))}
           </div>
         ) : null}
-        {showReactions && onToggleReaction ? (
-          <div className="chat-message__reactions-wrap">
-            <ChatReactionBar
-              className="chat-message__reactions"
-              reactions={message.reactions}
-              currentUserId={currentUserId}
-              onToggleReaction={onToggleReaction}
-            />
-            {hoverActions}
+        {showReactions || showReplies ? (
+          <div className="chat-message__footer">
+            {showReactions && onToggleReaction ? (
+              <ChatReactionBar
+                className="chat-message__reactions"
+                reactions={message.reactions}
+                currentUserId={currentUserId}
+                onToggleReaction={onToggleReaction}
+              />
+            ) : null}
+            {showReplies ? (
+              <button
+                type="button"
+                className="chat-reaction-bar__reaction chat-message__replies"
+                disabled={!openThread}
+                onClick={openThread}
+              >
+                <MessageSquare className="chat-reaction-bar__reaction-add-icon" aria-hidden />
+                <span className="chat-reaction-bar__reaction-count">
+                  {chatThreadReplyCountLabel(replyCount)}
+                </span>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
+      {hoverActions}
     </article>
   );
 }

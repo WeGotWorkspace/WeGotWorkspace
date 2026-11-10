@@ -1,12 +1,11 @@
 import { useMemo, useRef } from "react";
 import { Cloud, CloudAlert, Download } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { DriveListLoadMore } from "@/drive-core/src/drive-list-load-more";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
-import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { startDriveItemDownload } from "@/drive-core/src/drive-item-download";
@@ -69,9 +68,10 @@ export function DriveMainPane({
     handleUploadDrop,
     uploadEnabled,
     structureEnabled,
-    breadcrumbs,
     selectView,
     visibleItems,
+    listSort,
+    toggleListSort,
     viewMode,
     filePreviews,
     richPreviews,
@@ -99,6 +99,10 @@ export function DriveMainPane({
     folderListingError,
     retryFolderListing,
     listLoading,
+    allLoading,
+    allHasMore,
+    allLoadingMore,
+    loadMoreAll,
   } = controller;
 
   const showFolderListingBusy =
@@ -175,6 +179,8 @@ export function DriveMainPane({
 
   const sharedBrowserProps = {
     items: visibleItems,
+    sort: listSort,
+    onSort: toggleListSort,
     selectedIds,
     starred,
     labels,
@@ -259,16 +265,6 @@ export function DriveMainPane({
         </FileDropOverlay>
       ) : null}
 
-      {searchQuery.trim() ? null : (
-        <PathBreadcrumb
-          className="drive-main-pane__breadcrumbs"
-          leadingIcon={<DriveViewIcon view={view} className="size-[1.125rem]" />}
-          items={breadcrumbs}
-          currentPath={view.type === "folder" ? view.path : undefined}
-          onNavigate={(path) => selectView({ type: "folder", path })}
-        />
-      )}
-
       <div className="drive-main-pane__body">
         <div ref={scrollRef} className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
@@ -285,6 +281,8 @@ export function DriveMainPane({
                 {labels.folderListingRetry}
               </Button>
             </CollectionState>
+          ) : allLoading && !searchQuery.trim() ? (
+            <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
           ) : view.type === "uploads" ? (
             <DriveUploadsPane
               files={visibleItems}
@@ -293,12 +291,22 @@ export function DriveMainPane({
             />
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
-              {labels.emptyFolder}
+              {view.type === "all" ? labels.allFilesEmpty : labels.emptyFolder}
             </CollectionState>
-          ) : viewMode === "grid" ? (
-            <DriveGridView {...gridBrowserProps} />
           ) : (
-            <DriveListView {...sharedBrowserProps} activeId={activeId} />
+            <>
+              {viewMode === "grid" ? (
+                <DriveGridView {...gridBrowserProps} />
+              ) : (
+                <DriveListView {...sharedBrowserProps} activeId={activeId} />
+              )}
+              <DriveListLoadMore
+                hasMore={allHasMore && !searchQuery.trim()}
+                loadingMore={allLoadingMore}
+                onLoadMore={loadMoreAll}
+                loadingLabel={labels.listLoadingMore}
+              />
+            </>
           )}
         </div>
       </div>

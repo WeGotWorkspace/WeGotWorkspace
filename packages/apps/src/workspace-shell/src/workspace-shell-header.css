@@ -2,11 +2,12 @@
 
 .workspace-shell-header {
   /*
-   * Same chrome rhythm as `.app-sidebar__header` (`py-4 md:py-6` +
+   * Same chrome rhythm as `.app-sidebar__header` (`--workspace-header-padding-y` +
    * `--app-sidebar-padding-x`) so brand / app-switch lockups share corner inset
    * across cream shells and product sidebars.
    */
-  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
+  @apply flex shrink-0 items-start justify-between gap-3;
+  padding-block: var(--workspace-header-padding-y);
   padding-inline: var(--app-sidebar-padding-x, 1rem);
   --app-sidebar-padding-x: 1rem;
 }
@@ -62,7 +63,6 @@
 .workspace-shell-header__user-menu-content {
   @apply min-w-48 p-1.5;
   user-select: none;
-  border-color: color-mix(in oklab, currentColor 25%, transparent);
 }
 
 .workspace-shell-header__spacer {

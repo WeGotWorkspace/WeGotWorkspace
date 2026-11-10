@@ -8,7 +8,7 @@ describe("useDriveSidebarModel", () => {
   const sidebarDropZoneProps = () => ({});
   const commitMoveToFolder = vi.fn();
 
-  it("mirrors Docs primary order with My Files home and My Drives + Personal", () => {
+  it("mirrors Docs primary order with All Files home and My Drives + Personal", () => {
     const selectView = vi.fn();
     const { result, rerender } = renderHook(
       ({ view }: { view: ViewKey }) =>
@@ -24,13 +24,14 @@ describe("useDriveSidebarModel", () => {
     );
 
     expect(result.current.primarySidebarItems.map((item) => item.label)).toEqual([
-      "My Files",
+      "All Files",
       "Shared with me",
       "Recent",
       "Starred",
       "Trash",
     ]);
-    expect(result.current.primarySidebarItems[0]?.selected).toBe(true);
+    // Personal is its own drive; All Files is the cross-drive home.
+    expect(result.current.primarySidebarItems[0]?.selected).toBe(false);
 
     expect(result.current.groupSidebarItems.map((item) => item.label)).toEqual([
       "Personal",
@@ -40,6 +41,10 @@ describe("useDriveSidebarModel", () => {
 
     result.current.primarySidebarItems[1]?.onClick?.();
     expect(selectView).toHaveBeenCalledWith({ type: "shared" });
+
+    rerender({ view: { type: "all" } });
+    expect(result.current.primarySidebarItems[0]?.selected).toBe(true);
+    expect(result.current.groupSidebarItems[0]?.selected).toBe(false);
 
     rerender({ view: { type: "shared" } });
     expect(result.current.primarySidebarItems[0]?.selected).toBe(false);
@@ -68,7 +73,7 @@ describe("useDriveSidebarModel", () => {
 
     rerender({ view: { type: "folder", path: "My Drive" }, uploads: { count: 3, failed: 1 } });
     expect(labels()).toEqual([
-      "My Files",
+      "All Files",
       "Shared with me",
       "Recent",
       "Starred",

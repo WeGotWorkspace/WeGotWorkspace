@@ -187,6 +187,7 @@ export const unknownAuthorSuggestion: DocsSuggestionWithThread = {
   ...deleteSuggestion,
   changeId: "change-delete-legacy-1",
   ...UNKNOWN_SUGGESTION_AUTHOR,
+  hasThread: false,
   timestamp: "",
   parts: deleteSuggestion.parts.map((part) => ({
     ...part,

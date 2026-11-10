@@ -27,6 +27,7 @@
     "schemas": {
       "Error": {
         "type": "object",
+        "description": "API error body (.agents/skills/api/rest-design.md#errors). Most routes put a sentence in `error` and the machine code in `code`; the realtime routes put the machine code in both `error` and `code` and an optional sentence in `message`.",
         "required": [
           "error"
         ],
@@ -35,7 +36,12 @@
             "type": "string"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "Stable machine code. Clients classify on the HTTP status and this field."
+          },
+          "message": {
+            "type": "string",
+            "description": "Realtime routes only: a sentence for a person."
           }
         }
       },
@@ -4768,7 +4774,7 @@
           "Files"
         ],
         "summary": "Create share",
-        "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.",
+        "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged.",
         "security": [
           {
             "bearerAuth": []
@@ -5019,7 +5025,7 @@
           "Files"
         ],
         "summary": "Update share",
-        "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown group.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.",
+        "description": "A member grant to a user who shares no Team with the caller is refused with 400 `Unknown user.` (also for a name that does not exist), and one to a Team the caller is not in with 400 `Unknown team.`, admins included. Email invites and revoking a grant by name (`null`) are unchanged. A patch leaves hidden grants (grantees who no longer share a Team with the owner) as they are; deleting the share ends them too.",
         "security": [
           {
             "bearerAuth": []

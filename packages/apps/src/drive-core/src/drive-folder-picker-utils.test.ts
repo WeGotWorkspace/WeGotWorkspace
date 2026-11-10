@@ -4,6 +4,7 @@ import {
   browsePathForDrivePickerFile,
   canPickDriveFolderDestination,
   createDrivePickerRootFile,
+  driveCreateJumpsToPersonal,
   drivePickerRootFileId,
   isDriveFileSelectListingEntry,
   isDrivePickerRootFile,
@@ -125,5 +126,21 @@ describe("browsePathForDrivePickerFile", () => {
         size: "",
       }),
     ).toBe("My Drive/Studio Assets");
+  });
+});
+
+describe("driveCreateJumpsToPersonal", () => {
+  it("opens Personal first from lists that are not places", () => {
+    for (const type of ["recent", "shared", "starred", "uploads"] as const) {
+      expect(driveCreateJumpsToPersonal({ type })).toBe(true);
+    }
+    expect(driveCreateJumpsToPersonal({ type: "folder", path: "Trash" })).toBe(true);
+    expect(driveCreateJumpsToPersonal({ type: "folder", path: "Trash/old" })).toBe(true);
+  });
+
+  it("stays in All Files and in real folders", () => {
+    expect(driveCreateJumpsToPersonal({ type: "all" })).toBe(false);
+    expect(driveCreateJumpsToPersonal({ type: "folder", path: "My Drive/Plans" })).toBe(false);
+    expect(driveCreateJumpsToPersonal({ type: "folder", path: "Groups/team" })).toBe(false);
   });
 });

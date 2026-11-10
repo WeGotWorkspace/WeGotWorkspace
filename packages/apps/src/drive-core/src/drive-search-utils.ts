@@ -56,6 +56,10 @@ export function driveFileFromSearchResult(
     id: `search:${result.sourceType}:${result.sourceKey}`,
     category: result.category ?? "File",
     date,
+    ...(typeof result.modifiedAt === "number" && result.modifiedAt > 0
+      ? { modifiedMs: result.modifiedAt * 1000 }
+      : {}),
+    ...(kind === "folder" ? {} : { sizeBytes: Math.max(0, result.size) }),
     title,
     excerpt: result.snippet ?? "",
     body: [],
@@ -66,6 +70,7 @@ export function driveFileFromSearchResult(
     kind,
     size: result.size > 0 ? formatBytesCompact(result.size) : "—",
     apiPath: apiPath || undefined,
+    ...(result.nodeId ? { nodeId: result.nodeId } : {}),
     location: driveLocationLabel(result.sourceKey, viewerUsername) ?? undefined,
     ...driveShareFlagsFromListing({
       hasShares: result.metadata?.hasShares === true,

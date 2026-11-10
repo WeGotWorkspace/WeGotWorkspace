@@ -37,7 +37,17 @@ export function groupChatMessages(
 }
 
 export function formatChatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/** The time without AM/PM: it fits the avatar column beside a follow-up message. */
+export function formatChatTimeShort(timestamp: number): string {
+  return new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" })
+    .formatToParts(new Date(timestamp))
+    .filter((part) => part.type !== "dayPeriod")
+    .map((part) => part.value)
+    .join("")
+    .trim();
 }
 
 function startOfLocalDay(timestamp: number): number {

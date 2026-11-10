@@ -1,16 +1,15 @@
-import { Folder, HardDrive, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import { DriveShareIndicators } from "@/drive-core/src/drive-browser-indicators";
+import { DriveShareIndicators, DriveTileMeta } from "@/drive-core/src/drive-browser-indicators";
+import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
 import {
-  DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
 import { useLongPress } from "@/drive-core/src/use-drive-long-press";
-import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { cn } from "@/lib/utils";
 
@@ -96,11 +95,6 @@ export function DriveFolderTile({
         !isSelected && !folderDropZone.isDropTarget && "drive-folder-tile--idle",
       )}
     >
-      <DriveSelectionCheckbox
-        isSelected={isSelected}
-        selectionMode={selectionMode}
-        className="drive-folder-tile__checkbox"
-      />
       <button
         type="button"
         aria-label={file.title}
@@ -114,17 +108,16 @@ export function DriveFolderTile({
         onTouchEnd={pickerChrome ? undefined : lp.cancel}
         onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      {isDrivePickerRootFile(file) ? (
-        <HardDrive className="drive-folder-tile__icon size-5 shrink-0" />
-      ) : (
-        <Folder className="drive-folder-tile__icon size-5 shrink-0" />
-      )}
+      <DriveFileAvatar file={file} />
       <span className="drive-folder-tile__text">
-        <span className="drive-folder-tile__title">{file.title}</span>
+        <span className="drive-folder-tile__title-row">
+          <span className="drive-folder-tile__title">{file.title}</span>
+          {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
+          <DriveShareIndicators file={file} labels={labels} />
+        </span>
         <DriveUploadStatus file={file} />
+        <DriveTileMeta file={file} />
       </span>
-      {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
-      <DriveShareIndicators file={file} labels={labels} />
       {pickerChrome ? null : (
         <DriveFileItemActions
           labels={labels}

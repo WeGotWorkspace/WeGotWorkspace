@@ -9,7 +9,7 @@ export type SettingsMembershipsPaneProps = {
 
 export function SettingsMembershipsPane({ groups }: SettingsMembershipsPaneProps) {
   return (
-    <Card title="Groups">
+    <Card title="Your teams">
       {groups.length === 0 ? (
         <p className="settings-memberships-pane__empty">{noTeamYetCopy}</p>
       ) : (

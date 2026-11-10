@@ -93,4 +93,31 @@ describe("ContactsSidebarGroupRows", () => {
     const row = screen.getByText("Friends").closest(".collection-sidebar-row");
     expect(row?.className).not.toMatch(/collection-sidebar-row--nested/);
   });
+
+  it("marks the open group as selected", () => {
+    const colleagues = {
+      ...friendsGroup,
+      id: "group-colleagues",
+      name: { full: "Colleagues" },
+    } as unknown as ContactCard;
+    render(
+      <TooltipProvider delayDuration={0}>
+        <ContactsSidebarGroupRows
+          groups={[friendsGroup, colleagues]}
+          view="group:group-colleagues"
+          editLabel="Rename group"
+          canEditGroup={() => false}
+          onSelect={vi.fn()}
+          onEdit={vi.fn()}
+          dropZoneProps={() => ({ isDropTarget: false })}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByText("Colleagues").closest(".collection-sidebar-row")?.className).toMatch(
+      /collection-sidebar-row--selected/,
+    );
+    expect(screen.getByText("Friends").closest(".collection-sidebar-row")?.className).not.toMatch(
+      /collection-sidebar-row--selected/,
+    );
+  });
 });

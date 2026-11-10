@@ -18,17 +18,6 @@
  */
 :where(.admin-workspace, .settings-workspace, .notes-workspace) {
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: var(--border);
-  --workspace-user-footer-text-color: color-mix(
-    in oklab,
-    var(--workspace-foreground) 80%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklab,
-    var(--workspace-foreground) 18%,
-    transparent
-  );
 
   --workspace-main-content-max-width: 42rem;
 }

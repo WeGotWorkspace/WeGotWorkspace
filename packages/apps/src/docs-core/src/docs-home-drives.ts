@@ -21,6 +21,7 @@ import {
   resolveDriveRootDisplayLabel,
   type DriveGroupRoot,
 } from "@/drive-core/src/drive-group-roots";
+import { driveGroupUiPath } from "@/lib/files/drive-path-utils";
 
 const NEW_DOCUMENT_BASE = "Untitled";
 
@@ -102,6 +103,12 @@ export function buildDocsFolderPickerRootLabels(
   return buildDriveFolderPickerRootLabels(groupRoots, personalDriveLabel);
 }
 
+/** Sidebar path prefix of the viewer's personal drive (`users/{handle}`). */
+export function docsPersonalDrivePathPrefix(username: string): string | null {
+  const handle = username.trim();
+  return handle ? `users/${handle}` : null;
+}
+
 /**
  * Build the My Drives list: personal drive (when the user is known) followed by
  * each discovered shared (group) drive. Labels come from {@link resolveDocsDriveLabel}.
@@ -112,9 +119,8 @@ export function buildDocsHomeDrives(
   myDriveLabel: string,
 ): DocsHomeDrive[] {
   const drives: DocsHomeDrive[] = [];
-  const handle = username.trim();
-  if (handle) {
-    const pathPrefix = `users/${handle}`;
+  const pathPrefix = docsPersonalDrivePathPrefix(username);
+  if (pathPrefix) {
     drives.push({
       key: pathPrefix,
       label: resolveDocsDriveLabel(pathPrefix, {
@@ -143,7 +149,7 @@ export function resolveDocsHomeCreateDialogBrowsePath(selectedDrivePrefix: strin
     // Only the group root — Docs sidebar scopes by drive, not nested folders.
     const slug = selectedDrivePrefix.slice("groups/".length).split("/").filter(Boolean)[0];
     // Drive UI path root remains "My Drive" / "Groups/…" for apiPathFromUiPath.
-    return slug ? `Groups/${slug}` : DOCS_DRIVE_UI_PERSONAL_PATH;
+    return slug ? driveGroupUiPath(slug) : DOCS_DRIVE_UI_PERSONAL_PATH;
   }
   // users/…, empty, or unknown → personal Drive UI path key (display: Personal).
   return DOCS_DRIVE_UI_PERSONAL_PATH;

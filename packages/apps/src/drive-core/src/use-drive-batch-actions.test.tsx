@@ -28,6 +28,7 @@ const NOTES_ID = "notes";
 
 const queueMutation = vi.fn();
 const reloadStarredFromServer = vi.fn();
+const reloadAllFiles = vi.fn();
 
 function listedFile(path: string, name = path.split("/").pop() ?? path) {
   return {
@@ -120,6 +121,8 @@ function renderActions(options?: {
   /** Rows a view lists outside the open folder, like Shared with me. */
   otherRows?: DriveFile[];
   liveQueue?: boolean;
+  /** All Files rows: listed apart from the open folder. */
+  allRows?: DriveFile[];
 }) {
   const viewType = options?.viewType ?? "folder";
   const view: ViewKey =
@@ -134,6 +137,7 @@ function renderActions(options?: {
     const [activeId, setActiveId] = useState<string | null>(initialSelected[0] ?? null);
     const [, setDetailOpen] = useState(true);
     const [starred, setStarred] = useState(options?.starred ?? {});
+    const [allRows, setAllRows] = useState<DriveFile[] | null>(options?.allRows ?? null);
     const actions = useDriveBatchActions({
       files,
       setFiles,
@@ -164,11 +168,24 @@ function renderActions(options?: {
       },
       reloadStarredFromServer,
       view,
-      viewType,
       fileById: (id) =>
-        [...files, ...(options?.otherRows ?? [])].find((file) => file.id === id) ?? null,
+        [...files, ...(options?.otherRows ?? []), ...(allRows ?? [])].find(
+          (file) => file.id === id,
+        ) ?? null,
+      allFiles: {
+        patchAllFiles: (update) => setAllRows((prev) => (prev ? update(prev) : prev)),
+        reloadAllFiles,
+      },
     });
-    return { files, selectedIds, selectionMode, starred, undoLatest: live.undoLatest, ...actions };
+    return {
+      files,
+      allRows,
+      selectedIds,
+      selectionMode,
+      starred,
+      undoLatest: live.undoLatest,
+      ...actions,
+    };
   });
 }
 
@@ -889,6 +906,105 @@ describe("useDriveBatchActions", () => {
       starred: true,
     });
     expect(reloadStarredFromServer).toHaveBeenCalledTimes(3);
+  });
+
+  describe("All Files rows outside the open folder", () => {
+    const reportRow = () =>
+      driveFile({
+        id: "report",
+        title: "report.md",
+        parent: "My Drive/Projects",
+        apiPath: "/users/alice/Projects/report.md",
+      });
+
+    it("trashes the row, hides it at once and reloads All Files", async () => {
+      const operations = createOperations();
+      const { result } = renderActions({
+        operations,
+        viewType: "all",
+        files: [],
+        allRows: [reportRow(), driveFile({ id: "keep", title: "keep.md" })],
+        selectedIds: ["report"],
+      });
+
+      act(() => result.current.moveToTrash(["report"]));
+
+      expect(result.current.allRows?.map((file) => file.id)).toEqual(["keep"]);
+      await act(async () => {
+        await executeQueued();
+      });
+      expect(operations.renameItem).toHaveBeenCalledWith(
+        expect.objectContaining({ from: "/users/alice/Projects/report.md" }),
+        expect.anything(),
+      );
+      expect(reloadAllFiles).toHaveBeenCalled();
+    });
+
+    it("brings the row back on undo", async () => {
+      const operations = createOperations();
+      const { result } = renderActions({
+        operations,
+        viewType: "all",
+        files: [],
+        allRows: [reportRow()],
+        selectedIds: ["report"],
+      });
+
+      act(() => result.current.moveToTrash(["report"]));
+      reloadAllFiles.mockClear();
+      await act(async () => {
+        await undoQueued();
+      });
+
+      expect(result.current.allRows?.map((file) => file.id)).toEqual(["report"]);
+      expect(reloadAllFiles).toHaveBeenCalled();
+    });
+
+    it("deletes the row for good and reloads All Files", async () => {
+      const operations = createOperations();
+      const { result } = renderActions({
+        operations,
+        viewType: "all",
+        files: [],
+        allRows: [reportRow()],
+        selectedIds: ["report"],
+      });
+
+      act(() => result.current.reallyDelete(["report"]));
+
+      expect(result.current.allRows).toEqual([]);
+      await act(async () => {
+        await executeQueued();
+      });
+      expect(operations.deleteItems).toHaveBeenCalledWith(
+        ["/users/alice/Projects/report.md"],
+        expect.anything(),
+      );
+      expect(reloadAllFiles).toHaveBeenCalled();
+    });
+
+    it("moves the row to another folder and reloads All Files", async () => {
+      const operations = createOperations();
+      const { result } = renderActions({
+        operations,
+        viewType: "all",
+        files: [],
+        allRows: [reportRow()],
+        selectedIds: ["report"],
+      });
+
+      act(() => result.current.moveToFolder(["report"], "My Drive/Archive"));
+
+      expect(result.current.allRows?.[0]?.parent).toBe("My Drive/Archive");
+      await act(async () => {
+        await executeQueued();
+      });
+      expect(operations.renameItem).toHaveBeenCalledWith(
+        expect.objectContaining({ from: "/users/alice/Projects/report.md" }),
+        expect.anything(),
+      );
+      expect(reloadAllFiles).toHaveBeenCalled();
+    });
   });
 
   it("ignores empty trash and delete requests", () => {

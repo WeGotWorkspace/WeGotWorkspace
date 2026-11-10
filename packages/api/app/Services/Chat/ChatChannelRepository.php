@@ -112,12 +112,12 @@ final class ChatChannelRepository
 
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -260,7 +260,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be modified.');
-        $this->assertNotGroupDefault($instance, 'Group default channels cannot be modified.');
+        $this->assertNotGroupDefault($instance, 'Team default channels cannot be modified.');
         $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         // Sharees may only rename/recolor their own instance; topic lives in the
@@ -322,7 +322,7 @@ final class ChatChannelRepository
             throw new ApiHttpException(404, 'Channel not found.', 'not_found');
         }
         $this->assertNotDm($instance, 'Direct message channels cannot be deleted.');
-        $this->assertNotGroupDefault($instance, 'Group default channels cannot be deleted.');
+        $this->assertNotGroupDefault($instance, 'Team default channels cannot be deleted.');
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
@@ -531,12 +531,12 @@ final class ChatChannelRepository
             $principalUri = $this->collections->principalUri($username);
         } else {
             if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$newGroupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,

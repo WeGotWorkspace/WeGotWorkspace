@@ -6,6 +6,13 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key-change";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import { useDriveVisibleItems } from "@/drive-core/src/use-drive-visible-items";
+import { useListSort } from "@/hooks/use-list-sort";
+import {
+  DRIVE_LIST_DEFAULT_SORT,
+  DRIVE_LIST_SORT_COLUMNS,
+  DRIVE_LIST_SORT_STORAGE_KEY,
+  sortDriveFiles,
+} from "@/drive-core/src/drive-list-sort";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
@@ -48,7 +55,17 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const isTouch = useIsTouch();
   const lastTouchTapRef = useRef<{ id: string; at: number } | null>(null);
 
-  const visibleItems = useDriveVisibleItems(shell);
+  const { sort: listSort, toggleSort: toggleListSort } = useListSort({
+    columns: DRIVE_LIST_SORT_COLUMNS,
+    defaultSort: DRIVE_LIST_DEFAULT_SORT,
+    storageKey: DRIVE_LIST_SORT_STORAGE_KEY,
+  });
+  // Sort at the source so grid, list, and shift-range selection share one order.
+  const unsortedVisibleItems = useDriveVisibleItems(shell);
+  const visibleItems = useMemo(
+    () => sortDriveFiles(unsortedVisibleItems, listSort),
+    [listSort, unsortedVisibleItems],
+  );
 
   const visibleIds = useMemo(() => visibleItems.map((file) => file.id), [visibleItems]);
 
@@ -185,6 +202,8 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     viewMode,
     setViewMode,
     visibleItems,
+    listSort,
+    toggleListSort,
     active,
     filePreviews,
     richPreviews,

@@ -76,7 +76,7 @@ export function createContactsStoryOperations(cards: ContactCard[]): ContactsAPI
           uid: `urn:uuid:imported-${index}`,
           addressBookIds: { default: true },
           name: { full: name },
-        } as ContactCard;
+        } as unknown as ContactCard;
       });
       return { list, errors: [] };
     },

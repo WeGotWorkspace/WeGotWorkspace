@@ -1,3 +1,5 @@
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
+
 export const PERSONAL_SCOPE_VALUE = "__personal__";
 
 export type OwnerScopeGroupOption = {
@@ -13,10 +15,10 @@ export type OwnerScopeFieldLabels = {
 };
 
 export const defaultOwnerScopeLabels: OwnerScopeFieldLabels = {
-  label: "Owner",
+  label: workspaceLabels.sharing.owner,
   personal: () => "Only Me",
-  group: (name) => `${name} (Group)`,
-  readOnlyLabel: "Owner",
+  group: (name) => `${name} (Team)`,
+  readOnlyLabel: workspaceLabels.sharing.owner,
 };
 
 export function ownerScopeDisplayLabel(

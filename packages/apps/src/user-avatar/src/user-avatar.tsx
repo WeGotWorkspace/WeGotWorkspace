@@ -83,8 +83,13 @@ export type UserAvatarProps = {
   size?: UserAvatarSize;
   /** Optional online/offline pip. Rendered by the primitive — do not draw a second custom dot. */
   presence?: UserAvatarPresence;
-  /** Per-user palette (surfaceTint fill). Omit for the shared theme fallback. */
+  /** Per-user palette (surfaceTint fill). Omit for the shared theme fallback. Ignored by `tint`. */
   color?: UserAvatarColor;
+  /**
+   * `tint`: no hairline, a soft wash of the selection colour, the same for everyone
+   * (chat authors). Default: the control hairline and the per-user palette.
+   */
+  variant?: "default" | "tint";
   /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
   loading?: "eager" | "lazy";
   /** Native `<img>` decoding hint. List rows pass `async`. */
@@ -118,6 +123,7 @@ export function UserAvatar({
   size = "md",
   presence,
   color,
+  variant = "default",
   loading,
   decoding,
   onClick,
@@ -187,8 +193,9 @@ export function UserAvatar({
         "user-avatar",
         sizeClass,
         presence && "user-avatar--presence",
-        color && "user-avatar--colored",
-        color && `user-avatar--color-${color}`,
+        variant === "tint" && "user-avatar--tint",
+        variant !== "tint" && color && "user-avatar--colored",
+        variant !== "tint" && color && `user-avatar--color-${color}`,
         className,
       )}
       style={style}

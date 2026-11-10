@@ -1,5 +1,4 @@
 import { Button, buttonVariants } from "@/button/src/button";
-import { Input } from "@/ui/input";
 import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
 import {
   Dialog,
@@ -47,8 +46,6 @@ export function DriveWorkspaceModals({
     labels,
     newFolderDialogOpen,
     setNewFolderDialogOpen,
-    newFolderName,
-    setNewFolderName,
     submitCreateFolder,
     renameDialog,
     setRenameDialog,
@@ -96,35 +93,22 @@ export function DriveWorkspaceModals({
 
   return (
     <>
-      <Dialog open={newFolderDialogOpen} onOpenChange={setNewFolderDialogOpen}>
-        <DialogContent className="drive-dialog-surface">
-          <DialogHeader>
-            <DialogTitle>Create new folder</DialogTitle>
-            <DialogDescription>Enter a name for the new folder.</DialogDescription>
-          </DialogHeader>
-          <Input
-            autoFocus
-            placeholder="Folder name"
-            size="sm"
-            value={newFolderName}
-            onChange={(event) => setNewFolderName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                submitCreateFolder();
-              }
-            }}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewFolderDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={submitCreateFolder} disabled={!newFolderName.trim()}>
-              Create folder
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DriveCreateMarkdownDialog
+        open={newFolderDialogOpen}
+        kind="folder"
+        labels={labels}
+        defaultName=""
+        initialBrowsePath={markdownDialogDefaults.initialBrowsePath}
+        files={files}
+        groupPaths={sidebarGroupPaths}
+        view={view}
+        operations={operations}
+        currentUsername={currentUsername}
+        groupRootNames={groupRootNames}
+        rootLabels={folderPickerRootLabels}
+        onClose={() => setNewFolderDialogOpen(false)}
+        onConfirm={submitCreateFolder}
+      />
 
       <Dialog
         open={!!renameDialog}
@@ -210,13 +194,11 @@ export function DriveWorkspaceModals({
       <DriveMoveToDialog
         open={!!moveDialog}
         labels={controller.labels}
-        files={files}
+        files={moveDialog?.rows ?? files}
         groupPaths={sidebarGroupPaths}
         moveIds={moveDialog?.ids ?? []}
         view={view}
-        singleItemParent={
-          moveDialog?.ids.length === 1 ? fileById(moveDialog.ids[0]!)?.parent : undefined
-        }
+        singleItemParent={moveDialog?.ids.length === 1 ? moveDialog.rows[0]?.parent : undefined}
         operations={operations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}

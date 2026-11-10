@@ -35,7 +35,11 @@ function zipNameFor(searchQuery: string): unknown {
     searchQuery,
     operations: { ...base.operations, downloadSelection } as DriveShellState["operations"],
   });
-  const list = buildList({ selectedIds: ["f-0", "f-1"], selectionMode: true });
+  const list = buildList({
+    selectedIds: ["f-0", "f-1"],
+    selectionMode: true,
+    fileById: (id: string) => FILES.find((file) => file.id === id) ?? null,
+  });
   const { result } = renderHook(() => useDriveMutations({ shell, list }));
   const bar = result.current.selectionBar as ReactElement<{
     buttons: { label: string; onClick?: () => void }[];

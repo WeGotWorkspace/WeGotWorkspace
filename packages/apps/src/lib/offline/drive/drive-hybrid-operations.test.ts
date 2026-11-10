@@ -33,6 +33,7 @@ vi.mock("@/lib/api/wgw/drive", () => ({
     downloadSelection: vi.fn(async () => undefined),
     readFileBlob: vi.fn(),
     listStars: vi.fn(async () => []),
+    listAllFiles: vi.fn(async () => ({ entries: [], nextOffset: 0, hasMore: false })),
     setStar: vi.fn(),
     changeDir: vi.fn(),
     listDirectory: vi.fn(),
@@ -54,13 +55,13 @@ function bootstrap(): DriveAppBootstrap {
   };
 }
 
-function entry(path: string, name: string): WgwDriveDirectoryEntry {
+function entry(path: string, name: string, time = 1): WgwDriveDirectoryEntry {
   return {
     path,
     name,
     type: "file",
     size: 100,
-    time: 1,
+    time,
     permissions: 644,
     myRights: fullDriveMyRights,
   };
@@ -262,5 +263,67 @@ describe("createHybridDriveOperations downloadSelection", () => {
       "Downloading a folder as a zip needs a connection.",
     );
     expect(live.downloadSelection).not.toHaveBeenCalled();
+  });
+});
+
+describe("createHybridDriveOperations listAllFiles", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await driveEntriesTable(db).clear();
+    await db.meta.clear();
+    await upsertDriveEntry(username, entry("/users/alice/old.md", "old.md", 10));
+    await upsertDriveEntry(username, entry("/users/alice/Projects/new.md", "new.md", 30));
+    await upsertDriveEntry(username, entry("/groups/design/brief.md", "brief.md", 20));
+    await upsertDriveEntry(username, {
+      ...entry("/users/alice/Projects", "Projects", 40),
+      type: "dir",
+    });
+    await upsertDriveEntry(username, entry("/users/alice/.Trash/gone.md", "gone.md", 50));
+  });
+
+  it("lists cached files of every drive newest first while offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    const first = await ops.listAllFiles?.({ offset: 0, limit: 2 });
+    expect(first?.entries.map((file) => file.path)).toEqual([
+      "/users/alice/Projects/new.md",
+      "/groups/design/brief.md",
+    ]);
+    expect(first).toMatchObject({ nextOffset: 2, hasMore: true });
+
+    const second = await ops.listAllFiles?.({ offset: 2, limit: 2 });
+    expect(second?.entries.map((file) => file.path)).toEqual(["/users/alice/old.md"]);
+    expect(second).toMatchObject({ nextOffset: 3, hasMore: false });
+  });
+
+  it("falls back to the cache when the live listing fails on the network", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const ops = createHybridDriveOperations(username, bootstrap());
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      listAllFiles: ReturnType<typeof vi.fn>;
+    };
+    live.listAllFiles.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const page = await ops.listAllFiles?.({ offset: 0, limit: 10 });
+
+    expect(live.listAllFiles).toHaveBeenCalled();
+    expect(page?.entries).toHaveLength(3);
+  });
+
+  it("uses the live listing while online", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const ops = createHybridDriveOperations(username, bootstrap());
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      listAllFiles: ReturnType<typeof vi.fn>;
+    };
+    live.listAllFiles.mockResolvedValueOnce({ entries: [], nextOffset: 0, hasMore: false });
+
+    await expect(ops.listAllFiles?.({ offset: 0, limit: 10 })).resolves.toEqual({
+      entries: [],
+      nextOffset: 0,
+      hasMore: false,
+    });
   });
 });

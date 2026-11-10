@@ -11,7 +11,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Button, IconButton } from "@/button/src/button";
+import { IconButton } from "@/button/src/button";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import {
   CollectionSidebarMark,
@@ -31,7 +32,7 @@ import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-sear
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -776,6 +777,22 @@ export function CalendarWorkspace({
     ],
   );
 
+  // Both calendar sections (mine, shared with me) take the same row props.
+  const calendarRowProps = {
+    hiddenCalendarIds,
+    defaultCalendarId,
+    canDeleteCalendars: Boolean(operations?.deleteCalendar),
+    canUnsubscribe: Boolean(operations?.unsubscribeCalendar),
+    editLabel: L.editCalendar,
+    subscribedLabel: L.subscribedCalendarBadge,
+    viewOnlyLabel: L.viewOnlyCalendarBadge,
+    pendingCalendarIds,
+    pendingSyncLabel: L.pendingSync,
+    onToggleVisibility: toggleCalendarVisibility,
+    onSelectDefault: selectDefaultCalendar,
+    onEdit: openEditCalendarDialog,
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <WorkspaceAppLayout
@@ -786,6 +803,7 @@ export function CalendarWorkspace({
         )}
         sidebar={
           <AppSidebar
+            settingsAppId="calendar"
             open={sidebarOpen}
             onCloseMobile={() => setSidebarOpen(false)}
             primaryButton={
@@ -824,22 +842,19 @@ export function CalendarWorkspace({
                   }
                 />
               ) : (
-                <Button
-                  label={L.today}
+                <SidebarSegmentedNewMenu
+                  mainLabel={L.today}
+                  menuLabel={L.newEventMenu}
                   icon={<CalendarDays />}
-                  onClick={() => {
+                  onMainAction={() => {
                     goToday();
                     dismissSidebarOverlay(() => setSidebarOpen(false));
                   }}
-                  size="md"
-                  pill
-                  variant="primary"
                 />
               )
             }
             footer={
-              <WorkspaceAppSettingsFooter
-                appId="calendar"
+              <WorkspaceSidebarAccountFooter
                 session={session}
                 detailLine={session.user.email}
                 onLogout={onLogout}
@@ -847,39 +862,11 @@ export function CalendarWorkspace({
             }
           >
             <SidebarSection title={L.myCalendarsSection}>
-              <CalendarSidebarRows
-                calendars={myCalendars}
-                hiddenCalendarIds={hiddenCalendarIds}
-                defaultCalendarId={defaultCalendarId}
-                canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                editLabel={L.editCalendar}
-                subscribedLabel={L.subscribedCalendarBadge}
-                viewOnlyLabel={L.viewOnlyCalendarBadge}
-                pendingCalendarIds={pendingCalendarIds}
-                pendingSyncLabel={L.pendingSync}
-                onToggleVisibility={toggleCalendarVisibility}
-                onSelectDefault={selectDefaultCalendar}
-                onEdit={openEditCalendarDialog}
-              />
+              <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
             </SidebarSection>
             {sharedWithMeCalendars.length > 0 ? (
               <SidebarSection title={L.sharedWithMeSection}>
-                <CalendarSidebarRows
-                  calendars={sharedWithMeCalendars}
-                  hiddenCalendarIds={hiddenCalendarIds}
-                  defaultCalendarId={defaultCalendarId}
-                  canDeleteCalendars={Boolean(operations?.deleteCalendar)}
-                  canUnsubscribe={Boolean(operations?.unsubscribeCalendar)}
-                  editLabel={L.editCalendar}
-                  subscribedLabel={L.subscribedCalendarBadge}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  pendingCalendarIds={pendingCalendarIds}
-                  pendingSyncLabel={L.pendingSync}
-                  onToggleVisibility={toggleCalendarVisibility}
-                  onSelectDefault={selectDefaultCalendar}
-                  onEdit={openEditCalendarDialog}
-                />
+                <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
               </SidebarSection>
             ) : null}
             {overlayOwnedLists.length > 0 ? (

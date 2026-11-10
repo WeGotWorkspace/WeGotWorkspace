@@ -42,10 +42,8 @@ import {
   CONTACTS_CREATE_ID,
   canCreateContactInView,
   contactCardToEditDraft,
-  contactEditDraftHasChanges,
   contactEditDraftHasContent,
   editDraftToCreateBody,
-  editDraftToPatch,
   emptyContactEditDraft,
   newContactMapId,
   resolveCreateAddressBookIds,
@@ -73,11 +71,10 @@ import {
   writableMoveAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
-import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
-import {
-  CONTACTS_AUTOSAVE_DEBOUNCE_MS,
-  createContactSaveDebouncer,
-} from "@/contacts-core/src/contacts-edit-autosave";
+import { useContactsEditAutosave } from "@/contacts-core/src/use-contacts-edit-autosave";
+import { useContactsEditPersist } from "@/contacts-core/src/use-contacts-edit-persist";
+import { useContactsDeleteCards } from "@/contacts-core/src/use-contacts-delete-cards";
+import { useContactDraftRowAdders } from "@/contacts-core/src/contacts-draft-rows";
 import {
   downloadContactVCard,
   downloadMultipleContactsVCard,
@@ -175,11 +172,39 @@ export function useContactsController({
   const cardsRef = useRef(cards);
   const activeIdRef = useRef(activeId);
   const contactDraftsRef = useRef<Map<string, ContactEditDraft>>(new Map());
-  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const debouncerRef = useRef(createContactSaveDebouncer(CONTACTS_AUTOSAVE_DEBOUNCE_MS));
-  const persistContactEditRef = useRef<
-    (contactId: string, draft: ContactEditDraft) => Promise<void>
-  >(async () => {});
+  const active = useMemo(
+    () =>
+      activeId && activeId !== CONTACTS_CREATE_ID
+        ? cards.find((card) => card.id === activeId)
+        : undefined,
+    [activeId, cards],
+  );
+  const autosave = useContactsEditAutosave({
+    activeId,
+    activeCard: active,
+    createMode,
+    editMode,
+    editDraft,
+    setEditMode,
+    setEditDraft,
+    cardsRef,
+    contactDraftsRef,
+  });
+  const {
+    markSynced,
+    flushAll: flushAutosaves,
+    persistRef,
+    switchEditDraftTo,
+    dropDrafts,
+  } = autosave;
+  /** Every switch of the open contact carries the drafts over (see `switchEditDraftTo`). */
+  const openContact = useCallback(
+    (id: string) => {
+      switchEditDraftTo(id);
+      setActiveId(id);
+    },
+    [switchEditDraftTo],
+  );
 
   const { showError } = useAppToast();
   const showMutationError = useCallback(
@@ -198,8 +223,8 @@ export function useContactsController({
 
   useEffect(() => {
     if (initialContactId === undefined) return;
-    setActiveId(initialContactId);
-  }, [initialContactId]);
+    openContact(initialContactId);
+  }, [initialContactId, openContact]);
 
   useEffect(() => {
     if (!initialContactId) return;
@@ -257,25 +282,6 @@ export function useContactsController({
     [visibleCards],
   );
 
-  const stashActiveEditDraft = useCallback(() => {
-    if (!editMode || createMode || !editDraft || !activeId || activeId === CONTACTS_CREATE_ID)
-      return;
-    contactDraftsRef.current.set(activeId, editDraft);
-  }, [activeId, createMode, editDraft, editMode]);
-
-  const restoreEditDraftForContact = useCallback((contactId: string) => {
-    const stashed = contactDraftsRef.current.get(contactId);
-    if (stashed) {
-      setEditMode(true);
-      startTransition(() => {
-        setEditDraft(stashed);
-      });
-      return;
-    }
-    setEditMode(false);
-    setEditDraft(null);
-  }, []);
-
   const {
     selectedIds,
     setSelectedIds,
@@ -295,11 +301,12 @@ export function useContactsController({
     setItems: setCards,
     visibleIds,
     activeId,
-    setActiveId,
+    // Arrow keys and "next item after delete" switch the open contact too: carry the
+    // draft over as a click does, or the old contact's draft would be saved onto it.
+    setActiveId: openContact,
     onPrimarySelect: (id) => {
       if (createMode) return;
-      stashActiveEditDraft();
-      restoreEditDraftForContact(id);
+      switchEditDraftTo(id);
       const during = () => {
         setActiveId(id);
       };
@@ -326,7 +333,7 @@ export function useContactsController({
 
   const closeMobileDetail = useCallback(() => {
     const during = () => {
-      setActiveId("");
+      openContact("");
       setSelectedIds([]);
       setSelectionMode(false);
     };
@@ -336,21 +343,13 @@ export function useContactsController({
       return;
     }
     void during();
-  }, [setSelectedIds, setSelectionMode]);
+  }, [openContact, setSelectedIds, setSelectionMode]);
 
   useSelectionResetOnKeyChange({
     resetKey: view,
     setSelectedIds,
     setSelectionMode,
   });
-
-  const active = useMemo(
-    () =>
-      activeId && activeId !== CONTACTS_CREATE_ID
-        ? cards.find((card) => card.id === activeId)
-        : undefined,
-    [activeId, cards],
-  );
 
   const viewLabel = useMemo(() => {
     if (view === "all") return L.sidebarAllContacts;
@@ -423,18 +422,19 @@ export function useContactsController({
     return L.unknownContact;
   }, [L.unknownContact, active, createMode, editDraft, editMode]);
 
-  const selectView = useCallback((nextView: string) => {
-    debouncerRef.current.flushAll((contactId, draft) => {
-      void persistContactEditRef.current(contactId, draft);
-    });
-    contactDraftsRef.current.clear();
-    setView(nextView);
-    setSearchQuery("");
-    setEditMode(false);
-    setCreateMode(false);
-    setEditDraft(null);
-    setActiveId("");
-  }, []);
+  const selectView = useCallback(
+    (nextView: string) => {
+      flushAutosaves();
+      dropDrafts();
+      setView(nextView);
+      setSearchQuery("");
+      setEditMode(false);
+      setCreateMode(false);
+      setEditDraft(null);
+      setActiveId("");
+    },
+    [dropDrafts, flushAutosaves],
+  );
 
   const updateEditDraft = useCallback((patch: Partial<ContactEditDraft>) => {
     setEditDraft((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -447,6 +447,20 @@ export function useContactsController({
       setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
     });
   }, [active, canEdit, createMode]);
+
+  // No edit mode to switch on: an open contact you may write is editable as is.
+  useEffect(() => {
+    if (createMode || editMode || !active || !canEdit || isContactGroupCard(active)) return;
+    const stashed = contactDraftsRef.current.get(active.id);
+    const draft = stashed ?? contactCardToEditDraft(active);
+    if (!stashed) markSynced(active.id, draft, active);
+    setEditMode(true);
+    startTransition(() => {
+      setEditDraft(draft);
+    });
+  }, [active, canEdit, createMode, editMode, markSynced]);
+
+  const { addPhone, addEmail, addAddress, addUrl } = useContactDraftRowAdders(setEditDraft);
 
   const cancelEdit = useCallback(() => {
     if (createMode) {
@@ -647,67 +661,24 @@ export function useContactsController({
     );
   }, []);
 
-  const deleteCards = useCallback(
-    (ids: string[]) => {
-      if (mutationsLocked || ids.length === 0) return;
-      const previousCards = cards;
-      const previousActiveId = activeId;
-      const previousSelectedIds = selectedIds;
-      const shouldExitSelection =
-        ids.length === selectedIds.length &&
-        selectedIds.length > 0 &&
-        ids.every((id) => selectedIds.includes(id));
-
-      setCards((prev) => prev.filter((card) => !ids.includes(card.id)));
-      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
-      if (ids.includes(activeId)) {
-        setActiveId("");
-        setEditMode(false);
-        setEditDraft(null);
-        setCreateMode(false);
-      }
-      for (const id of ids) {
-        contactDraftsRef.current.delete(id);
-      }
-      if (shouldExitSelection) setSelectionMode(false);
-
-      const rollback = () => {
-        setCards(previousCards);
-        setSelectedIds(previousSelectedIds);
-        setActiveId(previousActiveId);
-        if (previousSelectedIds.length > 0) setSelectionMode(true);
-      };
-
-      queueMutation({
-        key: `contacts:delete:${ids.slice().sort().join(",")}`,
-        toastMessage: L.toastDeleted,
-        irreversible: true,
-        execute: (signal) =>
-          operations
-            ? Promise.all(
-                ids.map((id) => {
-                  const card = previousCards.find((row) => row.id === id);
-                  return operations.deleteCard(id, contactMutationOpts(card, signal));
-                }),
-              ).then(() => {})
-            : Promise.resolve(),
-        undo: rollback,
-        onError: rollback,
-        undoToastMessage: "Deletion undone.",
-      });
-    },
-    [
-      L.toastDeleted,
-      activeId,
-      cards,
-      mutationsLocked,
-      operations,
-      queueMutation,
-      selectedIds,
-      setSelectedIds,
-      setSelectionMode,
-    ],
-  );
+  const { deleteCards, offListCardsRef } = useContactsDeleteCards({
+    operations,
+    mutationsLocked,
+    toastMessage: L.toastDeleted,
+    cardsRef,
+    setCards,
+    activeId,
+    selectedIds,
+    setSelectedIds,
+    setSelectionMode,
+    setEditMode,
+    setEditDraft,
+    setCreateMode,
+    openContact,
+    queueMutation,
+    pauseContact: autosave.pauseContact,
+    forgetContact: autosave.forgetContact,
+  });
 
   const openDeleteConfirm = useCallback(
     (ids: string[]) => {
@@ -729,11 +700,14 @@ export function useContactsController({
     openDeleteConfirm([active.id]);
   }, [active, openDeleteConfirm]);
 
-  const downloadActive = useCallback(() => {
+  const downloadActive = useCallback(async () => {
     if (!active) return;
+    // An edit still waiting for its typing pause is saved first, so the file has it.
+    await autosave.flushContact(active.id);
+    const card = cardsRef.current.find((row) => row.id === active.id) ?? active;
     if (operations?.downloadCardVcf) {
-      const cardId = active.id;
-      const filename = vcardFilename(contactDisplayName(active));
+      const cardId = card.id;
+      const filename = vcardFilename(contactDisplayName(card));
       operations.downloadCardVcf(cardId).then((vcfText) => {
         const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
         const url = URL.createObjectURL(blob);
@@ -750,9 +724,9 @@ export function useContactsController({
         }
       });
     } else {
-      downloadContactVCard(active);
+      downloadContactVCard(card);
     }
-  }, [active, operations]);
+  }, [active, autosave, operations]);
 
   const downloadSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
@@ -829,7 +803,7 @@ export function useContactsController({
       const rollback = () => {
         setCards((prev) => prev.map((card) => (card.id === groupId ? previousCard : card)));
         setSelectedIds(previousSelectedIds);
-        setActiveId(previousActiveId);
+        openContact(previousActiveId);
         if (previousSelectedIds.length > 0) setSelectionMode(true);
       };
 
@@ -852,6 +826,7 @@ export function useContactsController({
       activeId,
       cards,
       mutationsLocked,
+      openContact,
       operations,
       queueMutation,
       selectedGroup,
@@ -1209,86 +1184,23 @@ export function useContactsController({
     ],
   );
 
-  const persistContactEdit = useCallback(
-    async (contactId: string, draft: ContactEditDraft) => {
-      if (mutationsLocked) return;
-      const card = cardsRef.current.find((row) => row.id === contactId);
-      if (!card) {
-        contactDraftsRef.current.delete(contactId);
-        return;
-      }
-      if (!contactEditDraftHasChanges(draft, card)) {
-        contactDraftsRef.current.delete(contactId);
-        return;
-      }
-
-      const patch = editDraftToPatch(draft, card);
-      const previousCard = card;
-      const merged = mergeContactFromPatch(card, patch);
-
-      const existingAbort = abortControllersRef.current.get(contactId);
-      existingAbort?.abort();
-      const controller = new AbortController();
-      abortControllersRef.current.set(contactId, controller);
-
-      setCards((prev) => prev.map((row) => (row.id === contactId ? merged : row)));
-
-      try {
-        if (!operations) {
-          contactDraftsRef.current.delete(contactId);
-          if (activeIdRef.current === contactId) {
-            setEditDraft(contactCardToEditDraft(merged));
-          }
-          return;
-        }
-        const saved = await operations.patchCard(contactId, patch, {
-          ...contactMutationOpts(card, controller.signal),
-        });
-        contactDraftsRef.current.delete(contactId);
-        setCards((prev) => prev.map((row) => (row.id === contactId ? saved : row)));
-        if (activeIdRef.current === contactId) {
-          setEditDraft(contactCardToEditDraft(saved));
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setCards((prev) => prev.map((row) => (row.id === contactId ? previousCard : row)));
-        showMutationError();
-      } finally {
-        if (abortControllersRef.current.get(contactId) === controller) {
-          abortControllersRef.current.delete(contactId);
-        }
-      }
-    },
-    [mutationsLocked, operations, showMutationError],
-  );
+  const persistContactEdit = useContactsEditPersist({
+    operations,
+    mutationsLocked,
+    cardsRef,
+    activeIdRef,
+    contactDraftsRef,
+    setCards,
+    setEditDraft,
+    markSynced,
+    markOwnCard: autosave.markOwnCard,
+    showMutationError,
+    offListCardsRef,
+  });
 
   useEffect(() => {
-    persistContactEditRef.current = persistContactEdit;
-  }, [persistContactEdit]);
-
-  useEffect(() => {
-    if (!editMode || createMode || !editDraft || !activeId || activeId === CONTACTS_CREATE_ID)
-      return;
-
-    contactDraftsRef.current.set(activeId, editDraft);
-
-    const card = cardsRef.current.find((row) => row.id === activeId);
-    if (!card || !contactEditDraftHasChanges(editDraft, card)) return;
-
-    debouncerRef.current.schedule(activeId, editDraft, (contactId, draft) => {
-      void persistContactEditRef.current(contactId, draft);
-    });
-  }, [activeId, createMode, editDraft, editMode]);
-
-  useEffect(() => {
-    const debouncer = debouncerRef.current;
-    return () => {
-      debouncer.flushAll((contactId, draft) => {
-        void persistContactEditRef.current(contactId, draft);
-      });
-    };
-  }, []);
+    persistRef.current = persistContactEdit;
+  }, [persistRef, persistContactEdit]);
 
   const saveEdit = useCallback(() => {
     if (!editDraft || !createMode) return;
@@ -1314,9 +1226,17 @@ export function useContactsController({
     setEditMode(false);
     setEditDraft(null);
     setActiveId(optimisticId);
+    autosave.holdUntilCreated(optimisticId);
+    // Undo after the create finished: the contact is open under its real id by then.
+    let createdId = optimisticId;
     const rollback = () => {
+      autosave.forgetContact(optimisticId);
+      autosave.forgetContact(createdId);
       setCards(previousCards);
+      if (activeIdRef.current !== optimisticId && activeIdRef.current !== createdId) return;
       setActiveId("");
+      setEditMode(false);
+      setEditDraft(null);
     };
 
     queueMutation({
@@ -1336,7 +1256,10 @@ export function useContactsController({
               created,
             ),
           );
-          setActiveId(created.id);
+          // Typing since the create was sent is saved on the created card.
+          autosave.rekeyContact(optimisticId, created.id);
+          createdId = created.id;
+          if (activeIdRef.current === optimisticId) setActiveId(created.id);
         },
         setCards,
       }),
@@ -1345,6 +1268,7 @@ export function useContactsController({
   }, [
     L.toastCreated,
     addressBooks,
+    autosave,
     cards,
     createMode,
     editDraft,
@@ -1473,6 +1397,10 @@ export function useContactsController({
     fileInputRef,
     startEdit,
     cancelEdit,
+    addPhone,
+    addEmail,
+    addAddress,
+    addUrl,
     saveEdit,
     deleteActive,
     downloadActive,

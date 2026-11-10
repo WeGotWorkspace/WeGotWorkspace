@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Files, HardDrive } from "lucide-react";
+import { HardDrive } from "lucide-react";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-browser-sidebar";
 import type { ViewKey } from "@/lib/files/drive-models";
@@ -52,10 +52,9 @@ export function useDriveSidebarModel({
     const byId = {
       home: {
         label: labels.sidebarHome,
-        selected: isMyDriveView(view),
-        onClick: () => selectView({ type: "folder", path: "My Drive" }),
-        icon: <Files className="size-3.5" />,
-        ...sidebarDropZoneProps("My Drive", (ids) => commitMoveToFolder(ids, "My Drive")),
+        selected: view.type === "all",
+        onClick: () => selectView({ type: "all" }),
+        icon: <DriveViewIcon view={{ type: "all" }} />,
       },
       shared: {
         label: labels.sidebarSharedWithMe,

@@ -236,16 +236,12 @@ final class PrincipalSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw new PrincipalResponseException($exception->status, $exception->payload);
+            throw PrincipalResponseException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        $payload = ['error' => $error];
-        if ($message !== null) {
-            $payload['message'] = $message;
-        }
-        throw new PrincipalResponseException($status, $payload);
+        throw new PrincipalResponseException($status, $error, $message);
     }
 }

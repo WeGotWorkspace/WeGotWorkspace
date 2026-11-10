@@ -103,7 +103,7 @@ final class CollabRoomPolicyTest extends TestCase
             $this->fail('Expected '.CollabResponseException::class.' for room: '.$room);
         } catch (CollabResponseException $exception) {
             $this->assertSame(400, $exception->status);
-            $this->assertSame('invalid_room', $exception->payload['error']);
+            $this->assertSame('invalid_room', $exception->errorCode);
         }
     }
 
@@ -144,7 +144,7 @@ final class CollabRoomPolicyTest extends TestCase
             $this->fail('Expected '.CollabResponseException::class.' for a binary extension.');
         } catch (CollabResponseException $exception) {
             $this->assertSame(400, $exception->status);
-            $this->assertSame('invalid_document_path', $exception->payload['error']);
+            $this->assertSame('invalid_document_path', $exception->errorCode);
         }
     }
 

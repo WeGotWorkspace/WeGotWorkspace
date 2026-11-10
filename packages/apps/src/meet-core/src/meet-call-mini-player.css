@@ -2,7 +2,7 @@
 
 /*
  * Placement only. Chrome (fill, radius, shadow, padding, border) comes from
- * `.floating-action-bar` + `.floating-action-bar--dark`.
+ * `.floating-action-bar` (frosted glass).
  */
 .meet-mini-player.floating-action-bar {
   @apply fixed z-50 w-80 touch-none select-none;
@@ -58,13 +58,4 @@
 .meet-mini-player__actions {
   @apply flex shrink-0 items-center gap-1;
   cursor: auto;
-}
-
-/* Dark bar: off mic/camera keeps the danger fill, but the glyph stays white. */
-.meet-mini-player .button.button--variant-outline.button--severity-danger[aria-pressed="false"],
-.meet-mini-player
-  .button.button--variant-outline.button--severity-danger[aria-pressed="false"]:hover,
-.meet-mini-player
-  .button.button--variant-outline.button--severity-danger[aria-pressed="false"]:focus-visible {
-  color: #ffffff;
 }

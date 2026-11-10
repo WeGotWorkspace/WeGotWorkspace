@@ -7,7 +7,7 @@ import {
 import type { CalendarAlarmsCardLabels } from "@/calendar-core/src/calendar-alarms-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import type { Task, TaskAlert } from "@/lib/models/tasks-types";
+import type { Task, TaskAlert, TaskPatch } from "@/lib/models/tasks-types";
 
 /** Tasks OpenAPI offsets are typically due-relative (`relativeTo: "end"`). */
 export const TASK_ALERT_DEFAULT_RELATED_TO = "end" as const;
@@ -86,6 +86,36 @@ function formValueToTaskAlert(row: CalendarEventAlertFormValue): TaskAlert | nul
     };
   }
   return null;
+}
+
+/**
+ * The `alerts` of a task patch from `previous` to `next`. The API merges alerts per
+ * id, so a removed alert goes as null; no alerts left clears them all.
+ */
+export function taskAlertsPatch(
+  previous: Task["alerts"] | null | undefined,
+  next: Task["alerts"] | null | undefined,
+): TaskPatch["alerts"] {
+  if (!next || Object.keys(next).length === 0) return null;
+  const patch: Record<string, TaskAlert | null> = { ...next };
+  for (const id of Object.keys(previous ?? {})) {
+    if (!(id in next)) patch[id] = null;
+  }
+  return patch;
+}
+
+/** Applies an alerts patch the way the API does: per id, null removes. */
+export function applyTaskAlertsPatch(
+  current: Task["alerts"] | null | undefined,
+  patch: TaskPatch["alerts"] | undefined,
+): Task["alerts"] | undefined {
+  if (patch === undefined) return current ?? undefined;
+  if (patch === null) return undefined;
+  const merged: Record<string, TaskAlert> = {};
+  for (const [id, alert] of Object.entries({ ...current, ...patch })) {
+    if (alert) merged[id] = alert;
+  }
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 export function taskAlertCount(alerts: Task["alerts"] | null | undefined): number {

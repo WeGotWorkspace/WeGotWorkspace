@@ -1,204 +1,215 @@
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ContactChannelRow } from "./contact-channel-row";
-import { ContactContextTypeSelect, ContactPhoneTypeSelect } from "./contact-channel-type-select";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import type { ReactNode } from "react";
+import { ExternalLink, Link2, Mail, MapPin, Phone, Trash2 } from "lucide-react";
+import { IconButton } from "@/button/src/button";
+import { DetailFieldAddRow, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { Input } from "@/ui/input";
-import {
-  CONTACT_CHANNEL_DEFAULT_CONTEXT,
-  newContactMapId,
-  type ContactAddressDraft,
-  type ContactChannelContext,
-  type ContactPhoneType,
+import { ContactContextTypeSelect, ContactPhoneTypeSelect } from "./contact-channel-type-select";
+import type {
+  ContactAddressDraft,
+  ContactChannelContext,
+  ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
+import {
+  phoneToTelHref,
+  safeContactExternalHref,
+} from "@/contacts-core/src/contacts-display-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 
-function channelValueInputId(rowId: string): string {
+export function contactChannelValueInputId(rowId: string): string {
   return `contact-channel-value-${rowId}`;
 }
 
-function addressFieldInputId(
-  rowId: string,
-  field: keyof Omit<ContactAddressDraft, "id" | "contextType">,
-): string {
-  const suffix =
-    field === "postalCode"
-      ? "postal"
-      : field === "street"
-        ? "street"
-        : field === "locality"
-          ? "locality"
-          : field === "region"
-            ? "region"
-            : "country";
-  return `contact-address-${suffix}-${rowId}`;
+export function contactAddressStreetInputId(rowId: string): string {
+  return `contact-address-street-${rowId}`;
 }
 
-/** After the trailing empty slot commits, focus the new row so typing can continue. */
-function focusCommittedInput(elementId: string): void {
-  const el = document.getElementById(elementId);
-  if (!(el instanceof HTMLInputElement)) return;
-  el.focus();
-  const len = el.value.length;
-  try {
-    el.setSelectionRange(len, len);
-  } catch {
-    // Non-text inputs may reject selection ranges.
+function openChannelHref(href: string): void {
+  if (/^https?:/i.test(href)) {
+    window.open(href, "_blank", "noopener,noreferrer");
+    return;
   }
+  window.location.href = href;
 }
 
-function useFocusAfterCommit(): (elementId: string) => void {
-  const pendingIdRef = useRef<string | null>(null);
-  const requestFocus = useCallback((elementId: string) => {
-    pendingIdRef.current = elementId;
-  }, []);
-  useLayoutEffect(() => {
-    const id = pendingIdRef.current;
-    if (!id) return;
-    pendingIdRef.current = null;
-    focusCommittedInput(id);
-  });
-  return requestFocus;
-}
-
-function useTrailingChannelSlot<T extends string>(
-  emptyType: T,
-): {
-  id: string;
-  type: T;
-  setType: (type: T) => void;
-  consume: () => { id: string; type: T };
-} {
-  const [id, setId] = useState(newContactMapId);
-  const [type, setType] = useState<T>(emptyType);
-  const consume = useCallback(() => {
-    const taken = { id, type };
-    setId(newContactMapId());
-    setType(emptyType);
-    return taken;
-  }, [emptyType, id, type]);
-  return { id, type, setType, consume };
-}
-
-function commitTrailingValue<TType extends string>(
-  value: string,
-  consume: () => { id: string; type: TType },
-  onCommit: (id: string, value: string, type: TType) => void,
-): { id: string; type: TType } | null {
-  if (!value) return null;
-  const slot = consume();
-  onCommit(slot.id, value, slot.type);
-  return slot;
-}
-
-type SimpleChannelRowsProps<TType extends string> = {
-  rows: Array<{ id: string; value: string; type: TType }>;
-  emptyType: TType;
-  valueAriaLabel: string;
-  placeholder: string;
-  typeAriaLabel: string;
-  removeLabel: string;
-  typeControl: (args: {
-    value: TType;
-    onChange: (value: TType) => void;
-    ariaLabel: string;
-  }) => ReactNode;
-  onUpdateValue: (id: string, value: string, type?: TType) => void;
-  onUpdateType: (id: string, type: TType) => void;
-  onRemove: (id: string) => void;
-};
-
-function SimpleChannelRows<TType extends string>({
-  rows,
-  emptyType,
-  valueAriaLabel,
-  placeholder,
-  typeAriaLabel,
+/** Call, write or open: the row's own action, beside remove. */
+function ChannelRowActions({
+  href,
+  openLabel,
+  openIcon,
   removeLabel,
-  typeControl,
-  onUpdateValue,
-  onUpdateType,
   onRemove,
-}: SimpleChannelRowsProps<TType>) {
-  const slot = useTrailingChannelSlot(emptyType);
-  const requestFocus = useFocusAfterCommit();
-
+}: {
+  href: string | null;
+  openLabel: string;
+  openIcon: ReactNode;
+  removeLabel: string;
+  onRemove?: () => void;
+}) {
+  if (!href && !onRemove) return null;
   return (
     <>
-      {rows.map((row) => (
-        <ContactChannelRow
-          key={row.id}
-          removeLabel={removeLabel}
-          onRemove={() => onRemove(row.id)}
-          typeControl={typeControl({
-            value: row.type,
-            onChange: (next) => onUpdateType(row.id, next),
-            ariaLabel: typeAriaLabel,
-          })}
-        >
-          <Input
-            id={channelValueInputId(row.id)}
-            aria-label={valueAriaLabel}
-            value={row.value}
-            onChange={(event) => onUpdateValue(row.id, event.target.value)}
-          />
-        </ContactChannelRow>
-      ))}
-      <ContactChannelRow
-        key={slot.id}
-        typeControl={typeControl({
-          value: slot.type,
-          onChange: slot.setType,
-          ariaLabel: typeAriaLabel,
-        })}
-      >
-        <Input
-          id={channelValueInputId(slot.id)}
-          aria-label={valueAriaLabel}
-          placeholder={placeholder}
-          value=""
-          onChange={(event) => {
-            const taken = commitTrailingValue(event.target.value, slot.consume, onUpdateValue);
-            if (taken) requestFocus(channelValueInputId(taken.id));
-          }}
+      {href ? (
+        <IconButton
+          label={openLabel}
+          icon={openIcon}
+          variant="ghost"
+          size="sm"
+          onClick={() => openChannelHref(href)}
         />
-      </ContactChannelRow>
+      ) : null}
+      {onRemove ? (
+        <IconButton
+          label={removeLabel}
+          icon={<Trash2 aria-hidden />}
+          variant="ghost"
+          severity="danger"
+          size="sm"
+          onClick={onRemove}
+        />
+      ) : null}
     </>
   );
 }
 
+type ChannelRowsProps<TType extends string> = {
+  rows: Array<{ id: string; value: string; type: TType }>;
+  icon: ReactNode;
+  inputType: "tel" | "email" | "url";
+  valueAriaLabel: string;
+  placeholder: string;
+  typeAriaLabel: string;
+  removeLabel: string;
+  addLabel: string;
+  openLabel: string;
+  openIcon: ReactNode;
+  hrefFor: (value: string) => string | null;
+  readOnly: boolean;
+  typeControl: (args: {
+    value: TType;
+    onChange: (value: TType) => void;
+    ariaLabel: string;
+    disabled: boolean;
+  }) => ReactNode;
+  onUpdateValue: (id: string, value: string) => void;
+  onUpdateType: (id: string, type: TType) => void;
+  onRemove: (id: string) => void;
+  /** Omit to hide the add row (read-only, or the field is added from "Add field"). */
+  onAdd?: () => void;
+};
+
+/**
+ * One detail row per phone, e-mail or website: the type as a ghost dropdown in the
+ * label column, the value as a ghost field. "Add phone" below adds a row; typing
+ * never adds one by itself. Read-only cards show filled rows only.
+ */
+function ChannelRows<TType extends string>({
+  rows,
+  icon,
+  inputType,
+  valueAriaLabel,
+  placeholder,
+  typeAriaLabel,
+  removeLabel,
+  addLabel,
+  openLabel,
+  openIcon,
+  hrefFor,
+  readOnly,
+  typeControl,
+  onUpdateValue,
+  onUpdateType,
+  onRemove,
+  onAdd,
+}: ChannelRowsProps<TType>) {
+  const shown = readOnly ? rows.filter((row) => row.value.trim()) : rows;
+  return (
+    <>
+      {shown.map((row) => (
+        <DetailFieldRow
+          key={row.id}
+          className="contacts-detail-view__channel"
+          icon={icon}
+          label={typeControl({
+            value: row.type,
+            onChange: (next) => onUpdateType(row.id, next),
+            ariaLabel: typeAriaLabel,
+            disabled: readOnly,
+          })}
+          trailing={
+            <ChannelRowActions
+              href={hrefFor(row.value)}
+              openLabel={openLabel}
+              openIcon={openIcon}
+              removeLabel={removeLabel}
+              onRemove={readOnly ? undefined : () => onRemove(row.id)}
+            />
+          }
+        >
+          <Input
+            id={contactChannelValueInputId(row.id)}
+            type={inputType}
+            variant="ghost"
+            size="sm"
+            aria-label={valueAriaLabel}
+            placeholder={placeholder}
+            value={row.value}
+            readOnly={readOnly}
+            onChange={(event) => onUpdateValue(row.id, event.target.value)}
+          />
+        </DetailFieldRow>
+      ))}
+      {!readOnly && onAdd ? <DetailFieldAddRow label={addLabel} onAdd={onAdd} /> : null}
+    </>
+  );
+}
+
+type ChannelEditorProps = {
+  labels: ContactsUILabels;
+  readOnly: boolean;
+  onAdd?: () => void;
+};
+
 export function ContactPhoneRows({
   phones,
   labels,
+  readOnly,
+  onAdd,
   onUpdatePhone,
   onUpdatePhoneContext,
   onRemovePhone,
-}: {
+}: ChannelEditorProps & {
   phones: Array<{ id: string; number: string; phoneType: ContactPhoneType }>;
-  labels: ContactsUILabels;
   onUpdatePhone: (id: string, number: string, phoneType?: ContactPhoneType) => void;
   onUpdatePhoneContext: (id: string, phoneType: ContactPhoneType) => void;
   onRemovePhone: (id: string) => void;
 }) {
-  const typeAriaLabel = `${labels.channelType} ${labels.phoneNumber}`;
   return (
-    <SimpleChannelRows
+    <ChannelRows
       rows={phones.map((row) => ({ id: row.id, value: row.number, type: row.phoneType }))}
-      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
+      icon={<Phone />}
+      inputType="tel"
       valueAriaLabel={labels.phoneNumber}
-      placeholder={labels.addPhone}
-      typeAriaLabel={typeAriaLabel}
+      placeholder={labels.phoneNumber}
+      typeAriaLabel={`${labels.channelType} ${labels.phoneNumber}`}
       removeLabel={labels.removeRow}
-      typeControl={({ value, onChange, ariaLabel }) => (
+      addLabel={labels.addPhone}
+      openLabel={labels.callPhone}
+      openIcon={<Phone aria-hidden />}
+      hrefFor={(value) => phoneToTelHref(value.trim())}
+      readOnly={readOnly}
+      typeControl={({ value, onChange, ariaLabel, disabled }) => (
         <ContactPhoneTypeSelect
           labels={labels}
           value={value}
           ariaLabel={ariaLabel}
+          disabled={disabled}
           onChange={onChange}
         />
       )}
       onUpdateValue={onUpdatePhone}
       onUpdateType={onUpdatePhoneContext}
       onRemove={onRemovePhone}
+      onAdd={onAdd}
     />
   );
 }
@@ -206,36 +217,44 @@ export function ContactPhoneRows({
 export function ContactEmailRows({
   emails,
   labels,
+  readOnly,
+  onAdd,
   onUpdateEmail,
   onUpdateEmailContext,
   onRemoveEmail,
-}: {
+}: ChannelEditorProps & {
   emails: Array<{ id: string; address: string; contextType: ContactChannelContext }>;
-  labels: ContactsUILabels;
   onUpdateEmail: (id: string, address: string, contextType?: ContactChannelContext) => void;
   onUpdateEmailContext: (id: string, contextType: ContactChannelContext) => void;
   onRemoveEmail: (id: string) => void;
 }) {
-  const typeAriaLabel = `${labels.channelType} ${labels.emailAddress}`;
   return (
-    <SimpleChannelRows
+    <ChannelRows
       rows={emails.map((row) => ({ id: row.id, value: row.address, type: row.contextType }))}
-      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
+      icon={<Mail />}
+      inputType="email"
       valueAriaLabel={labels.emailAddress}
-      placeholder={labels.addEmail}
-      typeAriaLabel={typeAriaLabel}
+      placeholder={labels.emailAddress}
+      typeAriaLabel={`${labels.channelType} ${labels.emailAddress}`}
       removeLabel={labels.removeRow}
-      typeControl={({ value, onChange, ariaLabel }) => (
+      addLabel={labels.addEmail}
+      openLabel={labels.sendEmail}
+      openIcon={<Mail aria-hidden />}
+      hrefFor={(value) => (value.trim().includes("@") ? `mailto:${value.trim()}` : null)}
+      readOnly={readOnly}
+      typeControl={({ value, onChange, ariaLabel, disabled }) => (
         <ContactContextTypeSelect
           labels={labels}
           value={value}
           ariaLabel={ariaLabel}
+          disabled={disabled}
           onChange={onChange}
         />
       )}
       onUpdateValue={onUpdateEmail}
       onUpdateType={onUpdateEmailContext}
       onRemove={onRemoveEmail}
+      onAdd={onAdd}
     />
   );
 }
@@ -243,228 +262,135 @@ export function ContactEmailRows({
 export function ContactUrlRows({
   urls,
   labels,
+  readOnly,
+  onAdd,
   onUpdateUrl,
   onUpdateUrlContext,
   onRemoveUrl,
-}: {
+}: ChannelEditorProps & {
   urls: Array<{ id: string; uri: string; contextType: ContactChannelContext }>;
-  labels: ContactsUILabels;
   onUpdateUrl: (id: string, uri: string, contextType?: ContactChannelContext) => void;
   onUpdateUrlContext: (id: string, contextType: ContactChannelContext) => void;
   onRemoveUrl: (id: string) => void;
 }) {
-  const typeAriaLabel = `${labels.channelType} ${labels.urlAddress}`;
   return (
-    <SimpleChannelRows
+    <ChannelRows
       rows={urls.map((row) => ({ id: row.id, value: row.uri, type: row.contextType }))}
-      emptyType={CONTACT_CHANNEL_DEFAULT_CONTEXT}
+      icon={<Link2 />}
+      inputType="url"
       valueAriaLabel={labels.urlAddress}
-      placeholder={labels.addUrl}
-      typeAriaLabel={typeAriaLabel}
+      placeholder={labels.urlAddress}
+      typeAriaLabel={`${labels.channelType} ${labels.urlAddress}`}
       removeLabel={labels.removeRow}
-      typeControl={({ value, onChange, ariaLabel }) => (
+      addLabel={labels.addUrl}
+      openLabel={labels.openWebsite}
+      openIcon={<ExternalLink aria-hidden />}
+      hrefFor={(value) => safeContactExternalHref(value.trim())}
+      readOnly={readOnly}
+      typeControl={({ value, onChange, ariaLabel, disabled }) => (
         <ContactContextTypeSelect
           labels={labels}
           value={value}
           ariaLabel={ariaLabel}
+          disabled={disabled}
           onChange={onChange}
         />
       )}
       onUpdateValue={onUpdateUrl}
       onUpdateType={onUpdateUrlContext}
       onRemove={onRemoveUrl}
+      onAdd={onAdd}
     />
   );
 }
 
-function AddressSecondaryFields({
-  rowId,
-  postalCode,
-  locality,
-  region,
-  country,
-  labels,
-  onFieldChange,
-}: {
-  rowId: string;
-  postalCode: string;
-  locality: string;
-  region: string;
-  country: string;
-  labels: ContactsUILabels;
-  onFieldChange: (
-    field: keyof Omit<ContactAddressDraft, "id" | "contextType">,
-    value: string,
-  ) => void;
-}) {
-  return (
-    <div className="contacts-detail-view__address-fields">
-      <div className="contacts-detail-view__address-locality-row">
-        <FieldLabelRow label={labels.addressPostalCode} htmlFor={`contact-address-postal-${rowId}`}>
-          <Input
-            id={`contact-address-postal-${rowId}`}
-            value={postalCode}
-            onChange={(event) => onFieldChange("postalCode", event.target.value)}
-          />
-        </FieldLabelRow>
-        <FieldLabelRow label={labels.addressLocality} htmlFor={`contact-address-locality-${rowId}`}>
-          <Input
-            id={`contact-address-locality-${rowId}`}
-            value={locality}
-            onChange={(event) => onFieldChange("locality", event.target.value)}
-          />
-        </FieldLabelRow>
-      </div>
-      <FieldLabelRow label={labels.addressRegion} htmlFor={`contact-address-region-${rowId}`}>
-        <Input
-          id={`contact-address-region-${rowId}`}
-          value={region}
-          onChange={(event) => onFieldChange("region", event.target.value)}
-        />
-      </FieldLabelRow>
-      <FieldLabelRow label={labels.addressCountry} htmlFor={`contact-address-country-${rowId}`}>
-        <Input
-          id={`contact-address-country-${rowId}`}
-          value={country}
-          onChange={(event) => onFieldChange("country", event.target.value)}
-        />
-      </FieldLabelRow>
-    </div>
+type AddressField = keyof Omit<ContactAddressDraft, "id" | "contextType">;
+
+function addressHasValue(row: ContactAddressDraft): boolean {
+  return [row.street, row.postalCode, row.locality, row.region, row.country].some((part) =>
+    part.trim(),
   );
 }
 
-function AddressEditor({
-  rowId,
-  street,
-  postalCode,
-  locality,
-  region,
-  country,
-  labels,
-  trailing,
-  typeControl,
-  removeLabel,
-  onRemove,
-  onFieldChange,
-}: {
-  rowId: string;
-  street: string;
-  postalCode: string;
-  locality: string;
-  region: string;
-  country: string;
-  labels: ContactsUILabels;
-  trailing?: boolean;
-  typeControl: ReactNode;
-  removeLabel?: string;
-  onRemove?: () => void;
-  onFieldChange: (
-    field: keyof Omit<ContactAddressDraft, "id" | "contextType">,
-    value: string,
-  ) => void;
-}) {
-  return (
-    <div className="contacts-detail-view__address-entry">
-      <ContactChannelRow
-        variant="address"
-        typeControl={<FieldLabelRow reserveLabel>{typeControl}</FieldLabelRow>}
-        removeLabel={removeLabel}
-        onRemove={onRemove}
-      >
-        <FieldLabelRow label={labels.addressStreet} htmlFor={`contact-address-street-${rowId}`}>
-          <Input
-            id={`contact-address-street-${rowId}`}
-            value={street}
-            placeholder={trailing ? labels.addAddress : undefined}
-            onChange={(event) => onFieldChange("street", event.target.value)}
-          />
-        </FieldLabelRow>
-      </ContactChannelRow>
-      <AddressSecondaryFields
-        rowId={rowId}
-        postalCode={postalCode}
-        locality={locality}
-        region={region}
-        country={country}
-        labels={labels}
-        onFieldChange={onFieldChange}
-      />
-    </div>
-  );
-}
-
+/**
+ * One row per address: the type in the label column, then street, postal code and
+ * city, region and country as ghost fields, one line each like a written address.
+ */
 export function ContactAddressRows({
   addresses,
   labels,
+  readOnly,
+  onAdd,
   onUpdateAddress,
   onUpdateAddressContext,
   onRemoveAddress,
-}: {
+}: ChannelEditorProps & {
   addresses: ContactAddressDraft[];
-  labels: ContactsUILabels;
   onUpdateAddress: (
     id: string,
-    field: keyof Omit<ContactAddressDraft, "id" | "contextType">,
+    field: AddressField,
     value: string,
     contextType?: ContactChannelContext,
   ) => void;
   onUpdateAddressContext: (id: string, contextType: ContactChannelContext) => void;
   onRemoveAddress: (id: string) => void;
 }) {
-  const slot = useTrailingChannelSlot<ContactChannelContext>(CONTACT_CHANNEL_DEFAULT_CONTEXT);
-  const requestFocus = useFocusAfterCommit();
-  const typeAriaLabel = `${labels.channelType} ${labels.sectionAddresses}`;
-
+  const shown = readOnly ? addresses.filter(addressHasValue) : addresses;
+  const field = (row: ContactAddressDraft, name: AddressField, placeholder: string, id?: string) =>
+    readOnly && !row[name].trim() ? null : (
+      <Input
+        id={id}
+        variant="ghost"
+        size="sm"
+        className={`contacts-detail-view__address-${name}`}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        value={row[name]}
+        readOnly={readOnly}
+        onChange={(event) => onUpdateAddress(row.id, name, event.target.value)}
+      />
+    );
   return (
     <>
-      {addresses.map((row) => (
-        <AddressEditor
+      {shown.map((row) => (
+        <DetailFieldRow
           key={row.id}
-          rowId={row.id}
-          street={row.street}
-          postalCode={row.postalCode}
-          locality={row.locality}
-          region={row.region}
-          country={row.country}
-          labels={labels}
-          removeLabel={labels.removeRow}
-          onRemove={() => onRemoveAddress(row.id)}
-          typeControl={
+          className="contacts-detail-view__channel contacts-detail-view__channel--address"
+          icon={<MapPin />}
+          label={
             <ContactContextTypeSelect
               labels={labels}
               value={row.contextType}
-              ariaLabel={typeAriaLabel}
+              ariaLabel={`${labels.channelType} ${labels.sectionAddresses}`}
+              disabled={readOnly}
               onChange={(contextType) => onUpdateAddressContext(row.id, contextType)}
             />
           }
-          onFieldChange={(field, value) => onUpdateAddress(row.id, field, value)}
-        />
+          trailing={
+            readOnly ? null : (
+              <IconButton
+                label={labels.removeRow}
+                icon={<Trash2 aria-hidden />}
+                variant="ghost"
+                severity="danger"
+                size="sm"
+                onClick={() => onRemoveAddress(row.id)}
+              />
+            )
+          }
+        >
+          <div className="contacts-detail-view__address">
+            {field(row, "street", labels.addressStreet, contactAddressStreetInputId(row.id))}
+            <div className="contacts-detail-view__address-line">
+              {field(row, "postalCode", labels.addressPostalCode)}
+              {field(row, "locality", labels.addressLocality)}
+            </div>
+            {field(row, "region", labels.addressRegion)}
+            {field(row, "country", labels.addressCountry)}
+          </div>
+        </DetailFieldRow>
       ))}
-      <AddressEditor
-        key={slot.id}
-        rowId={slot.id}
-        street=""
-        postalCode=""
-        locality=""
-        region=""
-        country=""
-        labels={labels}
-        trailing
-        typeControl={
-          <ContactContextTypeSelect
-            labels={labels}
-            value={slot.type}
-            ariaLabel={typeAriaLabel}
-            onChange={slot.setType}
-          />
-        }
-        onFieldChange={(field, value) => {
-          if (!value) return;
-          const taken = slot.consume();
-          requestFocus(addressFieldInputId(taken.id, field));
-          onUpdateAddress(taken.id, field, value, taken.type);
-        }}
-      />
+      {!readOnly && onAdd ? <DetailFieldAddRow label={labels.addAddress} onAdd={onAdd} /> : null}
     </>
   );
 }

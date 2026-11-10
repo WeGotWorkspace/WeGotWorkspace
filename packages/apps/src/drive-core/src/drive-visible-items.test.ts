@@ -130,3 +130,45 @@ describe("filterDriveVisibleItems", () => {
     ]);
   });
 });
+
+describe("filterDriveVisibleItems All Files", () => {
+  const base = {
+    liveSearchResults: null,
+    starredItems: null,
+    starred: {},
+    view: { type: "all" } as const,
+    currentUsername: "demo",
+  };
+
+  it("lists the index rows across drives, filtered by the search box", () => {
+    const allItems = [
+      sampleFile({ id: "a", title: "Alpha.md", parent: "My Drive/Projects" }),
+      sampleFile({ id: "b", title: "Budget.xlsx", parent: "Groups/team" }),
+    ];
+    const visible = filterDriveVisibleItems({
+      ...base,
+      files: [],
+      allItems,
+      searchQuery: "budget",
+      operations: {},
+    });
+    expect(visible.map((file) => file.id)).toEqual(["b"]);
+  });
+
+  it("without an index lists every loaded file, never folders or trash", () => {
+    const files = [
+      sampleFile({ id: "a", parent: "My Drive/Projects" }),
+      sampleFile({ id: "dir", kind: "folder", parent: "My Drive" }),
+      sampleFile({ id: "gone", parent: "Trash" }),
+      sampleFile({ id: "b", parent: "Groups/team" }),
+    ];
+    const visible = filterDriveVisibleItems({
+      ...base,
+      files,
+      allItems: null,
+      searchQuery: "",
+      operations: undefined,
+    });
+    expect(visible.map((file) => file.id)).toEqual(["a", "b"]);
+  });
+});

@@ -4,7 +4,11 @@
  */
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
-import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
+import {
+  DRIVE_GROUPS_UI_ROOT,
+  driveGroupUiPath,
+  normalizeApiVirtualPath,
+} from "@/lib/files/drive-path-utils";
 
 const SETTINGS_GROUP_URI_PREFIX = "principals/groups/";
 
@@ -175,8 +179,8 @@ export function resolveDriveRootDisplayLabel(
   let slug: string | undefined;
   if (raw.startsWith("groups/")) {
     slug = raw.slice("groups/".length).split("/")[0];
-  } else if (raw.startsWith("Groups/")) {
-    slug = raw.slice("Groups/".length).split("/")[0];
+  } else if (raw.startsWith(`${DRIVE_GROUPS_UI_ROOT}/`)) {
+    slug = raw.slice(`${DRIVE_GROUPS_UI_ROOT}/`.length).split("/")[0];
   }
   if (slug) {
     const labeled = options.groupRoots?.find((root) => root.slug === slug)?.label?.trim();
@@ -197,7 +201,7 @@ export function buildDriveFolderPickerRootLabels(
     [DRIVE_UI_PERSONAL_PATH]: personalDriveLabel,
   };
   for (const root of groupRoots) {
-    map[`Groups/${root.slug}`] = root.label;
+    map[driveGroupUiPath(root.slug)] = root.label;
   }
   return map;
 }

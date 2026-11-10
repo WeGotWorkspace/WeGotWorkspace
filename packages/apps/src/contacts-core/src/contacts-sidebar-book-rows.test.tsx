@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsSidebarBookRows } from "./contacts-sidebar-book-rows";
 import { addressBookDotColor } from "./contacts-addressbook-color";
 import type { ContactsAddressBookRow } from "./contacts-addressbook-write";
-import type { ContactCard } from "@/lib/models/contacts-types";
 import { CONTACTS_VIEW_PREFS_STORAGE_KEY, persistAddressBookColor } from "./contacts-view-prefs";
 
 afterEach(() => {
@@ -85,56 +84,36 @@ describe("ContactsSidebarBookRows", () => {
     expect(addressBookDotColor(ownerBook)).toBe("#ec4899");
   });
 
-  it("nests same-book groups under the book and hides the fold when empty", () => {
-    const friendsGroup = {
-      "@type": "Card",
-      version: "1.0",
-      id: "group-friends",
-      uid: "urn:uuid:group-friends",
-      kind: "group",
-      name: { full: "Friends" },
-      addressBookIds: { default: true },
-    } as unknown as ContactCard;
-    const colleaguesGroup = {
-      ...friendsGroup,
-      id: "group-alice-colleagues",
-      name: { full: "Colleagues" },
-      addressBookIds: { "shared-42": true },
-    } as unknown as ContactCard;
-    const onSelectGroup = vi.fn();
+  it("renders books only, marks the selected book, and has no group fold", () => {
+    const onSelect = vi.fn();
+    const onEdit = vi.fn();
     render(
       <TooltipProvider delayDuration={0}>
         <ul>
           <ContactsSidebarBookRows
             books={[ownerBook, viewOnlySharee]}
-            groups={[friendsGroup, colleaguesGroup]}
-            view="group:group-friends"
+            view="book:shared-42"
             editLabel="Address book settings"
             viewOnlyLabel="View only"
             hiddenAddressBookIds={new Set()}
             onToggleVisibility={vi.fn()}
-            onSelect={vi.fn()}
-            onEdit={vi.fn()}
-            canEditGroup={() => true}
-            onSelectGroup={onSelectGroup}
-            onEditGroup={vi.fn()}
+            onSelect={onSelect}
+            onEdit={onEdit}
           />
         </ul>
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "Friends" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Colleagues" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Collapse Personal" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Collapse Alice" })).toBeTruthy();
+    const rows = document.querySelectorAll(".collection-sidebar-row");
+    expect(rows).toHaveLength(2);
+    const alice = screen.getByText("Alice").closest(".collection-sidebar-row");
     const personal = screen.getByText("Personal").closest(".collection-sidebar-row");
-    expect(personal?.className).toMatch(/collection-sidebar-row--related/);
-    const friends = screen.getByText("Friends").closest(".collection-sidebar-row");
-    expect(friends?.className).not.toMatch(/collection-sidebar-row--nested/);
-    fireEvent.click(screen.getByRole("button", { name: "Collapse Personal" }));
-    expect(screen.queryByRole("button", { name: "Friends" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Expand Personal" }));
-    fireEvent.click(screen.getByRole("button", { name: "Friends" }));
-    expect(onSelectGroup).toHaveBeenCalledWith("group-friends");
+    expect(alice?.className).toMatch(/collection-sidebar-row--selected/);
+    expect(personal?.className).not.toMatch(/collection-sidebar-row--selected/);
+    expect(personal?.className).not.toMatch(/collection-sidebar-row--related/);
+    expect(screen.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Personal" }));
+    expect(onSelect).toHaveBeenCalledWith("default");
   });
 });

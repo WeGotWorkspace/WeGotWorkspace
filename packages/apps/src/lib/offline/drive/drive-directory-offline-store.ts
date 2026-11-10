@@ -254,3 +254,32 @@ export async function listAllCachedDriveEntryPaths(username: string): Promise<st
   // Upload placeholders have no server content to sync yet.
   return rows.filter((row) => row.type === "file" && !row.uploadId).map((row) => row.id);
 }
+
+/** A dot segment (`.Trash`, app data) keeps a path out of All Files, as on the server. */
+function isHiddenDrivePath(path: string): boolean {
+  return path.split("/").some((segment) => segment.startsWith("."));
+}
+
+/**
+ * All Files from the offline cache: one page of every cached file across the
+ * viewer's drives (the metadata crawl covers the home and every group drive),
+ * newest first, the same shape `listAllFiles` returns online.
+ */
+export async function listAllCachedDriveFiles(
+  username: string,
+  input: { offset: number; limit: number },
+): Promise<{ entries: WgwDriveDirectoryEntry[]; nextOffset: number; hasMore: boolean }> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await driveEntriesTable(db).toArray();
+  const files = rows
+    .filter((row) => row.type === "file" && !row.uploadId)
+    .map(parseEntryRow)
+    .filter((entry) => !isHiddenDrivePath(entry.path))
+    .sort((a, b) => b.time - a.time || a.path.localeCompare(b.path));
+  const end = input.offset + input.limit;
+  return {
+    entries: files.slice(input.offset, end),
+    nextOffset: Math.min(end, files.length),
+    hasMore: end < files.length,
+  };
+}

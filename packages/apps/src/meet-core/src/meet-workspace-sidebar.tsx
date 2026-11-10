@@ -2,7 +2,7 @@ import { Hash, Video } from "lucide-react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
@@ -68,6 +68,7 @@ export function MeetWorkspaceSidebar({
 }: MeetWorkspaceSidebarProps) {
   return (
     <AppSidebar
+      settingsAppId="meet"
       open={open}
       onCloseMobile={onClose}
       appSwitchSubtitle={meetLabels.productName}
@@ -87,7 +88,7 @@ export function MeetWorkspaceSidebar({
           ]}
         />
       }
-      footer={<WorkspaceAppSettingsFooter appId="meet" session={session} onLogout={onLogout} />}
+      footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
     >
       {sections.channels.length > 0 ? (
         <SidebarSection title={meetLabels.sidebarChannels}>

@@ -4,45 +4,42 @@
   @apply flex min-w-0 max-w-full flex-col;
 }
 
+/* Frosted floating chrome, as the menus and the format bar: it floats over the
+   messages, which blur past beneath it. */
 .chat-composer__card {
-  @apply flex min-w-0 max-w-full cursor-text flex-col overflow-hidden rounded-xl border;
-  border-color: var(--chat-border, color-mix(in oklab, var(--workspace-accent) 12%, transparent));
-  background-color: var(--workspace-surface, var(--chat-surface, var(--workspace-surface)));
+  @apply flex min-w-0 max-w-full cursor-text flex-col overflow-hidden;
+  border-radius: var(--floating-toolbar-radius);
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
 }
 
 .chat-composer__card :is(button, a, [role="button"], [role="option"], [role="listbox"]) {
   @apply cursor-pointer;
 }
 
-.chat-composer__bar.text-editor-format-bar,
-.chat-composer .text-editor-format-bar {
-  @apply min-w-0 max-w-full;
-  position: static;
-  z-index: auto;
-  background: transparent;
-  backdrop-filter: none;
-  border-bottom: 1px solid
-    var(--chat-border, color-mix(in oklab, var(--workspace-foreground) 12%, transparent));
+/* One row: the text grows upward from a single line; the buttons stay at its foot. */
+.chat-composer__row {
+  @apply flex min-w-0 items-end gap-0.5 p-1.5 ps-4;
 }
 
 .chat-composer__sheet {
-  @apply min-h-16 min-w-0 max-w-full px-3 py-2;
+  @apply min-w-0 flex-1 py-1.5;
+  /* One line at the control height (with the row padding). */
+  --text-editor-prose-line-height: 1.5;
+  max-height: 12rem;
+  overflow-y: auto;
 }
 
-.chat-composer__sheet .text-editor-sheet--inline {
-  @apply min-h-12;
+.chat-composer__sheet .text-editor-prose > :first-child {
+  @apply mt-0;
 }
 
-.chat-composer__footer {
-  @apply flex items-center justify-end gap-1 px-2 pb-2;
+.chat-composer__sheet .text-editor-prose > :last-child {
+  @apply mb-0;
 }
 
 .chat-composer__mentions {
-  @apply px-2 pb-2;
-}
-
-.chat-composer__hint {
-  @apply mt-1.5 min-w-0 max-w-full break-words text-center text-[11px];
-  overflow-wrap: anywhere;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 72%, transparent));
+  @apply px-2 pt-2;
 }

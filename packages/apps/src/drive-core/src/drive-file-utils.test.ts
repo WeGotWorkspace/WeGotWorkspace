@@ -43,6 +43,27 @@ describe("suggestNewMarkdownFileName", () => {
   });
 });
 
+describe("driveFileFromEntry nodeId", () => {
+  const entry = {
+    type: "file" as const,
+    path: "/users/alice/report.md",
+    name: "report.md",
+    size: 100,
+    time: 1,
+    permissions: 0,
+    myRights: fullDriveMyRights,
+  };
+
+  it("keeps the FileNode id a signed-in listing names (#1976)", () => {
+    const nodeId = `fn-${"b".repeat(32)}`;
+    expect(driveFileFromEntry({ ...entry, nodeId }, "alice").nodeId).toBe(nodeId);
+  });
+
+  it("leaves nodeId unset when the listing has none (guest REST)", () => {
+    expect(driveFileFromEntry(entry, "alice")).not.toHaveProperty("nodeId");
+  });
+});
+
 describe("driveFileFromEntry isShared", () => {
   it("maps hasShares from directory listing entries", () => {
     const mapped = driveFileFromEntry(

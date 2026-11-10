@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Smile } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
+import { REACTION_EMOJIS } from "@/reaction-picker/src/reaction-emojis";
+import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
 import type { ChatReaction } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-reaction-bar.css";
 
-/** Same six-emoji set as Docs collab comments — copied, not shared. */
-export const CHAT_REACTION_EMOJIS = ["👍", "💡", "❤️", "🎉", "👀", "✅"] as const;
+/** The suite reaction set (shared with Docs comments). */
+export const CHAT_REACTION_EMOJIS = REACTION_EMOJIS;
 
 export type ChatReactionBarProps = {
   reactions?: ChatReaction[];
@@ -37,7 +38,6 @@ export function ChatReactionBar({
   onToggleReaction,
   className,
 }: ChatReactionBarProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
   const visibleReactions = useMemo(
     () =>
       reactions
@@ -70,8 +70,8 @@ export function ChatReactionBar({
           </button>
         );
       })}
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-        <PopoverTrigger asChild>
+      <ReactionPicker
+        trigger={
           <button
             type="button"
             className="chat-reaction-bar__reaction chat-reaction-bar__reaction--add"
@@ -80,32 +80,10 @@ export function ChatReactionBar({
           >
             <Smile className="chat-reaction-bar__reaction-add-icon" aria-hidden />
           </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          side="top"
-          sideOffset={0}
-          className="chat-reaction-bar__picker"
-        >
-          <div className="chat-reaction-bar__picker-grid">
-            {CHAT_REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className="chat-reaction-bar__picker-item"
-                aria-pressed={userReacted(reactions, emoji, currentUserId)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleReaction(emoji);
-                  setPickerOpen(false);
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+        }
+        isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
+        onPick={onToggleReaction}
+      />
     </div>
   );
 }
