@@ -11,6 +11,15 @@ on:
     types: [opened, synchronize, reopened, labeled]
   merge_group:
 
+# Two tiers. Pull requests run the fast checks: mcp-server, api-quality,
+# apps-quality, build, chromatic. The heavy jobs (apps-e2e, api-mysql,
+# upgrade-e2e, install-zip-sqlite) run in the merge queue and on pushes to
+# main, which still guards every merge. A pull request labeled run-full-ci
+# runs them too, from its next CI run on (adding the label starts nothing).
+# apps-e2e is a required check, so on a pull request it still starts and
+# reports success without work: a job skipped by its `if` would report under
+# its unevaluated name and never satisfy the check.
+#
 # Any other label starts a run that does nothing. Its own group keeps it from
 # cancelling the PR's CI. The label names match review-loop-ci-gate.yml.
 concurrency:
@@ -197,6 +206,8 @@ jobs:
   # skips merge_group. Building here keeps apps-e2e independent so it can be
   # a required check. Live-app specs stay on playwright.live.config.mjs
   # and run from nightly-live-e2e.yml (not this pull-request workflow).
+  # Heavy tier (see the top of this file): on a pull request every step but
+  # the first is skipped, so the required check reports without work.
   apps-e2e:
     name: apps-e2e${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
@@ -206,20 +217,35 @@ jobs:
       !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      HEAVY: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-full-ci') }}
     steps:
+      - name: Heavy tier
+        run: |
+          if [ "$HEAVY" = true ]; then
+            echo "Running mock-tier Playwright."
+          else
+            echo "apps-e2e runs in the merge queue. Label the PR run-full-ci to run it here." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
       - uses: actions/checkout@v7
+        if: env.HEAVY == 'true'
 
       - uses: pnpm/action-setup@v6.1.0
+        if: env.HEAVY == 'true'
 
       - uses: actions/setup-node@v7
+        if: env.HEAVY == 'true'
         with:
           node-version: "24"
           cache: "pnpm"
 
       - name: Install JS workspace
+        if: env.HEAVY == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Cache Playwright browsers
+        if: env.HEAVY == 'true'
         uses: actions/cache@v6
         id: playwright-cache
         with:
@@ -229,6 +255,7 @@ jobs:
             ${{ runner.os }}-playwright-chromium-
 
       - name: Install Playwright Chromium
+        if: env.HEAVY == 'true'
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
             pnpm --filter @wgw/apps exec playwright install chromium --with-deps
@@ -237,17 +264,19 @@ jobs:
           fi
 
       - name: Build Storybook
+        if: env.HEAVY == 'true'
         working-directory: packages/apps
         run: pnpm exec storybook build --output-dir storybook-static
 
       - name: Mock-tier Playwright
+        if: env.HEAVY == 'true'
         working-directory: packages/apps
         env:
           WGW_APPS_E2E_STATIC: "1"
         run: pnpm exec playwright test
 
       - name: Upload Playwright traces
-        if: failure()
+        if: failure() && env.HEAVY == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: apps-e2e-traces
@@ -309,11 +338,15 @@ jobs:
         run: pnpm run build
 
   # v0.1.99 → this SHA with seeded users, calendars, notes, tasks, drive files, and contacts.
-  # Pull requests and the merge queue only. Pushes to main use the install
-  # workflow's upgrade job, which targets the candidate release image.
+  # The merge queue (and pull requests labeled run-full-ci) only. Pushes to
+  # main use the install workflow's upgrade job, which targets the candidate
+  # release image.
   upgrade-e2e:
     needs: gate
-    if: needs.gate.outputs.run == 'true' && github.event_name != 'push'
+    if: >-
+      needs.gate.outputs.run == 'true' && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'run-full-ci'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -357,12 +390,16 @@ jobs:
   # tools/e2e-install-matrix.sh, which the Edge build also runs after a merge.
   # It fails when the install leaves wgw-content in the web root (#1803).
   # Builds an unsigned ZIP and serves it with PHP's built-in server: no
-  # Docker, no signing key, nothing published. Pull requests and the merge
-  # queue only; on pushes to main edge.yml runs the same cell.
+  # Docker, no signing key, nothing published. The merge queue (and pull
+  # requests labeled run-full-ci) only; on pushes to main edge.yml runs the
+  # same cell.
   install-zip-sqlite:
     name: install-zip-sqlite${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
-    if: needs.gate.outputs.run == 'true' && github.event_name != 'push'
+    if: >-
+      needs.gate.outputs.run == 'true' && github.event_name != 'push' &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'run-full-ci'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -485,12 +522,16 @@ jobs:
           exitZeroOnChanges: true
           autoAcceptChanges: "main"
 
+  # Heavy tier: the merge queue, pushes to main, and pull requests labeled
+  # run-full-ci.
   api-mysql:
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&
       (github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):'))
+      !startsWith(github.event.head_commit.message, 'chore(release):')) &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'run-full-ci'))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -541,7 +582,7 @@ jobs:
       - name: Install yjs for collab round-trip tests
         run: bash tools/install-api-test-yjs.sh
 
-      # PR/push runs only the MySQL parity subset (DB-dialect-relevant tests),
+      # This job runs only the MySQL parity subset (DB-dialect-relevant tests),
       # split into round-robin shards. The full MySQL suite runs on main +
       # nightly via ci-mysql-full.yml.
       - name: API tests (MySQL parity subset, shard ${{ matrix.shard }}/2)

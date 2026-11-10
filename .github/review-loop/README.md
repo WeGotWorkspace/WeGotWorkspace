@@ -118,6 +118,10 @@ wait until the loop hands the PR to a human. Their first job,
   and the review after it.
 - CI on a waiting PR can be started by hand: add `needs-human`, or push.
 - Without `REVIEW_LOOP_APP_SLUG`, nothing waits.
+- The run that starts is the fast tier. `apps-e2e`, `api-mysql`,
+  `upgrade-e2e`, and `install-zip-sqlite` run in the merge queue (see the top
+  of `ci.yml`), so a failure there removes the PR from the queue and does
+  not reach the loop. Add `run-full-ci` to run them on the PR.
 
 ## CI failures after the hand-over
 

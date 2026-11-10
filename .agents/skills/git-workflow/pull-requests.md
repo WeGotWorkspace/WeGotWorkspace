@@ -62,12 +62,15 @@ PR title: same Conventional Commits style as commit subject when possible.
 From root [README.md](../../../README.md):
 
 - `build` (CI)
+- `apps-e2e` (CI)
 - `SAST (CodeQL JS/TS)`
 - `SAST (Semgrep PHP)`
 - `Secrets (Gitleaks)`
 - `SCA (Trivy)`
 
 `SAST (Psalm PHP)` runs in the security workflow and is not a required status check.
+
+CI has two tiers. A pull request runs the fast checks (`mcp-server`, `api-quality`, `apps-quality`, `build`, `chromatic`, and the security workflow). The heavy jobs (`apps-e2e`, `api-mysql`, `upgrade-e2e`, `install-zip-sqlite`) run in the merge queue and on pushes to `main`. On a pull request `apps-e2e` reports success without running, so the required check is met. To run the heavy jobs on a pull request, for example when it changes e2e specs, migrations, or the installer, add the `run-full-ci` label and push; adding the label alone starts nothing.
 
 Fix failing checks before expecting merge.
 
@@ -88,7 +91,7 @@ gh pr merge <number> --auto --merge
 
 Skip `gh pr ready` when the PR is already ready for review. `--auto` adds it to the queue once its own required checks are green. The queue then runs `merge_group` checks and merges.
 
-Queue settings: merge method **merge**, build concurrency **2**, only merge non-failing pull requests, minimum and maximum group size **1**, status check timeout **120 minutes**.
+Queue settings: merge method **merge**, build concurrency **5**, only merge non-failing pull requests, minimum group size **1**, maximum group size **5**, status check timeout **120 minutes**. Each queued pull request gets its own `merge_group` run; the group size only decides how many green entries merge at once.
 
 Add `--delete-branch` only when the user asks to delete the remote branch after merge. The repo already deletes the head branch on merge.
 
