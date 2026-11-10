@@ -15,6 +15,7 @@ export type DocxBatchResult =
 export type DocxBatchJob = { name: string; task: () => Promise<SaveAsMarkdownResult> };
 
 type Refusal = keyof typeof labels.refusals;
+const refusalOf = (error: unknown) => (error as { refusal?: Refusal } | null)?.refusal;
 
 /** The Doc is saved: hand it its report and the default page setup before it opens. */
 function prepareConvertedDoc({ docPath, report }: SaveAsMarkdownResult): void {
@@ -25,7 +26,6 @@ function prepareConvertedDoc({ docPath, report }: SaveAsMarkdownResult): void {
     // The Doc is saved: it opens with the page setup it has.
   }
 }
-const refusalOf = (error: unknown) => (error as { refusal?: Refusal } | null)?.refusal;
 
 /**
  * Shared by Save as Markdown and Import docx file(s): one conversion at a time,
