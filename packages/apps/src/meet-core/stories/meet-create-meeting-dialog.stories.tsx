@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import { CALENDAR_MEET_LINK_KEY } from "@/calendar-core/src/calendar-meet-link";
+import { CALENDAR_MEET_LINK_KEY } from "@/lib/meetings/calendar-meet-link";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { MeetCreateMeetingDialog } from "@/meet-core/src/meet-create-meeting-dialog";
 import { meetLabels } from "@/meet-core/src/meet-labels";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link2, MapPin } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";

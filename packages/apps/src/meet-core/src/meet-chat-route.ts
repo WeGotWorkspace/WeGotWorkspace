@@ -1,9 +1,9 @@
-import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
+import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
 import {
   meetDirectMessageChannelId,
   meetDirectMessagePrincipalId,
 } from "@/meet-core/src/meet-direct-messages";
-import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/lib/meetings/meet-public-id";
 
 /**
  * Browser paths for live Meet chat. Type lives in the path; internal selection

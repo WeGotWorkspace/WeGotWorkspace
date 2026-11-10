@@ -3,7 +3,7 @@ import { IconButton } from "@/button/src/button";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 export type MeetWorkspaceHeaderProps = {
   sidebarOpen: boolean;

@@ -16,7 +16,7 @@ import {
   meetRemoveExpiresAt,
   resolveMeetReserveExpiresAt,
   type CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type {
   CalendarAPIOperations,
   CalendarEventDraft,
@@ -36,12 +36,12 @@ import {
   type MeetUpcomingMeeting,
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
-import type { MeetChannel, MeetChannelWriteInput } from "@/meet-core/src/meet-types";
+import { createMeetRoomCode } from "@/lib/meetings/meet-room-id";
+import type { MeetChannel, MeetChannelWriteInput } from "@/lib/models/meet-types";
 import {
   buildMeetCollectionInviteLink,
   buildMeetGuestCallLink,
-} from "@/meet-core/src/meet-route-search";
+} from "@/lib/meetings/meet-route-search";
 import "@/calendar-core/src/calendar-workspace.css";
 import "@/meet-core/src/meet-channel-dialog.css";
 import "./meet-create-meeting-dialog.css";

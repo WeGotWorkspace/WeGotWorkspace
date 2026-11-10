@@ -15,7 +15,7 @@ import type {
   MeetChannel,
   MeetChannelKind,
   MeetChannelRights,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 

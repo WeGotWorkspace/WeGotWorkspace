@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { meetGuestInviteChannel } from "@/meet-core/src/meet-guest-invite-channel";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 const design: MeetChannel = {
   id: "channel-design",

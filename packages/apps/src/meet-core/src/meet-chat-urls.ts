@@ -1,4 +1,4 @@
-import type { ChatLinkPreview, MeetUnfurlMap } from "@/meet-core/src/meet-types";
+import type { ChatLinkPreview, MeetUnfurlMap } from "@/lib/models/meet-types";
 
 export const CHAT_URL_SPLIT_PATTERN = /((?:https?:\/\/|www\.)[^\s]+)/gi;
 

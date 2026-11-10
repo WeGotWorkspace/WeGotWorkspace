@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import type { ControlSize } from "@/ui/control-size";
 import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
 import "@/user-avatar/src/user-avatar.css";
@@ -25,15 +26,6 @@ export {
  * | 2xl  | 80px — Meet lobby / large idle tiles |
  */
 export type UserAvatarSize = ControlSize | "2xl";
-
-/**
- * Presence pip: online green, away amber, offline transparent + ink ring.
- * `pending` (blue, `--color-sync-pending`) is not a person's status: it marks a save
- * or sync still in flight. Use it for that instead of `away`.
- * The signed-in user's own offline state (sidebar account footer) uses `away` with an
- * overridden accessible label; `offline` stays reserved for other people's presence.
- */
-export type UserAvatarPresence = "online" | "offline" | "away" | "pending";
 
 const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {
   xs: "user-avatar--xs",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import type { ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
+import type { ChatMentionPrincipal } from "@/lib/models/chat-types";
 import {
   extractChatMentionQuery,
   filterChatMentionPrincipals,

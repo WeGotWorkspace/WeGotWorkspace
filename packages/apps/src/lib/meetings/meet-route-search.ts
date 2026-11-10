@@ -1,5 +1,5 @@
-import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
-import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
+import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/lib/meetings/meet-public-id";
 
 export type MeetRouteSearch = {
   room?: string;

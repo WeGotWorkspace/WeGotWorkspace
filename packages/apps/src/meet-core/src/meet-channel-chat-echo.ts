@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 /**
  * A channel write in flight plus the echo id its room copy has to carry. The

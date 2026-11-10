@@ -57,4 +57,4 @@ export type {
   ChatReaction,
   ChatSendPayload,
   ChatUnfurlMap,
-} from "@/chat-ui/src/chat-types";
+} from "@/lib/models/chat-types";

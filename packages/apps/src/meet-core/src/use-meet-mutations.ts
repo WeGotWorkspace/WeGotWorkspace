@@ -16,11 +16,11 @@ import {
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
-} from "@/meet-core/src/meet-invite-status";
+} from "@/lib/meetings/meet-invite-status";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 import { meetJoinAlreadyEngaged } from "@/meet-core/src/meet-join-reuse";
-import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
+import { createMeetPeerId, createMeetRoomCode } from "@/lib/meetings/meet-room-id";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
