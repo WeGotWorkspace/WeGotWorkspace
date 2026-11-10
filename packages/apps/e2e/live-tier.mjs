@@ -34,6 +34,7 @@ export const liveTierSpecs = [
   "docs-offline-sync",
   "docs-open-by-id",
   "docs-page-break-two-tabs",
+  "docs-print",
   "docs-suggestion-reaction-author",
   "drive-file-node-push",
   "drive-first-sync",

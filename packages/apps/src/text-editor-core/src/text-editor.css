@@ -1274,13 +1274,15 @@
   }
 
   /*
-   * Print and PDF show the document, not the review: no comment highlights and no
-   * suggestion markup. Pending suggestions print as accepted, like the Word download.
+   * Print shows the document, not the review: no comment highlights and no suggestion
+   * markup. Pending suggestions print as accepted, like the Word download. No fade either:
+   * the marks' colour transition would still be running when the page is printed.
    */
   .text-editor-prose :is(.comment-mark, .comment-draft-anchor-selection, .legacy-suggestion-mark) {
     background: none !important;
     border: 0 !important;
     box-shadow: none !important;
+    transition: none !important;
   }
 
   .text-editor-prose del[data-change-id] {
@@ -1291,6 +1293,7 @@
     background: none !important;
     border: 0 !important;
     text-decoration: none !important;
+    transition: none !important;
   }
 
   /* Browsers drop background colours in print by default; keep highlights. */
