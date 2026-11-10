@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
+import { useState, type CSSProperties, type ReactElement } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
@@ -48,6 +48,8 @@ export type NotesNotebookSelectProps = {
   size?: ControlSize;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
   onCreateNotebook?: () => void;
+  /** Show *Create notebook* as the chosen value (import dialog create mode). */
+  createSelected?: boolean;
 };
 
 export function notebookSelectValueForNotes(
@@ -141,12 +143,18 @@ export function NotesNotebookSelect({
   size = "md",
   onNotebookChange,
   onCreateNotebook,
+  createSelected = false,
 }: NotesNotebookSelectProps): ReactElement {
   const items = notebooksWithCurrent(notebooks, value);
-  const selected = resolveNotebookSelectValue(items, value);
+  const selected =
+    createSelected && onCreateNotebook
+      ? NOTES_CREATE_NOTEBOOK_VALUE
+      : resolveNotebookSelectValue(items, value);
   // Prefer the notebook name so swatch chrome stays labeled for AT / tooltip.
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
   const swatch = triggerVariant === "swatch";
+  // The trigger tooltip would stay over the open list and catch clicks on the options below it.
+  const [listOpen, setListOpen] = useState(false);
 
   const trigger = swatch ? (
     <SelectPrimitive.Trigger asChild disabled={disabled}>
@@ -180,6 +188,7 @@ export function NotesNotebookSelect({
     <Select
       value={selected}
       disabled={disabled}
+      onOpenChange={setListOpen}
       onValueChange={(next) => {
         if (next === NOTES_CREATE_NOTEBOOK_VALUE) {
           onCreateNotebook?.();
@@ -191,7 +200,7 @@ export function NotesNotebookSelect({
         onNotebookChange(notebook);
       }}
     >
-      <Tooltip>
+      <Tooltip open={listOpen ? false : undefined}>
         <TooltipTrigger asChild>{trigger}</TooltipTrigger>
         <TooltipContent>{accessibleName}</TooltipContent>
       </Tooltip>
