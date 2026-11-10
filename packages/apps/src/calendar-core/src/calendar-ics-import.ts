@@ -1,33 +1,14 @@
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
 
-export const ICS_FILE_ACCEPT = ".ics,text/calendar";
-
-export const NEW_CALENDAR_IMPORT_VALUE = "__new_calendar__";
-
-export function isIcsFile(file: File): boolean {
-  const name = file.name.toLowerCase();
-  return name.endsWith(".ics") || name.endsWith(".ical") || file.type === "text/calendar";
-}
-
-/** Default calendar name from an ICS filename. Empty when nothing sensible remains. */
-export function inferCalendarNameFromIcsFileName(fileName: string): string {
-  const leaf = fileName.trim().split(/[/\\]/).pop() ?? "";
-  return leaf.replace(/\.(ics|ical)$/i, "").trim();
-}
-
-export function icsFileFromList(fileList: FileList | null): File | null {
-  return filterIcsFiles(fileList)[0] ?? null;
-}
-
-export function filterIcsFiles(fileList: FileList | null): File[] {
-  if (!fileList || fileList.length === 0) return [];
-  return Array.from(fileList).filter(isIcsFile);
-}
-
-export async function readIcsFile(file: File): Promise<string> {
-  return file.text();
-}
+export {
+  ICS_FILE_ACCEPT,
+  filterIcsFiles,
+  icsFileFromList,
+  inferCollectionNameFromIcsFileName as inferCalendarNameFromIcsFileName,
+  isIcsFile,
+  readIcsFile,
+} from "@/lib/ics-import/ics-file";
 
 export type CalendarIcsImportDestination =
   | { mode: "existing"; calendarId: string }

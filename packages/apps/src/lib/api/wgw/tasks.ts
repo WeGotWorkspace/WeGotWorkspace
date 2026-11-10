@@ -1,6 +1,7 @@
 import type {
   Task,
   TaskCreate,
+  TaskImportResponse,
   TaskList,
   TaskListCreate,
   TaskListPatch,
@@ -182,6 +183,58 @@ export async function deleteTask(taskId: string, opts?: TasksRequestOpts): Promi
   const before = cachedItemAudience("tasks", taskId);
   await requestTasksJson(`/tasks/items/${encodeURIComponent(taskId)}`, "DELETE", undefined, opts);
   checkNowAfterWrite([before]);
+}
+
+/**
+ * POST /tasks/items/import (#1624). A 400 that carries `list`/`errors` is an
+ * import where every task failed (for example all UIDs already exist): it is
+ * returned as a result, not thrown, so the person sees each reason.
+ */
+export async function importTasksLive(
+  icsText: string,
+  opts: { taskListId: string; signal?: AbortSignal },
+): Promise<TaskImportResponse> {
+  const path = `/tasks/items/import?taskListId=${encodeURIComponent(opts.taskListId)}`;
+  const res = await wgwFetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "text/calendar" },
+    body: icsText,
+    signal: opts.signal,
+  });
+  let body: unknown;
+  try {
+    body = await wgwReadJson(res);
+  } catch {
+    body = undefined;
+  }
+  const result = parseTaskImportResponse(body);
+  if (result && (res.ok || res.status === 400)) {
+    if (result.list.length > 0) {
+      checkNowAfterWrite([cachedCollectionAudience("tasks", [opts.taskListId])]);
+    }
+    return result;
+  }
+  const error =
+    body && typeof body === "object" ? (body as { error?: unknown; code?: unknown }) : {};
+  throw new TasksRequestError(
+    typeof error.error === "string" && error.error.trim() !== ""
+      ? error.error
+      : `POST /tasks/items/import failed (${res.status})`,
+    res.status,
+    typeof error.code === "string" ? error.code : undefined,
+  );
+}
+
+function parseTaskImportResponse(body: unknown): TaskImportResponse | null {
+  if (!body || typeof body !== "object") return null;
+  const value = body as Partial<TaskImportResponse>;
+  if (!Array.isArray(value.list) || !Array.isArray(value.errors)) return null;
+  const events = value.skipped?.events;
+  return {
+    list: value.list,
+    errors: value.errors,
+    skipped: { events: typeof events === "number" ? events : 0 },
+  };
 }
 
 export async function createTaskList(

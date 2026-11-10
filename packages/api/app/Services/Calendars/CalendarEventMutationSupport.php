@@ -96,7 +96,7 @@ final class CalendarEventMutationSupport
             throw new ApiHttpException(403, 'Calendar is not writable.', 'forbidden');
         }
 
-        (new VObjectPayloadGuard)->assertIcsSize($icsText);
+        (new VObjectPayloadGuard)->assertIcsImportSize($icsText, 'calendars');
 
         try {
             $groups = CalendarIcsSplitSupport::splitUidGroups($icsText);

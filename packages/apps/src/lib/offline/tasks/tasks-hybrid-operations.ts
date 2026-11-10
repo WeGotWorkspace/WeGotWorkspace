@@ -16,6 +16,7 @@ import {
   deleteTaskList,
   fetchTasksLiveBootstrap,
   getTask,
+  importTasksLive,
   listTaskListChanges,
   patchTask,
   patchTaskList,
@@ -272,6 +273,8 @@ async function queueOfflineListDelete(
   });
 }
 
+export const TASKS_IMPORT_OFFLINE_MESSAGE = "ICS import requires an internet connection";
+
 export function createHybridTasksOperations(username: string): TasksAPIOperations {
   const runner = runnerFor(username);
 
@@ -351,6 +354,16 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         rethrowUnlessOfflineQueue(error, opts);
         return queueOfflineMove(username, taskId, taskListId, existing, opts);
       }
+    },
+    importTasks: async (icsText, opts) => {
+      if (!readBrowserOnline()) {
+        throw new Error(TASKS_IMPORT_OFFLINE_MESSAGE);
+      }
+      const result = await importTasksLive(icsText, opts);
+      for (const task of result.list) {
+        await upsertTaskInCache(username, task, false);
+      }
+      return result;
     },
     createTaskList: async (body, opts) => {
       if (!readBrowserOnline()) {

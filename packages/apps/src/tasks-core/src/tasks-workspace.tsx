@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore, type ChangeEvent } from "react";
 import { CheckCircle2, Eye } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
@@ -41,6 +41,9 @@ import {
 } from "@/tasks-core/src/use-tasks-sidebar-model";
 import { TasksEditDialog } from "@/tasks-core/src/tasks-edit-dialog";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
+import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
+import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
 import "./tasks-main-view.css";
@@ -126,6 +129,7 @@ export function TasksWorkspace({
   notice,
 }: TasksWorkspaceProps) {
   const composerRef = useRef<TasksMainViewHandle>(null);
+  const icsFileInputRef = useRef<HTMLInputElement>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
 
   const controller = useTasksController({
@@ -179,6 +183,7 @@ export function TasksWorkspace({
     patchShareWith,
     removeSharedList,
     deleteList,
+    icsImport,
   } = controller;
 
   const projectGroups = taskProjectGroupsFromBootstrap(data);
@@ -242,6 +247,15 @@ export function TasksWorkspace({
                   setSidebarOpen(false);
                 }}
                 onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
+                onImportTasks={
+                  icsImport.canImportTasks
+                    ? () => {
+                        dismissSidebarOverlay(() => setSidebarOpen(false));
+                        icsFileInputRef.current?.click();
+                      }
+                    : undefined
+                }
+                importOffline={!online}
               />
             }
             footer={
@@ -421,6 +435,34 @@ export function TasksWorkspace({
         labels={taskProjectDialogLabelsFrom(L)}
         contentClassName="tasks-dialog-surface"
       />
+      <input
+        ref={icsFileInputRef}
+        type="file"
+        accept={ICS_FILE_ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        data-testid="tasks-ics-file-input"
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          const file = icsFileFromList(event.target.files);
+          event.target.value = "";
+          if (file) icsImport.beginImport(file);
+        }}
+      />
+      {icsImport.importFile ? (
+        <TasksImportDialog
+          open
+          file={icsImport.importFile}
+          labels={L}
+          taskLists={taskLists}
+          preferredTaskListId={view.startsWith("list:") ? view.slice("list:".length) : undefined}
+          busy={icsImport.importDialogBusy}
+          error={icsImport.importDialogError}
+          result={icsImport.importResult}
+          onClose={icsImport.closeImportDialog}
+          onImport={icsImport.submitImportDialog}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }
