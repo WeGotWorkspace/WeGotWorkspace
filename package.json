@@ -71,7 +71,7 @@
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@commitlint/types": "^21.2.3",
-    "concurrently": "^10.0.5",
+    "concurrently": "^10.0.7",
     "husky": "^9.1.7",
     "jscpd": "4.3.0",
     "lint-staged": "^17.6.0",
