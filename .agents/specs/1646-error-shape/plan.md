@@ -63,9 +63,9 @@ Client-side trace (issue proposal 4): declined for now, nothing built. A self-ho
 
 ## Invariants
 
-- No body a client parses changes: on every realtime route, `error` and `message` keep their exact values, and the only change is the added `code`. Proof: `path: packages/api/tests/Feature/Errors/ApiErrorShapeTest.php`.
+- No body a client parses changes: on every realtime route, `error` and `message` keep their exact values, and the only change is the added `code`. Proof: `path: packages/api/tests/Feature/Errors/ApiErrorRenderTest.php`.
 - `ApiHttpException` bodies are unchanged. Proof: `cmd: composer --working-dir packages/api done-gate` (existing feature tests assert `error`/`code` across domains).
-- Laravel reports the realtime exceptions as before and does not report `ApiHttpException`. Proof: `path: packages/api/tests/Feature/Errors/ApiErrorShapeTest.php` assertion `test_realtime_errors_are_still_reported_and_api_http_errors_are_not`.
+- Laravel reports the realtime exceptions as before and does not report `ApiHttpException`. Proof: `path: packages/api/tests/Feature/Errors/ApiErrorRenderTest.php` assertion `test_realtime_errors_are_still_reported_and_api_http_errors_are_not`.
 - Client: no displayed message or `String(error)` changes. Proof: `path: packages/apps/src/lib/api/api-error.test.ts`.
 
 ## Chunks
