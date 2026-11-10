@@ -9,9 +9,10 @@
  * section labels.
  *
  * Full width: a host that insets its list sets `--list-head-bleed` to that inset,
- * and the bar's fill runs out to the pane edges. A block bar widens itself; a
- * `thead` cannot, so its first and last cell paint the side strips (a cell
- * shadow), and the cell padding keeps the labels on the value columns.
+ * and the bar's fill runs out to the pane edges. A block bar widens itself. A
+ * `thead` cannot, and a table paints a row group's background and blur per cell
+ * (each column got its own blurred edge), so the fill is one layer behind the
+ * header row instead, from pane edge to pane edge.
  */
 .list-head-bar {
   --list-head-bar-fill: color-mix(
@@ -35,12 +36,27 @@
   color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
-thead.list-head-bar th:first-child {
-  box-shadow: calc(-1 * var(--list-head-bleed, 0px)) 0 0 0 var(--list-head-bar-fill);
+thead.list-head-bar {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-thead.list-head-bar th:last-child {
-  box-shadow: var(--list-head-bleed, 0px) 0 0 0 var(--list-head-bar-fill);
+thead.list-head-bar > tr {
+  position: relative;
+}
+
+/* On the first cell, not the row: a row's own `::before` would count as a column. */
+thead.list-head-bar > tr > :first-child::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  inset-inline: calc(-1 * var(--list-head-bleed, 0px));
+  background: var(--list-head-bar-fill);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  pointer-events: none;
 }
 
 /* Block bars (grid section headings) size themselves like a list row. */
