@@ -39,7 +39,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'u:bob',
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }
@@ -55,7 +55,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'groups/design',
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }
@@ -71,7 +71,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'ownerPrincipal' => 'groups/design',
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You can only reserve a room for your own principal or a group calendar you can write.']);
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
     }
@@ -175,7 +175,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'expiresAt' => Carbon::now('UTC')->addDays(30)->toISOString(),
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'This room code is already reserved by someone else.']);
         // A past clock gets the same refusal, so it can never mark the row for the sweep.
         $this->withBearer($this->carolBearerToken())
             ->postJson('/api/v1/meetings/rooms', [
@@ -184,7 +184,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'expiresAt' => Carbon::now('UTC')->subDay()->toISOString(),
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'This room code is already reserved by someone else.']);
         $this->withBearer($this->carolBearerToken())
             ->postJson('/api/v1/meetings/rooms', [
                 'room' => self::ROOM,
@@ -236,12 +236,12 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                     'expiresAt' => $clock,
                 ])
                 ->assertForbidden()
-                ->assertJson(['error' => 'forbidden']);
+                ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'This room code is already reserved by someone else.']);
         }
         $this->withBearer($this->carolBearerToken())
             ->patchJson($this->meetStatusPath(self::ROOM), ['expiresAt' => null])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Only the reservation creator or an owner-principal member can update expiry.']);
 
         $row = MeetReservation::query()->find(self::ROOM);
         $this->assertNotNull($row);
@@ -333,7 +333,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
     {
         $this->getJson($this->meetStatusPath(self::ROOM))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_guest_get_does_not_open_a_named_meeting(): void
@@ -352,12 +352,12 @@ final class MeetReservationTest extends WgwDatabaseTestCase
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('test'))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
 
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('chat-test'))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
 
         $this->withoutBearer()
             ->getJson($this->meetStatusPath($roomCode))
@@ -414,7 +414,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('standup'))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_guest_get_unknown_meeting_slug_is_404(): void
@@ -422,7 +422,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('no-such-meet'))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_guest_get_does_not_treat_plain_channel_as_meeting_invite(): void
@@ -437,7 +437,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('general'))
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_created_by_gets_full_get_body(): void
@@ -519,7 +519,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'expiresAt' => Carbon::now()->addDay()->toISOString(),
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Only the reservation creator or an owner-principal member can update expiry.']);
     }
 
     public function test_patch_requires_authentication(): void

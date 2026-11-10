@@ -27,6 +27,7 @@
     "schemas": {
       "Error": {
         "type": "object",
+        "description": "API error body (.agents/skills/api/rest-design.md#errors). Most routes put a sentence in `error` and the machine code in `code`; the realtime routes put the machine code in both `error` and `code` and an optional sentence in `message`.",
         "required": [
           "error"
         ],
@@ -35,7 +36,12 @@
             "type": "string"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "Stable machine code. Clients classify on the HTTP status and this field."
+          },
+          "message": {
+            "type": "string",
+            "description": "Realtime routes only: a sentence for a person."
           }
         }
       },

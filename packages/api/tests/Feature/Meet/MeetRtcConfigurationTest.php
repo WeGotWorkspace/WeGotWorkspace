@@ -109,7 +109,7 @@ final class MeetRtcConfigurationTest extends WgwDatabaseTestCase
         $this->withoutBearer()
             ->getJson($this->meetRoomPath('/configuration'))
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_guest_session_key_reads_rtc_configuration(): void

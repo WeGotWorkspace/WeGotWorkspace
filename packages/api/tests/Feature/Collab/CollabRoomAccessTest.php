@@ -55,7 +55,7 @@ final class CollabRoomAccessTest extends WgwDatabaseTestCase
 
         $this->relay($this->carolBearerToken(), $carolPeer)
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
         $this->assertFalse(CollabPeer::query()->where('owner_user', 'u:carol')->exists());
     }
 
@@ -149,6 +149,7 @@ final class CollabRoomAccessTest extends WgwDatabaseTestCase
         $response->assertForbidden();
         $this->assertSame([
             'error' => 'forbidden',
+            'code' => 'forbidden',
             'message' => 'You do not have access to this document.',
         ], $response->json());
     }

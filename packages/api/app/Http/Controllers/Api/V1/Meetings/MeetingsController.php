@@ -37,10 +37,7 @@ final class MeetingsController
         $roomId = (string) $validated['room'];
         $ownerPrincipal = (string) $validated['ownerPrincipal'];
         if (! $this->reservations->canClaimOwnerPrincipal($username, $ownerPrincipal)) {
-            throw new MeetResponseException(403, [
-                'error' => 'forbidden',
-                'message' => 'You can only reserve a room for your own principal or a group calendar you can write.',
-            ]);
+            throw new MeetResponseException(403, 'forbidden', 'You can only reserve a room for your own principal or a group calendar you can write.');
         }
         $existing = $this->reservations->find($roomId);
         $actor = $this->reservations->actorPrincipal($username);
@@ -49,10 +46,7 @@ final class MeetingsController
         // Same gate as PATCH: a group room needs membership of that group, so
         // a write share on its calendar is not enough to change its clock.
         if ($existing instanceof MeetReservation && ! $this->reservations->canManage($username, $existing)) {
-            throw new MeetResponseException(403, [
-                'error' => 'forbidden',
-                'message' => 'This room code is already reserved by someone else.',
-            ]);
+            throw new MeetResponseException(403, 'forbidden', 'This room code is already reserved by someone else.');
         }
         $expiresAt = array_key_exists('expiresAt', $request->json()->all())
             ? $this->futureExpiresAt($validated['expiresAt'] ?? null)
@@ -73,10 +67,7 @@ final class MeetingsController
         // meeting is not reported missing. Members still see `active` on
         // closed rooms.
         if (($username === null || $username === '') && $this->channels->isGuestClosedRoom($roomId)) {
-            throw new MeetResponseException(404, [
-                'error' => 'not_found',
-                'message' => 'Meeting room is not reserved.',
-            ]);
+            throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
         }
 
         $row = $this->reservations->find($roomId);
@@ -86,10 +77,7 @@ final class MeetingsController
 
         $signalingRoom = $this->channels->resolveMeetingInviteRoom($roomId);
         if ($signalingRoom === null) {
-            throw new MeetResponseException(404, [
-                'error' => 'not_found',
-                'message' => 'Meeting room is not reserved.',
-            ]);
+            throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
         }
         $linked = $this->reservations->find($signalingRoom);
         if ($linked instanceof MeetReservation) {
@@ -107,10 +95,7 @@ final class MeetingsController
         $this->reservations->sweepExpiredNeverActivated();
         $row = $this->reservations->require($roomId);
         if (! $this->reservations->canManage($username, $row)) {
-            throw new MeetResponseException(403, [
-                'error' => 'forbidden',
-                'message' => 'Only the reservation creator or an owner-principal member can update expiry.',
-            ]);
+            throw new MeetResponseException(403, 'forbidden', 'Only the reservation creator or an owner-principal member can update expiry.');
         }
 
         // A past clock is accepted on purpose: PATCH is holder-only and ending a reservation is what it is for.
@@ -129,10 +114,7 @@ final class MeetingsController
     {
         $username = $this->actors->tryAuthenticatedUsername($request);
         if ($username === null || $username === '') {
-            throw new MeetResponseException(401, [
-                'error' => 'auth_required',
-                'message' => 'Sign in to reserve a meeting room.',
-            ]);
+            throw new MeetResponseException(401, 'auth_required', 'Sign in to reserve a meeting room.');
         }
 
         return $username;

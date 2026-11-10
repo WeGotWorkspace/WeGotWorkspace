@@ -152,7 +152,7 @@ final class MeetJoinHardeningTest extends WgwDatabaseTestCase
             'name' => 'Carol',
         ])
             ->assertStatus(409)
-            ->assertJson(['error' => 'room_full']);
+            ->assertExactJson(['error' => 'room_full', 'code' => 'room_full']);
     }
 
     public function test_a_guest_roster_never_leaks_usernames(): void

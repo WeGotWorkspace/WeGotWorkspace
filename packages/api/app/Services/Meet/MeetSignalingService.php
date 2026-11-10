@@ -630,16 +630,12 @@ final class MeetSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw new MeetResponseException($exception->status, $exception->payload);
+            throw MeetResponseException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        $payload = ['error' => $error];
-        if ($message !== null) {
-            $payload['message'] = $message;
-        }
-        throw new MeetResponseException($status, $payload);
+        throw new MeetResponseException($status, $error, $message);
     }
 }

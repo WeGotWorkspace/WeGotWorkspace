@@ -38,7 +38,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
     {
         $this->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Alice'])
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
     }
 
     public function test_link_guest_session_is_denied_like_an_anonymous_caller(): void
@@ -52,11 +52,11 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->withBearer($guestToken)
             ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'Visitor'])
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
         $this->withBearer($guestToken)
             ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
         $this->assertSame(0, PrincipalPeer::query()->count());
     }
 
@@ -111,7 +111,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->withBearer($this->issueBearerTokenFor('bob'))
             ->postJson('/api/v1/rooms/'.self::GROUP_ROOM_ID.'/participants', ['name' => 'Bob'])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
     }
 
     public function test_group_room_allows_members(): void
@@ -129,7 +129,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->withBearer($this->issueBearerTokenFor('alice'))
             ->postJson('/api/v1/rooms/p_some-other-room/participants', ['name' => 'Alice'])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this presence room.']);
     }
 
     public function test_offer_answer_ice_relay_with_since_cursor(): void
@@ -204,7 +204,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
                 'payload' => null,
             ])
             ->assertBadRequest()
-            ->assertJson(['error' => 'bad_type']);
+            ->assertExactJson(['error' => 'bad_type', 'code' => 'bad_type']);
     }
 
     public function test_conditional_poll_answers_204_on_matching_sig(): void
@@ -330,7 +330,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
-            ->assertJsonPath('error', 'unknown_peer');
+            ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
 
     public function test_chat_endpoint_stays_meet_only(): void
@@ -383,7 +383,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
-            ->assertJsonPath('error', 'unknown_peer');
+            ->assertExactJson(['error' => 'unknown_peer', 'code' => 'unknown_peer', 'message' => 'Unknown peer — refresh and join again']);
     }
 
     public function test_different_browser_rejoin_keeps_both_peers(): void
@@ -412,7 +412,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
     {
         $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
             ->assertUnauthorized()
-            ->assertJsonPath('error', 'auth_required');
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in to join the workspace presence room.']);
     }
 
     public function test_a_member_gets_turn_credentials_for_the_workspace_room(): void
@@ -453,7 +453,7 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             'reason' => 'precheck',
         ])
             ->assertStatus(503)
-            ->assertJson(['error' => 'relay_unavailable']);
+            ->assertExactJson(['error' => 'relay_unavailable', 'code' => 'relay_unavailable']);
     }
 
     private function joinWorkspace(string $token, string $name): string
