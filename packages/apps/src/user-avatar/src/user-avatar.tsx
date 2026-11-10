@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import type { ControlSize } from "@/ui/control-size";
 import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
 import "@/user-avatar/src/user-avatar.css";
@@ -10,7 +11,6 @@ export {
   avatarColorForUserId,
   type UserAvatarColor,
 } from "@/user-avatar/src/user-avatar-color";
-import type { UserAvatarPresence } from "@/lib/models/user-presence";
 
 /**
  * Mark sizes — same `xs`…`xl` scale as Input / Button / IconButton

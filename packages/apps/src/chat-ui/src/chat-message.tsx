@@ -1,4 +1,3 @@
-import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import { useState, type ReactNode } from "react";
 import { MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
@@ -17,6 +16,7 @@ import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime } from "@/chat-ui/src/chat-message-group";
 import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";
 import "@/chat-ui/src/chat-ui.css";
