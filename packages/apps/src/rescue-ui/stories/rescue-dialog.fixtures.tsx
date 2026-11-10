@@ -1,8 +1,7 @@
-import type { CSSProperties } from "react";
-import { FilePlus, Notebook } from "lucide-react";
+import { FilePlus } from "lucide-react";
 import type { ParkedWrite } from "@/lib/offline/core/parked-writes";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
-import "@/notes-core/src/notes-notebook-color-icon.css";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import type { RescueLabels, RescueView } from "@/rescue-ui/rescue-adapter";
 
 /**
@@ -58,14 +57,8 @@ export const notebookRescueLabels: RescueLabels = {
 export const notebookRescueView: RescueView<StoryNotebook> = {
   labels: notebookRescueLabels,
   surfaceClassName: "notes-dialog-surface",
-  // Notes' notebook glyph, tinted per notebook as its sidebar does.
-  containerIcon: (notebook) => (
-    <Notebook
-      className="notes-notebook-color-icon"
-      style={{ "--collection-row-color": notebookDotColor(notebook) } as CSSProperties}
-      aria-hidden
-    />
-  ),
+  // Notes' notebook colour dot, as its sidebar shows it.
+  containerIcon: (notebook) => <NotesNotebookColorDot color={notebookDotColor(notebook)} />,
   noticeIcon: <FilePlus className="callout__icon" aria-hidden />,
 };
 

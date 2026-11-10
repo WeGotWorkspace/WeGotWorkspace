@@ -2,16 +2,15 @@
 
 /*
  * Tile and list chrome. Idle is the main paper (`--workspace-surface`).
- * Hover and selected are the shared outline ladder (`workspace-derive.css`),
- * not a Dark accent mix. Selected+hover stays on the selected step.
- * Notes and Contacts read `--drive-item-selected-background` for that step.
+ * Hover and selected are the suite sky steps (`workspace-derive.css`), as list
+ * rows. Selected+hover stays on the selected step.
  */
 .drive-workspace {
-  --drive-item-hover-background: var(--button-outline-hover-background);
+  --drive-item-hover-background: var(--workspace-hover-background);
   --drive-item-selected-hover-background: var(--drive-item-selected-background);
 }
 
-/** Matches sidebar / form labels (`.field-label-row__label`). */
+/** Same as sidebar section labels: quiet label ink. */
 .drive-workspace .drive-item-label {
   @apply flex items-center gap-1 text-sm font-medium truncate min-w-0;
   letter-spacing: normal;
@@ -19,34 +18,52 @@
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
   );
-  color: var(--field-label-color, var(--workspace-foreground));
+  color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-item-label > svg {
   @apply size-3.5 shrink-0;
 }
 
+/* Grid section headings: the shared sticky frosted bar, like the list header. */
 .drive-workspace .drive-browser-section-title {
   @apply mb-3;
 }
 
+/*
+ * One inset on the sides and bottom. On top, less: the first head bar's middle
+ * lines up with the sidebar's primary button (its pt-2 plus half of its 40px
+ * height, less half the bar and the pane header's 1px hairline, which the sidebar
+ * header has not). The sticky head bars stick at that same top, so they never
+ * ride above where they start.
+ */
 .drive-workspace :is(.drive-grid-layout, .drive-list-view) {
-  @apply px-4 md:px-6 py-3 sm:py-5 md:py-8;
+  --drive-browser-inset: 1rem;
+  --drive-browser-inset-top: calc(0.5rem + (2.5rem - var(--list-row-height, 3rem)) / 2 - 1px);
+  --list-head-sticky-gap: var(--drive-browser-inset-top);
+  padding: var(--drive-browser-inset);
+  padding-top: var(--drive-browser-inset-top);
+
+  @media (min-width: 48rem) {
+    --drive-browser-inset: 1.5rem;
+  }
+}
+
+/* A table's row spacing (0.125rem) sits above its header too: start that much higher. */
+.drive-workspace .drive-list-view {
+  padding-top: calc(var(--drive-browser-inset-top) - 0.125rem);
 }
 
 .drive-workspace .drive-grid-layout {
   @apply space-y-6 sm:space-y-8;
 }
 
-/* ≥2 cols on narrow; auto-fill denser tracks when wider (Docs + Drive SST). */
+/* Landscape cards: one column on a phone, auto-fill wider tracks beyond (Docs + Drive SST). */
 .drive-workspace .drive-grid {
   --drive-grid-gap: 0.75rem;
   display: grid;
   gap: var(--drive-grid-gap);
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(min(13.5rem, calc((100% - var(--drive-grid-gap)) / 2)), 1fr)
-  );
+  grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
 }
 
 @media (min-width: 30rem) {
@@ -61,8 +78,14 @@
   }
 }
 
-.drive-workspace .drive-folder-tile {
-  @apply relative w-full text-left px-4 h-16 sm:h-[4.25rem] flex items-center gap-3 outline-none focus-visible:ring-2;
+/*
+ * Grid tiles are landscape cards (folders and files alike): avatar, then the
+ * name over a details line, then the actions.
+ */
+.drive-workspace :is(.drive-folder-tile, .drive-file-tile) {
+  @apply relative flex w-full min-w-0 items-center gap-3 text-left outline-none;
+  min-height: calc(var(--file-avatar-size, 2.75rem) + 1.5rem);
+  padding: 0.75rem 0.5rem 0.75rem 0.75rem;
   border-radius: var(--control-radius);
   transition:
     padding 180ms ease,
@@ -97,12 +120,10 @@
 }
 
 /* Decorative tile content must not block the overlay hit target. */
-.drive-workspace .drive-folder-tile__icon,
-.drive-workspace .drive-folder-tile__title,
-.drive-workspace .drive-folder-tile__star,
-.drive-workspace .drive-file-tile__preview,
-.drive-workspace .drive-file-tile__footer,
-.drive-workspace .drive-selection-checkbox-wrap {
+.drive-workspace .drive-file-avatar,
+.drive-workspace .drive-folder-tile__text,
+.drive-workspace .drive-file-tile__avatar,
+.drive-workspace .drive-file-tile__footer {
   pointer-events: none;
 }
 
@@ -123,12 +144,12 @@
 }
 
 .drive-workspace .drive-folder-tile--selected {
-  background-color: var(--drive-item-selected-background);
+  background: var(--drive-item-selected-background);
   box-shadow: none;
 }
 
 .drive-workspace .drive-folder-tile--selected:hover {
-  background-color: var(--drive-item-selected-hover-background);
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-folder-tile--idle {
@@ -144,12 +165,7 @@
   color: var(--workspace-foreground);
 }
 
-.drive-workspace .drive-folder-tile__title {
-  @apply flex-1 min-w-0 truncate text-sm font-medium;
-  color: var(--workspace-foreground);
-}
-
-/* Name and, while it uploads (#1620), the folder's progress under it. */
+/* Name, then the details line (or, while it uploads (#1620), its progress). */
 .drive-workspace .drive-folder-tile__text {
   @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
@@ -159,45 +175,13 @@
   color: var(--color-emerald);
 }
 
-.drive-workspace .drive-folder-tile--selection-mode {
-  @apply pl-9;
-}
-
-.drive-workspace .drive-folder-tile__checkbox {
-  @apply absolute left-3 top-1/2 z-[1] -translate-y-1/2;
-}
-
+/* Name and details on the left, actions on the right. */
 .drive-workspace .drive-file-tile__footer {
-  @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
-  background-color: var(--workspace-surface);
-  border-color: var(--border);
-  transition:
-    padding 180ms ease,
-    background-color 150ms ease;
+  @apply flex min-w-0 flex-1 items-center gap-2;
 }
 
-.drive-workspace .drive-file-tile--selection-mode .drive-file-tile__footer {
-  @apply pl-9;
-}
-
-.drive-workspace .drive-file-tile__checkbox {
-  @apply absolute left-3 top-1/2 z-[1] -translate-y-1/2;
-}
-
-.drive-workspace .drive-selection-checkbox-wrap {
-  @apply inline-flex items-center justify-center;
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-
-.drive-workspace
-  :is(
-    .drive-folder-tile--selection-mode,
-    .drive-file-tile--selection-mode,
-    .drive-list-row[data-selection-mode="true"]
-  )
-  .drive-selection-checkbox-wrap {
-  opacity: 1;
+.drive-workspace .drive-file-tile__avatar {
+  @apply flex shrink-0;
 }
 
 .drive-workspace
@@ -210,39 +194,16 @@
   @apply select-none;
 }
 
-.drive-workspace .drive-selection-checkbox {
-  @apply inline-flex size-4 items-center justify-center rounded-[4px] border;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
-  background-color: transparent;
-}
-
-.drive-workspace .drive-selection-checkbox--selected {
-  border-color: var(--color-emerald);
-  background-color: var(--color-emerald);
-}
-
-/* Pair of the accent fill: white on Dark ink, near-black on Soft ink in the dark theme. */
-.drive-workspace .drive-selection-checkbox__icon {
-  @apply size-3;
-  color: var(--workspace-accent-foreground);
-}
-
-/*
- * File tiles: idle paper + the shared control hairline.
- * Inset shadow sits on ::after — opaque preview/footer otherwise cover a parent inset.
- */
+/* File tiles: idle paper + the shared control hairline (same as folder tiles). */
 .drive-workspace .drive-file-tile {
-  @apply relative overflow-hidden transition-all cursor-pointer outline-none;
-  border-radius: var(--control-radius);
+  @apply cursor-pointer;
   background-color: var(--workspace-surface);
-  box-shadow: none;
 }
 
 .drive-workspace .drive-file-tile::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 2;
   pointer-events: none;
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px var(--border);
@@ -252,31 +213,24 @@
   @apply opacity-40;
 }
 
-.drive-workspace
-  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
-  .drive-file-tile__preview,
-.drive-workspace
-  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
-  .drive-file-tile__footer {
+.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within) {
   background-color: var(--drive-item-hover-background);
 }
 
 .drive-workspace .drive-file-tile--selected {
+  background: var(--drive-item-selected-background);
+}
+
+.drive-workspace .drive-file-tile--selected::after {
   box-shadow: none;
 }
 
-.drive-workspace .drive-file-tile--selected .drive-file-tile__preview,
-.drive-workspace .drive-file-tile--selected .drive-file-tile__footer {
-  background-color: var(--drive-item-selected-background);
-}
-
-.drive-workspace .drive-file-tile--selected:hover .drive-file-tile__preview,
-.drive-workspace .drive-file-tile--selected:hover .drive-file-tile__footer {
-  background-color: var(--drive-item-selected-hover-background);
+.drive-workspace .drive-file-tile--selected:hover {
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-file-tile__star-badge {
-  @apply absolute top-2 right-2 z-10 pointer-events-none;
+  @apply size-3.5 shrink-0;
   color: var(--color-emerald);
 }
 
@@ -302,10 +256,6 @@
   height: 3rem;
 }
 
-.drive-workspace .drive-file-tile__kind-icon {
-  color: var(--color-emerald);
-}
-
 .drive-workspace .drive-file-tile__actions {
   @apply flex shrink-0 items-center gap-0.5;
 }
@@ -314,14 +264,31 @@
   @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
 
-.drive-workspace .drive-file-tile__title-row {
+.drive-workspace :is(.drive-file-tile__title-row, .drive-folder-tile__title-row) {
   @apply flex min-w-0 items-center gap-1.5;
 }
 
-.drive-workspace .drive-file-tile__title {
+.drive-workspace :is(.drive-file-tile__title, .drive-folder-tile__title) {
   /* Content-sized so share indicators sit next to the title (list-view adjacency). */
-  @apply min-w-0 truncate text-sm sm:text-[0.9375rem] font-medium;
-  color: var(--workspace-foreground);
+  @apply min-w-0 truncate text-sm font-medium;
+  color: var(--workspace-item-color, var(--workspace-foreground));
+}
+
+/*
+ * Details line: size · last modified, side by side.
+ */
+.drive-workspace .drive-tile-meta {
+  @apply flex min-w-0 items-center text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 62%, transparent);
+}
+
+.drive-workspace .drive-tile-meta__segment {
+  @apply shrink-0 whitespace-nowrap;
+}
+
+.drive-workspace .drive-tile-meta__segment + .drive-tile-meta__segment::before {
+  content: "·";
+  margin-inline: 0.375rem;
 }
 
 .drive-workspace .drive-file-tile__location {
@@ -346,78 +313,86 @@
   @apply min-w-0 max-w-full;
 }
 
+/* The header starts at the top inset (the view starts the row spacing higher): stick there. */
+.drive-workspace .drive-list-table thead {
+  --list-head-sticky-gap: var(--drive-browser-inset-top);
+}
+
 .drive-workspace .drive-list-table {
   @apply w-full min-w-0 table-fixed text-sm;
   border-collapse: separate;
-  border-spacing: 0;
-  color: var(--workspace-foreground);
+  /* A hair of air so adjacent rounded selections stay apart. */
+  border-spacing: 0 0.125rem;
+  /* Titles in the same ink as sidebar items. */
+  color: var(--workspace-item-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-list-col-name {
   width: 100%;
   min-width: 0;
-  padding-inline-start: 0.5rem;
+}
+
+/* Row inset: first and last cell, headers included, so labels line up with values. */
+.drive-workspace .drive-list-table :is(th, td):first-child {
+  padding-inline-start: var(--list-row-padding-x, 1rem);
+}
+
+.drive-workspace .drive-list-table :is(th, td):last-child {
+  padding-inline-end: var(--list-row-padding-x, 1rem);
 }
 
 .drive-workspace .drive-list-col-offline {
   width: 2.75rem;
 }
 
-.drive-workspace .drive-list-col-offline.drive-list-head__cell {
-  padding-bottom: 0.5rem;
-}
-
+/* Fits the "Last modified" header and its sort arrow. */
 .drive-workspace .drive-list-col-modified {
-  width: 5.5rem;
+  width: 9.5rem;
 }
 
 .drive-workspace .drive-list-col-kind {
-  width: 5.5rem;
+  width: 7rem;
 }
 
 .drive-workspace .drive-list-col-size {
-  width: 5rem;
+  width: 6rem;
 }
 
 .drive-workspace .drive-list-col-location {
-  width: 10rem;
+  width: 12rem;
 }
 
 .drive-workspace .drive-list-col-actions {
-  width: 4.5rem;
-  padding-inline-end: 0.5rem;
+  width: 6.5rem;
 }
 
 .drive-workspace .drive-list-head {
   @apply text-left;
 }
 
-.drive-workspace .drive-list-head > th {
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-}
-
-/** Matches sidebar section labels (`.field-label-row__label`). Source strings own casing. */
+/* Header row: the shared sticky frosted bar (`ui/list-head-bar.css`). */
 .drive-workspace .drive-list-head__cell {
-  @apply pb-2 pt-0 text-left text-sm font-medium truncate;
-  letter-spacing: normal;
-  font-family: var(
-    --field-label-font-family,
-    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
-  );
-  color: var(--field-label-color, var(--workspace-foreground));
+  @apply py-0 text-left truncate;
+  height: var(--list-row-height, 3rem);
 }
 
 .drive-workspace .drive-list-head__cell--align-end {
   text-align: right;
 }
 
+/*
+ * Rows are rounded like sidebar items, without separators. Fills sit on the row
+ * (one box across all cells); the clip rounds them.
+ */
 .drive-workspace .drive-list-row {
   @apply cursor-default transition-colors;
+  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
 }
 
 .drive-workspace
-  .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--drop-target):hover
-  > td {
+  .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--active):not(
+    .drive-list-row--drop-target
+  ):hover {
   background-color: var(--drive-item-hover-background);
 }
 
@@ -426,16 +401,13 @@
   transition: padding-inline-start 180ms ease;
 }
 
-.drive-workspace .drive-list-row[data-selection-mode="true"] .drive-list-row__name {
-  @apply pl-9;
-}
-
-.drive-workspace .drive-list-row__checkbox {
-  @apply absolute left-3 top-1/2 -translate-y-1/2;
-}
-
 .drive-workspace .drive-list-row > td {
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  height: var(--list-row-height, 3rem);
+}
+
+/* Same hairline as the sidebar edge between rows. */
+.drive-workspace .drive-list-row:not(:last-child) > td {
+  border-bottom: 1px solid var(--workspace-divider-color);
 }
 
 .drive-workspace .drive-list-row--drop-target {
@@ -443,16 +415,14 @@
   box-shadow: inset 0 0 0 1.5px var(--color-emerald);
 }
 
-.drive-workspace .drive-list-row--selected > td {
-  background-color: var(--drive-item-selected-background);
-}
-
-.drive-workspace .drive-list-row--selected:hover > td {
-  background-color: var(--drive-item-selected-hover-background);
-}
-
+/* Painted on the row, not the cells, so the rounded clip shapes it. */
+.drive-workspace .drive-list-row--selected,
 .drive-workspace .drive-list-row--active {
-  background-color: var(--drive-item-selected-background);
+  background: var(--drive-item-selected-background);
+}
+
+.drive-workspace .drive-list-row--selected:hover {
+  background: var(--drive-item-selected-hover-background);
 }
 
 .drive-workspace .drive-list-row--dragging {
@@ -492,6 +462,42 @@
   color: var(--workspace-foreground);
 }
 
-.drive-workspace .drive-list-file-icon {
-  color: var(--workspace-accent);
+/* End of a long listing (All Files, All Docs): the next page loads on reaching it. */
+.drive-browser-load-more {
+  @apply flex flex-col items-center px-4 pb-8 md:px-6;
+  color: var(--workspace-label-color, var(--workspace-foreground));
+}
+
+/* Multi-select: no checkboxes (those are for tasks). A selected tile or row gets a
+ * thick, straight bar just inside its leading edge, in the selection mark's fill (as
+ * list items do), only with multi-select intent: a plain click shows no bar. It stops
+ * before the corners, so it never bends with the rounding. */
+.drive-workspace
+  [data-multi-select="true"]
+  :is(.drive-folder-tile--selected, .drive-file-tile--selected)::before,
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child::before {
+  content: "";
+  position: absolute;
+  left: var(--workspace-selected-bar-inset, 0.375rem);
+  inset-block: var(--control-radius, 0.625rem);
+  z-index: 1;
+  width: var(--workspace-selected-bar-width, 0.25rem);
+  border-radius: 999px;
+  background: var(--workspace-selected-mark-background, var(--workspace-foreground));
+  pointer-events: none;
+}
+
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child {
+  position: relative;
+}
+
+/* Tiles start their content 12px in: the bar sits in the middle of that gap. */
+.drive-workspace
+  [data-multi-select="true"]
+  :is(.drive-folder-tile--selected, .drive-file-tile--selected)::before {
+  left: calc((0.75rem - var(--workspace-selected-bar-width, 0.25rem)) / 2);
+}
+
+.drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child::before {
+  inset-block: var(--list-row-radius, 0.625rem);
 }

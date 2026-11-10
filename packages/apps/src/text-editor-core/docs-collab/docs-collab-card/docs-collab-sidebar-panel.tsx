@@ -131,7 +131,8 @@ export function DocsCollabSidebarPanel<T extends string = string>({
         {toolbar ? <div className="docs-collab-sidebar-panel__toolbar">{toolbar}</div> : null}
       </header>
 
-      <div ref={scrollRef} className="docs-collab-sidebar-panel__scroll">
+      {/* Focusable so keyboard users can scroll a long list (axe scrollable-region-focusable). */}
+      <div ref={scrollRef} className="docs-collab-sidebar-panel__scroll" tabIndex={0}>
         {empty && emptyLabel ? (
           <p className="docs-collab-sidebar-panel__empty">{emptyLabel}</p>
         ) : (

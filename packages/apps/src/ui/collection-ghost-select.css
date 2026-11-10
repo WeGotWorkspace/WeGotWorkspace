@@ -1,0 +1,51 @@
+@import "../styles.css" reference;
+
+/*
+ * Ghost collection switcher (suite norm), above a detail title: the collection's
+ * dot and name in its own colour, a chevron, no chrome, at small-button size.
+ * Notes uses it for the notebook, Contacts for the address book. The name mixes
+ * its colour 55% into the ink so even yellow reads at 4.5:1. The negative
+ * inline margin keeps the dot in line with the title while the hover wash has room.
+ */
+.collection-ghost-select {
+  @apply inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium outline-none;
+  min-block-size: var(--control-height-sm);
+  margin-inline-start: -0.625rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--control-radius-button);
+  border: 0;
+  background: transparent;
+  color: color-mix(
+    in oklch,
+    var(--collection-row-color, var(--workspace-foreground)) 55%,
+    var(--workspace-foreground)
+  );
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.collection-ghost-select:hover:not(:disabled),
+.collection-ghost-select[data-state="open"] {
+  background-color: var(--workspace-ghost-hover-background);
+}
+
+.collection-ghost-select:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.collection-ghost-select:disabled {
+  cursor: default;
+}
+
+.collection-ghost-select__name {
+  @apply min-w-0 truncate;
+}
+
+.collection-ghost-select__chevron {
+  @apply size-4 shrink-0 opacity-60;
+}
+
+/* The list: as roomy as the other dropdowns, wide enough for long names. */
+.collection-ghost-select__menu {
+  min-width: max(var(--radix-select-trigger-width), 13rem);
+}

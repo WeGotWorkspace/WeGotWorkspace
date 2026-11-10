@@ -1,14 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
-  wgwApiBaseUrl,
-  wgwCurrentAccessToken,
   wgwFetchPrincipal,
   wgwHasAuthenticatedSession,
   wgwIsGuestSession,
 } from "@/lib/api/wgw/http";
-import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import { registerMeshCheckNowPort } from "@/lib/jmap-client/push/mesh-check-now";
-import { resolveRoomId } from "@/lib/rtc/room-id";
+import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
+import type { RtcSettings } from "@/lib/rtc/types";
 import {
   decidePresenceJoinMode,
   readPresenceEnvironment,
@@ -16,9 +14,14 @@ import {
 import { createPresenceRtcSession } from "@/presence-core/src/presence-rtc-session";
 import { createPresenceStore, type PresenceStore } from "@/presence-core/src/presence-store";
 import {
-  PRESENCE_BOOT_RETRY_DELAYS_MS,
-  PRESENCE_WORKSPACE_ROOM,
-} from "@/presence-core/src/presence-types";
+  fetchOwnTeamRooms,
+  fetchTeamRoomRtcSettings,
+  TEAM_CHECK_INTERVAL_MS,
+  TEAM_CHECK_MIN_GAP_MS,
+} from "@/presence-core/src/presence-team-rooms";
+import { PRESENCE_BOOT_RETRY_DELAYS_MS } from "@/presence-core/src/presence-types";
+import { TeamPresenceSession } from "@/presence-core/src/team-presence-session";
+import { TeamPrincipalLinks } from "@/presence-core/src/team-principal-links";
 
 const PresenceStoreContext = createContext<PresenceStore | null>(null);
 
@@ -52,12 +55,21 @@ function browserReportsOnline(): boolean {
   return typeof navigator === "undefined" || navigator.onLine;
 }
 
+function documentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
 /**
- * Mounts the workspace-wide principal presence mesh for authenticated members.
- * Waits for an authenticated (non-guest) session, resolves RTC settings and the
- * member identity, then starts the store with the environment-appropriate join timing.
- * When either request fails (offline start, API unreachable) no mesh is created; the
- * boot runs again on the `online` event and on a backoff that repeats its last delay.
+ * Mounts principal presence for authenticated members: one mesh room per own
+ * Team (#1921), merged into one roster. Waits for an authenticated (non-guest)
+ * session, reads the Team list and RTC settings and the member identity, then
+ * starts the store with the environment-appropriate join timing. When a request
+ * fails (offline start, API unreachable) no mesh is created; the boot runs again
+ * on the `online` event and on a backoff that repeats its last delay.
+ *
+ * The Team list is read again when the tab is shown, when the browser comes
+ * back online, when a room refuses this user (removed from a Team), and every
+ * five minutes; the mesh-owning tab then joins and leaves rooms to match.
  */
 export function PresenceProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<PresenceStore | null>(null);
@@ -93,19 +105,79 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       }, delay);
     };
 
+    let rtcSettings: RtcSettings | null = null;
+    let latestRooms: string[] = [];
+    let currentSession: TeamPresenceSession | null = null;
+    let teamCheckInFlight = false;
+    let lastTeamCheckAt = 0;
+    let teamCheckTimer: ReturnType<typeof setInterval> | null = null;
+    const links = new TeamPrincipalLinks(getPrincipalLinkRegistry());
+
+    /** Reads the Team list; fetches RTC settings the first time a Team exists. */
+    const loadTeamRooms = async (): Promise<string[]> => {
+      const rooms = await fetchOwnTeamRooms();
+      if (rooms.length > 0 && rtcSettings === null) {
+        rtcSettings = await fetchTeamRoomRtcSettings(rooms[0]);
+      }
+      return rooms;
+    };
+
+    const checkTeams = async (fromTimer = false) => {
+      if (cancelled || teamCheckInFlight || !activeStore) return;
+      // Follower windows hold no rooms; the mesh-owning window checks for them.
+      if (!activeStore.meshLeader) return;
+      const now = Date.now();
+      if (!fromTimer && now - lastTeamCheckAt < TEAM_CHECK_MIN_GAP_MS) return;
+      teamCheckInFlight = true;
+      lastTeamCheckAt = now;
+      try {
+        const rooms = await loadTeamRooms();
+        if (cancelled) return;
+        latestRooms = rooms;
+        currentSession?.setRooms(rooms);
+      } catch {
+        // Keep the rooms we have; the next trigger tries again.
+      } finally {
+        teamCheckInFlight = false;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (documentVisible()) void checkTeams();
+    };
+
+    const onOnlineAfterBoot = () => {
+      void checkTeams();
+    };
+
+    const createTeamSession = () => {
+      const session = new TeamPresenceSession({
+        createRoomSession: (room) => {
+          if (rtcSettings === null) throw new Error("presence: no RTC settings yet");
+          return createPresenceRtcSession({
+            room,
+            rtcSettings,
+            linkRegistry: links.sinkFor(room),
+            onRefused: () => void checkTeams(),
+          });
+        },
+        onRoomRemoved: (room) => links.removeRoom(room),
+      });
+      session.setRooms(latestRooms);
+      currentSession = session;
+      // A window that takes over the mesh may hold an old list: read it again soon.
+      setTimeout(() => void checkTeams(), 0);
+      return session;
+    };
+
     const boot = async () => {
       booting = true;
-      let rtcSettings: Awaited<ReturnType<typeof fetchRtcSettings>>;
       let session: Awaited<ReturnType<typeof wgwFetchPrincipal>>;
       try {
-        const roomId = resolveRoomId("principal", PRESENCE_WORKSPACE_ROOM);
-        rtcSettings = await fetchRtcSettings({
-          url: `${wgwApiBaseUrl()}/rooms/${encodeURIComponent(roomId)}/configuration`,
-          bearerToken: wgwCurrentAccessToken() ?? undefined,
-        });
+        latestRooms = await loadTeamRooms();
         session = await wgwFetchPrincipal();
       } catch {
-        // Network error or identity fetch failed: no mesh without settings and identity.
+        // Network error or identity fetch failed: no mesh without the Team list and identity.
         booting = false;
         if (!cancelled) scheduleRetry();
         return;
@@ -114,19 +186,24 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       window.removeEventListener("online", onOnline);
       const presenceStore = createPresenceStore({
-        createSession: () =>
-          createPresenceRtcSession({ room: PRESENCE_WORKSPACE_ROOM, rtcSettings }),
+        createSession: createTeamSession,
         joinMode: decidePresenceJoinMode(readPresenceEnvironment()),
         // Phase 4 (#695): one principal dial per user across windows/tabs.
         crossWindowLeader: true,
       });
       activeStore = presenceStore;
+      lastTeamCheckAt = Date.now();
       unregisterCheckNow = registerMeshCheckNowPort(presenceStore);
       presenceStore.start({
         username: session.user.username ?? "",
         displayName: session.user.displayName,
       });
       setStore(presenceStore);
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      window.addEventListener("online", onOnlineAfterBoot);
+      teamCheckTimer = setInterval(() => {
+        if (documentVisible()) void checkTeams(true);
+      }, TEAM_CHECK_INTERVAL_MS);
     };
 
     const tryBoot = () => {
@@ -158,6 +235,9 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("online", onOnlineAfterBoot);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (teamCheckTimer !== null) clearInterval(teamCheckTimer);
       clearRetryTimer();
       if (recheckTimer !== null) clearInterval(recheckTimer);
       unregisterCheckNow?.();

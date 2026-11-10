@@ -5,8 +5,8 @@ import { E2E_PASSWORD, E2E_USERNAME } from "./notes-live";
 
 export { E2E_PASSWORD, E2E_USERNAME };
 
-/** Group folder the dev install seeds; the e2e user is a member. */
-export const E2E_GROUP_ROOT = "/groups/administrators";
+/** The dev Team `wgw:dev-install` puts admin and member in (#1925). */
+export const E2E_GROUP_ROOT = "/groups/team";
 
 export function myDriveDocSearchPath(fileName: string): string {
   return `users/${E2E_USERNAME}/${fileName}`;

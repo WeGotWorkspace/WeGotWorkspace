@@ -4,13 +4,35 @@
   /* items-start: UserAvatar is a flex column with align-items:center; without
      start alignment it stretches and vertically centers the mark beside tall
      reply/reaction stacks. pt-0.5 on the avatar optically matches the name line. */
-  @apply relative flex min-w-0 max-w-full items-start gap-2.5 px-5 py-2.5;
+  @apply relative flex min-w-0 items-start gap-3;
+  /* The list row norm (Notes, Tasks, Contacts): inset from the pane edge, the same
+     padding, a rounded hover pill. */
+  --chat-message-padding-x: var(--list-item-padding-x, 1.25rem);
+  box-sizing: border-box;
+  width: calc(100% - 2 * var(--list-item-inset, 0.5rem));
+  /* Hosts may cap the conversation (`--chat-max-width`); it stays on the start edge. */
+  max-width: var(--chat-max-width, none);
+  margin-inline: var(--list-item-inset, 0.5rem);
+  padding-inline: var(--chat-message-padding-x);
+  padding-block: var(--list-item-padding-y, 1rem);
+  border-radius: var(--list-row-radius, 0.625rem);
 }
 
+@media (min-width: 768px) {
+  .chat-message {
+    --chat-message-padding-x: var(--list-item-padding-x, 1.5rem);
+  }
+}
+
+/* One author's run reads as one block: tight inside, list padding around it. */
+.chat-message:has(+ .chat-message--continuation) {
+  @apply pb-1;
+}
+
+/* No z-index on the row itself: a hovered row stays under the sticky day
+   headers (z-[5]); only its floating actions rise above them (see below). */
 .chat-message:hover,
 .chat-message:focus-within {
-  /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
-  z-index: 6;
   background-color: var(
     --collection-sidebar-row-hover-bg,
     var(
@@ -21,11 +43,7 @@
 }
 
 .chat-message--continuation {
-  @apply py-0.5;
-}
-
-.chat-message--continuation + .chat-message:not(.chat-message--continuation) {
-  @apply mt-2;
+  @apply pt-1;
 }
 
 .chat-message__avatar {
@@ -45,14 +63,14 @@
 }
 
 .chat-message__author {
-  @apply text-sm font-medium;
+  @apply text-[0.9375rem] font-semibold;
   color: var(--chat-author, var(--workspace-foreground));
 }
 
 .chat-message__time,
 .chat-message__edited {
-  @apply text-[11px] font-normal;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 45%, transparent));
+  @apply text-xs font-normal tabular-nums;
+  color: var(--chat-muted, var(--workspace-label-color));
 }
 
 .chat-message--continuation .chat-message__body,
@@ -61,7 +79,11 @@
 }
 
 .chat-message--continuation .chat-message__time {
-  @apply invisible absolute top-1/2 left-5 w-9 -translate-y-1/2 text-center whitespace-nowrap;
+  /* On the first text line: the row's top padding, one body line tall, so the
+     small time sits on the same line box as the text beside it. */
+  @apply invisible absolute top-1 w-9 text-center whitespace-nowrap;
+  left: var(--chat-message-padding-x);
+  line-height: calc(var(--text-editor-prose-font-size, 15px) * 1.55);
 }
 
 .chat-message--continuation:hover .chat-message__time,
@@ -70,9 +92,14 @@
 }
 
 .chat-message__body {
-  @apply relative mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
+  @apply relative mt-0.5 min-w-0 max-w-full break-words;
   overflow-wrap: anywhere;
-  color: var(--chat-body, color-mix(in oklab, var(--workspace-foreground) 88%, transparent));
+  /* A little quieter than the author, well above the time's label ink. */
+  color: var(--chat-body, color-mix(in oklab, var(--workspace-foreground) 80%, transparent));
+}
+
+.chat-message__body .text-editor-prose {
+  color: inherit;
 }
 
 .chat-message__body mark {
@@ -88,68 +115,52 @@
 .chat-message__body .text-editor-sheet--inline,
 .chat-message__body .text-editor-prose,
 .chat-message__body .ProseMirror {
-  @apply min-h-0 min-w-0 max-w-full break-words leading-snug;
+  @apply min-h-0 min-w-0 max-w-full break-words;
   overflow-wrap: anywhere;
-  --text-editor-prose-font-size: 0.875rem;
-  --text-editor-prose-line-height: 1.375;
+  /* The suite body size (as Docs and Notes); a chat line sits a little tighter. */
+  --text-editor-prose-line-height: 1.55;
 }
 
-.chat-message__body .text-editor-prose > :first-child {
-  @apply mt-0;
+/* A chat message is short: its paragraphs and lists sit close, tighter than the
+   gap to the author's next message, so one message still reads as one. */
+.chat-message__body .text-editor-prose > * {
+  @apply my-0;
 }
 
-.chat-message__body .text-editor-prose > :last-child {
-  @apply mb-0;
+.chat-message__body .text-editor-prose > * + * {
+  @apply mt-1;
 }
 
+/* Same type as a message body; italic and dimmed marks it as a placeholder. */
 .chat-message__deleted {
-  @apply mt-0.5 text-sm italic;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 45%, transparent));
+  @apply mt-0.5 italic;
+  font-size: var(--text-editor-prose-font-size, 15px);
+  line-height: 1.55;
+  color: var(--chat-muted, var(--workspace-label-color));
 }
 
 .chat-message__previews {
   @apply mt-2 flex min-w-0 max-w-full flex-col gap-2;
 }
 
-.chat-message__replies {
-  @apply mt-1 border-0 bg-transparent p-0 text-left text-xs font-medium;
-  color: var(--chat-replies, color-mix(in oklab, var(--workspace-foreground) 68%, transparent));
+/* Reactions and the replies chip share one row of chips under the body. */
+.chat-message__footer {
+  @apply mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5;
 }
 
-.chat-message__replies:hover,
-.chat-message__replies:focus-visible {
-  color: var(--chat-accent, var(--workspace-accent));
-  text-decoration: underline;
+.chat-message__footer .chat-reaction-bar {
+  @apply inline-flex;
 }
 
-.chat-message__reactions {
-  @apply mt-1;
+.chat-message__replies:disabled {
+  @apply cursor-default;
 }
 
-/* Actions stay absolute; this wrap is their containing block when chips exist,
-   so top-full sits under the chips instead of over them. */
-.chat-message__reactions-wrap {
-  @apply relative;
-}
-
-.chat-message .chat-reaction-bar__reaction--add {
-  @apply hidden;
-}
-
+/* Hover actions: the suite floating toolbar, at the row's top end. Above the
+   neighbouring rows and the sticky day headers (z-[5]). */
 .chat-message__actions {
-  /* Same paper as the emoji picker (PopoverContent + overlay-paper): radius, hairline, shadow. */
-  @apply absolute start-0 top-full z-[1] hidden items-center gap-0.5 rounded-md border p-1.5 shadow-md;
-  color: var(--popover-foreground, var(--workspace-foreground));
-}
-
-.chat-message__actions .button--variant-ghost {
-  @apply size-8 bg-transparent shadow-none;
-}
-
-.chat-message__actions .button--variant-ghost:hover,
-.chat-message__actions .button--variant-ghost:focus-visible,
-.chat-message__actions .button--variant-ghost[data-state="open"] {
-  background-color: var(--chat-hover, var(--button-outline-hover-background));
+  @apply floating-toolbar absolute end-4 -top-4 z-[6];
+  display: none;
 }
 
 .chat-message:hover .chat-message__actions,
@@ -161,7 +172,6 @@
    leaving the row (or Radix moving focus into the portal) hides the trigger
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
-  z-index: 6;
   background-color: var(
     --collection-sidebar-row-hover-bg,
     var(

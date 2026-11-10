@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
 use Illuminate\Support\Facades\File;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class SettingsEndpointsTest extends WgwDatabaseTestCase
@@ -61,7 +61,7 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
 
     public function test_settings_state_includes_group_membership(): void
     {
-        $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $support = $this->seedWgwGroup('principals/groups/support', 'Support');
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
@@ -72,6 +72,26 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
         $state->assertOk();
         $ids = array_column($state->json('groups'), 'id');
         $this->assertContains('principals/groups/support', $ids);
+    }
+
+    public function test_settings_state_reports_the_admin_role_and_not_team_membership(): void
+    {
+        // Membership of the old "Administrators" Team does not make an admin (#1925).
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
+        $alice = Principal::forUsername('alice');
+        $this->assertNotNull($alice);
+        $this->addPrincipalToGroup($admins, $alice);
+
+        $this->withBearer($this->issueBearerToken())
+            ->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('isAdmin', false);
+
+        $this->grantAdminRole('alice');
+        $this->withBearer($this->issueBearerToken())
+            ->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('isAdmin', true);
     }
 
     private function seedAlice(): void

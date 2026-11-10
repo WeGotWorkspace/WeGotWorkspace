@@ -1,6 +1,6 @@
 import { docsSearchFromApiPath } from "@/docs-core/src/docs-route-search";
 import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { driveGroupUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { fileSupportsTextPreview } from "@/lib/file-preview/file-preview-utils";
 import { normalizeApiVirtualPath as normalizeSharePath, parentAndName } from "@/lib/files/api-path";
 
@@ -55,7 +55,7 @@ function shareFolderUiPath(apiPath: string): string {
   }
   const groupMatch = normalized.match(/^\/groups\/(.+)$/);
   if (groupMatch) {
-    return `Groups/${groupMatch[1]}`;
+    return driveGroupUiPath(groupMatch[1] ?? "");
   }
   return "My Drive";
 }

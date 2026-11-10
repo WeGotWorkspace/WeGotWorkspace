@@ -21,3 +21,33 @@
 .docs-collab-presence-chrome__icon {
   @apply size-3.5 shrink-0 opacity-70;
 }
+
+/*
+ * Header presence (Docs header, Notes detail action bar): round, overlapping
+ * avatars with a ring in the header's own surface, no leading people glyph.
+ */
+.docs-collab-presence-chrome--header {
+  --user-avatar-radius: 9999px;
+  --user-avatar-border-width: 2px;
+  --user-avatar-border: var(--collab-presence-header-surface, var(--workspace-surface));
+  --user-avatar-bg: color-mix(
+    in oklch,
+    var(--workspace-foreground) 14%,
+    var(--collab-presence-header-surface, var(--workspace-surface))
+  );
+  --user-avatar-presence-ring: var(--collab-presence-header-surface, var(--workspace-surface));
+  margin-inline-end: 0.5rem;
+}
+
+.docs-collab-presence-chrome--header .docs-collab-presence-chrome__icon-trigger {
+  display: none;
+}
+
+.docs-collab-presence-chrome--header .user-avatar__mark {
+  width: 2rem;
+  height: 2rem;
+}
+
+.docs-collab-presence-chrome--header .docs-collab-presence__chip--overlap {
+  margin-inline-start: -0.625rem;
+}

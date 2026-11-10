@@ -24,24 +24,8 @@
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 80%,
-    var(--workspace-surface)
-  );
-  --workspace-user-footer-subtitle-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 80%,
-    var(--workspace-surface)
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
@@ -162,21 +146,6 @@
   @apply isolate min-w-0;
 }
 
-.calendar-workspace .workspace-app-layout__panel,
-.calendar-workspace .calendar-workspace__invitations-panel {
-  @apply flex min-h-0 flex-col overflow-hidden border-l;
-  flex: 0 0 var(--calendar-invitations-column-width);
-  width: var(--calendar-invitations-column-width);
-  max-width: var(--calendar-invitations-column-width);
-  border-color: var(--docs-border);
-  background-color: var(--app-sidebar-bg);
-}
-
-/* Closed dock still occupies a translated flex slot over the grid; inert + no hits. */
-.calendar-workspace .calendar-workspace__invitations-panel[data-open="false"] {
-  @apply pointer-events-none;
-}
-
 .calendar-workspace .calendar-invitations-trigger {
   @apply relative;
 }
@@ -247,8 +216,16 @@
 }
 
 @media (max-width: 40rem) {
+  /* Tighter header strip on phones: re-declare both tokens so every Calendar header follows. */
+  .calendar-workspace {
+    --workspace-header-padding-y: 0.625rem;
+    --workspace-header-height: calc(
+      var(--workspace-header-control-height) + 2 * var(--workspace-header-padding-y) + 1px
+    );
+  }
+
   .calendar-workspace .workspace-app-layout__main-header {
-    @apply p-3;
+    @apply px-3;
   }
 
   .calendar-workspace .calendar-main {

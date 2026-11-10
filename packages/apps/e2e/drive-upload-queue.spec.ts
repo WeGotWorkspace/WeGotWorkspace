@@ -5,7 +5,7 @@ import { E2E_USERNAME, expectOfflineIndicator } from "./helpers/notes-live";
 const WAITING = "Waiting for a connection";
 
 async function openMyDrive(page: Page): Promise<void> {
-  await page.goto("/drive");
+  await page.goto("/drive?view=folder&path=My%20Drive");
   await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
   await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
   // Wait until the folder listing has painted before going offline.
@@ -322,7 +322,7 @@ test.describe("Drive upload queue (live app)", () => {
 
     // A second tab of the same account shares the stored copy.
     const other = await page.context().newPage();
-    await other.goto("/drive");
+    await other.goto("/drive?view=folder&path=My%20Drive");
     await markOffline(other, true);
     await expect(other.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
     expect(await downloadFromTile(other, name)).toEqual({ name, text: pickedBytes(name) });

@@ -55,32 +55,31 @@ describe("useAdminGroupMutations", () => {
     });
     expect(result.current.groups).toHaveLength(1);
     expect(result.current.users.find((user) => user.id === "carol")?.groups).toEqual([]);
-    expect(showSuccess).toHaveBeenCalledWith("Group deleted");
+    expect(showSuccess).toHaveBeenCalledWith("Team deleted");
   });
 
-  it("protects the administrators group and passes member usernames to the API", async () => {
+  it("treats the old Administrators Team like any Team and passes member usernames", async () => {
     const data = createAdminAppBootstrap().data;
     const updateGroup = vi.fn().mockResolvedValue(data);
-    const { result, showError, showSuccess } = renderGroups({ updateGroup });
+    const deleteGroup = vi.fn().mockResolvedValue(data);
+    const { result, showSuccess } = renderGroups({ updateGroup, deleteGroup });
 
     await act(async () => {
-      expect(await result.current.deleteGroup("principals/groups/administrators")).toBe(false);
       expect(
         await result.current.updateGroup("principals/groups/administrators", {
           name: "Admins",
           memberUserIds: ["carol", "alice"],
         }),
       ).toBe(true);
+      expect(await result.current.deleteGroup("principals/groups/administrators")).toBe(true);
     });
 
-    expect(showError).toHaveBeenCalledWith(
-      "The administrators group is protected and cannot be deleted.",
-    );
+    expect(deleteGroup).toHaveBeenCalledWith("principals/groups/administrators");
     expect(updateGroup).toHaveBeenCalledWith("principals/groups/administrators", {
       displayName: "Admins",
       members: ["alice", "carol"],
     });
     expect(result.current.applyAdminData).toHaveBeenCalledWith(data);
-    expect(showSuccess).toHaveBeenCalledWith("Group saved");
+    expect(showSuccess).toHaveBeenCalledWith("Team saved");
   });
 });

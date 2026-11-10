@@ -56,9 +56,9 @@ export const GuestReadsOnly: Story = {
     expect(canvas.queryByRole("textbox", { name: L.editor })).toBeNull();
     expect(canvasElement.querySelector(".ProseMirror")).toHaveAttribute("contenteditable", "false");
     expect(canvas.queryAllByRole("button", { name: L.rename })).toHaveLength(0);
-    expect(canvas.queryAllByRole("button", { name: L.viewSource })).toHaveLength(0);
+    expect(canvas.queryAllByRole("switch", { name: L.viewSource })).toHaveLength(0);
 
-    await userEvent.click(canvas.getAllByRole("button", { name: L.viewSourceReadOnly })[0]!);
+    await userEvent.click(canvas.getAllByRole("switch", { name: L.viewSourceReadOnly })[0]!);
     const source = await canvas.findByRole("textbox", { name: /source/i });
     expect(source).toHaveAttribute("readonly");
     await userEvent.type(source, "guest typing");
@@ -86,7 +86,7 @@ export const SignedInEdits: Story = {
     const editor = await canvas.findByRole("textbox", { name: L.editor });
     expect(canvas.queryByText(L.guestReadOnlyNotice)).toBeNull();
     expect(canvas.getAllByRole("button", { name: L.rename }).length).toBeGreaterThan(0);
-    expect(canvas.getAllByRole("button", { name: L.viewSource }).length).toBeGreaterThan(0);
+    expect(canvas.getAllByRole("switch", { name: L.viewSource }).length).toBeGreaterThan(0);
 
     await userEvent.click(editor);
     await userEvent.keyboard("Signed-in edit");

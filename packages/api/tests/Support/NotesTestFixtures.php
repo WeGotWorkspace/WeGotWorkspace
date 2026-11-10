@@ -6,7 +6,6 @@ namespace Tests\Support;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
@@ -59,8 +58,9 @@ trait NotesTestFixtures
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($alice);
         $this->assertNotNull($bob);
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
 
         // Shared notebook group: only bob is a member. alice (admin) and carol
         // are deliberately excluded so tests can assert non-members get 403 and

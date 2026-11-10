@@ -15,9 +15,3 @@
 .calendar-availability-sidebar__incomplete {
   color: var(--color-warning, color-mix(in oklab, var(--workspace-foreground) 60%, transparent));
 }
-
-.calendar-availability-sidebar__empty {
-  @apply text-sm;
-  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
-  color: color-mix(in oklab, var(--workspace-foreground) 55%, transparent);
-}

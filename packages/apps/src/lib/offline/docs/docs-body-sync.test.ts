@@ -115,7 +115,7 @@ describe("syncDocsBodiesFromHomeListing", () => {
     expect(makeDocsOfflineAvailable).toHaveBeenCalledWith(
       "alice",
       "/groups/team/roadmap.txt",
-      "Group: team",
+      "Team: team",
       { beforeRequest: expect.any(Function), modifiedAtMs: 20_000 },
     );
     expect(makeDocsOfflineAvailable).toHaveBeenCalledWith(

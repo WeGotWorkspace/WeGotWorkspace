@@ -6,7 +6,6 @@ namespace Tests\Support;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +54,7 @@ trait DriveTestFixtures
         $this->seedWgwUser('alice', displayName: 'Alice');
         $this->seedWgwUser('carol', displayName: 'Carol');
 
-        $adminGroup = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $adminGroup = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $teamGroup = $this->seedWgwGroup('principals/groups/team', 'Team');
 
         $alice = Principal::forUsername('alice');
@@ -64,6 +63,7 @@ trait DriveTestFixtures
         $this->assertNotNull($bob);
 
         $this->addPrincipalToGroup($adminGroup, $alice);
+        $this->grantAdminRole($alice);
         $this->addPrincipalToGroup($teamGroup, $bob);
         $this->addPrincipalToGroup($teamGroup, $alice);
     }

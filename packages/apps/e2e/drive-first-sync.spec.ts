@@ -200,7 +200,7 @@ test.describe("Drive first sync on a new device", () => {
     });
     const seen = watchBackgroundSync(page);
 
-    await page.goto("/drive");
+    await page.goto("/drive?view=folder&path=My%20Drive");
     await expect(page.getByText(FOLDER, { exact: true }).first()).toBeVisible({ timeout: 30_000 });
 
     // A second tab on Tasks, on the same account, while Drive copies.
@@ -259,7 +259,7 @@ test.describe("Drive first sync on a new device", () => {
 
   test("a reload mid-copy does not fetch the synced files again", async ({ page }) => {
     const before = watchBackgroundSync(page);
-    await page.goto("/drive");
+    await page.goto("/drive?view=folder&path=My%20Drive");
 
     let syncedBeforeReload: string[] = [];
     await expect

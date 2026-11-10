@@ -62,6 +62,14 @@ export function useWorkspaceListKeyboardShortcuts({
         return;
       }
       if (!listNavigationEnabled) return;
+      // A dropdown, menu or combobox (a detail field, closed or open) owns its arrows:
+      // they open it or move between its options, never to another item in the list.
+      const inPicker =
+        e.defaultPrevented ||
+        (!!target &&
+          typeof target.closest === "function" &&
+          !!target.closest('[role="combobox"], [role="listbox"], [role="menu"]'));
+      if (inPicker) return;
       if (e.code === "Space") {
         spaceHeld = true;
       }

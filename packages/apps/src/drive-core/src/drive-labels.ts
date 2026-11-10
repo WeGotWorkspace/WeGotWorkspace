@@ -2,7 +2,7 @@ import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sideba
 import type { DriveFile } from "@/drive-core/src/drive-models";
 
 export const driveLabels = {
-  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  /** Primary AppSidebar home (SST with Docs; Docs uses "All Docs"). */
   sidebarHome: filesBrowserSidebarLabels.homeDrive,
   /**
    * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
@@ -15,13 +15,23 @@ export const driveLabels = {
   sidebarTrash: filesBrowserSidebarLabels.trash,
   /** My Drives section title (SST with Docs; was "Team drives"). */
   sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
+  /** Root label for Team drives; the UI path segment stays `Groups`. */
+  teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
   listColumnName: "Name",
   listColumnLocation: "Location",
+  gridSectionFolders: "Folders",
+  gridSectionFiles: "Files",
+  listColumnLastModified: "Last modified",
+  listColumnKind: "Kind",
+  listColumnSize: "Size",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
+  allFilesEmpty: "No files yet",
+  allFilesLoading: filesBrowserSidebarLabels.listLoading,
+  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
   /** Folder view when the live listing failed and no rows are shown — never "empty". */
   folderListingFailed: "This folder could not be loaded",
@@ -114,6 +124,8 @@ export const driveLabels = {
   detailClosePanel: "Close",
   /** Empty body when the details panel is open with no file selected. */
   detailEmpty: "Select a file to see its details.",
+  /** Details panel label above the count when several items are selected. */
+  detailMultipleSelection: "Multiple selection",
   selectionDone: "Done",
   selectionStar: "Star",
   selectionMove: "Move",
@@ -151,6 +163,10 @@ export const driveLabels = {
   createMarkdownDialogNamePlaceholder: "Name",
   createMarkdownDialogCancel: "Cancel",
   createMarkdownDialogConfirm: "Create",
+  createFolderDialogTitle: "New folder",
+  createFolderDialogDescription: "Choose a name and where the folder goes.",
+  createFolderDialogNamePlaceholder: "Folder name",
+  createFolderDialogConfirm: "Create folder",
   offlineMakeAvailable: "Make available offline",
   offlineRemoveCopy: "Remove offline copy",
   offlineDownloading: "Downloading for offline use",
@@ -165,12 +181,13 @@ export const driveLabels = {
   accessScopesTitle: "Scopes",
   accessRevokeAllPublic: "Revoke all public links",
   accessManageShare: "Manage share",
-  accessSearchPlaceholder: "Search people and groups…",
+  accessSearchPlaceholder: "Search people and teams…",
   accessFilterAll: "All",
   accessFilterExternal: "External",
   accessFilterPublic: "Public links",
-  accessFilterGroups: "Groups",
+  accessFilterGroups: "Teams",
   accessVia: "via",
+  accessViaTeam: (name: string) => `Team: ${name}`,
   accessExternalBadge: "External",
   accessExpiredBadge: "Expired",
   accessPendingBadge: "Pending",

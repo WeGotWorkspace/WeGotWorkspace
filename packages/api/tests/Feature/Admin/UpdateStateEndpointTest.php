@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
 
@@ -112,7 +112,8 @@ final class UpdateStateEndpointTest extends WgwDatabaseTestCase
         $this->seedWgwUser('alice', displayName: 'Alice');
         $alice = Principal::forUsername('alice');
         $this->assertNotNull($alice);
-        $group = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $group = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($group, $alice);
+        $this->grantAdminRole($alice);
     }
 }

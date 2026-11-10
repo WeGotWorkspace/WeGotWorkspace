@@ -66,7 +66,8 @@ for (const mesh of ["up", "blocked"] as const) {
       contexts.push(writerContext, observerContext);
       for (const context of contexts) await context.addInitScript(spyOnMesh);
       if (mesh === "blocked")
-        await observerContext.route("**/api/v1/rooms/p_workspace/**", (route) => route.abort());
+        // Every presence room (one per Team, #1921).
+        await observerContext.route("**/api/v1/rooms/p_*/**", (route) => route.abort());
 
       const connected = pushConnected(observerContext);
       const writer = await openTasksTab(writerContext, "writer", events, OWNER);
@@ -101,9 +102,12 @@ for (const mesh of ["up", "blocked"] as const) {
         const body = `dm ${round} ${id}`;
         const dmStart = Date.now();
         await writerSendsDm(writer, channelId, body);
-        await expect(
-          observer.locator(".notification-inbox-tray__popover").getByText(body, { exact: false }),
-        ).toBeVisible({ timeout: PUSH_BOUND_MS });
+        await expect(async () => {
+          await openBell(observer);
+          await expect(
+            observer.locator(".notification-inbox-tray__popover").getByText(body, { exact: false }),
+          ).toBeVisible({ timeout: 250 });
+        }).toPass({ timeout: PUSH_BOUND_MS, intervals: [50] });
         dmMs.push(Date.now() - dmStart);
       }
 
@@ -175,9 +179,18 @@ async function writerSendsDm(tab: Tab, channelId: string, body: string): Promise
   );
 }
 
+/**
+ * Opens the bell, or keeps it open. The popover can close on its own while the
+ * app settles (a refresh or a toast takes focus), so this clicks again when it
+ * is closed.
+ */
 async function openBell(tab: Tab): Promise<void> {
-  await tab.locator(".notification-inbox-tray__trigger").click();
-  await expect(tab.locator(".notification-inbox-tray__popover")).toBeVisible();
+  const popover = tab.locator(".notification-inbox-tray__popover");
+  await expect(async () => {
+    if (!(await popover.isVisible()))
+      await tab.locator(".notification-inbox-tray__trigger").click();
+    await expect(popover).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 /** Chat message ids are ULIDs (26 Crockford base32 characters). */

@@ -55,7 +55,6 @@ function DeviceSegment({ label, value, options, onValueChange }: DeviceSegmentPr
             <MenuItem
               label={option.label}
               checked={active}
-              selected={active}
               className="dropdown-menu__menu-item"
               onClick={() => onValueChange(option.id)}
             />
@@ -91,7 +90,7 @@ export function MeetDevicePopover({
         <IconButton
           icon={<SettingsIcon />}
           label={meetLabels.devices}
-          size="md"
+          size="lg"
           variant="outline"
           active={open}
         />
@@ -129,7 +128,6 @@ export function MeetDevicePopover({
                 <MenuItem
                   label={meetLabels.lowDataMode}
                   checked={Boolean(lowData)}
-                  selected={Boolean(lowData)}
                   className="dropdown-menu__menu-item"
                   onClick={() => onLowDataChange(!lowData)}
                 />

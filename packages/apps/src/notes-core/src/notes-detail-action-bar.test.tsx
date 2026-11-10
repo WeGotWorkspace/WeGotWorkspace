@@ -1,41 +1,18 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import type { Note } from "@/lib/models/note";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookSelectItem } from "@/notes-core/src/notes-notebook-select";
 import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
   cleanup();
 });
 
-function stubSelectEnv() {
-  Element.prototype.scrollIntoView = vi.fn();
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
-}
-
 function renderBar(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
-
-const notebooks: NotesNotebookSelectItem[] = [
-  { id: "Drafts", name: "Drafts", color: "#f59e0b" },
-  { id: "The Journal", name: "The Journal", color: "#14b8a6" },
-];
 
 const owned: Note = {
   id: "n-1",
@@ -62,13 +39,16 @@ const barProps = {
   archived: {},
   starred: {},
   closeMobileDetail: () => {},
-  notebooks,
-  onMoveToNotebook: vi.fn(),
   toggleStar: () => {},
   toggleArchive: () => {},
 };
 
 describe("NotesDetailActionBar", () => {
+  it("has no notebook switcher (it sits above the title)", () => {
+    const { container } = renderBar(<NotesDetailActionBar active={owned} {...barProps} />);
+    expect(container.querySelector(".notes-notebook-select")).toBeNull();
+  });
+
   it("renders nothing when no note is active", () => {
     const { container } = renderBar(<NotesDetailActionBar active={undefined} {...barProps} />);
     expect(container.querySelector(".action-bar")).toBeNull();
@@ -91,85 +71,7 @@ describe("NotesDetailActionBar", () => {
     expect(back.className).toContain("button--variant-outline");
   });
 
-  it("opens Create notebook from the shared picker", () => {
-    stubSelectEnv();
-    const onCreateNotebook = vi.fn();
-    const onMoveToNotebook = vi.fn();
-    renderBar(
-      <NotesDetailActionBar
-        active={owned}
-        {...barProps}
-        onMoveToNotebook={onMoveToNotebook}
-        onCreateNotebook={onCreateNotebook}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
-    fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
-    expect(onCreateNotebook).toHaveBeenCalledTimes(1);
-    expect(onMoveToNotebook).not.toHaveBeenCalled();
-  });
-
-  it("shows a notebook dropdown for owned notes", () => {
-    renderBar(
-      <NotesDetailActionBar
-        active={owned}
-        {...barProps}
-        onMoveToNotebook={vi.fn()}
-        onCreateNotebook={vi.fn()}
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "Drafts" });
-    expect(move.getAttribute("aria-label")).toBe("Drafts");
-    expect(move.hasAttribute("disabled")).toBe(false);
-    expect(move.className).toContain("notes-notebook-select");
-    expect(move.className).toContain("color-swatch-trigger");
-    expect(move.className).toContain("notes-notebook-select--swatch");
-    expect(move.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(move.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(move.querySelector(".notes-notebook-select__name")).toBeNull();
-  });
-
-  it("shows the live collection name when the note still has the old name", () => {
-    renderBar(
-      <NotesDetailActionBar
-        active={{ ...owned, notebook: "Drafts", notebookId: "Drafts" }}
-        {...barProps}
-        notebooks={[{ id: "Drafts", name: "Journal", color: "#f59e0b" }]}
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "Journal" });
-    expect(move.getAttribute("aria-label")).toBe("Journal");
-  });
-
-  it("disables notebook switch for shared-inbox notes without a username chip", () => {
-    const onMoveToNotebook = vi.fn();
-    const onCreateNotebook = vi.fn();
-    const { container } = renderBar(
-      <NotesDetailActionBar
-        active={shared}
-        {...barProps}
-        onMoveToNotebook={onMoveToNotebook}
-        onCreateNotebook={onCreateNotebook}
-        toggleStar={vi.fn()}
-        toggleArchive={vi.fn()}
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "TeamPad" });
-    expect(move.getAttribute("aria-label")).toBe("TeamPad");
-    expect(move.textContent).not.toContain("bob");
-    expect(move.textContent).not.toContain("Shared by");
-    expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeNull();
-    expect(move.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(move);
-    expect(onMoveToNotebook).not.toHaveBeenCalled();
-    expect(onCreateNotebook).not.toHaveBeenCalled();
-  });
-
-  it("keeps star enabled and disables archive when readOnly (view-only share)", () => {
+  it("keeps star enabled and disables archive for a view-only share", () => {
     const toggleStar = vi.fn();
     const toggleArchive = vi.fn();
     const { container } = renderBar(
@@ -178,7 +80,6 @@ describe("NotesDetailActionBar", () => {
         {...barProps}
         toggleStar={toggleStar}
         toggleArchive={toggleArchive}
-        readOnly
         canArchive={false}
       />,
     );
@@ -248,96 +149,6 @@ describe("NotesDetailActionBar", () => {
     star?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(toggleStar).toHaveBeenCalledWith(shared.id);
     expect(row!.querySelector('button[aria-label="Archive"]')).toBeTruthy();
-  });
-
-  it("enables notebook switch for writable group notebook notes and moves", () => {
-    stubSelectEnv();
-    const onMoveToNotebook = vi.fn();
-    const group: Note = {
-      ...owned,
-      id: "g-1",
-      notebook: "Specs",
-      notebookId: "group-eng",
-      scope: "group",
-      groupSlug: "eng",
-    };
-    const groupNotebooks: NotesNotebookSelectItem[] = [
-      { id: "group-eng", name: "Specs", color: "#0ea5e9" },
-      ...notebooks,
-    ];
-    renderBar(
-      <NotesDetailActionBar
-        active={group}
-        {...barProps}
-        notebooks={groupNotebooks}
-        onMoveToNotebook={onMoveToNotebook}
-        onCreateNotebook={vi.fn()}
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "Specs" });
-    expect(move.getAttribute("aria-label")).toBe("Specs");
-    expect(move.hasAttribute("disabled")).toBe(false);
-    fireEvent.click(move);
-    fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
-    expect(onMoveToNotebook).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "The Journal", name: "The Journal" }),
-    );
-  });
-
-  it("shows only the group collection display name and color, not a mashed group-… slug", () => {
-    const group: Note = {
-      ...owned,
-      id: "g-1",
-      notebook: "group-administrators",
-      notebookId: "group-administrators",
-      scope: "group",
-      groupSlug: "administrators",
-    };
-    const groupNotebooks: NotesNotebookSelectItem[] = [
-      { id: "group-administrators", name: "Administratorss", color: "#ea8c72" },
-    ];
-    const { container } = renderBar(
-      <NotesDetailActionBar
-        active={group}
-        {...barProps}
-        notebooks={groupNotebooks}
-        notebookColor="#ea8c72"
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "Administratorss" });
-    expect(move.getAttribute("aria-label")).toBe("Administratorss");
-    expect(move.getAttribute("aria-label")).not.toContain("group-administrators");
-    const option = container.querySelector(".notes-notebook-select .notes-notebook-select__option");
-    expect(option).toBeTruthy();
-    expect((option as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
-      "#ea8c72",
-    );
-    expect(option!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(
-      container.querySelector(".notes-notebook-select .collection-sidebar-row__dot"),
-    ).toBeNull();
-  });
-
-  it("disables notebook switch when readOnly (view-only sharee)", () => {
-    const onMoveToNotebook = vi.fn();
-    const onCreateNotebook = vi.fn();
-    renderBar(
-      <NotesDetailActionBar
-        active={owned}
-        {...barProps}
-        onMoveToNotebook={onMoveToNotebook}
-        onCreateNotebook={onCreateNotebook}
-        readOnly
-      />,
-    );
-
-    const move = screen.getByRole("combobox", { name: "Drafts" });
-    expect(move.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(move);
-    expect(onMoveToNotebook).not.toHaveBeenCalled();
-    expect(onCreateNotebook).not.toHaveBeenCalled();
   });
 
   it("keeps star for group notebook notes", () => {

@@ -23,7 +23,8 @@ export function DestinationPickerList({
   onOpen,
 }: DestinationPickerListProps) {
   return (
-    <div className="destination-picker__scroll">
+    // Focusable so keyboard users can scroll a long list (axe scrollable-region-focusable).
+    <div className="destination-picker__scroll" tabIndex={0}>
       <table className="destination-list-table">
         <tbody>
           {items.map((item) => {

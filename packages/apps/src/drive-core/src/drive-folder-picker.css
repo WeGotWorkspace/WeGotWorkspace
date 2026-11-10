@@ -17,11 +17,13 @@
   @apply overflow-y-auto;
 }
 
-/* Compact listing padding in the dialog — do not retouch tile/grid chrome. */
+/* Compact listing padding in the dialog — do not retouch tile/grid chrome. No sidebar
+ * button to line up with here: the top takes the same inset as the sides. */
 .destination-picker--file-select
   .destination-picker__body
   :is(.drive-grid-layout, .drive-list-view) {
-  @apply px-3 py-3;
+  --drive-browser-inset: 0.75rem;
+  --drive-browser-inset-top: var(--drive-browser-inset);
 }
 
 /*
@@ -46,8 +48,6 @@
     .drive-folder-tile__icon,
     .drive-folder-tile__star,
     .drive-list-folder-icon,
-    .drive-list-file-icon,
-    .drive-file-tile__kind-icon,
     .drive-file-tile__star-badge
   ) {
   color: var(--workspace-accent);

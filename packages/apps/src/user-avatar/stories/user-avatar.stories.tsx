@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import {
   UserAvatar,
   UserPresenceDot,
@@ -37,6 +38,34 @@ type Story = StoryObj<typeof UserAvatar>;
 export const Default: Story = {
   args: {
     displayName: "Elias Linden",
+  },
+};
+
+/** Chat authors: no hairline, a soft selection-colour wash, the same for everyone. */
+export const Tint: Story = {
+  tags: ["vitest-ci"],
+  render: () => (
+    <div className="flex items-center gap-3">
+      {["Ada Lovelace", "Grace Hopper", "Alan Turing"].map((name) => (
+        <UserAvatar key={name} displayName={name} compact variant="tint" color="cyan" />
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const marks = within(canvasElement).getAllByRole("img");
+    const probe = document.createElement("span");
+    probe.style.color =
+      "color-mix(in oklab, var(--scheme-selection) 40%, var(--workspace-surface))";
+    canvasElement.appendChild(probe);
+    const fill = getComputedStyle(probe).color;
+    probe.remove();
+    for (const mark of marks) {
+      const style = getComputedStyle(mark);
+      await expect(style.borderTopWidth).toBe("0px");
+      await expect(style.borderTopLeftRadius).not.toBe("9999px");
+      // One colour for everyone: `color` is ignored.
+      await expect(style.backgroundColor).toBe(fill);
+    }
   },
 };
 

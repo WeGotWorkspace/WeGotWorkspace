@@ -1,0 +1,28 @@
+@import "../../styles.css" reference;
+
+/* The suite floating toolbar in a popover: same chrome and `lg` controls as the
+   chat hover actions it opens from. */
+.reaction-picker {
+  @apply floating-toolbar relative w-auto;
+}
+
+.reaction-picker__item .button__icon {
+  @apply text-lg leading-none;
+}
+
+/* The popover sits off its trigger: a pointer bridge keeps hover across the gap. */
+.reaction-picker[data-side="top"]::after,
+.reaction-picker[data-side="bottom"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 0.5rem;
+}
+
+.reaction-picker[data-side="top"]::after {
+  top: 100%;
+}
+
+.reaction-picker[data-side="bottom"]::after {
+  bottom: 100%;
+}
