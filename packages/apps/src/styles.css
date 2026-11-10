@@ -331,7 +331,7 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16, on phones too: the
-   * iOS focus zoom is stopped once, in `public/assets/theme-boot.js`.
+   * iOS focus zoom is stopped once, by the viewport tag in `index.html`.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -511,6 +511,16 @@
   .uppercase {
     font-family: var(--font-sans);
   }
+}
+
+/*
+ * react-swipeable-list makes its wrapper a scroll box (`overflow-y: auto`) that never
+ * scrolls: the list pane around it does. A scroll box catches `position: sticky`, so
+ * on touch the sticky list headers (Contacts letters) scrolled away with the rows.
+ */
+.workspace-swipe-list > .swipeable-list {
+  height: auto;
+  overflow: visible;
 }
 
 /* react-swipeable-list overrides — center action contents vertically */

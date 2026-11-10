@@ -263,6 +263,20 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L.cancel, L.delete, L.deleteConfirmBody, L.deleteConfirmTitle, deleteTasks, requestConfirm],
   );
 
+  /** The open task's list switcher: confirm before the move, as Notes and Contacts do. */
+  const requestMoveTask = useCallback(
+    (listName: string, move: () => void) => {
+      requestConfirm({
+        title: L.moveTaskTitle,
+        description: L.moveTaskDescription(listName),
+        confirmLabel: L.moveConfirm,
+        cancelLabel: L.cancel,
+        onConfirm: move,
+      });
+    },
+    [L, requestConfirm],
+  );
+
   const moveToList = useCallback(
     (ids: string[], listId: string) => {
       if (!operations) return;
@@ -331,6 +345,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     selectionBarButtons,
     autosaveTask,
     requestDeleteTask,
+    requestMoveTask,
     moveToList,
     confirmDialog,
     handleTaskExitAnimationEnd,

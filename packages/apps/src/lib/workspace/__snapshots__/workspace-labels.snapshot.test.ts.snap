@@ -804,6 +804,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: docs 1`]
   "offlineAvailable": "Available offline",
   "offlinePendingSync": "Pending sync",
   "outlineEmpty": "No headings in this document yet.",
+  "pageFitToScreen": "Fit to screen",
   "pageOrientationLandscape": "Landscape",
   "pageOrientationPortrait": "Portrait",
   "pagePaperNone": "None",
@@ -938,6 +939,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: docs 1`]
 
 exports[`workspace label snapshot > resolved labels match the snapshot: docsPageSetup 1`] = `
 {
+  "pageFitToScreen": "Fit to screen",
   "pageOrientationLandscape": "Landscape",
   "pageOrientationPortrait": "Portrait",
   "pagePaperNone": "None",
@@ -2548,6 +2550,16 @@ exports[`workspace label snapshot > resolved labels match the snapshot: tasks 1`
   "markComplete": "Mark complete",
   "markIncomplete": "Mark incomplete",
   "moveConfirm": "Move",
+  "moveTaskDescription": [
+    "Move this task to “0”?",
+    "Move this task to “1”?",
+    "Move this task to “2”?",
+    "Move this task to “Alpha”?",
+    "Move this task to “Alpha”?",
+    "Move this task to “Alpha”?",
+    "Move this task to “Alpha”?",
+  ],
+  "moveTaskTitle": "Move task?",
   "newProject": "Create list",
   "newTask": "New task",
   "newTaskMenu": "More create options",
