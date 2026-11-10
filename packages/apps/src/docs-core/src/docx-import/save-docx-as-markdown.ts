@@ -25,13 +25,14 @@ export class DocxSaveRefusedError extends Error {
 /** Drive reads and writes, injected so the order can be tested without a server. */
 export type SaveAsMarkdownIo = {
   readSource(apiPath: string): Promise<Uint8Array>;
-  /** Creates an empty file, keeping both on a clash. Returns the name it got. */
-  createEmptyDoc(parentPath: string, name: string): Promise<string>;
+  /** Creates an empty file, keeping both on a clash. Returns the name and node id it got. */
+  createEmptyDoc(parentPath: string, name: string): Promise<{ name: string; nodeId: string }>;
   /** Uploads one image as an attachment of the Doc. Returns its FileNode id. */
-  uploadImage(docPath: string, image: File): Promise<string>;
-  writeDoc(docPath: string, markdown: string): Promise<void>;
-  /** Best-effort cleanup when the flow fails after creating the Doc. */
-  removeDoc(docPath: string): Promise<void>;
+  uploadImage(docPath: string, docNodeId: string, image: File): Promise<string>;
+  /** Writes onto the created node, by id. */
+  writeDoc(docNodeId: string, markdown: string): Promise<void>;
+  /** Best-effort cleanup, by id, when the flow fails after creating the Doc. */
+  removeDoc(docPath: string, docNodeId: string): Promise<void>;
 };
 
 export type SaveAsMarkdownResult = {
@@ -72,6 +73,7 @@ function dropImage(markdown: string, placeholder: string): string {
 async function uploadImages(
   io: SaveAsMarkdownIo,
   docPath: string,
+  docNodeId: string,
   conversion: DocxConversion,
 ): Promise<{ markdown: string; failed: number }> {
   let { markdown } = conversion;
@@ -84,7 +86,7 @@ async function uploadImages(
         const file = new File([image.bytes.slice()], `image-${index + 1}.${extension}`, {
           type: image.contentType,
         });
-        nodeId = await io.uploadImage(docPath, file);
+        nodeId = await io.uploadImage(docPath, docNodeId, file);
       } catch {
         nodeId = null;
       }
@@ -126,14 +128,14 @@ export async function saveDocxAsMarkdown(
     throw new DocxSaveRefusedError("doc-too-large");
   }
 
-  const name = await io.createEmptyDoc(parentPath, markdownNameFor(sourceName));
+  const { name, nodeId } = await io.createEmptyDoc(parentPath, markdownNameFor(sourceName));
   const docPath = `${parentPath.replace(/\/+$/, "")}/${name}`;
   try {
-    const { markdown, failed } = await uploadImages(io, docPath, conversion);
-    await io.writeDoc(docPath, markdown);
+    const { markdown, failed } = await uploadImages(io, docPath, nodeId, conversion);
+    await io.writeDoc(nodeId, markdown);
     return { docPath, report: buildDocxImportReport(sourceName, scan.counts, failed) };
   } catch (error) {
-    await io.removeDoc(docPath).catch(() => undefined);
+    await io.removeDoc(docPath, nodeId).catch(() => undefined);
     throw error;
   }
 }

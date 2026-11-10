@@ -12,12 +12,24 @@ export function saveAsMarkdownSourceKindFromName(name: string): SaveAsMarkdownSo
   return extension === "docx" || extension === "gdoc" ? extension : null;
 }
 
+/**
+ * Whether the person may create files beside `file`. Search rows carry no rights,
+ * so unknown counts as "no" unless the file sits in the person's own drive.
+ */
+function mayCreateBeside(
+  file: Pick<DriveFile, "mayManageStructure" | "apiPath">,
+  username: string | undefined,
+): boolean {
+  if (file.mayManageStructure !== undefined) return file.mayManageStructure;
+  return Boolean(username && file.apiPath?.startsWith(`/users/${username}/`));
+}
+
 export function saveAsMarkdownSourceKind(
-  file: Pick<DriveFile, "kind" | "title" | "mayManageStructure">,
+  file: Pick<DriveFile, "kind" | "title" | "mayManageStructure" | "apiPath">,
+  username?: string,
 ): SaveAsMarkdownSourceKind | null {
   if (file.kind === "folder") return null;
-  // A file the person may not change usually sits in a folder they cannot write to.
-  if (file.mayManageStructure === false) return null;
+  if (!mayCreateBeside(file, username)) return null;
   return saveAsMarkdownSourceKindFromName(file.title);
 }
 

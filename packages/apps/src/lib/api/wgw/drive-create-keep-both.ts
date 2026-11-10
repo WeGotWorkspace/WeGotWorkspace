@@ -30,6 +30,15 @@ export async function createDriveFileKeepingBoth(
   file: File,
   opts: CreateKeepingBothOptions = {},
 ): Promise<string> {
+  return (await createDriveNodeKeepingBoth(parentPath, file, opts)).name;
+}
+
+/** Same as {@link createDriveFileKeepingBoth}, also returning the id of the created node. */
+export async function createDriveNodeKeepingBoth(
+  parentPath: string,
+  file: File,
+  opts: CreateKeepingBothOptions = {},
+): Promise<{ name: string; nodeId: string | undefined }> {
   const { signal } = opts;
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -47,7 +56,7 @@ export async function createDriveFileKeepingBoth(
         node.nodeType !== "directory" &&
         node.size === file.size,
     );
-    if (own) return own.name;
+    if (own) return { name: own.name, nodeId: own.id };
   }
   const blobId = await uploadJmapBlob(
     session,
@@ -58,11 +67,11 @@ export async function createDriveFileKeepingBoth(
   let name = file.name;
   for (let attempt = 0; attempt < KEEP_BOTH_ATTEMPTS; attempt += 1) {
     try {
-      await session.fileNodes.setFileNodes(
+      const created = await session.fileNodes.setFileNodes(
         { accountId: session.accountId, create: { f0: { parentId, name, blobId } } },
         { signal },
       );
-      return name;
+      return { name, nodeId: created.created?.f0?.id };
     } catch (error) {
       if (!(error instanceof JmapSetItemError) || error.setError.type !== "alreadyExists") {
         throw error;

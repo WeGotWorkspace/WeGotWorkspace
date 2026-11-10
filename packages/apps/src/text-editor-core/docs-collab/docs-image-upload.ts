@@ -90,7 +90,11 @@ export async function resolveDriveFileNodeId(
 export async function uploadDocAttachmentImage(
   docApiPath: string,
   file: File,
-  opts?: { signal?: AbortSignal },
+  opts?: {
+    signal?: AbortSignal;
+    /** The Doc's FileNode id, when the caller holds it: skips the lookup by path. */
+    docNodeId?: string;
+  },
 ): Promise<{ nodeId: string; alt: string }> {
   if (!isDocsImageFile(file)) {
     throw new Error("Only browser-previewable images can be uploaded.");
@@ -98,7 +102,8 @@ export async function uploadDocAttachmentImage(
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
   const docPath = normalizeApiVirtualPath(docApiPath);
-  const docNodeId = await resolveFileNodeId(session, docPath, user.username, opts?.signal);
+  const docNodeId =
+    opts?.docNodeId ?? (await resolveFileNodeId(session, docPath, user.username, opts?.signal));
   const folderPath = docAttachmentsFolderPath(docPath, docNodeId);
   if (!folderPath) {
     throw new Error("Document path has no drive principal prefix.");

@@ -1,4 +1,4 @@
-import { strFromU8, unzipSync } from "fflate";
+import { strFromU8, Unzip, unzipSync, UnzipInflate, UnzipPassThrough } from "fflate";
 import { splitElements } from "@/docs-core/src/docx-import/docx-alternate-content";
 
 /**
@@ -14,7 +14,7 @@ import { splitElements } from "@/docs-core/src/docx-import/docx-alternate-conten
 export type DocxRefusal =
   "ole-container" | "not-a-zip" | "corrupt-zip" | "not-a-docx" | "too-large";
 
-/** Sum of the declared unpacked sizes of every part. mammoth inflates them all. */
+/** Sum of the bytes every part really inflates to (never the declared sizes). mammoth inflates them all. */
 export const DOCX_MAX_UNPACKED_BYTES = 256 * 1024 * 1024;
 
 /** What the converter drops or changes; each count feeds one import report line. */
@@ -95,23 +95,57 @@ function isScannedPart(name: string): boolean {
   return /^word\/(document|comments|footnotes|endnotes|header\d*|footer\d*)\.xml$/.test(name);
 }
 
+const TOO_LARGE = Symbol("too-large");
+
+/**
+ * Inflates every part chunk by chunk and counts the bytes it really produces: the
+ * sizes in the zip's headers are the sender's claim. Throws {@link TOO_LARGE} as soon
+ * as the total passes the cap. Only the parts the report reads are kept.
+ */
+function unpackCounting(bytes: Uint8Array): Record<string, Uint8Array> {
+  // Reads the central directory only: a truncated or garbled zip fails here.
+  unzipSync(bytes, { filter: () => false });
+  const kept: Record<string, Uint8Array[]> = {};
+  let unpackedBytes = 0;
+  const unzip = new Unzip((file) => {
+    if (file.name.endsWith("/")) return;
+    const chunks: Uint8Array[] | null = isScannedPart(file.name) ? [] : null;
+    if (chunks) kept[file.name] = chunks;
+    file.ondata = (error, chunk) => {
+      if (error) throw error;
+      unpackedBytes += chunk.length;
+      if (unpackedBytes > DOCX_MAX_UNPACKED_BYTES) throw TOO_LARGE;
+      chunks?.push(chunk);
+    };
+    if (file.compression === 0 || file.compression === 8) file.start();
+  });
+  unzip.register(UnzipInflate);
+  unzip.register(UnzipPassThrough);
+  unzip.push(bytes, true);
+  const parts: Record<string, Uint8Array> = {};
+  for (const [name, chunks] of Object.entries(kept)) {
+    const whole = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+    let offset = 0;
+    for (const chunk of chunks) {
+      whole.set(chunk, offset);
+      offset += chunk.length;
+    }
+    parts[name] = whole;
+  }
+  return parts;
+}
+
 export function scanDocx(bytes: Uint8Array): DocxScan {
   if (startsWith(bytes, OLE_MAGIC)) return { ok: false, refusal: "ole-container" };
   if (!startsWith(bytes, ZIP_MAGIC)) return { ok: false, refusal: "not-a-zip" };
 
   let parts: Record<string, Uint8Array>;
-  let unpackedBytes = 0;
   try {
-    parts = unzipSync(bytes, {
-      filter: (file) => {
-        unpackedBytes += file.originalSize;
-        return unpackedBytes <= DOCX_MAX_UNPACKED_BYTES && isScannedPart(file.name);
-      },
-    });
-  } catch {
+    parts = unpackCounting(bytes);
+  } catch (error) {
+    if (error === TOO_LARGE) return { ok: false, refusal: "too-large" };
     return { ok: false, refusal: "corrupt-zip" };
   }
-  if (unpackedBytes > DOCX_MAX_UNPACKED_BYTES) return { ok: false, refusal: "too-large" };
   const documentXml = parts["word/document.xml"];
   if (!documentXml) return { ok: false, refusal: "not-a-docx" };
 
