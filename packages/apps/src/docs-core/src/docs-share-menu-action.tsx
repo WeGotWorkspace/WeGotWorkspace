@@ -42,13 +42,17 @@ export function docsShareMenuHeaderAction({
       : [],
     download
       ? [
-          {
-            id: "download-markdown",
-            label: labels.downloadMarkdown,
-            icon: <FileCode />,
-            disabled: contentDisabled,
-            onClick: download.downloadMarkdown,
-          },
+          ...(download.downloadMarkdown
+            ? [
+                {
+                  id: "download-markdown",
+                  label: labels.downloadMarkdown,
+                  icon: <FileCode />,
+                  disabled: contentDisabled,
+                  onClick: download.downloadMarkdown,
+                },
+              ]
+            : []),
           {
             id: "download-word",
             label: labels.downloadWord,

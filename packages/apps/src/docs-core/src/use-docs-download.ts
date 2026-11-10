@@ -5,6 +5,7 @@ import type { TextEditorPageSetup } from "@/lib/page-format";
 import { docsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { triggerBrowserBlobDownload } from "@/lib/offline/docs/docs-offline-download";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
+import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { docsExportFileName } from "@/text-editor-core/src/export/docs-export-file-name";
 
 type DownloadLabels = Pick<DocsUILabels, "downloadFailed" | "downloadImagesMissing">;
@@ -12,7 +13,8 @@ type DownloadLabels = Pick<DocsUILabels, "downloadFailed" | "downloadImagesMissi
 export type DocsDownloadState = {
   /** A file is being built; the menu stays disabled until it is saved. */
   busy: boolean;
-  downloadMarkdown: () => void;
+  /** Only for Markdown Docs; other formats have no Markdown to offer. */
+  downloadMarkdown?: () => void;
   downloadWord: () => void;
 };
 
@@ -23,6 +25,7 @@ export type DocsDownloadState = {
 export function useDocsDownload(
   editor: Editor | null,
   title: string,
+  format: TextEditorContentFormat,
   pageSetup?: Pick<TextEditorPageSetup, "format" | "orientation">,
   labels: DownloadLabels = docsLabels,
 ): DocsDownloadState {
@@ -64,5 +67,9 @@ export function useDocsDownload(
     }
   }, [editor, title, labels, toast]);
 
-  return { busy, downloadMarkdown, downloadWord };
+  return {
+    busy,
+    downloadMarkdown: format === "markdown" ? downloadMarkdown : undefined,
+    downloadWord,
+  };
 }

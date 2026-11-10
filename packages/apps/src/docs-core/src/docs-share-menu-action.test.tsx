@@ -48,7 +48,7 @@ function renderShareMenu({ busy = false, contentUnavailable = false, withInvite 
 }
 
 function shareButton(container: HTMLElement) {
-  const row = container.querySelector(".docs-workspace__header-actions-row") as HTMLElement;
+  const row = container.querySelector(".docs-workspace__header-actions-row--end") as HTMLElement;
   return within(row).getByRole("button", { name: "Share" }) as HTMLButtonElement;
 }
 
@@ -129,6 +129,22 @@ describe("docsCollabHeaderActions", () => {
       "invite",
       "group-1",
       "download-markdown",
+      "download-word",
+      "group-2",
+      "print",
+    ]);
+  });
+
+  it("omits Download Markdown when the Doc is not Markdown", () => {
+    const actions = docsCollabHeaderActions({
+      ...base,
+      viewSource: false,
+      download: { busy: false, downloadWord: vi.fn() },
+      share,
+    });
+    expect(actions[0].items?.map((item) => item.id)).toEqual([
+      "invite",
+      "group-1",
       "download-word",
       "group-2",
       "print",

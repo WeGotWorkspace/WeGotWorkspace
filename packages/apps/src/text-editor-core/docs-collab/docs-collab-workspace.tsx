@@ -303,7 +303,13 @@ function DocsCollabWorkspaceInner({
   const imageInsertEnabled = permissions.editable && editorFormat !== "text";
   const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
   const pageSetup = useDocsPageSetup(resolvedDocApiPath);
-  const download = useDocsDownload(editor, resolvedDocumentTitle, pageSetup.pageSetup, labels);
+  const download = useDocsDownload(
+    editor,
+    resolvedDocumentTitle,
+    editorFormat,
+    pageSetup.pageSetup,
+    labels,
+  );
   const pickerUsername = driveUsername?.trim() || session.user.username || "";
   const imageInsert = useDocsImageInsert({
     editor,

@@ -276,7 +276,13 @@ function DocsMainHeader({
   pageSetup: TextEditorPageSetup;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
-  const download = useDocsDownload(editor, title, pageSetup, controller.labels);
+  const download = useDocsDownload(
+    editor,
+    title,
+    controller.editorFormat,
+    pageSetup,
+    controller.labels,
+  );
   const showShare = Boolean(apiPath.trim() && mayShare === true);
 
   return (
