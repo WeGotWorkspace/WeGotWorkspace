@@ -4,6 +4,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 
 import { CollectionGhostButton, CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { Select, SelectContent, SelectItem } from "@/ui/select";
+import { expectGhostAtRest } from "@/ui/stories/ghost-story-checks";
 
 const COLLECTIONS = [
   { id: "work", name: "Work", color: "oklch(0.62 0.16 250)" },
@@ -61,7 +62,7 @@ export const Default: Story = {
     const trigger = canvas.getByRole("combobox", { name: "Notebook" });
     await expect(trigger).toHaveTextContent("Work");
     await expect(trigger.querySelector(".collection-ghost-select__chevron")).not.toBeNull();
-    await expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expectGhostAtRest(trigger, { border: false });
     await userEvent.click(trigger);
     const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(await body.findByRole("option", { name: "Home" }));

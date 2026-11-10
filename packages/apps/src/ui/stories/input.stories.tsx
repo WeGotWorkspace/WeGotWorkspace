@@ -4,6 +4,7 @@ import { expect, userEvent, within } from "storybook/test";
 
 import { CONTROL_SIZE_OPTIONS } from "@/ui/control-size";
 import { Input } from "@/ui/input";
+import { expectGhostAtRest, expectGhostWash } from "@/ui/stories/ghost-story-checks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 const SIZE_PX: Record<(typeof CONTROL_SIZE_OPTIONS)[number], number> = {
@@ -135,12 +136,11 @@ export const Ghost: Story = {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("textbox", { name: "Location" });
     await expect(input).toHaveClass("input--ghost");
-    await expect(getComputedStyle(input).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    await expect(getComputedStyle(input).borderTopColor).toBe("rgba(0, 0, 0, 0)");
+    await expectGhostAtRest(input);
     await userEvent.click(input);
     await userEvent.type(input, "Room 4");
     await expect(input).toHaveValue("Room 4");
-    await expect(getComputedStyle(input).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    await expectGhostWash(input);
   },
 };
 

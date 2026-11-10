@@ -2,6 +2,7 @@ import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { expectGhostAtRest, expectGhostWash } from "@/ui/stories/ghost-story-checks";
 import { Textarea } from "@/ui/textarea";
 
 const meta = {
@@ -41,16 +42,11 @@ export const Ghost: Story = {
     const canvas = within(canvasElement);
     const textarea = canvas.getByRole("textbox", { name: "Notes" });
     await expect(textarea).toHaveClass("textarea--ghost");
-    // Read the colours through waitFor so a late style pass cannot fail the check.
-    await waitFor(() => {
-      expect(getComputedStyle(textarea).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-      expect(getComputedStyle(textarea).borderTopColor).toBe("rgba(0, 0, 0, 0)");
-    });
+    // Through waitFor, so a late style pass cannot fail the check.
+    await waitFor(() => expectGhostAtRest(textarea));
     await userEvent.click(textarea);
     await userEvent.type(textarea, "Met at the conference");
     await expect(textarea).toHaveValue("Met at the conference");
-    await waitFor(() => {
-      expect(getComputedStyle(textarea).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
-    });
+    await waitFor(() => expectGhostWash(textarea));
   },
 };
