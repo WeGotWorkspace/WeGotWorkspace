@@ -8,19 +8,6 @@ function showServerTask(setTasks: SetTasks, saved: Task): void {
   setTasks((prev) => prev.map((task) => (task.id === saved.id ? saved : task)));
 }
 
-/**
- * Undo of complete / reopen: sends only the old status. No If-Match from the screen:
- * the write it undoes made a new version, so the operation takes the cached one.
- */
-export async function revertTaskStatus(
-  operations: TasksAPIOperations,
-  setTasks: SetTasks,
-  taskId: string,
-  status: NonNullable<Task["workflowStatus"]>,
-): Promise<void> {
-  showServerTask(setTasks, await operations.patchTask(taskId, { workflowStatus: status }));
-}
-
 /** Moves tasks one at a time and marks each move the server applied. */
 export async function moveTasksToList(
   operations: TasksAPIOperations,
@@ -46,4 +33,32 @@ export async function moveTasksBack(
     if (completed && !completed.has(task.id)) continue;
     showServerTask(setTasks, await operations.moveTaskToList(task.id, task.taskListId));
   }
+}
+
+type Status = NonNullable<Task["workflowStatus"]>;
+type SetStatusInOrder = (taskId: string, status: Status, signal?: AbortSignal) => Promise<unknown>;
+
+/**
+ * A done toggle of several tasks, on each task's save chain. Each landed write is
+ * marked, so a batch that fails halfway reverts only what landed.
+ */
+export function statusWrites(
+  setStatusInOrder: SetStatusInOrder,
+  before: ReadonlyMap<string, Status>,
+  nextStatus: Status,
+) {
+  return {
+    async execute(signal: AbortSignal, markCompleted: (taskId: string) => void) {
+      for (const taskId of before.keys()) {
+        await setStatusInOrder(taskId, nextStatus, signal);
+        markCompleted(taskId);
+      }
+    },
+    async revert(completed: CompletedWriteKeys) {
+      for (const [taskId, status] of before) {
+        if (completed && !completed.has(taskId)) continue;
+        await setStatusInOrder(taskId, status);
+      }
+    },
+  };
 }

@@ -1,16 +1,21 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/ui/tooltip";
-import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
+import {
+  loadCalendarDirectoryGroups,
+  searchCollectionSharePrincipals,
+} from "@/lib/api/wgw/calendar";
+import { viewerHasNoTeam } from "@/share-ui/collection-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { ContactsDetailActionBar } from "@/contacts-core/src/contacts-detail-action-bar";
+import { ContactsDetailAddressBookSelect } from "@/contacts-core/src/contacts-detail-address-book-select";
 import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
 import { ContactsNewMenu } from "@/contacts-core/src/contacts-new-menu";
@@ -19,6 +24,7 @@ import {
   contactsAddressBookDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-addressbook-dialog";
 import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsCreateGroupDialog,
   contactsCreateGroupDialogLabelsFrom,
@@ -28,11 +34,11 @@ import {
   contactsEditGroupDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-edit-group-dialog";
 import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-book-rows";
+import { ContactsSidebarGroupRows } from "@/contacts-core/src/contacts-sidebar-group-rows";
 import {
   ContactsImportDialog,
   contactsImportDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-import-dialog";
-import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   contactsBookViewKey,
   writableGroupAddressBooks,
@@ -91,7 +97,6 @@ export function ContactsWorkspace({
     listLoading,
     listRefreshing,
     isTouch,
-    editMode,
     createMode,
     editDraft,
     displayName,
@@ -136,7 +141,10 @@ export function ContactsWorkspace({
     dropImportActive,
     setDropImportActive,
     fileInputRef,
-    startEdit,
+    addPhone,
+    addEmail,
+    addAddress,
+    addUrl,
     cancelEdit,
     saveEdit,
     deleteActive,
@@ -217,19 +225,32 @@ export function ContactsWorkspace({
     selectView,
   });
 
-  const bookGroupRows = {
-    groups: contactGroups,
-    groupEditLabel: L.renameGroup,
-    expandGroupsLabel: L.expandAddressBookGroups,
-    collapseGroupsLabel: L.collapseAddressBookGroups,
+  // Groups get their own section, in name order; each icon wears its book's colour.
+  const sidebarGroups = useMemo(() => {
+    const listedBookIds = new Set(
+      [...ownedAddressBooks, ...sharedAddressBooks].map((book) => book.id),
+    );
+    return contactGroups
+      .filter((group) => {
+        const bookId = firstEnabledAddressBookId(group.addressBookIds);
+        return !bookId || listedBookIds.has(bookId);
+      })
+      .sort((a, b) =>
+        contactDisplayName(a).localeCompare(contactDisplayName(b), undefined, {
+          sensitivity: "base",
+        }),
+      );
+  }, [contactGroups, ownedAddressBooks, sharedAddressBooks]);
+
+  const groupRows = {
     canEditGroup: (group: (typeof contactGroups)[number]) =>
       canWriteContactGroup(group, addressBooks, Boolean(operations)),
-    onEditGroup: (group: (typeof contactGroups)[number]) =>
+    onEdit: (group: (typeof contactGroups)[number]) =>
       setGroupRenameDialog({
         groupId: group.id,
         name: contactDisplayName(group),
       }),
-    groupDropZoneProps: (groupId: string) => {
+    dropZoneProps: (groupId: string) => {
       const group = contactGroups.find((card) => card.id === groupId);
       return sidebarDropZoneProps(
         contactsGroupViewKey(groupId),
@@ -258,6 +279,20 @@ export function ContactsWorkspace({
     async (query: string) => searchCollectionSharePrincipals(query, session.user.username),
     [session.user.username],
   );
+
+  // The viewer's own Teams, loaded when a share dialog opens; a failed load stays unknown.
+  const sharing = Boolean(addressBookDialog?.mayShare);
+  const [ownTeams, setOwnTeams] = useState<readonly unknown[] | undefined>(undefined);
+  useEffect(() => {
+    if (!sharing || !online) return;
+    let live = true;
+    void loadCalendarDirectoryGroups().then((teams) => {
+      if (live && teams) setOwnTeams(teams);
+    });
+    return () => {
+      live = false;
+    };
+  }, [sharing, online]);
 
   const browserTitleContext = active && selectedIds.length <= 1 ? displayName : viewLabel;
   useDocumentTitle(browserTitleContext);
@@ -293,20 +328,15 @@ export function ContactsWorkspace({
         ref={workspaceLayoutRef}
         initialDetailOpenMobile={Boolean(initialContactId)}
         workspaceRoot={{
-          className: cn("contacts-workspace", className),
+          className: cn("contacts-workspace note-detail-desk", className),
         }}
         sidebar={(c) => (
           <TooltipProvider delayDuration={0}>
             <AppSidebar
+              settingsAppId="contacts"
               open={c.sidebarOpen}
               onCloseMobile={c.closeSidebar}
-              footer={
-                <WorkspaceAppSettingsFooter
-                  appId="contacts"
-                  session={session}
-                  onLogout={onLogout}
-                />
-              }
+              footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
               primaryButton={
                 <ContactsNewMenu
                   labels={L}
@@ -333,8 +363,6 @@ export function ContactsWorkspace({
                     onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
-                    onSelectGroup={(groupId) => selectView(contactsGroupViewKey(groupId))}
-                    {...bookGroupRows}
                   />
                 </SidebarSection>
               ) : null}
@@ -350,8 +378,19 @@ export function ContactsWorkspace({
                     onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
-                    onSelectGroup={(groupId) => selectView(contactsGroupViewKey(groupId))}
-                    {...bookGroupRows}
+                  />
+                </SidebarSection>
+              ) : null}
+              {sidebarGroups.length > 0 ? (
+                <SidebarSection title={L.sectionGroups}>
+                  <ContactsSidebarGroupRows
+                    groups={sidebarGroups}
+                    view={view}
+                    editLabel={L.renameGroup}
+                    canEditGroup={groupRows.canEditGroup}
+                    onSelect={(groupId) => selectView(contactsGroupViewKey(groupId))}
+                    onEdit={groupRows.onEdit}
+                    dropZoneProps={groupRows.dropZoneProps}
                   />
                 </SidebarSection>
               ) : null}
@@ -392,6 +431,7 @@ export function ContactsWorkspace({
             selectionBar,
             onRefreshList,
             pendingCardIds,
+            addressBooks,
           });
 
           return {
@@ -424,23 +464,10 @@ export function ContactsWorkspace({
           selectedIds.length > 1 ? null : (
             <ContactsDetailActionBar
               labels={L}
-              canEdit={canEdit}
-              editMode={editMode}
               createMode={createMode}
               canSaveCreate={canSaveCreate}
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
-              moveAddressBook={
-                canMoveActiveContact && active
-                  ? {
-                      books: writableMoveBooks,
-                      value: firstEnabledAddressBookId(active.addressBookIds) ?? "",
-                      personalLabel: L.personalAddressBook,
-                      onMove: moveActiveContactToAddressBook,
-                    }
-                  : undefined
-              }
-              onEdit={startEdit}
               onDelete={deleteActive}
               onDownload={downloadActive}
               onSave={saveEdit}
@@ -465,10 +492,22 @@ export function ContactsWorkspace({
               labels={L}
               card={active}
               createMode={createMode}
-              editMode={editMode}
+              readOnly={!canEdit}
               editDraft={editDraft}
               displayName={displayName}
               groupTags={groupTags}
+              eyebrow={
+                active && !createMode ? (
+                  <ContactsDetailAddressBookSelect
+                    card={active}
+                    labels={L}
+                    addressBooks={addressBooks}
+                    writableBooks={writableMoveBooks}
+                    canMove={canMoveActiveContact}
+                    onMove={moveActiveContactToAddressBook}
+                  />
+                ) : undefined
+              }
               onDraftChange={updateEditDraft}
               onUpdatePhone={updatePhone}
               onUpdateEmail={updateEmail}
@@ -482,6 +521,10 @@ export function ContactsWorkspace({
               onRemovePhone={removePhone}
               onRemoveEmail={removeEmail}
               onRemoveAddress={removeAddress}
+              onAddPhone={addPhone}
+              onAddEmail={addEmail}
+              onAddAddress={addAddress}
+              onAddUrl={addUrl}
             />
           );
         }}
@@ -562,6 +605,7 @@ export function ContactsWorkspace({
           addressBookDialog?.mayShare
             ? {
                 online,
+                noTeam: viewerHasNoTeam(ownTeams),
                 onSearchPrincipals: searchSharePrincipals,
                 onPatchShareWith: patchShareWith,
               }

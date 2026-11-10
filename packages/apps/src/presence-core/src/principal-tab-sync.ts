@@ -32,6 +32,8 @@ export type PrincipalRosterSnapshot = {
   selfPeerId: string | null;
   /** Peers with an open data channel. Missing from a tab on an older build. */
   linkedPeerIds?: string[];
+  /** Per lower-cased username: the peer ids the leader sends a targeted envelope to. */
+  targetPeerIds?: Record<string, string[]>;
 };
 
 /**
@@ -77,6 +79,17 @@ export type PrincipalTabSyncHandlers = {
   /** Pagehide on the tab that owns the principal session. Followers must not leave. */
   onOwnerPageHide?: () => void;
 };
+
+/** Keeps the leader's per-user target map only when it is a record of string arrays. */
+function sanitizeTargetPeerIds(value: unknown): Record<string, string[]> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const entries: [string, string[]][] = [];
+  for (const [key, ids] of Object.entries(value)) {
+    if (!Array.isArray(ids)) return undefined;
+    entries.push([key, ids.filter((id): id is string => typeof id === "string")]);
+  }
+  return Object.fromEntries(entries);
+}
 
 export function createPrincipalTabId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -384,6 +397,7 @@ export class PrincipalTabCoordinator {
           linkedPeerIds: Array.isArray(data.linkedPeerIds)
             ? data.linkedPeerIds.filter((id): id is string => typeof id === "string")
             : undefined,
+          targetPeerIds: sanitizeTargetPeerIds(data.targetPeerIds),
         });
       }
     }

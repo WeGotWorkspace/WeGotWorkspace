@@ -9,6 +9,13 @@ import { PresenceProvider } from "@/presence-core/src/presence-provider";
 import { createPresenceStore } from "@/presence-core/src/presence-store";
 import { PRESENCE_BOOT_RETRY_DELAYS_MS } from "@/presence-core/src/presence-types";
 
+const settingsState = vi.hoisted(() => ({
+  groups: [{ id: "principals/groups/design", displayName: "Design" }] as {
+    id: string;
+    displayName: string;
+  }[],
+}));
+
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwApiBaseUrl: () => "/api/v1",
   wgwCurrentAccessToken: () => "member-token",
@@ -17,6 +24,8 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwFetchPrincipal: vi.fn(async () => ({
     user: { username: "member", displayName: "Member" },
   })),
+  wgwFetch: vi.fn(async () => ({ ok: true, status: 200 })),
+  wgwReadJson: vi.fn(async () => ({ groups: settingsState.groups })),
 }));
 
 const SERVER_SETTINGS = {
@@ -37,6 +46,7 @@ vi.mock("@/presence-core/src/presence-store", () => ({
   createPresenceStore: vi.fn(() => ({
     start: vi.fn(),
     stop: vi.fn(async () => undefined),
+    meshLeader: true,
   })),
 }));
 
@@ -66,12 +76,12 @@ afterEach(() => {
 });
 
 describe("PresenceProvider", () => {
-  it("fetches workspace ICE settings with the member bearer token", async () => {
+  it("fetches ICE settings through an own Team room with the member bearer token", async () => {
     renderProvider();
 
     await waitFor(() => {
       expect(fetchRtcSettings).toHaveBeenCalledWith({
-        url: "/api/v1/rooms/p_workspace/configuration",
+        url: "/api/v1/rooms/p_groups.design/configuration",
         bearerToken: "member-token",
       });
     });
@@ -81,6 +91,25 @@ describe("PresenceProvider", () => {
         displayName: "Member",
       });
     });
+  });
+
+  it("never asks for the old workspace room", async () => {
+    const view = renderProvider();
+    await waitFor(() => expect(storeFactory).toHaveBeenCalledTimes(1));
+
+    const urls = rtcSettings.mock.calls.map(([options]) => options?.url ?? "");
+    expect(urls.some((url) => url.includes("p_workspace"))).toBe(false);
+    view.unmount();
+  });
+
+  it("starts presence without RTC settings for a user in no Team", async () => {
+    settingsState.groups = [];
+    const view = renderProvider();
+
+    await waitFor(() => expect(storeFactory).toHaveBeenCalledTimes(1));
+    expect(rtcSettings).not.toHaveBeenCalled();
+    settingsState.groups = [{ id: "principals/groups/design", displayName: "Design" }];
+    view.unmount();
   });
 
   describe("offline start (#1832)", () => {

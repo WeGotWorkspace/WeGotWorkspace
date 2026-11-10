@@ -78,7 +78,7 @@ test.describe("Download several selected items (live app)", () => {
   test("Drive: a file and a folder save as one zip named after the folder in view", async ({
     page,
   }) => {
-    await page.goto("/drive");
+    await page.goto("/drive?view=folder&path=My%20Drive");
     await tile(page, FOLDER).dblclick({ timeout: 30_000 });
     await expect(tile(page, "not-selected.txt")).toBeVisible({ timeout: 30_000 });
 

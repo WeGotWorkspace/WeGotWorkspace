@@ -143,6 +143,7 @@ function ContactsListPaneHarness({
     selectionBar: controller.selectionBar,
     onRefreshList: () => {},
     pendingCardIds: pendingCardIds ? new Set(pendingCardIds) : undefined,
+    addressBooks: controller.addressBooks,
   });
 
   return (
@@ -182,18 +183,27 @@ export const Default: Story = {
     const janeRow = canvasElement.querySelector('[data-list-item-id="card-jane"]');
     const joeRow = canvasElement.querySelector('[data-list-item-id="card-joe"]');
     const acmeRow = canvasElement.querySelector('[data-list-item-id="card-acme"]');
+    // Suite list norm: the name, then company (else email) on the line below,
+    // then the address book (dot + name) on the meta line.
     await expect(janeRow).toBeTruthy();
-    await expect(within(janeRow as HTMLElement).getByText("Acme Corp")).toBeInTheDocument();
+    await expect((janeRow as HTMLElement).querySelector(".list-item__body")?.textContent).toBe(
+      "Acme Corp",
+    );
     await expect(within(janeRow as HTMLElement).queryByText("jane@example.com")).toBeNull();
     await expect(
-      (janeRow as HTMLElement).querySelector(".list-item__subtitle--below"),
+      (janeRow as HTMLElement).querySelector(".list-item__meta .contacts-list-panel__book"),
     ).toBeTruthy();
-    await expect((janeRow as HTMLElement).querySelector(".list-item__body")).toBeNull();
+    await expect(
+      (janeRow as HTMLElement).querySelector(".list-item__meta .notes-notebook-color-dot"),
+    ).toBeTruthy();
 
     await expect(joeRow).toBeTruthy();
-    await expect(within(joeRow as HTMLElement).getByText("joe@example.com")).toBeInTheDocument();
-    await expect((joeRow as HTMLElement).querySelector(".list-item__body")).toBeTruthy();
-    await expect((joeRow as HTMLElement).querySelector(".list-item__subtitle--below")).toBeNull();
+    await expect((joeRow as HTMLElement).querySelector(".list-item__body")?.textContent).toBe(
+      "joe@example.com",
+    );
+    // Calm rows: no separator, rounded like sidebar items.
+    await expect(getComputedStyle(joeRow as HTMLElement).borderBottomWidth).toBe("0px");
+    await expect(getComputedStyle(joeRow as HTMLElement).borderTopLeftRadius).not.toBe("0px");
 
     await expect(acmeRow).toBeTruthy();
     await expect(within(acmeRow as HTMLElement).queryByText("info@acme.com")).toBeNull();
@@ -248,8 +258,7 @@ export const PrimaryChannel: Story = {
     await expect(within(companyRow as HTMLElement).getByText("Acme Corp")).toBeInTheDocument();
     await expect(within(companyRow as HTMLElement).queryByText("cora@example.com")).toBeNull();
     await expect(within(companyRow as HTMLElement).queryByText("+1-555-0144")).toBeNull();
-    await expect(companyRow?.querySelector(".list-item__subtitle--below")).toBeTruthy();
-    await expect(companyRow?.querySelector(".list-item__body")).toBeNull();
+    await expect(companyRow?.querySelector(".list-item__body")?.textContent).toBe("Acme Corp");
 
     await expect(emailRow).toBeTruthy();
     await expect(
@@ -257,22 +266,28 @@ export const PrimaryChannel: Story = {
     ).toBeInTheDocument();
     await expect(within(emailRow as HTMLElement).queryByText("ada.work@example.com")).toBeNull();
     await expect(within(emailRow as HTMLElement).queryByText("+1-555-0101")).toBeNull();
-    await expect(emailRow?.querySelector(".list-item__body")).toBeTruthy();
-    await expect(emailRow?.querySelector(".list-item__subtitle--below")).toBeNull();
+    await expect(emailRow?.querySelector(".list-item__body")?.textContent).toBe(
+      "ada.home@example.com",
+    );
 
     await expect(phoneRow).toBeTruthy();
     await expect(within(phoneRow as HTMLElement).getByText("+1-555-0199")).toBeInTheDocument();
     await expect(within(phoneRow as HTMLElement).queryByText("+1-555-0100")).toBeNull();
-    await expect(phoneRow?.querySelector(".list-item__body")).toBeTruthy();
-    await expect(phoneRow?.querySelector(".list-item__subtitle--below")).toBeNull();
+    await expect(phoneRow?.querySelector(".list-item__body")?.textContent).toBe("+1-555-0199");
 
     await expect(neitherRow).toBeTruthy();
     await expect(neitherRow?.querySelector(".list-item__body")).toBeNull();
-    await expect(neitherRow?.querySelector(".list-item__subtitle--below")).toBeNull();
+    // Only the address book on the meta line; no company, email or phone.
+    await expect(
+      neitherRow?.querySelector(".list-item__meta .contacts-list-panel__detail"),
+    ).toBeNull();
 
     await expect(groupRow).toBeTruthy();
     await expect(groupRow?.querySelector(".list-item__body")).toBeNull();
-    await expect(groupRow?.querySelector(".list-item__subtitle--below")).toBeNull();
+    // Only the address book on the meta line; no company, email or phone.
+    await expect(
+      groupRow?.querySelector(".list-item__meta .contacts-list-panel__detail"),
+    ).toBeNull();
     await expect(
       canvas.getByRole("heading", { level: 3, name: "Friends Group" }),
     ).toBeInTheDocument();

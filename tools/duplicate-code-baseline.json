@@ -4,12 +4,12 @@
   "minLines": 10,
   "scopes": {
     "packages/api/app": {
-      "clones": 139,
-      "duplicatedLines": 2771
+      "clones": 121,
+      "duplicatedLines": 2326
     },
     "packages/apps/src": {
-      "clones": 83,
-      "duplicatedLines": 1333
+      "clones": 82,
+      "duplicatedLines": 1298
     }
   }
 }

@@ -70,7 +70,7 @@ describe("DocsCollabSuggestControls", () => {
     expect((await screen.findByRole("tooltip")).textContent).toBe(docsLabels.suggestMode);
   });
 
-  it("toggles Suggest on/off, keeps Pencil, and toasts both ways", () => {
+  it("toggles Suggest on/off, shows Suggesting while on, and toasts both ways", () => {
     editor = createCollabEditor();
     render(
       <TooltipProvider>
@@ -84,10 +84,11 @@ describe("DocsCollabSuggestControls", () => {
 
     const pressed = screen.getByRole("button", { name: docsLabels.editMode });
     expect(pressed.className).toContain("icon-button--active");
+    expect(pressed.className).toContain("button--pressed-selection");
     expect(pressed.getAttribute("aria-pressed")).toBe("true");
-    expect(pressed.textContent).toContain(docsLabels.suggestMode);
+    expect(pressed.textContent).toContain(docsLabels.suggestModeActive);
     expect(pressed.textContent).not.toContain(docsLabels.editMode);
-    expect(pressed.querySelector("svg.lucide-pencil")).not.toBeNull();
+    expect(pressed.querySelector("svg.lucide-sparkles")).not.toBeNull();
     expect(pressed.querySelector("svg.lucide-message-square-diff")).toBeNull();
 
     fireEvent.click(pressed);
@@ -95,6 +96,7 @@ describe("DocsCollabSuggestControls", () => {
     expect(showToast).toHaveBeenCalledWith(docsLabels.toastSwitchedToEditMode);
     const off = screen.getByRole("button", { name: docsLabels.suggestMode });
     expect(off.getAttribute("aria-pressed")).toBe("false");
+    expect(off.className).not.toContain("icon-button--active");
     expect(off.querySelector("svg.lucide-pencil")).not.toBeNull();
   });
 

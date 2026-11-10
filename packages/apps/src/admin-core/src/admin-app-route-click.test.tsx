@@ -38,7 +38,7 @@ async function renderAdminApp(initialPath: string) {
   const router = createWeGotWorkspaceRouter({ mode: "mock", history });
   await router.load();
   render(<RouterProvider router={router} />);
-  await screen.findByRole("button", { name: "Users & Groups" });
+  await screen.findByRole("button", { name: "Users & Teams" });
   return { history, router };
 }
 

@@ -1,3 +1,4 @@
+import { REACTION_EMOJIS } from "@/reaction-picker/src/reaction-emojis";
 export type DocsCommentAuthor = {
   id: string;
   name: string;
@@ -32,6 +33,7 @@ export type DocsCommentThread = {
 };
 
 /** Emojis available in the thread reaction picker. */
-export const DOCS_COMMENT_REACTION_EMOJIS = ["👍", "💡", "❤️", "🎉", "👀", "✅"] as const;
+/** The suite reaction set (`ReactionPicker`), shared with chat. */
+export const DOCS_COMMENT_REACTION_EMOJIS = REACTION_EMOJIS;
 
 export const DOCS_COMMENTS_MAP_KEY = "comments";

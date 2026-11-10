@@ -24,6 +24,92 @@ function renderCard(ui: ReactElement) {
 }
 
 describe("DocsSuggestionCard", () => {
+  it("lets an editor add the first reaction to a suggestion without any", () => {
+    const onToggleReaction = vi.fn();
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={onToggleReaction}
+      />,
+    );
+
+    expect(insertSuggestion.reactions ?? []).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Add reaction" }));
+    fireEvent.click(screen.getByRole("button", { name: "👍" }));
+    expect(onToggleReaction).toHaveBeenCalledWith("👍");
+  });
+
+  it("shows no reaction row to a reader when there are no reactions", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        canMutate={false}
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("group", { name: "Reactions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+  });
+
+  it("waits for the suggestion's thread root before offering replies or reactions", () => {
+    // Whoever wrote first would otherwise create the root and be named as the author.
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{ ...insertSuggestion, hasThread: false }}
+        labels={docsLabels}
+        currentUserId="u-2"
+        active
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.getByRole("button", { name: docsLabels.suggestionsAccept })).toBeTruthy();
+    expect(screen.getByText(insertSuggestion.authorName)).toBeTruthy();
+  });
+
+  it("lets a reviewer who cannot comment accept, without a composer or reaction picker", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        canReview
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: docsLabels.suggestionsAccept })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+  });
+
   it("shows the reply composer when the card is active", () => {
     renderCard(
       <DocsSuggestionCard
@@ -217,7 +303,7 @@ describe("DocsSuggestionCard", () => {
     expect(onAddReply).toHaveBeenCalledWith("Follow-up note");
   });
 
-  it("reviews with separate accept and reject IconButtons", () => {
+  it("reviews with a labelled accept / reject row", () => {
     renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
@@ -236,12 +322,12 @@ describe("DocsSuggestionCard", () => {
     const reject = screen.getByRole("button", { name: docsLabels.suggestionsReject });
     expect(accept.closest(".segmented-control")).toBeNull();
     expect(reject.closest(".segmented-control")).toBeNull();
-    expect(accept.className).toContain("icon-button--size-md");
-    expect(accept.className).toContain("button--severity-success");
-    expect(reject.className).toContain("icon-button--size-md");
-    expect(reject.className).toContain("button--severity-danger");
-    expect(screen.queryByText("Accept")).toBeNull();
-    expect(screen.queryByText("Reject")).toBeNull();
+    // Labelled decision row under the change: Accept solid, Reject quiet.
+    expect(accept.closest(".docs-suggestion-card__decision")).not.toBeNull();
+    expect(accept.className).toContain("button--variant-primary");
+    expect(reject.className).toContain("button--variant-outline");
+    expect(screen.getByText(docsLabels.suggestionsAcceptShort)).toBeTruthy();
+    expect(screen.getByText(docsLabels.suggestionsRejectShort)).toBeTruthy();
   });
 
   it("hides accept, reject, and composer when the suggestion is archived", () => {

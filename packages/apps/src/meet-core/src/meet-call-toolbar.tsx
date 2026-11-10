@@ -130,7 +130,7 @@ export function MeetCallToolbar({
             onClick={onToggleScreenShare}
             icon={<MonitorUp />}
             label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-            size="md"
+            size="lg"
             variant="outline"
             active={screenOn}
             aria-pressed={screenOn}
@@ -155,7 +155,7 @@ export function MeetCallToolbar({
       {confirmExit ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <IconButton icon={<PhoneOff />} label={callExitLabel} size="md" variant="destructive" />
+            <IconButton icon={<PhoneOff />} label={callExitLabel} size="lg" variant="destructive" />
           </AlertDialogTrigger>
           <AlertDialogContent className="meet-call-dialog">
             <AlertDialogHeader className="meet-call-dialog__header">
@@ -185,7 +185,7 @@ export function MeetCallToolbar({
           onClick={onConfirmExit}
           icon={<PhoneOff />}
           label={callExitLabel}
-          size="md"
+          size="lg"
           variant="destructive"
         />
       )}

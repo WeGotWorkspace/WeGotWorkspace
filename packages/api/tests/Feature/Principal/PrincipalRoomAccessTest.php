@@ -14,7 +14,8 @@ use Tests\Support\WgwDatabaseTestCase;
 /**
  * Group presence rooms follow the caller's current membership on every
  * request, not only on join, and every answer about a room the caller may not
- * use is the same whatever peer id is asked for.
+ * use is the same whatever peer id is asked for. There is no instance-wide room
+ * (#1921): presence follows Teams.
  */
 final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
 {
@@ -101,9 +102,38 @@ final class PrincipalRoomAccessTest extends WgwDatabaseTestCase
         $this->configuration('bob', self::GROUP_ROOM_ID)->assertForbidden()->assertJson(['error' => 'forbidden']);
     }
 
-    public function test_workspace_room_configuration_answers_to_every_account(): void
+    public function test_the_workspace_room_is_refused_to_everyone_admins_included(): void
     {
-        $this->configuration('carol', self::WORKSPACE_ROOM_ID)->assertOk()->assertJsonStructure(['rtc' => ['stunUrls']]);
+        $this->grantAdminRole('alice');
+
+        foreach (['alice', 'carol'] as $username) {
+            $this->assertDenied($this->configuration($username, self::WORKSPACE_ROOM_ID));
+            $this->assertDenied(
+                $this->asUser($username)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', ['name' => 'X'])
+            );
+            $this->assertDenied(
+                $this->asUser($username)->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$username.'-000000&since=0')
+            );
+        }
+        $this->assertSame(0, PrincipalPeer::query()->count());
+    }
+
+    public function test_users_in_different_teams_never_share_a_presence_room(): void
+    {
+        $sales = $this->seedWgwGroup('principals/groups/sales', 'Sales');
+        $carol = Principal::forUsername('carol');
+        $this->assertNotNull($carol);
+        $this->addPrincipalToGroup($sales, $carol);
+
+        $alicePeer = $this->join('alice');
+        $carolPeer = (string) $this->asUser('carol')
+            ->postJson('/api/v1/rooms/p_groups.sales/participants', ['name' => 'Carol'])
+            ->assertOk()
+            ->json('peerId');
+
+        $this->assertDenied($this->asUser('carol')->postJson('/api/v1/rooms/'.self::GROUP_ROOM_ID.'/participants', ['name' => 'Carol']));
+        $this->assertDenied($this->asUser('alice')->postJson('/api/v1/rooms/p_groups.sales/participants', ['name' => 'Alice']));
+        $this->assertNotContains($carolPeer, array_column((array) $this->poll('alice', $alicePeer)->assertOk()->json('peers'), 'id'));
     }
 
     public function test_unknown_room_configuration_is_denied(): void

@@ -1,12 +1,10 @@
-import { Button } from "@/button/src/button";
-import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
-import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
 import {
   meetCallBarMeta,
   meetCallBarRoster,
   meetCallBarShownCount,
 } from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
@@ -28,11 +26,6 @@ export type MeetCallBarProps = {
   participantCount: number;
   /** Include this user in the roster and show elapsed time. Device controls live on the stage. */
   joined?: boolean;
-  /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
-  invite?: MeetCallInvite | null;
-  onInvite?: () => void;
-  /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
-  audioOnly?: boolean;
   className?: string;
 };
 
@@ -51,12 +44,8 @@ export function MeetCallBar({
   peers,
   participantCount,
   joined = false,
-  invite = null,
-  onInvite,
-  audioOnly = false,
   className,
 }: MeetCallBarProps) {
-  const LiveIcon = meetCallLiveIcon(audioOnly);
   const roster = meetCallBarRoster({
     joined,
     self: { id: selfId, name: selfName, stream: selfStream },
@@ -68,16 +57,14 @@ export function MeetCallBar({
   );
 
   return (
-    <div className={cn("meet-call-bar", className)}>
-      <div className="meet-call-bar__row">
-        <div className="meet-call-bar__start">
-          <span className="meet-call-bar__mark" aria-hidden>
-            <LiveIcon className="meet-workspace__header-kind-icon" />
-          </span>
-          <div className="meet-call-bar__copy">
-            <p className="meet-call-bar__title">{meetLabels.meetingStarted}</p>
-            {meta ? <p className="meet-call-bar__meta">{meta}</p> : null}
-          </div>
+    <ListStickyHeader
+      variant="selection"
+      className={cn("meet-call-bar", className)}
+      label={meta ? `${meetLabels.meetingStarted} ${meta}` : meetLabels.meetingStarted}
+      emphasis={meetLabels.meetingStarted}
+      rest={meta}
+      end={
+        roster.length > 0 ? (
           <ul className="meet-call-bar__avatars">
             {roster.map((person) => (
               <li key={person.id}>
@@ -88,7 +75,7 @@ export function MeetCallBar({
                         displayName={person.name}
                         ariaLabel={person.name}
                         compact
-                        size="md"
+                        size="xs"
                         color={avatarColorForUserId(person.id)}
                       />
                     </span>
@@ -98,20 +85,8 @@ export function MeetCallBar({
               </li>
             ))}
           </ul>
-        </div>
-        {invite === "join" && onInvite ? (
-          <div className="meet-call-bar__invite">
-            <Button
-              className="meet-call-bar__invite-button"
-              label={meetLabels.join}
-              icon={<LiveIcon />}
-              size="md"
-              variant="primary"
-              onClick={onInvite}
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
 }

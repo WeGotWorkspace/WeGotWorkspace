@@ -22,9 +22,10 @@ const DEFAULT_DATA: AdminUIData = {
       username: "alice",
       email: "alice@example.test",
       displayName: "Alice Example",
-      groups: ["principals/groups/administrators"],
+      groups: ["principals/groups/support"],
       createdAt: "",
       enabled: true,
+      isAdmin: true,
     },
     {
       id: "carol",
@@ -34,13 +35,14 @@ const DEFAULT_DATA: AdminUIData = {
       groups: [],
       createdAt: "",
       enabled: false,
+      isAdmin: false,
     },
   ],
   groups: [
     {
-      id: "principals/groups/administrators",
-      name: "administrators",
-      displayName: "Administrators",
+      id: "principals/groups/support",
+      name: "support",
+      displayName: "Support",
     },
   ],
   mail: {

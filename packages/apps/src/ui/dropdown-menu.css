@@ -1,6 +1,8 @@
 @import "../styles.css" reference;
 .dropdown-menu-ui__sub-trigger {
-  @apply flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none;
+  @apply flex cursor-default select-none items-center gap-2 px-2 py-1.5 outline-none;
+  font-size: var(--menu-item-font-size);
+  line-height: var(--menu-item-line-height);
   border-radius: var(--control-radius);
 }
 
@@ -25,16 +27,24 @@
   @apply ml-auto;
 }
 
-.dropdown-menu-ui__sub-content {
-  @apply z-50 min-w-[8rem] overflow-hidden bg-popover p-1 text-popover-foreground shadow-lg;
-  border-radius: var(--control-radius);
+/*
+ * Menus are frosted floating chrome, like the selection bar, the search dock and
+ * toasts: frost fill and blur, floating radius, no border, frost shadow. The
+ * portal bridge hands over the trigger's paper as `--workspace-surface`, and
+ * `workspace-derive.css` recomputes the frost from it here.
+ */
+.dropdown-menu-ui__sub-content,
+.dropdown-menu-ui__content {
+  @apply frost-chrome z-50 min-w-[8rem] p-1.5 text-popover-foreground;
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
 
+.dropdown-menu-ui__sub-content {
+  @apply overflow-hidden;
+}
+
 .dropdown-menu-ui__content {
-  @apply z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden bg-popover p-1 text-popover-foreground shadow-md;
-  border-radius: var(--control-radius);
-  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  @apply max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overflow-x-hidden;
 }
 
 .dropdown-menu-ui__sub-content[data-state="open"],
@@ -68,7 +78,9 @@
 }
 
 .dropdown-menu-ui__item {
-  @apply relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors;
+  @apply relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 outline-none transition-colors;
+  font-size: var(--menu-item-font-size);
+  line-height: var(--menu-item-line-height);
   border-radius: var(--control-radius);
   color: var(--workspace-foreground);
 }
@@ -95,7 +107,9 @@
 
 .dropdown-menu-ui__checkbox-item,
 .dropdown-menu-ui__radio-item {
-  @apply relative flex cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none transition-colors;
+  @apply relative flex cursor-default select-none items-center py-1.5 pl-8 pr-2 outline-none transition-colors;
+  font-size: var(--menu-item-font-size);
+  line-height: var(--menu-item-line-height);
   border-radius: var(--control-radius);
 }
 

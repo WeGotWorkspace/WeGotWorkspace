@@ -17,10 +17,12 @@ export type WorkspaceActionButton = {
   active?: boolean;
   /** Destructive actions (trash / archive): danger fg + severity hover wash. */
   severity?: ButtonSeverity;
-  /** Done is primary; other selection actions stay outline. */
+  /** Defaults to outline, like every other action (Done included). */
   variant?: ButtonVariant;
   /** Visual hairline before this control on the floating bar (typically Done). */
   separatorBefore?: boolean;
+  /** A text button (its label, no icon) instead of an icon-only button (Done). */
+  showLabel?: boolean;
 };
 
 export type UseWorkspaceListControllerArgs<TItem extends IdentifiableItem> = {

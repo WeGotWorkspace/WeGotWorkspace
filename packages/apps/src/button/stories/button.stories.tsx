@@ -60,6 +60,20 @@ export const AllSizes: Story = {
   },
 };
 
+/**
+ * `variant="selection"`: the selected-sidebar-item fill, no border. Used for the
+ * floating action bar's Done.
+ */
+export const Selection: Story = {
+  args: { ...Primary.args, variant: "selection", icon: undefined, label: "Done" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Done" }).className).toContain(
+      "button--variant-selection",
+    );
+  },
+};
+
 export const Ghost: Story = {
   args: { ...Primary.args, variant: "ghost" },
 };
@@ -82,4 +96,25 @@ export const Link: Story = {
 
 export const Disabled: Story = {
   args: { ...Primary.args, disabled: true },
+};
+
+/** Pressed toggle, default look: quiet ink wash, control stroke kept. */
+export const OutlinePressed: Story = {
+  args: {
+    ...Primary.args,
+    variant: "outline",
+    label: "Suggest",
+    className: "icon-button--active",
+    "aria-pressed": true,
+  },
+};
+
+/** `pressedStyle="selection"`: the suite selection (sky wash + hairline in dark). */
+export const OutlinePressedSelection: Story = {
+  args: { ...OutlinePressed.args, pressedStyle: "selection" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole("button", { name: "Suggest" });
+    await expect(button.className).toContain("button--pressed-selection");
+  },
 };

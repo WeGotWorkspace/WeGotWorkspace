@@ -1,3 +1,4 @@
+import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { meetLowDataLabels } from "@/lib/meet-low-data";
 
 export const meetLabels = {
@@ -143,7 +144,7 @@ export const meetLabels = {
   channelScopeReadOnlyLabel: "Owner",
   changeChannelOwnerConfirmTitle: "Change owner?",
   changeChannelOwnerConfirmToGroup: (groupName: string) =>
-    `Move this collection to ${groupName}? People in that group will see it.`,
+    `Move this collection to ${groupName}? People in that team will see it.`,
   changeChannelOwnerConfirmToPersonal: "Move this collection back to your personal space?",
   changeChannelOwnerConfirm: "Change owner",
   createChannelButton: "Create",
@@ -160,9 +161,9 @@ export const meetLabels = {
   delete: "Delete",
   shareChannelSectionTitle: "People with access",
   shareChannelSectionHint:
-    "Share this channel with workspace people or groups. Email guests cannot be added.",
-  shareChannelAddPlaceholder: "Add people or groups",
-  shareChannelSearchEmpty: "No matching people or groups.",
+    "Share this channel with workspace people or teams. Email guests cannot be added.",
+  shareChannelAddPlaceholder: sharePrincipalCopy.addPlaceholder,
+  shareChannelSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareChannelOffline: "Sharing needs a connection.",
   removeChannelShareTitle: "Remove access?",
   removeChannelShareConfirm: "Remove",
@@ -183,6 +184,7 @@ export const meetLabels = {
   startAudioOnly: "Meet (Audio Only)",
   startCallMenu: "More call options",
   join: "Join",
+  joinAudioOnly: "Join (Audio Only)",
   joined: "Joined",
   leave: "Leave",
   leaveCallStub: "Stop preview call",

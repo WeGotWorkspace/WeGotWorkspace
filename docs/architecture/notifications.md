@@ -168,7 +168,7 @@ Who receives a chat preview, and the chat `check-now` that follows it (`meet-cor
 | A cached row without `members` | its explicit user grants in `shareWith`; nobody for a Team channel |
 | A channel the writer has not cached | nobody |
 
-Never the presence room as a whole: it holds every signed-in coworker who is online, and most of them cannot read the channel. Guests do not join the presence room. A receiver drops a preview for a channel it does not hold, or whose cached roster lacks the sender or itself, before anything is stored. Unit tests pin this in `meet-mesh-fanout-targets.test.ts`; the live spec `meet-mesh-channel-roster` checks a coworker outside the Team gets no frame.
+Never the presence rooms as a whole: each own Team has one (#1921), and it holds every online member of that Team, most of whom may not read the channel. Guests do not join presence rooms. A receiver drops a preview for a channel it does not hold, or whose cached roster lacks the sender or itself, before anything is stored. Unit tests pin this in `meet-mesh-fanout-targets.test.ts`; the live spec `meet-mesh-channel-roster` checks that a coworker who shares another Team (so the same presence room) but not the channel's Team gets no frame.
 
 How `check-now` works:
 

@@ -97,12 +97,12 @@ final class NotebookRepository
 
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this group.', 'forbidden');
+                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
-                throw new ApiHttpException(404, 'Group not found.', 'not_found');
+                throw new ApiHttpException(404, 'Team not found.', 'not_found');
             }
             $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
                 (string) $group->uri,
@@ -205,7 +205,7 @@ final class NotebookRepository
             throw new ApiHttpException(403, 'The General notebook cannot be deleted.', 'forbidden');
         }
         if ($this->isProvisionedGroupNotebook($instance, $groupSlug)) {
-            throw new ApiHttpException(403, 'The group notebook cannot be deleted.', 'forbidden');
+            throw new ApiHttpException(403, 'The team notebook cannot be deleted.', 'forbidden');
         }
         $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         $this->notesRelocation->commit(
@@ -378,7 +378,7 @@ final class NotebookRepository
             throw new ApiHttpException(403, 'The General notebook cannot change owner.', 'forbidden');
         }
         if ($this->isProvisionedGroupNotebook($instance, $currentGroupSlug)) {
-            throw new ApiHttpException(403, 'The group notebook cannot change owner.', 'forbidden');
+            throw new ApiHttpException(403, 'The team notebook cannot change owner.', 'forbidden');
         }
     }
 

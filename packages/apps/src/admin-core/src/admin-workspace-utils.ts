@@ -158,7 +158,3 @@ export function formatByteCount(input: number | null | undefined): string {
   const precision = value >= 100 || unitIndex === 0 ? 0 : 1;
   return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
-
-export function isProtectedGroup(groupId: string): boolean {
-  return groupId === "principals/groups/administrators";
-}

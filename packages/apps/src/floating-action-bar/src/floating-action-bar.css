@@ -1,23 +1,17 @@
 @import "../../styles.css" reference;
 /**
- * Overlay batch / selection bar — cream/white surface + neutral ink hairline.
- * Radius uses global `--control-radius` (via `--control-radius-button-pill` alias).
- * Soft outline + menu washes: shared `workspace-derive.css` (14/18/24→cream)
- * so Star/etc. do not inherit heavier workspace-root washes (Drive/Notes/Tasks 40/55).
- * Products publish `--workspace-accent` (and usually `--button-active-color`).
+ * Floating toolbar for batch selection and Meet controls, docked at the pane bottom.
+ * Chrome is the shared `floating-toolbar` utility (styles.css); `lg` controls step
+ * down on narrow screens.
  *
  * Enter/exit: short bottom slide + fade via `data-state` + `@starting-style`
  * (~200ms). Parent keeps the node mounted with `open={false}` until
  * `transitionend` unmounts (see FloatingActionBar).
  */
 .floating-action-bar {
-  @apply absolute left-1/2 z-30 flex items-center gap-1.5 whitespace-nowrap px-2 py-2 shadow-lg;
+  @apply floating-toolbar absolute left-1/2 z-30 whitespace-nowrap;
   /* Pin to the non-scrolling pane bottom; safe-area for notched phones. */
-  bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
-  border-radius: var(--control-radius-button-pill);
-  color: var(--workspace-foreground);
-  background-color: var(--workspace-surface);
-  border: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  bottom: var(--floating-dock-bottom);
   opacity: 1;
   transform: translate(-50%, 0);
   transition:
@@ -52,39 +46,47 @@
 }
 
 .floating-action-bar__count {
-  @apply inline-flex items-center px-3 text-xs font-semibold tabular-nums leading-9;
-  color: var(--workspace-foreground);
+  @apply inline-flex items-center gap-1.5 ps-2.5 pe-1 text-sm font-medium tabular-nums;
+  line-height: var(--control-height-lg, 2.5rem);
+  /* A label, not a control: quiet ink like section labels. */
+  color: var(--workspace-label-color, var(--workspace-foreground));
+}
+
+.floating-action-bar__count-icon {
+  @apply size-4 shrink-0;
 }
 
 .floating-action-bar__actions {
-  @apply flex items-center gap-1.5;
+  @apply flex items-center;
+  gap: var(--floating-toolbar-gap);
+}
+
+/* Done: a text button beside the icon actions. Same height, radius and states;
+ * menu-sized text (14px) instead of the lg control's 16px. */
+.floating-action-bar__text-button {
+  font-size: var(--input-font-size-md, 0.875rem);
 }
 
 .floating-action-bar__spacer {
-  @apply mx-0.5 self-stretch;
-  width: 1px;
-  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  @apply floating-toolbar-separator;
 }
 
-/* Same chrome as the paper bar; fill is accent and content is the accent-foreground pair. */
-.floating-action-bar--dark {
-  color: var(--workspace-accent-foreground);
-  background-color: var(--workspace-accent);
-  border-color: color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
-  --button-outline-color: var(--workspace-accent-foreground);
-  --button-outline-hover-color: var(--workspace-accent-foreground);
-  --button-ghost-color: var(--workspace-accent-foreground);
-  --button-outline-border-color: color-mix(
-    in oklab,
-    var(--workspace-accent-foreground) 22%,
-    transparent
-  );
+/* Same steps as the Docs format pill: slimmer buttons, then md height. */
+@media (max-width: 58rem) {
+  .floating-action-bar {
+    --floating-toolbar-gap: 0.125rem;
+  }
+
+  .floating-action-bar .icon-button--size-lg {
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
 }
 
-.floating-action-bar--dark .floating-action-bar__count {
-  color: var(--workspace-accent-foreground);
-}
-
-.floating-action-bar--dark .floating-action-bar__spacer {
-  background-color: color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
+@media (max-width: 52rem) {
+  .floating-action-bar {
+    --control-height-lg: var(--control-height-md, 2.25rem);
+    --floating-toolbar-separator-height: 1rem;
+    --floating-toolbar-separator-margin: 0.375rem;
+  }
 }

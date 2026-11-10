@@ -49,8 +49,8 @@ export function registerBuiltinSettings(): void {
   });
   registerPanel({
     id: "memberships",
-    label: "Memberships",
-    description: "Groups you belong to",
+    label: "Teams",
+    description: "Teams you belong to",
     icon: <Users className="size-3.5" />,
     group: "account",
     needsSettingsApi: true,
