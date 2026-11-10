@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Pencil } from "lucide-react";
+import { Pencil, Sparkles } from "lucide-react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { Button } from "@/button/src/button";
 import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
@@ -60,8 +60,9 @@ export function DocsCollabSuggestControls({
             isSuggest && ICON_BUTTON_ACTIVE_CLASSNAME,
             className,
           )}
-          label={suggestLabel}
+          label={isSuggest ? docsLabels.suggestModeActive : suggestLabel}
           aria-label={actionLabel}
+          icon={isSuggest ? <Sparkles aria-hidden /> : <Pencil aria-hidden />}
           onClick={() => {
             if (isSuggest) {
               editor.commands.setEditMode();
@@ -71,9 +72,9 @@ export function DocsCollabSuggestControls({
             editor.commands.setSuggestMode();
             show(docsLabels.toastSwitchedToSuggestMode);
           }}
-          icon={<Pencil aria-hidden />}
           size="md"
           variant="outline"
+          pressedStyle="selection"
           aria-pressed={isSuggest}
           disabled={disabled}
         />

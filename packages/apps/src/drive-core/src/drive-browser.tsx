@@ -1,8 +1,7 @@
 import { Star } from "lucide-react";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/drive-core/src/drive-models";
 import { cn } from "@/lib/utils";
 import {
-  DriveSelectionCheckbox,
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
@@ -17,15 +16,25 @@ import {
 import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { DriveUploadRing } from "@/drive-core/src/drive-upload-ring";
 import {
-  DriveFileKindIcon,
   DriveLocationLabel,
   DriveShareIndicators,
+  DriveTileMeta,
 } from "@/drive-core/src/drive-browser-indicators";
-import { FilePreview } from "@/file-preview/src/file-preview";
+import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
+import {
+  DRIVE_KIND_LABEL,
+  DRIVE_LIST_SORT_COLUMNS,
+  formatDriveModified,
+  type DriveListSort,
+  type DriveListSortKey,
+} from "@/drive-core/src/drive-list-sort";
+import { listSortAria } from "@/lib/list-sort";
+import { SortableColumnHeader } from "@/ui/sortable-column-header";
+import "@/ui/list-head-bar.css";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 
@@ -66,6 +75,14 @@ function DriveFileOfflinePinCell({
 
 /* ---------------- Grid view ---------------- */
 
+/**
+ * Multi-select intent: selection mode (long-press, right-click) or more than one
+ * item (Cmd/Shift-click). A plain click selects one item and shows no bar.
+ */
+function multiSelectAttr(selectionMode: boolean, selectedIds: string[]) {
+  return selectionMode || selectedIds.length > 1 ? "true" : "false";
+}
+
 export function DriveGridView({
   items,
   filePreviews,
@@ -89,7 +106,6 @@ export function DriveGridView({
   onShare,
   fileCanShare,
   fileCanManageStructure,
-  showLocationColumn = false,
   offlineAvailableIds,
   offlinePendingSyncIds,
   offlineEnabled = false,
@@ -105,7 +121,7 @@ export function DriveGridView({
   starred: Record<string, boolean>;
   labels: DriveUILabels;
   searchActive?: boolean;
-  /** Show each file's drive location as a subtitle under the tile title. */
+  /** Shared with the list view; tiles leave the drive out (no room). */
   showLocationColumn?: boolean;
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
@@ -144,9 +160,12 @@ export function DriveGridView({
   const files = items.filter((i) => i.kind !== "folder");
 
   return (
-    <div className="drive-grid-layout">
+    <div
+      className="drive-grid-layout"
+      data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
+    >
       {folders.length > 0 && (
-        <Section title="Folders">
+        <Section title={labels.gridSectionFolders}>
           <div className="drive-grid">
             {folders.map((f) => (
               <DriveFolderTile
@@ -181,7 +200,7 @@ export function DriveGridView({
       )}
 
       {files.length > 0 && (
-        <Section>
+        <Section title={labels.gridSectionFiles}>
           <div className="drive-grid">
             {files.map((f) => (
               <FileTile
@@ -193,7 +212,6 @@ export function DriveGridView({
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
                 isTouch={isTouch}
-                showLocation={showLocationColumn}
                 isOfflineAvailable={offlineAvailableIds?.has(f.id) ?? false}
                 isOfflinePendingSync={offlinePendingSyncIds?.has(f.id) ?? false}
                 offlineEnabled={offlineEnabled}
@@ -225,12 +243,13 @@ export function DriveGridView({
   );
 }
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+/** A grid section: its heading is the list head bar, sticky while the section scrolls. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      {title ? <h3 className="drive-item-label drive-browser-section-title">{title}</h3> : null}
+    <section aria-label={title}>
+      <h3 className="list-head-bar drive-browser-section-title">{title}</h3>
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -242,7 +261,6 @@ function FileTile({
   isStarred,
   isDragging,
   isTouch,
-  showLocation = false,
   isOfflineAvailable = false,
   isOfflinePendingSync = false,
   offlineEnabled = false,
@@ -273,7 +291,6 @@ function FileTile({
   isStarred: boolean;
   isDragging: boolean;
   isTouch: boolean;
-  showLocation?: boolean;
   isOfflineAvailable?: boolean;
   isOfflinePendingSync?: boolean;
   offlineEnabled?: boolean;
@@ -337,35 +354,20 @@ function FileTile({
         onTouchEnd={pickerChrome ? undefined : lp.cancel}
         onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      {isStarred ? (
-        <span className="drive-file-tile__star-badge" aria-hidden="true">
-          <Star className="size-3.5" fill="currentColor" />
-        </span>
-      ) : null}
-      <div className="drive-file-tile__preview">
-        <FilePreview
-          fileKind={file.kind}
-          fileName={file.title}
-          fileApiPath={file.apiPath}
-          preview={preview}
-          variant="tile"
-          textMode="clamped"
-          mediaClassName="h-full w-full object-cover"
-        />
-      </div>
+      <span className="drive-file-tile__avatar">
+        <DriveFileAvatar file={file} preview={preview} />
+      </span>
       <div className="drive-file-tile__footer">
-        <DriveSelectionCheckbox
-          isSelected={isSelected}
-          selectionMode={selectionMode}
-          className="drive-file-tile__checkbox"
-        />
         <div className="drive-file-tile__text min-w-0 flex-1">
           <div className="drive-file-tile__title-row">
             <span className="drive-file-tile__title">{file.title}</span>
+            {isStarred ? (
+              <Star className="drive-file-tile__star-badge" fill="currentColor" aria-hidden />
+            ) : null}
             <DriveShareIndicators file={file} labels={labels} />
           </div>
           <DriveUploadStatus file={file} />
-          {showLocation && file.location ? <DriveLocationLabel file={file} /> : null}
+          <DriveTileMeta file={file} />
         </div>
         <div className="drive-file-tile__actions flex shrink-0 items-center">
           <DriveFileOfflinePinCell
@@ -406,16 +408,6 @@ function FileTile({
 
 /* ---------------- List view (OS-style table) ---------------- */
 
-const KIND_LABEL: Record<FileKind, string> = {
-  folder: "Folder",
-  doc: "Document",
-  image: "Image",
-  video: "Video",
-  audio: "Audio",
-  archive: "Archive",
-  file: "File",
-};
-
 export function DriveListView({
   items,
   activeId,
@@ -453,8 +445,13 @@ export function DriveListView({
   pinLoadingId,
   offlineBadgeLabels,
   itemChrome = "manage",
+  sort,
+  onSort,
 }: {
   items: DriveFile[];
+  /** Column sort; omit for a list that keeps its given order (headers stay plain). */
+  sort?: DriveListSort;
+  onSort?: (key: DriveListSortKey) => void;
   activeId: string | null;
   selectedIds: string[];
   starred: Record<string, boolean>;
@@ -462,7 +459,7 @@ export function DriveListView({
   isTouch: boolean;
   labels: DriveUILabels;
   searchActive?: boolean;
-  /** Show a Location column (between Name and Modified) for cross-drive listings. */
+  /** Show a Location column (between Name and Last modified) for cross-drive listings. */
   showLocationColumn?: boolean;
   /** Header label for the optional Location column. */
   locationColumnLabel?: string;
@@ -498,13 +495,30 @@ export function DriveListView({
   const pickerChrome = itemChrome === "picker";
   // The offline column also holds an upload's progress ring.
   const slotColumn = offlineEnabled || items.some((file) => file.upload);
+  const head = (key: DriveListSortKey, label: string, align: "start" | "end" = "start") =>
+    sort && onSort ? (
+      <SortableColumnHeader
+        label={label}
+        sortKey={key}
+        sort={sort}
+        onSort={onSort}
+        firstDirection={DRIVE_LIST_SORT_COLUMNS[key]}
+        align={align}
+      />
+    ) : (
+      label
+    );
+  const ariaSort = (key: DriveListSortKey) => (sort ? listSortAria(sort, key) : undefined);
   return (
-    <div className="drive-list-view">
+    <div
+      className="drive-list-view"
+      data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
+    >
       <table className="drive-list-table">
-        <thead>
+        <thead className="list-head-bar">
           <tr className="drive-list-head">
-            <th className="drive-list-col-name drive-list-head__cell">
-              {searchActive ? labels.searchViewTitle : labels.listColumnName}
+            <th className="drive-list-col-name drive-list-head__cell" aria-sort={ariaSort("name")}>
+              {head("name", searchActive ? labels.searchViewTitle : labels.listColumnName)}
             </th>
             {slotColumn ? (
               <th className="drive-list-col-offline drive-list-head__cell">
@@ -512,20 +526,32 @@ export function DriveListView({
               </th>
             ) : null}
             {showLocationColumn ? (
-              <th className="drive-list-col-location drive-list-head__cell hidden sm:table-cell">
-                {locationColumnLabel}
+              <th
+                className="drive-list-col-location drive-list-head__cell hidden sm:table-cell"
+                aria-sort={ariaSort("location")}
+              >
+                {head("location", locationColumnLabel)}
               </th>
             ) : null}
-            <th className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell">
-              Modified
+            <th
+              className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell"
+              aria-sort={ariaSort("modified")}
+            >
+              {head("modified", labels.listColumnLastModified)}
             </th>
             {showKindColumn ? (
-              <th className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell">
-                Kind
+              <th
+                className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell"
+                aria-sort={ariaSort("kind")}
+              >
+                {head("kind", labels.listColumnKind)}
               </th>
             ) : null}
-            <th className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell">
-              Size
+            <th
+              className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
+              aria-sort={ariaSort("size")}
+            >
+              {head("size", labels.listColumnSize, "end")}
             </th>
             {pickerChrome ? null : (
               <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
@@ -597,12 +623,7 @@ export function DriveListView({
                   {...(isFolder && !pickerChrome ? dropZone : {})}
                 >
                   <div className="drive-list-row__name flex items-center gap-2.5 min-w-0">
-                    <DriveSelectionCheckbox
-                      isSelected={isSelected}
-                      selectionMode={selectionMode}
-                      className="drive-list-row__checkbox"
-                    />
-                    <DriveFileKindIcon file={f} listStyle />
+                    <DriveFileAvatar file={f} size="sm" />
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <span className="min-w-0 truncate font-medium">{f.title}</span>
                       <DriveShareIndicators file={f} labels={labels} />
@@ -646,11 +667,11 @@ export function DriveListView({
                   </td>
                 ) : null}
                 <td className="drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap">
-                  {f.date}
+                  {formatDriveModified(f)}
                 </td>
                 {showKindColumn ? (
                   <td className="drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted">
-                    {KIND_LABEL[f.kind]}
+                    {DRIVE_KIND_LABEL[f.kind]}
                   </td>
                 ) : null}
                 <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">

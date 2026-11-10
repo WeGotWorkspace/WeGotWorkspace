@@ -173,7 +173,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
     expect(screen.queryByLabelText(meetLabels.devices)).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
-    expect(screen.getByRole("heading", { name: "#random" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "random" })).toBeTruthy();
 
     fireEvent.click(sidebarButton(container, /^design/i));
 

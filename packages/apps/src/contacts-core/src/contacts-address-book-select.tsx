@@ -1,15 +1,11 @@
-import type { CSSProperties, KeyboardEvent, KeyboardEventHandler } from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
+import type { KeyboardEvent, KeyboardEventHandler } from "react";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { CollectionSelect } from "@/ui/collection-select";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
-import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { cn } from "@/lib/utils";
-import "@/contacts-core/src/contacts-address-book-select.css";
 
 /** Closed Radix Select typeahead prefix-matches labels ("Admin" vs "Administrators"). */
 export function suppressClosedSelectTypeahead(event: KeyboardEvent<HTMLButtonElement>): void {
@@ -37,9 +33,10 @@ export type ContactsAddressBookSelectProps = {
   /**
    * `swatch` reuses ColorSwatchTrigger (icon + chevron, no caption) — same chrome as
    * NotesNotebookSelect / CalendarEventCalendarPicker. `labeled` keeps the Select trigger
-   * with visible name.
+   * with visible name. `ghost` is the detail-pane switcher above the contact's
+   * name: dot + name in the book's colour, no chrome (same as Notes' notebook).
    */
-  triggerVariant?: "labeled" | "swatch";
+  triggerVariant?: "labeled" | "swatch" | "ghost";
   className?: string;
   onValueChange?: (bookId: string) => void;
   onTriggerKeyDown?: KeyboardEventHandler<HTMLButtonElement>;
@@ -55,26 +52,6 @@ export function booksForAddressBookSelect(
     return [...books];
   }
   return [...books, { id: selectedId, name: selectedId }];
-}
-
-function AddressBookSelectOption({
-  book,
-  personalLabel,
-}: {
-  book: ContactsAddressBookSelectBook;
-  personalLabel: string;
-}) {
-  const overrides = useAddressBookColorOverrides();
-  const name = contactsAddressBookDisplayName(book, personalLabel);
-  return (
-    <span
-      className="contacts-address-book-select__option"
-      style={{ "--collection-row-color": addressBookDotColor(book, overrides) } as CSSProperties}
-    >
-      <NotesNotebookColorIcon />
-      <span className="contacts-address-book-select__name">{name}</span>
-    </span>
-  );
 }
 
 export function ContactsAddressBookSelect({
@@ -95,82 +72,44 @@ export function ContactsAddressBookSelect({
   const options = booksForAddressBookSelect(books, value);
   const toolbar = variant === "toolbar";
   const swatch = triggerVariant === "swatch";
+  const ghost = triggerVariant === "ghost";
   const selectedBook = options.find((book) => book.id === value);
   const bookName = selectedBook ? contactsAddressBookDisplayName(selectedBook, personalLabel) : "";
   // Prefer the address-book name so swatch chrome stays labeled for AT / tooltip.
-  const accessibleName = swatch ? bookName.trim() || label : label;
-
-  const trigger = swatch ? (
-    <SelectPrimitive.Trigger asChild disabled={disabled}>
-      <ColorSwatchTrigger
-        id={id}
-        label={accessibleName}
-        disabled={disabled}
-        size={toolbar ? "md" : "sm"}
-        onKeyDown={onTriggerKeyDown}
-        icon={
-          <span
-            className="contacts-address-book-select__option"
-            style={
-              {
-                "--collection-row-color": addressBookDotColor(
-                  selectedBook ?? { id: value, name: bookName || value },
-                  overrides,
-                ),
-              } as CSSProperties
-            }
-          >
-            <NotesNotebookColorIcon />
-          </span>
-        }
-        className={cn(
-          "contacts-address-book-select",
-          "contacts-address-book-select--swatch",
-          className,
-        )}
-      />
-    </SelectPrimitive.Trigger>
-  ) : (
-    <SelectTrigger
-      id={id}
-      size="sm"
-      className={cn(toolbar && "contacts-address-book-select", className)}
-      aria-label={accessibleName}
-      disabled={disabled}
-      onKeyDown={onTriggerKeyDown}
-    >
-      <SelectValue />
-    </SelectTrigger>
+  const accessibleName = swatch || ghost ? bookName.trim() || label : label;
+  const selectedColor = addressBookDotColor(
+    selectedBook ?? { id: value, name: bookName || value },
+    overrides,
   );
 
   const select = (
-    <Select
+    <CollectionSelect
+      items={options.map((book) => ({
+        id: book.id,
+        name: contactsAddressBookDisplayName(book, personalLabel),
+        color: addressBookDotColor(book, overrides),
+      }))}
       value={value}
-      onValueChange={(next) => {
-        if (!next || next === value) return;
-        onValueChange?.(next);
-      }}
-      disabled={disabled}
-    >
-      {swatch ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-          <TooltipContent>{accessibleName}</TooltipContent>
-        </Tooltip>
-      ) : (
-        trigger
+      dot={<NotesNotebookColorDot />}
+      color={selectedColor}
+      triggerLabel={bookName || label}
+      accessibleName={accessibleName}
+      triggerVariant={triggerVariant}
+      size={swatch && toolbar ? "md" : "sm"}
+      fitLabeled={toolbar}
+      labeledTooltip={false}
+      className={cn(
+        (toolbar || triggerVariant !== "labeled") && "contacts-address-book-select",
+        triggerVariant !== "labeled" && `contacts-address-book-select--${triggerVariant}`,
+        className,
       )}
-      <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
-        {options.map((book) => {
-          const name = contactsAddressBookDisplayName(book, personalLabel);
-          return (
-            <SelectItem key={book.id} value={book.id} textValue={name}>
-              <AddressBookSelectOption book={book} personalLabel={personalLabel} />
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
+      menuClassName={ghost ? "collection-ghost-select__menu" : undefined}
+      id={id}
+      disabled={disabled}
+      onValueChange={(next) => onValueChange?.(next)}
+      onTriggerKeyDown={onTriggerKeyDown}
+      onCloseAutoFocus={onCloseAutoFocus}
+    />
   );
 
   if (toolbar) return select;

@@ -25,6 +25,7 @@ import {
 } from "@/lib/offline/docs/docs-stars-store";
 import {
   buildOfflineDriveUIData,
+  listAllCachedDriveFiles,
   readDirectoryEntriesFromCache,
   readDriveBootstrapFromCache,
   removeDriveEntry,
@@ -236,6 +237,18 @@ export function createHybridDriveOperations(
       const cached = boot ? await readCachedDriveState(username, target) : null;
       if (cached) return cached;
       throw new Error("This folder is not available offline.");
+    },
+    // The Drive home (All Files) is the server's search index online; offline it
+    // lists the cached files of every drive instead of failing on `/search`.
+    listAllFiles: async (input, opts) => {
+      if (readBrowserOnline() && live.listAllFiles) {
+        try {
+          return await live.listAllFiles(input, opts);
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      return listAllCachedDriveFiles(username, input);
     },
     search: async (query, opts) => {
       if (readBrowserOnline()) {

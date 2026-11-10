@@ -251,7 +251,7 @@ final class DriveShareRules
 
     public static function unknownGroup(): ApiHttpException
     {
-        return new ApiHttpException(400, 'Unknown group.', 'bad_request');
+        return new ApiHttpException(400, 'Unknown team.', 'bad_request');
     }
 
     public function parseGroupPrincipalKey(string $principalId): ?string

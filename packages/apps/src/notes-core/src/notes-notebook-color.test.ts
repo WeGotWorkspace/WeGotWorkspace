@@ -1,21 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_NOTEBOOK_COLOR,
-  NOTES_CREAM_HEX,
-  NOTES_INK_HEX,
-  notebookContrastFg,
   notebookDisplayColor,
   notebookDotColor,
   notesDetailTintStyle,
 } from "@/notes-core/src/notes-notebook-color";
-
-describe("notes cream/ink hex literals", () => {
-  it("matches styles.css cream and ink (no pure white)", () => {
-    expect(NOTES_CREAM_HEX.toLowerCase()).toBe("#fff5e9");
-    expect(NOTES_INK_HEX.toLowerCase()).toBe("#003311");
-    expect(NOTES_CREAM_HEX).not.toMatch(/^#fff(?:fff)?$/i);
-  });
-});
 
 describe("notebookDotColor", () => {
   it("uses the notebook calendarcolor when set", () => {
@@ -71,33 +60,14 @@ describe("notebookDisplayColor", () => {
   });
 });
 
-describe("notebookContrastFg", () => {
-  it("uses ink on a light notebook fill", () => {
-    expect(notebookContrastFg("#fde68a")).toBe("var(--color-we-got-dark)");
-    expect(notebookContrastFg("#d4bc72")).toBe("var(--color-we-got-dark)");
-    expect(notebookContrastFg("#ffc800")).toBe("var(--color-we-got-dark)");
-  });
-
-  it("uses cream on a dark notebook fill", () => {
-    expect(notebookContrastFg("#1e3a5f")).toBe("var(--color-we-got-soft)");
-    expect(notebookContrastFg("#003311")).toBe("var(--color-we-got-soft)");
-  });
-
-  it("falls back to ink when the hex is missing", () => {
-    expect(notebookContrastFg("")).toBe("var(--color-we-got-dark)");
-  });
-});
-
 describe("notesDetailTintStyle", () => {
-  it("binds the notebook hex and check-mark contrast, not full-ink sheet text", () => {
+  it("binds the notebook hex only, not full-ink sheet text", () => {
     expect(notesDetailTintStyle(undefined)).toBeUndefined();
     expect(notesDetailTintStyle("#fde68a")).toEqual({
       ["--notes-detail-tint"]: "oklch(from #fde68a l c h)",
-      ["--notes-detail-check-fg"]: "var(--color-we-got-dark)",
     });
     expect(notesDetailTintStyle("#1e3a5f")).toEqual({
       ["--notes-detail-tint"]: "oklch(from #1e3a5f l c h)",
-      ["--notes-detail-check-fg"]: "var(--color-we-got-soft)",
     });
     expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");
   });

@@ -53,6 +53,28 @@ export const Default: Story = {
   },
 };
 
+/**
+ * Menus are frosted floating chrome (suite norm), like toasts and the selection
+ * bar: frost blur, floating radius, no border, frost shadow.
+ */
+export const Frosted: Story = {
+  tags: ["vitest-ci"],
+  render: () => (
+    <DropdownMenu trigger={<Button label="Open menu" variant="outline" />} items={baseItems} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Open menu" }));
+    const menu = await screen.findByRole("menu");
+    const style = getComputedStyle(menu);
+    await expect(style.backdropFilter).toContain("blur");
+    await expect(style.borderTopWidth).toBe("0px");
+    await expect(style.borderTopLeftRadius).toBe("16px");
+    await expect(menu.style.backgroundColor).toBe("");
+    await userEvent.keyboard("{Escape}");
+  },
+};
+
 export const CheckedState: Story = {
   args: {
     ...Default.args,

@@ -186,6 +186,34 @@ describe("DocsCollabReviewPanel", () => {
     expect(screen.queryByText("Open comment")).toBeNull();
   });
 
+  it("gives a viewer an open suggestion without accept, reply, or an add-reaction button", () => {
+    renderPanel({
+      threads: [],
+      activeChangeId: suggestion.changeId,
+      canMutateComments: false,
+      canReviewSuggestions: false,
+    });
+
+    expect(screen.getByText("Replace world")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsAccept })).toBeNull();
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsReject })).toBeNull();
+  });
+
+  it("lets a commenter who cannot review react and reply, but not accept", () => {
+    renderPanel({
+      threads: [],
+      activeChangeId: suggestion.changeId,
+      canMutateComments: true,
+      canReviewSuggestions: false,
+    });
+
+    expect(screen.getByRole("button", { name: "Add reaction" })).toBeTruthy();
+    expect(screen.getByLabelText(docsLabels.commentsReplyPlaceholder)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsAccept })).toBeNull();
+  });
+
   it("shows the resolved empty state", () => {
     renderPanel({ threads: [openThread], suggestions: [] });
 

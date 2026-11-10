@@ -1,5 +1,4 @@
 @import "../../styles.css" reference;
-@import "../../ui/anchored-dropdown.css";
 @import "../../workspace-shell/src/workspace-split-app.css";
 @import "../../workspace-shell/src/workspace-color.css";
 
@@ -8,20 +7,9 @@
   /* Solid accent is Dark. The Drive tile stays lime (`WORKSPACE_APP_ACCENT`). */
   --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
-  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --workspace-main-content-max-width: none;
-  --workspace-user-footer-text-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 70%,
-    transparent
-  );
-  --workspace-user-footer-border-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --file-drop-overlay-card-color: var(--workspace-accent);
   --drive-detail-tag-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --drive-detail-tag-fg: var(--workspace-accent);
@@ -60,27 +48,22 @@
   background-color: var(--workspace-surface);
 }
 
-@media (max-width: 767px) {
-  .drive-workspace .drive-main-pane:has(.drive-selection-bar) .drive-main-pane__scroll {
-    padding-bottom: 5.5rem;
-  }
+/* Folder path in the header: parent folders (links) before the open folder's title. */
+.drive-workspace .view-header__title-prefix:has(.drive-main-header__trail) {
+  flex-shrink: 1;
+  min-width: 0;
 }
 
-.drive-workspace .drive-main-pane__breadcrumbs {
-  @apply px-4 md:px-6 shrink-0;
-  padding-block: 1rem;
-  background-color: var(--button-outline-hover-background);
-  border-bottom: 1px solid var(--border);
-  --path-breadcrumb-lead-color: var(--workspace-foreground);
-  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
+.drive-workspace .drive-main-header__trail {
+  @apply flex min-w-0 items-center gap-2;
   --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   --path-breadcrumb-current-color: var(--workspace-foreground);
   --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
-.drive-workspace .drive-main-header__search-dropdown {
-  max-height: min(55dvh, 420px);
-  --unified-search-dropdown-width: 100%;
+.drive-workspace .drive-main-header__trail-separator {
+  @apply size-4 shrink-0;
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
 .drive-workspace .drive-main-header__actions {
@@ -107,26 +90,17 @@
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
 }
 
+/* Rows scroll clear of the floating search / selection bar. */
+.drive-workspace .drive-main-pane__scroll {
+  padding-bottom: var(--floating-dock-clearance);
+}
+
 .drive-workspace .drive-main-pane__retry {
   @apply mt-3;
 }
 
 .drive-workspace .workspace-app-layout__main {
   @apply isolate min-w-0;
-}
-
-.drive-workspace .workspace-app-layout__panel,
-.drive-workspace .drive-workspace__detail-panel {
-  @apply flex min-h-0 flex-col overflow-hidden border-l;
-  flex: 0 0 var(--drive-detail-column-width);
-  width: var(--drive-detail-column-width);
-  max-width: var(--drive-detail-column-width);
-  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
-}
-
-.drive-workspace .drive-workspace__detail-panel[data-open="false"] {
-  @apply pointer-events-none;
 }
 
 .drive-workspace .drive-detail-panel__path {

@@ -5,6 +5,7 @@ export const BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
 export const ICON_BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
 export const BUTTON_VARIANT_OPTIONS = [
   "primary",
+  "selection",
   "destructive",
   "destructive-outline",
   "outline",
@@ -35,6 +36,14 @@ export const BUTTON_ICON_SLOT_CLASSNAME = "button__icon";
 export const BUTTON_SIZE_ICON_CLASSNAME = "button--size-icon";
 export const ICON_BUTTON_ACTIVE_CLASSNAME = "icon-button--active";
 
+/**
+ * Pressed look for outline toggles. `wash` (default) is the quiet ink wash;
+ * `selection` is the suite selection (sky wash + hairline in dark), for a mode
+ * that must read from across the screen (Docs Suggest).
+ */
+export type ButtonPressedStyle = "wash" | "selection";
+export const BUTTON_PRESSED_SELECTION_CLASSNAME = "button--pressed-selection";
+
 export const BUTTON_SIZE_CLASSNAMES: Record<ButtonSize, string> = {
   xs: controlSizeClassName("button", "xs"),
   sm: controlSizeClassName("button", "sm"),
@@ -51,6 +60,7 @@ export const ICON_BUTTON_SIZE_CLASSNAMES: Record<IconButtonSize, string> = {
 };
 export const BUTTON_VARIANT_CLASSNAMES: Record<ButtonVariant, string> = {
   primary: "button--variant-primary",
+  selection: "button--variant-selection",
   destructive: "button--variant-destructive",
   "destructive-outline": "button--variant-destructive-outline",
   outline: "button--variant-outline",

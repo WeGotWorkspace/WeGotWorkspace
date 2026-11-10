@@ -249,7 +249,7 @@ describe("CalendarCalendarDialog", () => {
       name: defaultCalendarLabels.calendarDirectoryLabel,
     });
     expect(ownerSelect).toHaveProperty("disabled", true);
-    expect(ownerSelect.textContent).toContain("Team (Group)");
+    expect(ownerSelect.textContent).toContain("Team (Team)");
 
     fireEvent.click(ownerSelect);
     expect(screen.queryByRole("option")).toBeNull();

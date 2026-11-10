@@ -1,8 +1,7 @@
 import type { PathBreadcrumbItem } from "@/path-breadcrumb/src/path-breadcrumb";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { ViewKey } from "@/drive-core/src/drive-models";
-
-const GROUPS_ROOT = "Groups";
+import { DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT } from "@/drive-core/src/drive-path-utils";
 
 /** Virtual root in the move-to folder picker (lists My Drive and shared drives). */
 export const DRIVE_FOLDER_PICKER_ROOT = "";
@@ -14,12 +13,13 @@ export function isDriveSharedGroupPath(path: string): boolean {
 type DriveViewBreadcrumbLabels = Pick<
   DriveUILabels,
   | "accessTitle"
+  | "sidebarHome"
   | "sidebarMyDrive"
   | "sidebarRecent"
-  | "sidebarSharedDrives"
   | "sidebarSharedWithMe"
   | "sidebarStarred"
   | "sidebarUploads"
+  | "teamsRoot"
 >;
 
 /** Breadcrumbs of any Drive view. A view without folders gets its own title. */
@@ -30,6 +30,7 @@ export function buildDriveViewBreadcrumbs(
 ): PathBreadcrumbItem[] {
   if (view.type === "folder") return buildDriveFolderBreadcrumbs(view.path, labels, rootLabels);
   const titles: Record<Exclude<ViewKey["type"], "folder">, string> = {
+    all: labels.sidebarHome,
     access: labels.accessTitle,
     recent: labels.sidebarRecent,
     starred: labels.sidebarStarred,
@@ -41,12 +42,12 @@ export function buildDriveViewBreadcrumbs(
 
 export function buildDriveFolderBreadcrumbs(
   viewPath: string,
-  labels: Pick<DriveUILabels, "sidebarMyDrive" | "sidebarSharedDrives">,
+  labels: Pick<DriveUILabels, "sidebarMyDrive" | "teamsRoot">,
   /** Optional UI-path → display label (Personal / principal group names). */
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
   if (viewPath === GROUPS_ROOT) {
-    return [{ label: labels.sidebarSharedDrives, path: null }];
+    return [{ label: labels.teamsRoot, path: null }];
   }
 
   if (viewPath.startsWith(`${GROUPS_ROOT}/`)) {
@@ -82,7 +83,7 @@ export function buildDriveFolderBreadcrumbs(
 
 export function buildDriveFolderPickerBreadcrumbs(
   browsePath: string,
-  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive">,
+  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive" | "teamsRoot">,
   /** Optional UI-path → display label (e.g. Docs "Personal" / principal group names). */
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
@@ -113,6 +114,10 @@ export function buildDriveFolderPickerBreadcrumbs(
     ];
   }
 
+  if (browsePath === GROUPS_ROOT) {
+    return [drivesRoot, { label: labels.teamsRoot, path: GROUPS_ROOT }];
+  }
+
   if (browsePath.startsWith(`${GROUPS_ROOT}/`)) {
     const relativeParts = browsePath.slice(`${GROUPS_ROOT}/`.length).split("/").filter(Boolean);
     return [
@@ -133,4 +138,24 @@ export function buildDriveFolderPickerBreadcrumbs(
       path: parts.slice(0, index + 1).join("/"),
     })),
   ];
+}
+
+/**
+ * Where an item lives, in the names the sidebar and list use: the drive's display
+ * name, then its folders ("Personal / Studio Assets"). Items outside the drive tree
+ * (Shared with me) keep their list location.
+ */
+export function driveItemLocationLabel(
+  file: { parent: string; location?: string },
+  labels: Pick<DriveUILabels, "sidebarMyDrive" | "teamsRoot">,
+  rootLabels?: Readonly<Record<string, string>>,
+): string {
+  const inDriveTree =
+    file.parent === "My Drive" ||
+    file.parent.startsWith("My Drive/") ||
+    file.parent.startsWith(`${GROUPS_ROOT}/`);
+  if (!inDriveTree) return file.location ?? file.parent;
+  return buildDriveFolderBreadcrumbs(file.parent, labels, rootLabels)
+    .map((crumb) => crumb.label)
+    .join(" / ");
 }

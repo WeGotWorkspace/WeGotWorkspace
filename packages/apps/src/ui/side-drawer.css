@@ -18,6 +18,24 @@
   animation-timing-function: var(--panel-overlay-ease);
 }
 
+/*
+ * Same panel shape as the AppSidebar (suite SST): hairline, radius and overlay
+ * shadow on the inner edge, mirrored for a right-hand drawer.
+ */
+.side-drawer--right {
+  border-inline-start: 1px solid var(--workspace-divider-color, var(--border));
+  border-start-start-radius: var(--sidebar-panel-radius);
+  border-end-start-radius: var(--sidebar-panel-radius);
+  box-shadow: var(--sidebar-panel-overlay-shadow-end);
+}
+
+.side-drawer--left {
+  border-inline-end: 1px solid var(--workspace-divider-color, var(--border));
+  border-start-end-radius: var(--sidebar-panel-radius);
+  border-end-end-radius: var(--sidebar-panel-radius);
+  box-shadow: var(--sidebar-panel-overlay-shadow-start);
+}
+
 /* Scrim: same dim + fade timing as `.app-sidebar__scrim` (Sheet defaults to black/80). */
 .side-drawer__overlay {
   @apply bg-black/30;

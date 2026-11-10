@@ -13,7 +13,7 @@ describe("PWA document shell", () => {
   it("extends under the iOS status bar from the first HTML byte", () => {
     expect(indexHtml).toMatch(/viewport-fit=cover/);
     expect(indexHtml).toMatch(/apple-mobile-web-app-status-bar-style" content="black-translucent"/);
-    expect(indexHtml).toMatch(/<style>[\s\S]*html,\s*body\s*\{[\s\S]*background-color:\s*#fff5e9/);
+    expect(indexHtml).toMatch(/<style>[\s\S]*html,\s*body\s*\{[\s\S]*background-color:\s*#f6f7f9/);
     expect(indexHtml).toMatch(/documentElement\.classList\.add\("pwa-standalone"\)/);
   });
 
@@ -34,8 +34,14 @@ describe("PWA document shell", () => {
     expect(themeBootJs).toContain(
       `dark ? "${WORKSPACE_PWA_THEME_COLORS.dark}" : "${WORKSPACE_PWA_THEME_COLORS.light}"`,
     );
-    expect(stylesCss).toContain(`--color-we-got-soft: ${WORKSPACE_PWA_THEME_COLORS.light};`);
+    expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.light};`);
     expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
+  });
+
+  it("stops the iOS focus zoom from the boot script, on iOS only", () => {
+    expect(themeBootJs).toContain("maximum-scale=1");
+    expect(themeBootJs).toMatch(/if \(!ios\) return;/);
+    expect(indexHtml).not.toContain("maximum-scale");
   });
 
   it("resolves the theme from a same-origin script the runtime CSP allows", () => {

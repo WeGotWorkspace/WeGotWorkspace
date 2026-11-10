@@ -8,6 +8,9 @@
    * Thumb / end segments share the same outer curve (no track stroke to subtract). */
   --segmented-control-track-radius: var(--control-radius);
   --segmented-control-thumb-radius: var(--segmented-control-track-radius);
+  /* Corners against an inner divider. Segments are borderless (suite norm), so the
+   * active one is round on every side; a bordered variant sets this to 0. */
+  --segmented-control-inner-radius: var(--segmented-control-thumb-radius);
   --segmented-control-segment-border-color: var(
     --segmented-control-track-border-color,
     var(--button-outline-border-color, var(--control-border-color))
@@ -80,7 +83,7 @@
   transform: translateX(var(--segmented-control-thumb-x, 0px));
   /* Default = middle segment: square against both dividers. Outer edges only
    * round via [data-thumb-edge] so the wash sits flush on internal separators. */
-  border-radius: 0;
+  border-radius: var(--segmented-control-inner-radius);
   border: 0;
   background-color: var(
     --segmented-control-active-bg,
@@ -145,7 +148,7 @@
   border: var(--segmented-control-track-border-width) solid
     var(--segmented-control-segment-border-color);
   margin-inline-end: calc(-1 * var(--segmented-control-track-border-width));
-  border-radius: 0;
+  border-radius: var(--segmented-control-inner-radius);
   /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
   line-height: 0;
   /* Match outline Button / IconButton idle foreground (no muted fade). */
@@ -198,8 +201,11 @@
   background-color: var(
     --segmented-control-hover-bg,
     var(
-      --button-outline-hover-background,
-      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+      --button-hover-background,
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+      )
     )
   );
 }

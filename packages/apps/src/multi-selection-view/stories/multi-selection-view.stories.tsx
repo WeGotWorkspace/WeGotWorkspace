@@ -30,3 +30,23 @@ export const CustomCopyAndIcon: Story = {
     actions: [{ id: "archive", label: "Archive", icon: <FolderInput className="size-4" /> }],
   },
 };
+
+/** Side panel size (Drive details): smaller ring, title and buttons. */
+export const Compact: Story = {
+  args: {
+    size: "compact",
+    count: 4,
+    actions: [
+      { id: "move", label: "Move", icon: <FolderInput className="size-4" /> },
+      { id: "star", label: "Star", icon: <Star className="size-4" /> },
+      { id: "trash", label: "Delete", icon: <Trash2 className="size-4" /> },
+    ],
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
