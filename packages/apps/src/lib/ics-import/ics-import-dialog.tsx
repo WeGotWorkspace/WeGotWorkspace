@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
+import { ImportDialog, type ImportDialogResult } from "@/import-dialog/src/import-dialog";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { DialogFooter } from "@/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,10 +43,7 @@ export type IcsImportDialogLabels = {
 };
 
 /** After an import: what to show instead of the form, and how to close it. */
-export type IcsImportDialogResult = {
-  content: ReactNode;
-  doneLabel: string;
-};
+export type IcsImportDialogResult = ImportDialogResult & { doneLabel: string };
 
 export type IcsImportDialogProps = {
   open: boolean;
@@ -119,115 +116,112 @@ export function IcsImportDialog({
   const nameFieldId = `${idPrefix}-import-name`;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className={contentClassName} aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>{labels.title}</DialogTitle>
-        </DialogHeader>
-        {result ? (
-          <div className="ics-import-dialog">
-            <div className="ics-import-dialog__result" role="status">
-              {result.content}
-            </div>
-            <DialogFooter>
-              <Button type="button" label={result.doneLabel} onClick={onClose} />
-            </DialogFooter>
-          </div>
-        ) : (
-          <form
-            className="ics-import-dialog"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!canSubmit) return;
-              onImport(
-                file,
-                creating
-                  ? { mode: "create", name: name.trim(), color: color.trim() || defaultColor }
-                  : { mode: "existing", collectionId: destinationId },
-              );
-            }}
-          >
-            {error ? <Callout severity="error" title={error} /> : null}
-            <FieldLabelRow label={labels.destinationLegend} htmlFor={destinationFieldId}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <ColorSwatchTrigger
-                    id={destinationFieldId}
-                    color={selected?.color}
-                    showSwatch={!creating}
-                    size="sm"
-                    label={`${labels.destinationLegend}: ${destinationName}`}
-                    className="ics-import-dialog__destination"
-                    disabled={busy}
-                  >
-                    {destinationName}
-                  </ColorSwatchTrigger>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="calendar-event-dialog__calendar-menu ics-import-dialog__destination-menu"
+    <ImportDialog
+      open={open}
+      title={labels.title}
+      error={error}
+      result={result}
+      busy={busy}
+      onClose={onClose}
+      className={contentClassName}
+    >
+      {result ? (
+        <DialogFooter>
+          <Button type="button" label={result.doneLabel} onClick={onClose} />
+        </DialogFooter>
+      ) : (
+        <form
+          className="ics-import-dialog"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!canSubmit) return;
+            onImport(
+              file,
+              creating
+                ? { mode: "create", name: name.trim(), color: color.trim() || defaultColor }
+                : { mode: "existing", collectionId: destinationId },
+            );
+          }}
+        >
+          <FieldLabelRow label={labels.destinationLegend} htmlFor={destinationFieldId}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <ColorSwatchTrigger
+                  id={destinationFieldId}
+                  color={selected?.color}
+                  showSwatch={!creating}
+                  size="sm"
+                  label={`${labels.destinationLegend}: ${destinationName}`}
+                  className="ics-import-dialog__destination"
+                  disabled={busy}
                 >
-                  {collections.map((collection) => (
-                    <CalendarPickerMenuItem
-                      key={collection.id}
-                      name={collection.name}
-                      color={collection.color}
-                      icon={collection.icon}
-                      selected={destinationId === collection.id}
-                      onSelect={() => setDestinationId(collection.id)}
-                    />
-                  ))}
-                  {collections.length > 0 ? <DropdownMenuSeparator /> : null}
+                  {destinationName}
+                </ColorSwatchTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="calendar-event-dialog__calendar-menu ics-import-dialog__destination-menu"
+              >
+                {collections.map((collection) => (
                   <CalendarPickerMenuItem
-                    name={labels.newCollection}
-                    selected={creating}
-                    onSelect={() => setDestinationId(NEW_COLLECTION_IMPORT_VALUE)}
+                    key={collection.id}
+                    name={collection.name}
+                    color={collection.color}
+                    icon={collection.icon}
+                    selected={destinationId === collection.id}
+                    onSelect={() => setDestinationId(collection.id)}
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </FieldLabelRow>
-            {creating ? (
-              <div className="ics-import-dialog__create-fields">
-                <FieldLabelRow label={labels.nameLabel} htmlFor={nameFieldId}>
-                  <NameColorRow>
-                    <Input
-                      id={nameFieldId}
-                      className={NAME_COLOR_ROW_INPUT_CLASS}
+                ))}
+                {collections.length > 0 ? <DropdownMenuSeparator /> : null}
+                <CalendarPickerMenuItem
+                  name={labels.newCollection}
+                  selected={creating}
+                  onSelect={() => setDestinationId(NEW_COLLECTION_IMPORT_VALUE)}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FieldLabelRow>
+          {creating ? (
+            <div className="ics-import-dialog__create-fields">
+              <FieldLabelRow label={labels.nameLabel} htmlFor={nameFieldId}>
+                <NameColorRow>
+                  <Input
+                    id={nameFieldId}
+                    className={NAME_COLOR_ROW_INPUT_CLASS}
+                    size="sm"
+                    value={name}
+                    disabled={busy}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                  <SwatchColorPicker
+                    value={color}
+                    onChange={setColor}
+                    colorLabel={labels.colorLabel}
+                    swatches={swatches}
+                  >
+                    <ColorSwatchTrigger
+                      color={color}
+                      label={labels.colorLabel}
                       size="sm"
-                      value={name}
-                      disabled={busy}
-                      onChange={(event) => setName(event.target.value)}
+                      aria-haspopup="dialog"
                     />
-                    <SwatchColorPicker
-                      value={color}
-                      onChange={setColor}
-                      colorLabel={labels.colorLabel}
-                      swatches={swatches}
-                    >
-                      <ColorSwatchTrigger
-                        color={color}
-                        label={labels.colorLabel}
-                        size="sm"
-                        aria-haspopup="dialog"
-                      />
-                    </SwatchColorPicker>
-                  </NameColorRow>
-                </FieldLabelRow>
-              </div>
-            ) : null}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                label={labels.cancel}
-                disabled={busy}
-                onClick={onClose}
-              />
-              <Button type="submit" label={labels.submit} disabled={!canSubmit} />
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+                  </SwatchColorPicker>
+                </NameColorRow>
+              </FieldLabelRow>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              label={labels.cancel}
+              disabled={busy}
+              onClick={onClose}
+            />
+            <Button type="submit" label={labels.submit} disabled={!canSubmit} />
+          </DialogFooter>
+        </form>
+      )}
+    </ImportDialog>
   );
 }

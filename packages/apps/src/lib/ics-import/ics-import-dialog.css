@@ -15,7 +15,3 @@
 .ics-import-dialog__create-fields {
   @apply flex flex-col gap-3;
 }
-
-.ics-import-dialog__result {
-  @apply flex min-w-0 flex-col gap-3;
-}

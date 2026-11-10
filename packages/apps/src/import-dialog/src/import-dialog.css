@@ -1,0 +1,64 @@
+@import "../../styles.css" reference;
+
+/* Icon and ring sit on the first line when the text wraps. */
+.import-dialog__status {
+  @apply flex items-start gap-2 text-sm text-foreground;
+  overflow-wrap: anywhere;
+}
+
+.import-dialog__status > :first-child {
+  @apply mt-0.5 shrink-0;
+}
+
+.import-dialog__status-icon {
+  @apply size-4;
+}
+
+.import-dialog__status--success .import-dialog__status-icon {
+  color: var(--color-success);
+}
+
+.import-dialog__status--warning .import-dialog__status-icon {
+  color: var(--color-warning);
+}
+
+.import-dialog__status--error .import-dialog__status-icon {
+  color: var(--color-error);
+}
+
+.import-dialog__details {
+  @apply flex min-w-0 max-w-full flex-col gap-3 text-sm;
+}
+
+.import-dialog__section {
+  @apply flex min-w-0 flex-col gap-3;
+}
+
+.import-dialog__section-heading {
+  @apply text-sm font-medium;
+}
+
+.import-dialog__table-scroll {
+  @apply max-h-56 min-w-0 overflow-y-auto;
+}
+
+.import-dialog__table {
+  @apply table-fixed;
+}
+
+/* Read-only rows: no hover wash. */
+.import-dialog__row:hover {
+  @apply bg-transparent;
+}
+
+.import-dialog__name {
+  @apply truncate py-2.5 pl-0 align-top;
+}
+
+.import-dialog__reason {
+  @apply py-2.5 pr-0 align-top text-muted-foreground;
+}
+
+.import-dialog__notes {
+  @apply list-disc space-y-1.5 pl-5 text-muted-foreground;
+}

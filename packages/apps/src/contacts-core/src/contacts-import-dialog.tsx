@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { ImportDialog } from "@/import-dialog/src/import-dialog";
+import { DialogFooter } from "@/ui/dialog";
 import {
   ContactsAddressBookSelect,
   suppressClosedSelectTypeahead,
@@ -66,7 +66,6 @@ export function ContactsImportDialog({
   contentClassName = "contacts-dialog-surface",
 }: ContactsImportDialogProps) {
   const writable = writableOwnedAddressBooks(books);
-  const progressLabelId = useId();
   const [addressBookId, setAddressBookId] = useState("");
   const initializedOpen = useRef(false);
 
@@ -93,75 +92,59 @@ export function ContactsImportDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className={contentClassName} aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>{labels.importDialogTitle}</DialogTitle>
-        </DialogHeader>
-        <form
-          className="contacts-import-dialog__form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!canSubmit) return;
-            onImport(files, addressBookId);
-          }}
-        >
-          <div className="contacts-import-dialog__fields">
-            {error ? (
-              <Callout className="contacts-import-dialog__error" severity="error" title={error} />
-            ) : null}
-            {busy && progress ? (
-              <div className="contacts-import-dialog__progress" aria-live="polite" aria-busy="true">
-                <p id={progressLabelId}>
-                  {labels.importProgress(
-                    progress.importedCards,
-                    progress.totalCards,
-                    progress.batchIndex,
-                    progress.batchCount,
-                  )}
-                </p>
-                <div
-                  className="contacts-import-dialog__progress-track"
-                  role="progressbar"
-                  aria-labelledby={progressLabelId}
-                  aria-valuemin={0}
-                  aria-valuemax={progress.totalCards}
-                  aria-valuenow={progress.importedCards}
-                >
-                  <div
-                    className="contacts-import-dialog__progress-fill"
-                    style={{
-                      width: `${
-                        progress.totalCards === 0
-                          ? 0
-                          : Math.min(100, (progress.importedCards / progress.totalCards) * 100)
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ) : null}
-            <ContactsAddressBookSelect
-              id="contacts-import-book"
-              label={labels.importDestinationLegend}
-              personalLabel={labels.personalAddressBook}
-              books={writable}
-              value={addressBookId}
-              disabled={busy}
-              onValueChange={selectAddressBookById}
-              onTriggerKeyDown={suppressClosedSelectTypeahead}
-            />
-          </div>
-          <DialogFooter className="contacts-import-dialog__footer">
-            <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
-              {labels.cancel}
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {labels.importSubmit}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ImportDialog
+      open={open}
+      title={labels.importDialogTitle}
+      progress={
+        busy && progress
+          ? {
+              value:
+                progress.totalCards === 0
+                  ? 0
+                  : (progress.importedCards / progress.totalCards) * 100,
+              text: labels.importProgress(
+                progress.importedCards,
+                progress.totalCards,
+                progress.batchIndex,
+                progress.batchCount,
+              ),
+            }
+          : null
+      }
+      error={error}
+      busy={busy}
+      onClose={onClose}
+      className={contentClassName}
+    >
+      <form
+        className="contacts-import-dialog__form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!canSubmit) return;
+          onImport(files, addressBookId);
+        }}
+      >
+        <div className="contacts-import-dialog__fields">
+          <ContactsAddressBookSelect
+            id="contacts-import-book"
+            label={labels.importDestinationLegend}
+            personalLabel={labels.personalAddressBook}
+            books={writable}
+            value={addressBookId}
+            disabled={busy}
+            onValueChange={selectAddressBookById}
+            onTriggerKeyDown={suppressClosedSelectTypeahead}
+          />
+        </div>
+        <DialogFooter className="contacts-import-dialog__footer">
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+            {labels.cancel}
+          </Button>
+          <Button type="submit" disabled={!canSubmit}>
+            {labels.importSubmit}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ImportDialog>
   );
 }

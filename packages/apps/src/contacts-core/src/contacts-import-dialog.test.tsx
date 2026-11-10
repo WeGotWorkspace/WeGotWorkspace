@@ -212,7 +212,7 @@ describe("ContactsImportDialog", () => {
 
     expect(screen.getByText(longError)).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
-    expect(document.querySelector(".contacts-import-dialog__error")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe(longError);
   });
 
   it("shows import progress while a batch is uploading", () => {
