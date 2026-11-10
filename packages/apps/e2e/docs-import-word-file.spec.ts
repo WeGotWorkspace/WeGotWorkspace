@@ -1,4 +1,4 @@
-// Import Word file on Docs home (#1619), live app and API.
+// Import docx file(s) on Docs home (#1619), live app and API.
 import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,7 +11,9 @@ const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 const FIXTURES = join(process.cwd(), "src/docs-core/src/docx-import/__tests__/fixtures");
 const fixture = (name: string) => readFileSync(join(FIXTURES, name));
 const REPORT_TITLE = "Some parts did not come across";
-const IMPORT_TITLE = "Import Word file";
+const MENU_ITEM = "Import docx file(s)";
+const IMPORT_TITLE = "Import docx file";
+const IMPORT_MANY_TITLE = "Import docx files";
 
 async function driveFileText(name: string): Promise<string | null> {
   const response = await fetch(`${API}/files/users/${E2E_USERNAME}/${encodeURIComponent(name)}`, {
@@ -24,7 +26,7 @@ async function driveFileText(name: string): Promise<string | null> {
 
 async function openImportMenu(page: Page) {
   await page.getByRole("button", { name: "More create options" }).click();
-  return page.getByRole("menuitem", { name: IMPORT_TITLE });
+  return page.getByRole("menuitem", { name: MENU_ITEM });
 }
 
 /** Pick a file through the hidden input; the naming dialog opens. */
@@ -33,13 +35,14 @@ async function pickWordFile(page: Page, name: string, buffer: Buffer) {
   await page
     .getByTestId("docs-import-word-file-input")
     .setInputFiles({ name, mimeType: DOCX, buffer });
-  const dialog = page.getByRole("dialog", { name: IMPORT_TITLE });
+  const dialog = page.getByRole("dialog", { name: IMPORT_TITLE, exact: true });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
-  await dialog.getByRole("row", { name: "Personal" }).click();
+  // The folder picker opens in Personal, the drive the list shows.
+  await expect(dialog.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Personal");
   return dialog;
 }
 
-test.describe("Import Word file (live app)", () => {
+test.describe("Import docx file(s) (live app)", () => {
   test.describe.configure({ timeout: 180_000 });
 
   test.beforeEach(async ({ page }) => {
@@ -52,10 +55,8 @@ test.describe("Import Word file (live app)", () => {
   }) => {
     const stamp = Date.now();
 
-    // #1615: Google Docs people are pointed at the Word export, under the menu item.
-    await expect(await openImportMenu(page)).toContainText(
-      "From Google Docs: File → Download → Microsoft Word (.docx) first.",
-    );
+    // The menu item has no subtitle.
+    await expect(await openImportMenu(page)).toHaveText(MENU_ITEM);
     await page.keyboard.press("Escape");
 
     const logoBase = `e2e-import-logo-${stamp}`;
@@ -91,6 +92,33 @@ test.describe("Import Word file (live app)", () => {
     await expect(page.locator(".ProseMirror")).toContainText("Project plan", { timeout: 60_000 });
     expect(await driveFileText(`${reportBase}.md`)).toBe(first);
     expect(await driveFileText(`${reportBase} 2.md`)).toContain("Project plan");
+  });
+
+  test("imports several files into one folder, each named after its file, with one summary", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    const names = [`e2e-import-many-a-${stamp}`, `e2e-import-many-b-${stamp}`];
+    await (await openImportMenu(page)).click();
+    await page.getByTestId("docs-import-word-file-input").setInputFiles([
+      { name: `${names[0]}.docx`, mimeType: DOCX, buffer: fixture("headings.docx") },
+      { name: `${names[1]}.docx`, mimeType: DOCX, buffer: fixture("table.docx") },
+    ]);
+    const dialog = page.getByRole("dialog", { name: IMPORT_MANY_TITLE });
+    await expect(dialog).toBeVisible({ timeout: 30_000 });
+    await expect(dialog.getByPlaceholder("Name")).toHaveCount(0);
+    await expect(dialog.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Personal");
+    await dialog.getByRole("button", { name: "Import" }).click();
+
+    const summary = page.getByRole("dialog", { name: "Imported 2 documents" });
+    await expect(summary).toBeVisible({ timeout: 90_000 });
+    for (const name of names) {
+      await expect(summary.getByRole("button", { name: `${name}.docx` })).toBeVisible();
+      expect(await driveFileText(`${name}.md`)).not.toBeNull();
+    }
+    await summary.getByRole("button", { name: `${names[1]}.docx` }).click();
+    await expect(summary).toBeHidden();
+    await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 60_000 });
   });
 
   test("refuses a fake .docx and creates nothing", async ({ page }) => {

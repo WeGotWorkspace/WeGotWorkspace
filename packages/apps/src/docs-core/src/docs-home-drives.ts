@@ -234,3 +234,31 @@ export async function resolveNewDocumentName(
     base,
   );
 }
+
+/** Free names for several imported Word files in one folder: each after its own file, none twice. */
+export async function resolveImportDocumentNames(
+  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
+  userRoot: string,
+  loadedFiles: readonly DriveFile[],
+  bases: readonly string[],
+): Promise<string[]> {
+  let taken: string[];
+  if (operations) {
+    try {
+      const state = await operations.listDirectory(userRoot);
+      taken = state.directory.files.map((entry) => entry.name);
+    } catch {
+      const now = new Date();
+      return bases.map((base, index) =>
+        fallbackUntitledMarkdownName(now, index === 0 ? base : `${base} ${index + 1}`),
+      );
+    }
+  } else {
+    taken = loadedFiles.filter((file) => file.kind !== "folder").map((file) => file.title);
+  }
+  return bases.map((base) => {
+    const name = nextUntitledMarkdownName(taken, base);
+    taken.push(name);
+    return name;
+  });
+}

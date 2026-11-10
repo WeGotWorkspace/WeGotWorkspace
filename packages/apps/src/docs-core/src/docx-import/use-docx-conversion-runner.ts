@@ -7,6 +7,16 @@ import { startDocWithDefaultPageSetup } from "@/lib/docs-page-setup";
 
 type RunTexts = { progress: string; failed: string };
 
+/** One file of a batch import: its name, and the Doc made from it or why not. */
+export type DocxBatchResult =
+  | { name: string; docPath: string; complete: boolean }
+  | { name: string; docPath: null; reason: string };
+
+export type DocxBatchJob = { name: string; task: () => Promise<SaveAsMarkdownResult> };
+
+type Refusal = keyof typeof labels.refusals;
+const refusalOf = (error: unknown) => (error as { refusal?: Refusal } | null)?.refusal;
+
 /**
  * Shared by Save as Markdown and Import Word file: one conversion at a time,
  * a progress toast, the report hand-over, then the new Doc opens. A refusal
@@ -33,7 +43,7 @@ export function useDocxConversionRunner(onOpenDocsFile: ((apiPath: string) => vo
         }
         onOpenDocsFile?.(docPath);
       } catch (error) {
-        const refusal = (error as { refusal?: keyof typeof labels.refusals } | null)?.refusal;
+        const refusal = refusalOf(error);
         showError(texts.failed, {
           description: refusal ? labels.refusals[refusal] : undefined,
           duration: 10_000,
@@ -47,5 +57,45 @@ export function useDocxConversionRunner(onOpenDocsFile: ((apiPath: string) => vo
     [dismiss, onOpenDocsFile, show, showError],
   );
 
-  return { running, runConversion };
+  /** Several files, one after the other; nothing opens, the results come back for a summary. */
+  const runBatch = useCallback(
+    async (jobs: readonly DocxBatchJob[]): Promise<DocxBatchResult[] | null> => {
+      if (runningRef.current) return null;
+      runningRef.current = true;
+      setRunning(true);
+      const results: DocxBatchResult[] = [];
+      let toastId: string | number | null = null;
+      try {
+        for (const [index, job] of jobs.entries()) {
+          if (toastId !== null) dismiss(toastId);
+          toastId = show(labels.importingMany(index, jobs.length), { duration: Infinity });
+          try {
+            const { docPath, report } = await job.task();
+            setPendingDocxImportReport(docPath, report);
+            try {
+              startDocWithDefaultPageSetup(docPath);
+            } catch {
+              // The Doc is saved: it opens with the page setup it has.
+            }
+            results.push({ name: job.name, docPath, complete: report.lines.length === 0 });
+          } catch (error) {
+            const refusal = refusalOf(error);
+            results.push({
+              name: job.name,
+              docPath: null,
+              reason: refusal ? labels.refusals[refusal] : labels.summaryFailed,
+            });
+          }
+        }
+        return results;
+      } finally {
+        if (toastId !== null) dismiss(toastId);
+        runningRef.current = false;
+        setRunning(false);
+      }
+    },
+    [dismiss, show],
+  );
+
+  return { running, runConversion, runBatch };
 }

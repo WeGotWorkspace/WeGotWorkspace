@@ -26,13 +26,21 @@ export const docxImportLabels = {
   reportDescription: (name: string) =>
     `This document was made from “${name}”. These parts of the Word file are not in it:`,
   close: "OK",
-  importWordFile: "Import Word file",
-  /** Under Import Word file: the way in for Google Docs (#1615). No Google sign-in. */
-  importGoogleHint: "From Google Docs: File → Download → Microsoft Word (.docx) first.",
+  importWordFile: "Import docx file(s)",
   importing: (name: string) => `Importing “${name}”…`,
   importFailed: (name: string) => `Could not import “${name}”. Nothing was created.`,
-  importDialogTitle: "Import Word file",
+  importDialogTitle: "Import docx file",
   importDialogDescription: (name: string) =>
     `Choose a name and folder for the document made from “${name}”.`,
   importDialogConfirm: "Import",
+  importManyDialogTitle: "Import docx files",
+  importManyDialogDescription: (count: number) =>
+    `Choose the folder for the ${count} documents. Each is named after its file.`,
+  importingMany: (done: number, total: number) => `Importing ${done + 1} of ${total} files…`,
+  summaryTitle: (imported: number, total: number) =>
+    imported === total ? `Imported ${total} documents` : `Imported ${imported} of ${total} files`,
+  summaryDescription: "Open a document to see what did not come across.",
+  summaryComplete: "Everything came across",
+  summaryPartial: "Some parts did not come across",
+  summaryFailed: "Not imported",
 } as const;

@@ -402,12 +402,13 @@ export function DocsHomeWorkspace({
   const importWordFile = useImportWordFile({
     enabled: Boolean(onCreateDocument) && !wgwIsGuestSession(),
     onOpenDocsFile: onOpenFile,
+    dialogSurfaceClassName: "docs-dialog-surface",
   });
 
   const createDialog = useDocsHomeCreateDialog({
     username,
     onCreateDocument,
-    onImportWordFile: importWordFile.importFile,
+    onImportWordFiles: importWordFile.importFiles,
     browsePathPrefix,
     listingOperations,
     files,
@@ -494,9 +495,10 @@ export function DocsHomeWorkspace({
         createDialog={createDialog}
       />
       {saveAsMarkdown.dialogs}
+      {importWordFile.dialogs}
       <WordFilePickerInput
         inputRef={importWordFile.inputRef}
-        onPick={createDialog.handleImportWordFile}
+        onPick={createDialog.handleImportWordFiles}
       />
     </TooltipProvider>
   );
