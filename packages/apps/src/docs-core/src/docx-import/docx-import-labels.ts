@@ -1,6 +1,6 @@
 import type { SaveAsMarkdownRefusal } from "@/docs-core/src/docx-import/save-docx-as-markdown";
 
-/** Words for Save as Markdown (#1983). Plain language, no file-format jargon beyond names people see. */
+/** Words for Save as Markdown (#1983) and Import Word file (#1619). Plain language, no file-format jargon beyond names people see. */
 export const docxImportLabels = {
   saveAsMarkdown: "Save as Markdown",
   offlineReason: "Needs a connection: images and the new document are saved in Drive.",
@@ -26,4 +26,12 @@ export const docxImportLabels = {
   reportDescription: (name: string) =>
     `This document was made from “${name}”. These parts of the Word file are not in it:`,
   close: "OK",
+  importWordFile: "Import Word file",
+  newDocumentMenu: "More ways to make a document",
+  importing: (name: string) => `Importing “${name}”…`,
+  importFailed: (name: string) => `Could not import “${name}”. Nothing was created.`,
+  importDialogTitle: "Import Word file",
+  importDialogDescription: (name: string) =>
+    `Choose a name and folder for the document made from “${name}”.`,
+  importDialogConfirm: "Import",
 } as const;

@@ -55,6 +55,8 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";
+import { WordFilePickerInput } from "@/docs-core/src/docx-import/word-file-picker-input";
 import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
 import {
   isSaveAsMarkdownOnlyFile,
@@ -392,9 +394,15 @@ export function DocsHomeWorkspace({
     dialogSurfaceClassName: "docs-dialog-surface",
   });
 
+  const importWordFile = useImportWordFile({
+    enabled: Boolean(onCreateDocument) && !wgwIsGuestSession(),
+    onOpenDocsFile: onOpenFile,
+  });
+
   const createDialog = useDocsHomeCreateDialog({
     username,
     onCreateDocument,
+    onImportWordFile: importWordFile.importFile,
     browsePathPrefix,
     listingOperations,
     files,
@@ -412,6 +420,8 @@ export function DocsHomeWorkspace({
             showNewDocument={Boolean(onCreateDocument)}
             onNewDocument={createDialog.handleCreateDocument}
             newDocumentLabel={labels.homeNewDocument}
+            newDocumentMenuItems={importWordFile.menuItems}
+            newDocumentMenuLabel={docxImportLabels.newDocumentMenu}
             session={session}
             onLogout={onLogout}
             primaryItems={primaryItems}
@@ -470,6 +480,10 @@ export function DocsHomeWorkspace({
         createDialog={createDialog}
       />
       {saveAsMarkdown.dialogs}
+      <WordFilePickerInput
+        inputRef={importWordFile.inputRef}
+        onPick={createDialog.handleImportWordFile}
+      />
     </TooltipProvider>
   );
 }

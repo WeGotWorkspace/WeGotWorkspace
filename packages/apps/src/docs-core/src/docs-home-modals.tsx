@@ -23,11 +23,12 @@ import {
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
-import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveGroupUiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
 import type { DocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import type { DocsHomeCreateDialogState } from "@/docs-core/src/use-docs-home-create-dialog";
 import {
@@ -46,6 +47,20 @@ type DocsHomeModalsProps = {
   operations?: DriveAPIOperations;
   createDialog?: DocsHomeCreateDialogState;
 };
+
+/** The New document dialog, worded for Import Word file when a Word file was picked (#1619). */
+function docsHomeCreateDialogLabels(
+  labels: DriveUILabels,
+  importSourceName: string | null,
+): DriveUILabels {
+  if (!importSourceName) return labels;
+  return {
+    ...labels,
+    createMarkdownDialogTitle: docxImportLabels.importDialogTitle,
+    createMarkdownDialogDescription: docxImportLabels.importDialogDescription(importSourceName),
+    createMarkdownDialogConfirm: docxImportLabels.importDialogConfirm,
+  };
+}
 
 export function DocsHomeModals({
   actions,
@@ -163,7 +178,10 @@ export function DocsHomeModals({
       {createDialog ? (
         <DriveCreateMarkdownDialog
           open={createDialog.createDialogOpen}
-          labels={driveLabels}
+          labels={docsHomeCreateDialogLabels(
+            driveLabels,
+            createDialog.createDialogImportSourceName,
+          )}
           defaultName={createDialog.createDialogDefaultName}
           initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
           files={files}

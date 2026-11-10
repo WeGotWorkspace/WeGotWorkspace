@@ -3,6 +3,8 @@ import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
@@ -13,6 +15,9 @@ export type DocsHomeSidebarProps = {
   showNewDocument: boolean;
   onNewDocument: () => void;
   newDocumentLabel: string;
+  /** More ways to make a Doc, such as Import Word file (#1619). Empty: a plain button. */
+  newDocumentMenuItems?: readonly DropdownMenuItemProps[];
+  newDocumentMenuLabel?: string;
   session: WorkspaceSession;
   onLogout?: () => void;
   primaryItems: MenuItemProps[];
@@ -27,6 +32,8 @@ export function DocsHomeSidebar({
   showNewDocument,
   onNewDocument,
   newDocumentLabel,
+  newDocumentMenuItems = [],
+  newDocumentMenuLabel = "",
   session,
   onLogout,
   primaryItems,
@@ -40,7 +47,14 @@ export function DocsHomeSidebar({
       appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       primaryButton={
-        showNewDocument ? (
+        showNewDocument && newDocumentMenuItems.length > 0 ? (
+          <SidebarSegmentedNewMenu
+            mainLabel={newDocumentLabel}
+            menuLabel={newDocumentMenuLabel}
+            onMainAction={onNewDocument}
+            items={newDocumentMenuItems}
+          />
+        ) : showNewDocument ? (
           <Button
             label={newDocumentLabel}
             icon={<Plus />}
