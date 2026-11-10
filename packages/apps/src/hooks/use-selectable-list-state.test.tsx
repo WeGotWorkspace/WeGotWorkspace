@@ -95,4 +95,18 @@ describe("useSelectableListState", () => {
 
     expect([...result.current.selectedIds].sort()).toEqual(["a", "c", "d", "e"]);
   });
+
+  it("lets a shorter shift-click range replace the longer one in selection mode", () => {
+    const { result } = renderHook(() =>
+      useSelectableListState({ visibleIds: ["a", "b", "c", "d", "e", "f"] }),
+    );
+
+    act(() => result.current.enterSelectionFor("a"));
+    act(() => result.current.handleSelect("c", mouseEvent()));
+    act(() => result.current.handleSelect("f", mouseEvent({ shiftKey: true })));
+    expect([...result.current.selectedIds].sort()).toEqual(["a", "c", "d", "e", "f"]);
+
+    act(() => result.current.handleSelect("d", mouseEvent({ shiftKey: true })));
+    expect([...result.current.selectedIds].sort()).toEqual(["a", "c", "d"]);
+  });
 });

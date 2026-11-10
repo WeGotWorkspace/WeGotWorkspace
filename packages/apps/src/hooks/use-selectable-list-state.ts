@@ -51,12 +51,20 @@ export function useSelectableListState({
         } else {
           const [start, end] = a < b ? [a, b] : [b, a];
           const range = visibleIds.slice(start, end + 1);
-          // In selection mode the range adds to rows picked before, as a Cmd-click would.
-          setSelectedIds(
-            selectionMode
-              ? [...selectedIds, ...range.filter((x) => !selectedIds.includes(x))]
-              : range,
-          );
+          // In selection mode the range replaces the previous anchor-to-end range and
+          // keeps rows picked outside it, like Shift+Arrow.
+          if (selectionMode) {
+            const endIndex = visibleIds.indexOf(rangeEndId);
+            const previous = new Set(
+              endIndex === -1
+                ? [lastClickedId]
+                : visibleIds.slice(Math.min(a, endIndex), Math.max(a, endIndex) + 1),
+            );
+            const kept = new Set(selectedIds.filter((x) => !previous.has(x)));
+            setSelectedIds(visibleIds.filter((x) => range.includes(x) || kept.has(x)));
+          } else {
+            setSelectedIds(range);
+          }
           // The anchor stays; the clicked row is the end Shift+Arrow moves on from.
           setRangeEndId(id);
         }
@@ -99,7 +107,15 @@ export function useSelectableListState({
         onPrimarySelect?.(id);
       });
     },
-    [lastClickedId, onPrimarySelect, selectedIds, selectionMode, setSelectionRange, visibleIds],
+    [
+      lastClickedId,
+      onPrimarySelect,
+      rangeEndId,
+      selectedIds,
+      selectionMode,
+      setSelectionRange,
+      visibleIds,
+    ],
   );
 
   const enterSelectionFor = useCallback((id: string) => {

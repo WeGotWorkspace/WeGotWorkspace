@@ -125,7 +125,7 @@ export function useContactsEditAutosave({
         if (inFlightRef.current.get(contactId) !== next) return;
         const latest = newestDraft(latestRef.current, contactDraftsRef.current, contactId);
         if (!latest || debouncerRef.current.has(contactId)) return;
-        if (JSON.stringify(latest) === JSON.stringify(draft)) return;
+        if (JSON.stringify(latest) === JSON.stringify(sent)) return;
         if (matchesSynced(syncedRef.current, contactId, latest)) {
           contactDraftsRef.current.delete(contactId);
           return;
@@ -135,16 +135,20 @@ export function useContactsEditAutosave({
         contactDraftsRef.current.set(contactId, latest);
         debouncerRef.current.schedule(contactId, latest, run);
       };
+      // The draft this save sends: when it runs behind another save, the newest one,
+      // since remote changes merged into the draft meanwhile.
+      let sent = draft;
       const previous = inFlightRef.current.get(contactId) ?? Promise.resolve();
       const send = async () => {
+        sent = newestDraft(latestRef.current, contactDraftsRef.current, contactId) ?? draft;
         const synced = syncedRef.current.get(contactId);
         const sending = {
-          draft,
+          draft: sent,
           base: synced ? (JSON.parse(synced.json) as ContactEditDraft) : null,
         };
         sendingRef.current.set(contactId, sending);
         try {
-          await persistRef.current(contactId, draft);
+          await persistRef.current(contactId, sent);
         } finally {
           if (sendingRef.current.get(contactId) === sending) sendingRef.current.delete(contactId);
         }

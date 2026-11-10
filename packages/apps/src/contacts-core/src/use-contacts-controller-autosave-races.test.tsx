@@ -345,6 +345,8 @@ describe("contacts autosave: creates and failed saves", () => {
     await settle();
     expect(result.current.editDraft?.nameGiven).toBe("Janet");
     expect(result.current.editDraft?.notes).toBe("Met at the fair");
+    // The autosave pause elapses and queues a save behind the one in flight.
+    await advance(PAUSE);
 
     // A second change from that device, still with the old name, before the save returns.
     const called = remoteJane({
