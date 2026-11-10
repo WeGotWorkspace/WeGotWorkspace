@@ -26,7 +26,8 @@ describe("docsLabels Drive SST re-exports", () => {
     expect(driveLabels.sidebarMyDrive).toBe(docsLabels.homeMyDrive);
     expect(driveLabels.sidebarSharedDrives).toBe(docsLabels.homeDrivesSection);
     expect(docsLabels.renameDialogTitle).toBe("Rename document");
-    expect(docsLabels.homeEmpty).toContain("Markdown");
+    expect(docsLabels.homeEmpty).toContain("import a Word file");
+    expect(docsLabels.homeEmpty).toContain("File → Download → Microsoft Word (.docx)");
   });
 
   it("keeps English Suggest toggle and mode-switch toast labels for the collab header", () => {

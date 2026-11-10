@@ -27,6 +27,8 @@ export const docxImportLabels = {
     `This document was made from “${name}”. These parts of the Word file are not in it:`,
   close: "OK",
   importWordFile: "Import Word file",
+  /** Under Import Word file: the way in for Google Docs (#1615). No Google sign-in. */
+  importGoogleHint: "From Google Docs: File → Download → Microsoft Word (.docx) first.",
   newDocumentMenu: "More ways to make a document",
   importing: (name: string) => `Importing “${name}”…`,
   importFailed: (name: string) => `Could not import “${name}”. Nothing was created.`,

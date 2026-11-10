@@ -77,6 +77,9 @@ export function tidyMammothHtml(html: string): string {
     while (outer.parentElement?.tagName === "SUP") outer = outer.parentElement;
     outer.replaceWith(doc.createTextNode(ref.textContent ?? ""));
   }
+  // Google Docs underlines links directly; a link shows as one anyway.
+  for (const underline of doc.querySelectorAll("a u"))
+    underline.replaceWith(...underline.childNodes);
   const list = notes[0]?.parentElement;
   if (list) {
     for (const note of notes) note.removeAttribute("id");

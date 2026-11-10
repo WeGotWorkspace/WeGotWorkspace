@@ -11,7 +11,8 @@ export const docsLabels = {
   editor: "Document",
   homeTitle: "Documents",
   homeSearchPlaceholder: "Search documents...",
-  homeEmpty: "No documents yet. Create or upload a Markdown file in Drive.",
+  homeEmpty:
+    "No documents yet. Create one, or import a Word file. From Google Docs, choose File → Download → Microsoft Word (.docx) there, then import that file.",
   homeSharedEmpty: "No shared documents yet.",
   homeRecentEmpty: "No recent documents yet.",
   homeStarredEmpty: "No starred documents yet.",
