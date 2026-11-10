@@ -26,6 +26,17 @@ export function resolveDriveFolderPickerStartPath(
 }
 
 /**
+ * Creating from a list that is not a place (Recent, Shared with me, Starred,
+ * Trash, Uploads…) first opens Personal, so the new item lands somewhere the
+ * person can see it. All Files and real folders stay put.
+ */
+export function driveCreateJumpsToPersonal(view: ViewKey): boolean {
+  if (view.type === "all") return false;
+  if (view.type === "folder") return isTrashPath(view.path);
+  return true;
+}
+
+/**
  * Concrete folder destinations in the move/create picker (not the virtual
  * "Drives" root or the Groups index).
  */

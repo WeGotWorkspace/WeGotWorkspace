@@ -46,19 +46,3 @@
 .docs-collab-reactions__reaction-count {
   @apply text-[11px] font-medium tabular-nums;
 }
-
-.docs-collab-reactions__picker {
-  @apply w-auto p-1.5;
-}
-
-.docs-collab-reactions__picker-grid {
-  @apply flex flex-wrap gap-0.5;
-}
-
-.docs-collab-reactions__picker-item {
-  @apply flex size-8 items-center justify-center rounded-md text-base transition-colors;
-}
-
-.docs-collab-reactions__picker-item:hover {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
-}

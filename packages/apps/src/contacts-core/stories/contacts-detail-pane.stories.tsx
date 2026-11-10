@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fireEvent } from "storybook/test";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
@@ -14,8 +13,10 @@ import { ContactsDetailView } from "@/contacts-core/src/contacts-detail-view";
 import { listContactGroups } from "@/contacts-core/src/contacts-group-utils";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import {
+  CONTACT_CHANNEL_DEFAULT_CONTEXT,
   contactCardToEditDraft,
   emptyContactEditDraft,
+  newContactMapId,
 } from "@/contacts-core/src/contacts-edit-utils";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
@@ -38,10 +39,15 @@ function ContactsDetailPaneHarness({
     hasOperations: true,
     canCreateGroup: !readOnly,
   });
-  const [editMode, setEditMode] = useState(!readOnly);
   const [editDraft, setEditDraft] = useState(() =>
     createMode || !card ? emptyContactEditDraft() : contactCardToEditDraft(card),
   );
+  /** "Add phone" and friends, as the controller does them: an empty row, its id back. */
+  const addRow = (patch: (prev: typeof editDraft, id: string) => typeof editDraft) => () => {
+    const id = newContactMapId();
+    setEditDraft((prev) => patch(prev, id));
+    return id;
+  };
 
   return (
     <ContactsStoryScope variant="detail">
@@ -49,8 +55,9 @@ function ContactsDetailPaneHarness({
         labels={defaultContactsLabels}
         card={card}
         createMode={createMode}
-        editMode={editMode}
-        editDraft={editDraft}
+        readOnly={readOnly}
+        // Read-only: no editing draft, the sheet shows the card's own values.
+        editDraft={readOnly ? null : editDraft}
         displayName={card?.name?.full ?? defaultContactsLabels.newContact}
         groupTags={
           groupTagsModel.show
@@ -153,12 +160,37 @@ function ContactsDetailPaneHarness({
             addresses: prev.addresses.filter((row) => row.id !== id),
           }))
         }
+        onAddPhone={addRow((prev, id) => ({
+          ...prev,
+          phones: [...prev.phones, { id, number: "", phoneType: "mobile" }],
+        }))}
+        onAddEmail={addRow((prev, id) => ({
+          ...prev,
+          emails: [
+            ...prev.emails,
+            { id, address: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT },
+          ],
+        }))}
+        onAddAddress={addRow((prev, id) => ({
+          ...prev,
+          addresses: [
+            ...prev.addresses,
+            {
+              id,
+              street: "",
+              locality: "",
+              region: "",
+              postalCode: "",
+              country: "",
+              contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT,
+            },
+          ],
+        }))}
+        onAddUrl={addRow((prev, id) => ({
+          ...prev,
+          urls: [...prev.urls, { id, uri: "", contextType: CONTACT_CHANNEL_DEFAULT_CONTEXT }],
+        }))}
       />
-      {readOnly ? null : (
-        <button type="button" className="sr-only" onClick={() => setEditMode((value) => !value)}>
-          Toggle edit
-        </button>
-      )}
     </ContactsStoryScope>
   );
 }
@@ -174,21 +206,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof ContactsDetailPaneHarness>;
 
+const phoneTypeName = `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`;
+
 export const Editable: Story = {
   tags: ["vitest-ci"],
   args: {},
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const nameSection = canvas.getByRole("heading", {
-      name: defaultContactsLabels.sectionName,
-    });
-    await expect(nameSection).toHaveClass("field-label-row__label");
-    const nameInput = canvas.getByLabelText("First name");
+    const title = canvasElement.querySelector(".contacts-detail-view__title");
+    await expect([...(title?.querySelectorAll("input") ?? [])].map((input) => input.id)).toEqual([
+      "contact-given-name",
+      "contact-surname",
+    ]);
+    const nameInput = canvas.getByLabelText(defaultContactsLabels.nameGiven);
     await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, "Jane Updated");
-    await expect(nameInput).toHaveValue("Jane Updated");
+    await userEvent.type(nameInput, "Janet");
+    await expect(nameInput).toHaveValue("Janet");
+
     const birthday = canvas.getByRole("button", { name: /Birthday:/ });
-    await expect(birthday).toHaveClass("locale-date-picker");
+    await expect(birthday).toHaveClass("collection-ghost-select");
     await expect(birthday).toHaveAccessibleName(/1985/);
     await userEvent.click(birthday);
     const day = await waitFor(() => {
@@ -202,12 +238,28 @@ export const Editable: Story = {
     await expect(canvas.getByRole("button", { name: /Birthday:/ })).not.toHaveAccessibleName(
       /Apr 23, 1985|April 23, 1985/,
     );
+
+    // Typing never adds a row; Add phone does, and focuses it.
+    const phonesBefore = canvas.getAllByRole("combobox", { name: phoneTypeName }).length;
+    await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.addPhone }));
+    const phones = canvas.getAllByLabelText(defaultContactsLabels.phoneNumber);
+    await expect(phones).toHaveLength(phonesBefore + 1);
+    await waitFor(() => expect(phones.at(-1)).toHaveFocus());
+    await userEvent.type(phones.at(-1)!, "555");
+    await expect(canvas.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(
+      phonesBefore + 1,
+    );
+
+    // Jane has an address and a website, so those have their own add buttons.
     await expect(
-      canvas.getAllByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
-      }).length,
-    ).toBeGreaterThanOrEqual(2);
-    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addPhone })).toBeNull();
+      canvas.getByRole("button", { name: defaultContactsLabels.addAddress }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: defaultContactsLabels.addUrl }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("textbox", { name: defaultContactsLabels.sectionNotes }),
+    ).toHaveAttribute("placeholder", defaultContactsLabels.notesPlaceholder);
   },
 };
 
@@ -216,29 +268,45 @@ export const Create: Story = {
   args: { createMode: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText(defaultContactsLabels.nameGiven)).toHaveFocus();
     await expect(
-      canvas.getByRole("heading", { name: defaultContactsLabels.newContact }),
+      canvas.getByRole("button", { name: defaultContactsLabels.addPhone }),
     ).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addPhone })).toBeNull();
-    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addEmail })).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: defaultContactsLabels.addEmail }),
+    ).toBeInTheDocument();
+    // Addresses and websites come in through "Add field" until there is one.
     await expect(
       canvas.queryByRole("button", { name: defaultContactsLabels.addAddress }),
     ).toBeNull();
     await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addUrl })).toBeNull();
+    await expect(canvas.queryByLabelText(defaultContactsLabels.phoneNumber)).toBeNull();
+    await expect(canvas.queryByRole("button", { name: /Birthday:/ })).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.addPhone }));
     const phone = canvas.getByLabelText(defaultContactsLabels.phoneNumber);
-    fireEvent.change(phone, { target: { value: "555" } });
-    const phones = canvas.getAllByLabelText(defaultContactsLabels.phoneNumber);
-    await expect(phones).toHaveLength(2);
-    await expect(phones[0]).toHaveValue("555");
-    await expect(phones[0]).toHaveFocus();
+    await waitFor(() => expect(phone).toHaveFocus());
+    await userEvent.type(phone, "555");
+    await expect(canvas.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(1);
+    await expect(canvas.getByRole("combobox", { name: phoneTypeName })).toHaveTextContent(
+      defaultContactsLabels.channelTypeMobile,
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: defaultContactsLabels.addField }));
+    const menu = await within(canvasElement.ownerDocument.body).findByRole("menu");
     await expect(
-      canvas.getAllByRole("combobox", {
-        name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
-      }),
-    ).toHaveLength(2);
-    const birthday = canvas.getByRole("button", { name: /^Birthday:\s*$/ });
-    await expect(birthday).toHaveClass("locale-date-picker");
-    await expect(birthday).toHaveAccessibleName(/^Birthday:\s*$/);
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent?.trim()),
+    ).toEqual([
+      defaultContactsLabels.nameGiven2,
+      defaultContactsLabels.jobTitle,
+      defaultContactsLabels.jobDepartment,
+      defaultContactsLabels.sectionBirthday,
+      defaultContactsLabels.address,
+      defaultContactsLabels.urlAddress,
+    ]);
+    await userEvent.keyboard("{Escape}");
   },
 };
 
@@ -247,22 +315,29 @@ export const ReadOnly: Story = {
   args: { readOnly: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Home")).toBeInTheDocument();
-    expect(canvas.getAllByText("Work").length).toBeGreaterThan(0);
-    expect(canvas.queryByRole("combobox")).toBeNull();
-    const identity = canvasElement.querySelector(".contacts-detail-view__identity");
-    expect(identity?.querySelector(".user-avatar--xl")).toBeTruthy();
-    expect(identity?.querySelector(".contacts-detail-view__heading")).toBeTruthy();
-    await expect(canvas.getByRole("heading", { name: "Jane Doe" })).toBeInTheDocument();
-    await expect(canvas.getByText("Acme Corp")).toBeInTheDocument();
-    expect(identity?.contains(canvas.getByRole("heading", { name: "Jane Doe" }))).toBe(true);
-    expect(identity?.contains(canvas.getByText("Acme Corp"))).toBe(true);
-    const birthdayHeading = canvas.getByRole("heading", {
-      name: defaultContactsLabels.sectionBirthday,
-    });
-    await expect(birthdayHeading).toBeInTheDocument();
-    await expect(birthdayHeading).toHaveClass("field-label-row__label");
-    expect(canvas.queryByRole("button", { name: /Birthday:/ })).toBeNull();
-    await expect(canvas.getByText(/1985/)).toBeInTheDocument();
+    const header = canvasElement.querySelector(".contacts-detail-view__header");
+    expect(header?.querySelector(".user-avatar--xl")).toBeTruthy();
+    expect(header?.querySelector(".contacts-detail-view__heading")).toBeTruthy();
+    const given = canvas.getByLabelText(defaultContactsLabels.nameGiven);
+    await expect(given).toHaveValue("Jane");
+    await expect(given).toHaveAttribute("readonly");
+    await expect(canvas.getByLabelText(defaultContactsLabels.organizationName)).toHaveValue(
+      "Acme Corp",
+    );
+    // Type dropdowns stay as labels but cannot be opened.
+    for (const select of canvas.getAllByRole("combobox")) {
+      await expect(select).toBeDisabled();
+    }
+    const birthday = canvas.getByRole("button", { name: /Birthday:/ });
+    await expect(birthday).toBeDisabled();
+    await expect(birthday).toHaveAccessibleName(/1985/);
+    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addField })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addPhone })).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: defaultContactsLabels.removeRow }),
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole("switch", { name: defaultContactsLabels.companyContact }),
+    ).toBeNull();
   },
 };

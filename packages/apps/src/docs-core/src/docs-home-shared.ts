@@ -11,7 +11,7 @@ import { DOCS_HOME_LIST_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 
 const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_LIST_EXTENSIONS);
 
-/** Sidebar / listing selection for Docs home (My Docs, Shared with me, virtual views, or a drive). */
+/** Sidebar / listing selection for Docs home (All Docs, Shared with me, virtual views, or a drive). */
 export type DocsHomeView =
   | { type: "all" }
   | { type: "shared" }
@@ -56,6 +56,14 @@ export function filterDocsHomeSharedByQuery(
 }
 
 /** Browse `pathPrefix` for unified search when the view is a single drive; otherwise undefined. */
+/**
+ * Creating from Shared with me, Recent, Starred or Trash first opens Personal,
+ * so the new document lands in a drive the person is looking at.
+ */
+export function docsHomeCreateJumpsToPersonal(view: DocsHomeView): boolean {
+  return view.type !== "all" && view.type !== "drive";
+}
+
 export function docsHomeBrowsePathPrefix(view: DocsHomeView): string | undefined {
   return view.type === "drive" ? view.pathPrefix : undefined;
 }

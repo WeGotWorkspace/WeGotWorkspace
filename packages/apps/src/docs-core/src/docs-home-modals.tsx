@@ -22,7 +22,6 @@ import {
 } from "@/ui/alert-dialog";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
-import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveGroupUiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
@@ -183,7 +182,7 @@ export function DocsHomeModals({
             createDialog.createDialogImportSourceName,
           )}
           defaultName={createDialog.createDialogDefaultName}
-          initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
+          initialBrowsePath={createDialog.createDialogBrowsePath}
           files={files}
           groupPaths={groupPaths}
           view={createDialog.createDialogView}

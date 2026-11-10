@@ -6,8 +6,8 @@ describe("contacts create-collection labels", () => {
     expect(defaultContactsLabels.newGroup).toBe("New group");
     expect(defaultContactsLabels.newContactMenu).toBe("More create options");
     expect(defaultContactsLabels.createGroupButton).toBe("Create");
-    expect(defaultContactsLabels.addGroup).toBe("Add group");
-    expect(defaultContactsLabels.addGroupPlaceholder).toBe("Add group…");
+    expect(defaultContactsLabels.addGroup).toBe("Add to group");
+    expect(defaultContactsLabels.addGroupPlaceholder).toBe("Add to group…");
   });
 
   it("matches Notes/Tasks owned vs shared section headings", () => {

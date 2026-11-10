@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsSuggestionCard } from "@/text-editor-core/docs-collab/docs-suggestions";
 
@@ -131,11 +132,37 @@ export const UnknownAuthor: Story = {
     docs: {
       description: {
         story:
-          "An older document's suggestion with no suggestion thread: the document carries no author, so the card shows “Unknown author” and still accepts or rejects.",
+          "An older document's suggestion with no suggestion thread: the document carries no author, so the card shows “Unknown author” and still accepts or rejects. Replies and reactions need the thread, so it has neither.",
       },
     },
   },
   render: () => (
     <DocsSuggestionCard {...cardHandlers} suggestion={unknownAuthorSuggestion} active={false} />
   ),
+};
+
+export const WaitingForThread: Story = {
+  name: "Waiting for its thread",
+  tags: ["vitest-ci"],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A teammate's suggestion whose thread the suggesting session has not saved yet (for example while they are offline). The author comes from that thread, so replies and reactions wait for it: whoever wrote first would otherwise be named as the author. Accept and reject still work.",
+      },
+    },
+  },
+  render: () => (
+    <DocsSuggestionCard
+      {...cardHandlers}
+      suggestion={{ ...insertSuggestion, hasThread: false }}
+      active
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Add reaction" })).toBeNull();
+    await expect(canvas.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    await expect(canvas.getByRole("button", { name: docsLabels.suggestionsAccept })).toBeTruthy();
+  },
 };

@@ -50,21 +50,37 @@ test.describe("Calendar month resize stacking (Storybook)", () => {
       `no visible card in Jan 10 column: ${originCards.map((c) => c.summary)}`,
     ).toBeTruthy();
 
-    const neighbor =
-      destCards.find(
-        (card) =>
-          card.summary !== resized!.summary &&
-          rangesOverlap(card.y, card.y + card.height, resized!.y, resized!.y + resized!.height) &&
-          card.color &&
-          resized!.color &&
-          card.color !== resized!.color,
-      ) ??
-      destCards.find(
-        (card) =>
-          card.summary !== resized!.summary &&
-          rangesOverlap(card.y, card.y + card.height, resized!.y, resized!.y + resized!.height),
-      ) ??
-      destCards.find((card) => card.summary !== resized!.summary);
+    const resizedColor = await samplePagePixel(
+      page,
+      resized!.x + resized!.width / 2,
+      resized!.y + resized!.height / 2,
+    );
+
+    // The neighbour must paint clearly apart from the resized card, or the stacking
+    // check below cannot tell them apart. Of the cards beside it, take the one whose
+    // paint differs most (the first with another calendar colour can be a near twin,
+    // e.g. lavender beside sky).
+    const overlapping = destCards.filter(
+      (card) =>
+        card.summary !== resized!.summary &&
+        rangesOverlap(card.y, card.y + card.height, resized!.y, resized!.y + resized!.height),
+    );
+    const candidates =
+      overlapping.length > 0
+        ? overlapping
+        : destCards.filter((card) => card.summary !== resized!.summary);
+    let neighbor: CardBox | undefined;
+    let neighborColor: Rgba | undefined;
+    for (const card of candidates) {
+      const color = await samplePagePixel(page, card.x + card.width / 2, card.y + card.height / 2);
+      if (
+        !neighborColor ||
+        colorDistance(resizedColor, color) > colorDistance(resizedColor, neighborColor)
+      ) {
+        neighbor = card;
+        neighborColor = color;
+      }
+    }
     expect(
       neighbor,
       `no visible neighbor in Jan 11 column: ${destCards.map((c) => c.summary)}`,
@@ -78,20 +94,13 @@ test.describe("Calendar month resize stacking (Storybook)", () => {
         neighbor!.y + neighbor!.height - 2,
       ),
     };
-    const resizedColor = await samplePagePixel(
-      page,
-      resized!.x + resized!.width / 2,
-      resized!.y + resized!.height / 2,
-    );
-    const neighborColor = await samplePagePixel(
-      page,
-      neighbor!.x + neighbor!.width / 2,
-      neighbor!.y + neighbor!.height / 2,
-    );
+    // Cards are soft tints (11% of the calendar colour), so two calendars sit close
+    // together: indigo beside sky is ~150. Screenshot pixels are exact, so that is
+    // still far enough apart to tell which card paints on top.
     expect(
-      colorDistance(resizedColor, neighborColor),
-      `need distinct paints to assert stacking: resized=${fmt(resizedColor)} neighbor=${fmt(neighborColor)}`,
-    ).toBeGreaterThan(400);
+      colorDistance(resizedColor, neighborColor!),
+      `need distinct paints to assert stacking: resized=${fmt(resizedColor)} neighbor=${fmt(neighborColor!)}`,
+    ).toBeGreaterThan(100);
 
     const handle = await endResizeHandle(page, resized!.summary);
     expect(handle, "end resize handle did not mount").toBeTruthy();
@@ -125,10 +134,10 @@ test.describe("Calendar month resize stacking (Storybook)", () => {
           hit,
           colors: {
             resized: resizedColor,
-            neighbor: neighborColor,
+            neighbor: neighborColor!,
             overlap: overlapColor,
             distResized: colorDistance(overlapColor, resizedColor),
-            distNeighbor: colorDistance(overlapColor, neighborColor),
+            distNeighbor: colorDistance(overlapColor, neighborColor!),
           },
         },
         null,
@@ -161,7 +170,7 @@ test.describe("Calendar month resize stacking (Storybook)", () => {
     expect(
       colorDistance(overlapColor, resizedColor),
       `overlap painted neighbor (${fmt(overlapColor)}) over resized card (${fmt(resizedColor)}); hit=${JSON.stringify(hit)}`,
-    ).toBeLessThan(colorDistance(overlapColor, neighborColor));
+    ).toBeLessThan(colorDistance(overlapColor, neighborColor!));
   });
 });
 

@@ -3,6 +3,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   formValuesToTaskAlerts,
   remindButtonLabel,
+  taskAlertsPatch,
   taskAlertCount,
   taskAlertsToFormValues,
   tasksAlarmRowLabels,
@@ -149,5 +150,22 @@ describe("task alert mapping", () => {
     expect(alarmLabels.eventAlarmAtStart).toBe(defaultTasksLabels.remindAtTimeOfTask);
     expect(alarmLabels.eventAlarm30Min).toBe(defaultCalendarLabels.eventAlarm30Min);
     expect(alarmLabels.eventAlarmAtStart).not.toBe(defaultCalendarLabels.eventAlarmAtStart);
+  });
+});
+
+describe("taskAlertsPatch", () => {
+  const thirty = offsetReminderAlert("-PT30M");
+  const day = offsetReminderAlert("-P1D");
+
+  it("sends a removed alert as null, since the API merges alerts per id", () => {
+    expect(taskAlertsPatch({ alert1: thirty, alert2: day }, { alert2: day })).toEqual({
+      alert1: null,
+      alert2: day,
+    });
+  });
+
+  it("clears all alerts with null when none are left", () => {
+    expect(taskAlertsPatch({ alert1: thirty }, undefined)).toBeNull();
+    expect(taskAlertsPatch({ alert1: thirty }, {})).toBeNull();
   });
 });

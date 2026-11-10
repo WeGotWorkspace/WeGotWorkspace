@@ -11,6 +11,7 @@ export function useDriveVisibleItems(shell: DriveShellState) {
     liveSearchResults,
     starredItems,
     sharedItems,
+    allItems,
     starred,
     view,
     searchQuery,
@@ -33,6 +34,7 @@ export function useDriveVisibleItems(shell: DriveShellState) {
         liveSearchResults,
         starredItems,
         sharedItems,
+        allItems,
         starred,
         view,
         searchQuery,
@@ -41,6 +43,7 @@ export function useDriveVisibleItems(shell: DriveShellState) {
         uploadFiles,
       }),
     [
+      allItems,
       currentUsername,
       files,
       liveSearchResults,

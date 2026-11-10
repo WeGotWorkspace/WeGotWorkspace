@@ -146,7 +146,7 @@ export function resolveDocsHomeListingStatus(
 
 type DocsHomeTitleLabels = Pick<
   DocsUILabels,
-  "homeSharedWithMe" | "homeRecent" | "homeStarred" | "homeTrash" | "homeTitle"
+  "homeAllDocs" | "homeSharedWithMe" | "homeRecent" | "homeStarred" | "homeTrash" | "homeTitle"
 >;
 
 /** Header title for the active sidebar view, including a selected drive label. */
@@ -162,7 +162,8 @@ export function docsHomeHeaderTitle(
   if (view.type === "drive") {
     return drives.find((drive) => drive.pathPrefix === view.pathPrefix)?.label ?? labels.homeTitle;
   }
-  return labels.homeTitle;
+  // The sidebar entry names the view, like Drive's All Files.
+  return labels.homeAllDocs;
 }
 
 type DocsHomeEmptyLabels = Pick<

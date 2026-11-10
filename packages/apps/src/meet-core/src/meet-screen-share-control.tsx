@@ -45,7 +45,7 @@ export function MeetScreenShareControl({
         <IconButton
           icon={<MonitorUp />}
           label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-          size="md"
+          size="lg"
           variant="outline"
           active={screenOn || open}
           aria-pressed={screenOn}
@@ -64,7 +64,6 @@ export function MeetScreenShareControl({
               <MenuItem
                 label={modeLabel(mode)}
                 checked={active}
-                selected={active}
                 className="dropdown-menu__menu-item"
                 onClick={() => (screenOn ? onOptimize(mode) : onStart(mode))}
               />

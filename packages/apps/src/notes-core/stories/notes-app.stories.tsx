@@ -75,5 +75,9 @@ export const TagView: Story = {
     const tags = canvasElement.querySelector<HTMLElement>(".notes-sidebar-tags");
     await expect(tags).toBeTruthy();
     await expect(within(tags!).queryByRole("button", { name: /rename|edit/i })).toBeNull();
+    // Same chip as the detail tags: 30px on every screen (touch grows the target, not the chip).
+    const chip = tags!.querySelector<HTMLElement>(".tag")!;
+    await expect(chip.classList.contains("tag--size-lg")).toBe(true);
+    await expect(Math.round(chip.getBoundingClientRect().height)).toBe(30);
   },
 };

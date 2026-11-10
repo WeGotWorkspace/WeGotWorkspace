@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer, Share } from "lucide-react";
+import { Pencil, Printer, Users } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
@@ -12,14 +12,17 @@ import { wgwIsGuestSession, wgwRedirectGuestShareReauth } from "@/lib/api/wgw/ht
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { docsDownloadHeaderAction } from "@/docs-core/src/docs-download-action";
 import { useDocsDownload } from "@/docs-core/src/use-docs-download";
+import { DocsFooterTools } from "@/docs-core/src/docs-footer-tools";
+import { IconButton } from "@/button/src/button";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
-import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
+import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
+import type { TextEditorPageSetup } from "@/lib/page-format";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { DocsWorkspaceModals } from "@/docs-core/src/docs-workspace-modals";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -176,8 +179,7 @@ function DocsWorkspaceShell({
             mayShare={mayShare}
             shareDialog={shareDialog}
             guestView={guestView}
-            pageSetup={pageSetup}
-            onToggleViewSource={() => setViewSource((on) => !on)}
+            pageSetup={pageSetup.pageSetup}
           />
         </>
       }
@@ -189,6 +191,24 @@ function DocsWorkspaceShell({
           readOnlyNotice={guestView ? controller.labels.guestReadOnlyNotice : undefined}
           pageSetup={pageSetup.pageSetup}
           onEditorReady={setEditor}
+          footerStart={
+            controller.hasFile ? (
+              <DocsFooterTools
+                pageSetup={{ ...pageSetup, labels: controller.labels }}
+                source={{
+                  checked: viewSource,
+                  disabled: !editor,
+                  label: controller.labels.sourceSwitch,
+                  ariaLabel: viewSource
+                    ? controller.labels.hideSource
+                    : guestView
+                      ? controller.labels.viewSourceReadOnly
+                      : controller.labels.viewSource,
+                  onToggle: () => setViewSource((on) => !on),
+                }}
+              />
+            ) : null
+          }
         />
       }
     />
@@ -217,8 +237,7 @@ function DocsSidebar({
       appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       footer={
-        <WorkspaceAppSettingsFooter
-          appId="docs"
+        <WorkspaceSidebarAccountFooter
           session={session}
           detailLine={workspaceUserFooterDetailLine(session, controller.readOnly)}
           onLogout={onLogout}
@@ -245,7 +264,6 @@ function DocsMainHeader({
   shareDialog,
   guestView,
   pageSetup,
-  onToggleViewSource,
 }: {
   controller: DocsController;
   editor: Editor | null;
@@ -254,25 +272,35 @@ function DocsMainHeader({
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
   guestView: boolean;
-  pageSetup: DocsPageSetupState;
-  onToggleViewSource: () => void;
+  /** Paper size for the Word download (the page setup control itself is in the footer). */
+  pageSetup: TextEditorPageSetup;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
-  const download = useDocsDownload(editor, title, pageSetup.pageSetup, controller.labels);
+  const download = useDocsDownload(editor, title, pageSetup, controller.labels);
   const showShare = Boolean(apiPath.trim() && mayShare === true);
-  const showSourceLabel = guestView
-    ? controller.labels.viewSourceReadOnly
-    : controller.labels.viewSource;
 
   return (
     <ViewHeader
       title={title}
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((open) => !open)}
+      // Rename sits on the name it changes. Guests have no write route (#1713).
+      titleSuffix={
+        controller.hasFile && !guestView ? (
+          <IconButton
+            label={controller.labels.rename}
+            icon={<Pencil />}
+            size="sm"
+            variant="outline"
+            className="docs-workspace__rename"
+            disabled={!controller.canRename}
+            onClick={controller.openRenameDialog}
+          />
+        ) : undefined
+      }
       actions={
         controller.hasFile ? (
           <DocsHeaderActions
-            pageSetup={{ ...pageSetup, labels: controller.labels }}
             actions={[
               {
                 id: "print",
@@ -291,33 +319,13 @@ function DocsMainHeader({
                     {
                       id: "share",
                       label: controller.labels.share,
-                      icon: <Share />,
+                      icon: <Users />,
+                      showLabel: true,
                       className: "docs-workspace__share-button",
                       onClick: () => shareDialog.openShareDialog(apiPath, title),
                     },
                   ]
                 : []),
-              // Rename needs a write route guests do not have (#1713).
-              ...(guestView
-                ? []
-                : [
-                    {
-                      id: "rename",
-                      label: controller.labels.rename,
-                      icon: <Pencil />,
-                      disabled: !controller.canRename,
-                      onClick: controller.openRenameDialog,
-                    },
-                  ]),
-              {
-                id: "view-source",
-                label: viewSource ? controller.labels.hideSource : showSourceLabel,
-                icon: <Code2 />,
-                active: viewSource,
-                disabled: !editor,
-                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
-                onClick: onToggleViewSource,
-              },
             ]}
           />
         ) : null

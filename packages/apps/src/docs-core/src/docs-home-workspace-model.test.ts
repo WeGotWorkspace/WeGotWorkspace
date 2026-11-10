@@ -237,7 +237,7 @@ describe("docs home chrome", () => {
       docsLabels.homeStarred,
     );
     expect(docsHomeHeaderTitle({ type: "trash" }, docsLabels, drives)).toBe(docsLabels.homeTrash);
-    expect(docsHomeHeaderTitle({ type: "all" }, docsLabels, drives)).toBe(docsLabels.homeTitle);
+    expect(docsHomeHeaderTitle({ type: "all" }, docsLabels, drives)).toBe(docsLabels.homeAllDocs);
     expect(
       docsHomeHeaderTitle({ type: "drive", pathPrefix: "groups/eng" }, docsLabels, drives),
     ).toBe("Engineering");

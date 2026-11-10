@@ -42,17 +42,18 @@ describe("ChatComposer chrome focus", () => {
     expect(spy.mock.results.at(-1)?.value).toBe(true);
   });
 
-  it("delegates empty format-bar chrome mousedown to editor focus", async () => {
+  it("has no format bar; the row's empty chrome focuses the editor", async () => {
     const spy = vi.spyOn(chromeFocus, "focusTextEditorFromChromeEvent");
     renderComposer();
     await waitForEditor();
-    const bar = await waitFor(() => {
-      const el = document.querySelector(".chat-composer__bar");
+    expect(document.querySelector(".text-editor-format-bar")).toBeNull();
+    const row = await waitFor(() => {
+      const el = document.querySelector(".chat-composer__row");
       expect(el).toBeInstanceOf(HTMLElement);
       return el as HTMLElement;
     });
 
-    fireEvent.mouseDown(bar);
+    fireEvent.mouseDown(row);
 
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.results.at(-1)?.value).toBe(true);

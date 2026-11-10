@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { Button } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCommentAuthor } from "../docs-comments-types";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
@@ -19,8 +19,10 @@ export type DocsSuggestionCardProps = {
   labels: DocsUILabels;
   currentUserId: string;
   active: boolean;
-  /** When false, hide accept/reject / composer / reaction picker (chips stay visible). */
+  /** When false, hide the composer and the reaction picker (chips stay visible). */
   canMutate?: boolean;
+  /** When false, hide accept/reject. Defaults to `canMutate`. */
+  canReview?: boolean;
   onSelect: () => void;
   onAccept: () => void;
   onReject: () => void;
@@ -36,6 +38,7 @@ export function DocsSuggestionCard({
   currentUserId,
   active,
   canMutate = true,
+  canReview = canMutate,
   onSelect,
   onAccept,
   onReject,
@@ -47,6 +50,9 @@ export function DocsSuggestionCard({
   const { cardRef, isExiting, runExitAnimation, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: SUGGESTION_EXIT_ANIMATION,
   });
+  // Replies and reactions wait for the thread root: whoever writes first would
+  // otherwise create it, and the card would name them as the suggestion's author.
+  const canComment = canMutate && suggestion.hasThread !== false;
   const trimmedComposerText = composerText.trim();
   const canPost = trimmedComposerText.length > 0;
   const reactionAuthors: DocsCommentAuthor[] = suggestion.messages.map((message) => message.author);
@@ -84,34 +90,7 @@ export function DocsSuggestionCard({
         authorName={suggestion.authorName || labels.suggestionsUnknownAuthor}
         authorColor={suggestion.authorColor}
         createdAt={suggestion.timestamp || undefined}
-        actions={
-          canMutate ? (
-            <>
-              <IconButton
-                label={labels.suggestionsAccept}
-                icon={<Check />}
-                size="md"
-                variant="outline"
-                severity="success"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  runExitAnimation(onAccept);
-                }}
-              />
-              <IconButton
-                label={labels.suggestionsReject}
-                icon={<X />}
-                size="md"
-                variant="outline"
-                severity="danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  runExitAnimation(onReject);
-                }}
-              />
-            </>
-          ) : null
-        }
+        actions={null}
       />
 
       {suggestion.parts.length > 0 ? (
@@ -132,13 +111,43 @@ export function DocsSuggestionCard({
         </p>
       ) : null}
 
-      {canMutate || (suggestion.reactions?.length ?? 0) > 0 ? (
+      {canReview ? (
+        <div className="docs-suggestion-card__decision">
+          <Button
+            label={labels.suggestionsAcceptShort}
+            aria-label={labels.suggestionsAccept}
+            icon={<Check />}
+            size="md"
+            variant="primary"
+            className="docs-suggestion-card__accept"
+            onClick={(event) => {
+              event.stopPropagation();
+              runExitAnimation(onAccept);
+            }}
+          />
+          <Button
+            label={labels.suggestionsRejectShort}
+            aria-label={labels.suggestionsReject}
+            icon={<X />}
+            size="md"
+            variant="outline"
+            className="docs-suggestion-card__reject"
+            onClick={(event) => {
+              event.stopPropagation();
+              runExitAnimation(onReject);
+            }}
+          />
+        </div>
+      ) : null}
+
+      {/* A commenter needs the row for its add button, also before the first reaction. */}
+      {canComment || (suggestion.reactions?.length ?? 0) > 0 ? (
         <DocsCollabReactions
           className="docs-suggestion-card__reactions"
           reactions={suggestion.reactions}
           authors={reactionAuthors}
           currentUserId={currentUserId}
-          canMutate={canMutate}
+          canMutate={canComment}
           onToggleReaction={onToggleReaction}
         />
       ) : null}
@@ -153,7 +162,7 @@ export function DocsSuggestionCard({
         </ul>
       ) : null}
 
-      {active && canMutate ? (
+      {active && canComment ? (
         <div
           className="docs-suggestion-card__composer"
           onClick={(event) => event.stopPropagation()}
