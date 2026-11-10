@@ -4,17 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Meet;
 
-use RuntimeException;
+use App\Exceptions\DomainResponseException;
 
-final class MeetResponseException extends RuntimeException
-{
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function __construct(
-        public readonly int $status,
-        public readonly array $payload,
-    ) {
-        parent::__construct((string) ($payload['error'] ?? 'meet_error'));
-    }
-}
+final class MeetResponseException extends DomainResponseException {}

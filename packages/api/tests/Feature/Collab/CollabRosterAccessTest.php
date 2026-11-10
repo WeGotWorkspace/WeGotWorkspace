@@ -143,7 +143,7 @@ final class CollabRosterAccessTest extends WgwDatabaseTestCase
                 'reason' => 'precheck',
             ])
             ->assertStatus(503)
-            ->assertJson(['error' => 'relay_unavailable']);
+            ->assertExactJson(['error' => 'relay_unavailable', 'code' => 'relay_unavailable']);
     }
 
     private function roomId(): string

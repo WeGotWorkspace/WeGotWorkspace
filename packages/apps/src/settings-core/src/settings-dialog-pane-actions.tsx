@@ -15,8 +15,28 @@ export type SettingsDialogPaneSave = {
 };
 
 type SettingsDialogPaneActions = {
-  register: (next: SettingsDialogPaneSave | null) => void;
+  /** One entry per slice: a panel can hold several slices, each with its own Save. */
+  register: (key: symbol, next: SettingsDialogPaneSave | null) => void;
 };
+
+/**
+ * The footer's one Save for every registered slice: enabled when any slice has changes, and
+ * runs the Save of each slice that has them, in registration order.
+ */
+function combinePaneSaves(
+  entries: Map<symbol, SettingsDialogPaneSave>,
+): SettingsDialogPaneSave | null {
+  if (entries.size === 0) return null;
+  const all = [...entries.values()];
+  return {
+    disabled: all.every((entry) => entry.disabled),
+    save: async () => {
+      for (const entry of [...entries.values()]) {
+        if (!entry.disabled) await entry.save();
+      }
+    },
+  };
+}
 
 const SettingsDialogPaneActionsContext = createContext<SettingsDialogPaneActions | null>(null);
 
@@ -27,9 +47,12 @@ export function SettingsDialogPaneActionsProvider({
   children: ReactNode;
   onSaveChange: (next: SettingsDialogPaneSave | null) => void;
 }): ReactNode {
+  const entriesRef = useRef(new Map<symbol, SettingsDialogPaneSave>());
   const register = useCallback(
-    (next: SettingsDialogPaneSave | null) => {
-      onSaveChange(next);
+    (key: symbol, next: SettingsDialogPaneSave | null) => {
+      if (next) entriesRef.current.set(key, next);
+      else entriesRef.current.delete(key);
+      onSaveChange(combinePaneSaves(entriesRef.current));
     },
     [onSaveChange],
   );
@@ -41,22 +64,26 @@ export function SettingsDialogPaneActionsProvider({
   );
 }
 
-/** No-op outside the settings dialog. Calendar pane uses this so the footer owns Save. */
+/**
+ * No-op outside the settings dialog. Panes use this so the footer owns Save; with several
+ * slices on one panel (Calendar: display and availability) the footer saves each changed one.
+ */
 export function useRegisterSettingsDialogSave(
   save: () => void | Promise<void>,
   disabled: boolean,
 ): void {
   const ctx = useContext(SettingsDialogPaneActionsContext);
+  const [key] = useState(() => Symbol("settings-dialog-save"));
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
     if (!ctx) return;
-    ctx.register({
+    ctx.register(key, {
       save: () => saveRef.current(),
       disabled,
     });
-    return () => ctx.register(null);
-  }, [ctx, disabled]);
+    return () => ctx.register(key, null);
+  }, [ctx, disabled, key]);
 }
 
 export function useSettingsDialogPaneSaveState(): {

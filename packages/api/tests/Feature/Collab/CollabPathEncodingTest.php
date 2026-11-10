@@ -202,12 +202,12 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
                 'name' => 'Bob',
             ])
             ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
 
         $this->withBearer($this->issueBearerTokenFor('bob'))
             ->putCollaboration('/api/v1/files/collaboration?path='.urlencode(self::ACCENTS), 'nope')
             ->assertNotFound()
-            ->assertJsonPath('error', 'not_found');
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
 
         $this->assertSame([], CollabPeer::query()->pluck('room')->all());
     }
@@ -219,12 +219,12 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
         $this->withBearer($this->issueBearerTokenFor('alice'))
             ->postJson('/api/v1/rooms/'.$roomId.'/participants', ['name' => 'Alice'])
             ->assertBadRequest()
-            ->assertJsonPath('error', 'invalid_room');
+            ->assertExactJson(['error' => 'invalid_room', 'code' => 'invalid_room']);
 
         $this->withBearer($this->issueBearerTokenFor('alice'))
             ->get('/api/v1/files/collaboration?path='.urlencode('/users/alice/docs/../../bob/secret.md'))
             ->assertNotFound()
-            ->assertJsonPath('error', 'not_found');
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
     }
 
     private static function longPath(): string

@@ -138,7 +138,7 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $response = $this->withBearer($token)->putCollaboration($url, $markdown, $yjs);
 
         if ($markdown === null && $yjs === null) {
-            $response->assertStatus(400)->assertJsonPath('error', 'nothing_to_save');
+            $response->assertStatus(400)->assertExactJson(['error' => 'nothing_to_save', 'code' => 'nothing_to_save']);
             $this->assertFalse($storage->fileExists($documentKey));
             $this->assertFalse($storage->fileExists($sidecarKey));
 
@@ -269,7 +269,7 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($this->issueBearerTokenFor('bob'))
             ->putCollaboration('/api/v1/files/collaboration?path='.urlencode(self::ROOM), 'nope')
             ->assertNotFound()
-            ->assertJsonPath('error', 'not_found');
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found']);
     }
 
     public function test_document_room_with_spaces_is_supported(): void
@@ -352,7 +352,7 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->get('/api/v1/files/collaboration?path='.urlencode('/users/alice/docs/photo.png'))
             ->assertBadRequest()
-            ->assertJsonPath('error', 'invalid_document_path');
+            ->assertExactJson(['error' => 'invalid_document_path', 'code' => 'invalid_document_path']);
     }
 
     public function test_a_frame_that_does_not_parse_is_invalid_body(): void
@@ -405,7 +405,7 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->putCollaboration($url, '# over', $atCap."\x00")
             ->assertStatus(413)
-            ->assertJsonPath('error', 'yjs_too_large');
+            ->assertExactJson(['error' => 'yjs_too_large', 'code' => 'yjs_too_large']);
     }
 
     public function test_a_large_yjs_update_round_trips_through_the_endpoint(): void
