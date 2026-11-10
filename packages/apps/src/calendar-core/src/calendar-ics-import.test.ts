@@ -3,6 +3,7 @@ import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import {
   filterIcsFiles,
   icsFileFromList,
+  icsHasOnlyTasks,
   inferCalendarNameFromIcsFileName,
   isIcsFile,
   readIcsFile,
@@ -96,6 +97,7 @@ describe("runCalendarIcsImport", () => {
     expect(importEvents).toHaveBeenCalledWith("BEGIN:VCALENDAR", { calendarId: "default" });
     expect(result.list).toHaveLength(1);
     expect(result.calendarId).toBe("default");
+    expect(result.skippedTasks).toBe(0);
   });
 
   it("creates a calendar then imports", async () => {
@@ -122,5 +124,15 @@ describe("runCalendarIcsImport", () => {
     expect(createCalendar).toHaveBeenCalledWith({ name: "Travel", color: "#22c55e" });
     expect(importEvents).toHaveBeenCalledWith("BEGIN:VCALENDAR", { calendarId: "new-cal" });
     expect(result.createdCalendar?.id).toBe("new-cal");
+  });
+  it("tells a tasks-only file apart", () => {
+    const todo = "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:t\r\nEND:VTODO\r\nEND:VCALENDAR";
+    const mixed = todo.replace(
+      "END:VCALENDAR",
+      "BEGIN:VEVENT\r\nUID:e\r\nEND:VEVENT\r\nEND:VCALENDAR",
+    );
+    expect(icsHasOnlyTasks(todo)).toBe(true);
+    expect(icsHasOnlyTasks(mixed)).toBe(false);
+    expect(icsHasOnlyTasks("BEGIN:VCALENDAR\r\nEND:VCALENDAR")).toBe(false);
   });
 });

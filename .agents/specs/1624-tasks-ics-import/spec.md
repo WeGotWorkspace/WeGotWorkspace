@@ -14,7 +14,7 @@ The code Calendar and Tasks share is generalised, not copied: the UID-group spli
 - Raising the whole-body import limit, or the signal for stored over-cap objects (#931).
 - Showing subtasks or repeating tasks in the Tasks UI. The data is stored, not shown.
 - Export, subscriptions, account imports, drag-and-drop import.
-- Telling Calendar users about VTODOs in a calendar import. That is a separate small PR on the same branch.
+- Telling Calendar users about VTODOs in a calendar import, in the Tasks import PR (#1989). The issue keeps it out of the Tasks import; it lands as its own small PR (#2002) into the same integration branch (see *Calendar follow-up* below).
 
 ## Affected packages
 
@@ -56,3 +56,11 @@ Per group, in order: component cap (`VObjectPayloadGuard::readICalendar`), recur
 - A duplicate import of the same file: every group is an `already_exists` error; status 400 with the list/errors body; the client shows the result step, not a generic failure.
 - Missing `UID` on a VTODO: the splitter seeds a stable id for grouping, but the stored ICS stays as-is, so CalDAV would index an empty UID and a second one would collide. Such a group is an error entry *This task has no UID.* (`bad_request`); the other groups still import.
 - The list in view is preselected when it is writable, shared lists included.
+
+## Calendar follow-up
+
+A separate PR (#2002), after the Tasks import (#1989). Calendar import now tells people about the tasks in their file, using the shared splitter's count:
+
+- `POST /calendars/events/import` returns `skipped: {tasks: int}`, counting VTODO UID groups. The status rule is unchanged.
+- When events were imported and `skipped.tasks > 0`, the success toast adds "N tasks were skipped. Import them in Tasks." (for one: "1 task was skipped. Import it in Tasks.").
+- A file with VTODOs and no VEVENTs still gets 400 from the server. The client checks the file text before it creates a calendar or calls the API, and shows "This file has tasks, not events. Import it in Tasks." in the dialog.

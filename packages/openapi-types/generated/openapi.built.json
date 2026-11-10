@@ -9429,7 +9429,8 @@
                 "type": "object",
                 "required": [
                     "list",
-                    "errors"
+                    "errors",
+                    "skipped"
                 ],
                 "properties": {
                     "list": {
@@ -9443,10 +9444,24 @@
                         "items": {
                             "$ref": "#/components/schemas/CalendarEventImportError"
                         }
+                    },
+                    "skipped": {
+                        "type": "object",
+                        "required": [
+                            "tasks"
+                        ],
+                        "properties": {
+                            "tasks": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "VTODOs in the file (one per UID) that were not imported. Import them in Tasks."
+                            }
+                        },
+                        "additionalProperties": false
                     }
                 },
                 "additionalProperties": false,
-                "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list."
+                "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. skipped counts components the import left out."
             },
             "MeetRoomCode": {
                 "type": "string",
