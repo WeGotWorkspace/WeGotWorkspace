@@ -2,6 +2,7 @@ import {
   buildDocxImportReport,
   type DocxImportReport,
 } from "@/docs-core/src/docx-import/docx-import-report";
+import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
 import { scanDocx, type DocxRefusal } from "@/docs-core/src/docx-import/docx-scan";
 import type { DocxConversion } from "@/docs-core/src/docx-import/docx-to-markdown";
 import { parentAndName } from "@/lib/files/api-path";
@@ -50,13 +51,6 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/bmp": "bmp",
 };
 
-/** `Report.docx` → `Report.md`. */
-export function markdownNameFor(sourceName: string): string {
-  const dot = sourceName.lastIndexOf(".");
-  const base = (dot > 0 ? sourceName.slice(0, dot) : sourceName).trim() || "Untitled";
-  return `${base}.md`;
-}
-
 function utf8Length(text: string): number {
   return new TextEncoder().encode(text).byteLength;
 }
@@ -70,7 +64,7 @@ function dropImage(markdown: string, placeholder: string): string {
 }
 
 async function uploadImages(
-  io: SaveAsMarkdownIo,
+  io: Pick<SaveAsMarkdownIo, "uploadImage">,
   docPath: string,
   conversion: DocxConversion,
 ): Promise<{ markdown: string; failed: number }> {
@@ -99,18 +93,25 @@ async function uploadImages(
   return { markdown, failed };
 }
 
+type NewDocTarget = {
+  /** The Word file's name, for the report. */
+  sourceName: string;
+  parentPath: string;
+  /** Wanted name; on a clash both are kept and the Doc gets a free name. */
+  docName: string;
+};
+
 /**
- * Converts the Word file at `sourcePath` into a new `.md` next to it.
- * Every refusal is decided before anything is written. Order after that:
- * create the empty Doc, upload images, write the Markdown once.
+ * Turns Word bytes into a new `.md` Doc. Every refusal is decided before
+ * anything is written. Order after that: create the empty Doc, upload images,
+ * write the Markdown once.
  */
-export async function saveDocxAsMarkdown(
-  sourcePath: string,
-  io: SaveAsMarkdownIo,
+async function convertDocxIntoNewDoc(
+  bytes: Uint8Array,
+  target: NewDocTarget,
+  io: Omit<SaveAsMarkdownIo, "readSource">,
   convert: Convert,
 ): Promise<SaveAsMarkdownResult> {
-  const { destination: parentPath, from: sourceName } = parentAndName(sourcePath);
-  const bytes = await io.readSource(sourcePath);
   if (bytes.byteLength > DOCX_MAX_SOURCE_BYTES) throw new DocxSaveRefusedError("too-large");
 
   const scan = scanDocx(bytes);
@@ -126,14 +127,50 @@ export async function saveDocxAsMarkdown(
     throw new DocxSaveRefusedError("doc-too-large");
   }
 
-  const name = await io.createEmptyDoc(parentPath, markdownNameFor(sourceName));
-  const docPath = `${parentPath.replace(/\/+$/, "")}/${name}`;
+  const parentPath = target.parentPath.replace(/\/+$/, "");
+  const name = await io.createEmptyDoc(parentPath, target.docName);
+  const docPath = `${parentPath}/${name}`;
   try {
     const { markdown, failed } = await uploadImages(io, docPath, conversion);
     await io.writeDoc(docPath, markdown);
-    return { docPath, report: buildDocxImportReport(sourceName, scan.counts, failed) };
+    return { docPath, report: buildDocxImportReport(target.sourceName, scan.counts, failed) };
   } catch (error) {
     await io.removeDoc(docPath).catch(() => undefined);
     throw error;
   }
+}
+
+/** Save as Markdown (#1983): the Word file at `sourcePath` becomes a `.md` next to it. */
+export async function saveDocxAsMarkdown(
+  sourcePath: string,
+  io: SaveAsMarkdownIo,
+  convert: Convert,
+): Promise<SaveAsMarkdownResult> {
+  const { destination: parentPath, from: sourceName } = parentAndName(sourcePath);
+  const bytes = await io.readSource(sourcePath);
+  return convertDocxIntoNewDoc(
+    bytes,
+    { sourceName, parentPath, docName: markdownNameFor(sourceName) },
+    io,
+    convert,
+  );
+}
+
+/** Import Word file (#1619): a picked file becomes the Doc at `docPath`. */
+export async function importDocxFile(
+  file: Pick<File, "name" | "size" | "arrayBuffer">,
+  docPath: string,
+  io: Omit<SaveAsMarkdownIo, "readSource">,
+  convert: Convert,
+): Promise<SaveAsMarkdownResult> {
+  // Refuse before reading a huge file into memory.
+  if (file.size > DOCX_MAX_SOURCE_BYTES) throw new DocxSaveRefusedError("too-large");
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await file.arrayBuffer());
+  } catch {
+    throw new DocxSaveRefusedError("unreadable");
+  }
+  const { destination: parentPath, from: docName } = parentAndName(docPath);
+  return convertDocxIntoNewDoc(bytes, { sourceName: file.name, parentPath, docName }, io, convert);
 }

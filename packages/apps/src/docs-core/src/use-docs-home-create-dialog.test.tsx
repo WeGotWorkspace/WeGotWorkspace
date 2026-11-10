@@ -154,4 +154,79 @@ describe("useDocsHomeCreateDialog", () => {
     });
     expect(missing.result.current.createDialogOpen).toBe(false);
   });
+
+  it("names an imported Word file after it and hands the file over on confirm", async () => {
+    const onCreateDocument = vi.fn();
+    const onImportWordFile = vi.fn();
+    const listDirectory = vi.fn(async () => ({
+      directory: { files: [{ name: "Board letter.md" }] },
+    })) as unknown as DriveAPIOperations["listDirectory"];
+    const file = new File(["x"], "Board letter.docx");
+
+    const { result } = renderHook(() =>
+      useDocsHomeCreateDialog({
+        username: "alice",
+        onCreateDocument,
+        onImportWordFile,
+        browsePathPrefix: undefined,
+        listingOperations: listing(listDirectory),
+        files: [],
+        groupRootSlugs: [],
+      }),
+    );
+
+    act(() => {
+      result.current.handleImportWordFile(file);
+    });
+    await waitFor(() => {
+      expect(result.current.createDialogOpen).toBe(true);
+    });
+    expect(result.current.createDialogDefaultName).toBe("Board letter 2.md");
+    expect(result.current.createDialogImportSourceName).toBe("Board letter.docx");
+
+    act(() => {
+      result.current.confirmCreateDocument("Board letter 2.md", "My Drive");
+    });
+    expect(onImportWordFile).toHaveBeenCalledWith(file, "/users/alice/Board letter 2.md");
+    expect(onCreateDocument).not.toHaveBeenCalled();
+    expect(result.current.createDialogImportSourceName).toBeNull();
+  });
+
+  it("forgets the Word file when the import dialog is closed", async () => {
+    const onCreateDocument = vi.fn();
+    const onImportWordFile = vi.fn();
+    const { result } = renderHook(() =>
+      useDocsHomeCreateDialog({
+        username: "alice",
+        onCreateDocument,
+        onImportWordFile,
+        browsePathPrefix: undefined,
+        listingOperations: undefined,
+        files: [],
+        groupRootSlugs: [],
+      }),
+    );
+
+    act(() => {
+      result.current.handleImportWordFile(new File(["x"], "Plan.docx"));
+    });
+    await waitFor(() => {
+      expect(result.current.createDialogOpen).toBe(true);
+    });
+    act(() => {
+      result.current.closeCreateDialog();
+    });
+    act(() => {
+      result.current.handleCreateDocument();
+    });
+    await waitFor(() => {
+      expect(result.current.createDialogOpen).toBe(true);
+    });
+    expect(result.current.createDialogDefaultName).toBe("Untitled.md");
+    act(() => {
+      result.current.confirmCreateDocument("Untitled.md", "My Drive");
+    });
+    expect(onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled.md");
+    expect(onImportWordFile).not.toHaveBeenCalled();
+  });
 });

@@ -8,13 +8,17 @@ import {
   resolveNewDocumentName,
 } from "@/docs-core/src/docs-home-drives";
 import { docsHomeCreateDocumentApiPath } from "@/docs-core/src/docs-home-workspace-model";
+import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
 
 export type DocsHomeCreateDialogState = {
   createDialogOpen: boolean;
   createDialogDefaultName: string;
   createDialogBrowsePath: string;
   createDialogView: ViewKey;
+  /** Set while the dialog names a Doc imported from this Word file (#1619). */
+  createDialogImportSourceName: string | null;
   handleCreateDocument: () => void;
+  handleImportWordFile: (file: File) => void;
   closeCreateDialog: () => void;
   confirmCreateDocument: (name: string, destinationPath: string) => void;
 };
@@ -22,6 +26,7 @@ export type DocsHomeCreateDialogState = {
 type UseDocsHomeCreateDialogArgs = {
   username: string;
   onCreateDocument?: (apiPath: string) => void;
+  onImportWordFile?: (file: File, apiPath: string) => void;
   browsePathPrefix: string | undefined;
   listingOperations: Pick<DriveAPIOperations, "listDirectory"> | undefined;
   files: readonly DriveFile[];
@@ -32,6 +37,7 @@ type UseDocsHomeCreateDialogArgs = {
 export function useDocsHomeCreateDialog({
   username,
   onCreateDocument,
+  onImportWordFile,
   browsePathPrefix,
   listingOperations,
   files,
@@ -46,27 +52,45 @@ export function useDocsHomeCreateDialog({
     [createDialogBrowsePath],
   );
 
+  const [importFile, setImportFile] = useState<File | null>(null);
+
+  const openDialog = useCallback(
+    (file: File | null) => {
+      // Freeze the sidebar drive at click time (path key stays "My Drive" / "Groups/…").
+      const browsePath = resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null);
+      setCreateDialogBrowsePath(browsePath);
+      setImportFile(file);
+      const apiRoot = apiPathFromUiPath(browsePath, username, groupRootNames);
+      const base = file ? markdownNameFor(file.name).replace(/\.md$/, "") : undefined;
+      void (async () => {
+        const name = await resolveNewDocumentName(listingOperations, apiRoot, files, base);
+        setCreateDialogDefaultName(name);
+        setCreateDialogOpen(true);
+      })();
+    },
+    [browsePathPrefix, files, groupRootNames, listingOperations, username],
+  );
+
   const handleCreateDocument = useCallback(() => {
-    const handle = username.trim();
-    if (!handle || !onCreateDocument) return;
-    // Freeze the sidebar drive at click time (path key stays "My Drive" / "Groups/…").
-    const browsePath = resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null);
-    setCreateDialogBrowsePath(browsePath);
-    const apiRoot = apiPathFromUiPath(browsePath, username, groupRootNames);
-    void (async () => {
-      const name = await resolveNewDocumentName(listingOperations, apiRoot, files);
-      setCreateDialogDefaultName(name);
-      setCreateDialogOpen(true);
-    })();
-  }, [browsePathPrefix, files, groupRootNames, listingOperations, onCreateDocument, username]);
+    if (!username.trim() || !onCreateDocument) return;
+    openDialog(null);
+  }, [onCreateDocument, openDialog, username]);
+
+  const handleImportWordFile = useCallback(
+    (file: File) => {
+      if (!username.trim() || !onImportWordFile) return;
+      openDialog(file);
+    },
+    [onImportWordFile, openDialog, username],
+  );
 
   const closeCreateDialog = useCallback(() => {
     setCreateDialogOpen(false);
+    setImportFile(null);
   }, []);
 
   const confirmCreateDocument = useCallback(
     (name: string, destinationPath: string) => {
-      if (!onCreateDocument) return;
       const apiPath = docsHomeCreateDocumentApiPath(
         name,
         destinationPath,
@@ -74,10 +98,18 @@ export function useDocsHomeCreateDialog({
         groupRootNames,
       );
       if (!apiPath) return;
+      if (importFile) {
+        if (!onImportWordFile) return;
+        setCreateDialogOpen(false);
+        setImportFile(null);
+        onImportWordFile(importFile, apiPath);
+        return;
+      }
+      if (!onCreateDocument) return;
       setCreateDialogOpen(false);
       onCreateDocument(apiPath);
     },
-    [groupRootNames, onCreateDocument, username],
+    [groupRootNames, importFile, onCreateDocument, onImportWordFile, username],
   );
 
   return {
@@ -85,7 +117,9 @@ export function useDocsHomeCreateDialog({
     createDialogDefaultName,
     createDialogBrowsePath,
     createDialogView,
+    createDialogImportSourceName: importFile?.name ?? null,
     handleCreateDocument,
+    handleImportWordFile,
     closeCreateDialog,
     confirmCreateDocument,
   };

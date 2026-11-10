@@ -1,14 +1,12 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { FileDown } from "lucide-react";
 import { GoogleDocLinkDialog } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { docxImportLabels as labels } from "@/docs-core/src/docx-import/docx-import-labels";
-import { setPendingDocxImportReport } from "@/docs-core/src/docx-import/docx-import-report-store";
 import { saveAsMarkdownSourceKind } from "@/docs-core/src/docx-import/save-as-markdown-source";
+import { useDocxConversionRunner } from "@/docs-core/src/docx-import/use-docx-conversion-runner";
 import type { DriveFileMenuAction } from "@/drive-core/src/drive-file-actions";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { startDocWithDefaultPageSetup } from "@/lib/docs-page-setup";
 
 export const SAVE_AS_MARKDOWN_ACTION_ID = "save-as-markdown";
 
@@ -34,37 +32,17 @@ export function useSaveAsMarkdownAction({
   dialogs: ReactNode;
 } {
   const { online } = useConnectivity();
-  const { show, dismiss, showError } = useAppToast();
   const [googleLinkName, setGoogleLinkName] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const runningRef = useRef(false);
+  const { running, runConversion } = useDocxConversionRunner(onOpenDocsFile);
 
   const run = useCallback(
-    async (apiPath: string, name: string) => {
-      if (runningRef.current) return;
-      runningRef.current = true;
-      setRunning(true);
-      const toastId = show(labels.saving(name), { duration: Infinity });
-      try {
+    (apiPath: string, name: string) =>
+      runConversion({ progress: labels.saving(name), failed: labels.failed(name) }, async () => {
         const { runSaveDocxAsMarkdown } =
           await import("@/docs-core/src/docx-import/load-docx-converter");
-        const { docPath, report } = await runSaveDocxAsMarkdown(apiPath);
-        setPendingDocxImportReport(docPath, report);
-        startDocWithDefaultPageSetup(docPath);
-        onOpenDocsFile?.(docPath);
-      } catch (error) {
-        const refusal = (error as { refusal?: keyof typeof labels.refusals } | null)?.refusal;
-        showError(labels.failed(name), {
-          description: refusal ? labels.refusals[refusal] : undefined,
-          duration: 10_000,
-        });
-      } finally {
-        dismiss(toastId);
-        runningRef.current = false;
-        setRunning(false);
-      }
-    },
-    [dismiss, onOpenDocsFile, show, showError],
+        return runSaveDocxAsMarkdown(apiPath);
+      }),
+    [runConversion],
   );
 
   const actionsFor = useCallback(

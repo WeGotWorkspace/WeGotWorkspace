@@ -1,11 +1,13 @@
 import { strToU8, zipSync } from "fflate";
 import { readDocxFixture } from "@/docs-core/src/docx-import/__tests__/fixtures/docx-fixtures";
 import { describe, expect, it, vi } from "vitest";
+import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
 import type { DocxConversion } from "@/docs-core/src/docx-import/docx-to-markdown";
 import {
   DOC_MAX_MARKDOWN_BYTES,
+  DOCX_MAX_SOURCE_BYTES,
   DocxSaveRefusedError,
-  markdownNameFor,
+  importDocxFile,
   saveDocxAsMarkdown,
   type SaveAsMarkdownIo,
 } from "@/docs-core/src/docx-import/save-docx-as-markdown";
@@ -146,6 +148,57 @@ describe("saveDocxAsMarkdown", () => {
       saveDocxAsMarkdown("/users/ann/x.docx", io, async () => ({ markdown: "hi", images: [] })),
     ).rejects.toThrow("network");
     expect(calls.at(-1)).toBe("remove /users/ann/x (1).md");
+  });
+});
+
+describe("importDocxFile", () => {
+  const picked = (bytes: Uint8Array, size = bytes.byteLength) => ({
+    name: "Letter.docx",
+    size,
+    arrayBuffer: vi.fn(async () => bytes.slice().buffer),
+  });
+
+  it("writes the picked file into the Doc at the chosen path", async () => {
+    const { io, calls, written } = fakeIo(reportDocx);
+    const result = await importDocxFile(
+      picked(reportDocx),
+      "/users/ann/Docs/Board letter.md",
+      io,
+      async () => ({
+        markdown: "# Letter\n",
+        images: [],
+      }),
+    );
+    expect(calls).toEqual([
+      "create /users/ann/Docs Board letter.md",
+      "write /users/ann/Docs/Board letter (1).md",
+    ]);
+    expect(io.readSource).not.toHaveBeenCalled();
+    expect(written[result.docPath]).toBe("# Letter\n");
+    expect(result.report.sourceName).toBe("Letter.docx");
+  });
+
+  it("refuses a huge file before reading it", async () => {
+    const { io } = fakeIo(reportDocx);
+    const file = picked(reportDocx, DOCX_MAX_SOURCE_BYTES + 1);
+    await expect(importDocxFile(file, "/users/ann/x.md", io, vi.fn())).rejects.toMatchObject({
+      refusal: "too-large",
+    });
+    expect(file.arrayBuffer).not.toHaveBeenCalled();
+    expect(io.createEmptyDoc).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file the browser cannot read", async () => {
+    const { io } = fakeIo(reportDocx);
+    const file = {
+      name: "Gone.docx",
+      size: 10,
+      arrayBuffer: async () => Promise.reject(new Error("NotReadableError")),
+    };
+    await expect(importDocxFile(file, "/users/ann/x.md", io, vi.fn())).rejects.toMatchObject({
+      refusal: "unreadable",
+    });
+    expect(io.createEmptyDoc).not.toHaveBeenCalled();
   });
 });
 
