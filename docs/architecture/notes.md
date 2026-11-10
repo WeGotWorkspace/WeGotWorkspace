@@ -265,7 +265,7 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 - **Principal:** `principals/users/{username}`; group principals `notes-{groupSlug}`.
 - **ACL:** `calendarinstances.access` (1=owner, 2=read, 3=read-write); CalDAV sharing plugin.
 - **REST paths:** `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{uid}`, `/changes` (CRUD + fallback inbound). Live sync is `POST /api/v1/jmap`.
-- **Default notebook:** `notes-general` (`General`) per user and per group principal. Personal default and provisioned group homes (e.g. Administrators / `group-administrators`) cannot be deleted — UI hides delete like calendars/tasks.
+- **Default notebook:** `notes-general` (`General`) per user and per group principal. Personal default and provisioned group homes (e.g. Team / `group-team`) cannot be deleted — UI hides delete like calendars/tasks.
 - **Synctoken / changes:** Per-collection `calendarchanges` + `synctoken` — same as Calendar/Tasks. Moves must write dual changelog rows (Decision 12).
 
 ---

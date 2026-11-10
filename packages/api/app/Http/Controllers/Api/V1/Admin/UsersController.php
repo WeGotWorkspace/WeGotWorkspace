@@ -10,7 +10,6 @@ use App\Http\Requests\Api\V1\AdminUserCreateRequest;
 use App\Http\Requests\Api\V1\AdminUserUpdateRequest;
 use App\Services\Admin\AdminUserProvisionerService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 final class UsersController
 {
@@ -18,8 +17,6 @@ final class UsersController
 
     public function store(AdminUserCreateRequest $request): JsonResponse
     {
-        /** @var array{username: string} $principal */
-        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $payload = $request->payload();
 
         try {
@@ -29,7 +26,7 @@ final class UsersController
                 $payload['displayName'],
                 $payload['email'],
                 $payload['groups'],
-                $principal['username'],
+                $payload['isAdmin'],
             );
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
@@ -52,7 +49,7 @@ final class UsersController
         return response()->json(['ok' => true]);
     }
 
-    public function destroy(Request $request, string $username): JsonResponse
+    public function destroy(string $username): JsonResponse
     {
         try {
             $this->users->delete($username);

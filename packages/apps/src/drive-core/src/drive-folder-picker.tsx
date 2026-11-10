@@ -19,6 +19,7 @@ import {
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import {
   apiPathFromUiPath,
+  DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT,
   DRIVE_TRASH_UI_PATH,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
@@ -39,8 +40,6 @@ import { DestinationPickerFrame } from "@/destination-picker/src/destination-pic
 import { DestinationPickerList } from "@/destination-picker/src/destination-picker-list";
 import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
 import "@/drive-core/src/drive-folder-picker.css";
-
-const GROUPS_ROOT = "Groups";
 
 const PICKER_NOOP = () => {};
 const PICKER_DRAG_HANDLERS = {
@@ -76,7 +75,7 @@ function isTrashPickerPath(path: string) {
 
 function sharedDriveRootLabel(path: string, labels: DriveUILabels): string {
   const segment = path.split("/").pop();
-  return segment && segment !== "Groups" ? segment : labels.sidebarSharedDrives;
+  return segment && segment !== GROUPS_ROOT ? segment : labels.teamsRoot;
 }
 
 function resolvePickerRootTitle(

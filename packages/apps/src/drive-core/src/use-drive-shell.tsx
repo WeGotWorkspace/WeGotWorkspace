@@ -18,6 +18,7 @@ import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
+  driveGroupUiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
@@ -152,13 +153,13 @@ export function useDriveShell({
   const groupRootNamesRef = useRef(groupRootNames);
   groupRootNamesRef.current = groupRootNames;
   const sidebarGroupPaths = useMemo(
-    () => labeledGroupRoots.map((root) => `Groups/${root.slug}`),
+    () => labeledGroupRoots.map((root) => driveGroupUiPath(root.slug)),
     [labeledGroupRoots],
   );
   const sidebarGroupRoots = useMemo(
     () =>
       labeledGroupRoots.map((root) => ({
-        path: `Groups/${root.slug}`,
+        path: driveGroupUiPath(root.slug),
         label: root.label,
       })),
     [labeledGroupRoots],

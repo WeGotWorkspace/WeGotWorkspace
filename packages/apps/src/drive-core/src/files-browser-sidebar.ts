@@ -16,6 +16,8 @@ export const filesBrowserSidebarLabels = {
   uploads: "Uploads",
   trash: "Trash",
   drivesSection: "My Drives",
+  /** Root label for Team drives (UI path key remains `"Groups"`). */
+  teamsRoot: "Teams",
   /** Personal drive row under My Drives (UI path key remains `"My Drive"`). */
   personalDrive: "Personal",
   /** Next page of a long listing loading at the scroll end (All Docs, All Files). */

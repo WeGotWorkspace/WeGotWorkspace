@@ -1,8 +1,7 @@
 import type { PathBreadcrumbItem } from "@/path-breadcrumb/src/path-breadcrumb";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { ViewKey } from "@/drive-core/src/drive-models";
-
-const GROUPS_ROOT = "Groups";
+import { DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT } from "@/drive-core/src/drive-path-utils";
 
 /** Virtual root in the move-to folder picker (lists My Drive and shared drives). */
 export const DRIVE_FOLDER_PICKER_ROOT = "";
@@ -17,10 +16,10 @@ type DriveViewBreadcrumbLabels = Pick<
   | "sidebarHome"
   | "sidebarMyDrive"
   | "sidebarRecent"
-  | "sidebarSharedDrives"
   | "sidebarSharedWithMe"
   | "sidebarStarred"
   | "sidebarUploads"
+  | "teamsRoot"
 >;
 
 /** Breadcrumbs of any Drive view. A view without folders gets its own title. */
@@ -43,12 +42,12 @@ export function buildDriveViewBreadcrumbs(
 
 export function buildDriveFolderBreadcrumbs(
   viewPath: string,
-  labels: Pick<DriveUILabels, "sidebarMyDrive" | "sidebarSharedDrives">,
+  labels: Pick<DriveUILabels, "sidebarMyDrive" | "teamsRoot">,
   /** Optional UI-path → display label (Personal / principal group names). */
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
   if (viewPath === GROUPS_ROOT) {
-    return [{ label: labels.sidebarSharedDrives, path: null }];
+    return [{ label: labels.teamsRoot, path: null }];
   }
 
   if (viewPath.startsWith(`${GROUPS_ROOT}/`)) {
@@ -84,7 +83,7 @@ export function buildDriveFolderBreadcrumbs(
 
 export function buildDriveFolderPickerBreadcrumbs(
   browsePath: string,
-  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive">,
+  labels: Pick<DriveUILabels, "folderPickerDrivesRoot" | "sidebarMyDrive" | "teamsRoot">,
   /** Optional UI-path → display label (e.g. Docs "Personal" / principal group names). */
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
@@ -113,6 +112,10 @@ export function buildDriveFolderPickerBreadcrumbs(
         path: `My Drive/${relativeParts.slice(0, index + 1).join("/")}`,
       })),
     ];
+  }
+
+  if (browsePath === GROUPS_ROOT) {
+    return [drivesRoot, { label: labels.teamsRoot, path: GROUPS_ROOT }];
   }
 
   if (browsePath.startsWith(`${GROUPS_ROOT}/`)) {
@@ -144,7 +147,7 @@ export function buildDriveFolderPickerBreadcrumbs(
  */
 export function driveItemLocationLabel(
   file: { parent: string; location?: string },
-  labels: Pick<DriveUILabels, "sidebarMyDrive" | "sidebarSharedDrives">,
+  labels: Pick<DriveUILabels, "sidebarMyDrive" | "teamsRoot">,
   rootLabels?: Readonly<Record<string, string>>,
 ): string {
   const inDriveTree =
