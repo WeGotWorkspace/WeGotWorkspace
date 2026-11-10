@@ -138,6 +138,7 @@ export function driveFileFromEntry(
     kind,
     size,
     apiPath,
+    ...(entry.nodeId ? { nodeId: entry.nodeId } : {}),
     location,
     mayShare: entry.myRights?.mayShare,
     mayManageStructure: entry.myRights?.mayManageStructure,

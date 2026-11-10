@@ -128,8 +128,9 @@ export const SharedWithMe: Story = {
 
     const cell = await canvas.findByText("Shared Notes.md");
     await userEvent.dblClick(cell);
+    // A share listing names no FileNode id: Docs opens the row by path (#1976).
     await waitFor(() =>
-      expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md"),
+      expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md", undefined),
     );
   },
 };

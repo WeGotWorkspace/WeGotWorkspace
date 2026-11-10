@@ -2,9 +2,11 @@ import { expect, test, type Page } from "./helpers/live-test";
 import {
   appendToActiveDocBody,
   blockReachabilityAndApi,
+  docsHomeRow,
   docTokenOnServer,
   docsUrlForFile,
   expectEditorContains,
+  gotoDocsHome,
   loginToDocs,
   myDriveDocSearchPath,
   restoreNetwork,
@@ -100,6 +102,114 @@ test.describe("Docs open by id (live app)", () => {
     await expect(second).toHaveTitle(/moved/, { timeout: 30_000 });
     await expectEditorContains(second, `Tab ${stamp}`);
     await second.close();
+  });
+
+  test("a Docs home row opens straight by id, without a path lookup", async ({ page }) => {
+    const stamp = Date.now();
+    const fileName = `e2e-row-${stamp}.md`;
+    const apiPath = `/${myDriveDocSearchPath(fileName)}`;
+    await loginToDocs(page);
+    await seedDocAtPath(apiPath, `# Row ${stamp}\n\nOpened from the list.\n`);
+    await gotoDocsHome(page);
+    const row = docsHomeRow(page, fileName);
+    await expect(row).toBeVisible({ timeout: 30_000 });
+
+    const nodeLookups: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/api/v1/files/node")) {
+        nodeLookups.push(request.url());
+      }
+    });
+    // Record every route URL the SPA sets and whether the wait screen ever shows (#1976).
+    await page.evaluate((waitSelector) => {
+      const w = window as unknown as { __docsUrls: string[]; __sawOpening: boolean };
+      w.__docsUrls = [];
+      w.__sawOpening = false;
+      for (const method of ["pushState", "replaceState"] as const) {
+        const original = history[method].bind(history);
+        history[method] = (data, unused, url) => {
+          if (url) w.__docsUrls.push(String(url));
+          original(data, unused, url);
+        };
+      }
+      // The "Opening document…" frame; its text stays hidden for the first 400 ms.
+      new MutationObserver(() => {
+        if (document.querySelector(waitSelector)) w.__sawOpening = true;
+      }).observe(document.body, { childList: true, subtree: true });
+    }, ".docs-route-status--loading");
+
+    await row.dblclick();
+
+    await expect(page).toHaveURL(ID_URL, { timeout: 30_000 });
+    await expectEditorContains(page, `Row ${stamp}`);
+    const { urls, sawOpening } = await page.evaluate(() => {
+      const w = window as unknown as { __docsUrls: string[]; __sawOpening: boolean };
+      return { urls: w.__docsUrls, sawOpening: w.__sawOpening };
+    });
+    const docsUrls = urls.filter((url) => url.includes("/docs?"));
+    expect(docsUrls[0]).toMatch(ID_URL);
+    expect(docsUrls.some((url) => url.includes("file="))).toBe(false);
+    expect(sawOpening).toBe(false);
+    expect(nodeLookups).toEqual([]);
+  });
+
+  test("a row still opens by id after another tab refreshes the list from the cache", async ({
+    page,
+    context,
+  }) => {
+    const stamp = Date.now();
+    const fileName = `e2e-refresh-${stamp}.md`;
+    const laterName = `e2e-refresh-later-${stamp}.md`;
+    await loginToDocs(page);
+    await seedDocAtPath(`/${myDriveDocSearchPath(fileName)}`, `# Refresh ${stamp}\n\nBody.\n`);
+    await gotoDocsHome(page);
+    await expect(docsHomeRow(page, fileName)).toBeVisible({ timeout: 30_000 });
+
+    // Tab B: wait until its live listings (rows with ids) have landed and no
+    // other listing request followed for a while.
+    const tabB = await context.newPage();
+    const isSearch = (url: string) => new URL(url).pathname.endsWith("/api/v1/search/results");
+    let searchesInFlight = 0;
+    let lastSearchAt = 0;
+    tabB.on("request", (request) => {
+      if (!isSearch(request.url())) return;
+      searchesInFlight += 1;
+      lastSearchAt = Date.now();
+    });
+    for (const event of ["requestfinished", "requestfailed"] as const) {
+      tabB.on(event, (request) => {
+        if (!isSearch(request.url())) return;
+        searchesInFlight -= 1;
+        lastSearchAt = Date.now();
+      });
+    }
+    await gotoDocsHome(tabB);
+    await expect(docsHomeRow(tabB, fileName)).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(() => lastSearchAt > 0 && searchesInFlight === 0 && Date.now() - lastSearchAt > 2_000, {
+        timeout: 30_000,
+      })
+      .toBe(true);
+
+    // Tab A lists a new Doc, rewrites the cache and tells tab B, whose list
+    // now comes from cached rows. Cached rows carry no id (#1976).
+    await seedDocAtPath(`/${myDriveDocSearchPath(laterName)}`, `# Later ${stamp}\n`);
+    await page.reload();
+    await expect(docsHomeRow(page, laterName)).toBeVisible({ timeout: 30_000 });
+    await expect(docsHomeRow(tabB, laterName)).toBeVisible({ timeout: 30_000 });
+
+    const nodeLookups: string[] = [];
+    tabB.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("/api/v1/files/node")) {
+        nodeLookups.push(request.url());
+      }
+    });
+    await docsHomeRow(tabB, fileName).dblclick();
+
+    await expect(tabB).toHaveURL(ID_URL, { timeout: 30_000 });
+    await expectEditorContains(tabB, `Refresh ${stamp}`);
+    expect(nodeLookups).toEqual([]);
+    await tabB.close();
   });
 
   test("an unknown id shows not found with a way back", async ({ page }) => {
