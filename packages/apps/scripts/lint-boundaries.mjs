@@ -73,6 +73,16 @@ export function summarize(edges) {
         b.files.size - a.files.size || a.from.localeCompare(b.from) || a.to.localeCompare(b.to),
     );
   const files = new Set(violations.flatMap((edge) => [...edge.files]));
+  // Distinct importing files per layer pair: one file importing three app
+  // packages counts once under "base -> core".
+  /** @type {Map<string, Set<string>>} */
+  const filesByLayers = new Map();
+  for (const edge of violations) {
+    const key = `${edge.fromLayer} -> ${edge.toLayer}`;
+    const set = filesByLayers.get(key) ?? new Set();
+    for (const file of edge.files) set.add(file);
+    filesByLayers.set(key, set);
+  }
   // #1638 counts cycles that involve an app package. `lib` is left out: every
   // `lib` → higher import is already an edge above.
   const twoWay = [];
@@ -88,6 +98,9 @@ export function summarize(edges) {
   return {
     warnings: violations.reduce((sum, edge) => sum + edge.lines, 0),
     files: files.size,
+    layerPairs: [...filesByLayers]
+      .map(([layers, set]) => ({ layers, files: set.size }))
+      .sort((a, b) => b.files - a.files || a.layers.localeCompare(b.layers)),
     edges: violations.map((edge) => ({
       from: edge.from,
       to: edge.to,
@@ -104,6 +117,11 @@ export function summarize(edges) {
 export function formatSummary(summary) {
   const out = [];
   out.push(`Import-direction warnings: ${summary.warnings} import lines in ${summary.files} files`);
+  out.push("");
+  out.push("files  layers (distinct importing files)");
+  for (const pair of summary.layerPairs) {
+    out.push(`${String(pair.files).padStart(5)}  ${pair.layers}`);
+  }
   out.push("");
   out.push("files  lines  edge  (layers, kind)");
   for (const edge of summary.edges) {
