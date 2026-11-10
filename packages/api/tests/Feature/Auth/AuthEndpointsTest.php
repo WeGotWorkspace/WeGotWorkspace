@@ -6,13 +6,13 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\RefreshCookie;
 use App\Services\Auth\RefreshTokenRepository;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Cookie;
+use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class AuthEndpointsTest extends WgwDatabaseTestCase
@@ -170,10 +170,11 @@ final class AuthEndpointsTest extends WgwDatabaseTestCase
 
     public function test_admin_role_when_in_administrators_group(): void
     {
-        $group = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $group = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $alicePrincipal = Principal::forUsername('alice');
         $this->assertNotNull($alicePrincipal);
         $this->addPrincipalToGroup($group, $alicePrincipal);
+        $this->grantAdminRole($alicePrincipal);
 
         $response = $this->postJson('/api/v1/auth/token', [
             'username' => 'alice',

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import {
@@ -21,22 +21,34 @@ import {
 } from "@/ui/dialog";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
 import { Switch } from "@/ui/switch";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
+
+type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
 
 type UserDialogProps = {
   open: boolean;
   title: string;
-  initial?: { username: string; displayName: string; email: string };
+  initial?: { username: string; displayName: string; email: string; isAdmin: boolean };
+  /** The signed-in admin edits their own account: the admin switch stays on. */
+  isSelf?: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: { username: string; displayName: string; email: string }) => void;
+  onSubmit: (payload: UserDialogPayload) => void;
   onDelete?: () => void | Promise<void>;
 };
+
+function adminRoleHint(lockedOn: boolean): string {
+  return lockedOn
+    ? "You cannot remove your own administrator access."
+    : "Can manage users, Teams and settings.";
+}
 
 export function UserDialog({
   open,
   title,
   initial,
+  isSelf = false,
   onOpenChange,
   onSubmit,
   onDelete,
@@ -44,6 +56,10 @@ export function UserDialog({
   const [username, setUsername] = useState(initial?.username ?? "");
   const [displayName, setDisplayName] = useState(initial?.displayName ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
+  const [isAdmin, setIsAdmin] = useState(initial?.isAdmin ?? false);
+  const adminSwitchId = useId();
+  const adminHintId = useId();
+  const adminLockedOn = isSelf && (initial?.isAdmin ?? false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const wasOpenRef = useRef(false);
   useEffect(() => {
@@ -57,7 +73,8 @@ export function UserDialog({
     setUsername(initial?.username ?? "");
     setDisplayName(initial?.displayName ?? "");
     setEmail(initial?.email ?? "");
-  }, [open, initial?.username, initial?.displayName, initial?.email]);
+    setIsAdmin(initial?.isAdmin ?? false);
+  }, [open, initial?.username, initial?.displayName, initial?.email, initial?.isAdmin]);
 
   const canDelete = Boolean(initial && onDelete);
 
@@ -98,6 +115,21 @@ export function UserDialog({
                 onChange={(event) => setEmail(event.currentTarget.value)}
               />
             </FormField>
+            <div className="admin-user-dialog__role-row">
+              <div className="admin-user-dialog__role-text">
+                <Label htmlFor={adminSwitchId}>Administrator</Label>
+                <p id={adminHintId} className="admin-user-dialog__role-hint">
+                  {adminRoleHint(adminLockedOn)}
+                </p>
+              </div>
+              <Switch
+                id={adminSwitchId}
+                checked={isAdmin}
+                disabled={adminLockedOn}
+                aria-describedby={adminHintId}
+                onCheckedChange={(next) => setIsAdmin(next === true)}
+              />
+            </div>
           </div>
           <DialogFooter className="admin-user-dialog__footer">
             {canDelete ? (
@@ -117,7 +149,7 @@ export function UserDialog({
                 Cancel
               </Button>
               <Button
-                onClick={() => onSubmit({ username, displayName, email })}
+                onClick={() => onSubmit({ username, displayName, email, isAdmin })}
                 disabled={!username.trim() || !displayName.trim() || !email.trim()}
               >
                 Save
@@ -235,7 +267,6 @@ type GroupDialogProps = {
   title: string;
   initial?: { id: string; displayName: string };
   users: Array<{ id: string; displayName: string; username: string; groups: string[] }>;
-  currentUsername: string;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: { name: string; memberUserIds: string[] }) => void;
 };
@@ -245,7 +276,6 @@ export function GroupDialog({
   title,
   initial,
   users,
-  currentUsername,
   onOpenChange,
   onSubmit,
 }: GroupDialogProps) {
@@ -303,10 +333,6 @@ export function GroupDialog({
                     />
                     <Switch
                       checked={memberUserIds.includes(user.id)}
-                      disabled={
-                        initial?.id === "principals/groups/administrators" &&
-                        user.username === currentUsername
-                      }
                       onCheckedChange={() => toggleMember(user.id)}
                       aria-label={`${user.displayName} group member`}
                     />

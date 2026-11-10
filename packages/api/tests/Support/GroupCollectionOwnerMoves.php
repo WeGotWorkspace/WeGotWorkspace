@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Models\Principal;
-use App\Services\Auth\AdminRoleResolver;
 
 /**
  * Shared REST cases for moving a collection between personal and group owners
@@ -35,8 +34,9 @@ trait GroupCollectionOwnerMoves
         $this->assertNotNull($alice);
         $this->assertNotNull($bob);
 
-        $admins = $this->seedWgwGroup(AdminRoleResolver::ADMIN_GROUP_URI, 'Administrators');
+        $admins = $this->seedWgwGroup(LegacyAdministratorsTeam::URI, 'Administrators');
         $this->addPrincipalToGroup($admins, $alice);
+        $this->grantAdminRole($alice);
         foreach ([self::MOVE_GROUP => 'Crew', self::MOVE_OTHER_GROUP => 'Alumni'] as $slug => $name) {
             $group = $this->seedWgwGroup('principals/groups/'.$slug, $name);
             $this->addPrincipalToGroup($group, $alice);
