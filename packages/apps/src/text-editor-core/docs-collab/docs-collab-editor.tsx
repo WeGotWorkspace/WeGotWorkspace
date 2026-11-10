@@ -142,7 +142,7 @@ export function DocsCollabEditor({
     [editable, ariaLabel],
   );
 
-  const paginated = textEditorPaginated(pageSetup, viewSource);
+  const paginated = textEditorPaginated(pageSetup);
   const hasPages = pageSetup != null;
 
   const resolvedAutofocus = autofocus ?? (editable ? "end" : false);

@@ -308,12 +308,10 @@
   height: auto;
 }
 
-/* Pages (#1810): each page draws its own sheet, so the surface only centres the column. */
+/* Pages (#1810): each page draws its own sheet, so the surface only centres the column.
+   Beside the source too: the formatted half shows the same pages. */
 @media screen {
-  .docs-workspace__editor
-    .text-editor:not(.text-editor--view-source)
-    .text-editor-sheet--paginated
-    .text-editor-sheet__surface {
+  .docs-workspace__editor .text-editor .text-editor-sheet--paginated .text-editor-sheet__surface {
     width: max-content;
     max-width: none;
     min-height: 0;
@@ -345,13 +343,15 @@
     --text-editor-sheet-padding-block-start: 1.25rem;
   }
 
-  .docs-workspace__editor .text-editor:not(.text-editor--view-source) .text-editor-sheet--fill {
+  .docs-workspace__editor
+    .text-editor:not(.text-editor--view-source)
+    .text-editor-sheet--fill:not(.text-editor-sheet--paginated) {
     background-color: var(--paper-sheet-bg, oklch(1 0 0));
   }
 
   .docs-workspace__editor
     .text-editor:not(.text-editor--view-source)
-    .text-editor-sheet--fill
+    .text-editor-sheet--fill:not(.text-editor-sheet--paginated)
     .text-editor-sheet__surface {
     width: 100%;
     max-width: none;
@@ -380,7 +380,7 @@
 .docs-workspace__editor
   .text-editor--view-source
   .text-editor__formatted
-  .text-editor-sheet--fill
+  .text-editor-sheet--fill:not(.text-editor-sheet--paginated)
   .text-editor-sheet__surface {
   width: 100%;
   max-width: none;
@@ -602,7 +602,10 @@
   .docs-workspace__editor .text-editor-sheet--fill:not(.text-editor-sheet--paginated) .paper-sheet {
     border-radius: var(--docs-page-radius);
   }
+}
 
+/* Page sheets at every width: phones show the pages too (#1810 follow-up). */
+@media screen {
   .docs-workspace .text-editor-prose.rm-with-pagination {
     border-radius: var(--docs-page-radius);
   }

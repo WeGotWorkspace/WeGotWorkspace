@@ -72,7 +72,7 @@ export function TextEditor({
   onEditorReady,
   pageSetup,
 }: TextEditorProps) {
-  const paginated = textEditorPaginated(pageSetup, viewSource);
+  const paginated = textEditorPaginated(pageSetup);
   const editor = useTextEditor({
     format,
     content: content ?? textEditorDemoContent(format),

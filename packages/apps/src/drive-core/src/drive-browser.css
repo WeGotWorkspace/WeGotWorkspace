@@ -40,7 +40,8 @@
 .drive-workspace :is(.drive-grid-layout, .drive-list-view) {
   --drive-browser-inset: 1rem;
   --drive-browser-inset-top: calc(0.5rem + (2.5rem - var(--list-row-height, 3rem)) / 2 - 1px);
-  --list-head-sticky-gap: var(--drive-browser-inset-top);
+  /* The sticky header bar runs out to the pane edges (`ui/list-head-bar.css`). */
+  --list-head-bleed: var(--drive-browser-inset);
   padding: var(--drive-browser-inset);
   padding-top: var(--drive-browser-inset-top);
 
@@ -311,11 +312,6 @@
 
 .drive-workspace .drive-list-view {
   @apply min-w-0 max-w-full;
-}
-
-/* The header starts at the top inset (the view starts the row spacing higher): stick there. */
-.drive-workspace .drive-list-table thead {
-  --list-head-sticky-gap: var(--drive-browser-inset-top);
 }
 
 .drive-workspace .drive-list-table {

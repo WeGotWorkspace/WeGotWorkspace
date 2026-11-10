@@ -38,10 +38,13 @@ describe("PWA document shell", () => {
     expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
   });
 
-  it("stops the iOS focus zoom from the boot script, on iOS only", () => {
-    expect(themeBootJs).toContain("maximum-scale=1");
-    expect(themeBootJs).toMatch(/if \(!ios\) return;/);
-    expect(indexHtml).not.toContain("maximum-scale");
+  it("stops the iOS focus zoom in the HTML viewport tag, the one place for the suite", () => {
+    const viewport = indexHtml.match(/<meta\s+name="viewport"[^>]*>/)?.[0] ?? "";
+    expect(viewport).toMatch(/maximum-scale=1\b/);
+    expect(indexHtml.match(/name="viewport"/g)).toHaveLength(1);
+    // The boot script only gives Android its pinch-zoom back; it never adds the stop.
+    expect(themeBootJs).toMatch(/if \(!\/Android\/i\.test\(navigator\.userAgent\)\) return;/);
+    expect(themeBootJs).not.toContain('+ ", maximum-scale');
   });
 
   it("resolves the theme from a same-origin script the runtime CSP allows", () => {
