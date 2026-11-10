@@ -1,6 +1,9 @@
 import { useMemo } from "react";
-import { Callout } from "@/callout/src/callout";
-import { IcsImportDialog, type IcsImportDestination } from "@/lib/ics-import/ics-import-dialog";
+import {
+  IcsImportDialog,
+  type IcsImportDestination,
+  type IcsImportDialogResult,
+} from "@/lib/ics-import/ics-import-dialog";
 import { tasksImportErrorReason, tasksImportErrorTitle } from "@/tasks-core/src/tasks-ics-import";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
@@ -12,7 +15,6 @@ import {
   taskListDotColor,
 } from "@/tasks-core/src/tasks-task-utils";
 import type { TaskImportResponse, TaskList } from "@/tasks-core/src/tasks-types";
-import "./tasks-import-dialog.css";
 
 export type TasksImportDialogProps = {
   open: boolean;
@@ -28,39 +30,28 @@ export type TasksImportDialogProps = {
   onImport: (file: File, destination: IcsImportDestination) => void;
 };
 
-function TasksImportResult({ result, L }: { result: TaskImportResponse; L: TasksUILabels }) {
+function tasksImportResultView(
+  result: TaskImportResponse,
+  L: TasksUILabels,
+): IcsImportDialogResult {
   const imported = result.list.length;
-  return (
-    <>
-      <p className="tasks-import-result__summary">
-        {imported > 0 ? L.importedTasks(imported) : L.importNoneImported}
-      </p>
-      {result.errors.length > 0 ? (
-        <Callout
-          severity="warning"
-          title={L.importNotImportedHeading(result.errors.length)}
-          message={
-            <ul className="tasks-import-result__errors">
-              {result.errors.map((error) => (
-                <li key={`${error.index}-${error.uid ?? ""}`}>
-                  <span className="tasks-import-result__error-title">
-                    {tasksImportErrorTitle(error, L)}
-                  </span>
-                  {" — "}
-                  {tasksImportErrorReason(error, L)}
-                </li>
-              ))}
-            </ul>
-          }
-        />
-      ) : null}
-      {result.skipped.events > 0 ? (
-        <p className="tasks-import-result__skipped">
-          {L.importEventsSkipped(result.skipped.events)}
-        </p>
-      ) : null}
-    </>
-  );
+  return {
+    summary: imported > 0 ? L.importedTasks(imported) : L.importNoneImported,
+    nothingImported: imported === 0,
+    skipped: {
+      heading: L.importNotImportedHeading(result.errors.length),
+      rows: result.errors.map((error) => ({
+        key: `${error.index}-${error.uid ?? ""}`,
+        name: tasksImportErrorTitle(error, L),
+        reason: tasksImportErrorReason(error, L),
+      })),
+    },
+    notes: {
+      heading: L.importNotesHeading,
+      items: result.skipped.events > 0 ? [L.importEventsSkipped(result.skipped.events)] : [],
+    },
+    doneLabel: L.importDone,
+  };
 }
 
 /** The list in view when it is writable (shared lists too), else the usual default. */
@@ -115,11 +106,7 @@ export function TasksImportDialog({
       defaultColor={DEFAULT_TASK_LIST_COLOR}
       busy={busy}
       error={error}
-      result={
-        result
-          ? { content: <TasksImportResult result={result} L={L} />, doneLabel: L.importDone }
-          : null
-      }
+      result={result ? tasksImportResultView(result, L) : null}
       onClose={onClose}
       onImport={onImport}
     />

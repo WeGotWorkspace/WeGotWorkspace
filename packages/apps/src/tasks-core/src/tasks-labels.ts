@@ -27,6 +27,7 @@ export type TasksUILabels = {
   importedTasks: (count: number) => string;
   importNoneImported: string;
   importNotImportedHeading: (count: number) => string;
+  importNotesHeading: string;
   importUntitledTask: string;
   importErrorAlreadyExists: string;
   importErrorTooComplex: string;
@@ -202,9 +203,9 @@ export const defaultTasksLabels: TasksUILabels = {
   importFailed: "Could not import tasks",
   importOffline: "Importing tasks needs an internet connection",
   importedTasks: (count) => (count === 1 ? "Imported 1 task" : `Imported ${count} tasks`),
-  importNoneImported: "No tasks were imported.",
-  importNotImportedHeading: (count) =>
-    count === 1 ? "1 task could not be imported:" : `${count} tasks could not be imported:`,
+  importNoneImported: "No tasks imported",
+  importNotImportedHeading: (count) => `Not imported (${count})`,
+  importNotesHeading: "Good to know",
   importUntitledTask: "Untitled task",
   importErrorAlreadyExists: "Already in this list",
   importErrorTooComplex: "Too many repeats or reminders",

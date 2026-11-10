@@ -59,7 +59,9 @@ test("an ICS file imports into a new list and reaches a second tab", async ({ br
     // The skipped event keeps the dialog on its result step.
     const result = dialog.getByRole("status");
     await expect(result).toContainText("Imported 2 tasks");
-    await expect(result).toContainText("1 event was skipped. Import it in Calendar.");
+    await expect(dialog.getByRole("region", { name: "Good to know" })).toContainText(
+      "1 event was skipped. Import it in Calendar.",
+    );
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toHaveCount(0);
 
@@ -107,9 +109,12 @@ test("an ICS file imports into a new list and reaches a second tab", async ({ br
       dialog.getByRole("button", { name: `Destination list: ${listName}` }),
     ).toBeVisible();
     await dialog.getByRole("button", { name: "Import", exact: true }).click();
-    await expect(result).toContainText("No tasks were imported.");
+    await expect(result).toContainText("No tasks imported");
+    const notImported = dialog.getByRole("region", { name: "Not imported (2)" });
     for (const title of titles) {
-      await expect(result).toContainText(`${title} — Already in this list`);
+      await expect(notImported.getByRole("row").filter({ hasText: title })).toContainText(
+        "Already in this list",
+      );
     }
     await dialog.getByRole("button", { name: "Done" }).click();
 

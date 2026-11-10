@@ -182,14 +182,15 @@ describe("TasksImportDialog", () => {
       />,
     );
 
-    const status = screen.getByRole("status");
-    expect(within(status).getByText("Imported 2 tasks")).toBeTruthy();
-    expect(within(status).getByText("2 tasks could not be imported:")).toBeTruthy();
-    expect(status.textContent).toContain(`Buy milk — ${L.importErrorAlreadyExists}`);
-    expect(status.textContent).toContain(`${L.importUntitledTask} — Unparseable recurrence rule.`);
-    expect(
-      within(status).getByText("4 events were skipped. Import them in Calendar."),
-    ).toBeTruthy();
+    expect(within(screen.getByRole("status")).getByText("Imported 2 tasks")).toBeTruthy();
+    const notImported = screen.getByRole("region", { name: L.importNotImportedHeading(2) });
+    const rows = within(notImported).getAllByRole("row");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      `Buy milk${L.importErrorAlreadyExists}`,
+      `${L.importUntitledTask}Unparseable recurrence rule.`,
+    ]);
+    const notes = screen.getByRole("region", { name: L.importNotesHeading });
+    expect(within(notes).getByText(L.importEventsSkipped(4))).toBeTruthy();
     expect(screen.queryByRole("button", { name: L.importSubmit })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: L.importDone }));
