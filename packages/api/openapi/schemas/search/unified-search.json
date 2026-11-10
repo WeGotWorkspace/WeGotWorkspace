@@ -24,6 +24,10 @@
       "modifiedAt": { "type": "integer" },
       "snippet": { "type": ["string", "null"] },
       "tokenScore": { "type": "integer" },
+      "nodeId": {
+        "type": "string",
+        "description": "FileNode id (fn-…) for a file result with a live FileNode; omitted otherwise."
+      },
       "metadata": {
         "type": "object",
         "additionalProperties": true

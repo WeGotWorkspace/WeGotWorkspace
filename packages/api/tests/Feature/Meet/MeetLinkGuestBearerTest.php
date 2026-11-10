@@ -48,12 +48,12 @@ final class MeetLinkGuestBearerTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $this->linkGuestJoin($this->channelId, 'peer-guest', 'Visitor')
-            ->assertForbidden()->assertJsonPath('error', 'forbidden');
+            ->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->linkGuestJoin($this->channelId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertForbidden()->assertJsonPath('error', 'forbidden');
+            ->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
         $this->withBearer($this->linkGuestToken())
             ->getJson('/api/v1/rooms/'.$this->channelId.'/events?peerId=peer-guest')
-            ->assertForbidden()->assertJsonPath('error', 'forbidden');
+            ->assertForbidden()->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'Guests cannot join this conversation.']);
     }
 
     public function test_link_guest_does_not_see_the_status_of_a_guest_closed_room(): void
@@ -65,7 +65,7 @@ final class MeetLinkGuestBearerTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->linkGuestToken())
             ->getJson('/api/v1/meetings/rooms/crew-standup-room')
-            ->assertNotFound()->assertJsonPath('error', 'not_found');
+            ->assertNotFound()->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
         $this->flushHeaders()
             ->getJson('/api/v1/meetings/rooms/crew-standup-room')
             ->assertNotFound();
@@ -82,7 +82,7 @@ final class MeetLinkGuestBearerTest extends WgwDatabaseTestCase
         ])->assertCreated();
 
         $this->linkGuestJoin(self::RESERVED_CODE, 'peer-guest', 'Visitor')
-            ->assertForbidden()->assertJsonPath('error', 'knock_required');
+            ->assertForbidden()->assertExactJson(['error' => 'knock_required', 'code' => 'knock_required', 'message' => 'Only channel members join directly — request to join instead.']);
 
         $knock = $this->linkGuestJoin(self::RESERVED_CODE, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
             ->assertOk();

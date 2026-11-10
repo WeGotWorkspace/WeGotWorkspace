@@ -464,10 +464,6 @@ final class DocCollabDocumentService
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        $payload = ['error' => $error];
-        if ($message !== null) {
-            $payload['message'] = $message;
-        }
-        throw new CollabResponseException($status, $payload);
+        throw new CollabResponseException($status, $error, $message);
     }
 }

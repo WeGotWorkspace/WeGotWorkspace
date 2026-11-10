@@ -122,6 +122,13 @@ describe("mapDocsHomeResults", () => {
     expect(files[0].location).toBe("Administrators");
   });
 
+  it("keeps the FileNode id a search result names, so the row opens by id (#1976)", () => {
+    const nodeId = `fn-${"c".repeat(32)}`;
+    const files = mapDocsHomeResults([{ ...FIXTURES[0], nodeId }, FIXTURES[1]], "alice");
+    expect(files[0]).toMatchObject({ apiPath: "/users/alice/A.md", nodeId });
+    expect(files[1]).not.toHaveProperty("nodeId");
+  });
+
   it("dedupes repeated source keys", () => {
     const dup = result(9, "users/alice/A.md", "A copy", 999);
     const files = mapDocsHomeResults([FIXTURES[0], dup], "alice");
