@@ -25,6 +25,7 @@ export const liveTierSpecs = [
   "docs-comments-expired-state",
   "docs-comments-open-no-write",
   "docs-docx-save-as-markdown",
+  "docs-download-word",
   "docs-home-browse",
   "docs-inbound-sync",
   "docs-offline-gaps",
