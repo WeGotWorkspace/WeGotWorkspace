@@ -41,7 +41,7 @@ export const Ghost: Story = {
     const canvas = within(canvasElement);
     const textarea = canvas.getByRole("textbox", { name: "Notes" });
     await expect(textarea).toHaveClass("textarea--ghost");
-    // `transition-colors` can still be settling on the first frame.
+    // Read the colours through waitFor so a late style pass cannot fail the check.
     await waitFor(() => {
       expect(getComputedStyle(textarea).backgroundColor).toBe("rgba(0, 0, 0, 0)");
       expect(getComputedStyle(textarea).borderTopColor).toBe("rgba(0, 0, 0, 0)");
