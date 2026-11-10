@@ -7,9 +7,10 @@
  * paints shadcn aliases from the local pair. Primary actions stay on the
  * accent pair, not the per-app brand.
  *
- * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out.
+ * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out, and
+ * a frosted popover (`.popover-ui--frost`) paints the frost instead.
  */
-.overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface) {
+.overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface):not(.popover-ui--frost) {
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
   background-color: var(--workspace-surface);

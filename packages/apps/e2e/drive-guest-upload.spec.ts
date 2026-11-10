@@ -20,7 +20,7 @@ async function makeDriveFolder(name: string): Promise<void> {
 }
 
 async function openFolderShareDialog(page: Page, folder: string) {
-  await page.goto("/drive");
+  await page.goto("/drive?view=folder&path=My%20Drive");
   const tile = page
     .getByText(folder, { exact: true })
     .locator("xpath=ancestor::*[.//button[@aria-label='More actions']][1]");

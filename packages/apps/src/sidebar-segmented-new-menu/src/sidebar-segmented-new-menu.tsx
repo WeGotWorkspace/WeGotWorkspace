@@ -3,9 +3,12 @@ import { ChevronDown, Plus } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import type { ButtonSizeProp } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
-import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
+import type { DropdownMenuEntry, DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAppSidebarPrimary } from "@/app-sidebar/src/app-sidebar-primary";
 import "./sidebar-segmented-new-menu.css";
+
+const SETTINGS_SEPARATOR: DropdownMenuEntry = { type: "separator", id: "app-settings-separator" };
 
 export type SidebarSegmentedNewMenuSize = Extract<ButtonSizeProp, "md" | "xl">;
 
@@ -37,7 +40,14 @@ export function SidebarSegmentedNewMenu({
   size = "md",
   stretch = false,
 }: SidebarSegmentedNewMenuProps) {
-  const hasMenu = items.length > 0;
+  // In the app sidebar: the app's Settings as the menu's last option (an app with no
+  // other options gets the split button for it).
+  const sidebar = useAppSidebarPrimary();
+  const settingsItem = sidebar?.settingsItem ?? null;
+  const menuItems: DropdownMenuEntry[] = settingsItem
+    ? [...items, ...(items.length > 0 ? [SETTINGS_SEPARATOR] : []), settingsItem]
+    : [...items];
+  const hasMenu = menuItems.length > 0;
   const mainButton = (
     <Button
       label={mainLabel}
@@ -71,7 +81,7 @@ export function SidebarSegmentedNewMenu({
             className={`${blockName}__menu`}
           />
         }
-        items={[...items]}
+        items={menuItems}
       />
     </div>
   );

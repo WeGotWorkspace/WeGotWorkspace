@@ -35,6 +35,14 @@ import {
   type ContactsListWindowRow,
 } from "@/contacts-core/src/contacts-list-window";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+import type { ContactsAddressBookSelectBook } from "@/contacts-core/src/contacts-address-book-select";
+import {
+  addressBookDotColor,
+  firstEnabledAddressBookId,
+} from "@/contacts-core/src/contacts-addressbook-color";
+import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
+import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 
 type ContactsListPanelProps = {
   L: ContactsUILabels;
@@ -65,7 +73,37 @@ type ContactsListPanelProps = {
   onRefreshList?: () => void;
   /** Card ids with unsynced local changes; rendered with a subtle pending-sync dot. */
   pendingCardIds?: ReadonlySet<string>;
+  /** Address books, so each row can name its book (dot + name), as Notes rows do. */
+  addressBooks?: readonly ContactsAddressBookSelectBook[];
 };
+
+/** The row's address book, when the books are known and the card sits in one. */
+function contactListBook(
+  card: ContactCard,
+  addressBooks?: readonly ContactsAddressBookSelectBook[],
+): ContactsAddressBookSelectBook | undefined {
+  const bookId = firstEnabledAddressBookId(card.addressBookIds);
+  return bookId ? addressBooks?.find((candidate) => candidate.id === bookId) : undefined;
+}
+
+/** A row's meta line: its address book (dot + name), as Notes rows show the notebook. */
+function ContactsListAddressBook({
+  book,
+  personalLabel,
+}: {
+  book: ContactsAddressBookSelectBook;
+  personalLabel: string;
+}) {
+  const overrides = useAddressBookColorOverrides();
+  return (
+    <span className="contacts-list-panel__book">
+      <NotesNotebookColorDot color={addressBookDotColor(book, overrides)} />
+      <span className="contacts-list-panel__book-name">
+        {contactsAddressBookDisplayName(book, personalLabel)}
+      </span>
+    </span>
+  );
+}
 
 export function ContactsListPanel({
   L,
@@ -94,6 +132,7 @@ export function ContactsListPanel({
   selectionBar,
   onRefreshList,
   pendingCardIds,
+  addressBooks,
 }: ContactsListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
@@ -110,14 +149,11 @@ export function ContactsListPanel({
     visibleCards.map((card) => card.id),
   );
 
-  const headerCount =
-    selectionMode || selectedIds.length > 1
-      ? selectedIds.length
-      : (downloadTotal ?? visibleCards.length);
-  const headerCountLabel =
-    selectionMode || selectedIds.length > 1
-      ? L.listSelected(headerCount)
-      : L.listContacts(headerCount);
+  const multiSelecting = selectionMode || selectedIds.length > 1;
+  const headerCount = multiSelecting ? selectedIds.length : (downloadTotal ?? visibleCards.length);
+  const headerCountLabel = multiSelecting
+    ? L.listSelected(headerCount)
+    : L.listContacts(headerCount);
 
   return {
     header: (
@@ -146,6 +182,7 @@ export function ContactsListPanel({
         searchValue={searchQuery}
         onSearchInput={setSearchQuery}
         searchInputRef={searchInputRef}
+        searchHidden={multiSelecting}
       />
     ),
     listContent: listLoading ? (
@@ -171,6 +208,7 @@ export function ContactsListPanel({
           onSwipeDelete={onSwipeDelete}
           onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
           pendingCardIds={pendingCardIds}
+          addressBooks={addressBooks}
         />
       </div>
     ),
@@ -297,6 +335,7 @@ function ContactsListRows({
   onSwipeDelete,
   onSwipeRemoveFromGroup,
   pendingCardIds,
+  addressBooks,
 }: {
   rows: ContactsListWindowRow[];
   paddingTop: number;
@@ -316,6 +355,7 @@ function ContactsListRows({
   | "onSwipeDelete"
   | "onSwipeRemoveFromGroup"
   | "pendingCardIds"
+  | "addressBooks"
 >) {
   const rendered = useMemo(() => {
     const blocks: ReactNode[] = [];
@@ -327,19 +367,26 @@ function ContactsListRows({
       const letter = sectionLetter || "#";
       blocks.push(
         <section key={letter} aria-labelledby={`contacts-section-${letter}`}>
-          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} />
+          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} variant="frost" />
           {sectionCards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;
+            const book = contactListBook(card, addressBooks);
             return (
               <ListItem
                 key={card.id}
                 id={card.id}
                 title={name}
-                subtitle={contactListSubtitle(card)}
+                /* Suite list norm: the name, then company (else email, else phone),
+                   then the address book on the quiet meta line. */
+                text={contactListSubtitle(card) || contactListDetail(card) || null}
+                subtitle={
+                  book ? (
+                    <ContactsListAddressBook book={book} personalLabel={L.personalAddressBook} />
+                  ) : null
+                }
                 metaPosition="below"
                 date=""
-                text={contactListDetail(card)}
                 icons={[
                   isPendingSync ? (
                     <span
@@ -372,7 +419,6 @@ function ContactsListRows({
                     ? {
                         swipeRightAction: {
                           icon: <UserMinus className="size-5" />,
-                          color: "var(--contacts-swipe-remove-color)",
                           label: L.swipeRemoveFromGroup,
                           onActivate: () => onSwipeRemoveFromGroup(card.id),
                         },
@@ -380,7 +426,7 @@ function ContactsListRows({
                     : {
                         swipeRightAction: {
                           icon: <Trash2 className="size-5" />,
-                          color: "var(--contacts-swipe-delete-color)",
+                          tone: "danger",
                           label: L.swipeDelete,
                           onActivate: () => onSwipeDelete(card.id),
                         },
@@ -406,6 +452,7 @@ function ContactsListRows({
     return blocks;
   }, [
     L.pendingSync,
+    L.personalAddressBook,
     L.swipeDelete,
     L.swipeRemoveFromGroup,
     L.unknownContact,
@@ -414,6 +461,7 @@ function ContactsListRows({
     onSwipeDelete,
     onSwipeRemoveFromGroup,
     pendingCardIds,
+    addressBooks,
     rows,
     selectedGroupId,
   ]);

@@ -22,16 +22,7 @@
 }
 
 .notes-workspace .notes-list-panel__star-icon {
-  @apply transition-opacity;
   color: var(--notes-list-star-color, var(--color-emerald));
-}
-
-.notes-workspace .notes-list-panel__star-pip[data-active="false"] .notes-list-panel__star-icon {
-  opacity: 0;
-}
-
-.notes-workspace .notes-list-panel__star-pip[data-active="true"] .notes-list-panel__star-icon {
-  opacity: 1;
 }
 
 .notes-workspace .notes-list-panel__shared-icon,
@@ -49,20 +40,19 @@
   color: var(--color-sync-pending);
 }
 
+/* Row foot: the notebook's colour dot and name. */
 .notes-list-panel__notebook {
-  @apply inline-flex shrink-0 items-center justify-center;
+  @apply inline-flex min-w-0 items-center gap-1.5;
 }
 
-.notes-list-panel__notebook-icon {
-  @apply size-3;
-}
-
-.notes-list-panel__excerpt {
-  @apply block truncate;
+.notes-list-panel__notebook-name {
+  @apply truncate;
 }
 
 .notes-list-panel__list {
   min-height: 0;
+  /* A little air between the pane header and the first (rounded) row. */
+  padding-block: 0.375rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

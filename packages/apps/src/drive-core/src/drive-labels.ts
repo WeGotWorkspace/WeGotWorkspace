@@ -2,7 +2,7 @@ import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sideba
 import type { DriveFile } from "@/drive-core/src/drive-models";
 
 export const driveLabels = {
-  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  /** Primary AppSidebar home (SST with Docs; Docs uses "All Docs"). */
   sidebarHome: filesBrowserSidebarLabels.homeDrive,
   /**
    * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
@@ -21,9 +21,17 @@ export const driveLabels = {
   searchViewTitle: "Search",
   listColumnName: "Name",
   listColumnLocation: "Location",
+  gridSectionFolders: "Folders",
+  gridSectionFiles: "Files",
+  listColumnLastModified: "Last modified",
+  listColumnKind: "Kind",
+  listColumnSize: "Size",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
+  allFilesEmpty: "No files yet",
+  allFilesLoading: filesBrowserSidebarLabels.listLoading,
+  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
   /** Folder view when the live listing failed and no rows are shown — never "empty". */
   folderListingFailed: "This folder could not be loaded",
@@ -116,6 +124,8 @@ export const driveLabels = {
   detailClosePanel: "Close",
   /** Empty body when the details panel is open with no file selected. */
   detailEmpty: "Select a file to see its details.",
+  /** Details panel label above the count when several items are selected. */
+  detailMultipleSelection: "Multiple selection",
   selectionDone: "Done",
   selectionStar: "Star",
   selectionMove: "Move",
@@ -153,6 +163,10 @@ export const driveLabels = {
   createMarkdownDialogNamePlaceholder: "Name",
   createMarkdownDialogCancel: "Cancel",
   createMarkdownDialogConfirm: "Create",
+  createFolderDialogTitle: "New folder",
+  createFolderDialogDescription: "Choose a name and where the folder goes.",
+  createFolderDialogNamePlaceholder: "Folder name",
+  createFolderDialogConfirm: "Create folder",
   offlineMakeAvailable: "Make available offline",
   offlineRemoveCopy: "Remove offline copy",
   offlineDownloading: "Downloading for offline use",

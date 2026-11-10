@@ -103,6 +103,12 @@ export function buildDocsFolderPickerRootLabels(
   return buildDriveFolderPickerRootLabels(groupRoots, personalDriveLabel);
 }
 
+/** Sidebar path prefix of the viewer's personal drive (`users/{handle}`). */
+export function docsPersonalDrivePathPrefix(username: string): string | null {
+  const handle = username.trim();
+  return handle ? `users/${handle}` : null;
+}
+
 /**
  * Build the My Drives list: personal drive (when the user is known) followed by
  * each discovered shared (group) drive. Labels come from {@link resolveDocsDriveLabel}.
@@ -113,9 +119,8 @@ export function buildDocsHomeDrives(
   myDriveLabel: string,
 ): DocsHomeDrive[] {
   const drives: DocsHomeDrive[] = [];
-  const handle = username.trim();
-  if (handle) {
-    const pathPrefix = `users/${handle}`;
+  const pathPrefix = docsPersonalDrivePathPrefix(username);
+  if (pathPrefix) {
     drives.push({
       key: pathPrefix,
       label: resolveDocsDriveLabel(pathPrefix, {

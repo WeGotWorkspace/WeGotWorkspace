@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import {
-  COMMON_EVENT_TIME_ZONES,
   FLOATING_TIME_ZONE_VALUE,
   defaultTimedEventTimeZone,
   eventTimeZoneFromSelectValue,
@@ -47,14 +46,15 @@ describe("eventTimeZone select mapping", () => {
     expect(eventTimeZoneFromSelectValue("UTC")).toBe("UTC");
   });
 
-  it("lists floating first and appends uncommon current zones", () => {
+  it("lists floating first, then every zone sorted by label", () => {
     const options = eventTimeZoneOptions("en-US", "Local (floating)", "Pacific/Honolulu");
     expect(options[0]).toEqual({
       value: FLOATING_TIME_ZONE_VALUE,
       label: "Local (floating)",
     });
     expect(options.some((option) => option.value === "UTC")).toBe(true);
-    expect(COMMON_EVENT_TIME_ZONES.includes("Pacific/Honolulu" as never)).toBe(false);
-    expect(options.at(-1)?.value).toBe("Pacific/Honolulu");
+    expect(options.some((option) => option.value === "Pacific/Honolulu")).toBe(true);
+    const labels = options.slice(1).map((option) => option.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, "en-US")));
   });
 });

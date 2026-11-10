@@ -1,0 +1,53 @@
+@import "../styles.css" reference;
+
+/*
+ * Sortable list column header (suite list norm). Reads as the header label;
+ * hover gives the button hover pill. The arrow shows on the sorted column and
+ * as a faint hint on hover elsewhere. The negative inline margin keeps the
+ * label lined up with the cells below.
+ */
+.sortable-column-header {
+  @apply inline-flex max-w-full items-center gap-1 rounded-md outline-none transition-colors;
+  height: var(--control-height-sm, 1.75rem);
+  padding-inline: 0.375rem;
+  margin-inline: -0.375rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sortable-column-header--end {
+  flex-direction: row-reverse;
+}
+
+.sortable-column-header:hover {
+  color: var(--workspace-item-color, var(--workspace-foreground));
+  background: var(--button-hover-background, var(--button-outline-active-background));
+}
+
+.sortable-column-header:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.sortable-column-header[data-active] {
+  color: var(--workspace-item-color, var(--workspace-foreground));
+}
+
+.sortable-column-header__label {
+  @apply min-w-0 truncate;
+}
+
+.sortable-column-header__arrow {
+  @apply size-3.5 shrink-0 transition-opacity;
+  opacity: 0;
+}
+
+.sortable-column-header:hover .sortable-column-header__arrow,
+.sortable-column-header:focus-visible .sortable-column-header__arrow {
+  opacity: 0.5;
+}
+
+.sortable-column-header[data-active] .sortable-column-header__arrow {
+  opacity: 1;
+}

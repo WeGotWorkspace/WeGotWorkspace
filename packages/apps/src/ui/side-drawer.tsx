@@ -35,7 +35,7 @@ export function SideDrawer({
     >
       <SheetContent
         side={side}
-        className={cn("side-drawer", className)}
+        className={cn("side-drawer", `side-drawer--${side}`, className)}
         overlayClassName="side-drawer__overlay"
       >
         {title ? (

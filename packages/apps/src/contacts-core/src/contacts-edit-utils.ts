@@ -6,6 +6,7 @@ import {
   synthesizeNameFromComponents,
 } from "@/contacts-core/src/contacts-display-utils";
 import { canWriteContactGroup } from "@/contacts-core/src/contacts-group-utils";
+import { componentValue, patchName, splitFullName } from "@/contacts-core/src/contacts-name-patch";
 import type {
   AddressBook,
   ContactCard,
@@ -271,28 +272,6 @@ function addressDraftToPatchValue(row: ContactAddressDraft): Record<string, unkn
   const contexts = contactContextToPatch(row.contextType);
   if (contexts) entry.contexts = contexts;
   return entry;
-}
-
-function componentValue(
-  components: NonNullable<ContactCard["name"]>["components"],
-  kind: "given" | "given2" | "surname" | "surname2",
-): string {
-  return (components ?? [])
-    .filter((component) => component.kind === kind)
-    .map((component) => component.value.trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
-function splitFullName(fullName: string): { given: string; surname: string } {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return {
-      given: parts.slice(0, -1).join(" "),
-      surname: parts[parts.length - 1] ?? "",
-    };
-  }
-  return { given: fullName.trim(), surname: "" };
 }
 
 function phoneValue(
@@ -587,55 +566,6 @@ export function editDraftToCreateBody(
   return body;
 }
 
-function currentNameComponents(card: ContactCard): {
-  given: string;
-  given2: string;
-  surname: string;
-  full: string;
-} {
-  const components = card.name?.components ?? [];
-  return {
-    given: componentValue(components, "given"),
-    given2: componentValue(components, "given2"),
-    surname: componentValue(components, "surname"),
-    full: card.name?.full?.trim() ?? "",
-  };
-}
-
-function patchName(
-  draft: ContactEditDraft,
-  active: ContactCard,
-): ContactCardPatch["name"] | undefined {
-  const next = buildNameFromDraft(draft);
-  const current = currentNameComponents(active);
-
-  const draftGiven = draft.nameGiven.trim();
-  const draftGiven2 = draft.nameGiven2.trim();
-  const draftSurname = draft.nameSurname.trim();
-
-  if (!next && !current.given && !current.given2 && !current.surname && !current.full) {
-    return undefined;
-  }
-
-  const componentsChanged =
-    current.given !== draftGiven ||
-    current.given2 !== draftGiven2 ||
-    current.surname !== draftSurname;
-
-  if (!componentsChanged && !current.full) return undefined;
-
-  if (!componentsChanged && current.full) {
-    const split = splitFullName(current.full);
-    if (split.given === draftGiven && split.surname === draftSurname && !draftGiven2) {
-      return undefined;
-    }
-  }
-
-  if (next) return next;
-
-  return { isOrdered: false, components: [] } as unknown as ContactCardPatch["name"];
-}
-
 function patchChannelMapField<T extends Record<string, unknown | null>, Row extends { id: string }>(
   activeIds: Set<string>,
   draftRows: Row[],
@@ -657,7 +587,8 @@ function patchChannelMapField<T extends Record<string, unknown | null>, Row exte
   for (const row of draftRows) {
     const value = getValue(row).trim();
     if (!value) {
-      if (activeIds.has(row.id)) {
+      // Only a value the person cleared is removed; a row the draft could not read stays.
+      if (activeIds.has(row.id) && readRow(row.id).value.trim()) {
         (patch as Record<string, unknown | null>)[row.id] = null;
         changed = true;
       }

@@ -1,22 +1,36 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { Archive, Check } from "lucide-react";
+import { Archive } from "lucide-react";
 import {
   SwipeableListItem,
   SwipeAction as SwipeActionPrimitive,
   TrailingActions,
   LeadingActions,
 } from "react-swipeable-list";
-import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
+import {
+  useCancelDelegatedPress,
+  useListItemEventDelegation,
+} from "@/list-item/src/list-item-delegation";
 import {
   useHasListSelectionStore,
   useListItemHighlight,
 } from "@/list-item/src/list-item-selection";
-import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
+import {
+  LIST_ITEM_LONG_PRESS_DELAY_MS,
+  touchMovedPastSlop,
+  touchStartPoint,
+  type TouchStartPoint,
+} from "@/list-item/src/use-delegated-list-item-events";
+import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 import "./list-item.css";
+
+// The focus ring is keyboard-only: a Cmd/Shift-click (multi-select) counts as
+// keyboard for `:focus-visible`, so the ring also checks the last real input.
+installKeyboardFocusModality();
 
 export type SwipeAction = {
   icon: React.ReactNode;
-  color: string;
+  /** Icon and label colour (no fill): ink, or the error red for `danger`. */
+  tone?: "accent" | "danger";
   onActivate: () => void;
   label?: string;
   destructive?: boolean;
@@ -24,7 +38,6 @@ export type SwipeAction = {
 
 type ListItemTheme = {
   baseBackground: string;
-  activeBackground: string;
   selectedBackground: string;
   borderColor: string;
   accentColor: string;
@@ -45,13 +58,19 @@ type ListItemProps = {
   title: string;
   /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
   subtitle: ReactNode;
-  /** Subtitle/meta line placement. Mail keeps the default `above`; contacts and notes pass `below`. */
+  /**
+   * `below` (Notes, Contacts): title with the date top right, an optional two-line
+   * preview (`text`), then one quiet line `subtitle · icons`.
+   * `above` (Mail-style): subtitle, icons and date in a header row over the title.
+   */
   metaPosition?: ListItemMetaPosition;
   date: string;
+  /** Marks right before the date in the top-right corner, e.g. a star (`below` only). */
+  dateLeading?: ReactNode;
   icons?: ReactNode[];
   /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present, unless `showEmptyText` is set. */
   text?: ReactNode;
-  /** Keep the body line when `text` is empty, using `emptyText` as the placeholder. */
+  /** Keep the body line when `text` is empty, using `emptyText` as the placeholder (`above` only). */
   showEmptyText?: boolean;
   isActive: boolean;
   isSelected: boolean;
@@ -70,14 +89,18 @@ type ListItemProps = {
   theme?: Partial<ListItemTheme>;
   /** Optional leading slot (e.g. avatar) rendered inside the row highlight area. */
   leading?: React.ReactNode;
+  /**
+   * An interactive control at the row start, e.g. a task's complete checkbox. It sits
+   * beside the row button (no control inside a button) over a reserved leading slot,
+   * and moves with the row when it swipes. Stop its clicks from reaching the row.
+   */
+  leadingControl?: React.ReactNode;
 };
 
 const defaultTheme: ListItemTheme = {
   baseBackground: "transparent",
-  activeBackground:
-    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))",
   selectedBackground:
-    "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))",
+    "var(--sidebar-item-selected-background, var(--workspace-selected-background))",
   borderColor: "color-mix(in oklab, var(--workspace-foreground) 10%, transparent)",
   accentColor: "var(--color-emerald)",
   titleColor: "var(--workspace-foreground)",
@@ -85,13 +108,11 @@ const defaultTheme: ListItemTheme = {
   bodyColor: "color-mix(in oklab, var(--workspace-foreground) 60%, transparent)",
 };
 
-const TOUCH_MOVE_CANCEL_PX = 8;
 const DESTRUCTIVE_CALLBACK_DELAY_MS = 380;
 
 function themeToCssVars(theme: Partial<ListItemTheme>): CSSProperties {
   const vars: Record<string, string> = {};
   if (theme.baseBackground) vars["--list-item-base-bg"] = theme.baseBackground;
-  if (theme.activeBackground) vars["--list-item-active-bg"] = theme.activeBackground;
   if (theme.selectedBackground) vars["--list-item-selected-bg"] = theme.selectedBackground;
   if (theme.borderColor) vars["--list-item-border-color"] = theme.borderColor;
   if (theme.accentColor) vars["--list-item-accent-color"] = theme.accentColor;
@@ -108,6 +129,7 @@ export function ListItem({
   subtitle,
   metaPosition = "above",
   date,
+  dateLeading,
   icons = [],
   text,
   showEmptyText = false,
@@ -127,22 +149,29 @@ export function ListItem({
   emptyText = "Empty item",
   theme,
   leading,
+  leadingControl,
 }: ListItemProps) {
   const entityId = itemId ?? id;
+  const leadingSlot =
+    leading ??
+    (leadingControl ? <span aria-hidden className="list-item__leading-control-slot" /> : null);
   const delegated = useListItemEventDelegation();
+  const cancelDelegatedPress = useCancelDelegatedPress();
   const hasSelectionStore = useHasListSelectionStore();
   const highlight = useListItemHighlight(entityId, { isActive, isSelected });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
-  const bodyContent = text || (showEmptyText || !title ? emptyText : null);
+  // The calm `below` layout has no placeholder body: an untitled row already reads as empty.
+  const bodyContent =
+    text || (metaPosition === "above" && (showEmptyText || !title) ? emptyText : null);
   const bodyIsPlaceholder = !text && bodyContent != null;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const longPressBlockedBySwipeRef = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
+  const touchStartRef = useRef<TouchStartPoint | null>(null);
 
   const startLongPress = (e: React.TouchEvent<HTMLButtonElement>) => {
-    touchStartYRef.current = e.touches[0]?.clientY ?? null;
+    touchStartRef.current = touchStartPoint(e.touches);
     longPressBlockedBySwipeRef.current = false;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -159,15 +188,12 @@ export function ListItem({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLButtonElement>) => {
-    const startY = touchStartYRef.current;
-    const touch = e.touches[0];
-    if (!touch || startY === null) return;
-    if (Math.abs(touch.clientY - startY) > TOUCH_MOVE_CANCEL_PX) cancelLongPress();
+    if (touchMovedPastSlop(touchStartRef.current, e.touches)) cancelLongPress();
   };
 
   const resetTouchIntent = () => {
     cancelLongPress();
-    touchStartYRef.current = null;
+    touchStartRef.current = null;
   };
 
   const button = (
@@ -219,18 +245,10 @@ export function ListItem({
             }
       }
       onDragEnd={delegated ? undefined : onDragEnd}
-      className={`list-item__button${leading ? " list-item__button--with-leading" : ""}`}
+      className={`list-item__button${leadingSlot ? " list-item__button--with-leading" : ""}`}
       style={themeVars}
     >
-      <span aria-hidden className="list-item__checkbox-wrap">
-        <span className="list-item__checkbox">
-          {highlight.isSelected ? (
-            <Check className="list-item__checkbox-icon" strokeWidth={2.75} />
-          ) : null}
-        </span>
-      </span>
-
-      {leading ? <span className="list-item__leading">{leading}</span> : null}
+      {leadingSlot ? <span className="list-item__leading">{leadingSlot}</span> : null}
 
       <div className="list-item__content">
         {metaPosition === "above" ? (
@@ -248,45 +266,73 @@ export function ListItem({
         ) : null}
 
         {metaPosition === "below" ? (
-          <div className="list-item__header-row">
+          /* Suite list norm: title with the date top right, an optional preview, then
+             one quiet meta line (where · status). */
+          <>
+            <div className="list-item__title-row">
+              <h3 className="list-item__title" data-empty={title ? "false" : "true"}>
+                {title || emptyTitle}
+              </h3>
+              {date || dateLeading ? (
+                <span className="list-item__title-trailing">
+                  {dateLeading ? (
+                    <span className="list-item__date-leading">{dateLeading}</span>
+                  ) : null}
+                  {date ? <span className="list-item__date">{date}</span> : null}
+                </span>
+              ) : null}
+            </div>
+            {bodyContent ? (
+              <div className="list-item__body list-item__body--preview">{bodyContent}</div>
+            ) : null}
+            {subtitle || icons.length > 0 ? (
+              <div className="list-item__meta">
+                {subtitle ? (
+                  <span className="list-item__meta-segment list-item__subtitle--below">
+                    {subtitle}
+                  </span>
+                ) : null}
+                {icons.length > 0 ? (
+                  <span className="list-item__meta-trailing">
+                    {icons.map((icon, index) => (
+                      <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
+                        {icon}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
             <h3
-              className="list-item__title list-item__title--in-header"
+              className="list-item__title list-item__title--standalone"
               data-empty={title ? "false" : "true"}
             >
               {title || emptyTitle}
             </h3>
-            <span className="list-item__meta-trailing">
-              {icons.map((icon, index) => (
-                <span key={`${entityId}-icon-${index}`} className="list-item__icon-slot">
-                  {icon}
-                </span>
-              ))}
-              <span className="list-item__date">{date}</span>
-            </span>
-          </div>
-        ) : (
-          <h3
-            className="list-item__title list-item__title--standalone"
-            data-empty={title ? "false" : "true"}
-          >
-            {title || emptyTitle}
-          </h3>
+            {bodyContent ? (
+              <div className="list-item__body" data-empty={bodyIsPlaceholder ? "true" : "false"}>
+                {bodyContent}
+              </div>
+            ) : null}
+          </>
         )}
-
-        {metaPosition === "below" && subtitle ? (
-          <p className="list-item__subtitle list-item__subtitle--below">{subtitle}</p>
-        ) : null}
-
-        {bodyContent ? (
-          <div className="list-item__body" data-empty={bodyIsPlaceholder ? "true" : "false"}>
-            {bodyContent}
-          </div>
-        ) : null}
       </div>
     </button>
   );
 
-  if (!isTouch) return button;
+  const row = leadingControl ? (
+    <div className="list-item__frame">
+      {button}
+      <span className="list-item__leading-control">{leadingControl}</span>
+    </div>
+  ) : (
+    button
+  );
+
+  if (!isTouch) return row;
 
   // react-swipeable-list calls onClick with no args after a full swipe (setTimeout).
   // Do not touch the event — reading stopPropagation throws and aborts the action.
@@ -296,10 +342,7 @@ export function ListItem({
         onClick={() => swipeLeftAction.onActivate()}
         destructive={swipeLeftAction.destructive}
       >
-        <div
-          className="list-item__swipe-action"
-          style={{ "--list-item-swipe-bg": swipeLeftAction.color } as CSSProperties}
-        >
+        <div className="list-item__swipe-action" data-tone={swipeLeftAction.tone ?? "accent"}>
           {swipeLeftAction.icon}
           {swipeLeftAction.label ?? "Action"}
         </div>
@@ -313,10 +356,7 @@ export function ListItem({
         onClick={() => swipeRightAction.onActivate()}
         destructive={swipeRightAction.destructive}
       >
-        <div
-          className="list-item__swipe-action"
-          style={{ "--list-item-swipe-bg": swipeRightAction.color } as CSSProperties}
-        >
+        <div className="list-item__swipe-action" data-tone={swipeRightAction.tone ?? "accent"}>
           {swipeRightAction.icon ?? <Archive className="size-5" />}
           {swipeRightAction.label ?? "Action"}
         </div>
@@ -324,7 +364,7 @@ export function ListItem({
     </TrailingActions>
   ) : null;
 
-  if (!leadingActions && !trailingActions) return button;
+  if (!leadingActions && !trailingActions) return row;
 
   return (
     <SwipeableListItem
@@ -336,17 +376,19 @@ export function ListItem({
       onSwipeStart={() => {
         longPressBlockedBySwipeRef.current = true;
         cancelLongPress();
+        cancelDelegatedPress();
       }}
       onSwipeProgress={(progress) => {
         if (progress <= 0) return;
         longPressBlockedBySwipeRef.current = true;
         cancelLongPress();
+        cancelDelegatedPress();
       }}
       onSwipeEnd={() => {
         longPressBlockedBySwipeRef.current = false;
       }}
     >
-      {button}
+      {row}
     </SwipeableListItem>
   );
 }

@@ -15,7 +15,7 @@
 }
 
 .app-sidebar {
-  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
+  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r sidebar:h-full sidebar:min-h-0 transition-[translate,margin,border-width] overflow-hidden will-change-transform;
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
   background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
@@ -29,23 +29,30 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
-  /* Same size as `.app-switch-button__icon` (md control height). */
-  --app-switch-icon-size: var(--control-height-md, 2.25rem);
+  /* Same size as `.app-switch-button__icon`. Pinned: the sidebar steps its md
+   * controls up to 40px, the brand tile stays 36px. */
+  --app-switch-icon-size: 2.25rem;
   /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
   --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
-  /* Collection + MenuItem row height — md chrome, not the in-row xs edit/fold hit. */
-  --app-sidebar-item-height: var(--control-height-md, 2.25rem);
+  /*
+   * Hierarchy: rows read first, section labels sit back. Labels keep the row size
+   * but quieter ink (60% clears 4.5:1 on the rail in both themes); rows are near-full ink.
+   */
+  --app-sidebar-item-color: var(--workspace-item-color);
+  /* Collection + MenuItem row height — lg (40px) for breathing room, not the in-row xs edit/fold hit. */
+  --app-sidebar-item-height: var(--control-height-lg, 2.5rem);
 }
 
 .app-sidebar__header {
   /*
-   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so
+   * Block padding is the suite header strip (`--workspace-header-padding-y`) so
    * the app-switch icon tile tops align with ViewHeader IconButtons across the
    * mobile overlay split. Keep `items-start` so the mark does not float above the bell.
    */
-  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
+  @apply flex shrink-0 items-start justify-between gap-3;
+  padding-block: var(--workspace-header-padding-y);
   padding-inline: var(--app-sidebar-padding-x);
 }
 
@@ -64,10 +71,6 @@
 .app-sidebar__notifications {
   /* Tile tops at header edge — no mt offset. */
   @apply shrink-0;
-  /*
-   * Bell stroke = sidebar right hairline (same token as `.app-sidebar` `border-r`).
-   */
-  --button-outline-border-color: var(--app-sidebar-border-color, var(--border));
   /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
    * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
@@ -90,29 +93,35 @@
 }
 
 .app-sidebar__primary-button {
-  /* Hairline under Compose; asymmetric block padding (pt-2 / pb-4). */
-  @apply shrink-0 border-b pt-2 pb-4;
-  border-color: var(--app-sidebar-border-color, var(--border));
+  /* No hairline under Compose: spacing alone separates it; asymmetric block padding (pt-2 / pb-4). */
+  @apply shrink-0 pt-2 pb-4;
   padding-inline: var(--app-sidebar-padding-x);
 }
 
 .app-sidebar__sections {
   @apply min-h-0 flex-1 overflow-y-auto pt-4;
   padding-inline: var(--app-sidebar-padding-x);
+  /* Scroll clear of the floating footer (height published by AppSidebar). */
+  padding-bottom: calc(var(--app-sidebar-footer-height, 0px) + 0.5rem);
+}
+
+/* Sections are separated by space only (no hairline); same total gap as before. */
+.app-sidebar__sections > .sidebar-section + .sidebar-section {
+  @apply mt-7;
 }
 
 /*
- * Hairline between sections. Same soft token as the rail
- * (`--app-sidebar-border-color`, which Settings aliases to `--border`).
- * `mt-3.5` + `pt-3.5` keeps the previous `space-y-7` gap, with the line centered.
+ * Footer floats over the bottom of the scroll area (rows scroll under the frosted
+ * account card). Its gaps let clicks through to the rows beneath.
  */
-.app-sidebar__sections > .sidebar-section + .sidebar-section {
-  @apply mt-3.5 border-t pt-3.5;
-  border-color: var(--app-sidebar-border-color, var(--border));
+.app-sidebar__footer {
+  @apply absolute inset-x-0 z-10;
+  bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
 }
 
-.app-sidebar__footer {
-  @apply shrink-0;
+.app-sidebar__footer > * {
+  pointer-events: auto;
 }
 
 .app-sidebar[data-open="true"] {
@@ -121,6 +130,31 @@
 
 .app-sidebar[data-open="false"] {
   @apply -translate-x-full sidebar:-ml-64 sidebar:border-r-0;
+}
+
+/*
+ * Sidebar panel at every width: a rounded end edge, a scheme hairline and the
+ * scheme shadow. Docked (desktop) it is raised over main so the shadow falls on the
+ * canvas; on mobile the same panel slides over the content. A closed panel casts
+ * no shadow (it would bleed in at the screen edge).
+ */
+.app-sidebar {
+  border-start-end-radius: var(--sidebar-panel-radius);
+  border-end-end-radius: var(--sidebar-panel-radius);
+  border-inline-end-color: var(--workspace-divider-color);
+  box-shadow: var(--sidebar-panel-overlay-shadow-start);
+}
+
+.app-sidebar[data-open="false"] {
+  box-shadow: none;
+}
+
+@media (min-width: 72.5rem) {
+  .app-sidebar {
+    position: relative;
+    z-index: 31;
+    box-shadow: var(--sidebar-panel-shadow-start);
+  }
 }
 
 .app-sidebar__scrim {

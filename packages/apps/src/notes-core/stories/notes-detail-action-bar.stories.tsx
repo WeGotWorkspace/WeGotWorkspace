@@ -45,9 +45,6 @@ function NotesDetailActionBarHarness({
           starred={starredMap}
           closeMobileDetail={() => {}}
           backLabel="All Items"
-          notebooks={data.notebookCollections ?? []}
-          onMoveToNotebook={() => {}}
-          onCreateNotebook={() => {}}
           toggleStar={toggleStar}
           toggleArchive={(id) => {
             setArchivedMap((prev) => ({

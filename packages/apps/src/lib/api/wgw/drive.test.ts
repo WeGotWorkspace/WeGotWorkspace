@@ -25,10 +25,6 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwGuestSharePath,
 }));
 
-vi.mock("@/lib/api/wgw/search", () => ({
-  downloadWgwUnifiedSearchRecord: vi.fn(),
-}));
-
 import {
   createWgwDriveOperations,
   GUEST_STRUCTURE_UNAVAILABLE,

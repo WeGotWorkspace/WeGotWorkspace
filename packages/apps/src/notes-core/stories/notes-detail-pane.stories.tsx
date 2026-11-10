@@ -1,12 +1,44 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor } from "storybook/test";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
-import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
+import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
+
+/**
+ * Editor task checks follow the text, not the notebook: an empty ring, or
+ * checked the inverse — filled with the body ink, the check in the sheet colour.
+ */
+async function expectInkTaskChecks(canvasElement: HTMLElement) {
+  const box = (state: "true" | "false") =>
+    canvasElement.querySelector<HTMLElement>(
+      `ul[data-type="taskList"] li[data-checked="${state}"] > label span`,
+    );
+  await waitFor(() => expect(box("true")).toBeTruthy());
+  const checked = box("true")!;
+  const unchecked = box("false")!;
+  const resolve = (value: string) => {
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    checked.parentElement!.appendChild(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  };
+  const style = getComputedStyle(checked);
+  expect(style.backgroundColor).toBe(
+    resolve("var(--notes-detail-contrast-fg, var(--workspace-foreground))"),
+  );
+  expect(style.backgroundColor).not.toBe(resolve("var(--notes-detail-accent)"));
+  expect(style.borderTopColor).toBe(style.backgroundColor);
+  expect(style.color).toBe(resolve("var(--workspace-surface)"));
+  expect(style.color).not.toBe(style.backgroundColor);
+  expect(getComputedStyle(checked, "::after").backgroundColor).toBe(style.color);
+  expect(getComputedStyle(unchecked).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+}
 
 function NotesDetailPaneHarness({
   readOnly = false,
@@ -32,7 +64,7 @@ function NotesDetailPaneHarness({
 
   return (
     <NotesStoryScope variant="detail" detailTint={detailTint}>
-      <div className="notes-workspace flex min-h-dvh flex-col">
+      <div className="notes-workspace note-detail-desk flex min-h-dvh flex-col">
         <div className="workspace-detail-pane__scroll flex-1">
           <NoteDetailView
             noteId={base.noteId}
@@ -50,18 +82,38 @@ function NotesDetailPaneHarness({
             readOnly={readOnly}
             pullQuote={base.pullQuote}
             body={body}
+            eyebrow={
+              <NotesDetailLastEdited lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
+            }
           />
         </div>
-        <WorkspaceDetailFooter
-          className="notes-detail-footer"
-          tags={notesLastEditedTag({
-            lastEdited: base.lastEdited,
-            editedLabel: base.editedLabel,
-          })}
-        />
       </div>
     </NotesStoryScope>
   );
+}
+
+/**
+ * The open note's tags are active tags: the selected-sidebar-tag colours (ink
+ * dimmed into the surface, surface label), not the notebook colour, no edge;
+ * the label follows the chip ink.
+ */
+function expectActiveDetailTag(chip: HTMLElement, host: HTMLElement) {
+  const probe = (value: string) => {
+    const span = document.createElement("span");
+    span.style.backgroundColor = value;
+    host.appendChild(span);
+    const color = getComputedStyle(span).backgroundColor;
+    span.remove();
+    return color;
+  };
+  const style = getComputedStyle(chip);
+  expect(style.backgroundColor).toBe(probe("var(--notes-tag-active-bg)"));
+  expect(style.backgroundColor).not.toBe(probe("var(--note-detail-tag-bg)"));
+  expect(style.color).toBe(probe("var(--notes-tag-active-fg)"));
+  expect(style.boxShadow).toBe("none");
+  const label = chip.querySelector(".tag__label");
+  expect(label).toBeTruthy();
+  expect(getComputedStyle(label!).color).toBe(style.color);
 }
 
 const meta = {
@@ -84,8 +136,8 @@ export const Editable: Story = {
     expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
     expect(sheet!.querySelector(".note-text-editor-body")).toBeTruthy();
-    expect(sheet!.querySelector(".notes-detail-footer")).toBeNull();
-    expect(canvasElement.querySelector(".notes-detail-footer")).toBeTruthy();
+    // No footer: the last-edited date sits above the title.
+    expect(canvasElement.querySelector(".workspace-detail-footer")).toBeNull();
 
     const editor = canvasElement.querySelector('[contenteditable="true"]');
     expect(editor).toBeTruthy();
@@ -101,11 +153,9 @@ export const Editable: Story = {
     expect(remove).toBeTruthy();
     const workspace = canvasElement.querySelector(".notes-workspace");
     expect(workspace).toBeTruthy();
-    const sheetFill = document.createElement("span");
-    sheetFill.style.backgroundColor = "var(--paper-sheet-bg)";
-    workspace!.appendChild(sheetFill);
-    expect(getComputedStyle(remove!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
-    sheetFill.remove();
+    expect(getComputedStyle(remove!).color).toBe(
+      getComputedStyle(remove!.closest(".tag") as HTMLElement).color,
+    );
 
     const label = remove!.getAttribute("aria-label") ?? "";
     const tagLabel = label.replace(/^Remove tag /, "");
@@ -114,22 +164,16 @@ export const Editable: Story = {
       expect(canvasElement.querySelector(`[aria-label="Remove tag ${tagLabel}"]`)).toBeNull();
     });
 
-    const edited = canvasElement.querySelector(
-      ".workspace-detail-footer__meta-tag--edited",
+    // Last edited: plain text after a bar beside the notebook, not a chip.
+    const edited = sheet!.querySelector(
+      ".note-detail-view__eyebrow .notes-detail-last-edited",
     ) as HTMLElement | null;
     expect(edited).toBeTruthy();
-    expect(edited!.getAttribute("aria-label")).toBe("Last edited");
-    expect(edited!.textContent).toMatch(/\d/);
-    expect(edited!.textContent).not.toMatch(/Last edited/);
-    const chip = edited!.querySelector(".tag") as HTMLElement | null;
-    expect(chip).toBeTruthy();
-    const chipStyle = getComputedStyle(chip!);
-    expect(chipStyle.display).not.toBe("none");
-    expect(chipStyle.visibility).not.toBe("hidden");
-    expect(Number.parseFloat(chipStyle.opacity || "1")).toBeGreaterThan(0);
-    const rect = chip!.getBoundingClientRect();
-    expect(rect.width).toBeGreaterThan(0);
-    expect(rect.height).toBeGreaterThan(0);
+    expect(edited!.querySelector(".tag")).toBeNull();
+    expect(edited!.querySelector(".notes-detail-last-edited__separator")?.textContent).toBe("|");
+    const date = edited!.querySelector(".notes-detail-last-edited__date") as HTMLElement;
+    expect(date.textContent).toMatch(/\d/);
+    expect(date.getBoundingClientRect().width).toBeGreaterThan(0);
 
     expect(
       getComputedStyle(workspace as HTMLElement)
@@ -138,14 +182,37 @@ export const Editable: Story = {
     ).toBe("");
     const accentProbe = document.createElement("span");
     accentProbe.style.color = "var(--workspace-accent)";
+    // The suite norm: the accent is the scheme ink, not the Notes brand green.
     const darkProbe = document.createElement("span");
-    darkProbe.style.color = "var(--color-we-got-dark)";
+    darkProbe.style.color = "var(--scheme-ink)";
     workspace!.appendChild(accentProbe);
     workspace!.appendChild(darkProbe);
     expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(darkProbe).color);
     expect(getComputedStyle(accentProbe).color).not.toBe("rgb(0, 0, 0)");
     accentProbe.remove();
     darkProbe.remove();
+  },
+};
+
+/** Tags are 30px chips right under the title; on touch the remove target grows invisibly to 44px. */
+export const TouchSafeTags: Story = {
+  tags: ["vitest-ci"],
+  args: {},
+  play: async ({ canvasElement }) => {
+    const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement;
+    const group = canvasElement.querySelector(".note-detail-view__tag-group") as HTMLElement;
+    const chip = group.querySelector(".tag") as HTMLElement;
+    const remove = chip.querySelector(".tag__remove") as HTMLElement;
+    const chipBox = chip.getBoundingClientRect();
+    await expect(Math.round(chipBox.height)).toBe(30);
+    // The remove target spans the chip's full height and reaches its end edge.
+    const removeBox = remove.getBoundingClientRect();
+    await expect(removeBox.height).toBe(chipBox.height);
+    await expect(removeBox.width).toBeGreaterThanOrEqual(30);
+    await expect(Math.round(removeBox.right)).toBe(Math.round(chipBox.right));
+    // Close under the title.
+    const gap = group.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+    await expect(gap).toBeLessThan(20);
   },
 };
 
@@ -168,66 +235,23 @@ export const NotebookTint: Story = {
     ) as HTMLElement | null;
     expect(sheet).toBeTruthy();
     expect(scroll).toBeTruthy();
-    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
+    // The open note sits on the plain pane: no notebook wash on the sheet.
+    const tintBg = document.createElement("span");
+    tintBg.style.backgroundColor = "var(--notes-detail-tint)";
+    workspace!.appendChild(tintBg);
+    expect(getComputedStyle(sheet!).backgroundColor).toBe(
       getComputedStyle(scroll!).backgroundColor,
     );
+    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
+      getComputedStyle(tintBg).backgroundColor,
+    );
+    expect(getComputedStyle(sheet!).boxShadow).toBe("none");
+    tintBg.remove();
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    const tintBg = document.createElement("span");
-    const sheetBg = document.createElement("span");
-    const paneBg = document.createElement("span");
-    const detailFg = document.createElement("span");
-    const sidebarFg = document.createElement("span");
-    tintBg.style.backgroundColor = "var(--notes-detail-tint)";
-    sheetBg.style.backgroundColor = "var(--paper-sheet-bg)";
-    paneBg.style.backgroundColor = "var(--workspace-detail-bg)";
-    detailFg.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
-    sidebarFg.style.color = "var(--notes-tag-selected-fg)";
-    workspace!.appendChild(tintBg);
-    workspace!.appendChild(sheetBg);
-    workspace!.appendChild(paneBg);
-    workspace!.appendChild(detailFg);
-    workspace!.appendChild(sidebarFg);
-    expect(getComputedStyle(sheet!).backgroundColor).toBe(
-      getComputedStyle(sheetBg).backgroundColor,
-    );
-    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
-      getComputedStyle(tintBg).backgroundColor,
-    );
-    expect(getComputedStyle(scroll!).backgroundColor).toBe(
-      getComputedStyle(paneBg).backgroundColor,
-    );
-    expect(getComputedStyle(scroll!).backgroundColor).not.toBe(
-      getComputedStyle(tintBg).backgroundColor,
-    );
-    const cream = document.createElement("span");
-    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-we-got-soft))";
-    workspace!.appendChild(cream);
-    expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(cream).backgroundColor);
-    expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
-      getComputedStyle(cream).backgroundColor,
-    );
-    cream.remove();
-    const accent = document.createElement("span");
-    accent.style.color = "var(--notes-detail-accent)";
-    workspace!.appendChild(accent);
-    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(detailFg).color);
-    expect(getComputedStyle(chip!).borderTopWidth).toBe("0px");
-    expect(getComputedStyle(chip!).backgroundColor).not.toBe(
-      getComputedStyle(sheetBg).backgroundColor,
-    );
-    expect(getComputedStyle(chip!).backgroundColor).not.toBe(getComputedStyle(accent).color);
-    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
-    accent.remove();
-    const label = chip!.querySelector(".tag__label");
-    const icon = chip!.querySelector(".tag__icon");
-    expect(label).toBeTruthy();
-    expect(getComputedStyle(label!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
-    expect(icon).toBeTruthy();
-    expect(getComputedStyle(icon!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
-    expect(getComputedStyle(label!).color).not.toBe(getComputedStyle(sidebarFg).color);
+    expectActiveDetailTag(chip!, workspace!);
     const sheetRect = sheet!.getBoundingClientRect();
     expect(getComputedStyle(sheet!).minHeight).not.toBe("100%");
     // Sheet grows with content; desk scrollport owns overflow (no sheet max-height / overflow-y).
@@ -240,46 +264,8 @@ export const NotebookTint: Story = {
     // Short notes: no idle scroll on the desk scrollport or inside the sheet.
     expect(scroll!.scrollHeight).toBeLessThanOrEqual(scroll!.clientHeight + 1);
     expect(sheet!.scrollHeight).toBeLessThanOrEqual(sheet!.clientHeight + 1);
-    tintBg.remove();
-    sheetBg.remove();
-    paneBg.remove();
-    detailFg.remove();
-    sidebarFg.remove();
 
-    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
-    expect(editor).toBeTruthy();
-    const checkboxFill = document.createElement("span");
-    const checkboxMark = document.createElement("span");
-    const checkboxBorder = document.createElement("span");
-    const tagBg = document.createElement("span");
-    const tagFg = document.createElement("span");
-    const tagBorder = document.createElement("span");
-    const accentProbe = document.createElement("span");
-    checkboxFill.style.color = "var(--checkbox-checked-bg)";
-    checkboxMark.style.color = "var(--checkbox-checked-fg)";
-    checkboxBorder.style.color = "var(--checkbox-checked-border)";
-    tagBg.style.color = "var(--note-detail-tag-bg)";
-    tagFg.style.color = "var(--note-detail-tag-fg)";
-    tagBorder.style.color = "var(--note-detail-tag-border)";
-    accentProbe.style.color = "var(--notes-detail-accent)";
-    editor!.appendChild(checkboxFill);
-    editor!.appendChild(checkboxMark);
-    editor!.appendChild(checkboxBorder);
-    editor!.appendChild(tagBg);
-    editor!.appendChild(tagFg);
-    editor!.appendChild(tagBorder);
-    workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(checkboxFill).color).toBe(getComputedStyle(tagBg).color);
-    expect(getComputedStyle(checkboxFill).color).not.toBe(getComputedStyle(accentProbe).color);
-    expect(getComputedStyle(checkboxMark).color).toBe(getComputedStyle(tagFg).color);
-    expect(getComputedStyle(checkboxBorder).color).toBe(getComputedStyle(tagBorder).color);
-    checkboxFill.remove();
-    checkboxMark.remove();
-    checkboxBorder.remove();
-    tagBg.remove();
-    tagFg.remove();
-    tagBorder.remove();
-    accentProbe.remove();
+    await expectInkTaskChecks(canvasElement);
   },
 };
 
@@ -293,35 +279,12 @@ export const NotebookTintDark: Story = {
     const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
       canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
     expect(workspace).toBeTruthy();
-    expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-we-got-soft)",
-    );
+    expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe("");
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
-    const sheetFg = document.createElement("span");
-    const sheetFill = document.createElement("span");
-    sheetFg.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
-    sheetFill.style.backgroundColor = "var(--paper-sheet-bg)";
-    workspace!.appendChild(sheetFg);
-    workspace!.appendChild(sheetFill);
-    const label = chip!.querySelector(".tag__label");
-    expect(label).toBeTruthy();
-    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(sheetFg).color);
-    expect(getComputedStyle(label!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
-    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
-    expect(getComputedStyle(chip!).borderTopWidth).toBe("0px");
-    const accentFill = document.createElement("span");
-    accentFill.style.color = "var(--notes-detail-accent)";
-    workspace!.appendChild(accentFill);
-    expect(getComputedStyle(chip!).backgroundColor).not.toBe(getComputedStyle(accentFill).color);
-    accentFill.remove();
-    sheetFg.remove();
-    sheetFill.remove();
-    const accentStrong = document.createElement("span");
-    accentStrong.style.color = "var(--notes-detail-accent-strong)";
-    workspace!.appendChild(accentStrong);
+    expectActiveDetailTag(chip!, workspace!);
     const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement | null;
     const softInk = document.createElement("span");
     softInk.style.color = "var(--notes-detail-contrast-fg)";
@@ -329,34 +292,21 @@ export const NotebookTintDark: Story = {
     expect(title).toBeTruthy();
     expect(getComputedStyle(title!).color).toBe(getComputedStyle(softInk).color);
     softInk.remove();
-    const editor = canvasElement.querySelector(".note-text-editor-body") as HTMLElement | null;
-    expect(editor).toBeTruthy();
-    const fill = document.createElement("span");
-    const mark = document.createElement("span");
-    const tagBg = document.createElement("span");
-    const accent = document.createElement("span");
-    const cream = document.createElement("span");
-    fill.style.color = "var(--checkbox-checked-bg)";
-    mark.style.color = "var(--checkbox-checked-fg)";
-    tagBg.style.color = "var(--note-detail-tag-bg)";
-    accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-we-got-soft)";
-    editor!.appendChild(fill);
-    editor!.appendChild(mark);
-    editor!.appendChild(tagBg);
-    workspace!.appendChild(accent);
-    workspace!.appendChild(cream);
-    expect(getComputedStyle(fill).color).toBe(getComputedStyle(tagBg).color);
-    expect(getComputedStyle(fill).color).not.toBe(getComputedStyle(accent).color);
-    expect(getComputedStyle(mark).color).toBe(getComputedStyle(accentStrong).color);
-    expect(getComputedStyle(mark).color).not.toBe(getComputedStyle(cream).color);
-    fill.remove();
-    mark.remove();
-    tagBg.remove();
-    accent.remove();
-    cream.remove();
-    accentStrong.remove();
+    await expectInkTaskChecks(canvasElement);
   },
+};
+
+/** Task checks: the selection mark shape, filled with the text colour when checked. */
+export const TaskChecks: Story = {
+  tags: ["vitest-ci"],
+  args: { withTasks: true },
+  play: async ({ canvasElement }) => expectInkTaskChecks(canvasElement),
+};
+
+/** Dark: the same text-colour fill with a surface-coloured check. */
+export const TaskChecksDark: Story = {
+  ...TaskChecks,
+  decorators: [withDarkTheme],
 };
 
 export const ReadOnly: Story = {
@@ -372,26 +322,7 @@ export const ReadOnly: Story = {
     const chip = canvasElement.querySelector(".note-detail-view__tag-group .tag");
     expect(workspace).toBeTruthy();
     expect(chip).toBeTruthy();
-    const fill = document.createElement("span");
-    const ink = document.createElement("span");
-    const accent = document.createElement("span");
-    fill.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
-    ink.style.backgroundColor = "var(--paper-sheet-bg)";
-    accent.style.color = "var(--notes-detail-accent)";
-    workspace!.appendChild(fill);
-    workspace!.appendChild(ink);
-    workspace!.appendChild(accent);
-    const chipStyle = getComputedStyle(chip!);
-    const label = chip!.querySelector(".tag__label");
-    expect(label).toBeTruthy();
-    expect(chipStyle.backgroundColor).toBe(getComputedStyle(fill).color);
-    expect(chipStyle.color).toBe(getComputedStyle(ink).backgroundColor);
-    expect(getComputedStyle(label!).color).toBe(getComputedStyle(ink).backgroundColor);
-    expect(chipStyle.backgroundColor).not.toBe(getComputedStyle(accent).color);
-    expect(chipStyle.borderTopWidth).toBe("0px");
-    fill.remove();
-    ink.remove();
-    accent.remove();
+    expectActiveDetailTag(chip as HTMLElement, workspace as HTMLElement);
   },
 };
 

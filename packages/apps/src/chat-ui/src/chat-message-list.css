@@ -19,22 +19,23 @@
 
 .chat-message-list__scroll {
   @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
-  /* The hover bar overlays the row. A constant inset keeps the last message's
-     bar inside the scroller. Growing a row on hover would stick the list to
-     the bottom. */
-  padding-bottom: calc(var(--control-height-md, 2.25rem) + 0.5rem);
+  /* The composer floats over the list (`--chat-dock-height`, published by its
+     host): the last message scrolls clear of it. */
+  padding-bottom: calc(var(--chat-dock-height, 0px) + 0.75rem);
+  /* Chrome may float over the top too (Meet's call band, `--chat-top-dock-height`):
+     the first line starts below it, and so do the sticky day labels (sticky
+     offsets count from the padding edge). */
+  padding-top: var(--chat-top-dock-height, 0px);
+  scroll-padding-top: var(--chat-top-dock-height, 0px);
 }
 
 .chat-message-list__jump {
-  @apply absolute bottom-3 left-1/2 z-10 -translate-x-1/2 shadow-md;
+  @apply absolute left-1/2 z-20 -translate-x-1/2 shadow-md;
+  bottom: calc(var(--chat-dock-height, 0px) + 0.75rem);
 }
 
 .chat-message-list__day-section {
   @apply flex min-w-0 max-w-full flex-col;
-}
-
-.chat-message-list .list-sticky-header {
-  @apply px-5;
 }
 
 .chat-message-list__group {

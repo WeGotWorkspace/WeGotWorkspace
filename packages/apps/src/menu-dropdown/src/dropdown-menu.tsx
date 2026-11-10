@@ -46,6 +46,11 @@ export type DropdownMenuProps = {
   sideOffset?: number;
   contentClassName?: string;
   contentStyle?: React.CSSProperties;
+  /**
+   * When the menu closes focus goes back to the trigger. Call `preventDefault()` to
+   * keep it where an item put it (e.g. on a field the item just added).
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 function isSeparator(item: DropdownMenuEntry): item is DropdownMenuSeparatorProps {
@@ -69,6 +74,7 @@ export function DropdownMenu({
   sideOffset = 8,
   contentClassName,
   contentStyle,
+  onCloseAutoFocus,
 }: DropdownMenuProps) {
   // A submenu opens in place of the list (drill-down): a side flyout does not fit on phones.
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
@@ -92,6 +98,7 @@ export function DropdownMenu({
         sideOffset={sideOffset}
         className={cn("dropdown-menu__content", contentClassName)}
         style={contentStyle}
+        onCloseAutoFocus={onCloseAutoFocus}
       >
         {openSubmenu ? (
           <DropdownMenuSubmenuList

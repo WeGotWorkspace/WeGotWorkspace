@@ -28,3 +28,15 @@
   width: 1px;
   background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
+
+/* Done: a text button beside the 44px icon actions. Keeps the xl control's
+ * 16px text, with half its 32px side padding so it sits snug like them. */
+.multi-selection-view__text-button {
+  padding-inline: 1rem;
+}
+
+/* Compact (side panel): the floating bar's Done, 14px text on an lg control. */
+.multi-selection-view--compact .multi-selection-view__text-button {
+  padding-inline: 0.75rem;
+  font-size: var(--input-font-size-md, 0.875rem);
+}
