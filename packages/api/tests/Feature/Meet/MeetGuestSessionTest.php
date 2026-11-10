@@ -33,7 +33,7 @@ final class MeetGuestSessionTest extends WgwDatabaseTestCase
     {
         $this->getJson($this->meetRoomPath('/events?peerId=peer-alpha'))
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_guest_join_poll_leave_flow(): void
@@ -83,7 +83,7 @@ final class MeetGuestSessionTest extends WgwDatabaseTestCase
             'payload' => ['sdp' => 'v=0'],
         ])
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_leave_requires_session_or_auth(): void
@@ -92,6 +92,6 @@ final class MeetGuestSessionTest extends WgwDatabaseTestCase
 
         $this->deleteJson($this->meetRoomPath('/participants/peer-alpha'))
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 }

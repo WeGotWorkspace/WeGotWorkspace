@@ -77,7 +77,7 @@ final class MeetSignalingExchangeTest extends WgwDatabaseTestCase
             'sessionKey' => $guest['sessionKey'],
         ])
             ->assertStatus(400)
-            ->assertJson(['error' => 'bad_type']);
+            ->assertExactJson(['error' => 'bad_type', 'code' => 'bad_type']);
     }
 
     public function test_leave_removes_peer_from_roster(): void

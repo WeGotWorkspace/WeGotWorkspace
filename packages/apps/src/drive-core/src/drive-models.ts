@@ -16,6 +16,11 @@ export type DriveFile = Note & {
   /** Size in bytes, for sorting (`size` is display text; unset for folders). */
   sizeBytes?: number;
   apiPath?: string;
+  /**
+   * FileNode id (`fn-…`) when the listing named it: signed-in JMAP listings and
+   * file search results. Docs opens a row by this id without a path lookup (#1976).
+   */
+  nodeId?: string;
   /** From directory listing `myRights.mayShare` when available. */
   mayShare?: boolean;
   /** From directory listing `myRights.mayManageStructure` (full access) when available. */

@@ -97,9 +97,6 @@ final class CollabJoinAuthorizer
 
     private function deny(): never
     {
-        throw new CollabResponseException(403, [
-            'error' => 'forbidden',
-            'message' => 'You do not have access to this document.',
-        ]);
+        throw new CollabResponseException(403, 'forbidden', 'You do not have access to this document.');
     }
 }

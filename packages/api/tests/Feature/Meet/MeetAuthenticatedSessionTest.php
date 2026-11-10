@@ -109,6 +109,6 @@ final class MeetAuthenticatedSessionTest extends WgwDatabaseTestCase
                 'payload' => ['sdp' => 'v=0'],
             ])
             ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden']);
     }
 }

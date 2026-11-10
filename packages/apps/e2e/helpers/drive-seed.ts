@@ -51,3 +51,21 @@ export async function moveDriveFile(fromApiPath: string, toApiPath: string): Pro
     );
   }
 }
+
+/** Delete a drive file over WebDAV `DELETE`, as another client would. */
+export async function deleteDriveFile(apiPath: string): Promise<void> {
+  const encoded = apiPath
+    .replace(/^\/+/, "")
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const response = await fetch(`${API}/files/${encoded}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString("base64")}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Delete ${apiPath} failed (${response.status}): ${await response.text()}`);
+  }
+}

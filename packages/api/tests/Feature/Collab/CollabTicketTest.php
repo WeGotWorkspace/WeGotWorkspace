@@ -174,7 +174,7 @@ final class CollabTicketTest extends WgwDatabaseTestCase
 
         $this->poll($peerId)
             ->assertStatus(403)
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_a_revoked_share_also_closes_the_send_mailbox(): void
@@ -195,7 +195,7 @@ final class CollabTicketTest extends WgwDatabaseTestCase
                 'payload' => ['type' => 'offer', 'sdp' => 'v=0'],
             ])
             ->assertStatus(403)
-            ->assertJson(['error' => 'forbidden']);
+            ->assertExactJson(['error' => 'forbidden', 'code' => 'forbidden', 'message' => 'You do not have access to this document.']);
     }
 
     public function test_the_ticket_is_not_part_of_the_roster_a_peer_sees(): void

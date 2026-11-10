@@ -15,6 +15,8 @@ export type WgwUnifiedSearchResult = {
   snippet?: string | null;
   tokenScore?: number;
   metadata?: Record<string, unknown>;
+  /** FileNode id for a file result the server has indexed (#1976). */
+  nodeId?: string;
 };
 
 export type WgwUnifiedSearchData = {

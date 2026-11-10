@@ -46,6 +46,17 @@ describe("docs listing offline store", () => {
     expect(cached?.results.map((row) => row.id)).toEqual([2, 3, 1]);
   });
 
+  it("does not hand out a cached FileNode id", async () => {
+    await writeDocsListingToCache(username, filters, {
+      results: [{ ...result(1, "users/alice/a.md", 100), nodeId: "fn-" + "a".repeat(32) }],
+      hasMore: false,
+    });
+
+    const cached = await readDocsListingFromCache(username, filters);
+    expect(cached?.results).toHaveLength(1);
+    expect(cached?.results[0]).not.toHaveProperty("nodeId");
+  });
+
   it("scopes cache entries by browse filter key", async () => {
     await writeDocsListingToCache(username, filters, {
       results: [result(1, "users/alice/a.md", 100)],
