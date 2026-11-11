@@ -116,14 +116,9 @@ export function useDocsHomeActions({
   const [moveState, setMoveState] = useState<DocsHomeMoveState | null>(null);
   const [deleteState, setDeleteState] = useState<DocsHomeDeleteState | null>(null);
 
-  /** The operations the stars were last read with: a refresh keeps them shown meanwhile. */
   const starsOperationsRef = useRef<typeof operations>(undefined);
-
   useEffect(() => {
-    if (!operations) {
-      setStarsReady(true);
-      return;
-    }
+    if (!operations) return void setStarsReady(true);
     // A refresh (another tab starred something) keeps the Starred view filtered while it reads.
     if (starsOperationsRef.current !== operations) setStarsReady(false);
     starsOperationsRef.current = operations;
@@ -133,11 +128,10 @@ export function useDocsHomeActions({
       .then((paths) => {
         if (controller.signal.aborted) return;
         setStarredPaths(new Set(paths.map((path) => normalizeApiVirtualPath(path))));
-        setStarsReady(true);
       })
-      .catch(() => {
-        if (controller.signal.aborted) return;
-        setStarsReady(true);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setStarsReady(true);
       });
     return () => controller.abort();
   }, [operations, starsRefreshKey]);
