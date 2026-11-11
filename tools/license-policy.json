@@ -49,6 +49,15 @@
     "Apache-2.0 AND MIT",
     "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
     "Apache-2.0 AND LGPL-3.0-or-later",
-    "BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
-  ]
+    "BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only",
+    "(MIT OR GPL-3.0-or-later)",
+    "(MIT AND Zlib)"
+  ],
+  "packageLicenseOverrides": {
+    "duck": {
+      "declared": "BSD",
+      "license": "BSD-2-Clause",
+      "reason": "mammoth dependency (via lop); the package.json says only BSD, the LICENSE file is the BSD-2-Clause text"
+    }
+  }
 }

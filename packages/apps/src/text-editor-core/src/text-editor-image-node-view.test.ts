@@ -245,3 +245,34 @@ describe("docs image external opt-in", () => {
     editor.destroy();
   });
 });
+
+describe("docs image loading marker", () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("marks a Drive image as loading for Print without the editor redrawing it", async () => {
+    let finish: (blob: Blob) => void = () => {};
+    const fetchImageContent = vi.fn(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const editor = new Editor({
+      extensions: createTextEditorExtensions({ format: "markdown", fetchImageContent }),
+      content: `![Team photo](drive:${NODE_ID})`,
+    });
+    document.body.append(editor.view.dom);
+    const [img] = imageElements(editor);
+    expect(img.dataset.loading).toBe("true");
+
+    // Let the editor's DOM observer see the attribute: it must not rebuild the image.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    finish(PIXEL_PNG);
+    await waitFor(() => expect(img.dataset.loading).toBeUndefined());
+    expect(imageElements(editor)[0]).toBe(img);
+    expect(fetchImageContent).toHaveBeenCalledTimes(1);
+    editor.destroy();
+  });
+});

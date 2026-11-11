@@ -179,6 +179,28 @@ describe("NotesNotebookSelect", () => {
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
   });
 
+  it("hides the trigger tooltip while the list is open, so it cannot cover an option", () => {
+    renderSelect(
+      <NotesNotebookSelect
+        notebooks={notebooks}
+        value={{ id: "nb-drafts", name: "Drafts" }}
+        labels={defaultNotesLabels}
+        onNotebookChange={vi.fn()}
+        onCreateNotebook={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Drafts" });
+    fireEvent.focus(trigger);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole("option", { name: defaultNotesLabels.addNotebook })).toBeTruthy();
+    // The mouse leaves and comes back over the trigger while the list is open.
+    fireEvent.pointerLeave(trigger);
+    fireEvent.pointerMove(trigger);
+    expect(document.querySelector(".tooltip-ui")).toBeNull();
+  });
+
   it("reuses ColorSwatchTrigger for the swatch variant (icon + chevron, no caption)", () => {
     const { container } = renderSelect(
       <NotesNotebookSelect

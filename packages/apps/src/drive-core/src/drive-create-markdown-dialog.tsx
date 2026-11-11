@@ -40,6 +40,7 @@ export function DriveCreateMarkdownDialog({
   rootLabels,
   rootIcon,
   isSubmitting = false,
+  hideName = false,
   errorMessage,
   dialogSurfaceClassName = "drive-dialog-surface",
   onClose,
@@ -64,6 +65,8 @@ export function DriveCreateMarkdownDialog({
   /** Optional icon for drive-root rows (Docs: HardDrive). */
   rootIcon?: ReactNode;
   isSubmitting?: boolean;
+  /** Only the folder is asked: the caller names the documents (Docs: several Word files). */
+  hideName?: boolean;
   errorMessage?: string | null;
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
   dialogSurfaceClassName?: string;
@@ -108,7 +111,8 @@ export function DriveCreateMarkdownDialog({
         placeholder: labels.createMarkdownDialogNamePlaceholder,
         confirm: labels.createMarkdownDialogConfirm,
       };
-  const canSubmit = draftBaseName.trim().length > 0 && !!destinationPath && !isSubmitting;
+  const canSubmit =
+    (hideName || draftBaseName.trim().length > 0) && !!destinationPath && !isSubmitting;
 
   const handleConfirm = () => {
     if (!canSubmit || !destinationPath) return;
@@ -125,15 +129,17 @@ export function DriveCreateMarkdownDialog({
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
-        <RenameFilenameField
-          focusKey={nextFocusSession}
-          placeholder={copy.placeholder}
-          baseName={draftBaseName}
-          extension={extension || undefined}
-          disabled={isSubmitting}
-          onBaseNameChange={setDraftBaseName}
-          onEnter={handleConfirm}
-        />
+        {hideName ? null : (
+          <RenameFilenameField
+            focusKey={nextFocusSession}
+            placeholder={copy.placeholder}
+            baseName={draftBaseName}
+            extension={extension || undefined}
+            disabled={isSubmitting}
+            onBaseNameChange={setDraftBaseName}
+            onEnter={handleConfirm}
+          />
+        )}
 
         {open ? (
           <DriveFolderPicker

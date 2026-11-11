@@ -10,6 +10,7 @@ import { useWorkspaceListController } from "@/hooks/use-workspace-list-controlle
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveFileMenuAction } from "@/drive-core/src/drive-file-actions";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
@@ -88,6 +89,8 @@ export type DocsHomePaneProps = {
   shareOperations?: DriveShareOperations;
   /** Current user handle — used for ShareDialog "Manage access" navigation. */
   username?: string;
+  /** Extra row menu items per file, e.g. Save as Markdown on Word files (#1983). */
+  extraFileActions?: (file: DriveFile) => DriveFileMenuAction[];
 };
 
 /** Docs home search rows omit `mayShare`; resolve Share visibility for row overflow menus. */
@@ -148,6 +151,7 @@ export function DocsHomePane({
   searchEnabled = true,
   shareOperations,
   username = "",
+  extraFileActions,
 }: DocsHomePaneProps) {
   const { sort, toggleSort } = useListSort({
     columns: DRIVE_LIST_SORT_COLUMNS,
@@ -339,6 +343,14 @@ export function DocsHomePane({
     fileCanManageStructure,
     offlinePendingSyncIds,
     offlineBadgeLabels: offlineLabels,
+    extraFileActions: extraFileActions
+      ? (file: DriveFile) =>
+          extraFileActions(
+            file.id === activeFile?.id && file.mayManageStructure === undefined
+              ? { ...file, mayManageStructure: activeMayManageStructure }
+              : file,
+          )
+      : undefined,
   };
 
   const gridBrowserProps = { ...sharedBrowserProps, filePreviews: gridFilePreviews };

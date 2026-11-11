@@ -3,6 +3,7 @@ import {
   docAttachmentsFolderPath,
   drivePrincipalPrefix,
   imageExtensionForFile,
+  noteAttachmentsFolderPath,
 } from "./docs-image-upload";
 
 const DOC_ID = "fn-cccccccccccccccccccccccccccccccc";
@@ -14,6 +15,18 @@ describe("docs image upload paths", () => {
     expect(docAttachmentsFolderPath("/users/bob/docs/report.md", DOC_ID)).toBe(
       `/users/bob/.attachments/${DOC_ID}`,
     );
+  });
+
+  it("keys a note's hidden image folder by its uid under the owner principal (#1623)", () => {
+    const uid = "0F8FAD5B-D9CB-469F-A165-70867728950E";
+    expect(noteAttachmentsFolderPath("/users/bob", uid)).toBe(
+      "/users/bob/.attachments/note-0f8fad5b-d9cb-469f-a165-70867728950e",
+    );
+    expect(noteAttachmentsFolderPath("/groups/team", "abc")).toBe(
+      "/groups/team/.attachments/note-abc",
+    );
+    expect(noteAttachmentsFolderPath("/users/bob", "../x")).toBeNull();
+    expect(noteAttachmentsFolderPath("/elsewhere", "abc")).toBeNull();
   });
 
   it("picks a file extension from the name or MIME type", () => {

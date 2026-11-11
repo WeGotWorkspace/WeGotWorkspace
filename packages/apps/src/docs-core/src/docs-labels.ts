@@ -12,7 +12,7 @@ export const docsLabels = {
   editor: "Document",
   homeTitle: "Documents",
   homeSearchPlaceholder: "Search documents...",
-  homeEmpty: "No documents yet. Create or upload a Markdown file in Drive.",
+  homeEmpty: "No documents yet. Create one, or import a Word file.",
   homeSharedEmpty: "No shared documents yet.",
   homeRecentEmpty: "No recent documents yet.",
   homeStarredEmpty: "No starred documents yet.",
@@ -94,8 +94,16 @@ export const docsLabels = {
   saveError: "Could not save this document.",
   renameError: "Could not rename this document.",
   print: "Print",
+  downloadMarkdown: "Download Markdown (.md)",
+  downloadWord: "Download Word (.docx)",
+  downloadFailed: "Could not download this document.",
+  downloadImagesMissing: (count: number) =>
+    count === 1
+      ? "1 image could not be included in the download."
+      : `${count} images could not be included in the download.`,
   ...docsPageSetupLabels,
   share: driveLabels.detailShare,
+  inviteOthers: "Invite others",
   insertImageError: "Could not insert the image.",
   insertImageTitle: "Insert image",
   insertImageChooserDescription:

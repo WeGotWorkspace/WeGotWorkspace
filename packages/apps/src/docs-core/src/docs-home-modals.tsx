@@ -22,11 +22,12 @@ import {
 } from "@/ui/alert-dialog";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
-import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveGroupUiPath } from "@/lib/files/drive-path-utils";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
 import type { DocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import type { DocsHomeCreateDialogState } from "@/docs-core/src/use-docs-home-create-dialog";
 import {
@@ -45,6 +46,29 @@ type DocsHomeModalsProps = {
   operations?: DriveAPIOperations;
   createDialog?: DocsHomeCreateDialogState;
 };
+
+/** The New document dialog, worded for Import docx file(s) when Word files were picked (#1619). */
+function docsHomeCreateDialogLabels(
+  labels: DriveUILabels,
+  importSourceName: string | null,
+  importCount: number,
+): DriveUILabels {
+  if (importCount > 1) {
+    return {
+      ...labels,
+      createMarkdownDialogTitle: docxImportLabels.importManyDialogTitle,
+      createMarkdownDialogDescription: docxImportLabels.importManyDialogDescription(importCount),
+      createMarkdownDialogConfirm: docxImportLabels.importDialogConfirm,
+    };
+  }
+  if (!importSourceName) return labels;
+  return {
+    ...labels,
+    createMarkdownDialogTitle: docxImportLabels.importDialogTitle,
+    createMarkdownDialogDescription: docxImportLabels.importDialogDescription(importSourceName),
+    createMarkdownDialogConfirm: docxImportLabels.importDialogConfirm,
+  };
+}
 
 export function DocsHomeModals({
   actions,
@@ -162,7 +186,12 @@ export function DocsHomeModals({
       {createDialog ? (
         <DriveCreateMarkdownDialog
           open={createDialog.createDialogOpen}
-          labels={driveLabels}
+          labels={docsHomeCreateDialogLabels(
+            driveLabels,
+            createDialog.createDialogImportSourceName,
+            createDialog.createDialogImportCount,
+          )}
+          hideName={createDialog.createDialogImportCount > 1}
           defaultName={createDialog.createDialogDefaultName}
           initialBrowsePath={createDialog.createDialogBrowsePath}
           files={files}

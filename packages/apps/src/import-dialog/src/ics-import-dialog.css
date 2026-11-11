@@ -1,17 +1,17 @@
 @import "../../styles.css" reference;
 
-.calendar-import-dialog {
+.ics-import-dialog {
   @apply flex min-w-0 max-w-full flex-col gap-4;
 }
 
-.calendar-import-dialog__destination {
+.ics-import-dialog__destination {
   @apply w-full;
 }
 
-.calendar-import-dialog__destination-menu {
+.ics-import-dialog__destination-menu {
   @apply min-w-[var(--radix-dropdown-menu-trigger-width)];
 }
 
-.calendar-import-dialog__create-fields {
+.ics-import-dialog__create-fields {
   @apply flex flex-col gap-3;
 }

@@ -47,6 +47,11 @@ export type UseDriveShellArgs = {
   onViewChange?: (view: ViewKey) => void;
 };
 
+/** The signed-in username Drive maps paths with. */
+export function driveCurrentUsername(data: DriveUIData, session: WorkspaceSession): string {
+  return data.user.username || session.user.username || "";
+}
+
 export function useDriveShell({
   data,
   session,
@@ -57,7 +62,7 @@ export function useDriveShell({
   onViewChange,
 }: UseDriveShellArgs) {
   const { showError } = useAppToast();
-  const currentUsername = data.user.username || session.user.username || "";
+  const currentUsername = driveCurrentUsername(data, session);
   const [files, setFiles] = useState<DriveFile[]>(() => {
     if (!operations) return DRIVE_MOCK_FILES;
     return mapDriveListingEntries(data, currentUsername);

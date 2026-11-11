@@ -289,6 +289,19 @@ export function DriveMainPane({
               searchActive={searchActive}
               onOpenFolder={(path) => selectView({ type: "folder", path })}
             />
+          ) : visibleItems.length === 0 &&
+            view.type === "all" &&
+            allHasMore &&
+            !searchQuery.trim() ? (
+            <>
+              <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
+              <DriveListLoadMore
+                hasMore
+                loadingMore={allLoadingMore}
+                onLoadMore={loadMoreAll}
+                loadingLabel={labels.listLoadingMore}
+              />
+            </>
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
               {view.type === "all" ? labels.allFilesEmpty : labels.emptyFolder}

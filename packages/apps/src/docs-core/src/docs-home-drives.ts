@@ -175,15 +175,18 @@ export function newDocumentApiPath(username: string, files: readonly DriveFile[]
  * 3.md`, …) name not present in `existingNames`. Matches the increment used by
  * Drive's {@link suggestNewMarkdownFileName} so the two flows stay consistent.
  */
-export function nextUntitledMarkdownName(existingNames: Iterable<string>): string {
+export function nextUntitledMarkdownName(
+  existingNames: Iterable<string>,
+  base: string = NEW_DOCUMENT_BASE,
+): string {
   const taken = new Set<string>();
   for (const name of existingNames) {
     if (typeof name === "string" && name.trim()) taken.add(name.trim().toLowerCase());
   }
-  let candidate = `${NEW_DOCUMENT_BASE}.md`;
+  let candidate = `${base}.md`;
   let index = 2;
   while (taken.has(candidate.toLowerCase())) {
-    candidate = `${NEW_DOCUMENT_BASE} ${index}.md`;
+    candidate = `${base} ${index}.md`;
     index += 1;
   }
   return candidate;
@@ -194,9 +197,29 @@ export function nextUntitledMarkdownName(existingNames: Iterable<string>): strin
  * is effectively guaranteed not to clobber an existing file, so we never
  * overwrite even when we cannot enumerate the directory.
  */
-export function fallbackUntitledMarkdownName(now: Date = new Date()): string {
+export function fallbackUntitledMarkdownName(
+  now: Date = new Date(),
+  base: string = NEW_DOCUMENT_BASE,
+): string {
   const stamp = now.toISOString().slice(0, 19).replace("T", " ").replace(/:/g, "-");
-  return `${NEW_DOCUMENT_BASE} ${stamp}.md`;
+  return `${base} ${stamp}.md`;
+}
+
+/** Names already in `userRoot`, or null when the live listing failed. */
+async function takenDocumentNames(
+  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
+  userRoot: string,
+  loadedFiles: readonly DriveFile[],
+): Promise<string[] | null> {
+  if (!operations) {
+    return loadedFiles.filter((file) => file.kind !== "folder").map((file) => file.title);
+  }
+  try {
+    const state = await operations.listDirectory(userRoot);
+    return state.directory.files.map((entry) => entry.name);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -211,17 +234,33 @@ export async function resolveNewDocumentName(
   operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
   userRoot: string,
   loadedFiles: readonly DriveFile[],
+  /** Name without `.md`; an imported Word file passes its own base name. */
+  base: string = NEW_DOCUMENT_BASE,
 ): Promise<string> {
-  if (operations) {
-    try {
-      const state = await operations.listDirectory(userRoot);
-      const names = state.directory.files.map((entry) => entry.name);
-      return nextUntitledMarkdownName(names);
-    } catch {
-      return fallbackUntitledMarkdownName();
-    }
-  }
-  return nextUntitledMarkdownName(
-    loadedFiles.filter((file) => file.kind !== "folder").map((file) => file.title),
-  );
+  const taken = await takenDocumentNames(operations, userRoot, loadedFiles);
+  return taken
+    ? nextUntitledMarkdownName(taken, base)
+    : fallbackUntitledMarkdownName(new Date(), base);
+}
+
+/**
+ * Free names for several imported Word files in one folder: each after its own
+ * file, none twice. Without a listing, each name gets the timestamp of
+ * {@link fallbackUntitledMarkdownName}.
+ */
+export async function resolveImportDocumentNames(
+  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
+  userRoot: string,
+  loadedFiles: readonly DriveFile[],
+  bases: readonly string[],
+): Promise<string[]> {
+  const listed = await takenDocumentNames(operations, userRoot, loadedFiles);
+  const taken = listed ?? [];
+  const now = new Date();
+  return bases.map((base) => {
+    const stem = listed ? base : fallbackUntitledMarkdownName(now, base).replace(/\.md$/, "");
+    const name = nextUntitledMarkdownName(taken, stem);
+    taken.push(name);
+    return name;
+  });
 }

@@ -4,8 +4,8 @@ import { Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import type { DocsCollabUiPermissions } from "@/docs-core/src/docs-collab-permissions";
 import {
+  type DocsCollabUiPermissions,
   resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
@@ -69,8 +69,7 @@ import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { useDocsCollabAwarenessPresence } from "./use-docs-collab-awareness-presence";
 import { useDocsComments } from "./use-docs-comments";
 import { useDocsSuggestions } from "./use-docs-suggestions";
-import { useDocsCollab } from "./use-docs-collab";
-import type { DocsCollabUrls } from "./use-docs-collab";
+import { type DocsCollabUrls, useDocsCollab } from "./use-docs-collab";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createDocsThreadsLiveClient } from "./docs-threads-live";
 import { createDocsThreadsMemory } from "./docs-threads-memory";
@@ -85,6 +84,8 @@ import {
   useDocsExternalWriteRequest,
 } from "./use-docs-external-write-prompt";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { useDocsDownload } from "@/docs-core/src/use-docs-download";
+import { countWords, defaultTitleFromRoom } from "./docs-collab-workspace-utils";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -118,20 +119,6 @@ export type DocsCollabWorkspaceProps = {
   /** Opens the rename dialog; the pencil next to the title shows only when set (and editable). */
   onRename?: () => void;
 };
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
-
-function defaultTitleFromRoom(room: string | undefined): string {
-  const normalized = room?.trim().replace(/\/+$/, "");
-  if (!normalized) return "document.md";
-  const slash = normalized.lastIndexOf("/");
-  const name = slash >= 0 ? normalized.slice(slash + 1) : normalized;
-  return name || "document.md";
-}
 
 export function DocsCollabWorkspace({
   userName: userNameProp,
@@ -303,6 +290,13 @@ function DocsCollabWorkspaceInner({
   const imageInsertEnabled = permissions.editable && editorFormat !== "text";
   const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
   const pageSetup = useDocsPageSetup(resolvedDocApiPath);
+  const download = useDocsDownload(
+    editor,
+    resolvedDocumentTitle,
+    editorFormat,
+    pageSetup.pageSetup,
+    labels,
+  );
   const pickerUsername = driveUsername?.trim() || session.user.username || "";
   const imageInsert = useDocsImageInsert({
     editor,
@@ -603,6 +597,7 @@ function DocsCollabWorkspaceInner({
     onToggleViewSource: () => setViewSource((on) => !on),
     sourceLockedByCollab,
     reviewPanelOpen,
+    download: collabSession && !snapshotPreview ? download : undefined,
     share:
       showShare && onShare ? { label: shareLabel ?? labels.share, onClick: onShare } : undefined,
     review: { itemCount: reviewItemCount, onToggle: handleToggleReview },

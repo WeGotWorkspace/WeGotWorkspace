@@ -1,4 +1,4 @@
-import type { Editor } from "@tiptap/react";
+import type { Editor } from "@tiptap/core";
 import { readTextEditorSheetPaddingToken } from "@/text-editor-core/src/text-editor-sheet-margin";
 import { readTextEditorProseFontSizeToken } from "@/text-editor-core/src/text-editor-prose-font";
 
@@ -56,9 +56,58 @@ function syncPrintProseFontToken(editorRoot: Element | null): () => void {
   };
 }
 
+/** How long print waits for Drive images that are still loading. */
+export const PRINT_IMAGE_WAIT_MS = 15_000;
+const PRINT_IMAGE_POLL_MS = 100;
+
+function imagePending(img: HTMLImageElement): boolean {
+  if (img.dataset.loading === "true") return true;
+  return img.hasAttribute("src") && !img.complete;
+}
+
+/** Resolve once no image in the sheet is loading, `cancelled()` is true, or after `timeoutMs`. */
+export function waitForSheetImages(
+  surface: HTMLElement,
+  timeoutMs = PRINT_IMAGE_WAIT_MS,
+  cancelled: () => boolean = () => false,
+): Promise<void> {
+  const pending = () => Array.from(surface.querySelectorAll("img")).some(imagePending);
+  if (!pending()) return Promise.resolve();
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (cancelled() || !pending() || Date.now() >= deadline) resolve();
+      else window.setTimeout(check, PRINT_IMAGE_POLL_MS);
+    };
+    window.setTimeout(check, PRINT_IMAGE_POLL_MS);
+  });
+}
+
+/**
+ * Paper is white: print in the light theme, or dark mode's light text prints grey.
+ * Returns the restore.
+ */
+function printInLightTheme(root: HTMLElement): () => void {
+  const previous = root.dataset.theme;
+  if (previous !== "dark") return () => {};
+  root.dataset.theme = "light";
+  return () => {
+    root.dataset.theme = previous;
+  };
+}
+
+function printAfterLayout(cancelled: () => boolean): void {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (!cancelled()) window.print();
+    });
+  });
+}
+
 /**
  * Print the editor sheet from the live document so fonts and styles match the UI.
- * Uses print-only CSS on `body` (see `text-editor.css`) — no iframe.
+ * Uses print-only CSS on `body` (see `text-editor.css`) — no iframe. Waits for Drive
+ * images that are still loading, so no page prints without them.
  */
 export function printTextEditorSheet(editor: Editor | null) {
   if (!editor) return;
@@ -73,23 +122,22 @@ export function printTextEditorSheet(editor: Editor | null) {
   const body = document.body;
   const editorRoot = surface.closest(".text-editor");
 
-  let restorePrintPageMargin: (() => void) | null = null;
-  let restorePrintProseFont: (() => void) | null = null;
-
   root.classList.add(PRINT_BODY_CLASS);
   body.classList.add(PRINT_BODY_CLASS);
   surface.classList.add(PRINT_SURFACE_CLASS);
   editorRoot?.classList.add(TEXT_EDITOR_PRINT_FORMATTED_CLASS);
 
-  restorePrintPageMargin = syncPrintPageMarginToken(editorRoot);
-  restorePrintProseFont = syncPrintProseFontToken(editorRoot);
+  const restores = [
+    syncPrintPageMarginToken(editorRoot),
+    syncPrintProseFontToken(editorRoot),
+    printInLightTheme(root),
+  ];
 
   let cleanedUp = false;
   const cleanup = () => {
     if (cleanedUp) return;
     cleanedUp = true;
-    restorePrintPageMargin?.();
-    restorePrintProseFont?.();
+    for (const restore of restores) restore();
     root.classList.remove(PRINT_BODY_CLASS);
     body.classList.remove(PRINT_BODY_CLASS);
     surface.classList.remove(PRINT_SURFACE_CLASS);
@@ -98,11 +146,15 @@ export function printTextEditorSheet(editor: Editor | null) {
   };
 
   window.addEventListener("afterprint", cleanup);
-  window.setTimeout(cleanup, 120_000);
+  window.setTimeout(cleanup, 120_000 + PRINT_IMAGE_WAIT_MS);
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.print();
-    });
+  // The sheet can unmount, or `afterprint` can already have run, while images load.
+  const cancelled = () => cleanedUp || !surface.isConnected;
+  void waitForSheetImages(surface, PRINT_IMAGE_WAIT_MS, cancelled).then(() => {
+    if (cancelled()) {
+      cleanup();
+      return;
+    }
+    printAfterLayout(cancelled);
   });
 }

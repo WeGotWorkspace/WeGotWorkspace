@@ -4,6 +4,7 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
 import { buildDisplayTasks, filterTasksBySearch } from "@/tasks-core/src/tasks-task-utils";
 import { useTasksExitAnimation } from "@/tasks-core/src/use-tasks-exit-animation";
+import { useTasksIcsImport, type TasksImportedChange } from "@/tasks-core/src/use-tasks-ics-import";
 import { useTasksList } from "@/tasks-core/src/use-tasks-list";
 import { useTasksMutations } from "@/tasks-core/src/use-tasks-mutations";
 import { useTasksProjectMutations } from "@/tasks-core/src/use-tasks-project-mutations";
@@ -38,6 +39,28 @@ export function useTasksController({
   });
   const exitAnimation = useTasksExitAnimation();
   const { clearHiddenTasks } = exitAnimation;
+  const { setTaskLists, setTasks, ensureTaskListVisible, selectView: selectShellView } = shell;
+  const handleTasksImported = useCallback(
+    ({ taskListId, createdList, tasks }: TasksImportedChange) => {
+      if (createdList) {
+        setTaskLists((prev) =>
+          prev.some((list) => list.id === createdList.id) ? prev : [...prev, createdList],
+        );
+      }
+      if (tasks.length > 0) {
+        const importedIds = new Set(tasks.map((task) => task.id));
+        setTasks((prev) => [...prev.filter((task) => !importedIds.has(task.id)), ...tasks]);
+      }
+      ensureTaskListVisible(taskListId);
+      selectShellView(`list:${taskListId}`);
+    },
+    [ensureTaskListVisible, selectShellView, setTaskLists, setTasks],
+  );
+  const icsImport = useTasksIcsImport({
+    operations: shell.operations,
+    labels: shell.L,
+    onImported: handleTasksImported,
+  });
 
   useEffect(() => {
     clearHiddenTasks();
@@ -160,6 +183,7 @@ export function useTasksController({
     patchShareWith: projectMutations.patchShareWith,
     removeSharedList: projectMutations.removeSharedList,
     deleteList: projectMutations.deleteList,
+    icsImport,
   };
 }
 

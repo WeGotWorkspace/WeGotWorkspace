@@ -6876,6 +6876,65 @@
         "description": "Per-object iCalendar caps: 512 KiB serialized size; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex."
       }
     },
+    "/tasks/items/import": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Import tasks from an ICS file",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "taskListId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/calendar": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Imported tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        },
+        "x-wgw-access": "user",
+        "description": "Import the VTODO UID groups of an ICS file into a writable task list. Each group's ICS is stored as-is (RELATED-TO, VALARM, RRULE and unknown properties are kept). Same whole-body cap as calendar import (MAX_ICS_IMPORT_BYTES, 512 KiB) → 413 payload_too_large. Each group is checked for the 64-component cap and the recurrence guard; a group whose UID already exists in the list is not overwritten (code already_exists). Failing groups appear in errors[] and siblings still import. 201 when at least one task was imported; when groups were found but none imported the response is 400 with the TaskImportResponse body. A file without VTODOs is 400 bad_request. skipped.events counts VEVENT UID groups that were not imported."
+      }
+    },
     "/tasks/items/query": {
       "post": {
         "tags": [

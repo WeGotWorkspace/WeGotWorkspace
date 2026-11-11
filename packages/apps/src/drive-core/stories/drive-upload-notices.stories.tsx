@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { DriveUploadNotices } from "@/drive-core/src/drive-upload-notices";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 
 const REPLACE_FELL_BACK = {
   id: "batch-replace",

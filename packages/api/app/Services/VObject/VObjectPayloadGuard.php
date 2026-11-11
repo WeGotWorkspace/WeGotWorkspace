@@ -21,6 +21,12 @@ final class VObjectPayloadGuard
 
     public const MAX_ICS_BYTES = 524_288;
 
+    /**
+     * Whole-body cap for a Calendar or Tasks ICS import. Both imports read it
+     * through {@see assertIcsImportSize()}, so raising it (#931) applies to both.
+     */
+    public const MAX_ICS_IMPORT_BYTES = self::MAX_ICS_BYTES;
+
     /** VEVENT + VTODO + VALARM combined per iCalendar object. */
     public const MAX_ICALENDAR_COMPONENTS = 64;
 
@@ -109,16 +115,27 @@ final class VObjectPayloadGuard
 
     public function assertIcsSize(string $ics, string $domain = 'calendars', string $logLevel = 'warning'): void
     {
+        $this->assertIcsBytesWithin($ics, self::MAX_ICS_BYTES, $domain, $logLevel);
+    }
+
+    /** Whole-body check for an ICS import request (Calendar and Tasks). */
+    public function assertIcsImportSize(string $ics, string $domain): void
+    {
+        $this->assertIcsBytesWithin($ics, self::MAX_ICS_IMPORT_BYTES, $domain, 'warning');
+    }
+
+    private function assertIcsBytesWithin(string $ics, int $limit, string $domain, string $logLevel): void
+    {
         $bytes = strlen($ics);
-        if ($bytes <= self::MAX_ICS_BYTES) {
+        if ($bytes <= $limit) {
             return;
         }
 
-        $this->logRejectedPayload($domain, 'ics', $bytes, self::MAX_ICS_BYTES, $logLevel);
+        $this->logRejectedPayload($domain, 'ics', $bytes, $limit, $logLevel);
 
         throw new ApiHttpException(
             413,
-            'iCalendar payload exceeds the maximum allowed size of '.self::MAX_ICS_BYTES.' bytes.',
+            'iCalendar payload exceeds the maximum allowed size of '.$limit.' bytes.',
             self::ERROR_PAYLOAD_TOO_LARGE,
         );
     }

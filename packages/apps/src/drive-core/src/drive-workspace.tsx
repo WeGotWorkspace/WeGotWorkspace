@@ -74,6 +74,7 @@ export function DriveWorkspace({
   view,
   onViewChange,
   onOpenDocsFile,
+  saveAsMarkdown,
   onOpenShare,
   onLogout,
   className,
@@ -156,10 +157,18 @@ export function DriveWorkspace({
   );
   useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
+  // Same gate as New Doc: the new `.md` lands next to the Word file (#1983).
+  const saveAsMarkdownActionsFor =
+    controller.structureEnabled && controller.uploadEnabled ? saveAsMarkdown?.actionsFor : null;
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
-      file.upload ? uploadPlaceholderActions(file) : offlineEnabled ? extraFileActions(file) : [],
-    [extraFileActions, offlineEnabled, uploadPlaceholderActions],
+      file.upload
+        ? uploadPlaceholderActions(file)
+        : [
+            ...(offlineEnabled ? extraFileActions(file) : []),
+            ...(saveAsMarkdownActionsFor?.(file) ?? []),
+          ],
+    [extraFileActions, offlineEnabled, saveAsMarkdownActionsFor, uploadPlaceholderActions],
   );
 
   const handleMakeOfflineAvailable = useCallback(
@@ -431,6 +440,7 @@ export function DriveWorkspace({
             shareOperations={shareOperations}
             shareDialog={shareDialog}
           />
+          {saveAsMarkdown?.dialogs}
           {controller.uploadEnabled ? (
             <input
               ref={controller.fileInputRef}

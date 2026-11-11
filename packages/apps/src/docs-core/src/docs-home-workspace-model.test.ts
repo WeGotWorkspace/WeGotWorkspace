@@ -292,6 +292,15 @@ describe("docs home offline badges", () => {
     expect([...docsHomeOfflineSyncingIds(rows, true, new Set(["1"]))]).toEqual(["2"]);
   });
 
+  it("never marks Word files or Google links, which do not sync offline (#1983)", () => {
+    const listed = [
+      file({ id: "w", title: "Plan.docx" }),
+      file({ id: "g", title: "Plan.gdoc" }),
+      file({ id: "m", title: "Plan.md" }),
+    ];
+    expect([...docsHomeOfflineSyncingIds(listed, true, new Set())]).toEqual(["m"]);
+  });
+
   it("returns the pending set unchanged when nothing is hydrating", () => {
     const pending = new Set(["a"]);
     expect(docsHomeOfflineBadgePendingIds(pending, new Set())).toBe(pending);

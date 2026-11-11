@@ -136,6 +136,45 @@
     },
     "additionalProperties": false
   },
+  "TaskImportError": {
+    "type": "object",
+    "required": ["index", "message"],
+    "properties": {
+      "index": { "type": "integer", "minimum": 0, "description": "Position of the VTODO UID group in the file." },
+      "message": { "type": "string" },
+      "code": {
+        "type": "string",
+        "description": "Stable error code, e.g. already_exists, payload_too_complex, payload_too_large, bad_request."
+      },
+      "uid": { "type": "string", "description": "UID of the group that failed." },
+      "title": { "type": "string", "description": "SUMMARY of the group's first VTODO, when it has one." }
+    },
+    "additionalProperties": false
+  },
+  "TaskImportResponse": {
+    "type": "object",
+    "required": ["list", "errors", "skipped"],
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/Task" }
+      },
+      "errors": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/TaskImportError" }
+      },
+      "skipped": {
+        "type": "object",
+        "required": ["events"],
+        "properties": {
+          "events": { "type": "integer", "minimum": 0, "description": "VEVENT UID groups in the file, not imported." }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false,
+    "description": "REST response for POST /tasks/items/import."
+  },
   "TaskCreate": {
     "type": "object",
     "required": ["taskListIds", "title"],

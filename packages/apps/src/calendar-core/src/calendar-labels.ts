@@ -35,6 +35,10 @@ export type CalendarUILabels = {
   toastImportPartial: string;
   toastImportFailed: string;
   toastImportOffline: string;
+  /** Toast line when the file also had tasks (VTODOs), which Calendar leaves out. */
+  importTasksSkipped: (count: number) => string;
+  /** Dialog error when the file has tasks but no events. */
+  importFileHasOnlyTasks: string;
   myCalendarsSection: string;
   myCalendarsShowAll: string;
   myCalendarsHideAll: string;
@@ -345,6 +349,11 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportPartial: "Some events could not be imported",
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
+  importTasksSkipped: (count) =>
+    count === 1
+      ? "1 task was skipped. Import it in Tasks."
+      : `${count} tasks were skipped. Import them in Tasks.`,
+  importFileHasOnlyTasks: "This file has tasks, not events. Import it in Tasks.",
   myCalendarsSection: "My calendars",
   myCalendarsShowAll: "Show all my calendars",
   myCalendarsHideAll: "Hide all my calendars",

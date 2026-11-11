@@ -1,4 +1,10 @@
-import type { CSSProperties, KeyboardEventHandler, ReactElement, ReactNode } from "react";
+import {
+  useState,
+  type CSSProperties,
+  type KeyboardEventHandler,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
@@ -92,6 +98,8 @@ export function CollectionSelect({
 }: CollectionSelectProps): ReactElement {
   const swatch = triggerVariant === "swatch";
   const ghost = triggerVariant === "ghost";
+  // The trigger tooltip would stay over the open list and catch clicks on the options below it.
+  const [listOpen, setListOpen] = useState(false);
 
   const trigger = ghost ? (
     <CollectionGhostSelectTrigger
@@ -140,6 +148,7 @@ export function CollectionSelect({
     <Select
       value={value}
       disabled={disabled}
+      onOpenChange={setListOpen}
       onValueChange={(next) => {
         if (next === COLLECTION_SELECT_CREATE_VALUE) {
           create?.onSelect();
@@ -150,7 +159,7 @@ export function CollectionSelect({
       }}
     >
       {tooltip ? (
-        <Tooltip>
+        <Tooltip open={listOpen ? false : undefined}>
           <TooltipTrigger asChild>{trigger}</TooltipTrigger>
           <TooltipContent>{accessibleName}</TooltipContent>
         </Tooltip>

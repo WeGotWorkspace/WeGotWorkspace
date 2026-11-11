@@ -9455,7 +9455,8 @@
                 "type": "object",
                 "required": [
                     "list",
-                    "errors"
+                    "errors",
+                    "skipped"
                 ],
                 "properties": {
                     "list": {
@@ -9469,10 +9470,24 @@
                         "items": {
                             "$ref": "#/components/schemas/CalendarEventImportError"
                         }
+                    },
+                    "skipped": {
+                        "type": "object",
+                        "required": [
+                            "tasks"
+                        ],
+                        "properties": {
+                            "tasks": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "VTODOs in the file (one per UID) that were not imported. Import them in Tasks."
+                            }
+                        },
+                        "additionalProperties": false
                     }
                 },
                 "additionalProperties": false,
-                "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list."
+                "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. skipped counts components the import left out."
             },
             "MeetRoomCode": {
                 "type": "string",
@@ -12099,6 +12114,74 @@
                         }
                     }
                 }
+            },
+            "TaskImportError": {
+                "type": "object",
+                "required": [
+                    "index",
+                    "message"
+                ],
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Position of the VTODO UID group in the file."
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable error code, e.g. already_exists, payload_too_complex, payload_too_large, bad_request."
+                    },
+                    "uid": {
+                        "type": "string",
+                        "description": "UID of the group that failed."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "SUMMARY of the group's first VTODO, when it has one."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "TaskImportResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "errors",
+                    "skipped"
+                ],
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Task"
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TaskImportError"
+                        }
+                    },
+                    "skipped": {
+                        "type": "object",
+                        "required": [
+                            "events"
+                        ],
+                        "properties": {
+                            "events": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "VEVENT UID groups in the file, not imported."
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "additionalProperties": false,
+                "description": "REST response for POST /tasks/items/import."
             }
         },
         "responses": {
@@ -21508,6 +21591,65 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/tasks/items/import": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Import tasks from an ICS file",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "taskListId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "text/calendar": {
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Imported tasks",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskImportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                },
+                "x-wgw-access": "user",
+                "description": "Import the VTODO UID groups of an ICS file into a writable task list. Each group's ICS is stored as-is (RELATED-TO, VALARM, RRULE and unknown properties are kept). Same whole-body cap as calendar import (MAX_ICS_IMPORT_BYTES, 512 KiB) → 413 payload_too_large. Each group is checked for the 64-component cap and the recurrence guard; a group whose UID already exists in the list is not overwritten (code already_exists). Failing groups appear in errors[] and siblings still import. 201 when at least one task was imported; when groups were found but none imported the response is 400 with the TaskImportResponse body. A file without VTODOs is 400 bad_request. skipped.events counts VEVENT UID groups that were not imported."
             }
         }
     }

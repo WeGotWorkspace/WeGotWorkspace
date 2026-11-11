@@ -9,6 +9,10 @@ import {
   mountTextEditorImageDeleteControl,
 } from "@/text-editor-core/src/text-editor-image-delete-control";
 import { isHttpImageSrc, parseDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
+import {
+  forgetShownImageBlob,
+  rememberShownImageBlob,
+} from "@/text-editor-core/src/text-editor-image-shown-blob";
 
 export { DOCS_IMAGE_DELETE_LABEL };
 
@@ -204,6 +208,7 @@ export function createDocsImageNodeView(
       URL.revokeObjectURL(objectUrl);
       objectUrl = undefined;
     }
+    forgetShownImageBlob(img);
   };
 
   const syncDeleteAvailability = () => {
@@ -217,6 +222,7 @@ export function createDocsImageNodeView(
     const alt = imageAlt(next);
     const generation = ++token;
     cancelled = false;
+    delete img.dataset.loading;
 
     if (prompt.kind === "insecure") {
       revoke();
@@ -240,15 +246,20 @@ export function createDocsImageNodeView(
     revoke();
     img.removeAttribute("src");
     clearExternalPrompt(chrome);
+    // Print waits for images marked as loading (see `text-editor-print.ts`).
+    img.dataset.loading = "true";
     void (async () => {
       try {
         const blob = await fetchContent(nodeId);
         if (cancelled || generation !== token) return;
         objectUrl = URL.createObjectURL(blob);
+        rememberShownImageBlob(img, blob);
         img.src = objectUrl;
       } catch {
         if (cancelled || generation !== token) return;
         img.removeAttribute("src");
+      } finally {
+        if (generation === token) delete img.dataset.loading;
       }
     })();
   };
@@ -335,7 +346,10 @@ export function createDocsImageNodeView(
       return (
         mutation.type === "attributes" &&
         mutation.target === img &&
-        (mutation.attributeName === "src" || mutation.attributeName === "hidden")
+        // `data-loading` is ours too (print waits on it); not a document change.
+        (mutation.attributeName === "src" ||
+          mutation.attributeName === "hidden" ||
+          mutation.attributeName === "data-loading")
       );
     },
   };

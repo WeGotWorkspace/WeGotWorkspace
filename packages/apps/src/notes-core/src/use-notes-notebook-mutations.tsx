@@ -74,11 +74,10 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
   const canManageNotebooks = Boolean(operations?.createNotebook && operations?.patchNotebook);
 
   const createNotebook = useCallback(
-    async ({
-      name,
-      color,
-      groupSlug,
-    }: TaskProjectDialogConfirmInput): Promise<NotesNotebookCollection | undefined> => {
+    async (
+      { name, color, groupSlug }: TaskProjectDialogConfirmInput,
+      opts?: { requireServer?: boolean },
+    ): Promise<NotesNotebookCollection | undefined> => {
       if (!operations?.createNotebook) return undefined;
       const trimmed = name.trim();
       if (!trimmed) return undefined;
@@ -86,6 +85,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         const created = await operations.createNotebook(trimmed, {
           ...(color?.trim() ? { color: color.trim() } : {}),
           ...(groupSlug?.trim() ? { groupSlug: groupSlug.trim() } : {}),
+          ...(opts?.requireServer ? { requireServer: true } : {}),
         });
         const collection: NotesNotebookCollection = created ?? {
           id: trimmed,
