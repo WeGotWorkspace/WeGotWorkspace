@@ -463,8 +463,27 @@ jobs:
       - name: Build unsigned release ZIP
         run: node tools/build-wegotworkspace-release.mjs
 
+      # Same browser cache as apps-quality and apps-e2e (one Playwright version
+      # in the lockfile). The runner image already has Chromium's system
+      # libraries, so --with-deps (apt) runs only on a cache miss. On
+      # 2026-11-11 apt could not resolve *.ubuntu.com for over an hour, which
+      # failed this job in every merge-queue run.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
       - name: Install Playwright
-        run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/api-e2e exec playwright install chromium
+          fi
 
       - name: Fresh ZIP install (SQLite)
         env:
