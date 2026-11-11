@@ -13,6 +13,11 @@
  * `thead` cannot, and a table paints a row group's background and blur per cell
  * (each column got its own blurred edge), so the fill is one layer behind the
  * header row instead, from pane edge to pane edge.
+ *
+ * That layer hangs off the first header cell, not the row: WebKit (Safari, every
+ * iOS browser) does not position against a `tr`, so a row-anchored layer covered
+ * the whole table and blurred every row away. The cell anchors it everywhere, and
+ * the table's wrapper is a size container so the layer can span the full row.
  */
 .list-head-bar {
   --list-head-bar-fill: color-mix(
@@ -42,17 +47,23 @@ thead.list-head-bar {
   backdrop-filter: none;
 }
 
-thead.list-head-bar > tr {
-  position: relative;
+/* The table's wrapper measures the row (`100cqw` below is the table's width). */
+:has(> table > thead.list-head-bar) {
+  container-type: inline-size;
 }
 
 /* On the first cell, not the row: a row's own `::before` would count as a column. */
+thead.list-head-bar > tr > :first-child {
+  position: relative;
+}
+
 thead.list-head-bar > tr > :first-child::before {
   content: "";
   position: absolute;
   z-index: -1;
   inset-block: 0;
-  inset-inline: calc(-1 * var(--list-head-bleed, 0px));
+  inset-inline-start: calc(-1 * var(--list-head-bleed, 0px));
+  width: calc(100cqw + 2 * var(--list-head-bleed, 0px));
   background: var(--list-head-bar-fill);
   -webkit-backdrop-filter: var(--frost-blur);
   backdrop-filter: var(--frost-blur);
