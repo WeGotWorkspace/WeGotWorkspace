@@ -3,6 +3,7 @@ import { Copy, Globe2 } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Switch } from "@/ui/switch";
 import {
   AlertDialog,
@@ -80,15 +81,11 @@ export function CalendarPublishSection({
               onClick={onCopyHttps}
             />
           </div>
-          <div className="calendar-publish-section__mode">
-            <div className="calendar-publish-section__mode-copy">
-              <span className="calendar-publish-section__mode-title">
-                {labels.publishCalendarBusyLabel}
-              </span>
-              <span className="calendar-publish-section__mode-hint">
-                {labels.publishCalendarBusyHint}
-              </span>
-            </div>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.publishCalendarBusyLabel}
+            description={labels.publishCalendarBusyHint}
+          >
             <span className="share-dialog__switch-touch">
               <Switch
                 checked={feed.mode === "busy"}
@@ -97,7 +94,7 @@ export function CalendarPublishSection({
                 aria-label={labels.publishCalendarBusyLabel}
               />
             </span>
-          </div>
+          </FieldLabelRow>
         </div>
       ) : null}
 

@@ -11,17 +11,16 @@ import {
   formatTimeZoneLabel,
   resolveCalendarWeekStart,
 } from "@/lib/calendar-display-prefs";
-import {
-  CalendarEventCalendarPicker,
-  defaultPickerCalendarId,
-} from "@/lib/calendar-event-calendar-picker";
+import { defaultPickerCalendarId } from "@/lib/calendar-event-calendar-picker";
 import { useCalendarPickerCollections } from "@/lib/calendar-picker-collections";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { useSettingsCalendarForm } from "@/settings-core/src/use-settings-calendar-form";
 import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
+import { SettingsCollectionSelect } from "@/settings-core/src/settings-collection-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormField } from "@/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 
 /**
  * Default calendar, timezone, week start, and visible hours for Calendar. Device-local.
@@ -88,13 +87,16 @@ export function SettingsCalendarPane() {
           control={form.control}
           name="inviteCalendarId"
           render={({ field }) => (
-            <FieldLabelRow label="Default calendar">
-              <CalendarEventCalendarPicker
-                calendars={calendars}
-                calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
+            <FieldLabelRow
+              layout="inline"
+              label="Default calendar"
+              description="Where new events are saved"
+            >
+              <SettingsCollectionSelect
+                collections={calendars}
+                value={field.value}
                 label="Default calendar"
-                showName
-                onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
+                onValueChange={field.onChange}
               />
             </FieldLabelRow>
           )}
@@ -104,12 +106,14 @@ export function SettingsCalendarPane() {
         control={form.control}
         name="timeZone"
         render={({ field }) => (
-          <FieldLabelRow label="Timezone">
+          <FieldLabelRow
+            layout="inline"
+            label="Timezone"
+            description="Calendar shows times in this zone"
+          >
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-label="Timezone">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
+              <CollectionGhostSelectTrigger aria-label="Timezone" label={<SelectValue />} />
+              <SelectContent align="end" className="max-h-72">
                 <SelectItem value={CALENDAR_DISPLAY_DEVICE_ZONE}>
                   Device default ({formatTimeZoneLabel(deviceZone, uiLocale)})
                 </SelectItem>
@@ -127,12 +131,14 @@ export function SettingsCalendarPane() {
         control={form.control}
         name="weekStart"
         render={({ field }) => (
-          <FieldLabelRow label="Week starts on">
+          <FieldLabelRow
+            layout="inline"
+            label="Week starts on"
+            description="First day of the week and month views"
+          >
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-label="Week starts on">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
+              <CollectionGhostSelectTrigger aria-label="Week starts on" label={<SelectValue />} />
+              <SelectContent align="end" className="max-h-72">
                 <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
                   Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
                 </SelectItem>
@@ -150,12 +156,14 @@ export function SettingsCalendarPane() {
         control={form.control}
         name="visibleHours"
         render={({ field }) => (
-          <FieldLabelRow label="Visible hours">
+          <FieldLabelRow
+            layout="inline"
+            label="Visible hours"
+            description="Hours that fit on screen in day and week views"
+          >
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-label="Visible hours">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
+              <CollectionGhostSelectTrigger aria-label="Visible hours" label={<SelectValue />} />
+              <SelectContent align="end" className="max-h-72">
                 {visibleHoursDays.map((hours) => (
                   <SelectItem key={hours} value={String(hours)}>
                     {calendarVisibleHoursLabel(hours)}

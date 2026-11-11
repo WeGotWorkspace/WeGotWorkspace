@@ -50,17 +50,14 @@ export function MailDeliveryTestDialog({
             transport does not mean the message reached an inbox.
           </DialogDescription>
         </DialogHeader>
-        <FormField htmlFor="admin-mail-delivery-test-to" label="Recipient">
+        <FormField layout="inline" fill htmlFor="admin-mail-delivery-test-to" label="Recipient">
           <Input
             id="admin-mail-delivery-test-to"
             type="email"
             size="sm"
             autoComplete="email"
             value={to}
-            onChange={(event) => {
-              const value = event.target.value;
-              setTo(value);
-            }}
+            onChange={(event) => setTo(event.target.value)}
           />
         </FormField>
         <DialogFooter>

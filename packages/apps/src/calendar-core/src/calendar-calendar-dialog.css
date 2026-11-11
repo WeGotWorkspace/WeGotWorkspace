@@ -1,22 +1,5 @@
 @import "../../styles.css" reference;
 
-/* Scoped to this dialog only — do not leak mt into event form / popover surfaces. */
-.calendar-dialog-surface.calendar-calendar-dialog .field-label-row + .field-label-row {
-  @apply mt-3;
-}
-
 .calendar-calendar-dialog__share {
   @apply mt-4;
-}
-
-.calendar-calendar-dialog__footer {
-  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
-}
-
-.calendar-calendar-dialog__footer .calendar-calendar-dialog__delete {
-  @apply me-auto;
-}
-
-.calendar-calendar-dialog__footer-end {
-  @apply ms-auto flex flex-wrap items-center gap-2;
 }

@@ -80,21 +80,8 @@
   bottom: calc(-1 * var(--share-switch-touch-pad));
 }
 
-.share-dialog__content {
-  @apply max-h-[90vh] overflow-x-hidden overflow-y-auto p-0;
-}
-
-.share-dialog__header {
-  @apply pb-3;
-  padding-block-start: var(--modal-inset, 1.5rem);
-  padding-inline-start: var(--modal-inset, 1.5rem);
-  padding-inline-end: calc(var(--modal-inset, 1.5rem) + var(--modal-header-end, 2.5rem));
-}
-
 .share-dialog__body {
-  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden;
-  padding-inline: var(--modal-inset, 1.5rem);
-  padding-block-end: var(--modal-inset, 1.5rem);
+  @apply flex min-w-0 flex-col gap-6;
 }
 
 .share-dialog__body > .card {
@@ -165,18 +152,6 @@
   @apply shrink-0;
 }
 
-.share-dialog__password-field {
-  @apply flex min-w-0 flex-1 items-center gap-1 sm:ml-auto sm:flex-none;
-}
-
-.share-dialog__password-field .share-dialog__input {
-  @apply sm:max-w-[11.25rem] sm:flex-none;
-}
-
-.share-dialog__password-field > :not(.share-dialog__input) {
-  @apply shrink-0;
-}
-
 .share-dialog__link-row > :not(.share-dialog__link-field) {
   @apply shrink-0;
 }
@@ -197,29 +172,13 @@
   color: var(--share-dialog-muted);
 }
 
-.share-dialog__password-row {
-  @apply -mx-3 flex min-w-0 flex-wrap items-center gap-2 rounded-b-xl px-3 py-2.5;
-  background: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
-}
-
-.share-dialog__password-icon {
-  @apply size-3.5 shrink-0;
-  color: var(--share-dialog-muted);
-}
-
-.share-dialog__password-label {
-  @apply shrink-0 text-xs font-medium;
-}
-
 .share-dialog__guest-invite-row {
   @apply border-t pt-2.5;
   border-color: var(--share-dialog-panel-border);
 }
 
-.share-dialog__footer {
-  @apply flex items-center border-t px-6 py-3 text-xs;
-  border-color: var(--share-dialog-panel-border);
-  background: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
+.share-dialog__footer-hint {
+  @apply text-xs;
   color: var(--share-dialog-muted);
 }
 
@@ -306,7 +265,6 @@
 .share-dialog__loading,
 .share-dialog__error {
   @apply py-8 text-sm;
-  padding-inline: var(--modal-inset, 1.5rem);
   color: var(--share-dialog-muted);
 }
 

@@ -40,7 +40,7 @@ import {
   type CalendarEventFormProps,
 } from "@/calendar-core/src/calendar-event-form";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-event-details-popover.css";
@@ -269,45 +269,46 @@ export function CalendarEventDetailsPopover({
           ) : null}
         </div>
         {showFooter ? (
-          <footer className="calendar-event-details-popover__footer">
-            {showRsvp || showMeet ? (
-              <div className="calendar-event-details-popover__footer-primary">
-                {showMeet ? (
-                  <CalendarMeetJoin
-                    href={form.meetingUrl}
-                    labels={labels}
-                    workspaceOrigin={workspaceOrigin}
-                    meetOperations={meetOperations}
-                    onJoin={onJoinMeeting}
-                  />
-                ) : null}
-                {showRsvp && onRsvp ? (
-                  <CalendarRsvpActions
-                    currentStatus={rsvpStatus ?? undefined}
-                    labels={labels}
-                    busy={busy}
-                    size="sm"
-                    showLabels
-                    onRespond={onRsvp}
-                  />
-                ) : null}
-              </div>
-            ) : null}
+          <DialogFooter
+            start={
+              showRsvp || showMeet ? (
+                <>
+                  {showMeet ? (
+                    <CalendarMeetJoin
+                      href={form.meetingUrl}
+                      labels={labels}
+                      workspaceOrigin={workspaceOrigin}
+                      meetOperations={meetOperations}
+                      onJoin={onJoinMeeting}
+                    />
+                  ) : null}
+                  {showRsvp && onRsvp ? (
+                    <CalendarRsvpActions
+                      currentStatus={rsvpStatus ?? undefined}
+                      labels={labels}
+                      busy={busy}
+                      size="sm"
+                      showLabels
+                      onRespond={onRsvp}
+                    />
+                  ) : null}
+                </>
+              ) : null
+            }
+          >
             {showDelete && onDelete ? (
-              <div className="calendar-event-details-popover__footer-actions">
-                <IconButton
-                  type="button"
-                  size="md"
-                  variant="outline"
-                  severity="danger"
-                  label={labels.delete}
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  disabled={busy}
-                  onClick={onDelete}
-                />
-              </div>
+              <IconButton
+                type="button"
+                size="md"
+                variant="outline"
+                severity="danger"
+                label={labels.delete}
+                icon={<Trash2 className="size-3.5" aria-hidden />}
+                disabled={busy}
+                onClick={onDelete}
+              />
             ) : null}
-          </footer>
+          </DialogFooter>
         ) : null}
       </>
     );

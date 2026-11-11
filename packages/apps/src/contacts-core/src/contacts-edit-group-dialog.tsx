@@ -134,17 +134,28 @@ export function ContactsEditGroupDialog({
               onConfirm(trimmed);
             }}
           >
-            <div className="contacts-edit-group-dialog__fields">
-              <FieldLabelRow label={labels.createGroupNameLabel} htmlFor="contacts-edit-group-name">
-                <Input
-                  id="contacts-edit-group-name"
-                  autoFocus
-                  size="sm"
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                />
-              </FieldLabelRow>
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.createGroupNameLabel}
+              htmlFor="contacts-edit-group-name"
+            >
+              <Input
+                id="contacts-edit-group-name"
+                autoFocus
+                size="sm"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+              />
+            </FieldLabelRow>
+            <FieldLabelRow
+              layout="inline"
+              label={labels.createGroupAddressBookLabel}
+              htmlFor="contacts-edit-group-book"
+            >
               <ContactsAddressBookSelect
+                variant="toolbar"
+                triggerVariant="ghost"
                 id="contacts-edit-group-book"
                 label={labels.createGroupAddressBookLabel}
                 personalLabel={labels.personalAddressBook}
@@ -152,28 +163,28 @@ export function ContactsEditGroupDialog({
                 value={addressBookId}
                 disabled
               />
-            </div>
-            <DialogFooter className="contacts-edit-group-dialog__footer">
-              {showDelete ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="contacts-edit-group-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={labels.deleteGroup}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : null}
-              <div className="contacts-edit-group-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  {labels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {labels.save}
-                </Button>
-              </div>
+            </FieldLabelRow>
+            <DialogFooter
+              start={
+                showDelete ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.deleteGroup}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {labels.save}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

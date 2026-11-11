@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Copy, Globe2, Lock, RefreshCw } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Copy, Globe2, RefreshCw } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Switch } from "@/ui/switch";
 import {
   AlertDialog,
@@ -79,6 +80,7 @@ export function ShareLinkSection({
   /** Fresh plaintext only for this mount after enable/regenerate — never persisted. */
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const passwordSwitchId = useId();
 
   useEffect(() => {
     setPasswordRequired(hasPassword);
@@ -228,72 +230,73 @@ export function ShareLinkSection({
             />
           ) : null}
 
-          <div className="share-dialog__password-row">
-            <Lock className="share-dialog__password-icon" aria-hidden />
-            <span className="share-dialog__password-label">{shareLabels.requirePassword}</span>
-            <span className="share-dialog__switch-touch">
-              <Switch
-                checked={passwordRequired}
-                disabled={disabled || passwordBusy}
-                aria-label={shareLabels.requirePassword}
-                onCheckedChange={(next) => {
-                  if (!next && passwordRequired) {
-                    setConfirmAction("disable-password");
-                    return;
-                  }
-                  if (next) {
-                    setPasswordRequired(true);
-                    void (async () => {
-                      const password = await mutations.updatePublicPassword(true, "");
-                      if (password) {
-                        revealPassword(password);
-                      }
-                    })();
-                    return;
-                  }
-                  setPasswordRequired(next);
-                }}
-              />
-            </span>
-            <div className="share-dialog__password-field">
-              <ShareDialogInput
-                type="text"
-                value={passwordFieldValue}
-                readOnly
-                disabled={!passwordRequired || disabled || passwordBusy}
-                aria-label={
-                  passwordRevealed
-                    ? shareLabels.requirePassword
-                    : passwordRequired
-                      ? shareLabels.passwordHiddenLabel
-                      : shareLabels.passwordDisabledPlaceholder
+          <FieldLabelRow
+            layout="inline"
+            label={shareLabels.requirePassword}
+            htmlFor={passwordSwitchId}
+          >
+            <Switch
+              id={passwordSwitchId}
+              checked={passwordRequired}
+              disabled={disabled || passwordBusy}
+              onCheckedChange={(next) => {
+                if (!next && passwordRequired) {
+                  setConfirmAction("disable-password");
+                  return;
                 }
-                placeholder={passwordRequired ? undefined : shareLabels.passwordDisabledPlaceholder}
-              />
-              {passwordRevealed ? (
-                <IconButton
-                  label={shareLabels.copyPassword}
-                  icon={<Copy className="size-3.5" aria-hidden />}
-                  size="sm"
-                  variant="outline"
-                  disabled={disabled || passwordBusy}
-                  onClick={() => void handleCopyPassword()}
-                />
-              ) : null}
+                if (next) {
+                  setPasswordRequired(true);
+                  void (async () => {
+                    const password = await mutations.updatePublicPassword(true, "");
+                    if (password) {
+                      revealPassword(password);
+                    }
+                  })();
+                  return;
+                }
+                setPasswordRequired(next);
+              }}
+            />
+          </FieldLabelRow>
+
+          <div className="share-dialog__link-row">
+            <ShareDialogInput
+              type="text"
+              value={passwordFieldValue}
+              readOnly
+              disabled={!passwordRequired || disabled || passwordBusy}
+              aria-label={
+                passwordRevealed
+                  ? shareLabels.requirePassword
+                  : passwordRequired
+                    ? shareLabels.passwordHiddenLabel
+                    : shareLabels.passwordDisabledPlaceholder
+              }
+              placeholder={passwordRequired ? undefined : shareLabels.passwordDisabledPlaceholder}
+            />
+            {passwordRevealed ? (
               <IconButton
-                label={shareLabels.regeneratePassword}
-                icon={<RefreshCw className="size-3.5" aria-hidden />}
+                label={shareLabels.copyPassword}
+                icon={<Copy className="size-3.5" aria-hidden />}
                 size="sm"
                 variant="outline"
-                title={
-                  passwordRequired && !passwordRevealed
-                    ? shareLabels.regeneratePasswordToViewHint
-                    : shareLabels.regeneratePasswordHint
-                }
-                disabled={!passwordRequired || disabled || passwordBusy}
-                onClick={() => setConfirmAction("regenerate-password")}
+                disabled={disabled || passwordBusy}
+                onClick={() => void handleCopyPassword()}
               />
-            </div>
+            ) : null}
+            <IconButton
+              label={shareLabels.regeneratePassword}
+              icon={<RefreshCw className="size-3.5" aria-hidden />}
+              size="sm"
+              variant="outline"
+              title={
+                passwordRequired && !passwordRevealed
+                  ? shareLabels.regeneratePasswordToViewHint
+                  : shareLabels.regeneratePasswordHint
+              }
+              disabled={!passwordRequired || disabled || passwordBusy}
+              onClick={() => setConfirmAction("regenerate-password")}
+            />
           </div>
         </div>
       ) : null}

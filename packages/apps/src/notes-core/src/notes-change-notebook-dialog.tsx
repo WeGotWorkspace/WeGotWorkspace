@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { cn } from "@/lib/utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
@@ -19,6 +20,7 @@ import {
 import "@/notes-core/src/notes-change-notebook-dialog.css";
 
 const DEFAULT_DESCRIPTION = "Choose or create a notebook for the selected notes.";
+const PICKER_ID = "notes-change-notebook-picker";
 
 export type NotesChangeNotebookDialogProps = {
   open: boolean;
@@ -34,6 +36,8 @@ export type NotesChangeNotebookDialogProps = {
     | "changeNotebookConfirm"
     | "dialogCancel"
   >;
+  /** Caption of the picker row. Without it the picker stands alone. */
+  fieldLabel?: string;
   description?: string;
   contentClassName?: string;
   onClose: () => void;
@@ -47,7 +51,7 @@ export type NotesChangeNotebookDialogProps = {
   requireChange?: boolean;
   /** Keeps confirm from firing again while the caller is still finishing. */
   confirmDisabled?: boolean;
-  /** Third, destructive footer action — e.g. "Delete the notes too". */
+  /** Destructive side action at the start of the footer — e.g. "Delete the notes too". */
   destructiveAction?: { label: string; onAction: () => void };
 };
 
@@ -55,25 +59,35 @@ function toSelectItem(value: NotesNotebookSelectValue): NotesNotebookSelectItem 
   return { id: value.id ?? value.name, name: value.name, color: value.color };
 }
 
-function NotesChangeNotebookDialogForm({
+export function NotesChangeNotebookDialog({
+  open,
   notebooks,
   value,
   createdNotebook,
   labels,
+  fieldLabel,
+  description = DEFAULT_DESCRIPTION,
+  contentClassName,
   onClose,
   onNotebookChange,
   onCreateNotebook,
+  title,
   confirmLabel,
   requireChange = true,
   confirmDisabled = false,
   destructiveAction,
-}: Omit<
-  NotesChangeNotebookDialogProps,
-  "open" | "description" | "contentClassName" | "title"
->): ReactElement {
+}: NotesChangeNotebookDialogProps): ReactElement {
+  // The draft starts over on each open and when a new notebook was just created.
+  const session = open ? (createdNotebook?.id ?? "open") : null;
+  const [draftSession, setDraftSession] = useState(session);
   const [draft, setDraft] = useState<NotesNotebookSelectItem>(
     createdNotebook ?? toSelectItem(value),
   );
+  if (session !== draftSession) {
+    setDraftSession(session);
+    if (session) setDraft(createdNotebook ?? toSelectItem(value));
+  }
+
   const dirty = requireChange === false || !notebookSelectionEquals(draft, value);
   const hasDestination = draft.id.trim() !== "" && draft.name.trim() !== "";
   const canConfirm = dirty && hasDestination;
@@ -83,62 +97,6 @@ function NotesChangeNotebookDialogForm({
       : confirmLabel || labels.changeNotebookConfirm || "Change";
 
   return (
-    <>
-      <div className="notes-change-notebook-dialog__picker">
-        <NotesNotebookSelect
-          notebooks={notebooks}
-          value={draft}
-          labels={labels}
-          size="sm"
-          onNotebookChange={setDraft}
-          onCreateNotebook={onCreateNotebook}
-        />
-      </div>
-      <DialogFooter>
-        {destructiveAction ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="notes-change-notebook-dialog__destructive"
-            label={destructiveAction.label}
-            onClick={destructiveAction.onAction}
-          />
-        ) : null}
-        <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
-        <Button
-          type="button"
-          variant="primary"
-          label={confirmText}
-          disabled={!canConfirm || confirmDisabled}
-          onClick={() => {
-            if (!canConfirm || confirmDisabled) return;
-            onNotebookChange(draft);
-            onClose();
-          }}
-        />
-      </DialogFooter>
-    </>
-  );
-}
-
-export function NotesChangeNotebookDialog({
-  open,
-  notebooks,
-  value,
-  createdNotebook,
-  labels,
-  description = DEFAULT_DESCRIPTION,
-  contentClassName,
-  onClose,
-  onNotebookChange,
-  onCreateNotebook,
-  title,
-  confirmLabel,
-  requireChange,
-  confirmDisabled,
-  destructiveAction,
-}: NotesChangeNotebookDialogProps): ReactElement {
-  return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         className={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
@@ -147,22 +105,55 @@ export function NotesChangeNotebookDialog({
           <DialogTitle>{title ?? labels.selectionMoveToNotebook}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {open ? (
-          <NotesChangeNotebookDialogForm
-            key={createdNotebook?.id ?? "open"}
+        {fieldLabel ? (
+          <FieldLabelRow layout="inline" label={fieldLabel} htmlFor={PICKER_ID}>
+            <NotesNotebookSelect
+              id={PICKER_ID}
+              notebooks={notebooks}
+              value={draft}
+              labels={labels}
+              triggerVariant="ghost"
+              onNotebookChange={setDraft}
+              onCreateNotebook={onCreateNotebook}
+            />
+          </FieldLabelRow>
+        ) : (
+          <NotesNotebookSelect
+            className="notes-change-notebook-dialog__picker"
             notebooks={notebooks}
-            value={value}
-            createdNotebook={createdNotebook}
+            value={draft}
             labels={labels}
-            onClose={onClose}
-            onNotebookChange={onNotebookChange}
+            size="sm"
+            onNotebookChange={setDraft}
             onCreateNotebook={onCreateNotebook}
-            confirmLabel={confirmLabel}
-            requireChange={requireChange}
-            confirmDisabled={confirmDisabled}
-            destructiveAction={destructiveAction}
           />
-        ) : null}
+        )}
+        <DialogFooter
+          start={
+            destructiveAction ? (
+              <Button
+                type="button"
+                variant="outline"
+                severity="danger"
+                label={destructiveAction.label}
+                onClick={destructiveAction.onAction}
+              />
+            ) : undefined
+          }
+        >
+          <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
+          <Button
+            type="button"
+            variant="primary"
+            label={confirmText}
+            disabled={!canConfirm || confirmDisabled}
+            onClick={() => {
+              if (!canConfirm || confirmDisabled) return;
+              onNotebookChange(draft);
+              onClose();
+            }}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,7 +1,6 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -121,49 +120,47 @@ export function DriveCreateMarkdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        className={cn(dialogSurfaceClassName, "drive-create-markdown-dialog", "sm:max-w-lg")}
-      >
+      <DialogContent className={dialogSurfaceClassName}>
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
-        {hideName ? null : (
-          <RenameFilenameField
-            focusKey={nextFocusSession}
-            placeholder={copy.placeholder}
-            baseName={draftBaseName}
-            extension={extension || undefined}
-            disabled={isSubmitting}
-            onBaseNameChange={setDraftBaseName}
-            onEnter={handleConfirm}
-          />
-        )}
-
-        {open ? (
-          <DriveFolderPicker
-            key={pickerRemountKey}
-            labels={labels}
-            files={files}
-            groupPaths={groupPaths}
-            moveIds={[]}
-            initialBrowsePath={initialBrowsePath}
-            initialSelectedPath={initialSelectedPath}
-            operations={operations}
-            currentUsername={currentUsername}
-            groupRootNames={groupRootNames}
-            rootLabels={rootLabels}
-            rootIcon={rootIcon}
-            onDestinationChange={handleDestinationChange}
-          />
-        ) : null}
-
-        {errorMessage ? (
-          <p className="text-sm text-destructive" role="alert">
-            {errorMessage}
-          </p>
-        ) : null}
+        <div className="drive-create-markdown-dialog__fields">
+          {hideName ? null : (
+            <RenameFilenameField
+              focusKey={nextFocusSession}
+              placeholder={copy.placeholder}
+              baseName={draftBaseName}
+              extension={extension || undefined}
+              disabled={isSubmitting}
+              onBaseNameChange={setDraftBaseName}
+              onEnter={handleConfirm}
+            />
+          )}
+          {open ? (
+            <DriveFolderPicker
+              key={pickerRemountKey}
+              labels={labels}
+              files={files}
+              groupPaths={groupPaths}
+              moveIds={[]}
+              initialBrowsePath={initialBrowsePath}
+              initialSelectedPath={initialSelectedPath}
+              operations={operations}
+              currentUsername={currentUsername}
+              groupRootNames={groupRootNames}
+              rootLabels={rootLabels}
+              rootIcon={rootIcon}
+              onDestinationChange={handleDestinationChange}
+            />
+          ) : null}
+          {errorMessage ? (
+            <p className="text-sm text-destructive" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>

@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import "@/notes-core/src/notes-conflict-dialog.css";
 
 export type NotesExternalWriteDialogProps = {
   open: boolean;
@@ -38,7 +37,7 @@ export function NotesExternalWriteDialog({
   return (
     <Dialog open={open}>
       <DialogContent
-        className="notes-dialog-surface notes-conflict-dialog"
+        className="notes-dialog-surface"
         onPointerDownOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
       >
@@ -46,7 +45,7 @@ export function NotesExternalWriteDialog({
           <DialogTitle>{L.externalWriteTitle}</DialogTitle>
           <DialogDescription>{L.externalWriteDescription(noteTitle)}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="notes-conflict-dialog__actions">
+        <DialogFooter>
           <Button variant="outline" onClick={onUseOutside} disabled={busy}>
             {L.externalWriteUseOutside}
           </Button>

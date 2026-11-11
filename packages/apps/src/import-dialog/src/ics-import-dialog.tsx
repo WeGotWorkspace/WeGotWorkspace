@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { ImportDialog, type ImportDialogResult } from "@/import-dialog/src/import-dialog";
 import { Input } from "@/ui/input";
@@ -12,6 +12,8 @@ import {
 } from "@/ui/dropdown-menu";
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
+import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { CalendarPickerMenuItem } from "@/lib/calendar-event-calendar-picker";
 import {
@@ -67,6 +69,11 @@ export type IcsImportDialogProps = {
   onImport: (file: File, destination: IcsImportDestination) => void;
 };
 
+/** The ghost trigger takes its name colour from `--collection-row-color`. */
+function collectionRowColor(color: string): CSSProperties {
+  return { "--collection-row-color": color } as CSSProperties;
+}
+
 function initialDestinationId(collections: IcsImportCollection[], preferredId?: string): string {
   if (preferredId && collections.some((collection) => collection.id === preferredId)) {
     return preferredId;
@@ -113,6 +120,9 @@ export function IcsImportDialog({
   const destinationName = creating
     ? labels.newCollection
     : (selected?.name ?? labels.destinationLegend);
+  const destinationMark = selected
+    ? (selected.icon ?? <CollectionColorDot color={selected.color} />)
+    : null;
   const destinationReady = creating ? name.trim() !== "" : destinationId.trim() !== "";
   const canSubmit = destinationReady && !busy && !unavailableReason;
   const destinationFieldId = `${idPrefix}-import-destination`;
@@ -134,7 +144,6 @@ export function IcsImportDialog({
         </DialogFooter>
       ) : (
         <form
-          className="ics-import-dialog"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -146,23 +155,24 @@ export function IcsImportDialog({
             );
           }}
         >
-          <FieldLabelRow label={labels.destinationLegend} htmlFor={destinationFieldId}>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.destinationLegend}
+            htmlFor={destinationFieldId}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <ColorSwatchTrigger
+                <CollectionGhostButton
                   id={destinationFieldId}
-                  color={selected?.color}
-                  showSwatch={!creating}
-                  size="sm"
-                  label={`${labels.destinationLegend}: ${destinationName}`}
-                  className="ics-import-dialog__destination"
+                  aria-label={`${labels.destinationLegend}: ${destinationName}`}
+                  style={selected ? collectionRowColor(selected.color) : undefined}
+                  leading={destinationMark}
+                  label={destinationName}
                   disabled={busy}
-                >
-                  {destinationName}
-                </ColorSwatchTrigger>
+                />
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                align="start"
+                align="end"
                 className="calendar-event-dialog__calendar-menu ics-import-dialog__destination-menu"
               >
                 {collections.map((collection) => (
@@ -185,33 +195,31 @@ export function IcsImportDialog({
             </DropdownMenu>
           </FieldLabelRow>
           {creating ? (
-            <div className="ics-import-dialog__create-fields">
-              <FieldLabelRow label={labels.nameLabel} htmlFor={nameFieldId}>
-                <NameColorRow>
-                  <Input
-                    id={nameFieldId}
-                    className={NAME_COLOR_ROW_INPUT_CLASS}
+            <FieldLabelRow layout="inline" fill label={labels.nameLabel} htmlFor={nameFieldId}>
+              <NameColorRow>
+                <Input
+                  id={nameFieldId}
+                  className={NAME_COLOR_ROW_INPUT_CLASS}
+                  size="sm"
+                  value={name}
+                  disabled={busy}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <SwatchColorPicker
+                  value={color}
+                  onChange={setColor}
+                  colorLabel={labels.colorLabel}
+                  swatches={swatches}
+                >
+                  <ColorSwatchTrigger
+                    color={color}
+                    label={labels.colorLabel}
                     size="sm"
-                    value={name}
-                    disabled={busy}
-                    onChange={(event) => setName(event.target.value)}
+                    aria-haspopup="dialog"
                   />
-                  <SwatchColorPicker
-                    value={color}
-                    onChange={setColor}
-                    colorLabel={labels.colorLabel}
-                    swatches={swatches}
-                  >
-                    <ColorSwatchTrigger
-                      color={color}
-                      label={labels.colorLabel}
-                      size="sm"
-                      aria-haspopup="dialog"
-                    />
-                  </SwatchColorPicker>
-                </NameColorRow>
-              </FieldLabelRow>
-            </div>
+                </SwatchColorPicker>
+              </NameColorRow>
+            </FieldLabelRow>
           ) : null}
           <DialogFooter>
             <Button

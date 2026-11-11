@@ -18,7 +18,6 @@ export type DefaultCollectionAppMeta = {
   label: string;
   description: string;
   fieldLabel: string;
-  savedMessage: string;
   saveError: string;
 };
 
@@ -27,21 +26,18 @@ export const DEFAULT_COLLECTION_APP_META: Record<DefaultCollectionApp, DefaultCo
     label: "Tasks",
     description: "Default list for new tasks",
     fieldLabel: "Default list",
-    savedMessage: "Tasks settings saved",
     saveError: "Could not save Tasks settings",
   },
   contacts: {
     label: "Contacts",
     description: "Default address book for new contacts",
     fieldLabel: "Default address book",
-    savedMessage: "Contacts settings saved",
     saveError: "Could not save Contacts settings",
   },
   notes: {
     label: "Notes",
     description: "Default notebook for new notes",
     fieldLabel: "Default notebook",
-    savedMessage: "Notes settings saved",
     saveError: "Could not save Notes settings",
   },
 };

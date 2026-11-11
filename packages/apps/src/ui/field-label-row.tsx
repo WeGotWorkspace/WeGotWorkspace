@@ -9,6 +9,8 @@ import "./field-label-row.css";
 
 export type FieldLabelRowLabelMode = "caption" | "icon";
 
+export type FieldLabelRowLayout = "stacked" | "inline";
+
 export type FieldLabelRowProps = {
   /**
    * Visible caption (caption mode) or accessible name + tooltip text (icon mode).
@@ -39,6 +41,19 @@ export type FieldLabelRowProps = {
    * `icon`: icon only, in front of the control; tooltip shows the label text on hover.
    */
   labelMode?: FieldLabelRowLabelMode;
+  /**
+   * `stacked` (default): caption above the control.
+   * `inline`: two columns, caption and description start, control end, rows split by the
+   * suite hairline (suite norm for dialogs and settings).
+   */
+  layout?: FieldLabelRowLayout;
+  /** Quiet line under the caption (`inline` layout). */
+  description?: ReactNode;
+  /**
+   * `inline` layout: the control takes the whole end column (a text field). Off, it
+   * hugs its content (a dropdown, a switch).
+   */
+  fill?: boolean;
 };
 
 function hasVisibleCaption(label: string | undefined): boolean {
@@ -80,9 +95,42 @@ function FieldLabelIconLabel({
   );
 }
 
+function FieldLabelRowInline({
+  label,
+  description,
+  fill,
+  children,
+  readOnly,
+  icon,
+  className,
+  labelClassName,
+  htmlFor,
+}: FieldLabelRowProps): ReactNode {
+  return (
+    <div
+      className={cn(
+        "field-label-row",
+        "field-label-row--inline",
+        fill && "field-label-row--fill",
+        className,
+      )}
+    >
+      <div className="field-label-row__text">
+        <Label htmlFor={htmlFor} className={cn("field-label-row__label", labelClassName)}>
+          {icon}
+          {label}
+          {readOnly ? <Lock className="field-label-row__lock" aria-hidden /> : null}
+        </Label>
+        {description ? <p className="field-label-row__description">{description}</p> : null}
+      </div>
+      <div className="field-label-row__control">{children}</div>
+    </div>
+  );
+}
+
 /**
- * Label + control stack shared by simple forms (admin, settings display rows, card demos).
- * Not the RHF `FormField` from `@/ui/form`.
+ * Label + control shared by forms (dialogs, settings, admin): stacked, inline (two columns)
+ * or icon-labelled. Not the RHF `FormField` from `@/ui/form`.
  */
 export function FieldLabelRow({
   label,
@@ -94,7 +142,27 @@ export function FieldLabelRow({
   labelClassName,
   htmlFor,
   labelMode = "caption",
+  layout = "stacked",
+  description,
+  fill,
 }: FieldLabelRowProps): ReactNode {
+  if (layout === "inline") {
+    return (
+      <FieldLabelRowInline
+        label={label}
+        description={description}
+        fill={fill}
+        readOnly={readOnly}
+        icon={icon}
+        className={className}
+        labelClassName={labelClassName}
+        htmlFor={htmlFor}
+      >
+        {children}
+      </FieldLabelRowInline>
+    );
+  }
+
   if (labelMode === "icon") {
     const captionText = label?.trim() ?? "";
     return (

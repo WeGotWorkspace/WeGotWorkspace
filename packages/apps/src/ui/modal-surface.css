@@ -47,6 +47,9 @@
   max-height: min(var(--modal-max-height), 100dvh);
   overflow: hidden;
   gap: 1rem;
+  /* Same shape as the sidebar panels; the same hairline as the sidebar edge. */
+  border-radius: var(--sidebar-panel-radius, 1rem);
+  border-color: var(--workspace-divider-color);
 }
 
 /*
@@ -101,6 +104,25 @@
   padding-inline-end: var(--modal-header-end);
 }
 
+/* A dialog with a footer has no corner close (dialog-close-button.css): no room kept. */
+.ui-modal-surface:has(.ui-modal-footer) {
+  --modal-header-end: 0px;
+}
+
+/* `end`: a status (the autosave tag) at the end of the title row, centred on the title's first line. */
+.ui-modal-header--split {
+  @apply flex-row items-start justify-between gap-4;
+}
+
+.ui-modal-header__text {
+  @apply flex min-w-0 flex-1 flex-col gap-1.5;
+}
+
+.ui-modal-header__end {
+  @apply flex shrink-0 items-center;
+  min-height: var(--modal-title-line-height, 1.75rem);
+}
+
 /*
  * Body/form grow with content (flex-basis: auto). When the surface hits
  * max-height they shrink (min-height: 0) and the body scrolls — no empty
@@ -112,22 +134,65 @@
 }
 
 .ui-modal-form {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  /* Same gap as the surface: a footer inside the form sits as far from the body. */
+  @apply flex min-h-0 flex-col gap-4;
   flex: 1 1 auto;
 }
 
-/* Component that renders a <form> (e.g. CalendarEventForm) still pins its footer. */
+/*
+ * Component that renders a <form> (e.g. CalendarEventForm) still pins its footer.
+ * No clipping here: the form's own field list scrolls, and the footer hairline
+ * reaches the surface edges.
+ */
 .ui-modal-body:has(> form) {
-  @apply flex flex-col overflow-hidden;
+  @apply flex flex-col overflow-visible;
 }
 
 .ui-modal-body > form {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-col;
   flex: 1 1 auto;
 }
 
 .ui-modal-footer {
   @apply shrink-0;
-  padding-block-start: 0.5rem;
   background-color: var(--background, var(--workspace-surface));
+}
+
+/* Centered dialogs: the footer sits under a full-width hairline (suite norm). */
+.ui-modal-surface--center .ui-modal-footer {
+  margin-inline: calc(-1 * var(--modal-inset));
+  padding: var(--modal-inset) var(--modal-inset) 0;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+/* `DialogFooter start`: a side action at the start, the answers at the end. */
+.ui-modal-footer--split {
+  @apply flex flex-row flex-wrap items-center gap-2;
+}
+
+.ui-modal-footer__start {
+  @apply flex items-center gap-2;
+}
+
+.ui-modal-footer__end {
+  @apply ms-auto flex flex-wrap items-center justify-end gap-2;
+}
+
+/* A text button at the start ("Open in Settings", "Delete the notes too") lines its text
+ * up with the content, like a link; a ghost one is muted. Icon buttons keep their box. */
+.ui-modal-footer__start > .button--variant-ghost:first-child:not([class*="icon-button--"]) {
+  margin-inline-start: -0.75rem;
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.ui-modal-footer__start
+  > .button--variant-outline:first-child:not([class*="icon-button--"], .button--severity-danger) {
+  margin-inline-start: calc(-0.75rem - 1px);
+}
+
+/* A destructive text button ("Discard note", "Delete the notes too") keeps a 10% wash at
+ * rest so its 14px text stays above 4.5:1; hover deepens to the canonical wash. */
+.ui-modal-footer__start
+  > .button--severity-danger:not([class*="icon-button--"]):not(:hover, :focus-visible) {
+  background-color: color-mix(in oklab, var(--button-severity-color) 10%, transparent);
 }

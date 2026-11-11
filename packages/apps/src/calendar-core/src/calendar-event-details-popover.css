@@ -109,18 +109,6 @@
   @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
 }
 
-.calendar-event-details-popover__footer {
-  @apply flex shrink-0 flex-wrap items-center justify-between gap-2;
-}
-
-.calendar-event-details-popover__footer-primary {
-  @apply flex flex-wrap items-center gap-2;
-}
-
-.calendar-event-details-popover__footer-actions {
-  @apply ms-auto flex items-center gap-2;
-}
-
 /*
  * iOS Safari: if JS still mounts the desktop Popover below 768px (useIsMobile
  * first paint / innerWidth vs CSS), Radix's wrapper is `left:0; top:0` plus a

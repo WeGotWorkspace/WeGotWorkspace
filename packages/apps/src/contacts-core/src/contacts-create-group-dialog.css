@@ -3,16 +3,3 @@
 .contacts-create-group-dialog__title {
   @apply flex items-center gap-2;
 }
-
-.contacts-create-group-dialog__fields {
-  @apply flex flex-col gap-3;
-}
-
-.contacts-create-group-dialog__hint {
-  @apply text-xs;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-.contacts-create-group-dialog__footer {
-  @apply mt-4;
-}

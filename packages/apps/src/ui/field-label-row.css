@@ -67,3 +67,71 @@
 .field-label-row__control {
   @apply min-w-0 flex-1;
 }
+
+/**
+ * Inline (suite norm for dialogs and settings): caption and description start, control
+ * end, rows split by the suite hairline. The control lines up with the caption, not
+ * with caption + description: a two-row grid, the description alone on the second row.
+ * The control column fits its content up to about half the row; a long value
+ * truncates. Phones keep two columns; the text wraps.
+ */
+.field-label-row--inline {
+  @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
+  grid-template-columns: minmax(0, 1fr) fit-content(55%);
+}
+
+.field-label-row--inline + .field-label-row--inline {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+/* A stacked row (a list, a long field) after inline rows keeps the hairline. */
+.field-label-row--inline + .field-label-row:not(.field-label-row--inline) {
+  @apply pt-4;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.field-label-row__text {
+  display: contents;
+}
+
+.field-label-row--inline .field-label-row__label {
+  grid-column: 1;
+  grid-row: 1;
+  /* Same size as the controls (inputs, dropdowns). */
+  font-size: var(--input-font-size-md, 0.875rem);
+  line-height: 1.25rem;
+}
+
+/* One step below the label. */
+.field-label-row__description {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--input-font-size-xs, 0.75rem);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.field-label-row--inline .field-label-row__control {
+  @apply flex min-w-0 items-center justify-end;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* With a description the label line sets the rhythm: the control may reach into the
+ * row padding, so the description sits right under the label. */
+.field-label-row--inline:has(.field-label-row__description) .field-label-row__control {
+  margin-block: calc((1.25rem - var(--control-height-sm, 2rem)) / 2);
+}
+
+/* `fill`: a text field takes the whole end column. */
+.field-label-row--fill {
+  grid-template-columns: minmax(0, 1fr) 55%;
+}
+
+.field-label-row--fill .field-label-row__control > * {
+  @apply min-w-0 flex-1;
+}
+
+/* A ghost dropdown stays inside the column, hover wash included. */
+.field-label-row--inline .field-label-row__control > .collection-ghost-select {
+  margin-inline: 0;
+}

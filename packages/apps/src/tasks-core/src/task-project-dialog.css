@@ -1,21 +1,5 @@
 @import "../../styles.css" reference;
 
-.tasks-dialog-surface .field-label-row + .field-label-row {
-  @apply mt-3;
-}
-
 .task-project-dialog__share {
   @apply mt-4;
-}
-
-.task-project-dialog__footer {
-  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
-}
-
-.task-project-dialog__footer :is(.task-project-dialog__remove, .task-project-dialog__delete) {
-  @apply me-auto;
-}
-
-.task-project-dialog__footer-end {
-  @apply ms-auto flex flex-wrap items-center gap-2;
 }

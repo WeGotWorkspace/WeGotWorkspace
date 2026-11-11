@@ -230,7 +230,12 @@ export function MeetChannelDialog({
               onConfirm(confirmInput());
             }}
           >
-            <FieldLabelRow label={meetLabels.channelNameLabel} htmlFor="meet-channel-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={meetLabels.channelNameLabel}
+              htmlFor="meet-channel-name"
+            >
               <Input
                 id="meet-channel-name"
                 autoFocus
@@ -257,35 +262,40 @@ export function MeetChannelDialog({
 
             {meetingKind ? (
               guestLink ? (
-                <>
-                  <FieldLabelRow label={meetLabels.meetingLinkLabel} htmlFor="meet-channel-link">
-                    <div className="meet-channel-dialog__link-row share-dialog__link-row">
-                      <ShareDialogInput
-                        id="meet-channel-link"
-                        type="url"
-                        value={guestLink}
-                        readOnly
-                        aria-label={meetLabels.meetingLinkLabel}
-                        aria-describedby="meet-channel-link-hint"
-                      />
-                      <IconButton
-                        type="button"
-                        label={meetLabels.copyLink}
-                        icon={<Copy className="size-3.5" aria-hidden />}
-                        size="sm"
-                        variant="outline"
-                        disabled={!guestLink}
-                        onClick={() => {
-                          void copyShareText(guestLink);
-                          onCopyGuestLink?.(guestLink);
-                        }}
-                      />
-                    </div>
-                  </FieldLabelRow>
-                  <p id="meet-channel-link-hint" className="meet-channel-dialog__guest-hint">
-                    {guestRoomIsAdHoc ? meetLabels.guestLinkHint : meetLabels.guestLinkClosedHint}
-                  </p>
-                </>
+                <FieldLabelRow
+                  layout="inline"
+                  fill
+                  label={meetLabels.meetingLinkLabel}
+                  description={
+                    <span id="meet-channel-link-hint">
+                      {guestRoomIsAdHoc ? meetLabels.guestLinkHint : meetLabels.guestLinkClosedHint}
+                    </span>
+                  }
+                  htmlFor="meet-channel-link"
+                >
+                  <div className="meet-channel-dialog__link-row share-dialog__link-row">
+                    <ShareDialogInput
+                      id="meet-channel-link"
+                      type="url"
+                      value={guestLink}
+                      readOnly
+                      aria-label={meetLabels.meetingLinkLabel}
+                      aria-describedby="meet-channel-link-hint"
+                    />
+                    <IconButton
+                      type="button"
+                      label={meetLabels.copyLink}
+                      icon={<Copy className="size-3.5" aria-hidden />}
+                      size="sm"
+                      variant="outline"
+                      disabled={!guestLink}
+                      onClick={() => {
+                        void copyShareText(guestLink);
+                        onCopyGuestLink?.(guestLink);
+                      }}
+                    />
+                  </div>
+                </FieldLabelRow>
               ) : (
                 <p className="meet-channel-dialog__guest-hint">{meetLabels.guestLinkAfterCreate}</p>
               )
@@ -318,27 +328,27 @@ export function MeetChannelDialog({
               </div>
             ) : null}
 
-            <DialogFooter className="meet-channel-dialog__footer">
-              {canDelete ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="meet-channel-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={meetingKind ? meetLabels.deleteMeeting : meetLabels.deleteChannel}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : null}
-              <div className="meet-channel-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  {meetLabels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton}
-                </Button>
-              </div>
+            <DialogFooter
+              start={
+                canDelete ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={meetingKind ? meetLabels.deleteMeeting : meetLabels.deleteChannel}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose}>
+                {meetLabels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,15 +1,7 @@
 import { useMemo } from "react";
 import { HardDrive } from "lucide-react";
-import { Button, buttonVariants } from "@/button/src/button";
-import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { buttonVariants } from "@/button/src/button";
+import { RenameFileDialog } from "@/dialogs/src/rename-file-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,34 +96,23 @@ export function DocsHomeModals({
   );
   const folderPickerRootIcon = useMemo(() => <HardDrive />, []);
   const moveTarget = moveState ? actions.fileById(moveState.ids[0]!) : null;
-  const canSubmitRename = renameName.trim().length > 0;
 
   return (
     <>
-      <Dialog open={!!renameState} onOpenChange={(open) => !open && closeRename()}>
-        <DialogContent className="docs-dialog-surface">
-          <DialogHeader>
-            <DialogTitle>{labels.renameDialogTitle}</DialogTitle>
-            <DialogDescription>{labels.renameDialogDescription}</DialogDescription>
-          </DialogHeader>
-          <RenameFilenameField
-            autoFocus
-            placeholder="Name"
-            baseName={renameName}
-            extension={renameState?.extension || undefined}
-            onBaseNameChange={setRenameName}
-            onEnter={submitRename}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={closeRename}>
-              {labels.cancel}
-            </Button>
-            <Button variant="primary" onClick={submitRename} disabled={!canSubmitRename}>
-              {labels.renameAction}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameFileDialog
+        open={!!renameState}
+        title={labels.renameDialogTitle}
+        description={labels.renameDialogDescription}
+        placeholder="Name"
+        cancelLabel={labels.cancel}
+        confirmLabel={labels.renameAction}
+        baseName={renameName}
+        extension={renameState?.extension}
+        surfaceClassName="docs-dialog-surface"
+        onBaseNameChange={setRenameName}
+        onClose={closeRename}
+        onSubmit={submitRename}
+      />
 
       <AlertDialog open={!!deleteState} onOpenChange={(open) => !open && closeDelete()}>
         <AlertDialogContent>

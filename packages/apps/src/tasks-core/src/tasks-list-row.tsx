@@ -1,7 +1,7 @@
 import { memo, useEffect } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
@@ -78,7 +78,7 @@ function TasksListRowMeta({
   return (
     <span className="tasks-list-row__meta">
       <span className="tasks-list-row__meta-item list-item__meta-segment">
-        <NotesNotebookColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
+        <CollectionColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
         <span className="tasks-list-row__meta-text">{listName}</span>
       </span>
       {dueRelative ? (

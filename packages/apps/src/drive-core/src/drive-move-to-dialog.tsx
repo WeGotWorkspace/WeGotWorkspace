@@ -95,9 +95,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        className={cn(dialogSurfaceClassName, fileSelect ? "sm:max-w-2xl" : "sm:max-w-lg")}
-      >
+      <DialogContent className={cn(dialogSurfaceClassName, fileSelect && "sm:max-w-2xl")}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

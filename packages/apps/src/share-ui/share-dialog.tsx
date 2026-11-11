@@ -1,5 +1,14 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Button } from "@/button/src/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/ui/dialog";
 import { cn } from "@/lib/utils";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { NOTES_SHARE_UI_PERMISSIONS, SHARE_UI_PERMISSIONS } from "@/lib/sharing/share-access-map";
 import { ShareLinkSection } from "@/share-ui/share-link-section";
@@ -57,7 +66,7 @@ export function ShareDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn("share-dialog", dialogSurfaceClassName, "share-dialog__content")}
+        className={cn("share-dialog", dialogSurfaceClassName)}
         onPointerDownOutside={(event) => {
           // Portaled Popover/Select layers sit outside this node in the DOM.
           const target = event.target as Element | null;
@@ -66,7 +75,7 @@ export function ShareDialog({
           }
         }}
       >
-        <DialogHeader className="share-dialog__header">
+        <DialogHeader>
           <DialogTitle>Share {title}</DialogTitle>
           <DialogDescription>{shareLabels.dialogDescription}</DialogDescription>
         </DialogHeader>
@@ -77,29 +86,37 @@ export function ShareDialog({
         {error && !data ? <p className="share-dialog__error">{shareLabels.loadError}</p> : null}
 
         {data ? (
-          <>
-            <div className="share-dialog__body">
-              {isNotesMode ? null : (
-                <ShareLinkSection
-                  atPath={data}
-                  mutations={mutations}
-                  disabled={!canManage}
-                  isFolder={isFolder}
-                />
-              )}
-              <ShareTeamSection
+          <div className="share-dialog__body">
+            {isNotesMode ? null : (
+              <ShareLinkSection
                 atPath={data}
                 mutations={mutations}
                 disabled={!canManage}
-                permissions={permissions}
+                isFolder={isFolder}
               />
-            </div>
-
-            <footer className="share-dialog__footer">
-              <span>{shareLabels.footerHint}</span>
-            </footer>
-          </>
+            )}
+            <ShareTeamSection
+              atPath={data}
+              mutations={mutations}
+              disabled={!canManage}
+              permissions={permissions}
+            />
+          </div>
         ) : null}
+
+        <DialogFooter
+          start={
+            data ? (
+              <span className="share-dialog__footer-hint">{shareLabels.footerHint}</span>
+            ) : null
+          }
+        >
+          <Button
+            variant="primary"
+            label={workspaceLabels.dialog.done}
+            onClick={() => onOpenChange?.(false)}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

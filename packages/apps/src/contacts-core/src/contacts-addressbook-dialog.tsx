@@ -132,6 +132,8 @@ export function ContactsAddressBookDialog({
           {dialog ? (
             <>
               <FieldLabelRow
+                layout="inline"
+                fill
                 label={labels.addressBookNameLabel}
                 htmlFor="contacts-addressbook-name"
                 readOnly
@@ -192,24 +194,24 @@ export function ContactsAddressBookDialog({
                 </div>
               ) : null}
 
-              <DialogFooter className="contacts-addressbook-dialog__footer">
-                {canRemoveShared ? (
-                  <IconButton
-                    type="button"
-                    variant="outline"
-                    severity="danger"
-                    size="md"
-                    className="contacts-addressbook-dialog__remove"
-                    icon={<Trash2 className="size-3.5" aria-hidden />}
-                    label={labels.removeSharedAddressBook}
-                    onClick={() => setConfirmRemoveOpen(true)}
-                  />
-                ) : null}
-                <div className="contacts-addressbook-dialog__footer-end">
-                  <Button type="button" variant="outline" onClick={onClose}>
-                    {labels.addressBookDialogDone}
-                  </Button>
-                </div>
+              <DialogFooter
+                start={
+                  canRemoveShared ? (
+                    <IconButton
+                      type="button"
+                      variant="outline"
+                      severity="danger"
+                      size="md"
+                      icon={<Trash2 className="size-3.5" aria-hidden />}
+                      label={labels.removeSharedAddressBook}
+                      onClick={() => setConfirmRemoveOpen(true)}
+                    />
+                  ) : null
+                }
+              >
+                <Button type="button" onClick={onClose}>
+                  {labels.addressBookDialogDone}
+                </Button>
               </DialogFooter>
             </>
           ) : null}

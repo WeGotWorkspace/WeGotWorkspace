@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { SettingsPanelHost } from "@/settings-core/src/settings-panel-host";
@@ -17,11 +18,8 @@ import { settingsNavigateTarget } from "@/settings-core/src/settings-section";
 import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
 import { useSettingsAPI } from "@/settings-core/src/use-settings-api";
 import { useSettingsController } from "@/settings-core/src/use-settings-controller";
+import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
-import {
-  SettingsDialogPaneActionsProvider,
-  useSettingsDialogPaneSaveState,
-} from "@/settings-core/src/settings-dialog-pane-actions";
 import "@/settings-core/src/settings-workspace.css";
 
 export type SettingsDialogApi = {
@@ -150,40 +148,32 @@ function SettingsDialogChrome({
   onCloseAutoFocus,
   children,
 }: SettingsDialogFrameProps) {
-  const { paneSave, onSaveChange } = useSettingsDialogPaneSaveState();
-
   return (
-    <DialogContent
-      className="sm:max-w-2xl settings-workspace"
-      aria-describedby={undefined}
-      onCloseAutoFocus={onCloseAutoFocus}
-    >
-      <DialogHeader>
-        <DialogTitle>{panel.label}</DialogTitle>
-      </DialogHeader>
-      <SettingsDialogPaneActionsProvider onSaveChange={onSaveChange}>
+    <AutosaveStatusProvider>
+      <DialogContent
+        className="sm:max-w-2xl settings-workspace"
+        aria-describedby={undefined}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
+        <DialogHeader end={<AutosaveStatusTag />}>
+          <DialogTitle>{panel.label}</DialogTitle>
+        </DialogHeader>
         {children}
-      </SettingsDialogPaneActionsProvider>
-      <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          className="settings-dialog-footer__open"
-          label="Open in Settings"
-          onClick={onOpenInSettings}
-        />
-        <Button type="button" variant="outline" label="Cancel" onClick={onDismiss} />
-        {paneSave ? (
-          <Button
-            type="button"
-            variant="primary"
-            label="Save"
-            disabled={paneSave.disabled}
-            onClick={() => void paneSave.save()}
-          />
-        ) : null}
-      </DialogFooter>
-    </DialogContent>
+        <DialogFooter
+          start={
+            <Button
+              type="button"
+              variant="ghost"
+              label="Open in Settings"
+              trailingIcon={<ArrowUpRight aria-hidden />}
+              onClick={onOpenInSettings}
+            />
+          }
+        >
+          <Button type="button" variant="primary" label="Done" onClick={onDismiss} />
+        </DialogFooter>
+      </DialogContent>
+    </AutosaveStatusProvider>
   );
 }
 

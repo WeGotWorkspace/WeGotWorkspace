@@ -243,7 +243,12 @@ export function TaskProjectDialog({
               onConfirm(confirmInput());
             }}
           >
-            <FieldLabelRow label={labels.nameLabel} htmlFor="task-project-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.nameLabel}
+              htmlFor="task-project-name"
+            >
               <NameColorRow>
                 <Input
                   id="task-project-name"
@@ -295,38 +300,37 @@ export function TaskProjectDialog({
               </div>
             ) : null}
 
-            <DialogFooter className="task-project-dialog__footer">
-              {canDelete ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="task-project-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={labels.deleteList}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : canRemoveShared ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="task-project-dialog__remove"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={labels.removeSharedList}
-                  onClick={() => setConfirmRemoveOpen(true)}
-                />
-              ) : null}
-              <div className="task-project-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  {labels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {isCreate ? labels.createButton : labels.saveButton}
-                </Button>
-              </div>
+            <DialogFooter
+              start={
+                canDelete ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.deleteList}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : canRemoveShared ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.removeSharedList}
+                    onClick={() => setConfirmRemoveOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isCreate ? labels.createButton : labels.saveButton}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

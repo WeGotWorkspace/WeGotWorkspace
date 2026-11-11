@@ -261,7 +261,12 @@ export function CalendarCalendarDialog({
             }}
           >
             {isSubscribe || isSubscriptionEdit ? (
-              <FieldLabelRow label={labels.subscribeUrlLabel} htmlFor="calendar-subscribe-url">
+              <FieldLabelRow
+                layout="inline"
+                fill
+                label={labels.subscribeUrlLabel}
+                htmlFor="calendar-subscribe-url"
+              >
                 <ShareDialogInput
                   id="calendar-subscribe-url"
                   type="url"
@@ -281,7 +286,12 @@ export function CalendarCalendarDialog({
               </FieldLabelRow>
             ) : null}
 
-            <FieldLabelRow label={labels.calendarNameLabel} htmlFor="calendar-calendar-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.calendarNameLabel}
+              htmlFor="calendar-calendar-name"
+            >
               <NameColorRow>
                 <Input
                   id="calendar-calendar-name"
@@ -348,28 +358,28 @@ export function CalendarCalendarDialog({
               </div>
             ) : null}
 
-            <DialogFooter className="calendar-calendar-dialog__footer">
-              {canRemove ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="calendar-calendar-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={removeLabel}
-                  disabled={busy}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : null}
-              <div className="calendar-calendar-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-                  {labels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
-                </Button>
-              </div>
+            <DialogFooter
+              start={
+                canRemove ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={removeLabel}
+                    disabled={busy}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
