@@ -51,7 +51,7 @@ import {
   getDocsSyncRunner,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
-import { useOfflineBodySyncProgress } from "@/lib/offline/use-offline-body-sync-progress";
+import { useOfflineBodySyncRunning } from "@/lib/offline/use-offline-body-sync-running";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
@@ -292,7 +292,7 @@ export function DocsHomeWorkspace({
     return readDocsBodySyncProgress(offlineUsername);
   }, [offlineUsername]);
 
-  const docsBodySyncProgress = useOfflineBodySyncProgress({
+  const docsBodySyncRunning = useOfflineBodySyncRunning({
     enabled: Boolean(offlineUsername),
     readProgress: readBodySyncProgress,
   });
@@ -309,8 +309,8 @@ export function DocsHomeWorkspace({
 
   /** Row badge dots: only pending body sync or unsaved/outbox/collab — never green "available offline". */
   const offlineSyncingIds = useMemo(
-    () => docsHomeOfflineSyncingIds(files, docsBodySyncProgress.running, offlineAvailableIds),
-    [docsBodySyncProgress.running, files, offlineAvailableIds],
+    () => docsHomeOfflineSyncingIds(files, docsBodySyncRunning, offlineAvailableIds),
+    [docsBodySyncRunning, files, offlineAvailableIds],
   );
   const offlineBadgePendingIds = useMemo(
     () => docsHomeOfflineBadgePendingIds(offlinePendingSyncIds, offlineSyncingIds),
@@ -427,7 +427,7 @@ export function DocsHomeWorkspace({
             hasMore={listing.hasMore}
             error={listing.error}
             offlinePendingSyncIds={offlineBadgePendingIds}
-            offlineLabels={docsHomePaneOfflineLabels(labels, docsBodySyncProgress.running)}
+            offlineLabels={docsHomePaneOfflineLabels(labels, docsBodySyncRunning)}
             query={query}
             onQueryChange={setQuery}
             searchEnabled={searchEnabled}
