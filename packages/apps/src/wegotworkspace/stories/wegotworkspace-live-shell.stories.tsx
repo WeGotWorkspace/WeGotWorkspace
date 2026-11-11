@@ -54,3 +54,8 @@ export const WegotworkspaceRequireAuth: Story = {
     return <LiveRouterHarness initialPath="/drive" />;
   },
 };
+
+export const WegotworkspaceMeetLiveRoute: Story = {
+  name: "WegotworkspaceMeetLiveRoute",
+  render: () => <LiveRouterHarness initialPath="/meet" />,
+};
