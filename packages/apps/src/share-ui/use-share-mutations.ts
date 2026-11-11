@@ -27,27 +27,30 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const runMutation = useCallback(
-    async (key: string, action: () => Promise<void>) => {
+    /** True when the change was stored (errors show their own toast). */
+    async (key: string, action: () => Promise<void>): Promise<boolean> => {
       setBusyKey(key);
       try {
         await action();
         await refetch();
+        return true;
       } catch (cause) {
         const detail = cause instanceof Error ? cause.message : shareLabels.mutationError;
         if (detail.includes("Guest already has access")) {
           showError(shareLabels.mutationError, {
             description: shareLabels.guestAlreadyHasAccess,
           });
-          return;
+          return false;
         }
         if (detail.includes("share_conflict")) {
           showError(shareLabels.mutationError, {
             description: "Someone else changed sharing. Reloading.",
           });
           await refetch();
-          return;
+          return false;
         }
         showError(shareLabels.mutationError, { description: detail });
+        return false;
       } finally {
         setBusyKey((current) => (current === key ? null : current));
       }
@@ -108,13 +111,13 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
       }
       const share = findShareRecord(atPath, directPublic.shareId);
       if (!share?.updatedAt) return undefined;
-      await runMutation(`public-password-${directPublic.shareId}`, async () => {
+      const stored = await runMutation(`public-password-${directPublic.shareId}`, async () => {
         await operations.patchShare(directPublic.shareId, {
           updatedAt: share.updatedAt!,
           password: enabled ? trimmed : null,
         });
       });
-      return enabled ? trimmed : undefined;
+      return stored && enabled ? trimmed : undefined;
     },
     [atPath, operations, runMutation],
   );
@@ -125,7 +128,7 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
     if (!directPublic) return undefined;
     const share = findShareRecord(atPath, directPublic.shareId);
     let generatedPassword: string | undefined;
-    await runMutation(`public-regenerate-${directPublic.shareId}`, async () => {
+    const stored = await runMutation(`public-regenerate-${directPublic.shareId}`, async () => {
       generatedPassword = share?.hasPassword ? generateFriendlySharePassword() : undefined;
       await operations.deleteShare(directPublic.shareId);
       await operations.createShare({
@@ -135,8 +138,17 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
         password: generatedPassword ?? null,
       });
     });
+    if (!stored) return undefined;
+    showSuccess(shareLabels.regeneratedLink);
     return generatedPassword;
-  }, [atPath, operations, path, runMutation]);
+  }, [atPath, operations, path, runMutation, showSuccess]);
+
+  /** A fresh password for the public link (the old one stops working). */
+  const regeneratePublicPassword = useCallback(async (): Promise<string | undefined> => {
+    const password = await updatePublicPassword(true, "");
+    if (password) showSuccess(shareLabels.regeneratedPassword);
+    return password;
+  }, [showSuccess, updatePublicPassword]);
 
   const updateGrantAccess = useCallback(
     async (shareId: string, principal: string, permission: ShareUIPermission | null) => {
@@ -230,6 +242,7 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
     updatePublicAccess,
     updatePublicPassword,
     regeneratePublicLink,
+    regeneratePublicPassword,
     updateGrantAccess,
     removeGuestInvite,
     inviteGuest,

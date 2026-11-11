@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, Globe2, RefreshCw } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -149,7 +149,7 @@ export function ShareLinkSection({
         break;
       case "regenerate-password":
         void (async () => {
-          const password = await mutations.updatePublicPassword(true, "");
+          const password = await mutations.regeneratePublicPassword();
           if (password) {
             revealPassword(password);
           }
@@ -167,6 +167,7 @@ export function ShareLinkSection({
       <FieldLabelRow
         layout="inline"
         section
+        icon={<Globe2 aria-hidden />}
         label={shareLabels.publicSectionTitle}
         htmlFor={publicSwitchId}
         description={

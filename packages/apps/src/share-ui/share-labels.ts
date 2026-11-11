@@ -44,6 +44,8 @@ export const shareLabels = {
   passwordHiddenLabel: "Password is set (hidden)",
   copyPassword: "Copy password",
   copiedPassword: "Password copied.",
+  regeneratedLink: "New link created. The old link no longer works.",
+  regeneratedPassword: "New password created. The old password no longer works.",
   regeneratePassword: "Generate new password",
   regeneratePasswordHint: "Generate a new password (invalidates the current one)",
   regeneratePasswordToViewHint: "Generate a new password to view and copy it",
