@@ -8,8 +8,8 @@
       "duplicatedLines": 2326
     },
     "packages/apps/src": {
-      "clones": 82,
-      "duplicatedLines": 1298
+      "clones": 78,
+      "duplicatedLines": 1198
     }
   },
   "packages": {
@@ -26,7 +26,7 @@
       "duplicatedLines": 1170
     },
     "packages/api/app/Models": {
-      "cloneCoverage": 1.24,
+      "cloneCoverage": 1.23,
       "duplicatedLines": 44
     },
     "packages/api/app/Services/Admin": {
@@ -62,7 +62,7 @@
       "duplicatedLines": 76
     },
     "packages/api/app/Services/Jmap": {
-      "cloneCoverage": 5.27,
+      "cloneCoverage": 5.23,
       "duplicatedLines": 698
     },
     "packages/api/app/Services/Meet": {
@@ -98,23 +98,23 @@
       "duplicatedLines": 58
     },
     "packages/apps/src/calendar-core": {
-      "cloneCoverage": 0.66,
-      "duplicatedLines": 125
+      "cloneCoverage": 0.15,
+      "duplicatedLines": 31
     },
     "packages/apps/src/contacts-core": {
-      "cloneCoverage": 1.93,
-      "duplicatedLines": 225
+      "cloneCoverage": 1.73,
+      "duplicatedLines": 200
     },
     "packages/apps/src/docs-core": {
       "cloneCoverage": 0.75,
       "duplicatedLines": 68
     },
     "packages/apps/src/drive-core": {
-      "cloneCoverage": 0.97,
+      "cloneCoverage": 0.95,
       "duplicatedLines": 135
     },
     "packages/apps/src/lib": {
-      "cloneCoverage": 1.02,
+      "cloneCoverage": 1.03,
       "duplicatedLines": 24
     },
     "packages/apps/src/lib/api": {
@@ -122,7 +122,7 @@
       "duplicatedLines": 156
     },
     "packages/apps/src/lib/calendar-elements": {
-      "cloneCoverage": 3.34,
+      "cloneCoverage": 3.33,
       "duplicatedLines": 468
     },
     "packages/apps/src/lib/calendar-engine": {
@@ -134,12 +134,12 @@
       "duplicatedLines": 113
     },
     "packages/apps/src/lib/models": {
-      "cloneCoverage": 3.48,
+      "cloneCoverage": 3.45,
       "duplicatedLines": 44
     },
     "packages/apps/src/lib/offline": {
-      "cloneCoverage": 0.86,
-      "duplicatedLines": 211
+      "cloneCoverage": 0.6,
+      "duplicatedLines": 148
     },
     "packages/apps/src/login-core": {
       "cloneCoverage": 11.53,
@@ -150,7 +150,7 @@
       "duplicatedLines": 108
     },
     "packages/apps/src/notes-core": {
-      "cloneCoverage": 0.87,
+      "cloneCoverage": 0.88,
       "duplicatedLines": 79
     },
     "packages/apps/src/notifications-core": {
@@ -162,15 +162,15 @@
       "duplicatedLines": 53
     },
     "packages/apps/src/tasks-core": {
-      "cloneCoverage": 1.86,
-      "duplicatedLines": 138
+      "cloneCoverage": 1.55,
+      "duplicatedLines": 113
     },
     "packages/apps/src/text-editor-core": {
-      "cloneCoverage": 1.7,
+      "cloneCoverage": 1.69,
       "duplicatedLines": 411
     },
     "packages/apps/src/ui": {
-      "cloneCoverage": 0.85,
+      "cloneCoverage": 0.74,
       "duplicatedLines": 32
     },
     "packages/apps/src/wegotworkspace": {

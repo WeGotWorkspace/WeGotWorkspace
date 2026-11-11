@@ -583,6 +583,23 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   };
 }
 
+/** The signed-in user as an event's organizer (none without a session email). */
+export function sessionOrganizer(
+  email: string | undefined,
+  name: string | undefined,
+): { email: string; name: string } | undefined {
+  return email ? { email, name: name || email } : undefined;
+}
+
+/** `formToDraft` with the organizer set, as every create from the app sends it. */
+export function draftFromForm(
+  form: CalendarEventFormValue,
+  organizer?: { email: string; name?: string },
+): CalendarEventDraft {
+  const draft = formToDraft(form);
+  return organizer ? { ...draft, organizer } : draft;
+}
+
 export function formToPatch(
   form: CalendarEventFormValue,
   original: JmapCalendarEvent,

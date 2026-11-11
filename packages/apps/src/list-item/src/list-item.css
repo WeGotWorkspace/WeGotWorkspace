@@ -196,7 +196,9 @@ html:not([data-modality="pointer"])
 }
 
 /* The line under the title leaves room for it. */
-.list-item__button[data-date-below="true"] .list-item__title-row + :is(.list-item__body, .list-item__meta) {
+.list-item__button[data-date-below="true"]
+  .list-item__title-row
+  + :is(.list-item__body, .list-item__meta) {
   margin-inline-end: var(--list-item-preview-end-gap, 3.5rem);
 }
 

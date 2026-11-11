@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, MoreHorizontal, Trash2 } from "lucide-react";
+import { CalendarDays, MoreHorizontal, Trash2 } from "lucide-react";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   type ChangeEvent,
@@ -9,41 +9,27 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { IconButton } from "@/button/src/button";
-import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
-import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
-import {
-  CalendarSidebarRows,
-  MyCalendarsSidebarSection,
-} from "@/calendar-core/src/calendar-sidebar-rows";
-import { CalendarAvailabilitySidebar } from "@/calendar-core/src/calendar-availability-sidebar";
 import { CalendarNoticeBar } from "@/calendar-core/src/calendar-notice-bar";
 import { useTeamAvailability } from "@/calendar-core/src/use-team-availability";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
-import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
-import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
-import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { WorkspaceApp, type WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
+import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { ActionBar } from "@/action-bar/src/action-bar";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { CollectionState } from "@/collection-state/src/collection-state";
-import { ViewHeader } from "@/view-header/src/view-header";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
+import { CalendarWorkspaceHeader } from "@/calendar-core/src/calendar-workspace-header";
+import { CalendarWorkspaceSidebar } from "@/calendar-core/src/calendar-workspace-sidebar";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
-import { useCalendarListSelection } from "@/calendar-core/src/use-calendar-list-selection";
-import { unifiedSearchOccurrences } from "@/calendar-core/src/calendar-search";
+import {
+  calendarListRows,
+  useCalendarListSelection,
+} from "@/calendar-core/src/use-calendar-list-selection";
+import { useCalendarListDetail } from "@/calendar-core/src/use-calendar-list-detail";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
-import { CalendarEventList } from "@/calendar-core/src/calendar-event-list";
-import { groupAgendaDays } from "@/lib/calendar-elements/utils/agenda-days";
-import { visibleEventsInRange } from "@/lib/calendar-elements/CalendarViewBase/renderedEvents";
-import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/calendar-task-due-overlay";
-import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
-import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
+import { CalendarEventList, calendarPeriodDays } from "@/calendar-core/src/calendar-event-list";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -53,7 +39,6 @@ import {
 } from "@/calendar-core/src/calendar-invitation-event";
 import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
-import { useCalendarEditorAutosave } from "@/calendar-core/src/use-calendar-editor-autosave";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import { useCalendarContactInvitees } from "@/calendar-core/src/use-calendar-contact-invitees";
 import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
@@ -82,10 +67,7 @@ import {
   resolveCalendarOverlayPreview,
   type CalendarOverlayPreview,
 } from "@/calendar-core/src/calendar-overlay-preview";
-import {
-  CalendarRemindersSidebar,
-  partitionCalendarTaskDueSidebarLists,
-} from "@/calendar-core/src/calendar-task-due-sidebar";
+import { partitionCalendarTaskDueSidebarLists } from "@/calendar-core/src/calendar-task-due-sidebar";
 import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
 import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
 import { personalOwnerLabel } from "@/calendar-core/src/calendar-workspace-props";
@@ -105,7 +87,6 @@ import {
   rsvpRecurrenceIdForEvent,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
-import type { CalendarViewId } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
   canManageCalendarSharing,
@@ -114,14 +95,7 @@ import {
 } from "@/calendar-core/src/calendar-collection-write";
 import type { CalendarShareWith } from "@/calendar-core/src/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
-import {
-  ownedAndTeamCalendarsForSidebar,
-  sharedWithMeCalendarsForSidebar,
-} from "@/calendar-core/src/calendar-sidebar-order";
-import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
-import { CALENDAR_VIEW_ORDER } from "@/calendar-core/src/calendar-workspace-nav";
-import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
@@ -247,7 +221,6 @@ export function CalendarWorkspace({
     setSearchQuery,
     searchActive,
     searchResults,
-    searchRange,
     dateRange,
     undoLatest,
     deleteCalendarEvents,
@@ -383,8 +356,6 @@ export function CalendarWorkspace({
     });
   const previewCanResize = Boolean(operations) && canWriteCalendarCollection(previewCalendar);
   const ownerLabel = personalOwnerLabel(session);
-  const myCalendars = ownedAndTeamCalendarsForSidebar(calendars);
-  const sharedWithMeCalendars = sharedWithMeCalendarsForSidebar(calendars);
   const pendingCalendarIds = useMemo(() => {
     const ids = new Set<string>();
     if (!pendingEventIds || pendingEventIds.size === 0) return ids;
@@ -396,13 +367,6 @@ export function CalendarWorkspace({
     return ids;
   }, [data.events, pendingEventIds]);
 
-  const viewLabels: Record<CalendarViewId, string> = {
-    month: L.viewMonth,
-    week: L.viewWeek,
-    day: L.viewDay,
-    year: L.viewYear,
-  };
-  const periodNav = calendarPeriodNavLabels(view, L);
   useDocumentTitle(title);
 
   useEffect(() => {
@@ -716,277 +680,135 @@ export function CalendarWorkspace({
 
   /** List mode is a list + detail workspace (as Tasks, Notes, Contacts); the grid keeps the popover. */
   const listLayout = presentation === "list";
-  const listWorkspaceRef = useRef<WorkspaceAppHandle>(null);
-  /** Below `md` the detail pane slides over the list and needs a back button. */
-  const detailOverlay = useIsMobile();
-  const eventSelected = Boolean(eventPreview);
-  useEffect(() => {
-    if (!listLayout) return;
-    if (eventSelected) listWorkspaceRef.current?.openMobileDetail();
-    else listWorkspaceRef.current?.closeMobileDetail();
-  }, [eventSelected, listLayout]);
   const closeEventDetail = eventPreview?.interactiveEdit
     ? closeInteractiveEditor
     : closeEventPreview;
-  /** Phones: clear the selection inside the overlay's slide-out (as Tasks does), so it
-   * slides the event away, not an emptied pane with only its header. */
-  const leaveEventDetail = (clear: () => void) => {
-    if (detailOverlay && listWorkspaceRef.current)
-      listWorkspaceRef.current.closeMobileDetail(clear);
-    else clear();
-  };
   /** Search lives in list mode only (the floating bar over the list). */
   const searching = listLayout && searchActive;
-  /** The pane saves as you go, like a task or a note; the grid's popover keeps Save. */
-  const paneEditing = listLayout && Boolean(eventPreview?.interactiveEdit);
-  const editorAutosave = useCalendarEditorAutosave({ editor, enabled: paneEditing, saveEditor });
-  const deleteEditedEvent = () => {
-    editorAutosave.cancel();
-    deleteEditorEvent();
-    setEventPreview(null);
-    setEventTimesDraft(null);
-  };
-  const detailDeleteNow =
-    eventPreview?.interactiveEdit && editor?.mode === "edit"
-      ? deleteEditedEvent
-      : eventPreview && !eventPreview.invitation && previewCanEdit
-        ? deleteFromPreview
-        : undefined;
-  /** Detail header Delete: asks first. A repeating occurrence already asks which ones
-   * (the scope dialog), so it goes straight on. */
-  const detailDelete =
-    detailDeleteNow &&
-    (liveEventPreview?.recurrenceId
-      ? () => leaveEventDetail(detailDeleteNow)
-      : () =>
-          requestConfirm({
-            title: L.deleteEventConfirmTitle,
-            description: L.deleteEventConfirmBody,
-            confirmLabel: L.delete,
-            cancelLabel: L.cancel,
-            variant: "destructive",
-            onConfirm: () => leaveEventDetail(detailDeleteNow),
-          }));
+  const {
+    workspaceRef: listWorkspaceRef,
+    detailOverlay,
+    leaveEventDetail,
+    goBack,
+    autosave: editorAutosave,
+    deleteEditedEvent,
+    detailDelete,
+  } = useCalendarListDetail({
+    L,
+    listLayout,
+    eventSelected: Boolean(eventPreview),
+    interactiveEdit: Boolean(eventPreview?.interactiveEdit),
+    recurring: Boolean(liveEventPreview?.recurrenceId),
+    deleteFromPreview:
+      eventPreview && !eventPreview.invitation && previewCanEdit ? deleteFromPreview : undefined,
+    editor,
+    saveEditor,
+    deleteEditorEvent,
+    clearEvent: () => {
+      setEventPreview(null);
+      setEventTimesDraft(null);
+    },
+    closeEventDetail,
+    requestConfirm,
+  });
   /** Wide list mode: the list header has room for the full range title. */
   const wideList = listLayout && !detailOverlay;
   /** The invitations inbox is the grid's: list mode has no trigger and hides the panel
    * (it is back on switching to the grid). */
   const invitationsShown = invitationsOpen && !listLayout;
-  const viewModeToggleEl = (
-    <ViewModeToggle
-      value={presentation}
-      onChange={setPresentation}
-      gridLabel={L.showAsCalendar}
-      listLabel={L.showAsList}
-      disabled={searching}
-      variant="menu"
-      onOpenChange={setViewMenuOpen}
-    />
-  );
-  const invitationsTriggerEl = (
-    <CalendarInvitationsTrigger
-      count={pendingInvitationCount(inviteeNotifications)}
-      open={invitationsOpen}
-      labels={L}
-      onToggle={toggleInvitationsOpen}
-    />
-  );
   const listEvents = surfaceEventsForView ?? surface?.events;
-  const periodDays = useMemo(() => {
-    if (!listLayout) return [];
-    const timezone = surfaceDisplay.timezone;
-    const midnight = { hour: 0, minute: 0, second: 0 } as const;
-    const visible = filterVisibleCalendarEventsKeepingOverlay(listEvents ?? new Map(), [
-      ...visibleCalendarIds,
-    ]);
-    const expanded = visibleEventsInRange(
-      visible,
-      {
-        start: dateRange.start.toPlainDateTime(midnight),
-        end: dateRange.end.toPlainDateTime(midnight),
-      },
-      timezone,
-    );
-    return groupAgendaDays(expanded.entries(), { timezone, range: dateRange });
-  }, [dateRange, listEvents, listLayout, surfaceDisplay.timezone, visibleCalendarIds]);
+  const periodDays = useMemo(
+    () =>
+      listLayout
+        ? calendarPeriodDays(listEvents, visibleCalendarIds, dateRange, surfaceDisplay.timezone)
+        : [],
+    [dateRange, listEvents, listLayout, surfaceDisplay.timezone, visibleCalendarIds],
+  );
   const activeEventKey = liveEventPreview ? eventPreviewOccurrenceKey(liveEventPreview) : undefined;
-  /** The list's rows in order, with each one's calendar (period list or search results). */
-  const listRows = useMemo(() => {
-    const rows = new Map<string, string>();
-    if (searching) {
-      for (const occurrence of unifiedSearchOccurrences(searchResults)) {
-        rows.set(occurrence.key, occurrence.calendarId);
-      }
-    } else {
-      for (const day of periodDays) {
-        for (const item of day.items) rows.set(item.id, item.event.calendarId);
-      }
-    }
-    return rows;
-  }, [periodDays, searchResults, searching]);
-  const listRowIds = useMemo(() => [...listRows.keys()], [listRows]);
-  const listRowCalendarId = useCallback((key: string) => listRows.get(key), [listRows]);
+  const listRows = useMemo(
+    () => calendarListRows(periodDays, searching ? searchResults : null),
+    [periodDays, searchResults, searching],
+  );
   const listSelection = useCalendarListSelection({
     L,
-    visibleIds: listRowIds,
+    rows: listRows,
     resetKey: `${presentation}|${view}|${anchor}|${searching ? searchQuery : ""}`,
     activeKey: activeEventKey ?? "",
     calendars,
-    calendarIdOf: listRowCalendarId,
     openEvent: openEventPreview,
     requestConfirm,
-    deleteEvents: (keys) => {
-      if (activeEventKey && keys.includes(activeEventKey)) leaveEventDetail(closeEventDetail);
-      deleteCalendarEvents(keys);
-    },
+    leaveEvent: () => leaveEventDetail(closeEventDetail),
+    deleteEvents: deleteCalendarEvents,
     moveEvents: moveCalendarEvents,
   });
   const multiSelected = listLayout && listSelection.multiSelected;
 
   const sidebarEl = (
-    <AppSidebar
-      settingsAppId="calendar"
+    <CalendarWorkspaceSidebar
+      L={L}
       open={sidebarOpen}
-      onCloseMobile={() => setSidebarOpen(false)}
-      primaryButton={
-        canWrite ? (
-          <CalendarNewMenu
-            labels={L}
-            onCreateEvent={() => {
+      onClose={() => setSidebarOpen(false)}
+      session={session}
+      onLogout={onLogout}
+      calendars={calendars}
+      rowProps={calendarRowProps}
+      onSetVisible={setCalendarsVisible}
+      canWrite={canWrite}
+      onCreateEvent={() => {
+        closeEventPreview();
+        openCreateEvent();
+      }}
+      onCreateCalendar={canCreateCalendar ? openCreateCalendarDialog : undefined}
+      onSubscribeCalendar={canSubscribeCalendar ? openSubscribeCalendarDialog : undefined}
+      onImportEvents={
+        canImportEvents
+          ? () => {
               closeEventPreview();
-              openCreateEvent();
-              dismissSidebarOverlay(() => setSidebarOpen(false));
-            }}
-            onCreateCalendar={
-              canCreateCalendar
-                ? () => {
-                    openCreateCalendarDialog();
-                    dismissSidebarOverlay(() => setSidebarOpen(false));
-                  }
-                : undefined
+              icsFileInputRef.current?.click();
             }
-            onSubscribeCalendar={
-              canSubscribeCalendar
-                ? () => {
-                    openSubscribeCalendarDialog();
-                    dismissSidebarOverlay(() => setSidebarOpen(false));
-                  }
-                : undefined
-            }
-            onImportEvents={
-              canImportEvents
-                ? () => {
-                    closeEventPreview();
-                    dismissSidebarOverlay(() => setSidebarOpen(false));
-                    icsFileInputRef.current?.click();
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <SidebarSegmentedNewMenu
-            mainLabel={L.today}
-            menuLabel={L.newEventMenu}
-            icon={<CalendarDays />}
-            onMainAction={() => {
-              goToday();
-              dismissSidebarOverlay(() => setSidebarOpen(false));
-            }}
-          />
-        )
+          : undefined
       }
-      footer={
-        <WorkspaceSidebarAccountFooter
-          session={session}
-          detailLine={session.user.email}
-          onLogout={onLogout}
-        />
-      }
-    >
-      <MyCalendarsSidebarSection
-        rowProps={{ calendars: myCalendars, ...calendarRowProps }}
-        onSetVisible={setCalendarsVisible}
-        labels={L}
-      />
-      {sharedWithMeCalendars.length > 0 ? (
-        <SidebarSection title={L.sharedWithMeSection}>
-          <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
-        </SidebarSection>
-      ) : null}
-      <CalendarAvailabilitySidebar availability={availability} labels={L} />
-      <CalendarRemindersSidebar
-        lists={overlayOwnedLists}
-        sharedLists={overlaySharedLists}
-        hiddenListIds={hiddenOverlayTaskListIds}
-        onSetHiddenListIds={setHiddenOverlayTaskListIds}
-        onToggleVisibility={toggleOverlayTaskListVisibility}
-        labels={L}
-      />
-    </AppSidebar>
+      onToday={goToday}
+      availability={availability}
+      reminders={{
+        lists: overlayOwnedLists,
+        sharedLists: overlaySharedLists,
+        hiddenListIds: hiddenOverlayTaskListIds,
+        onSetHiddenListIds: setHiddenOverlayTaskListIds,
+        onToggleVisibility: toggleOverlayTaskListVisibility,
+      }}
+    />
   );
   const noticeEl = <CalendarNoticeBar availability={availability} labels={L} locale={locale} />;
-  /** Grid/list menu, then previous / next for the shown range (Today is in the title's menu). */
-  const navEl = (
-    <div className="calendar-header-nav">
-      {viewModeToggleEl}
-      <IconButton
-        label={periodNav.previous}
-        icon={<ChevronLeft className="size-4" />}
-        size="md"
-        variant="outline"
-        disabled={searching}
-        onClick={goPrevious}
-      />
-      <IconButton
-        label={periodNav.next}
-        icon={<ChevronRight className="size-4" />}
-        size="md"
-        variant="outline"
-        disabled={searching}
-        onClick={goNext}
-      />
-    </div>
-  );
-  /** The range title's menu: the period views, then Today. */
-  const titleMenu: DropdownMenuEntry[] = [
-    ...CALENDAR_VIEW_ORDER.map((id) => ({
-      id,
-      label: viewLabels[id],
-      checked: view === id,
-      onClick: () => selectView(id),
-    })),
-    { type: "separator" as const, id: "today-separator" },
-    {
-      id: "today",
-      label: L.today,
-      icon: <CalendarDays />,
-      onClick: goToday,
-    },
-  ];
   const headerEl = (
-    <ViewHeader
-      title={searching ? L.searchTitle : title}
-      // One row everywhere; narrow headers (phones, the grid) fall back to the short range.
-      compactTitle={searching || wideList ? undefined : compactTitle}
-      titleMenu={searching ? undefined : titleMenu}
-      onTitleMenuOpenChange={setViewMenuOpen}
+    <CalendarWorkspaceHeader
+      L={L}
+      title={title}
+      compactTitle={compactTitle}
+      view={view}
+      presentation={presentation}
+      searching={searching}
+      wideList={wideList}
+      multiSelected={multiSelected}
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-      {...(listLayout
-        ? {
-            searchPlaceholder: L.searchPlaceholder,
-            searchValue: searchQuery,
-            onSearchInput: setSearchQuery,
-            searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
-                  searchHidden: multiSelected,
-            searchInputRef,
-          }
-        : {})}
-      // List: the range left, its controls at the end. Grid: the controls right after
-      // the range (lined up with list mode's on wide screens, CSS), the inbox last.
-      titleSuffix={listLayout ? undefined : navEl}
-      titleTrailing={listLayout ? undefined : invitationsTriggerEl}
-      actions={listLayout ? navEl : undefined}
+      searchQuery={searchQuery}
+      onSearchInput={setSearchQuery}
+      searchInputRef={searchInputRef}
+      onPresentationChange={setPresentation}
+      onMenuOpenChange={setViewMenuOpen}
+      onSelectView={selectView}
+      onToday={goToday}
+      onPrevious={goPrevious}
+      onNext={goNext}
+      invitationsTrigger={
+        <CalendarInvitationsTrigger
+          count={pendingInvitationCount(inviteeNotifications)}
+          open={invitationsOpen}
+          labels={L}
+          onToggle={toggleInvitationsOpen}
+        />
+      }
     />
   );
   const mainEl = (
@@ -1078,6 +900,25 @@ export function CalendarWorkspace({
   const detailPendingSync = liveEventPreview
     ? (pendingEventIds?.has(liveEventPreview.eventId) ?? false)
     : false;
+  /** What every kind of event form shares: the invitees, the session, meetings. */
+  const formContext = {
+    invitees: invitations.invitees,
+    sessionEmail,
+    sessionUsername: session.user.username,
+    sessionDisplayName: session.user.displayName,
+    meetOperations,
+    workspaceOrigin,
+    onJoinMeeting,
+  };
+  const contactProps = {
+    contactCards,
+    onRefreshContactCards: refreshCards,
+    canSubmitEmail: invitations.canSubmitEmail,
+  };
+  /** An RSVP answers the event's invitation (its id), or the event itself without one. */
+  const notificationIdFor = (eventId: string) =>
+    inviteeNotifications.find((row) => row.eventId === eventId || row.id === eventId)?.id ??
+    eventId;
   /** The form props for the open event: create, edit, or an invitation to answer. */
   const eventEditProps = (
     variant: "popover" | "pane",
@@ -1093,16 +934,8 @@ export function CalendarWorkspace({
             setEventPreview(null);
             setEventTimesDraft(null);
           },
-          invitees: invitations.invitees,
-          contactCards,
-          onRefreshContactCards: refreshCards,
-          canSubmitEmail: invitations.canSubmitEmail,
-          sessionEmail,
-          sessionUsername: session.user.username,
-          sessionDisplayName: session.user.displayName,
-          meetOperations,
-          workspaceOrigin,
-          onJoinMeeting,
+          ...formContext,
+          ...contactProps,
         }
       : eventPreview?.interactiveEdit && editor?.mode === "edit"
         ? {
@@ -1120,13 +953,8 @@ export function CalendarWorkspace({
               setEventTimesDraft(null);
             },
             onDelete: deleteEditedEvent,
-            invitees: invitations.invitees,
-            contactCards,
-            onRefreshContactCards: refreshCards,
-            canSubmitEmail: invitations.canSubmitEmail,
-            sessionEmail,
-            sessionUsername: session.user.username,
-            sessionDisplayName: session.user.displayName,
+            ...formContext,
+            ...contactProps,
             recurrenceId: editor.recurrenceId,
             thisInstanceLocked:
               Boolean(editor.recurrenceId) &&
@@ -1134,15 +962,8 @@ export function CalendarWorkspace({
                 data.events.find((entry) => entry.id === editor.eventId),
                 editor.recurrenceId ?? "",
               ),
-            meetOperations,
-            workspaceOrigin,
-            onJoinMeeting,
             onRsvp: (status, calendarId) => {
-              const notification = inviteeNotifications.find(
-                (row) => row.eventId === editor.eventId,
-              );
-              const id = notification?.id ?? editor.eventId;
-              return persistRsvp(id, status, calendarId, {
+              return persistRsvp(notificationIdFor(editor.eventId), status, calendarId, {
                 source: "dialog",
                 editorRecurrenceId: editor.recurrenceId,
               }).then((persisted) => {
@@ -1159,24 +980,13 @@ export function CalendarWorkspace({
               onChange: () => undefined,
               onClose: closeEventPreview,
               onSave: () => undefined,
-              invitees: invitations.invitees,
-              sessionEmail,
-              sessionUsername: session.user.username,
-              sessionDisplayName: session.user.displayName,
-              meetOperations,
-              workspaceOrigin,
-              onJoinMeeting,
-              onRsvp: (status, calendarId) => {
-                const eventId = liveEventPreview.eventId;
-                const notification = inviteeNotifications.find(
-                  (row) => row.eventId === eventId || row.id === eventId,
-                );
-                return persistRsvp(notification?.id ?? eventId, status, calendarId, {
+              ...formContext,
+              onRsvp: (status, calendarId) =>
+                persistRsvp(notificationIdFor(liveEventPreview.eventId), status, calendarId, {
                   source: "preview",
                   editorRecurrenceId: liveEventPreview.recurrenceId,
                   attendees: liveEventPreview.form.attendees,
-                });
-              },
+                }),
             }
           : undefined;
   const eventPopoverEl =
@@ -1215,15 +1025,12 @@ export function CalendarWorkspace({
           pointerCreateOpen || eventPreview?.invitation || eventPreview?.interactiveEdit
             ? undefined
             : liveEventPreview
-              ? (status) => {
-                  const eventId = liveEventPreview.eventId;
-                  const notification = inviteeNotifications.find((row) => row.eventId === eventId);
-                  return persistRsvp(notification?.id ?? eventId, status, undefined, {
+              ? (status) =>
+                  persistRsvp(notificationIdFor(liveEventPreview.eventId), status, undefined, {
                     source: "preview",
                     editorRecurrenceId: liveEventPreview.recurrenceId,
                     attendees: liveEventPreview.form.attendees,
-                  });
-                }
+                  })
               : undefined
         }
       />
@@ -1270,7 +1077,7 @@ export function CalendarWorkspace({
             if (!back && !wideList && !detailDelete) return null;
             return (
               <ActionBar
-                onBack={back ? () => leaveEventDetail(closeEventDetail) : undefined}
+                onBack={back ? goBack : undefined}
                 backLabel={title}
                 rightActions={
                   detailDelete && !multiSelected

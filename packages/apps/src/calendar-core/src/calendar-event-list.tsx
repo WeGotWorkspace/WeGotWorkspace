@@ -12,10 +12,35 @@ import {
   formatAgendaItemTimes,
   formatAgendaLongDate,
   formatAgendaWeekday,
+  groupAgendaDays,
   type AgendaDay,
+  type AgendaRange,
 } from "@/lib/calendar-elements/utils/agenda-days";
+import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import { visibleEventsInRange } from "@/lib/calendar-elements/CalendarViewBase/renderedEvents";
+import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/calendar-task-due-overlay";
 import { isCalendarEventRecurring } from "@/lib/calendar-elements/types/calendarEventSemantics";
 import "./calendar-event-list.css";
+
+const MIDNIGHT = { hour: 0, minute: 0, second: 0 } as const;
+
+/** List mode's days: the shown calendars' occurrences in the range, by day. */
+export function calendarPeriodDays(
+  events: CalendarEventsMap | undefined,
+  visibleCalendarIds: Iterable<string>,
+  range: AgendaRange,
+  timezone: string,
+): AgendaDay[] {
+  const visible = filterVisibleCalendarEventsKeepingOverlay(events ?? new Map(), [
+    ...visibleCalendarIds,
+  ]);
+  const expanded = visibleEventsInRange(
+    visible,
+    { start: range.start.toPlainDateTime(MIDNIGHT), end: range.end.toPlainDateTime(MIDNIGHT) },
+    timezone,
+  );
+  return groupAgendaDays(expanded.entries(), { timezone, range });
+}
 
 export type CalendarEventListProps = {
   days: readonly AgendaDay[];
@@ -85,56 +110,58 @@ export function CalendarEventList({
         onItemClick={onItemClick}
         onItemLongPress={onItemLongPress}
       >
-      {days.map(({ date, items }) => {
-        const headingId = `calendar-event-list-day-${date.toString()}`;
-        return (
-          <section key={date.toString()} aria-labelledby={headingId}>
-            <ListStickyHeader
-              id={headingId}
-              variant="frost"
-              emphasis={formatAgendaWeekday(locale, date)}
-              rest={formatAgendaDayLabel(locale, date, showYearInHeadings)}
-              label={formatAgendaLongDate(locale, date)}
-            />
-            {items.map((item) => {
-              const { event } = item;
-              const times = formatAgendaItemTimes(locale, item);
-              const calendar = calendars.find((entry) => entry.id === event.calendarId);
-              return (
-                <ListItem
-                  key={item.id}
-                  id={`${date.toString()}:${item.id}`}
-                  itemId={item.id}
-                  title={event.data.summary.trim()}
-                  emptyTitle={untitledLabel}
-                  date={times.start}
-                  dateBelow={times.end}
-                  metaPosition="below"
-                  text={event.data.location?.trim() || null}
-                  subtitle={
-                    calendar ? (
-                      <span className="calendar-event-list__calendar">
-                        <CollectionColorDot color={calendar.color} />
-                        <span className="calendar-event-list__calendar-name">{calendar.name}</span>
-                      </span>
-                    ) : null
-                  }
-                  icons={
-                    isCalendarEventRecurring(event)
-                      ? [<Repeat key="repeat" className="size-3.5" aria-hidden />]
-                      : []
-                  }
-                  isActive={false}
-                  isSelected={false}
-                  selectionMode={false}
-                  isTouch={isTouch}
-                  isDragging={false}
-                />
-              );
-            })}
-          </section>
-        );
-      })}
+        {days.map(({ date, items }) => {
+          const headingId = `calendar-event-list-day-${date.toString()}`;
+          return (
+            <section key={date.toString()} aria-labelledby={headingId}>
+              <ListStickyHeader
+                id={headingId}
+                variant="frost"
+                emphasis={formatAgendaWeekday(locale, date)}
+                rest={formatAgendaDayLabel(locale, date, showYearInHeadings)}
+                label={formatAgendaLongDate(locale, date)}
+              />
+              {items.map((item) => {
+                const { event } = item;
+                const times = formatAgendaItemTimes(locale, item);
+                const calendar = calendars.find((entry) => entry.id === event.calendarId);
+                return (
+                  <ListItem
+                    key={item.id}
+                    id={`${date.toString()}:${item.id}`}
+                    itemId={item.id}
+                    title={event.data.summary.trim()}
+                    emptyTitle={untitledLabel}
+                    date={times.start}
+                    dateBelow={times.end}
+                    metaPosition="below"
+                    text={event.data.location?.trim() || null}
+                    subtitle={
+                      calendar ? (
+                        <span className="calendar-event-list__calendar">
+                          <CollectionColorDot color={calendar.color} />
+                          <span className="calendar-event-list__calendar-name">
+                            {calendar.name}
+                          </span>
+                        </span>
+                      ) : null
+                    }
+                    icons={
+                      isCalendarEventRecurring(event)
+                        ? [<Repeat key="repeat" className="size-3.5" aria-hidden />]
+                        : []
+                    }
+                    isActive={false}
+                    isSelected={false}
+                    selectionMode={false}
+                    isTouch={isTouch}
+                    isDragging={false}
+                  />
+                );
+              })}
+            </section>
+          );
+        })}
       </WorkspaceSwipeList>
       {footer}
     </div>

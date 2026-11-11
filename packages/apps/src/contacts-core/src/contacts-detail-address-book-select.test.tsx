@@ -81,7 +81,8 @@ describe("ContactsDetailAddressBookSelect", () => {
     });
     const trigger = screen.getByRole("combobox", { name: "Engineering" });
     expect(trigger.hasAttribute("disabled")).toBe(true);
-    expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    // Disabled keeps the chevron: the value still reads as a choice, only dimmed.
+    expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
   });
 
   it("renders nothing for a card without an address book", () => {

@@ -115,13 +115,13 @@ export const Ghost: Story = {
   },
 };
 
-/** Ghost, locked (shared or view-only note): no chevron, not clickable. */
+/** Ghost, locked (shared or view-only note): dimmed, the chevron kept, not clickable. */
 export const GhostDisabled: Story = {
   tags: ["vitest-ci"],
   args: { triggerVariant: "ghost", disabled: true, onCreateNotebook: undefined },
   play: async ({ canvasElement }) => {
     const trigger = within(canvasElement).getByRole("combobox", { name: "Drafts" });
     await expect(trigger).toBeDisabled();
-    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
   },
 };

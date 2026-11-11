@@ -32,6 +32,7 @@ function mutationsStub(overrides: Partial<ShareMutations> = {}): ShareMutations 
     updatePublicAccess: vi.fn(async () => undefined),
     updatePublicPassword: vi.fn(async () => "river-maple-42"),
     regeneratePublicLink: vi.fn(async () => "river-maple-42"),
+    regeneratePublicPassword: vi.fn(async () => "river-maple-42"),
     updateGrantAccess: vi.fn(async () => undefined),
     removeGuestInvite: vi.fn(async () => undefined),
     inviteGuest: vi.fn(async () => undefined),
@@ -115,8 +116,8 @@ describe("ShareLinkSection password show-once", () => {
   });
 
   it("reveals a new password after regenerate confirm", async () => {
-    const updatePublicPassword = vi.fn(async () => "cloud-sage-918");
-    renderLinkSection(atPathWithPassword(true), mutationsStub({ updatePublicPassword }));
+    const regeneratePublicPassword = vi.fn(async () => "cloud-sage-918");
+    renderLinkSection(atPathWithPassword(true), mutationsStub({ regeneratePublicPassword }));
 
     expect(passwordInput().value).toBe(SHARE_PASSWORD_MASK);
 
@@ -127,7 +128,7 @@ describe("ShareLinkSection password show-once", () => {
       fireEvent.click(screen.getByRole("button", { name: shareLabels.confirmContinue }));
     });
 
-    expect(updatePublicPassword).toHaveBeenCalledWith(true, "");
+    expect(regeneratePublicPassword).toHaveBeenCalledTimes(1);
     expect(passwordInput().value).toBe("cloud-sage-918");
     expect(screen.getByRole("button", { name: shareLabels.copyPassword })).toBeTruthy();
   });

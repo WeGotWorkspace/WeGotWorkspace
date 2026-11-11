@@ -7,7 +7,7 @@ import {
 } from "@/drive-core/src/drive-browser-item-parts";
 import { DriveFileItemActions } from "@/drive-core/src/drive-file-actions";
 import { DriveFolderTile } from "@/drive-core/src/drive-folder-tile";
-import { useLongPress } from "@/drive-core/src/use-drive-long-press";
+import { useDriveTileTarget } from "@/drive-core/src/use-drive-tile-target";
 import {
   DriveOfflineBadge,
   DriveOfflinePinButton,
@@ -338,27 +338,22 @@ function FileTile({
   onShare?: () => void;
   itemChrome?: "manage" | "picker";
 }) {
-  const lp = useLongPress(onLongPress);
   const pickerChrome = itemChrome === "picker";
-  // Same overlay pattern as FolderTile: keeps the actions menu out of the
-  // interactive tile target (axe nested-interactive).
+  const { rootProps, hit } = useDriveTileTarget({
+    file,
+    pickerChrome,
+    isTouch,
+    isFocusTarget,
+    selectionMode,
+    itemDragHandlers,
+    onSelect,
+    onOpen,
+    onLongPress,
+  });
   return (
     <div
       data-drive-file-id={file.id}
-      data-list-item-id={file.id}
-      onContextMenu={
-        pickerChrome
-          ? undefined
-          : (e) => {
-              if (!isTouch) {
-                e.preventDefault();
-                onLongPress();
-              }
-            }
-      }
-      draggable={!pickerChrome && !isTouch}
-      onDragStart={pickerChrome ? undefined : itemDragHandlers.onDragStart}
-      onDragEnd={pickerChrome ? undefined : itemDragHandlers.onDragEnd}
+      {...rootProps}
       className={cn(
         "group drive-file-tile",
         selectionMode && "drive-file-tile--selection-mode",
@@ -366,21 +361,7 @@ function FileTile({
         isSelected && "drive-file-tile--selected",
       )}
     >
-      <button
-        type="button"
-        aria-label={file.title}
-        className="drive-tile__hit"
-        tabIndex={isFocusTarget ? 0 : -1}
-        data-list-item-focus=""
-        onClick={(e) => {
-          if (lp.fired.current) return;
-          onSelect(e);
-        }}
-        onDoubleClick={selectionMode ? undefined : onOpen}
-        onTouchStart={pickerChrome ? undefined : lp.start}
-        onTouchEnd={pickerChrome ? undefined : lp.cancel}
-        onTouchMove={pickerChrome ? undefined : lp.cancel}
-      />
+      {hit}
       <span className="drive-file-tile__avatar">
         <DriveFileAvatar file={file} preview={preview} />
       </span>

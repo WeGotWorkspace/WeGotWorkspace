@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
+import { readCalendarDisplayPrefs, writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 
 const liveApi = vi.hoisted(() => ({ enabled: false }));
@@ -49,11 +49,11 @@ describe("SettingsCalendarPane", () => {
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Week starts on" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Visible hours" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Day starts on" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Starts at" })).toBeNull();
     expect(screen.queryByRole("option", { name: "Default" })).toBeNull();
-    const trigger = screen.getByRole("button", { name: /Default calendar: Personal/i });
+    const trigger = screen.getByRole("combobox", { name: "Default calendar" });
     expect(trigger).toBeTruthy();
     expect(trigger.textContent).toContain("Personal");
     const timezone = screen.getByRole("combobox", { name: "Timezone" });
@@ -87,8 +87,7 @@ describe("SettingsCalendarPane", () => {
 
     render(<SettingsCalendarPane />);
 
-    expect(screen.queryByRole("button", { name: /Default calendar:/i })).toBeNull();
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("combobox", { name: "Default calendar" })).toBeNull();
 
     resolveCalendars({
       list: [
@@ -97,9 +96,9 @@ describe("SettingsCalendarPane", () => {
       ],
     });
 
-    const trigger = await screen.findByRole("button", { name: /Default calendar: Work/i });
+    const trigger = await screen.findByRole("combobox", { name: "Default calendar" });
     expect(trigger.textContent).toContain("Work");
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(readCalendarDisplayPrefs().inviteCalendarId).toBe("work");
   });
 
   it("hides the calendar picker when the live list fails", async () => {
@@ -109,8 +108,8 @@ describe("SettingsCalendarPane", () => {
     render(<SettingsCalendarPane />);
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /Default calendar:/i })).toBeNull();
+      expect(screen.queryByRole("combobox", { name: "Default calendar" })).toBeNull();
     });
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(readCalendarDisplayPrefs().inviteCalendarId).toBeUndefined();
   });
 });

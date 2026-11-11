@@ -20,7 +20,7 @@ export type CalendarEventPaneProps = {
   locale: string;
   busy?: boolean;
   pendingSync?: boolean;
-  /** The event's form; without it the event is shown read-only. */
+  /** The event's form and its handlers; without it changes go nowhere. */
   edit?: CalendarEventDetailsPopoverEditProps;
 };
 

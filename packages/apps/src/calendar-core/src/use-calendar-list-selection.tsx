@@ -5,23 +5,44 @@ import { useSelectableListState } from "@/hooks/use-selectable-list-state";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-types";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { CollectionMoveDialog } from "@/ui/collection-move-dialog";
+import { CollectionSelect } from "@/ui/collection-select";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import type { CalendarEventListSelection } from "@/calendar-core/src/calendar-event-list";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import {
+  unifiedSearchOccurrences,
+  type CalendarSearchResults,
+} from "@/calendar-core/src/calendar-search";
+import type { AgendaDay } from "@/lib/calendar-elements/utils/agenda-days";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
+
+/** The list's rows in order, each with its event's calendar (period list or search results). */
+export function calendarListRows(
+  days: readonly AgendaDay[],
+  searchResults: CalendarSearchResults | null,
+): ReadonlyMap<string, string | undefined> {
+  const rows = new Map<string, string | undefined>();
+  if (searchResults) {
+    for (const hit of unifiedSearchOccurrences(searchResults)) rows.set(hit.key, hit.calendarId);
+  } else {
+    for (const item of days.flatMap((day) => day.items)) rows.set(item.id, item.event.calendarId);
+  }
+  return rows;
+}
 
 type UseCalendarListSelectionArgs = {
   L: CalendarUILabels;
-  /** The rows in list order (the period list or the search results). */
-  visibleIds: string[];
+  /** `calendarListRows`: the rows in list order, with their calendars. */
+  rows: ReadonlyMap<string, string | undefined>;
   /** A new period, query or mode ends a multi-selection. */
   resetKey: string;
   /** The occurrence open in the detail pane. */
   activeKey: string;
   calendars: readonly CalendarInfo[];
-  /** The calendar a row's event is in. */
-  calendarIdOf: (key: string) => string | undefined;
   openEvent: (key: string) => void;
+  /** Closes the open event: it goes with a delete, and a move gives it a new id. */
+  leaveEvent: () => void;
   requestConfirm: (request: ConfirmDialogRequest) => void;
   deleteEvents: (keys: readonly string[]) => void;
   moveEvents: (keys: readonly string[], calendarId: string) => void;
@@ -34,16 +55,18 @@ type UseCalendarListSelectionArgs = {
  */
 export function useCalendarListSelection({
   L,
-  visibleIds,
+  rows,
   resetKey,
   activeKey,
   calendars,
-  calendarIdOf,
   openEvent,
+  leaveEvent,
   requestConfirm,
   deleteEvents,
   moveEvents,
 }: UseCalendarListSelectionArgs) {
+  const visibleIds = useMemo(() => [...rows.keys()], [rows]);
+  const calendarIdOf = useCallback((key: string) => rows.get(key), [rows]);
   const {
     selectedIds,
     setSelectedIds,
@@ -83,11 +106,12 @@ export function useCalendarListSelection({
       cancelLabel: L.cancel,
       variant: "destructive",
       onConfirm: () => {
+        if (keys.includes(activeKey)) leaveEvent();
         deleteEvents(keys);
         exitSelection();
       },
     });
-  }, [L, deleteEvents, exitSelection, requestConfirm, writableKeys]);
+  }, [L, activeKey, deleteEvents, exitSelection, leaveEvent, requestConfirm, writableKeys]);
 
   const actionButtons = useMemo<WorkspaceActionButton[]>(
     () =>
@@ -128,30 +152,42 @@ export function useCalendarListSelection({
   const moveValue = useMemo(() => {
     const ids = new Set((moveKeys ?? []).map(calendarIdOf));
     const only = ids.size === 1 ? moveTargets.find((target) => ids.has(target.id)) : undefined;
-    return only ?? { name: "" };
+    return only ?? { id: "", name: "", color: "" };
   }, [calendarIdOf, moveKeys, moveTargets]);
 
   const moveDialog = (
-    <NotesChangeNotebookDialog
+    <CollectionMoveDialog
       open={moveKeys !== null}
-      notebooks={moveTargets}
       value={moveValue}
       title={L.selectionMoveToCalendar}
-      fieldLabel={L.selectionMoveField}
       description={L.selectionMoveDescription}
+      fieldLabel={L.selectionMoveField}
       confirmLabel={L.selectionMove}
-      labels={{
-        addNotebook: L.newCalendar,
-        toolbarMoveToNotebook: L.selectionMoveToCalendar,
-        selectionMoveToNotebook: L.selectionMoveToCalendar,
-        changeNotebookConfirm: L.selectionMove,
-        dialogCancel: L.cancel,
-      }}
+      cancelLabel={L.cancel}
       contentClassName="calendar-dialog-surface"
+      isSame={(draft, value) => draft.id === value.id}
+      renderPicker={({ id, draft, setDraft }) => (
+        <CollectionSelect
+          id={id}
+          items={moveTargets}
+          value={draft.id}
+          dot={<CollectionColorDot />}
+          color={draft.color}
+          triggerLabel={draft.name || L.selectionMoveField}
+          accessibleName={L.selectionMoveField}
+          triggerVariant="ghost"
+          onValueChange={(next) =>
+            setDraft(moveTargets.find((target) => target.id === next) ?? draft)
+          }
+        />
+      )}
       onClose={() => setMoveKeys(null)}
-      onNotebookChange={(target) => {
-        if (moveKeys) moveEvents(moveKeys, target.id);
-        exitSelection(activeKey);
+      onConfirm={(target) => {
+        if (!moveKeys) return;
+        const movesOpenEvent = moveKeys.includes(activeKey);
+        if (movesOpenEvent) leaveEvent();
+        moveEvents(moveKeys, target.id);
+        exitSelection(movesOpenEvent ? undefined : activeKey);
       }}
     />
   );

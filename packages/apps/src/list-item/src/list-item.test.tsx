@@ -57,6 +57,24 @@ describe("ListItem", () => {
     expect(meta.querySelector(".list-item__meta-trailing i")).not.toBeNull();
   });
 
+  it("puts a second time under the date (an event's end) and marks the row for it", () => {
+    const { container } = render(
+      <ListItem {...baseProps} date="17:45" dateBelow="19:54" metaPosition="below" />,
+    );
+    const date = container.querySelector(".list-item__date");
+    expect(date?.textContent).toBe("17:4519:54");
+    expect(date?.querySelector(".list-item__date-below")?.textContent).toBe("19:54");
+    expect(container.querySelector(".list-item__button")?.getAttribute("data-date-below")).toBe(
+      "true",
+    );
+  });
+
+  it("has no second time without dateBelow", () => {
+    const { container } = render(<ListItem {...baseProps} date="17:45" />);
+    expect(container.querySelector(".list-item__date-below")).toBeNull();
+    expect(container.querySelector("[data-date-below]")).toBeNull();
+  });
+
   it("has no placeholder body in the below layout, even without a title", () => {
     const { container } = render(
       <ListItem {...baseProps} metaPosition="below" title="" text="" showEmptyText />,

@@ -140,7 +140,7 @@ describe("MeetCreateMeetingDialog", () => {
     const title = screen.getByLabelText(defaultCalendarLabels.eventTitleLabel);
     const create = await screen.findByRole("button", { name: meetLabels.createChannelButton });
     expect((title as HTMLInputElement).value).toBe("");
-    expect(title.getAttribute("placeholder")).toBe(defaultCalendarLabels.eventTitleLabel);
+    expect(title.getAttribute("placeholder")).toBe(defaultCalendarLabels.eventTitlePlaceholder);
     expect(
       (screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement).value,
     ).toMatch(/\/meet\/meetings\//);
@@ -174,28 +174,23 @@ describe("MeetCreateMeetingDialog", () => {
     expect((createEvent.mock.calls[0]?.[0] as { title: string }).title).toBe("Standup");
   });
 
-  it("places Schedule under title and Meet with All day CardRow chrome", () => {
+  it("places Schedule under the title, link and participants, with When below it", () => {
     renderDialog();
 
     const title = screen.getByLabelText(defaultCalendarLabels.eventTitleLabel);
-    const meet = screen.getByText(defaultCalendarLabels.eventMeetSectionTitle, {
-      selector: ".sr-only",
-    });
+    const link = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     const scheduleSwitch = screen.getByRole("switch", { name: meetLabels.scheduleMeeting });
-    const scheduleRow = scheduleSwitch.closest(".card__row");
+    const scheduleRow = scheduleSwitch.closest(".field-label-row");
 
-    expect(title.compareDocumentPosition(meet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
-      meet.compareDocumentPosition(scheduleSwitch) & Node.DOCUMENT_POSITION_FOLLOWING,
+      link.compareDocumentPosition(scheduleSwitch) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(scheduleRow?.querySelector(".card__row-title")?.textContent).toBe(
-      meetLabels.scheduleMeeting,
-    );
-    expect(scheduleRow?.closest(".calendar-event-dialog__card")).toBeTruthy();
+    // Dialog norm: an inline row, caption start and the switch at the end.
+    expect(scheduleRow?.classList.contains("field-label-row--inline")).toBe(true);
+    expect(scheduleRow?.querySelector("label")?.textContent).toBe(meetLabels.scheduleMeeting);
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeNull();
-    expect(
-      (screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement).value,
-    ).toMatch(/\/meet\/meetings\//);
+    expect(link.value).toMatch(/\/meet\/meetings\//);
 
     fireEvent.click(scheduleSwitch);
     const whenGroup = document.querySelector(".calendar-event-dialog__field-group--when");
@@ -205,11 +200,9 @@ describe("MeetCreateMeetingDialog", () => {
     expect(
       scheduleSwitch.compareDocumentPosition(whenGroup!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(allDayField).toBeTruthy();
-    expect(
-      allDayField?.querySelector(".sr-only")?.textContent ??
-        allDayField?.querySelector(".calendar-event-dialog__all-day-caption")?.textContent,
-    ).toBe(defaultCalendarLabels.eventAllDayLabel);
+    expect(allDayField?.querySelector("label")?.textContent).toBe(
+      defaultCalendarLabels.eventAllDayLabel,
+    );
     expect(whenGroup?.contains(allDayField)).toBe(true);
   });
 
@@ -221,14 +214,14 @@ describe("MeetCreateMeetingDialog", () => {
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeNull();
     expect(
-      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: ".sr-only" }),
+      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: "label" }),
     ).toBeTruthy();
     expect(screen.queryByLabelText(defaultCalendarLabels.eventNotesLabel)).toBeNull();
 
     fireEvent.click(screen.getByRole("switch", { name: meetLabels.scheduleMeeting }));
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeTruthy();
     expect(
-      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: ".sr-only" }),
+      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: "label" }),
     ).toBeTruthy();
     expect(screen.getByLabelText(defaultCalendarLabels.eventNotesLabel)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Calendar: Personal/i })).toBeTruthy();
@@ -323,7 +316,7 @@ describe("MeetCreateMeetingDialog", () => {
     expect(screen.queryByRole("switch", { name: meetLabels.scheduleMeeting })).toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeTruthy();
     expect(
-      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: ".sr-only" }),
+      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: "label" }),
     ).toBeTruthy();
     expect(screen.getByLabelText(defaultCalendarLabels.eventNotesLabel)).toBeTruthy();
     expect(meetOperations.reserveRoom).not.toHaveBeenCalled();

@@ -64,6 +64,8 @@ function mockDomApis() {
     } as unknown as typeof ResizeObserver;
   }
   Element.prototype.scrollIntoView = vi.fn();
+  // jsdom has no Web Animations; the dialog's autosave tag reads the running ones.
+  if (!Element.prototype.getAnimations) Element.prototype.getAnimations = () => [];
 }
 
 function SettingsFromLocation() {
@@ -137,12 +139,12 @@ function openSidebarSettingsOption() {
   return screen.queryByRole("menuitem", { name: "Settings" });
 }
 
-function dialogFooterCancelButton() {
+function dialogFooterDoneButton() {
   const footer = document.querySelector(".ui-modal-footer");
   if (!(footer instanceof HTMLElement)) {
     throw new Error("dialog footer not found");
   }
-  return within(footer).getByRole("button", { name: "Cancel" });
+  return within(footer).getByRole("button", { name: "Done" });
 }
 
 describe("settings dialog from the sidebar primary button's menu", () => {
@@ -178,8 +180,10 @@ describe("settings dialog from the sidebar primary button's menu", () => {
     expect(
       within(footer as HTMLElement).getByRole("button", { name: "Open in Settings" }),
     ).toBeTruthy();
-    expect(within(footer as HTMLElement).getByRole("button", { name: "Cancel" })).toBeTruthy();
-    expect(await within(footer as HTMLElement).findByRole("button", { name: "Save" })).toBeTruthy();
+    // Preferences save themselves: Done closes, there is no Save or Cancel.
+    expect(within(footer as HTMLElement).getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(within(footer as HTMLElement).queryByRole("button", { name: "Save" })).toBeNull();
+    expect(within(footer as HTMLElement).queryByRole("button", { name: "Cancel" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 
@@ -218,7 +222,7 @@ describe("settings dialog from the sidebar primary button's menu", () => {
     fireEvent.click(openSidebarSettingsOption()!);
     expect(await screen.findByRole("button", { name: "Open in Settings" })).toBeTruthy();
 
-    fireEvent.click(dialogFooterCancelButton());
+    fireEvent.click(dialogFooterDoneButton());
     await waitFor(() => {
       expect(primaryMenuTrigger()).toBe(document.activeElement);
     });

@@ -8,6 +8,10 @@ import {
   writeDocsPageSetupPrefs,
 } from "@/lib/docs-page-setup";
 import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
+import {
+  editSettingsField,
+  waitForSettingsAutosave,
+} from "@/settings-core/src/test-utils/settings-autosave";
 import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 import { useSettingsDocsForm } from "@/settings-core/src/use-settings-docs-form";
 
@@ -29,6 +33,7 @@ vi.mock("@/settings-core/src/settings-slice-saved", async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   writeDocsPageSetupPrefs({});
   window.localStorage.clear();
@@ -63,26 +68,23 @@ describe("SettingsDocsPane", () => {
     expect(readDocsPageSetupOverrides()["/plan.md"]?.format).toBe("letter");
   });
 
-  it("disables Save until something changes", () => {
+  it("has no Save button: the default saves itself", () => {
     render(<SettingsDocsPane />);
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 });
 
 describe("useSettingsDocsForm", () => {
-  it("stores nothing until Save", async () => {
+  it("stores a change once the autosave pause has passed", async () => {
+    vi.useFakeTimers();
     writeDocsPageSetupPrefs({ format: "a4", orientation: "portrait" });
     const { result } = renderHook(() => useSettingsDocsForm());
 
-    act(() => {
-      result.current.form.setValue("format", "a3", { shouldDirty: true });
-      result.current.form.setValue("orientation", "landscape", { shouldDirty: true });
-    });
+    await editSettingsField(result.current.form, "format", "a3");
+    await editSettingsField(result.current.form, "orientation", "landscape");
     expect(readDocsPageSetupPrefs()).toEqual({ format: "a4", orientation: "portrait" });
 
-    await act(async () => {
-      await result.current.save();
-    });
+    await waitForSettingsAutosave();
     expect(readDocsPageSetupPrefs()).toEqual({ format: "a3", orientation: "landscape" });
     expect(result.current.form.formState.isDirty).toBe(false);
     expect(notifySettingsSliceSaved).toHaveBeenCalledWith({
@@ -113,16 +115,13 @@ describe("useSettingsDocsForm", () => {
   });
 
   it("does not report saved when storage rejects the write", async () => {
+    vi.useFakeTimers();
     const { result } = renderHook(() => useSettingsDocsForm());
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });
-    act(() => {
-      result.current.form.setValue("format", "a3", { shouldDirty: true });
-    });
-    await act(async () => {
-      await result.current.save();
-    });
+    await editSettingsField(result.current.form, "format", "a3");
+    await waitForSettingsAutosave();
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
     expect(result.current.form.formState.isDirty).toBe(true);
   });

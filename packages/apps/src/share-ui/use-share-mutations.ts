@@ -22,6 +22,18 @@ type UseShareMutationsArgs = {
   refetch: () => Promise<DriveShareAtPath | null | undefined>;
 };
 
+/** The toast text for a failed share change; a conflict also reloads the shares. */
+function shareMutationFailure(cause: unknown): { description: string; reload: boolean } {
+  const detail = cause instanceof Error ? cause.message : shareLabels.mutationError;
+  if (detail.includes("Guest already has access")) {
+    return { description: shareLabels.guestAlreadyHasAccess, reload: false };
+  }
+  if (detail.includes("share_conflict")) {
+    return { description: "Someone else changed sharing. Reloading.", reload: true };
+  }
+  return { description: detail, reload: false };
+}
+
 export function useShareMutations({ path, operations, atPath, refetch }: UseShareMutationsArgs) {
   const { showError, showSuccess } = useAppToast();
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -35,21 +47,9 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
         await refetch();
         return true;
       } catch (cause) {
-        const detail = cause instanceof Error ? cause.message : shareLabels.mutationError;
-        if (detail.includes("Guest already has access")) {
-          showError(shareLabels.mutationError, {
-            description: shareLabels.guestAlreadyHasAccess,
-          });
-          return false;
-        }
-        if (detail.includes("share_conflict")) {
-          showError(shareLabels.mutationError, {
-            description: "Someone else changed sharing. Reloading.",
-          });
-          await refetch();
-          return false;
-        }
-        showError(shareLabels.mutationError, { description: detail });
+        const { description, reload } = shareMutationFailure(cause);
+        showError(shareLabels.mutationError, { description });
+        if (reload) await refetch();
         return false;
       } finally {
         setBusyKey((current) => (current === key ? null : current));
@@ -127,9 +127,8 @@ export function useShareMutations({ path, operations, atPath, refetch }: UseShar
     const directPublic = findDirectPublicShare(atPath);
     if (!directPublic) return undefined;
     const share = findShareRecord(atPath, directPublic.shareId);
-    let generatedPassword: string | undefined;
+    const generatedPassword = share?.hasPassword ? generateFriendlySharePassword() : undefined;
     const stored = await runMutation(`public-regenerate-${directPublic.shareId}`, async () => {
-      generatedPassword = share?.hasPassword ? generateFriendlySharePassword() : undefined;
       await operations.deleteShare(directPublic.shareId);
       await operations.createShare({
         path,

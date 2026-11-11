@@ -17,8 +17,7 @@ import {
 } from "@/lib/models/calendar-attendees";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import {
-  detailsPopoverAnchorOrigin,
-  detailsPopoverShouldDock,
+  detailsPopoverPlacement,
   eventPreviewAlarmSummary,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
@@ -206,21 +205,10 @@ export function CalendarEventDetailsPopover({
       />,
     );
   }
-  const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementOrigin =
-    origin && !docked ? detailsPopoverAnchorOrigin(origin, getLocaleDirection(locale)) : origin;
-  const fallbackLeft = Math.round(globalThis.innerWidth / 2);
-  const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
-  const anchorStyle = docked
-    ? { left: 0, top: 0, width: 0, height: 0 }
-    : placementOrigin
-      ? {
-          left: placementOrigin.left,
-          top: placementOrigin.top,
-          width: placementOrigin.width,
-          height: placementOrigin.height,
-        }
-      : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
+  const { docked, anchorStyle } = detailsPopoverPlacement(origin, {
+    isMobile,
+    dir: getLocaleDirection(locale),
+  });
 
   const dismiss = () => {
     if (editable && edit) {

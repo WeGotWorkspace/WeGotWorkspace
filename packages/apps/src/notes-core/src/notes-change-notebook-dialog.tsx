@@ -1,14 +1,5 @@
-import { useState, type ReactElement } from "react";
-import { Button } from "@/button/src/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import type { ReactElement } from "react";
+import { CollectionMoveDialog } from "@/ui/collection-move-dialog";
 import { cn } from "@/lib/utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
@@ -20,7 +11,6 @@ import {
 import "@/notes-core/src/notes-change-notebook-dialog.css";
 
 const DEFAULT_DESCRIPTION = "Choose or create a notebook for the selected notes.";
-const PICKER_ID = "notes-change-notebook-picker";
 
 export type NotesChangeNotebookDialogProps = {
   open: boolean;
@@ -59,6 +49,7 @@ function toSelectItem(value: NotesNotebookSelectValue): NotesNotebookSelectItem 
   return { id: value.id ?? value.name, name: value.name, color: value.color };
 }
 
+/** Move notes (or a task list's tasks) to a notebook: the shared move dialog with the notebook picker. */
 export function NotesChangeNotebookDialog({
   open,
   notebooks,
@@ -73,50 +64,36 @@ export function NotesChangeNotebookDialog({
   onCreateNotebook,
   title,
   confirmLabel,
-  requireChange = true,
-  confirmDisabled = false,
+  requireChange,
+  confirmDisabled,
   destructiveAction,
 }: NotesChangeNotebookDialogProps): ReactElement {
-  // The draft starts over on each open and when a new notebook was just created.
-  const session = open ? (createdNotebook?.id ?? "open") : null;
-  const [draftSession, setDraftSession] = useState(session);
-  const [draft, setDraft] = useState<NotesNotebookSelectItem>(
-    createdNotebook ?? toSelectItem(value),
-  );
-  if (session !== draftSession) {
-    setDraftSession(session);
-    if (session) setDraft(createdNotebook ?? toSelectItem(value));
-  }
-
-  const dirty = requireChange === false || !notebookSelectionEquals(draft, value);
-  const hasDestination = draft.id.trim() !== "" && draft.name.trim() !== "";
-  const canConfirm = dirty && hasDestination;
-  const confirmText =
-    typeof confirmLabel === "function"
-      ? confirmLabel(draft.name)
-      : confirmLabel || labels.changeNotebookConfirm || "Change";
-
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        className={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
-      >
-        <DialogHeader>
-          <DialogTitle>{title ?? labels.selectionMoveToNotebook}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {fieldLabel ? (
-          <FieldLabelRow layout="inline" label={fieldLabel} htmlFor={PICKER_ID}>
-            <NotesNotebookSelect
-              id={PICKER_ID}
-              notebooks={notebooks}
-              value={draft}
-              labels={labels}
-              triggerVariant="ghost"
-              onNotebookChange={setDraft}
-              onCreateNotebook={onCreateNotebook}
-            />
-          </FieldLabelRow>
+    <CollectionMoveDialog
+      open={open}
+      value={toSelectItem(value)}
+      createdTarget={createdNotebook}
+      title={title ?? labels.selectionMoveToNotebook}
+      description={description}
+      fieldLabel={fieldLabel}
+      confirmLabel={confirmLabel || labels.changeNotebookConfirm || "Change"}
+      cancelLabel={labels.dialogCancel}
+      contentClassName={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
+      isSame={(draft) => notebookSelectionEquals(draft, value)}
+      requireChange={requireChange}
+      confirmDisabled={confirmDisabled}
+      destructiveAction={destructiveAction}
+      renderPicker={({ id, draft, setDraft }) =>
+        fieldLabel ? (
+          <NotesNotebookSelect
+            id={id}
+            notebooks={notebooks}
+            value={draft}
+            labels={labels}
+            triggerVariant="ghost"
+            onNotebookChange={setDraft}
+            onCreateNotebook={onCreateNotebook}
+          />
         ) : (
           <NotesNotebookSelect
             className="notes-change-notebook-dialog__picker"
@@ -127,34 +104,10 @@ export function NotesChangeNotebookDialog({
             onNotebookChange={setDraft}
             onCreateNotebook={onCreateNotebook}
           />
-        )}
-        <DialogFooter
-          start={
-            destructiveAction ? (
-              <Button
-                type="button"
-                variant="outline"
-                severity="danger"
-                label={destructiveAction.label}
-                onClick={destructiveAction.onAction}
-              />
-            ) : undefined
-          }
-        >
-          <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
-          <Button
-            type="button"
-            variant="primary"
-            label={confirmText}
-            disabled={!canConfirm || confirmDisabled}
-            onClick={() => {
-              if (!canConfirm || confirmDisabled) return;
-              onNotebookChange(draft);
-              onClose();
-            }}
-          />
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        )
+      }
+      onClose={onClose}
+      onConfirm={onNotebookChange}
+    />
   );
 }

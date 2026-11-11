@@ -4,7 +4,6 @@ import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SharePrincipalSearchDropdown } from "@/share-ui/share-principal-search-dropdown";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/ui/dialog";
-import { avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 
 afterEach(() => {
   cleanup();
@@ -43,10 +42,11 @@ describe("SharePrincipalSearchDropdown", () => {
     expect(personAvatar?.classList.contains("user-avatar--md")).toBe(true);
     expect(groupAvatar?.classList.contains("share-principal-search-dropdown__mark")).toBe(true);
     expect(groupAvatar?.classList.contains("share-dialog__principal-mark--group")).toBe(true);
+    // Neutral tint marks for people and teams alike (like chat authors), no palette color.
+    expect(groupAvatar?.classList.contains("user-avatar--tint")).toBe(true);
+    expect(personAvatar?.classList.contains("user-avatar--tint")).toBe(true);
     expect(groupAvatar?.classList.contains("user-avatar--colored")).toBe(false);
-    expect(
-      personAvatar?.classList.contains(`user-avatar--color-${avatarColorForUserId("member")}`),
-    ).toBe(true);
+    expect(personAvatar?.classList.contains("user-avatar--colored")).toBe(false);
   });
 
   it("closes on Escape, then the next Escape closes the dialog (#1699)", () => {

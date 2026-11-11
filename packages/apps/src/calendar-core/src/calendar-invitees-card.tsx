@@ -166,7 +166,10 @@ function ParticipantTag({
         <span
           className="calendar-invitees-card__tag"
           tabIndex={0}
-          aria-label={`${label}, ${statusLabel}`}
+          // A screen reader hears the clash too, not only the tooltip's sighted users.
+          aria-label={[label, statusLabel, busyRows && labels.eventAttendeesAvailabilityBusyWith]
+            .filter(Boolean)
+            .join(", ")}
         >
           <Tag
             label={label}

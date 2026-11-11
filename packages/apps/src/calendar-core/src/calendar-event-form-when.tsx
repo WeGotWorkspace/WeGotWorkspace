@@ -109,68 +109,49 @@ export function CalendarEventFormWhen({
     </Select>
   );
 
+  /** The Starts or Ends row: a date, then the time unless the event is all day. */
+  const dateTimeRow = (edge: "start" | "end") => {
+    const label = edge === "start" ? labels.eventStartLabel : labels.eventEndLabel;
+    const dateField = edge === "start" ? "startDate" : "endDate";
+    const timeField = edge === "start" ? "startTime" : "endTime";
+    return (
+      <FieldLabelRow
+        className={`calendar-event-dialog__field calendar-event-dialog__field--${edge}s`}
+        layout="inline"
+        label={label}
+        labelIcon={<CalendarDays aria-hidden />}
+      >
+        <div className="calendar-event-dialog__datetime">
+          <LocaleDatePicker
+            variant="ghost"
+            value={form[dateField]}
+            locale={locale}
+            size={controlSize}
+            label={label}
+            onChange={(next) => onFieldChange(dateField, next)}
+            disabled={disabled}
+          />
+          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
+            {!form.allDay ? (
+              <EventTimeInput
+                size={controlSize}
+                lang={locale}
+                value={form[timeField]}
+                aria-label={`${label} time`}
+                disabled={disabled}
+                onCommit={(next) => onFieldChange(timeField, next)}
+              />
+            ) : null}
+          </div>
+        </div>
+      </FieldLabelRow>
+    );
+  };
+
   return (
     <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
-      <FieldLabelRow
-        className="calendar-event-dialog__field calendar-event-dialog__field--starts"
-        layout="inline"
-        label={labels.eventStartLabel}
-        labelIcon={<CalendarDays aria-hidden />}
-      >
-        <div className="calendar-event-dialog__datetime">
-          <LocaleDatePicker
-            variant="ghost"
-            value={form.startDate}
-            locale={locale}
-            size={controlSize}
-            label={labels.eventStartLabel}
-            onChange={(next) => onFieldChange("startDate", next)}
-            disabled={disabled}
-          />
-          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
-            {!form.allDay ? (
-              <EventTimeInput
-                size={controlSize}
-                lang={locale}
-                value={form.startTime}
-                aria-label={`${labels.eventStartLabel} time`}
-                disabled={disabled}
-                onCommit={(next) => onFieldChange("startTime", next)}
-              />
-            ) : null}
-          </div>
-        </div>
-      </FieldLabelRow>
-      <FieldLabelRow
-        className="calendar-event-dialog__field calendar-event-dialog__field--ends"
-        layout="inline"
-        label={labels.eventEndLabel}
-        labelIcon={<CalendarDays aria-hidden />}
-      >
-        <div className="calendar-event-dialog__datetime">
-          <LocaleDatePicker
-            variant="ghost"
-            value={form.endDate}
-            locale={locale}
-            size={controlSize}
-            label={labels.eventEndLabel}
-            onChange={(next) => onFieldChange("endDate", next)}
-            disabled={disabled}
-          />
-          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
-            {!form.allDay ? (
-              <EventTimeInput
-                size={controlSize}
-                lang={locale}
-                value={form.endTime}
-                aria-label={`${labels.eventEndLabel} time`}
-                disabled={disabled}
-                onCommit={(next) => onFieldChange("endTime", next)}
-              />
-            ) : null}
-          </div>
-        </div>
-      </FieldLabelRow>
+      {dateTimeRow("start")}
+      {dateTimeRow("end")}
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
         layout="inline"

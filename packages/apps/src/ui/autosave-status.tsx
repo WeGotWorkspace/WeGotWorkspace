@@ -112,7 +112,7 @@ export function AutosaveStatusTag(): ReactNode {
     const tag = rootRef.current?.firstElementChild;
     if (!(tag instanceof HTMLElement)) return;
     // A state change mid-glide starts from where the tag is now.
-    const running = tag.getAnimations();
+    const running = tag.getAnimations?.() ?? [];
     const previous = running.length > 0 ? tag.getBoundingClientRect().width : widthRef.current;
     for (const animation of running) animation.cancel();
     const next = tag.getBoundingClientRect().width;
