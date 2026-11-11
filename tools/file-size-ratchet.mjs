@@ -417,10 +417,10 @@ export function nextBaseline(counts, rows, { ceiling: limit = ceiling } = {}) {
 
 /**
  * Pure rebaseline: rewrite existing rows to current counts (may raise).
- * Drops missing or <= ceiling rows. Never adds a path. Preserves reasons.
+ * Drops missing or <= ceiling rows. Never adds a path. When why is set, a raised row's reason gains a rebaseline marker; otherwise the reason is unchanged.
  * @param {Map<string, number>} counts
  * @param {{ path: string, count: number, reason: string }[]} rows
- * @param {{ ceiling?: number }} [options]
+ * @param {{ ceiling?: number, why?: string, date?: string }} [options]
  * @returns {{ rows: typeof rows }}
  */
 export function rebaselineRows(counts, rows, { ceiling: limit = ceiling, why, date } = {}) {
