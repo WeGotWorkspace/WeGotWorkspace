@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   chaosTierSpecPattern,
+  contactsSyncMatrixSpecPattern,
   docsSyncMatrixSpecPattern,
   liveTierSpecPattern,
   notesSyncMatrixSpecPattern,
@@ -59,6 +60,7 @@ export default defineConfig({
     notesSyncMatrixSpecPattern,
     tasksSyncMatrixSpecPattern,
     docsSyncMatrixSpecPattern,
+    contactsSyncMatrixSpecPattern,
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

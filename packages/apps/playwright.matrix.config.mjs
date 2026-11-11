@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import live from "./playwright.live.config.mjs";
 import {
+  contactsSyncMatrixSpecPattern,
   docsSyncMatrixSpecPattern,
   notesSyncMatrixSpecPattern,
   tasksSyncMatrixSpecPattern,
@@ -9,7 +10,7 @@ import {
 const ci = !!process.env.CI;
 
 /**
- * The Notes, Tasks and Docs sync matrices on the live tier (same servers and setup as
+ * The Notes, Tasks, Docs and Contacts sync matrices on the live tier (same servers and setup as
  * `playwright.live.config.mjs`). One case drives up to two browsers and waits
  * for a reconnect, so a case gets more time than a live spec.
  *
@@ -23,7 +24,12 @@ const ci = !!process.env.CI;
  */
 export default defineConfig({
   ...live,
-  testMatch: [notesSyncMatrixSpecPattern, tasksSyncMatrixSpecPattern, docsSyncMatrixSpecPattern],
+  testMatch: [
+    notesSyncMatrixSpecPattern,
+    tasksSyncMatrixSpecPattern,
+    docsSyncMatrixSpecPattern,
+    contactsSyncMatrixSpecPattern,
+  ],
   timeout: 180_000,
   fullyParallel: true,
   maxFailures: ci ? 3 : 0,

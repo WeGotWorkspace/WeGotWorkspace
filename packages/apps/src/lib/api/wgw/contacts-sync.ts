@@ -15,16 +15,18 @@ import {
   ingestRemoteAddressBookDestroyed,
   ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed,
-  reconcileAddressBookResync,
+  ingestRemoteContactCardListedAway,
 } from "@/lib/offline/contacts-jmap-inbound";
 import {
   listCachedAddressBookIds,
   listPendingContactCardIds,
   readAddressBooksSyncToken,
+  readContactsBootstrapFromCache,
   readSyncToken,
   writeAddressBooksSyncToken,
   writeSyncToken,
 } from "@/lib/offline/contacts-offline-store";
+import { runScopedInbound, type ScopedInboundBinding } from "@/lib/offline/core/inbound-sync";
 
 /** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */
 const INITIAL_JMAP_STATE = "0:";
@@ -37,73 +39,81 @@ type JmapChangesResponse = {
   destroyed: string[];
 };
 
+type CachedCardMembership = { id: string; scope: string };
+
+/**
+ * Contact cards through the shared inbound engine (#1565), one scope per
+ * address book. `ContactCard/changes` is account-wide, so each book keeps its
+ * own copy of the account's card state; a run fetches each changed card once.
+ * A full list of a book (on `cannotCalculateChanges`) takes the cards it lacks
+ * out of that book only, and deletes those left in no book.
+ */
+function contactCardsInbound(
+  username: string,
+  opts?: { signal?: AbortSignal },
+): ScopedInboundBinding<ContactCard, CachedCardMembership> {
+  let pending = new Set<string>();
+  const readPending = async () => {
+    pending = new Set(await listPendingContactCardIds(username));
+  };
+  return {
+    // No token yet: changes since the empty state, as before (not a full list).
+    readToken: async (bookId) => (await readSyncToken(username, bookId)) ?? INITIAL_JMAP_STATE,
+    writeToken: (bookId, token) => writeSyncToken(username, bookId, token),
+    changes: (_bookId, since) => contactCardChanges(since, opts),
+    isCannotCalculateChanges,
+    list: (bookId) => listCards({ addressBookId: bookId, signal: opts?.signal }),
+    currentState: () => currentTypeState("ContactCard"),
+    rowId: (card) => card.id,
+    // A pending card is not fetched: its ingest only reports the conflict.
+    fetch: async (id) => (pending.has(id) ? ({ id } as ContactCard) : getCard(id, opts)),
+    readCached: async () => {
+      await readPending();
+      const cached = await readContactsBootstrapFromCache(username);
+      const items = (cached?.data.cards ?? []).flatMap((card) =>
+        Object.entries(card.addressBookIds ?? {})
+          .filter(([, included]) => card.id && included === true)
+          .map(([bookId]) => ({ id: card.id, scope: bookId })),
+      );
+      return { items, keep: (item) => pending.has(item.id) };
+    },
+    scopeGone: {
+      matches: isContactsNotFound,
+      apply: (bookId) => ingestRemoteAddressBookDestroyed(username, bookId).then(() => {}),
+    },
+    createApplier: async () => {
+      await readPending();
+      return {
+        ingest: (card) => ingestRemoteContactCard(username, card),
+        ingestDestroyed: (id) => ingestRemoteContactCardDestroyed(username, id),
+        ingestListedAway: (id, bookId) => ingestRemoteContactCardListedAway(username, id, bookId),
+        // Every run stores its state, as before: a skipped change of a pending
+        // card goes to the conflict dialog, not to the next run.
+        blocksToken: new Set<string>(),
+      };
+    },
+  };
+}
+
+async function syncContactCardScopes(
+  username: string,
+  addressBookIds: readonly string[],
+  opts?: { signal?: AbortSignal },
+): Promise<void> {
+  await runScopedInbound(addressBookIds, contactCardsInbound(username, opts));
+}
+
 export async function pullContactCardChangesForBook(
   username: string,
   addressBookId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  const since = (await readSyncToken(username, addressBookId)) ?? INITIAL_JMAP_STATE;
-  try {
-    const changes = await contactCardChanges(since, opts);
-    await applyContactCardChanges(username, changes, opts);
-    await writeSyncToken(username, addressBookId, changes.newState);
-  } catch (error) {
-    if (isCannotCalculateChanges(error)) {
-      await fullResyncBook(username, addressBookId, opts);
-      return;
-    }
-    if (isContactsNotFound(error)) {
-      await ingestRemoteAddressBookDestroyed(username, addressBookId);
-      return;
-    }
-    throw error;
-  }
+  await syncContactCardScopes(username, [addressBookId], opts);
 }
 
 async function currentTypeState(type: "AddressBook" | "ContactCard"): Promise<string> {
   const { client, accountId } = await connectedContacts();
   return client.getState(accountId, type) ?? INITIAL_JMAP_STATE;
-}
-
-async function fullResyncBook(
-  username: string,
-  addressBookId: string,
-  opts?: { signal?: AbortSignal },
-): Promise<void> {
-  try {
-    const list = await listCards({ addressBookId, signal: opts?.signal });
-    for (const card of list) {
-      await ingestRemoteContactCard(username, card);
-    }
-    await reconcileAddressBookResync(username, addressBookId, list);
-    await writeSyncToken(username, addressBookId, await currentTypeState("ContactCard"));
-  } catch (error) {
-    if (isContactsNotFound(error)) {
-      await ingestRemoteAddressBookDestroyed(username, addressBookId);
-      return;
-    }
-    throw error;
-  }
-}
-
-async function applyContactCardChanges(
-  username: string,
-  changes: JmapChangesResponse,
-  opts?: { signal?: AbortSignal },
-): Promise<void> {
-  const pending = new Set(await listPendingContactCardIds(username));
-  for (const id of changes.destroyed) {
-    await ingestRemoteContactCardDestroyed(username, id);
-  }
-  const toFetch = [...changes.created, ...changes.updated];
-  for (const id of toFetch) {
-    if (pending.has(id)) {
-      await ingestRemoteContactCard(username, { id } as ContactCard);
-      continue;
-    }
-    const card = await getCard(id, opts);
-    await ingestRemoteContactCard(username, card);
-  }
 }
 
 export async function pullAddressBookChanges(
@@ -166,9 +176,7 @@ export async function syncAllContactBooks(
   addressBookIds: string[],
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
-  for (const bookId of addressBookIds) {
-    await pullContactCardChangesForBook(username, bookId, opts);
-  }
+  await syncContactCardScopes(username, addressBookIds, opts);
 }
 
 export async function syncContactBooksAfterAddressBookChanges(

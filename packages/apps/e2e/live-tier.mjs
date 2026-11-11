@@ -108,6 +108,13 @@ export const tasksSyncMatrixSpecPattern = /tasks-sync-matrix\.spec\.ts/;
  */
 export const docsSyncMatrixSpecPattern = /docs-sync-matrix\.spec\.ts/;
 
+/**
+ * Contacts sync matrix (#1565): the inbound cases (changes token on reload and
+ * on reconnect, full-list fallback, queued-write conflict check). Its own
+ * nightly job, like the Notes matrix.
+ */
+export const contactsSyncMatrixSpecPattern = /contacts-sync-matrix\.spec\.ts/;
+
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 
