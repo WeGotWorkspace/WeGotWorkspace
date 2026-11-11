@@ -13,6 +13,26 @@
   @apply flex min-w-0 flex-wrap items-center gap-1.5;
 }
 
+/*
+ * Busy invited teammate (#1614): the participant tag itself takes the warning wash
+ * (over its RSVP tone) plus a trailing warning icon. The RSVP icon stays in the mark.
+ */
+.calendar-invitees-card__chip.calendar-invitees-card__chip--busy {
+  --tag-fg: color-mix(in oklab, var(--color-warning) 60%, var(--workspace-foreground));
+  --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
+  --user-chip-fg: color-mix(in oklab, var(--color-warning) 60%, var(--workspace-foreground));
+  --user-chip-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
+  --user-chip-border: color-mix(in oklab, var(--color-warning) 48%, transparent);
+}
+
+.calendar-invitee-busy-tooltip__title {
+  @apply mt-1 font-medium;
+}
+
+.calendar-invitee-busy-tooltip ul {
+  @apply mt-0.5 flex flex-col gap-0.5;
+}
+
 .calendar-invitees-card__add {
   @apply min-w-0;
 }
