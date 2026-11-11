@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { DriveGridView } from "@/drive-core/src/drive-browser";
+import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { extensionHue } from "@/drive-core/src/drive-file-avatar-label";
 import type { DriveFile } from "@/lib/files/drive-models";
@@ -145,6 +145,40 @@ export const Dark: Story = {
     await expect(getComputedStyle(avatar).backgroundColor).toContain(
       `0.33 0.06 ${extensionHue("pdf")}`,
     );
+  },
+};
+
+/**
+ * A touch long press enters selection mode; it must not also select the name as
+ * text or open the iOS callout. The list and grid views (Drive and Docs) never
+ * select text: not the items, and not the headings iOS would select instead.
+ */
+export const NoTextSelection: Story = {
+  args: { isTouch: true },
+  render: (args) => (
+    <>
+      <DriveGridView {...args} />
+      <DriveListView {...args} activeId={null} />
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const items = canvasElement.querySelectorAll(
+      ".drive-file-tile, .drive-folder-tile, .drive-list-row",
+    );
+    await expect(items.length).toBe(ITEMS.length * 2);
+    const chrome = canvasElement.querySelectorAll(
+      ".drive-grid-layout, .drive-list-view, .drive-browser-section-title, .drive-list-head",
+    );
+    await expect(chrome.length).toBeGreaterThanOrEqual(4);
+    // Only WebKit (iOS Safari) knows the callout property; Chromium drops it.
+    const hasCallout = CSS.supports("-webkit-touch-callout", "none");
+    for (const item of [...items, ...chrome] as HTMLElement[]) {
+      const style = getComputedStyle(item);
+      await expect(style.userSelect).toBe("none");
+      if (hasCallout) {
+        await expect(style.getPropertyValue("-webkit-touch-callout")).toBe("none");
+      }
+    }
   },
 };
 

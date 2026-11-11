@@ -6,7 +6,10 @@ import {
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { docsRowOwnedByQueuedWrite, docsSourceKey } from "@/lib/offline/docs/docs-inbound-plan";
-import { readDocsPendingWrites } from "@/lib/offline/docs/docs-inbound-sync";
+import {
+  readDocsPendingWrites,
+  readDocsQueuedRenameTarget,
+} from "@/lib/offline/docs/docs-inbound-sync";
 import {
   readDocsNodeIdForPath,
   readDocsPathForNodeId,
@@ -36,6 +39,8 @@ export type DocsLocatorDeps = {
   isOnline: () => boolean;
   /** A queued offline create or rename owns this API path (#1563). */
   ownedByQueuedWrite: (path: string) => Promise<boolean>;
+  /** Where a queued rename or move takes this API path, or null (#1563). */
+  queuedRenameTarget: (path: string) => Promise<string | null>;
 };
 
 /** `missing`: the server says no such readable file. `unknown`: no server and no cache row. */
@@ -63,6 +68,8 @@ export function createDocsLocatorDeps(username: string | null | undefined): Docs
       username
         ? docsRowOwnedByQueuedWrite(await readDocsPendingWrites(username), docsSourceKey(path))
         : false,
+    queuedRenameTarget: async (path) =>
+      username ? readDocsQueuedRenameTarget(username, path) : null,
   };
 }
 

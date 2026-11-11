@@ -7,9 +7,9 @@ import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/brow
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
-  docsCollabPathKeyedSources,
+  migrateDocsCollabPathDatabaseToIdentity,
   migrateDocsCollabPendingSaveFromLegacy,
-  resolveDocsCollabDatabase,
+  resolveDocsCollabEditorDatabase,
 } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
@@ -37,10 +37,12 @@ import {
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
 import {
+  DOC_STATUS_CONNECTING,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
   DOC_STATUS_SNAPSHOT_UNAVAILABLE,
+  docStatusAfterJoinFailure,
 } from "./docs-collab-status";
 import { isCollabDocumentGoneError } from "./docs-collab-utils";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
@@ -463,20 +465,20 @@ export function useDocsCollabJoin({
       const token = {};
       meshJoinInFlightRef.current = token;
       const isCurrent = () => isJoinGenerationCurrent(generation, refs.joinGenerationRef);
-      setDocStatus((prev) => prev || "Connecting to collaborators…");
+      setDocStatus((prev) => prev || DOC_STATUS_CONNECTING);
       setStatus(docsLabels.statusConnecting);
       try {
         const meshPeers = await joinMesh(name, authToken, isCurrent);
         if (meshPeers === null || !isCurrent()) return;
         setConnectingPeers(meshPeers);
         refreshMeshUi();
-        setDocStatus((prev) => (prev === "Connecting to collaborators…" ? "" : prev));
+        setDocStatus((prev) => (prev === DOC_STATUS_CONNECTING ? "" : prev));
         trySeedFromFile();
       } catch (error) {
         if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
-        setDocStatus(error instanceof Error ? error.message : String(error));
+        setDocStatus((prev) => docStatusAfterJoinFailure(prev, error));
       } finally {
         if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }
@@ -527,15 +529,16 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const database = await resolveDocsCollabDatabase(room, urls.nodeId);
+    const database = await resolveDocsCollabEditorDatabase(room, urls.nodeId);
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) {
+      database.release();
       if (refs.ydocRef.current === ydoc) refs.ydocRef.current = null;
       ydoc.destroy();
       return;
     }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
-    rememberCollabRoomJoin(persistence, { room, urls });
+    rememberCollabRoomJoin(persistence, { room, urls }, database.release);
 
     const authTokenPromise = allowServerRequests
       ? refs.wireRef.current
@@ -556,11 +559,9 @@ export function useDocsCollabJoin({
     await persistence.whenSynced;
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
-    await migrateDocsCollabPendingSaveFromLegacy(
-      room,
-      persistence,
-      database.nodeId ? docsCollabPathKeyedSources(room) : undefined,
-    );
+    // By id, the path-keyed copy moves over unless another tab still has it open.
+    if (database.nodeId) await migrateDocsCollabPathDatabaseToIdentity(room, persistence);
+    else await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
 
     loadedStateRef.current = {
       ydoc,

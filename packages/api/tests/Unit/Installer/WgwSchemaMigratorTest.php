@@ -215,6 +215,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'notification_deliveries',
             'push_subscriptions',
             'rtc_relay_events',
+            'jmap_file_node_departures',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),

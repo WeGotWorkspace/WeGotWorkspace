@@ -57,6 +57,7 @@ import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-confli
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -287,6 +288,19 @@ export function DocsHomeWorkspace({
     () => (offlineUsername ? subscribeDriveRemoteChanges(offlineUsername, reload) : undefined),
     [offlineUsername, reload],
   );
+  // A Docs cache change from any tab (a star, a landed queued write): read the stars and the
+  // Starred list again. Not the other lists: a browse load itself sends this notice (#1563).
+  const [docsCacheNoticeKey, setDocsCacheNoticeKey] = useState(0);
+  useEffect(
+    () =>
+      offlineUsername
+        ? subscribeDocsCachesChanged(offlineUsername, () => {
+            reloadStarred();
+            setDocsCacheNoticeKey((key) => key + 1);
+          })
+        : undefined,
+    [offlineUsername, reloadStarred],
+  );
 
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {
@@ -349,7 +363,7 @@ export function DocsHomeWorkspace({
     onAvailabilityChanged: refresh,
     reload,
     inTrashView: isTrashView,
-    starsRefreshKey: outboxNoticeKey,
+    starsRefreshKey: outboxNoticeKey + docsCacheNoticeKey,
   });
 
   const visibleFiles = useMemo(
@@ -494,7 +508,7 @@ export function DocsHomeWorkspace({
         files={files}
         username={username}
         groupRoots={labeledGroupRoots}
-        operations={operations}
+        operations={listingOperations}
         createDialog={createDialog}
       />
       {saveAsMarkdown.dialogs}

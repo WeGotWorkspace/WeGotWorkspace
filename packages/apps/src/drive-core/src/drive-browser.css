@@ -175,14 +175,17 @@
   @apply flex shrink-0;
 }
 
+/*
+ * The list and grid views never select text, like `list-item__button` in Tasks,
+ * Contacts and Notes. A touch long press enters selection mode; it must not also
+ * start native text selection or the iOS callout (also on image thumbnails).
+ * The whole view, not only the items: iOS otherwise selects the nearest heading.
+ * Docs home renders these same views. Inputs keep their own text selection.
+ */
 .drive-workspace
-  :is(
-    .drive-folder-tile--selection-mode .drive-folder-tile__title,
-    .drive-file-tile--selection-mode .drive-file-tile__title,
-    .drive-file-tile--selection-mode .drive-file-tile__location,
-    .drive-list-row[data-selection-mode="true"] .drive-list-row__name
-  ) {
+  :is(.drive-grid-layout, .drive-list-view, .drive-list-row, .drive-file-tile, .drive-folder-tile) {
   @apply select-none;
+  -webkit-touch-callout: none;
 }
 
 /* File tiles: the light tile fill, as folder tiles. */

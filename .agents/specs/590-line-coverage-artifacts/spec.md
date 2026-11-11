@@ -17,16 +17,18 @@ Upload a PHPUnit clover report and a Vitest v8 report for pushes to `main`, so d
 
 ## Affected packages
 
-- `.github/workflows/ci.yml` — `api-coverage` and `apps-coverage`, `push` to `main` only
+- `.github/workflows/ci.yml` — `api-coverage-shard`, `api-coverage` and `apps-coverage`, `push` to `main` only
+- `packages/api/scripts/merge-coverage.php` — merges the API coverage shards into one clover file
 - `packages/apps/scripts/run-jsdom.mjs` — per-shard coverage argv
 - `packages/api/phpunit.xml` — existing `<source><include><directory>app</directory>` stays
 
 ## Technical constraints
 
-- PHPUnit is invoked as `php vendor/bin/phpunit -c phpunit.xml --coverage-clover=...`, not through `composer test`.
-- `setup-php` uses `coverage: pcov` on that job only.
-- After the run, the job fails if the clover XML contains no `<file` element. That is a measurement check, not a percent threshold.
-- `timeout-minutes: 45` and `concurrency` `cancel-in-progress: true` on each coverage job.
+- PHPUnit runs in four `api-coverage-shard` jobs as `php scripts/phpunit-shard.php --config=phpunit.xml --shard=N/4 -- --coverage-php=...`, not through `composer test`. One process for the whole suite outgrew the 45-minute limit in November 2026 (#1860).
+- `api-coverage` merges the four shard files into one clover file with `php scripts/merge-coverage.php <clover.xml> <shard.cov>...`. The merge is php-code-coverage's own, so a line covered in any shard is covered. `coverage-ratchet` reads the same `phpunit-clover` artifact as before.
+- `setup-php` uses `coverage: pcov` on the shard jobs only.
+- After the merge, the job fails if the clover XML contains no `<file` element. That is a measurement check, not a percent threshold.
+- `timeout-minutes` (30 per API shard, 45 for `apps-coverage`) and `concurrency` `cancel-in-progress: true` on each coverage job. Each API shard has its own concurrency group, so the shards of one run do not cancel each other.
 - Vitest `coverage.include` is `src/**/*.{ts,tsx}`, so TypeScript files that no test loaded still appear in the report. Markdown, CSS, and images under `src/` are not product code and are not remapped. `coverage.exclude` drops `**/*.stories.*`, `**/stories/**`, `**/mock/**`, `**/*.test.*`, `**/*.spec.*`, `**/*.d.ts`, and `src/jsdom-setup.ts`. Vitest 4 appends the root test include after a custom exclude, but project setup files are not on that root list.
 - Vitest unit and jsdom only. Each jsdom child gets `--coverage --reporter=default --reporter=blob --outputFile=.vitest-reports/blob-<shard>.json` and its own `--coverage.reportsDirectory` under `.coverage-shards/`. The default reporter prints the assertion into the job log. The uploaded success artifact is the merged `coverage/` directory, not the shard temp dirs. If the job fails, `.vitest-reports/` is uploaded for 3 days as a fallback for `vitest --merge-reports`. The log is the diagnosis.
 - `isDirectInvocation` compares `realpath` of the script and `argv[1]`. The unit project include already lists `scripts/**/*.test.mjs`, so the argv test runs in the normal unit suite.
