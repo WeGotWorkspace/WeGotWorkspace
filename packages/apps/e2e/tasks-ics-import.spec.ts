@@ -147,6 +147,7 @@ test("offline with the dialog open: Import is disabled and no list is made", asy
   try {
     context = await openUser(browser, OWNER);
     const a = await openTasksTab(context, "A", events);
+    await showAllTasks(a);
 
     await chooseFile(a, file);
     const dialog = a.getByRole("dialog", { name: "Import tasks" });
