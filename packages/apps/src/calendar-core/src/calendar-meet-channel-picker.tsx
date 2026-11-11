@@ -14,7 +14,7 @@ import {
   calendarMeetPickerChannels,
   parseCalendarMeetHref,
   type CalendarMeetChannelOption,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type { ControlSize } from "@/ui/control-size";
 
 export type CalendarMeetChannelPickerProps = {

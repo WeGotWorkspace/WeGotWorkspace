@@ -3,7 +3,7 @@ import {
   resolveCreateMarkdownDialogDefaults,
   splitMarkdownDialogDefaultName,
 } from "@/drive-core/src/drive-create-markdown-dialog-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 const doc = (title: string): DriveFile => ({
   id: title,

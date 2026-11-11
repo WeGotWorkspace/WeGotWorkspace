@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 
 /** Group-membership notebook shown under My notebooks (owned via group, not isSharee). */
 export type NotesSharedNotebook = {

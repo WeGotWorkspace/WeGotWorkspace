@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { contactDisplayName, isContactOrgCard } from "./contacts-display-utils";
 import { ContactsGroupIcon } from "./contacts-group-icon";
 import { ContactsOrgIcon } from "./contacts-org-icon";

@@ -16,6 +16,7 @@ import {
   formToDraft,
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
+import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {
@@ -26,7 +27,7 @@ import type {
   CalendarAPIOperations,
   CalendarEventPatch,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 
 const OFFLINE_ACCOUNT_ID = "offline";
 
@@ -291,7 +292,13 @@ function patchFromEngineEvent(
   masterKey: string,
   event: CalendarEvent,
 ): CalendarEventPatch {
-  const patch = formToFullPatch(engineEventToForm(event));
+  // The engine never holds "Show as", alerts or links: a drag must not reset them.
+  const {
+    freeBusyStatus: _freeBusyStatus,
+    alerts: _alerts,
+    links: _links,
+    ...patch
+  } = formToFullPatch(engineEventToForm(event));
   const overrides = recurrenceOverridesFromEngineMap(events, persistEventId(masterKey));
   if (overrides) patch.recurrenceOverrides = overrides;
   return patch;
@@ -329,7 +336,11 @@ export async function persistCalendarEventChanges(
       continue;
     }
     if (change.type === "created") {
-      const draft = formToDraft(engineEventToForm(change.event));
+      const form = engineEventToForm(change.event);
+      const draft = formToDraft({
+        ...form,
+        freeBusyStatus: newEventFreeBusyStatus(form.allDay),
+      });
       if (!draft.calendarId) continue;
       const persistId = persistEventId(change.key);
       const created = await operations.createEvent({

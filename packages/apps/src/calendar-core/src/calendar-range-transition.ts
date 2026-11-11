@@ -1,4 +1,4 @@
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 
 /** Fallback enter classes when animating range changes (CSS only — no View Transitions API). */
 export const CALENDAR_RANGE_ZOOM_IN_CLASS = "calendar-range--animate-in";

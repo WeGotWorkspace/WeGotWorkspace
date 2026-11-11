@@ -11,13 +11,14 @@ import {
   attendeesFromParticipants,
   type CalendarAttendee,
   type JmapParticipant,
-} from "@/calendar-core/src/calendar-attendees";
-import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-attendees";
+import type { CalendarEventDraft, CalendarEventPatch } from "@/lib/models/calendar-types";
 import {
   alertMapsEqual,
   alertsFromWire,
   alertsToWire,
   DEFAULT_FREE_BUSY_STATUS,
+  newEventFreeBusyStatus,
   freeBusyStatusFromWire,
   type CalendarEventAlertFormValue,
   type CalendarFreeBusyStatus,
@@ -36,7 +37,7 @@ import {
   isHttpUrl,
   linksFromMeetingUrl,
   meetingUrlFromLinks,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 
 export type {
   CalendarEventAlertFormValue,
@@ -71,8 +72,13 @@ export type CalendarEventFormValue = {
   timeZone: string | null;
   location: string;
   description: string;
-  /** JSCalendar `freeBusyStatus`. New events default to busy. */
+  /** JSCalendar `freeBusyStatus`. New events: all-day Free, timed Busy. */
   freeBusyStatus: CalendarFreeBusyStatus;
+  /**
+   * Session-only: a new event whose "Show as" still follows the all-day toggle.
+   * Cleared once the author picks "Show as". Never set for stored events.
+   */
+  freeBusyStatusFollowsAllDay?: boolean;
   /** Editor rows for the JSCalendar `alerts` map (empty = none). */
   alerts: CalendarEventAlertFormValue[];
   recurrencePreset: RecurrencePresetId;
@@ -140,7 +146,8 @@ export function emptyCalendarEventForm(
     timeZone: defaultTimedEventTimeZone(timeZone),
     location: "",
     description: "",
-    freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
+    freeBusyStatus: newEventFreeBusyStatus(false),
+    freeBusyStatusFollowsAllDay: true,
     alerts: [],
     recurrencePreset: "none",
     attendees: [],
@@ -205,7 +212,8 @@ export function createIntentToForm(
     timeZone: allDay ? null : defaultTimedEventTimeZone(timeZone),
     location: "",
     description: "",
-    freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
+    freeBusyStatus: newEventFreeBusyStatus(allDay),
+    freeBusyStatusFollowsAllDay: true,
     alerts: [],
     recurrencePreset: "none",
     attendees: [],
@@ -417,6 +425,7 @@ function timedDurationOrMin(form: CalendarEventFormValue): Temporal.Duration {
  * - timed start change: move (preserve prior duration)
  * - timed end ≤ start: coerce end to start + 30 minutes
  * - recurrence ends mode: default until date / count when switching modes
+ * - new event: "Show as" follows the all-day toggle until the author picks it
  * All-day date ranges keep existing date semantics (no auto-shift).
  */
 export function patchCalendarEventForm(
@@ -424,7 +433,11 @@ export function patchCalendarEventForm(
   patch: Partial<CalendarEventFormValue>,
 ): CalendarEventFormValue {
   const prevAllDay = form.allDay;
-  let next: CalendarEventFormValue = { ...form, ...patch };
+  let next: CalendarEventFormValue = followAllDayFreeBusyDefault(
+    form,
+    { ...form, ...patch },
+    patch,
+  );
   const becameTimed = prevAllDay && next.allDay === false;
   const startMoved =
     !next.allDay &&
@@ -485,6 +498,18 @@ export function patchCalendarEventForm(
   }
 
   return next;
+}
+
+function followAllDayFreeBusyDefault(
+  form: CalendarEventFormValue,
+  next: CalendarEventFormValue,
+  patch: Partial<CalendarEventFormValue>,
+): CalendarEventFormValue {
+  if (Object.prototype.hasOwnProperty.call(patch, "freeBusyStatus")) {
+    return { ...next, freeBusyStatusFollowsAllDay: false };
+  }
+  if (!form.freeBusyStatusFollowsAllDay || next.allDay === form.allDay) return next;
+  return { ...next, freeBusyStatus: newEventFreeBusyStatus(next.allDay) };
 }
 
 export function calendarEventFormIsValid(

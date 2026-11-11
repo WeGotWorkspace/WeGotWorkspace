@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
-import type { NotesUIData } from "@/notes-core/src/notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 
 export type NotesPaneStoryHarnessOptions = {

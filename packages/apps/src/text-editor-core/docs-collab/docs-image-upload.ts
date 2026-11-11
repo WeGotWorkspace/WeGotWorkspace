@@ -1,4 +1,4 @@
-import { canBrowserPreviewImage, extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { canBrowserPreviewImage, extensionFromFileName } from "@/lib/files/file-name-utils";
 import { normalizeApiVirtualPath, parentAndName } from "@/lib/files/api-path";
 import {
   driveJmapSession,

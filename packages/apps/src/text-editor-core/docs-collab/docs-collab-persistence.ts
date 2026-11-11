@@ -1,6 +1,6 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import { readDocsNodeIdForPath } from "@/lib/offline/docs/docs-node-paths";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";

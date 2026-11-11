@@ -1,4 +1,4 @@
-import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
+import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
 import { type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallStatus } from "@/meet-core/src/meet-call-types";
 import {

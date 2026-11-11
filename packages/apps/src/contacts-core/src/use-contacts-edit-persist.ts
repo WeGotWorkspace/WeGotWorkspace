@@ -13,7 +13,7 @@ import {
   type ContactEditDraft,
 } from "@/contacts-core/src/contacts-edit-utils";
 import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
-import type { ContactCard, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { contactMutationOpts } from "@/contacts-core/src/contacts-undo-writes";
 
 type UseContactsEditPersistArgs = {

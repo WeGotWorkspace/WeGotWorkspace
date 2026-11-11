@@ -16,7 +16,7 @@ import {
   type CalendarSearchDateRange,
   type CalendarSearchResults,
 } from "@/calendar-core/src/calendar-search";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { Tag } from "@/tag/src/tag";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { CalendarListView } from "@/lib/calendar-elements/CalendarListView/CalendarListView";

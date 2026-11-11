@@ -3,7 +3,7 @@ import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import { RescueDialog } from "@/rescue-ui/rescue-dialog";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
-import type { TaskList } from "@/tasks-core/src/tasks-types";
+import type { TaskList } from "@/lib/models/tasks-types";
 
 export type TasksRescueDialogProps = {
   open: boolean;

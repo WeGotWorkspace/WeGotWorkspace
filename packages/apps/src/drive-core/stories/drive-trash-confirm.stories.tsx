@@ -7,9 +7,10 @@ import {
   DRIVE_TRASH_DIR_NAME,
   DRIVE_TRASH_UI_PATH,
   normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
-import { resolveDriveFileApiPath, resolveFreeName } from "@/drive-core/src/drive-batch-utils";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-path-utils";
+import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
+import { resolveFreeName } from "@/lib/files/drive-entry-names";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { DriveWorkspaceModals } from "@/drive-core/src/drive-workspace-modals";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import {

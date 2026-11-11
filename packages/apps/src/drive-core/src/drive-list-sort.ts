@@ -1,4 +1,4 @@
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
 import { formatListTimestamp } from "@/lib/datetime/format-list-date";
 import {
   compareListNumber,

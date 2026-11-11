@@ -1,4 +1,4 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { fileNodeToDirectoryEntry } from "@/lib/api/wgw/drive-jmap";
 import type { JmapFileNode } from "@/lib/jmap-client";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";

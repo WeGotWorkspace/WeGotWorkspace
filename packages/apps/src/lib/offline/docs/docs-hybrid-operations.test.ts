@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { driveUserTrashApiPath } from "@/drive-core/src/drive-path-utils";
+import { driveUserTrashApiPath } from "@/lib/files/drive-path-utils";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";

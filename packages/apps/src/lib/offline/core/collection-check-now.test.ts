@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerMeshCheckNowPort } from "@/lib/jmap-client/push/mesh-check-now";
 import {
   upsertCalendarEventInCache,
@@ -17,9 +17,9 @@ import {
   rememberOfflineTasksUsername,
 } from "@/lib/offline/offline-session";
 import { upsertTaskInCache, upsertTaskListInCache } from "@/lib/offline/tasks/tasks-offline-store";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client/calendars/types";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 
 const username = "bob";
 const shared = { alice: { mayRead: true }, "groups/eng": { mayRead: true }, carol: null };
@@ -89,7 +89,7 @@ describe("collection check-now audience", () => {
       [cachedCollectionAudience("tasks", ["list-shared"]), Promise.reject(new Error("x"))],
       { erin: { mayRead: true } },
     );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(sent).toEqual([["alice", "erin"]]);
+    // The cached audience comes from IndexedDB, which can take more than one tick.
+    await vi.waitFor(() => expect(sent).toEqual([["alice", "erin"]]));
   });
 });

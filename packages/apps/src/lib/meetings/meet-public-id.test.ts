@@ -4,7 +4,7 @@ import {
   meetCollectionIdCandidates,
   meetCollectionIdFromPublic,
   meetPublicChannelId,
-} from "@/meet-core/src/meet-public-id";
+} from "@/lib/meetings/meet-public-id";
 
 describe("meetPublicChannelId", () => {
   it("strips chat- and chat-grp- so the path can carry the type", () => {

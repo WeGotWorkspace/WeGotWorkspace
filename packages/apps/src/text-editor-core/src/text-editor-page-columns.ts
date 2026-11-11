@@ -2,6 +2,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 import { TableMap } from "@tiptap/pm/tables";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { textEditorScreenScale } from "@/text-editor-core/src/text-editor-fit-scale";
 
 /**
  * With pages on, every table row is its own box (`text-editor.css`), so each row would
@@ -87,11 +88,14 @@ function sameColumns(a: readonly TableColumns[], b: readonly TableColumns[]): bo
   );
 }
 
-/** Content width of `el`, unrounded: for the editor root, the text column inside the margins. */
-function contentWidth(el: HTMLElement): number {
+/**
+ * Content width of `el`, unrounded: for the editor root, the text column inside the margins.
+ * In layout px: `el` sits in the page column, which Fit to screen scales on screen.
+ */
+function contentWidth(el: HTMLElement, scale: number): number {
   const style = getComputedStyle(el);
   return (
-    el.getBoundingClientRect().width -
+    el.getBoundingClientRect().width / scale -
     parseFloat(style.paddingLeft || "0") -
     parseFloat(style.paddingRight || "0") -
     parseFloat(style.borderLeftWidth || "0") -
@@ -103,7 +107,10 @@ function contentWidth(el: HTMLElement): number {
 function availableWidth(view: EditorView, table: HTMLTableElement): number {
   const block = table.closest(".tableWrapper") ?? table;
   const container = block.parentElement;
-  return container && container !== view.dom ? contentWidth(container) : contentWidth(view.dom);
+  const scale = textEditorScreenScale(view.dom);
+  return container && container !== view.dom
+    ? contentWidth(container, scale)
+    : contentWidth(view.dom, scale);
 }
 
 function tableElement(view: EditorView, pos: number): HTMLTableElement | null {

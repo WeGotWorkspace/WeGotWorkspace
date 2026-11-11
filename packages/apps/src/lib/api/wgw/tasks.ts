@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import type {
   Task,
   TaskCreate,
@@ -9,7 +10,7 @@ import type {
 } from "@wgw/openapi-types/tasks-types";
 import type { components } from "@wgw/openapi-types/openapi-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
+import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   cachedCollectionAudience,
@@ -17,17 +18,8 @@ import {
   checkNowAfterWrite,
 } from "@/lib/offline/core/collection-check-now";
 
-export class TasksRequestError extends Error {
-  status: number;
-  /** API error code from the JSON body (`{ error, code }`), when there is one. */
-  code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+/** `code` is the API error code from the JSON body (`{ error, code }`), when there is one. */
+export class TasksRequestError extends ApiError {}
 
 export function isTasksCannotCalculateChanges(error: unknown): boolean {
   return error instanceof TasksRequestError && error.code === "cannotCalculateChanges";

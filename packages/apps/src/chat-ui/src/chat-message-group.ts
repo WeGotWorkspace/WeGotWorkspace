@@ -1,5 +1,5 @@
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
-import type { ChatMessage } from "@/chat-ui/src/chat-types";
+import type { ChatMessage } from "@/lib/models/chat-types";
 
 export const CHAT_MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
 

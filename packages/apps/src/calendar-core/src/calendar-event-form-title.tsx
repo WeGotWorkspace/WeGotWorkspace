@@ -2,7 +2,7 @@ import { Type } from "lucide-react";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";

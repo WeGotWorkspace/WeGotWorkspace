@@ -13,7 +13,7 @@ import { meetLabels } from "@/meet-core/src/meet-labels";
 import { createMeetPokeGate, handleMeetDataFrame } from "@/meet-core/src/meet-poll-poke";
 import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
-import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetRtcSettings } from "@/lib/models/meet-types";
 import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media-hints";
 import { useMeetLocalMedia } from "@/meet-core/src/use-meet-local-media";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";

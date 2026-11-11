@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import {
   DriveOfflineAvailableIcon,

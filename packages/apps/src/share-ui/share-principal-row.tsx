@@ -3,12 +3,13 @@ import {
   SHARE_UI_PERMISSIONS,
   accessToSelectableUIPermission,
   type ShareUIPermission,
-} from "@/share-ui/share-access-map";
+} from "@/lib/sharing/share-access-map";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
-import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
+import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
+import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { shareLabels, formatSharePathLabel } from "@/share-ui/share-labels";
 import { accessLabelForReadOnly } from "@/share-ui/use-share-mutations";
 

@@ -1,5 +1,5 @@
 import { resolveDriveViewIcon } from "@/drive-core/src/drive-view-icon-utils";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 
 export function DriveViewIcon({
   view,

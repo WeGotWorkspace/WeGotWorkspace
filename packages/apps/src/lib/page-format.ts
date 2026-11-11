@@ -18,6 +18,8 @@ export type TextEditorPageSetup = {
   format: TextEditorPaperChoice;
   orientation: TextEditorPageOrientation;
   layout: TextEditorPageLayout;
+  /** Pages wider than the screen or pane shrink to fit it. Only set when on (Docs: by default). */
+  fitToScreen?: boolean;
 };
 
 type PageFormatSpec = {

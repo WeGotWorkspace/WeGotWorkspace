@@ -1,7 +1,7 @@
 import { CalendarDays, Hash } from "lucide-react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import { DEFAULT_MEET_CHANNEL_COLOR } from "@/meet-core/src/meet-channel-write";
 import {
   leftoverMeetingStartLabel,
@@ -11,7 +11,7 @@ import {
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;

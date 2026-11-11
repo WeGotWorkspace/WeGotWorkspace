@@ -1,4 +1,4 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { useDriveUploadRowState } from "@/drive-core/src/drive-upload-queue";
 import { cn } from "@/lib/utils";

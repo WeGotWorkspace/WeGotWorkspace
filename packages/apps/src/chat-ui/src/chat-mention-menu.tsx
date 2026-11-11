@@ -1,5 +1,5 @@
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
-import type { ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
+import type { ChatMentionPrincipal } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { filterChatMentionPrincipals } from "@/chat-ui/src/chat-mention-utils";
 import { cn } from "@/lib/utils";

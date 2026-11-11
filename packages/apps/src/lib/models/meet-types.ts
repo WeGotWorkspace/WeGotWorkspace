@@ -1,7 +1,7 @@
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import type {
   WgwMeetChatRequest,
   WgwMeetChatResponse,

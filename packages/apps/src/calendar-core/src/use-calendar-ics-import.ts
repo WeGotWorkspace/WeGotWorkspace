@@ -6,7 +6,7 @@ import {
   type CalendarIcsImportDestination,
 } from "@/calendar-core/src/calendar-ics-import";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarAPIOperations, CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarInfo } from "@/lib/models/calendar-types";
 
 export type UseCalendarIcsImportOptions = {
   operations?: CalendarAPIOperations;

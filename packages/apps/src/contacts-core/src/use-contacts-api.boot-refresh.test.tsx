@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { JmapMethodError } from "@/lib/jmap-client";
 import {

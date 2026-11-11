@@ -9,7 +9,7 @@ import type {
   DriveShareUpdateRequest,
   DriveSharedWithMeEntry,
 } from "@wgw/openapi-types/drive-types";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import {
   mockDriveShareAtPath,

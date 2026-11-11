@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { extensionFromFileName, parseFileSizeBytes } from "@/drive-core/src/drive-file-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import { extensionFromFileName, parseFileSizeBytes } from "@/lib/files/file-name-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import {
   decodeDocsPreviewContent,

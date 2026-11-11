@@ -20,7 +20,7 @@ export type {
   ContactCardCreate,
   ContactCardImportResponse,
   ContactCardPatch,
-} from "./contacts-types";
+} from "@/lib/models/contacts-types";
 export {
   defaultContactsLabels,
   mergeContactsLabels,

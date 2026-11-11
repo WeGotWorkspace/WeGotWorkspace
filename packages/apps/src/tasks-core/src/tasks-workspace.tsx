@@ -21,8 +21,8 @@ import {
   filterSharePrincipals,
   sharePrincipalsFromDirectory,
   viewerHasNoTeam,
-} from "@/share-ui/collection-share";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import type { TasksWorkspaceProps } from "@/tasks-core/src/tasks-workspace-props";
 import {
@@ -152,6 +152,7 @@ export function TasksWorkspace({
     workspaceLayoutRef,
     searchInputRef,
     confirmDialog,
+    requestMoveTask,
     activeId,
     activeTask,
     closeTask,
@@ -404,6 +405,7 @@ export function TasksWorkspace({
               }}
               onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
+              onConfirmMove={requestMoveTask}
             />
           ) : (
             <CollectionState icon={<ListTodo className="size-12" />}>

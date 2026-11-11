@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CALENDAR_MEET_LINK_KEY } from "@/calendar-core/src/calendar-meet-link";
+import { CALENDAR_MEET_LINK_KEY } from "@/lib/meetings/calendar-meet-link";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { createMeetChatOperations } from "@/lib/api/mock/meet-chat-operations";

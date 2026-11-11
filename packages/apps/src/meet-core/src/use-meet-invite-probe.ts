@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import type { MeetAPIOperations } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations } from "@/lib/models/meet-types";
 import {
   meetInviteStateFromRoomStatus,
   meetRoomStatusAllowsHost,
   type MeetInviteProbeState,
-} from "@/meet-core/src/meet-invite-status";
+} from "@/lib/meetings/meet-invite-status";
 
 export function useMeetInviteProbe(args: {
   invitedRoom: string | null;

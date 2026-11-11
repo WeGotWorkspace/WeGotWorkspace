@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import type {
   ChatChannel as WgwChatChannel,
   ChatChannelChangesResponse,
@@ -15,22 +16,13 @@ import type {
   MeetChannel,
   MeetChannelKind,
   MeetChannelRights,
-} from "@/meet-core/src/meet-types";
-import type { CollectionShareWith } from "@/share-ui/collection-share";
+} from "@/lib/models/meet-types";
+import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 
 export type { WgwChatChannel, WgwChatMessage };
 
-export class MeetChatRequestError extends Error {
-  status: number;
-  code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+export class MeetChatRequestError extends ApiError {}
 
 export function meetChatHttpStatus(error: unknown): number | null {
   const status = (error as { status?: unknown } | undefined)?.status;

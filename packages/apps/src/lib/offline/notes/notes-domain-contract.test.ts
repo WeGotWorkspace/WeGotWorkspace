@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 import {
   notesHybridDomainOperations,

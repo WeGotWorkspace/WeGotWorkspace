@@ -1,6 +1,6 @@
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { rememberOfflineTasksUsername } from "@/lib/offline/offline-session";
-import type { Task, TaskList, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TaskPatch } from "@/lib/models/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import {

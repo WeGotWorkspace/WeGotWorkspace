@@ -1,4 +1,4 @@
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import {
   addressBookChanges,
   connectedContacts,

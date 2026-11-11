@@ -7,7 +7,7 @@ import {
   type CalendarEvent,
 } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import {
   alignOfflineEventIds,
   calendarInfosToEngineMap,

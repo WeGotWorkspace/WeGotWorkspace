@@ -12,7 +12,7 @@ import {
   isDirectoryCalendarAttendee,
   workspaceOnlySharePrincipals,
 } from "@/calendar-core/src/calendar-meet-channel-email";
-import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
 
 const ORIGIN = "https://workspace.example.com";
 const CHANNEL = `${ORIGIN}/meet/channels/chat-01h455vb4pa9nnrjpznsav8hva`;

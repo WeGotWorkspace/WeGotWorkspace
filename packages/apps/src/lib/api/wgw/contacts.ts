@@ -1,9 +1,10 @@
+import { ApiError } from "@/lib/api/api-error";
 import type {
   AddressBook,
   ContactCard,
   ContactCardImportResponse,
 } from "@wgw/openapi-types/contacts-types";
-import type { AddressBookMutationPatch } from "@/contacts-core/src/contacts-types";
+import type { AddressBookMutationPatch } from "@/lib/models/contacts-types";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
@@ -31,14 +32,7 @@ import {
   checkNowAfterWrite,
 } from "@/lib/offline/core/collection-check-now";
 
-export class ContactsRequestError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
+export class ContactsRequestError extends ApiError {}
 
 /**
  * JmapClient fetches sessionUrl and the session's absolute apiUrl verbatim;

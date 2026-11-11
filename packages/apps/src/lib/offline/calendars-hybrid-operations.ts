@@ -6,7 +6,7 @@ import type {
   CalendarInfo,
   CalendarPatch,
   CalendarSubscriptionDraft,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import {

@@ -8,7 +8,7 @@
  * Default `md` = 36px — action bar / view header / event form density.
  * Spacious forms use `lg` (40px); hero CTAs use `xl` (44px).
  * xs/sm/md stay below 1rem on every screen: phones keep the desktop size (the
- * iOS focus zoom is stopped once, in `public/assets/theme-boot.js`). Do not
+ * iOS focus zoom is stopped once, by the viewport tag in `index.html`). Do not
  * re-set font-size here or at product callsites.
  * Radius stays global `--control-radius` on the shared surface — do not remap
  * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.

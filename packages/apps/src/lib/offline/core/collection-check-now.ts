@@ -13,7 +13,7 @@ import {
   readOfflineTasksUsername,
 } from "@/lib/offline/offline-session";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
-import { isShareGroupId, type CollectionShareWith } from "@/share-ui/collection-share";
+import { isShareGroupId, type CollectionShareWith } from "@/lib/sharing/collection-share";
 
 /**
  * Silent news over the mesh (#1662): after a write to a collection, nudge the

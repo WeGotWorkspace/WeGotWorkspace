@@ -3,8 +3,8 @@ import {
   SHARED_WITH_ME_UI_ROOT,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
-} from "@/drive-core/src/drive-path-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+} from "@/lib/files/drive-path-utils";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 
 export function isDriveUnderTrash(parent: string) {
   return parent === DRIVE_TRASH_UI_PATH || parent.startsWith(`${DRIVE_TRASH_UI_PATH}/`);
