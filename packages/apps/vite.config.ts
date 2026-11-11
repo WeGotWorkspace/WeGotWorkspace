@@ -25,9 +25,15 @@ function resolveWgwVitePort(raw: string | undefined, defaultPort: number, envVar
   return parsed;
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const wgwApiProxy = wgwApiViteProxy(mode);
   const wgwEnv = loadEnv(mode, wgwMonorepoRoot, "WGW_");
+  // A production app build drops every mock factory gated on `mocksInBuild`
+  // (#1628). Storybook overrides this in `.storybook/main.ts`. Building with
+  // VITE_WGW_USE_LIVE_API=0 keeps the mocks, as before.
+  const viteEnv = loadEnv(mode, wgwMonorepoRoot, "VITE_");
+  const mockApiRequested = /^(0|false|no|off)$/i.test(viteEnv.VITE_WGW_USE_LIVE_API?.trim() ?? "");
+  const mocksInBuild = !(command === "build" && mode === "production" && !mockApiRequested);
   const devPort = resolveWgwVitePort(
     wgwEnv.WGW_VITE_DEV_PORT,
     DEFAULT_DEV_PORT,
@@ -43,6 +49,9 @@ export default defineConfig(({ mode }) => {
     // Absolute base so SPA deep links (e.g. /contacts/all/:id) resolve /assets/* correctly on refresh.
     base: "/",
     envDir: wgwMonorepoRoot,
+    define: {
+      __WGW_MOCKS__: JSON.stringify(mocksInBuild),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
@@ -96,6 +105,11 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       rollupOptions: {
+        // Demo modules only build data; once their factories are gated off
+        // (`mocksInBuild`), nothing should keep them alive for their top-level code.
+        treeshake: {
+          moduleSideEffects: (id) => !id.includes("/src/lib/api/mock/"),
+        },
         output: {
           manualChunks(id) {
             if (id.includes("scroll-timeline-polyfill")) {

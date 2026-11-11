@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { wgwFetchPrincipal, wgwIsGuestSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
@@ -78,10 +82,12 @@ export function createWgwMeetGuestOrHostApiSource(_room: string | null): MeetApi
 export function createDefaultMeetApiSource(): MeetApiSource {
   return createWorkspaceSource<MeetApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createMeetAppBootstrap()),
-      createOperations: () => undefined,
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createMeetAppBootstrap()),
+          createOperations: () => undefined,
+        })
+      : mocksNotInBuild,
     createLiveSource: createWgwMeetApiSource,
   });
 }

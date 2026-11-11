@@ -360,6 +360,10 @@ jobs:
       - name: Build (Turbo JS, then Composer prune and sync)
         run: pnpm run build
 
+      # #1628: demo data from src/lib/api/mock/ must not reach the production bundle.
+      - name: No mock data in the app bundle
+        run: node tools/check-dist-mock-markers.mjs
+
   # v0.1.99 → this SHA with seeded users, calendars, notes, tasks, drive files, and contacts.
   # The merge queue (and pull requests labeled run-full-ci) only. Pushes to
   # main use the install workflow's upgrade job, which targets the candidate

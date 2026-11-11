@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import {
   createInstallerAppBootstrap,
   type InstallerAppBootstrap,
@@ -36,13 +40,15 @@ export function createWgwInstallerApiSource(): InstallerApiSource {
 export function createDefaultInstallerApiSource(): InstallerApiSource {
   return createWorkspaceSource<InstallerApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createInstallerAppBootstrap()),
-      createOperations: (_source, bootstrap) => {
-        const seed = bootstrap?.data.state ?? createInstallerAppBootstrap().data.state;
-        return seed ? createMockInstallerOperations(seed) : undefined;
-      },
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createInstallerAppBootstrap()),
+          createOperations: (_source, bootstrap) => {
+            const seed = bootstrap?.data.state ?? createInstallerAppBootstrap().data.state;
+            return seed ? createMockInstallerOperations(seed) : undefined;
+          },
+        })
+      : mocksNotInBuild,
     createLiveSource: createWgwInstallerApiSource,
   });
 }

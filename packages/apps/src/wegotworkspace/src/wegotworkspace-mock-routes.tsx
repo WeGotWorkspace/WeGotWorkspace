@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { WeGotWorkspaceHome } from "@/wegotworkspace/src/wegotworkspace-home";
 import type { RouterHistory } from "@tanstack/react-router";
 import { useAdminRouteSync } from "@/admin-core/src/use-admin-route-sync";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
@@ -154,6 +155,7 @@ function MockInstallerRoute() {
 }
 
 export const wegotworkspaceMockRoutes: WeGotWorkspaceMockRoutes = {
+  home: WeGotWorkspaceHome,
   notes: MockNotesRoute,
   drive: MockDriveRoute,
   docs: MockDocsRoute,

@@ -1,5 +1,6 @@
 import { type WorkspaceSession, workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
+import { mocksInBuild } from "@/lib/api/create-workspace-source";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { readLoggedOutMarker, setLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
@@ -14,14 +15,13 @@ import { WgwRequestError } from "@/lib/api/wgw/request-error";
 
 export { WgwSessionRenewalError, WgwSignInRequiredError };
 
-/** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
+/** When true, routes load from WeGotWorkspace instead of mock adapters (always in a production build, #1628). */
 export function wgwLiveApiEnabled(): boolean {
+  if (!mocksInBuild) return true;
   const runtime = activeWgwApiRuntime();
   if (runtime) return runtime.useLiveApi;
-  const v = parseEnvBoolean(import.meta.env.VITE_WGW_USE_LIVE_API as string | undefined);
-  if (v !== null) return v;
-  // In bundled/runtime environments we should talk to the real API by default.
-  return Boolean(import.meta.env.PROD);
+  const fromEnv = parseEnvBoolean(import.meta.env.VITE_WGW_USE_LIVE_API as string | undefined);
+  return fromEnv ?? Boolean(import.meta.env.PROD); // Bundled builds use the real API by default.
 }
 
 function parseEnvBoolean(value: string | undefined): boolean | null {

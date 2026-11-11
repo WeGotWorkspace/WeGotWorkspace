@@ -39,6 +39,8 @@ const config: StorybookConfig = {
     return {
       ...baseConfig,
       plugins: [...(baseConfig.plugins ?? [])],
+      /** `storybook build` is a production build too; stories keep their mock data (#1628). */
+      define: { ...baseConfig.define, __WGW_MOCKS__: "true" },
       /** Load `VITE_*` / `WGW_*` from monorepo root `.env.local` (see `packages/apps/.env.example`). */
       envDir: wgwMonorepoRoot,
       server: {

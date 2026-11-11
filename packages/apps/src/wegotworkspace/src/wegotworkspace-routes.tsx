@@ -18,7 +18,6 @@ import {
 } from "@/lib/meetings/meet-route-search";
 import { MEET_MEETINGS_ROUTE } from "@/meet-core/src/meet-chat-route";
 import { validateTasksRouteSearch } from "@/tasks-core/src/tasks-route-search";
-import { WeGotWorkspaceHome } from "@/wegotworkspace/src/wegotworkspace-home";
 import { WeGotWorkspaceLiveHome } from "@/wegotworkspace/src/wegotworkspace-live-home";
 import {
   loginRouteBeforeLoad,
@@ -78,6 +77,7 @@ export type WeGotWorkspaceRouteMode = "mock" | "live";
 
 /** Demo route components for mock mode (`wegotworkspace-mock-routes.tsx`). */
 export type WeGotWorkspaceMockRoutes = Record<
+  | "home"
   | "notes"
   | "drive"
   | "docs"
@@ -123,7 +123,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode, mockRoutes?: WeGotWorkspa
     throw new Error("Mock mode needs mockRoutes (see wegotworkspace-mock-routes.tsx).");
   }
   const mock = mockRoutes as WeGotWorkspaceMockRoutes;
-  const Home = isLive ? WeGotWorkspaceLiveHome : WeGotWorkspaceHome;
+  const Home = isLive ? WeGotWorkspaceLiveHome : mock.home;
 
   const indexRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
