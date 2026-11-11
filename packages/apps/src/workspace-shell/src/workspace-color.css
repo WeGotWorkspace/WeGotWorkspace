@@ -9,28 +9,27 @@
  *
  * Defaults use `:where` (zero specificity). Products set `--workspace-icon-surface`
  * on their class. The rail is `--workspace-sidebar-surface` (Soft), not an icon mix.
+ * One `:where()` per host, never `:where(a, b, …)`: see `workspace-derive.css`.
  */
-:where(
-  .admin-workspace,
-  .settings-workspace,
-  .notes-workspace,
-  .tasks-workspace,
-  .calendar-workspace,
-  .contacts-workspace,
-  .drive-workspace,
-  .docs-workspace,
-  .meet-workspace,
-  .admin-dialog-surface,
-  .docs-dialog-surface,
-  .notes-dialog-surface,
-  .tasks-dialog-surface,
-  .calendar-dialog-surface,
-  .contacts-dialog-surface,
-  .drive-dialog-surface,
-  .meet-channel-dialog,
-  .meet-call-dialog,
-  .meet-device-popover
-) {
+:where(.admin-workspace),
+:where(.settings-workspace),
+:where(.notes-workspace),
+:where(.tasks-workspace),
+:where(.calendar-workspace),
+:where(.contacts-workspace),
+:where(.drive-workspace),
+:where(.docs-workspace),
+:where(.meet-workspace),
+:where(.admin-dialog-surface),
+:where(.docs-dialog-surface),
+:where(.notes-dialog-surface),
+:where(.tasks-dialog-surface),
+:where(.calendar-dialog-surface),
+:where(.contacts-dialog-surface),
+:where(.drive-dialog-surface),
+:where(.meet-channel-dialog),
+:where(.meet-call-dialog),
+:where(.meet-device-popover) {
   --sidebar-bg: var(--workspace-sidebar-surface);
   --sidebar-on: var(--workspace-sidebar-foreground);
   --popover: var(--workspace-surface);
@@ -43,28 +42,26 @@
   --workspace-detail-bg: var(--workspace-surface);
 }
 
-:where(
-  .admin-workspace,
-  .settings-workspace,
-  .notes-workspace,
-  .tasks-workspace,
-  .calendar-workspace,
-  .contacts-workspace,
-  .drive-workspace,
-  .docs-workspace,
-  .meet-workspace,
-  .admin-dialog-surface,
-  .docs-dialog-surface,
-  .notes-dialog-surface,
-  .tasks-dialog-surface,
-  .calendar-dialog-surface,
-  .contacts-dialog-surface,
-  .drive-dialog-surface,
-  .meet-channel-dialog,
-  .meet-call-dialog,
-  .meet-device-popover,
-  .app-sidebar
-) {
+:where(.admin-workspace),
+:where(.settings-workspace),
+:where(.notes-workspace),
+:where(.tasks-workspace),
+:where(.calendar-workspace),
+:where(.contacts-workspace),
+:where(.drive-workspace),
+:where(.docs-workspace),
+:where(.meet-workspace),
+:where(.admin-dialog-surface),
+:where(.docs-dialog-surface),
+:where(.notes-dialog-surface),
+:where(.tasks-dialog-surface),
+:where(.calendar-dialog-surface),
+:where(.contacts-dialog-surface),
+:where(.drive-dialog-surface),
+:where(.meet-channel-dialog),
+:where(.meet-call-dialog),
+:where(.meet-device-popover),
+:where(.app-sidebar) {
   --app-sidebar-bg: var(--workspace-sidebar-surface);
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-sidebar-foreground);
