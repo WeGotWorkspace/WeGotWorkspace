@@ -12,7 +12,7 @@ import {
 import { driveUploadStorySnapshot } from "@/drive-core/src/drive-upload-story-fixtures";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { useDrivePaneStoryController } from "@/drive-core/stories/drive-pane-stories.harness";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import type { DriveUploadFolderView } from "@/lib/offline/drive/upload/drive-upload-subscription";

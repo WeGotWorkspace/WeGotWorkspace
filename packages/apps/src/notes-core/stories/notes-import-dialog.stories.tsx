@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent } from "storybook/test";
 import type { Note } from "@/lib/models/note";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import {
   NotesImportDialog,
   type NotesImportDialogProps,

@@ -7,7 +7,7 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import { createDriveBrowserStoryProps } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { driveStoryParameters, STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 
 const MODIFIED = new Date(2026, 9, 28, 12).getTime();
 

@@ -16,7 +16,7 @@ Derived from [plan.md](./plan.md).
 ## chunk-b-shared-ui
 
 - Owner: builder session
-- `packages/apps/src/lib/ics-import/ics-file.ts`, `ics-import-dialog.tsx`, `ics-import-dialog.css`.
+- `packages/apps/src/lib/ics-import/ics-file.ts`; the dialog in `packages/apps/src/import-dialog/src/ics-import-dialog.tsx` and `.css`.
 - `packages/apps/src/calendar-core/src/calendar-ics-import.ts`, `calendar-import-dialog.tsx` — use the shared pieces.
 - Verify: `pnpm --filter @wgw/apps exec vitest run src/calendar-core src/lib/ics-import`
 

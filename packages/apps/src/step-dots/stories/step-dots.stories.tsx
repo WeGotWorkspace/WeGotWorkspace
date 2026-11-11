@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import { StepDots } from "@/step-dots/src/step-dots";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 
 const STEPS = ["space", "conflicts", "keepOffline"] as const;
 const LABELS = { space: "Server space", conflicts: "Name conflicts", keepOffline: "Keep offline" };

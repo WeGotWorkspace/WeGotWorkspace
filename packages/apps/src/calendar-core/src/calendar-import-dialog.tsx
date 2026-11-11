@@ -9,7 +9,7 @@ import {
 import type { CalendarIcsImportDestination } from "@/calendar-core/src/calendar-ics-import";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
-import { IcsImportDialog } from "@/lib/ics-import/ics-import-dialog";
+import { IcsImportDialog } from "@/import-dialog/src/ics-import-dialog";
 
 export type CalendarImportDialogProps = {
   open: boolean;

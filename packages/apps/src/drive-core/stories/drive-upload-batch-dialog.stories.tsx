@@ -5,7 +5,7 @@ import {
   type DriveUploadBatchRequest,
 } from "@/drive-core/src/drive-upload-batch-dialog";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import type { DriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
 
 const MB = 1024 * 1024;

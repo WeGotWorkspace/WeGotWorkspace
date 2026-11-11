@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";

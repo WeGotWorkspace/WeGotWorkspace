@@ -62,7 +62,6 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { resolveDetailFilePreview } from "@/lib/file-preview/file-preview-utils";
-import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
 import "@/drive-core/src/drive-workspace.css";
 
 export function DriveWorkspace({
@@ -75,6 +74,7 @@ export function DriveWorkspace({
   view,
   onViewChange,
   onOpenDocsFile,
+  saveAsMarkdown,
   onOpenShare,
   onLogout,
   className,
@@ -158,18 +158,16 @@ export function DriveWorkspace({
   useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
   // Same gate as New Doc: the new `.md` lands next to the Word file (#1983).
-  const saveAsMarkdown = useSaveAsMarkdownAction({
-    enabled: controller.structureEnabled && controller.uploadEnabled && !wgwIsGuestSession(),
-    onOpenDocsFile,
-    username: controller.currentUsername,
-    dialogSurfaceClassName: "drive-dialog-surface",
-  });
-  const saveAsMarkdownActionsFor = saveAsMarkdown.actionsFor;
+  const saveAsMarkdownActionsFor =
+    controller.structureEnabled && controller.uploadEnabled ? saveAsMarkdown?.actionsFor : null;
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
       file.upload
         ? uploadPlaceholderActions(file)
-        : [...(offlineEnabled ? extraFileActions(file) : []), ...saveAsMarkdownActionsFor(file)],
+        : [
+            ...(offlineEnabled ? extraFileActions(file) : []),
+            ...(saveAsMarkdownActionsFor?.(file) ?? []),
+          ],
     [extraFileActions, offlineEnabled, saveAsMarkdownActionsFor, uploadPlaceholderActions],
   );
 
@@ -442,7 +440,7 @@ export function DriveWorkspace({
             shareOperations={shareOperations}
             shareDialog={shareDialog}
           />
-          {saveAsMarkdown.dialogs}
+          {saveAsMarkdown?.dialogs}
           {controller.uploadEnabled ? (
             <input
               ref={controller.fileInputRef}

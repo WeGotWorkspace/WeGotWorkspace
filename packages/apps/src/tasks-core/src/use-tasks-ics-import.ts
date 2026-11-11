@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { icsHasComponent, readIcsFile } from "@/lib/ics-import/ics-file";
-import type { IcsImportDestination } from "@/lib/ics-import/ics-import-dialog";
+import type { IcsImportDestination } from "@/lib/ics-import/ics-file";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { TASKS_IMPORT_OFFLINE_MESSAGE } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { runTasksIcsImport, tasksImportNeedsResultStep } from "@/tasks-core/src/tasks-ics-import";

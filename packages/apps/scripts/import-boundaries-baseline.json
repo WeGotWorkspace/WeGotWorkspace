@@ -48,8 +48,6 @@
     "share-ui -> drive-core": 1,
     "share-ui -> login-core": 1,
     "sidebar-segmented-new-menu -> settings-core": 1,
-    "step-dots -> drive-core": 1,
-    "stepper-dialog -> drive-core": 1,
     "tasks-core -> calendar-core": 2,
     "tasks-core -> notes-core": 3,
     "text-editor-core -> docs-core": 35,

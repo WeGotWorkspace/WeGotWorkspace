@@ -1,5 +1,5 @@
 import type { TaskImportError } from "@wgw/openapi-types/tasks-types";
-import type { IcsImportDestination } from "@/lib/ics-import/ics-import-dialog";
+import type { IcsImportDestination } from "@/lib/ics-import/ics-file";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { TaskImportResponse, TaskList, TasksAPIOperations } from "@/lib/models/tasks-types";
 

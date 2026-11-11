@@ -14,14 +14,14 @@ import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { CalendarPickerMenuItem } from "@/lib/calendar-event-calendar-picker";
-import { inferCollectionNameFromIcsFileName } from "@/lib/ics-import/ics-file";
+import {
+  inferCollectionNameFromIcsFileName,
+  type IcsImportDestination,
+} from "@/lib/ics-import/ics-file";
 import "./ics-import-dialog.css";
 
 /** Destination value for "create a new collection" in the destination menu. */
 export const NEW_COLLECTION_IMPORT_VALUE = "__new_collection__";
-
-export type IcsImportDestination =
-  { mode: "existing"; collectionId: string } | { mode: "create"; name: string; color: string };
 
 /** A writable collection (calendar or task list) the file can go into. */
 export type IcsImportCollection = {

@@ -1,9 +1,6 @@
 import { useMemo } from "react";
-import {
-  IcsImportDialog,
-  type IcsImportDestination,
-  type IcsImportDialogResult,
-} from "@/lib/ics-import/ics-import-dialog";
+import { IcsImportDialog, type IcsImportDialogResult } from "@/import-dialog/src/ics-import-dialog";
+import type { IcsImportDestination } from "@/lib/ics-import/ics-file";
 import { tasksImportErrorReason, tasksImportErrorTitle } from "@/tasks-core/src/tasks-ics-import";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";

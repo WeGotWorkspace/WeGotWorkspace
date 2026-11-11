@@ -1,6 +1,10 @@
 /** File-picker `accept` for ICS imports (Calendar and Tasks). */
 export const ICS_FILE_ACCEPT = ".ics,text/calendar";
 
+/** Where an ICS import goes: an existing calendar or task list, or a new one. */
+export type IcsImportDestination =
+  { mode: "existing"; collectionId: string } | { mode: "create"; name: string; color: string };
+
 export function isIcsFile(file: File): boolean {
   const name = file.name.toLowerCase();
   return name.endsWith(".ics") || name.endsWith(".ical") || file.type === "text/calendar";
