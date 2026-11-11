@@ -106,7 +106,8 @@ const LOCAL_SIGNATURE = 0x04034b50;
  * Reads the entries the way mammoth's JSZip does: from the central directory
  * (method, compressed size, local header offset), never from the local headers, so
  * what is counted is what gets inflated. Refuses entries that overlap, that read
- * more bytes than the file holds, or that outnumber the end record's count. Inflates every entry in 8 KiB slices (a
+ * more bytes than the file holds, or that outnumber the end record's count.
+ * Inflates every entry in 8 KiB slices (a
  * deflate stream expands about 1032:1 at most) and throws {@link TOO_LARGE} as soon as
  * the real output passes the cap. Only the parts the report reads are kept.
  */
