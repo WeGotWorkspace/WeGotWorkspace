@@ -1,7 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,
   filterVisibleCalendarEventsKeepingOverlay,

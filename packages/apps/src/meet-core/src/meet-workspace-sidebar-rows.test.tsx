@@ -8,7 +8,7 @@ import {
   MeetSidebarRows,
 } from "@/meet-core/src/meet-workspace-sidebar-rows";
 import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 const people: MeetDirectMessagePerson[] = [
   { id: "ada", displayName: "Ada Lovelace", channelId: "dm:ada" },

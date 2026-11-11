@@ -13,7 +13,7 @@
 
 import { Temporal } from "@js-temporal/polyfill";
 import { todayISODate } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 
 export const DEFAULT_CALENDAR_VIEW: CalendarViewId = "month";
 export const DEFAULT_CALENDAR_PRESENTATION: CalendarPresentation = "grid";

@@ -4,13 +4,13 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
 import { driveRowsById } from "@/drive-core/src/use-drive-all-files";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   apiPathFromUiPath,
   normalizeApiVirtualPath,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import { resolveCreateMarkdownDialogDefaults } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { driveCreateJumpsToPersonal } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveFileFromEntry, optimisticDriveFolder } from "@/drive-core/src/drive-file-utils";

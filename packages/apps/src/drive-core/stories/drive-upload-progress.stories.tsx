@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";

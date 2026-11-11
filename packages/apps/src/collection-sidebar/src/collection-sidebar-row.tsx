@@ -36,8 +36,6 @@ export type CollectionSidebarRowProps = {
   editLabel?: string;
   /** Leading mark in the shared leading column (e.g. a group icon). */
   leading?: ReactNode;
-  /** Inline before the name, inside the select button (e.g. a person's avatar). */
-  nameLeading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
   /** Child under a parent collection (e.g. contacts group under a book). No extra indent. */
@@ -106,7 +104,6 @@ export function CollectionSidebarRow({
   onEdit,
   editLabel = "Edit",
   leading,
-  nameLeading,
   badges,
   trailing,
   nested = false,
@@ -173,11 +170,6 @@ export function CollectionSidebarRow({
         {...(onSelect ? sidebarSelectMarker : undefined)}
       >
         <span className={bem(blocks, "__title")}>
-          {nameLeading ? (
-            <span className={bem(blocks, "__name-leading")} aria-hidden>
-              {nameLeading}
-            </span>
-          ) : null}
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
         </span>

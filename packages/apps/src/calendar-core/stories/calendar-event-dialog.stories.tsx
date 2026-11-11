@@ -2,12 +2,18 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
+import { Temporal } from "@js-temporal/polyfill";
 import {
+  createIntentToForm,
   emptyCalendarEventForm,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
+import { jmapTeamAvailabilitySource } from "@/calendar-core/src/calendar-invitee-availability";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import { TeamAvailabilityProvider } from "@/calendar-core/src/use-invitee-availability";
+import { JmapClient } from "@/lib/jmap-client";
+import { MockJmapServer } from "@/lib/jmap-client/mock/MockJmapServer";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 
 const stubMeetOperations = {
@@ -87,6 +93,27 @@ export const Default: Story = {
     await expect(
       canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationPlaceholder),
     ).toBeTruthy();
+  },
+};
+
+/** #1927: a new all-day event starts as "Show as: Free" with the time-off hint. */
+export const AllDayFree: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    form: {
+      ...createIntentToForm("default", {
+        start: Temporal.PlainDateTime.from("2033-01-12T00:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-13T00:00:00"),
+        allDay: true,
+      }),
+      title: "Release day",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const showAs = canvas.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs });
+    await expect(showAs).toHaveTextContent(defaultCalendarLabels.eventShowAsFree);
+    await expect(canvas.getByText(defaultCalendarLabels.eventShowAsAllDayFreeHint)).toBeTruthy();
   },
 };
 
@@ -311,5 +338,85 @@ export const WithInvitees: Story = {
         },
       ],
     },
+  },
+};
+
+/** Mock JMAP (`urn:wgw:jmap:availability`) for the busy invitee story (#1614). */
+function inviteeAvailabilitySource() {
+  const server = new MockJmapServer();
+  const team = [
+    { id: "wouter", name: "Wouter", isSelf: false, version: "1" },
+    { id: "carol", name: "Carol", isSelf: false, version: "1" },
+    { id: "dana", name: "Dana", isSelf: false, version: "1" },
+  ];
+  for (const member of team) server.availability.seedTeamMember(member);
+  server.availability.seedBusyPeriods("wouter", [
+    {
+      start: "2033-01-12T10:30:00",
+      timeZone: null,
+      duration: "PT1H",
+      showWithoutTime: false,
+      title: "Design review",
+    },
+  ]);
+  // Dana's calendar could not be read in full: plain tag, never a warning.
+  server.availability.seedBusyPeriods("dana", [], false);
+  return jmapTeamAvailabilitySource(
+    new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch }),
+  );
+}
+
+/**
+ * #1614: Wouter is busy, so his participant tag takes the warning wash and icon.
+ * Carol (free), Dana (partial data) and guests keep plain tags.
+ */
+export const WithInviteeAvailability: Story = {
+  tags: ["vitest-ci"],
+  decorators: [
+    function WithTeamAvailability(StoryComponent) {
+      const [source] = useState(inviteeAvailabilitySource);
+      return (
+        <TeamAvailabilityProvider source={source}>
+          <StoryComponent />
+        </TeamAvailabilityProvider>
+      );
+    },
+  ],
+  args: {
+    ...WithInvitees.args,
+    invitees: [
+      { username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" },
+      { username: "carol", email: "carol@example.test", name: "Carol" },
+      { username: "dana", email: "dana@example.test", name: "Dana" },
+    ],
+    form: {
+      ...WithInvitees.args!.form!,
+      ...emptyCalendarEventForm("default", "2033-01-12", "10:00"),
+      title: "Planning",
+      attendees: WithInvitees.args!.form!.attendees,
+    },
+  },
+  render: function Render(args) {
+    const [form, setForm] = useState<CalendarEventFormValue>(args.form);
+    return <CalendarEventDialog {...args} form={form} onChange={setForm} />;
+  },
+  play: async ({ canvasElement }) => {
+    const body = canvasElement.ownerDocument.body;
+    const busyNames = () =>
+      [...body.querySelectorAll(".calendar-invitees-card__chip--busy")].map((node) =>
+        node.getAttribute("aria-label"),
+      );
+    const busyStatus = defaultCalendarLabels.eventAttendeesAvailabilityBusyStatus;
+    await waitFor(
+      () => {
+        const names = busyNames();
+        expect(names).toHaveLength(1);
+        expect(names[0]).toMatch(new RegExp(`^Wouter, .*, ${busyStatus}$`));
+      },
+      { timeout: 4000 },
+    );
+    expect(
+      body.querySelector(".calendar-invitees-card__chip--busy .user-chip__adornment svg"),
+    ).not.toBeNull();
   },
 };

@@ -4,7 +4,7 @@ import {
 } from "@/contacts-core/src/contacts-address-book-select";
 import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 /**
  * The contact's address book above its name (Notes-style ghost switcher). It

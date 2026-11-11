@@ -19,7 +19,7 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
+import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/lib/sharing/share-access-map";
 import { formatSharePathLabel, noTeamYetCopy, shareLabels } from "@/share-ui/share-labels";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";

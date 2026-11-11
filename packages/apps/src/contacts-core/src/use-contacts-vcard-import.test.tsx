@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
 
 const toastApi = {

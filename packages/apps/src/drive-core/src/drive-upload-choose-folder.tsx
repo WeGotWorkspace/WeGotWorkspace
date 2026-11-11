@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
-import { apiPathFromUiPath } from "@/drive-core/src/drive-path-utils";
+import { apiPathFromUiPath } from "@/lib/files/drive-path-utils";
 import { driveUploadIssueLabels as L } from "@/drive-core/src/drive-upload-issue-labels";
 import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
 import type { DriveControllerState } from "@/drive-core/src/use-drive-controller";

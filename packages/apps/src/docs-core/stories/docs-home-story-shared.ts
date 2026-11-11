@@ -1,6 +1,6 @@
 import type { WgwUnifiedSearchData, WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { mapDocsHomeResults, type DocsHomeFetcher } from "@/docs-core/src/use-docs-home-list";
 
 export const docsHomeStorySession: WorkspaceSession = {

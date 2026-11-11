@@ -1,5 +1,5 @@
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 
 export function meetCallBarRoster<T extends { id: string }>({
   joined,

@@ -1,6 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactsAPIOperations, ContactsUIData } from "@/contacts-core/src/contacts-types";
+import type { ContactsAPIOperations, ContactsUIData } from "@/lib/models/contacts-types";
 
 export type ContactsWorkspaceProps = {
   data: ContactsUIData;

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { resolveEventEnd } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 
 vi.mock("@/lib/jmap-client", async () => {

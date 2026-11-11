@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DOCS_COLLAB_TEXT_EXTENSIONS,
   isDocsCollabEditablePath,
-} from "@/docs-core/src/docs-collab-text-files";
+} from "@/lib/files/docs-collab-text-files";
 import {
   docsEditorFormatFromFileName,
   isDocsPlainTextFile,

@@ -14,7 +14,7 @@ import {
 import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";
 import { MeetMicLevelBar } from "@/meet-core/src/meet-mic-level-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannelKind } from "@/meet-core/src/meet-types";
+import type { MeetChannelKind } from "@/lib/models/meet-types";
 import { useMeetMicLevel } from "@/meet-core/src/use-meet-mic-level";
 
 export type MeetGuestLobbyProps = MeetLobbyPaneProps & {

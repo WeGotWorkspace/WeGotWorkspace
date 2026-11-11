@@ -1,4 +1,4 @@
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 import { resolveHiddenCollectionIds } from "@/collection-sidebar/src/collection-hidden-ids";
 
 export const CALENDAR_VIEW_PREFS_STORAGE_KEY = "wgw.ui.calendar.viewPrefs";

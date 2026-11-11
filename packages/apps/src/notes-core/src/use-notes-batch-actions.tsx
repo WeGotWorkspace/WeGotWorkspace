@@ -5,7 +5,7 @@ import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
 import { persistNoteOrDropGone } from "./notes-persist-access";
-import type { NotesAPIOperations } from "./notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { completedRows, sendArchiveState, sendNoteFields } from "./notes-undo-writes";
 
 type NotesDeleteConfirmCopy = {

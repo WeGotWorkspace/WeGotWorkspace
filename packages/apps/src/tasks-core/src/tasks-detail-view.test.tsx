@@ -5,7 +5,7 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TASK_DETAIL_SAVE_DEBOUNCE_MS, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { taskToFormValue } from "@/tasks-core/src/tasks-task-form";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { rebaseTaskForm } from "@/tasks-core/src/use-task-edit-form";
 import { TooltipProvider } from "@/ui/tooltip";
 

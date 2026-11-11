@@ -1,6 +1,6 @@
 import { CircleAlert, CircleHelp, CloudOff } from "lucide-react";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { useDriveUploadRowState } from "@/drive-core/src/drive-upload-queue";
 import type { DriveUploadRowState } from "@/drive-core/src/drive-upload-row-state";
 import { ProgressRing } from "@/ui/progress";

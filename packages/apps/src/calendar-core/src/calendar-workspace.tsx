@@ -84,7 +84,7 @@ import {
   organizerAddress,
   sessionEventInviteeStatus,
   type CalendarAttendee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import { occurrenceHasThisInstanceOverride } from "@/calendar-core/src/calendar-recurrence-scope";
 import {
   eventIsRecurringForRsvp,
@@ -92,7 +92,7 @@ import {
   rsvpRecurrenceIdForEvent,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
   canManageCalendarSharing,

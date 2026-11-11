@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { MyCalendarsSidebarSection } from "@/calendar-core/src/calendar-sidebar-rows";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 const calendars = [
   { id: "personal", name: "Personal", color: "#0ea5e9" },

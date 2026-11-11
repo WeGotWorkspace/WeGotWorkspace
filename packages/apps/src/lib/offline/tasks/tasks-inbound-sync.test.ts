@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap, type TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import {

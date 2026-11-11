@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { noteTagsEqual } from "@/notes-core/src/notes-note-utils";
 import {
   getNoteFromCache,

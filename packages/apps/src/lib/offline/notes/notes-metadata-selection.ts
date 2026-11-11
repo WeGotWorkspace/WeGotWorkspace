@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type { NoteMetadataField } from "@/notes-core/src/notes-types";
+import type { NoteMetadataField } from "@/lib/models/notes-types";
 
 export function baseUpdatedAt(note: Note): string | undefined {
   if (note.etag) return note.etag;

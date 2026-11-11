@@ -1,4 +1,4 @@
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { parentAndName } from "@/lib/files/api-path";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";

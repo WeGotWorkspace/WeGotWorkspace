@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMeetChatOperations } from "@/lib/api/mock/meet-chat-operations";
-import type { ChatLinkPreview } from "@/meet-core/src/meet-types";
+import type { ChatLinkPreview } from "@/lib/models/meet-types";
 
 const preview: ChatLinkPreview = {
   url: "https://example.com/blog",

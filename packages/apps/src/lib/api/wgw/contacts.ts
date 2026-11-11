@@ -4,7 +4,7 @@ import type {
   ContactCard,
   ContactCardImportResponse,
 } from "@wgw/openapi-types/contacts-types";
-import type { AddressBookMutationPatch } from "@/contacts-core/src/contacts-types";
+import type { AddressBookMutationPatch } from "@/lib/models/contacts-types";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {

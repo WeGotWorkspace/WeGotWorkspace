@@ -1,10 +1,11 @@
 import { Bell, StickyNote, Users } from "lucide-react";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { useInviteeAvailability } from "@/calendar-core/src/use-invitee-availability";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Textarea } from "@/ui/textarea";
@@ -31,6 +32,8 @@ export type CalendarEventFormSecondaryProps = {
   hideInvitees?: boolean;
   hideAlarms?: boolean;
   hideNotes?: boolean;
+  /** Saved event being edited, for the invitee busy warnings (#1614). */
+  availabilityEventId?: string;
   onFieldChange: CalendarEventFormFieldChange;
 };
 
@@ -52,8 +55,16 @@ export function CalendarEventFormSecondary({
   hideInvitees = false,
   hideAlarms = false,
   hideNotes = false,
+  availabilityEventId,
   onFieldChange,
 }: CalendarEventFormSecondaryProps) {
+  // Planning aid for whoever edits the event; a read-only view asks nothing.
+  const availability = useInviteeAvailability({
+    form,
+    invitees,
+    eventId: availabilityEventId,
+    enabled: !hideInvitees && !readOnly,
+  });
   return (
     <div className="calendar-event-dialog__secondary">
       <div className="calendar-event-dialog__secondary-start">
@@ -74,6 +85,7 @@ export function CalendarEventFormSecondary({
             sessionEmail={sessionEmail}
             controlSize={controlSize}
             meetEmailGuestHint={meetEmailGuestHint}
+            availability={availability}
             onChange={(attendees) => onFieldChange("attendees", attendees)}
           />
         )}

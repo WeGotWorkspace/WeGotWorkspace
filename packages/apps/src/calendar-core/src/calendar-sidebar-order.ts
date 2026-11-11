@@ -3,7 +3,7 @@ import {
   partitionOwnedAndShared,
   sortCollectionsByName,
 } from "@/collection-sidebar/src/collection-sidebar-partition";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
 
 /** A teammate's virtual `availability:{username}` calendar lives in Team availability only. */

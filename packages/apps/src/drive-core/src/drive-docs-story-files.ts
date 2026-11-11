@@ -1,4 +1,4 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 /** Markdown + plain-text samples for Drive/Docs Storybook (double-click opens Docs). */
 export const DRIVE_DOCS_EDITOR_STORY_FILES: DriveFile[] = [

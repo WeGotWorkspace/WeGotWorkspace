@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Plus } from "lucide-react";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import { canWriteTaskList, mergeCreatedTask } from "@/tasks-core/src/tasks-task-utils";

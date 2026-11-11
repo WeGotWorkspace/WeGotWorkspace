@@ -10,7 +10,7 @@ import type {
 } from "@wgw/openapi-types/tasks-types";
 import type { components } from "@wgw/openapi-types/openapi-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
+import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   cachedCollectionAudience,

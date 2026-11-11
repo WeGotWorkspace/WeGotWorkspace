@@ -1,5 +1,5 @@
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
-import { DOCS_COLLAB_TEXT_EXTENSIONS } from "@/docs-core/src/docs-collab-text-files";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
+import { DOCS_COLLAB_TEXT_EXTENSIONS } from "@/lib/files/docs-collab-text-files";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 
 /** Map a drive file name to the text-editor serialization format. */

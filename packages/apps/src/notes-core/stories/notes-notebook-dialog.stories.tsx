@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen } from "storybook/test";
 import { notesNotebookDialogLabelsFrom, defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import {
   TaskProjectDialog,
   type TaskProjectDialogState,

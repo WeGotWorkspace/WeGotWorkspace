@@ -1,5 +1,5 @@
 import type { AddressBook, ContactCard } from "@wgw/openapi-types/contacts-types";
-import type { ContactsUIData } from "@/contacts-core/src/contacts-types";
+import type { ContactsUIData } from "@/lib/models/contacts-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
 import { mockWorkspaceSession } from "./workspace-session-mock";

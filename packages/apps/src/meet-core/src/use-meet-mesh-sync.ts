@@ -16,7 +16,7 @@ import {
   applyMeetMeshFanoutEvent,
   wrapMeetChatOperationsWithMesh,
 } from "@/meet-core/src/meet-mesh-sot";
-import type { MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChatOperations } from "@/lib/models/meet-types";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 import type { PresenceStore } from "@/presence-core/src/presence-store";
 import type { PresenceEnvelope } from "@/presence-core/src/presence-types";

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {

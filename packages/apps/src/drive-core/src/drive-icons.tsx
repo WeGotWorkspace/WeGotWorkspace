@@ -8,7 +8,7 @@ import {
   FileArchive,
   File as FileIcon,
 } from "lucide-react";
-import type { FileKind } from "@/drive-core/src/drive-models";
+import type { FileKind } from "@/lib/files/drive-models";
 
 export const kindIcon: Record<FileKind, ReactNode> = {
   folder: <Folder className="size-3" />,

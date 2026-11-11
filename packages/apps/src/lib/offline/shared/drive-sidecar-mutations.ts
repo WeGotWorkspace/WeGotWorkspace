@@ -1,4 +1,4 @@
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { parentAndName } from "@/lib/files/api-path";
 import { migrateDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";

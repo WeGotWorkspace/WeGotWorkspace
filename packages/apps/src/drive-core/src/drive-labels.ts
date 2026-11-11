@@ -1,5 +1,5 @@
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const driveLabels = {

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { useDriveList } from "@/drive-core/src/use-drive-list";
 

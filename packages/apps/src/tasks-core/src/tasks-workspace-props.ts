@@ -4,7 +4,7 @@ import type {
   TasksAPIOperations,
   TaskProjectGroupOption,
   TasksUIData,
-} from "@/tasks-core/src/tasks-types";
+} from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 
 export type TasksWorkspaceProps = {

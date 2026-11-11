@@ -1,5 +1,5 @@
 import { canManageCalendarSharing } from "@/calendar-core/src/calendar-collection-write";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 export function isSubscribedCalendar(calendar: Pick<CalendarInfo, "subscriptionId">): boolean {
   return Boolean(calendar.subscriptionId);

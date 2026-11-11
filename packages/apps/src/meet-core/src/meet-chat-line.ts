@@ -3,7 +3,7 @@ import {
   meetRoomChatEchoBody,
   parseMeetChannelChatEcho,
 } from "@/meet-core/src/meet-channel-chat-echo";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 export type MeetChatLine = {
   id: string;

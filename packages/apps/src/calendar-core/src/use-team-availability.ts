@@ -29,7 +29,7 @@ import {
   type CachedTeamMembers,
 } from "@/lib/offline/calendars/availability-cache";
 import { viewDateRange } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 import {
   buildAvailabilityOverlayEvents,
   resolveAvailabilityColors,

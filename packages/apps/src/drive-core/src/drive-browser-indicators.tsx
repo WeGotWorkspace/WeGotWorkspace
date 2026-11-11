@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Globe2, HardDrive, Share, Share2, Users2 } from "lucide-react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
-import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
+import { SHARED_WITH_ME_UI_ROOT } from "@/lib/files/drive-path-utils";
 import { formatDriveModified } from "@/drive-core/src/drive-list-sort";
 
 /** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */

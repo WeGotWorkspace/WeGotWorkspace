@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meetChannelCallRoom } from "@/calendar-core/src/calendar-meet-link";
+import { meetChannelCallRoom } from "@/lib/meetings/calendar-meet-link";
 import {
   meetChannelIdForRoom,
   meetChannelRoomId,

@@ -6,7 +6,7 @@ import {
   contactDisplayName,
   contactListSortName,
 } from "@/contacts-core/src/contacts-display-utils";
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 type AddressBookIdSource = {
   addressBookIds?: Record<string, unknown> | null;

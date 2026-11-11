@@ -57,7 +57,7 @@ import type {
   ContactCardCreate,
   ContactsAPIOperations,
   ContactsUIData,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 import {
   applyContactAddressBookMoveToCards,
   canShowContactAddressBookMove,

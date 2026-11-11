@@ -4,10 +4,10 @@ import {
   ensureTrashFolder,
   listTrashEntryNames,
   resolveFreeName,
-} from "@/drive-core/src/drive-batch-utils";
+} from "@/lib/files/drive-entry-names";
 import { parentAndName } from "@/lib/files/api-path";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
-import { isDriveTrashApiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
+import { isDriveTrashApiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,

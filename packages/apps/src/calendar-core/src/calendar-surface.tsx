@@ -5,7 +5,7 @@ import type { WgwCalendarSurface } from "@/lib/calendar-elements/wgw/wgw-calenda
 import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 import {
   bindCalendarEventSelected,
   measureCalendarCreatePreviewOrigin,

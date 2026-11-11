@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   isSaveFailureDocStatus,
   isToastDocStatus,

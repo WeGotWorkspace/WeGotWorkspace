@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Check } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { UserChip } from "./user-chip";
@@ -56,5 +56,29 @@ describe("UserChip", () => {
     expect(chip?.getAttribute("tabindex")).toBe("0");
     fireEvent.pointerMove(chip!);
     expect(await screen.findByRole("tooltip", { name: "Accepted" })).toBeTruthy();
+  });
+
+  it("adds a decorative adornment, a description and richer tooltip content", async () => {
+    const { container } = renderChip(
+      <UserChip
+        label="Ann"
+        statusLabel="Accepted, busy at this time"
+        adornment={<TriangleAlert />}
+        description="Wed, 10:00–11:00 · Design review"
+        tooltipContent={<span>Busy at this time: Design review</span>}
+      />,
+    );
+    const chip = screen.getByRole("group", { name: "Ann, Accepted, busy at this time" });
+    const describedBy = chip.getAttribute("aria-describedby");
+    expect(describedBy && document.getElementById(describedBy)?.textContent).toBe(
+      "Wed, 10:00–11:00 · Design review",
+    );
+    const adornment = container.querySelector(".user-chip__adornment");
+    expect(adornment?.getAttribute("aria-hidden")).toBe("true");
+    expect(adornment?.querySelector("svg")).toBeTruthy();
+    fireEvent.pointerMove(chip);
+    expect((await screen.findByRole("tooltip")).textContent).toContain(
+      "Busy at this time: Design review",
+    );
   });
 });
