@@ -1,4 +1,5 @@
 import { strToU8, zipSync } from "fflate";
+import { deflatedZip } from "@/docs-core/src/docx-import/__tests__/fixtures/deflated-zip";
 import { readDocxFixture } from "@/docs-core/src/docx-import/__tests__/fixtures/docx-fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { markdownNameFor } from "@/docs-core/src/docx-import/docx-file-name";
@@ -130,8 +131,10 @@ describe("saveDocxAsMarkdown", () => {
     expect(io.writeDoc).not.toHaveBeenCalled();
   });
 
+  // The bombs below use native deflate (deflatedZip): fflate's zipSync took over
+  // 30 s per bomb under v8 coverage on CI. Unpacking 256 MiB still takes seconds there.
   it("refuses a zip bomb whose headers declare a small size, without converting", async () => {
-    const bomb = zipSync({
+    const bomb = deflatedZip({
       "word/document.xml": strToU8("<w:document/>"),
       "word/media/huge.bin": new Uint8Array(DOCX_MAX_UNPACKED_BYTES + 1024),
     });
@@ -151,7 +154,7 @@ describe("saveDocxAsMarkdown", () => {
   }, 60_000);
 
   it("counts by the central directory when a local header claims the entry is stored", async () => {
-    const bomb = zipSync({
+    const bomb = deflatedZip({
       "word/document.xml": new Uint8Array(DOCX_MAX_UNPACKED_BYTES + 1024),
     });
     // Patch only the local header's method to 0 (stored); the central directory says deflate.
@@ -168,10 +171,10 @@ describe("saveDocxAsMarkdown", () => {
   }, 60_000);
 
   it("stops inflating after the slice that passes the cap", () => {
-    const bomb = zipSync({ "word/document.xml": new Uint8Array(DOCX_MAX_UNPACKED_BYTES) });
+    const bomb = deflatedZip({ "word/document.xml": new Uint8Array(DOCX_MAX_UNPACKED_BYTES) });
     expect(bomb.byteLength).toBeGreaterThan(8 * 1024);
     expect(scanDocx(bomb, 65_536)).toEqual({ ok: false, refusal: "too-large" });
-  }, 10_000);
+  });
 
   describe("reads the same entries as the converter's zip reader", () => {
     const CAP = 65_536;
