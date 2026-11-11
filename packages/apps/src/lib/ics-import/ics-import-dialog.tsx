@@ -60,6 +60,8 @@ export type IcsImportDialogProps = {
   contentClassName?: string;
   busy?: boolean;
   error?: string | null;
+  /** Set while the import cannot run (offline): Import is disabled and this says why. */
+  unavailableReason?: string | null;
   result?: IcsImportDialogResult | null;
   onClose: () => void;
   onImport: (file: File, destination: IcsImportDestination) => void;
@@ -88,6 +90,7 @@ export function IcsImportDialog({
   contentClassName,
   busy = false,
   error = null,
+  unavailableReason = null,
   result = null,
   onClose,
   onImport,
@@ -111,7 +114,7 @@ export function IcsImportDialog({
     ? labels.newCollection
     : (selected?.name ?? labels.destinationLegend);
   const destinationReady = creating ? name.trim() !== "" : destinationId.trim() !== "";
-  const canSubmit = destinationReady && !busy;
+  const canSubmit = destinationReady && !busy && !unavailableReason;
   const destinationFieldId = `${idPrefix}-import-destination`;
   const nameFieldId = `${idPrefix}-import-name`;
 
@@ -119,7 +122,7 @@ export function IcsImportDialog({
     <ImportDialog
       open={open}
       title={labels.title}
-      error={error}
+      error={error ?? unavailableReason}
       result={result}
       busy={busy}
       onClose={onClose}

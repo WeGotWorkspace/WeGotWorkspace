@@ -46,7 +46,10 @@ describe("runTasksIcsImport", () => {
       color: "#22c55e",
     });
 
-    expect(createTaskList).toHaveBeenCalledWith({ name: "Groceries", color: "#22c55e" });
+    expect(createTaskList).toHaveBeenCalledWith(
+      { name: "Groceries", color: "#22c55e" },
+      { requireServer: true },
+    );
     expect(ops.importTasks).toHaveBeenCalledWith("BEGIN:VCALENDAR", { taskListId: "list-new" });
     expect(outcome).toMatchObject({ taskListId: "list-new", createdList: created });
   });

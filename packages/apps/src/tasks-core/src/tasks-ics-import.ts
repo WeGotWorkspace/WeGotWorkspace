@@ -16,7 +16,8 @@ export type TasksIcsImportOutcome = {
 
 /**
  * Create the destination list when asked, then import into it. The list stays
- * when the import itself fails, as in Calendar.
+ * when the import itself fails, as in Calendar. The list is created on the
+ * server or not at all: a list only queued offline would stay behind empty.
  */
 export async function runTasksIcsImport(
   operations: TasksAPIOperations,
@@ -33,10 +34,13 @@ export async function runTasksIcsImport(
     if (!operations.createTaskList) {
       throw new Error("Creating a list is not available");
     }
-    createdList = await operations.createTaskList({
-      name: destination.name,
-      ...(destination.color.trim() ? { color: destination.color.trim() } : {}),
-    });
+    createdList = await operations.createTaskList(
+      {
+        name: destination.name,
+        ...(destination.color.trim() ? { color: destination.color.trim() } : {}),
+      },
+      { requireServer: true },
+    );
     taskListId = createdList.id;
   }
 

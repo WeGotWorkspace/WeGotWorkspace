@@ -26,7 +26,7 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
 
 vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/tasks")>();
-  return { ...actual, importTasksLive: vi.fn() };
+  return { ...actual, importTasksLive: vi.fn(), createTaskList: vi.fn() };
 });
 
 vi.mock("@/lib/offline/tasks/tasks-offline-store", async (importOriginal) => {
@@ -34,14 +34,15 @@ vi.mock("@/lib/offline/tasks/tasks-offline-store", async (importOriginal) => {
   return { ...actual, upsertTaskInCache: vi.fn(actual.upsertTaskInCache) };
 });
 
-import { importTasksLive } from "@/lib/api/wgw/tasks";
+import { createTaskList, importTasksLive } from "@/lib/api/wgw/tasks";
 import { upsertTaskInCache } from "@/lib/offline/tasks/tasks-offline-store";
-import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 describe("hybrid importTasks", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(isFetchNetworkError).mockReturnValue(false);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await tasksItemsTable(db).clear();
@@ -105,5 +106,47 @@ describe("hybrid importTasks", () => {
       }),
     ).rejects.toThrow(TASKS_IMPORT_OFFLINE_MESSAGE);
     expect(importTasksLive).not.toHaveBeenCalled();
+  });
+
+  describe("a list the import creates", () => {
+    async function outboxCount(): Promise<number> {
+      return offlineDbForAccount(offlineAccountKeyFromUsername(username)).outbox.count();
+    }
+
+    it("is not queued offline", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+      await expect(
+        createHybridTasksOperations(username).createTaskList!(
+          { name: "Groceries" },
+          { requireServer: true },
+        ),
+      ).rejects.toThrow(TASKS_IMPORT_OFFLINE_MESSAGE);
+      expect(createTaskList).not.toHaveBeenCalled();
+      expect(await outboxCount()).toBe(0);
+    });
+
+    it("is not queued when the network drops during the create", async () => {
+      const dropped = new TypeError("Failed to fetch");
+      vi.mocked(createTaskList).mockRejectedValue(dropped);
+      vi.mocked(isFetchNetworkError).mockReturnValue(true);
+
+      await expect(
+        createHybridTasksOperations(username).createTaskList!(
+          { name: "Groceries" },
+          { requireServer: true },
+        ),
+      ).rejects.toBe(dropped);
+      expect(await outboxCount()).toBe(0);
+    });
+
+    it("an ordinary new list still queues offline", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+      const list = await createHybridTasksOperations(username).createTaskList!({ name: "Later" });
+
+      expect(list.name).toBe("Later");
+      expect(await outboxCount()).toBe(1);
+    });
   });
 });

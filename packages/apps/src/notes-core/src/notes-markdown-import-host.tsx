@@ -19,6 +19,8 @@ export type NotesMarkdownImportHostProps = {
   /** Notebook of the current sidebar view, preselected when writable. */
   currentNotebookId?: string | null;
   createNotebook: (name: string) => Promise<NotesNotebookCollection | undefined>;
+  /** Import is disabled offline, with the reason in the dialog. */
+  offline?: boolean;
   onImported: (notebook: NotesNotebookCollection, notes: Note[]) => void;
 };
 
@@ -27,7 +29,7 @@ export const NotesMarkdownImportHost = forwardRef<
   NotesMarkdownImportHostHandle,
   NotesMarkdownImportHostProps
 >(function NotesMarkdownImportHost(
-  { operations, labels, notebooks, currentNotebookId, createNotebook, onImported },
+  { operations, labels, notebooks, currentNotebookId, createNotebook, offline = false, onImported },
   ref,
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +64,7 @@ export const NotesMarkdownImportHost = forwardRef<
           labels={labels}
           busy={importState.importBusy}
           error={importState.importError}
+          unavailableReason={offline ? labels.importOffline : null}
           progress={importState.importProgress}
           result={importState.importResult}
           onClose={importState.closeImportDialog}

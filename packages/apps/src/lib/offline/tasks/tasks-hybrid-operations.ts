@@ -380,6 +380,7 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
     },
     createTaskList: async (body, opts) => {
       if (!readBrowserOnline()) {
+        if (opts?.requireServer) throw new Error(TASKS_IMPORT_OFFLINE_MESSAGE);
         return queueOfflineListCreate(username, body);
       }
       try {
@@ -388,6 +389,7 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         await runner.flush();
         return list;
       } catch (error) {
+        if (opts?.requireServer) throw error;
         rethrowUnlessOfflineQueue(error, opts);
         return queueOfflineListCreate(username, body);
       }

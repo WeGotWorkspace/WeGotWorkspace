@@ -2133,6 +2133,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: notes 1`
   "importNewNotebookName": "Notebook name",
   "importNoMarkdownFiles": "Choose Markdown (.md, .markdown) or text (.txt) files.",
   "importNotesHeading": "Good to know",
+  "importOffline": "Importing notes needs an internet connection",
   "importProgress": [
     "Importing 0 of 0…",
     "Importing 1 of 1…",

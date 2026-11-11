@@ -4,6 +4,7 @@ import type { MarkdownImportSkipReason } from "@/notes-core/src/notes-markdown-i
 export type NotesImportLabels = {
   importMarkdown: string;
   importNeedsConnection: string;
+  importOffline: string;
   importDialogTitle: string;
   importFilesSelected: (count: number) => string;
   importDestinationLegend: string;
@@ -38,6 +39,7 @@ const plural = (count: number, one: string, many: string) => (count === 1 ? one 
 export const defaultNotesImportLabels: NotesImportLabels = {
   importMarkdown: "Import Markdown files",
   importNeedsConnection: "Needs a connection",
+  importOffline: "Importing notes needs an internet connection",
   importDialogTitle: "Import Markdown files",
   importFilesSelected: (count) => `${count} ${plural(count, "file", "files")} selected`,
   importDestinationLegend: "Notebook",

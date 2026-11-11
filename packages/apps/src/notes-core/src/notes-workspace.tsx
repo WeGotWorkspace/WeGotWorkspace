@@ -745,7 +745,10 @@ export function NotesWorkspace({
         labels={L}
         notebooks={selectNotebooks}
         currentNotebookId={view.startsWith("nb:") ? view.slice(3) : null}
-        createNotebook={(name) => createNotebookCollection({ name, color: null })}
+        createNotebook={(name) =>
+          createNotebookCollection({ name, color: null }, { requireServer: true })
+        }
+        offline={!online}
         onImported={onMarkdownImported}
       />
       {confirmDialog}

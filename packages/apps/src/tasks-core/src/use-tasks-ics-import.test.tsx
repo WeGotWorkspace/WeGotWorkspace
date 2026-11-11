@@ -16,6 +16,12 @@ vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => toastApi,
 }));
 
+const connection = vi.hoisted(() => ({ online: true }));
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/core/browser-online")>();
+  return { ...actual, readBrowserOnline: () => connection.online };
+});
+
 const L = defaultTasksLabels;
 const ics = "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:t1\r\nEND:VTODO\r\nEND:VCALENDAR";
 const file = new File([ics], "groceries.ics", { type: "text/calendar" });
@@ -47,6 +53,24 @@ async function submit(
 describe("useTasksIcsImport", () => {
   beforeEach(() => {
     toastApi.show.mockClear();
+    connection.online = true;
+  });
+
+  it("creates no list when the connection dropped while the dialog was open", async () => {
+    connection.online = false;
+    const createTaskList = vi.fn();
+    const importTasks = vi.fn();
+
+    const { hook, onImported } = await submit(operations({ createTaskList, importTasks }), {
+      mode: "create",
+      name: "Groceries",
+      color: "#22c55e",
+    });
+
+    expect(createTaskList).not.toHaveBeenCalled();
+    expect(importTasks).not.toHaveBeenCalled();
+    expect(onImported).not.toHaveBeenCalled();
+    expect(hook.result.current.importDialogError).toBe(L.importOffline);
   });
 
   it("closes with a toast when everything imported", async () => {

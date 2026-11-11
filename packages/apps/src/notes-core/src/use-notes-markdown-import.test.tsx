@@ -19,6 +19,12 @@ vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => toastApi,
 }));
 
+const connection = vi.hoisted(() => ({ online: true }));
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/core/browser-online")>();
+  return { ...actual, readBrowserOnline: () => connection.online };
+});
+
 const L = defaultNotesLabels;
 const work: NotesNotebookCollection = { id: "work", name: "Work" };
 
@@ -52,6 +58,7 @@ describe("useNotesMarkdownImport", () => {
   beforeEach(() => {
     toastApi.show.mockClear();
     toastApi.showError.mockClear();
+    connection.online = true;
   });
 
   it("does not open the dialog when no Markdown file was picked", () => {
@@ -167,5 +174,36 @@ describe("useNotesMarkdownImport", () => {
     act(() => hook.result.current.submitImport(files, { mode: "create", name: "X" }));
     await waitFor(() => expect(hook.result.current.importError).toBe(L.importFailed));
     expect(markdownImport.createNote).not.toHaveBeenCalled();
+  });
+
+  it("makes no notebook and tries no file when the connection dropped", async () => {
+    const { hook, createNotebook, markdownImport } = setup();
+    const files = [new File(["# A"], "a.md")];
+    act(() => hook.result.current.beginImport(files));
+    connection.online = false;
+
+    act(() => hook.result.current.submitImport(files, { mode: "create", name: "X" }));
+
+    expect(hook.result.current.importError).toBe(L.importOffline);
+    expect(hook.result.current.importBusy).toBe(false);
+    expect(createNotebook).not.toHaveBeenCalled();
+    expect(markdownImport.createNote).not.toHaveBeenCalled();
+  });
+
+  it("remembers no notebook when its create failed, so Import asks the server again", async () => {
+    const { hook, createNotebook, markdownImport } = setup();
+    createNotebook.mockResolvedValueOnce(undefined as never);
+    const files = [new File(["# A"], "a.md")];
+    act(() => hook.result.current.beginImport(files));
+    act(() => hook.result.current.submitImport(files, { mode: "create", name: "X" }));
+    await waitFor(() => expect(hook.result.current.importError).toBe(L.importFailed));
+    expect(markdownImport.createNote).not.toHaveBeenCalled();
+
+    act(() => hook.result.current.submitImport(files, { mode: "create", name: "X" }));
+    await waitFor(() => expect(hook.result.current.importBusy).toBe(false));
+
+    expect(createNotebook).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(markdownImport.createNote).mock.calls;
+    expect(calls[0]?.[0].notebook.id).toBe("nb-X");
   });
 });

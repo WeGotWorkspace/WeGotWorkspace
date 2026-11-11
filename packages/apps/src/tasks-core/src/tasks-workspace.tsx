@@ -513,6 +513,7 @@ export function TasksWorkspace({
           preferredTaskListId={view.startsWith("list:") ? view.slice("list:".length) : undefined}
           busy={icsImport.importDialogBusy}
           error={icsImport.importDialogError}
+          offline={!online}
           result={icsImport.importResult}
           onClose={icsImport.closeImportDialog}
           onImport={icsImport.submitImportDialog}

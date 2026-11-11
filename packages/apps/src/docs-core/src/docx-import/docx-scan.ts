@@ -1,5 +1,5 @@
 import { Inflate, strFromU8 } from "fflate";
-import { splitElements } from "@/docs-core/src/docx-import/docx-alternate-content";
+import { splitElements, startTags } from "@/docs-core/src/docx-import/docx-alternate-content";
 
 /**
  * Why a file cannot be converted. Checked before anything is written (#1619).
@@ -53,18 +53,28 @@ function count(xml: string, pattern: RegExp): number {
   return xml.match(pattern)?.length ?? 0;
 }
 
-/** The visible text of a header, footer or note part, to skip empty ones. */
+/** `<w:t …>` or `<w:t>`; not `<w:t/>`, and not `<w:tbl>` and the like (`startTags` checks that). */
+function withAttributes(tag: string, name: string): boolean {
+  return /\s/.test(tag[name.length + 1] ?? "");
+}
+
+/** The visible text of a header, footer or note part, to skip empty ones. Linear. */
 function textOf(xml: string): string {
-  return (xml.match(/<w:t(?:\s[^>]*)?>[^<]*/g) ?? [])
-    .map((run) => run.replace(/^<w:t[^>]*>/, ""))
-    .join("")
-    .trim();
+  let text = "";
+  for (const { tag, end } of startTags(xml, "w:t")) {
+    if (tag.endsWith("/>")) continue;
+    const stop = xml.indexOf("<", end);
+    text += xml.slice(end, stop < 0 ? xml.length : stop);
+  }
+  return text.trim();
 }
 
 function countNotes(xml: string | undefined, tag: "footnote" | "endnote"): number {
   if (!xml) return 0;
-  const notes = xml.match(new RegExp(`<w:${tag}\\s[^>]*>`, "g")) ?? [];
-  return notes.filter((open) => !NOTE_SEPARATOR_TYPES.test(open)).length;
+  const name = `w:${tag}`;
+  return startTags(xml, name).filter(
+    ({ tag: open }) => withAttributes(open, name) && !NOTE_SEPARATOR_TYPES.test(open),
+  ).length;
 }
 
 const ALIGNED = /<w:jc\s+w:val="(?:center|right|end|both|distribute)"/;
@@ -245,9 +255,9 @@ export function scanDocx(
     .map(textOf)
     .filter(Boolean);
 
-  const fonts = (body.match(/<w:rFonts\s[^>]*w:ascii="[^"]+"/g) ?? []).map((tag) =>
-    tag.replace(/.*w:ascii="/, "").replace(/"$/, ""),
-  );
+  const fonts = startTags(body, "w:rFonts")
+    .map(({ tag }) => /\sw:ascii="([^"]+)"/.exec(tag)?.[1])
+    .filter((font): font is string => Boolean(font));
   const colours = (body.match(/<w:color\s+w:val="[0-9A-Fa-f]{6}"/g) ?? [])
     .map((tag) => tag.slice(-7, -1).toUpperCase())
     .filter((colour) => colour !== "000000");

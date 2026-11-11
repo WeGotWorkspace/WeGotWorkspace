@@ -23,6 +23,9 @@ import {
  * offline cache holds both tasks, and the menu item is disabled while
  * offline. Importing the same file again imports nothing and names each task
  * as already in the list.
+ *
+ * A second case goes offline with the dialog open on a new list: Import is
+ * disabled with the reason, and no list is made, then or after a reload.
  */
 
 /** The import's mutation event reaches another tab on push, or at the latest on the next poll. */
@@ -121,6 +124,51 @@ test("an ICS file imports into a new list and reaches a second tab", async ({ br
     const server = await serverState(id);
     expect(server.lists.map((list) => list.name)).toEqual([listName]);
     expect(server.tasks.map((task) => task.title).sort()).toEqual(titles);
+    expect(events.filter((event) => !isExpected(event))).toEqual([]);
+  } finally {
+    await context?.close();
+    await cleanUpCase(id);
+  }
+});
+
+test("offline with the dialog open: Import is disabled and no list is made", async ({
+  browser,
+}) => {
+  const id = `icsoff${Date.now().toString(36)}`;
+  const listName = `offline ${id}`;
+  const file = {
+    name: `${listName}.ics`,
+    mimeType: "text/calendar",
+    buffer: Buffer.from(icsFile(id, [`only ${id}`])),
+  };
+  const events: string[] = [];
+  let context: BrowserContext | null = null;
+
+  try {
+    context = await openUser(browser, OWNER);
+    const a = await openTasksTab(context, "A", events);
+
+    await chooseFile(a, file);
+    const dialog = a.getByRole("dialog", { name: "Import tasks" });
+    await dialog.getByRole("button", { name: /^Destination list:/ }).click();
+    await a.getByRole("menuitem", { name: "New list" }).click();
+    await expect(dialog.getByLabel("List name")).toHaveValue(listName);
+
+    await setTabOffline(a, true);
+    const submit = dialog.getByRole("button", { name: "Import", exact: true });
+    await expect(submit).toBeDisabled();
+    await expect(dialog).toContainText("Importing tasks needs an internet connection");
+    await submit.click({ force: true }).catch(() => undefined);
+
+    await setTabOffline(a, false);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await a.reload();
+    await showAllTasks(a);
+    expect(await shownLists(a, id)).toEqual([]);
+
+    const server = await serverState(id);
+    expect(server.lists).toEqual([]);
     expect(events.filter((event) => !isExpected(event))).toEqual([]);
   } finally {
     await context?.close();

@@ -48,6 +48,8 @@ export type NotesImportDialogProps = {
   labels: NotesImportDialogLabels;
   busy?: boolean;
   error?: string | null;
+  /** Set while the import cannot run (offline): Import and Retry are disabled and this says why. */
+  unavailableReason?: string | null;
   progress?: NotesMarkdownImportProgress | null;
   /** Set after a batch with something to report: the dialog shows it instead of the form. */
   result?: NotesMarkdownImportResult | null;
@@ -95,6 +97,7 @@ export function NotesImportDialog({
   labels,
   busy = false,
   error = null,
+  unavailableReason = null,
   progress = null,
   result = null,
   onClose,
@@ -124,11 +127,12 @@ export function NotesImportDialog({
 
   const selected = notebooks.find((notebook) => notebook.id === notebookId) ?? null;
   const destinationReady = creating ? name.trim() !== "" : selected !== null;
-  const canSubmit = destinationReady && files.length > 0 && !busy;
+  const canSubmit = destinationReady && files.length > 0 && !busy && !unavailableReason;
   const total = progress?.total ?? files.length;
   const canRetry =
     !!result &&
     !busy &&
+    !unavailableReason &&
     lastDestination.current !== null &&
     result.skipped.some((item) => item.reason === "failed");
 
@@ -145,7 +149,7 @@ export function NotesImportDialog({
             }
           : null
       }
-      error={error}
+      error={error ?? unavailableReason}
       result={result ? importResultView(result, labels) : null}
       busy={busy}
       onClose={onClose}
