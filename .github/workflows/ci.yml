@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -73,7 +73,7 @@ jobs:
           extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
           coverage: none
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -136,7 +136,7 @@ jobs:
           # that ref missing and the check would pass on an empty diff.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -209,7 +209,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -271,7 +271,7 @@ jobs:
           extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
           coverage: none
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -376,7 +376,7 @@ jobs:
           extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
           coverage: none
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:
@@ -450,7 +450,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
         if: steps.chromatic-token.outputs.present == 'true'
 
       - uses: actions/setup-node@v7
@@ -625,7 +625,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v7
         with:

@@ -25,6 +25,13 @@ updates:
           - major
           - minor
           - patch
+    ignore:
+      # Passport 13.11.0 pins phpseclib to exactly 4.0.1, which downgrades it
+      # into GHSA-w3p9-g4p2-h3rr (fixed in 4.0.3). Upstream: laravel/passport#1959.
+      # Take the next Passport release that loosens the pin.
+      - dependency-name: laravel/passport
+        versions:
+          - "13.11.0"
 
   - package-ecosystem: npm
     directory: /
