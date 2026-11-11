@@ -6,7 +6,7 @@ import {
   tasksImportErrorTitle,
   tasksImportNeedsResultStep,
 } from "@/tasks-core/src/tasks-ics-import";
-import type { Task, TaskList, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TasksAPIOperations } from "@/lib/models/tasks-types";
 
 const L = defaultTasksLabels;
 

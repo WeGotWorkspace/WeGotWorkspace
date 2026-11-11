@@ -3,7 +3,7 @@ import type { Note } from "@/lib/models/note";
 import type {
   NotesMarkdownImportOperations,
   NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+} from "@/lib/models/notes-types";
 import {
   isCleanMarkdownImport,
   runNotesMarkdownImport,

@@ -1,6 +1,6 @@
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
-import { shareGrantEntries } from "@/share-ui/collection-share";
+import { shareGrantEntries } from "@/lib/sharing/collection-share";
 
 function normalize(username: string | null | undefined): string {
   return username?.trim().toLowerCase() ?? "";

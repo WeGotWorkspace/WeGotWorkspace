@@ -12,7 +12,7 @@ import type {
   TaskImportResponse,
   TaskList,
   TasksAPIOperations,
-} from "@/tasks-core/src/tasks-types";
+} from "@/lib/models/tasks-types";
 
 export type TasksImportedChange = {
   taskListId: string;

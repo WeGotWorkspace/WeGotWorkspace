@@ -6,7 +6,7 @@ import {
   NotesImportDialog,
   type NotesImportDialogProps,
 } from "@/notes-core/src/notes-import-dialog";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 
 const L = defaultNotesLabels;
 const files = [new File(["# A"], "a.md"), new File(["# B"], "b.md")];

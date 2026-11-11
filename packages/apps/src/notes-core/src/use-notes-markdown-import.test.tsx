@@ -5,7 +5,7 @@ import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type {
   NotesMarkdownImportOperations,
   NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+} from "@/lib/models/notes-types";
 import { useNotesMarkdownImport } from "@/notes-core/src/use-notes-markdown-import";
 
 const toastApi = {

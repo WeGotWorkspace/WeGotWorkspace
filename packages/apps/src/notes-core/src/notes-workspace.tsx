@@ -38,7 +38,7 @@ import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
 import { NotesDetailNotebookSelect } from "@/notes-core/src/notes-detail-notebook-select";
 import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import { projectNoteTitle } from "@/notes-core/src/note-title-projection";
@@ -60,7 +60,7 @@ import {
   useNotesSidebarModel,
 } from "@/notes-core/src/use-notes-sidebar-model";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { Note } from "@/lib/models/note";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";

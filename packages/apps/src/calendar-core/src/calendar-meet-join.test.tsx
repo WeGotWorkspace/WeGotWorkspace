@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const ORIGIN = "https://workspace.example.com";

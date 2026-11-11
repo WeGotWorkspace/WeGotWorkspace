@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import { authorPresenceFromRoster } from "@/meet-core/src/meet-author-presence";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 import type { PresenceCoworker } from "@/presence-core/src/presence-types";

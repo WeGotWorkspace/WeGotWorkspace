@@ -1,5 +1,5 @@
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { Task, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { createHybridTasksOperations } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import {
   readTasksBootstrapFromCache,

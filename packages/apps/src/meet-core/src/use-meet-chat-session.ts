@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ChatMentionPrincipal, ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
 import {
   meetRoomChatEchoId,
   type MeetChannelChatSend,
@@ -10,7 +10,7 @@ import {
   meetThreadReplies,
   upsertMeetChatMessage,
 } from "@/meet-core/src/meet-chat-thread";
-import type { ChatMessage, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
 
 export type MeetActiveThread = {
   parent: ChatMessage;

@@ -1,4 +1,4 @@
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import type {
   WgwDriveDirectoryEntry,
   WgwDriveUploadErrorCode,

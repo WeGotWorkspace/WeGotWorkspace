@@ -2,18 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import {
   apiPathFromUiPath,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import {
   driveAccessDisplayRows,
   driveAccessSubtreeCounts,
   type DriveAccessFilter,
 } from "@/drive-core/src/drive-access-utils";
-import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import type { DriveShareAtPath, DriveShareByPrincipal } from "@wgw/openapi-types/drive-types";
 
 export type AccessTreeChild = {

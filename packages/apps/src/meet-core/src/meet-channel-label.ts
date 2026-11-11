@@ -1,4 +1,4 @@
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 export function meetChannelHashName(channel: Pick<MeetChannel, "name" | "kind">): string {
   if (channel.kind === "meeting") return channel.name;

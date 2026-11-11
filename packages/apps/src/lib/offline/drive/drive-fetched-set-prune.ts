@@ -1,4 +1,4 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { parentAndName } from "@/lib/files/api-path";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";

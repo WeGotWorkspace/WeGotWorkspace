@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/lib/models/notes-types";
 import { MARKDOWN_IMPORT_ACCEPT } from "@/notes-core/src/notes-markdown-import";
 import { NotesImportDialog } from "@/notes-core/src/notes-import-dialog";
 import { useNotesMarkdownImport } from "@/notes-core/src/use-notes-markdown-import";

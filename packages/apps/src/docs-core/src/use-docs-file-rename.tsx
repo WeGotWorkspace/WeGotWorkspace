@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { parentAndName } from "@/lib/files/api-path";

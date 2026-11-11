@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import type { Task, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TasksAPIOperations } from "@/lib/models/tasks-types";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 import {
   tasksHybridDomainOperations,

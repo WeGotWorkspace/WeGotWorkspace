@@ -10,7 +10,7 @@ import {
   canChangeMeetChannelOwner,
   canDeleteMeetChannel,
 } from "@/meet-core/src/meet-channel-write";
-import type { MeetChannel, MeetChannelKind, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChannelKind, MeetChatOperations } from "@/lib/models/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
 
 /** Meeting dialog target: a meeting channel, or a calendar row without a channel of its own. */

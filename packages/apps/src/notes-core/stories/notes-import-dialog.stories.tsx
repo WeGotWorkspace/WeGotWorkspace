@@ -9,7 +9,7 @@ import {
 } from "@/notes-core/src/notes-import-dialog";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesMarkdownImportResult } from "@/notes-core/src/notes-markdown-import-run";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { NotesStoryScope } from "./notes-story-scope";
 
 const L = defaultNotesLabels;

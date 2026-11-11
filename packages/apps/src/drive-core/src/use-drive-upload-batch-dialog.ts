@@ -4,7 +4,7 @@ import type {
   DriveUploadBatchRequest,
 } from "@/drive-core/src/drive-upload-batch-dialog";
 import { useDriveUploadQueue } from "@/drive-core/src/drive-upload-queue";
-import type { DriveAPIOperations, DriveUploadBatchAnswers } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUploadBatchAnswers } from "@/lib/files/drive-types";
 import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
 import { stopAskingUploadBatch } from "@/lib/offline/drive/upload/drive-upload-memory";
 

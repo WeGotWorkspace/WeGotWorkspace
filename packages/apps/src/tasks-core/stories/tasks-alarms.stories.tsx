@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { taskAlarmControls } from "@/tasks-core/src/tasks-remind-picker";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { TasksStoryScope } from "@/tasks-core/stories/tasks-story-scope";
 import { offsetReminderAlert } from "@/tasks-core/src/tasks-task-utils";
 

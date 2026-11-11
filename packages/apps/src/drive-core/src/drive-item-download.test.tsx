@@ -7,8 +7,8 @@ import {
   startDriveItemDownload,
 } from "@/drive-core/src/drive-item-download";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 
 afterEach(() => {

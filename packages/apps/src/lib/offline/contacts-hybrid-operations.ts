@@ -6,7 +6,7 @@ import type {
   ContactCardPatch,
   ContactsAPIOperations,
   ContactsMutationOpts,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 import {
   fetchContactCardPages,
   fetchContactsLiveBootstrap,

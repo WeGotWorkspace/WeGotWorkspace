@@ -6,7 +6,7 @@ import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { cn } from "@/lib/utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { NotesNotebookSelect } from "@/notes-core/src/notes-notebook-select";
 import type {
   NotesMarkdownImportProgress,

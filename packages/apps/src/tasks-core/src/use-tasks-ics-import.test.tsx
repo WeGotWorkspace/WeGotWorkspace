@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import type { Task, TaskList, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { useTasksIcsImport } from "@/tasks-core/src/use-tasks-ics-import";
 
 const toastApi = {

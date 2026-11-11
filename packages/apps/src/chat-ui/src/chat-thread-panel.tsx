@@ -12,7 +12,7 @@ import type {
   ChatMentionPrincipal,
   ChatMessage as ChatMessageModel,
   ChatSendPayload,
-} from "@/chat-ui/src/chat-types";
+} from "@/lib/models/chat-types";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-ui.css";
 import "@/chat-ui/src/chat-thread-panel.css";

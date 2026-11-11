@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchWgwUnifiedSearch, type WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import {
   apiPathFromSearchSourceKey,
   driveFileFromSearchResult,
   driveLocationLabel,
 } from "@/drive-core/src/drive-search-utils";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import {
   DOCS_HOME_LIST_CATEGORIES,
   DOCS_HOME_LIST_EXTENSIONS,

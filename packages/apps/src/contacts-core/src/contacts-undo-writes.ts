@@ -11,7 +11,7 @@ import type {
   ContactCardPatch,
   ContactsAPIOperations,
   ContactsMutationOpts,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 
 /**
  * Contacts writes that Undo takes back with a compensating write (#1854). Each builder

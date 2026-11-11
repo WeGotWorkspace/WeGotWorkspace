@@ -11,7 +11,7 @@ import {
   mergeMeetRoomChatIntoChannel,
   type MeetChatLine,
 } from "@/meet-core/src/meet-chat-line";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 describe("meet chat line", () => {
   it("builds poll chat lines with self detection", () => {

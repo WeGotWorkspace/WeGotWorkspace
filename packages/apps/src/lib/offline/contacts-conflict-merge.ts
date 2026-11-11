@@ -5,7 +5,7 @@ import {
   type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 /** Editable contact sections surfaced in the field-level conflict merge UI. */
 export type ContactConflictFieldKey =

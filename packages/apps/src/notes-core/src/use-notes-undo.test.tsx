@@ -6,7 +6,7 @@ import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
 import { useNotesMutations } from "./use-notes-mutations";
-import type { NotesAPIOperations } from "./notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 

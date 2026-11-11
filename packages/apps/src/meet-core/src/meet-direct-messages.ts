@@ -1,4 +1,7 @@
-import { sharesTeamWithViewer, type CollectionSharePrincipal } from "@/share-ui/collection-share";
+import {
+  sharesTeamWithViewer,
+  type CollectionSharePrincipal,
+} from "@/lib/sharing/collection-share";
 
 export const MEET_DM_CHANNEL_PREFIX = "dm:";
 

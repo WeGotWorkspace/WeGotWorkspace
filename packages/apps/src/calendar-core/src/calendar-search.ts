@@ -6,7 +6,7 @@ import {
   occurrencesInRange,
   type CalendarOccurrence,
 } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { isCalendarSearchQueryActive } from "@/calendar-core/src/calendar-route-search";
 
 export type CalendarSearchResults = {

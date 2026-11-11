@@ -3,7 +3,7 @@ import {
   meetCallActivityTargets,
   omitMeetCallActivityChannels,
 } from "@/meet-core/src/use-meet-channel-call-activity";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 const general: MeetChannel = {
   id: "chat-01ARZ3NDEKTSV4RRFFQ69G5FAV",

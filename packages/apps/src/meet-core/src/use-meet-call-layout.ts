@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { meetCallIsActive, type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import { meetResumeCallLayout } from "@/meet-core/src/meet-call-resume";
-import type { MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { MeetChatOperations } from "@/lib/models/meet-types";
 
 export type UseMeetCallLayoutArgs = {
   initialLayout?: MeetCallStageLayout;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import {
   filterIcsFiles,
   icsFileFromList,

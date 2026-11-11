@@ -3,7 +3,7 @@ import { Upload } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/lib/models/notes-types";
 import { isMarkdownImportFile } from "@/notes-core/src/notes-markdown-import";
 import {
   isCleanMarkdownImport,

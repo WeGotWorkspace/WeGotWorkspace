@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type { NotesMarkdownImportOperations } from "@/notes-core/src/notes-types";
+import type { NotesMarkdownImportOperations } from "@/lib/models/notes-types";
 import {
   createNote as createVjournalNote,
   deleteNote as deleteVjournalNote,

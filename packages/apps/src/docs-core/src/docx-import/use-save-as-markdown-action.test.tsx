@@ -5,7 +5,7 @@ import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-
 import { setPendingDocxImportReport } from "@/docs-core/src/docx-import/docx-import-report-store";
 import { DocxSaveRefusedError } from "@/docs-core/src/docx-import/save-docx-as-markdown";
 import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 const { show, dismiss, showError, online, runSave } = vi.hoisted(() => ({
   show: vi.fn(() => "toast-1"),

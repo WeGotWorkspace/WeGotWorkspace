@@ -30,7 +30,7 @@ import {
   mergeNoteTagDeltas,
   type NoteTagDelta,
 } from "@/lib/offline/notes/notes-tag-delta";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import {
   enrichNote,
   noteHasListableBody,

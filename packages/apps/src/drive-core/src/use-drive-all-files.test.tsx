@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { useDriveAllFiles, withDriveRootLocation } from "@/drive-core/src/use-drive-all-files";
 

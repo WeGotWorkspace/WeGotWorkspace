@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   useDriveUploadQueue,
   wasDriveUploadRemovedHere,

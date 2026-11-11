@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import * as filePreviewUtils from "@/lib/file-preview/file-preview-utils";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 

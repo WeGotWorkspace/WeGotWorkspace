@@ -3,7 +3,7 @@ import {
   calendarPeriodNavLabels,
   defaultCalendarLabels,
 } from "@/calendar-core/src/calendar-labels";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 
 describe("calendarPeriodNavLabels", () => {
   const cases: Array<{

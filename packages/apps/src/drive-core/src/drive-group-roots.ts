@@ -2,13 +2,13 @@
  * Shared Drive / Docs group-drive discovery and display labels.
  * Path keys stay Drive-canonical (`My Drive`, `Groups/{slug}`); only labels change.
  */
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   DRIVE_GROUPS_UI_ROOT,
   driveGroupUiPath,
   normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 
 const SETTINGS_GROUP_URI_PREFIX = "principals/groups/";
 

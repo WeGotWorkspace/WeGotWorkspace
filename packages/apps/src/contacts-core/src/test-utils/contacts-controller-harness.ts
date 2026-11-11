@@ -9,7 +9,7 @@ import type {
   ContactCardCreate,
   ContactCardPatch,
   ContactsAPIOperations,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 import { useContactsController } from "@/contacts-core/src/use-contacts-controller";
 
 /**

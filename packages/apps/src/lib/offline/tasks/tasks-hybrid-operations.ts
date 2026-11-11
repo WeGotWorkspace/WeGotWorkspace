@@ -7,8 +7,8 @@ import type {
   TaskPatch,
   TasksAPIOperations,
   TasksMutationOpts,
-} from "@/tasks-core/src/tasks-types";
-import { mergeShareWith } from "@/share-ui/collection-share";
+} from "@/lib/models/tasks-types";
+import { mergeShareWith } from "@/lib/sharing/collection-share";
 import {
   createTask,
   createTaskList,

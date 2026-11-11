@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import { apiPathFromUiPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import { apiPathFromUiPath } from "@/lib/files/drive-path-utils";
 import {
   DOCS_DRIVE_UI_PERSONAL_PATH,
   resolveDocsHomeCreateDialogBrowsePath,

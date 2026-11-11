@@ -6,7 +6,7 @@ import {
   loadNotesBootstrapHybrid,
 } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { createWgwNotesMarkdownImport } from "@/notes-core/src/notes-markdown-import-wgw";
 
 export type NotesApiSource = {

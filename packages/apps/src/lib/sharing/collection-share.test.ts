@@ -8,7 +8,7 @@ import {
   sharePrincipalsFromDirectory,
   shareRightsAllowWrite,
   shareRightsForPermission,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 
 describe("collection share helpers", () => {
   it("treats mayWrite and mayWriteAll as write, and omitted rights as writable", () => {

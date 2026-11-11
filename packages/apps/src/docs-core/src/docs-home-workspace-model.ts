@@ -2,8 +2,8 @@
  * Pure listing, chrome, and badge selection for Docs home.
  * The workspace component owns hooks; these functions own the branch logic.
  */
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { mergeDocsHomeBrowseWithShared, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import { isSaveAsMarkdownOnlyFile } from "@/docs-core/src/docx-import/save-as-markdown-source";

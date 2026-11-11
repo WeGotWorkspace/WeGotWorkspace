@@ -1,0 +1,105 @@
+import { apiPathFromUiPath, DRIVE_TRASH_DIR_NAME } from "@/lib/files/drive-path-utils";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+
+/** Pick `fileName`, or `name 2.ext`, when that title is already taken. */
+export function resolveFreeName(fileName: string, taken: ReadonlySet<string>): string {
+  const takenLower = new Set(Array.from(taken, (name) => name.toLowerCase()));
+  const dot = fileName.lastIndexOf(".");
+  const hasExt = dot > 0;
+  const base = hasExt ? fileName.slice(0, dot) : fileName;
+  const ext = hasExt ? fileName.slice(dot) : "";
+
+  let candidate = fileName;
+  let index = 2;
+  while (takenLower.has(candidate.toLowerCase())) {
+    candidate = `${base} ${index}${ext}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+export async function listDirectoryEntryNames(
+  operations: DriveAPIOperations,
+  directoryApiPath: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const taken = new Set<string>();
+  if (!operations.listAllDirectoryEntries) return taken;
+  try {
+    const entries = await operations.listAllDirectoryEntries(directoryApiPath, { signal });
+    for (const entry of entries) taken.add(entry.name);
+  } catch {
+    // The folder may not exist yet.
+  }
+  return taken;
+}
+
+export async function listTrashEntryNames(
+  operations: DriveAPIOperations,
+  trashApiPath: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  return listDirectoryEntryNames(operations, trashApiPath, signal);
+}
+
+/**
+ * Pick a free name in `directoryApiPath`. `takenByDirectory` caches the listing for later files
+ * in the same restore so two siblings do not claim the same title.
+ * Offline, or when the listing fails because the network is down, keep `preferredName` so a
+ * hybrid rename can queue the restore. Any other listing failure is thrown: an empty set would
+ * treat the original title as free.
+ */
+export async function claimDirectoryEntryName(
+  operations: DriveAPIOperations,
+  directoryApiPath: string,
+  preferredName: string,
+  takenByDirectory: Map<string, Set<string>>,
+): Promise<string> {
+  if (!readBrowserOnline()) return preferredName;
+
+  let taken = takenByDirectory.get(directoryApiPath);
+  if (!taken) {
+    taken = new Set<string>();
+    if (operations.listAllDirectoryEntries) {
+      try {
+        const entries = await operations.listAllDirectoryEntries(directoryApiPath);
+        for (const entry of entries) taken.add(entry.name);
+      } catch (error) {
+        if (isFetchNetworkError(error)) return preferredName;
+        throw error;
+      }
+    }
+    takenByDirectory.set(directoryApiPath, taken);
+  }
+  const name = resolveFreeName(preferredName, taken);
+  taken.add(name);
+  return name;
+}
+
+export async function ensureTrashFolder(
+  operations: DriveAPIOperations,
+  username: string,
+  groupRoots: Set<string>,
+  signal?: AbortSignal,
+) {
+  const userRoot = apiPathFromUiPath("My Drive", username, groupRoots);
+  if (operations.listAllDirectoryEntries) {
+    try {
+      const entries = await operations.listAllDirectoryEntries(userRoot, { signal });
+      if (entries.some((entry) => entry.name === DRIVE_TRASH_DIR_NAME && entry.type === "dir")) {
+        return;
+      }
+    } catch {
+      // fall through to create
+    }
+  }
+  try {
+    await operations.createFolder(
+      { cwd: userRoot, name: DRIVE_TRASH_DIR_NAME },
+      { signal, refreshState: false },
+    );
+  } catch {
+    // Folder may already exist.
+  }
+}

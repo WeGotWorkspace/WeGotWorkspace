@@ -1,6 +1,6 @@
 import { suggestNewMarkdownFileName } from "@/drive-core/src/drive-file-utils";
 import { resolveDriveFolderPickerStartPath } from "@/drive-core/src/drive-folder-picker-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { splitFileNameForRename } from "@/lib/files/filename-rename";
 
 export function resolveCreateMarkdownDialogDefaults(

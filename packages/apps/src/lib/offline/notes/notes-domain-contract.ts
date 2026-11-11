@@ -1,6 +1,6 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
 import {
   readNotesBootstrapFromCache,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { fetchGroupRootsFromDrive, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { insertDocsImageFromNodeId } from "@/text-editor-core/src/text-editor-image-commands";

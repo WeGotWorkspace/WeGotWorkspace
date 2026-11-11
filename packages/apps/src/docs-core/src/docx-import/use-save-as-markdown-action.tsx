@@ -5,7 +5,7 @@ import { docxImportLabels as labels } from "@/docs-core/src/docx-import/docx-imp
 import { saveAsMarkdownSourceKind } from "@/docs-core/src/docx-import/save-as-markdown-source";
 import { useDocxConversionRunner } from "@/docs-core/src/docx-import/use-docx-conversion-runner";
 import type { DriveFileMenuAction } from "@/drive-core/src/drive-file-actions";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { useConnectivity } from "@/hooks/use-connectivity";
 
 export const SAVE_AS_MARKDOWN_ACTION_ID = "save-as-markdown";

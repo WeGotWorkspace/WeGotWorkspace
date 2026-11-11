@@ -8,7 +8,7 @@ import {
 } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarIcsImportDestination } from "@/calendar-core/src/calendar-ics-import";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { IcsImportDialog } from "@/lib/ics-import/ics-import-dialog";
 
 export type CalendarImportDialogProps = {

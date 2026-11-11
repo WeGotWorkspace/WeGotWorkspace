@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
   emptyCalendarEventForm,
   type CalendarEventFormValue,

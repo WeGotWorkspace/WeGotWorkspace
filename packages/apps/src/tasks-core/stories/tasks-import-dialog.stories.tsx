@@ -4,7 +4,7 @@ import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import type { Task, TaskImportResponse } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskImportResponse } from "@/lib/models/tasks-types";
 import { TasksStoryScope } from "@/tasks-core/stories/tasks-story-scope";
 
 const bootstrap = createTasksAppBootstrap();

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 
 describe("useDriveSidebarModel", () => {

@@ -16,7 +16,7 @@ import {
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { notesNotebooksTable, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 import { TooltipProvider } from "@/ui/tooltip";

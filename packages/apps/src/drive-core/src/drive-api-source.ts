@@ -8,7 +8,7 @@ import type {
   DriveAPIOperations,
   DriveAppBootstrap,
   DriveShareOperations,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-types";
 
 export type DriveApiSource = {
   loadBootstrap: () => Promise<DriveAppBootstrap>;

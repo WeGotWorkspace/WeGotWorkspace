@@ -1,5 +1,5 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { driveFileFromSharedWithMeEntry } from "@/drive-core/src/drive-file-utils";
 import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 

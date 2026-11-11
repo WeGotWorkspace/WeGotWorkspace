@@ -43,7 +43,7 @@ import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import {
   contactCardToEditDraft,
   emptyContactEditDraft,

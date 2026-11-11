@@ -1,7 +1,7 @@
 import type { PathBreadcrumbItem } from "@/path-breadcrumb/src/path-breadcrumb";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { ViewKey } from "@/drive-core/src/drive-models";
-import { DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT } from "@/drive-core/src/drive-path-utils";
+import type { ViewKey } from "@/lib/files/drive-models";
+import { DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT } from "@/lib/files/drive-path-utils";
 
 /** Virtual root in the move-to folder picker (lists My Drive and shared drives). */
 export const DRIVE_FOLDER_PICKER_ROOT = "";

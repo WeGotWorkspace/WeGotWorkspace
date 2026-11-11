@@ -11,7 +11,7 @@ import {
   mergeCalendarShareWith,
   type CalendarShareWith,
 } from "@/calendar-core/src/calendar-share";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { TooltipProvider } from "@/ui/tooltip";
 

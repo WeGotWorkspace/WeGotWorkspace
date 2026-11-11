@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesVjournalNote } from "@/lib/api/wgw/notes-vjournal";
 
 vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {

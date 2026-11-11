@@ -1,7 +1,7 @@
 import { createElement, useCallback, useState } from "react";
 import { Upload } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import type { ContactCard, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import {
   importErrorMessageFromUnknown,

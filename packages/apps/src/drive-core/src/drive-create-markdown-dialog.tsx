@@ -12,9 +12,9 @@ import {
 } from "@/ui/dialog";
 import { splitMarkdownDialogDefaultName } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
 import "@/drive-core/src/drive-create-markdown-dialog.css";
 

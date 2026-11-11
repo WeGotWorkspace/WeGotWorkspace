@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, beforeEach } from "vitest";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import type { ContactCard, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 import {
   contactsHybridDomainOperations,

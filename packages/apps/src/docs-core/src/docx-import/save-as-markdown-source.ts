@@ -1,5 +1,5 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 
 /** Word files convert; `.gdoc` (Google Drive for desktop) is only a link and explains itself. */
 export type SaveAsMarkdownSourceKind = "docx" | "gdoc";

@@ -4,7 +4,7 @@ import { toDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
 import type {
   NotesMarkdownImportOperations,
   NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+} from "@/lib/models/notes-types";
 import {
   NOTE_BODY_MAX_BYTES,
   finalizeImportedBody,

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import {
   canWriteTaskList,
   isTaskCompleted,

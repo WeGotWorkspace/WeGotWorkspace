@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   applyDocsHomeGroupDisplayNames,

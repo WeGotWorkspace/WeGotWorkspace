@@ -14,7 +14,7 @@ import {
   TASK_LIST_DOT_COLORS,
   taskListDotColor,
 } from "@/tasks-core/src/tasks-task-utils";
-import type { TaskImportResponse, TaskList } from "@/tasks-core/src/tasks-types";
+import type { TaskImportResponse, TaskList } from "@/lib/models/tasks-types";
 
 export type TasksImportDialogProps = {
   open: boolean;
