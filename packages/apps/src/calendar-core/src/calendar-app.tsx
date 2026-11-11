@@ -9,6 +9,8 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
+import { jmapTeamAvailabilitySource } from "@/calendar-core/src/calendar-invitee-availability";
+import { TeamAvailabilityProvider } from "@/calendar-core/src/use-invitee-availability";
 import {
   applyPendingSyncToEngineEvents,
   useCalendarPendingSync,
@@ -96,6 +98,10 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     reloadFromCache,
   } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict });
   const { online } = useConnectivity();
+  const teamAvailability = useMemo(
+    () => (jmapClient ? jmapTeamAvailabilitySource(jmapClient) : null),
+    [jmapClient],
+  );
   const availabilitySource = useMemo(
     () => (jmapClient ? teamAvailabilitySourceFromJmap(jmapClient) : null),
     [jmapClient],
@@ -188,29 +194,30 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
         errorTitle={defaultCalendarLabels.appTitle}
         successVersion={successVersion}
         render={(key) => (
-          <CalendarWorkspace
-            key={key}
-            data={data}
-            session={session}
-            operations={operations}
-            surface={syncedSurface}
-            pendingEventIds={pendingEventIds}
-            initialView={initialView}
-            initialPresentation={initialPresentation}
-            initialAnchor={initialAnchor}
-            initialSearchQuery={initialSearchQuery}
-            onRouteStateChange={handleRouteStateChange}
-            onLogout={() => {
-              window.location.assign("/logout");
-            }}
-            meetOperations={meetOperations}
-            workspaceOrigin={workspaceOrigin}
-            onJoinMeeting={handleJoinMeeting}
-            onOpenTaskInTasks={(href) => {
-              window.location.assign(href);
-            }}
-            availabilitySource={availabilitySource}
-          />
+          <TeamAvailabilityProvider key={key} source={teamAvailability}>
+            <CalendarWorkspace
+              data={data}
+              session={session}
+              operations={operations}
+              surface={syncedSurface}
+              pendingEventIds={pendingEventIds}
+              initialView={initialView}
+              initialPresentation={initialPresentation}
+              initialAnchor={initialAnchor}
+              initialSearchQuery={initialSearchQuery}
+              onRouteStateChange={handleRouteStateChange}
+              onLogout={() => {
+                window.location.assign("/logout");
+              }}
+              meetOperations={meetOperations}
+              workspaceOrigin={workspaceOrigin}
+              onJoinMeeting={handleJoinMeeting}
+              onOpenTaskInTasks={(href) => {
+                window.location.assign(href);
+              }}
+              availabilitySource={availabilitySource}
+            />
+          </TeamAvailabilityProvider>
         )}
       />
       <CalendarConflictDialog
