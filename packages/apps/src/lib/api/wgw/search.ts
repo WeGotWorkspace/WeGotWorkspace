@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 
 export type WgwUnifiedSearchResult = {
@@ -84,7 +85,7 @@ export async function fetchWgwUnifiedSearch(
     method: "GET",
     signal: params.signal,
   });
-  if (!res.ok) throw new Error(`GET /search/results failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /search/results failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as WgwUnifiedSearchResponse;
   return payload.data;
 }

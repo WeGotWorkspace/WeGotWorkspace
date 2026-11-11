@@ -135,6 +135,7 @@ Decided:
 - Privacy first: the switch is off by default; when on, every own personal and Team calendar starts included, time only. 2026-11-04.
 - Admins get no extra availability visibility. 2026-11-04.
 - Teammate colours in Team availability are distinct: avatar colour first, the next free avatar colour on a clash (username order, all teammates). 2026-11-09.
+- Calendar sidebar: Team availability rows show a colour dot and the name, no avatar; the section header has a show/hide-all dot and a collapse chevron, like My calendars and Reminders. Product owner, 2026-11-10, in the UI check of #1958/#1963.
 - Subscriptions never count. "Details" is title and location only. 2026-11-04.
 - Offline: cache what was fetched, prefetch the current week plus 4 weeks for ticked teammates, show "Offline · updated …". 2026-11-04.
 - The offline clash notice is #1914, not built here. 2026-11-04.
@@ -250,7 +251,7 @@ Decided:
   - Hidden state. `path: collection-sidebar/src/collection-hidden-ids.ts:17`
   - Poll tick. `path: calendar-core/src/calendar-refresh.ts:6`
   - Offline tables. `path: lib/offline/calendars/calendars-schema.ts:3`
-  - Avatar. `path: user-avatar/src/user-avatar.tsx:118`
+  - Avatar colour (source of the teammate colour; no avatar is rendered in the sidebar). `path: user-avatar/src/user-avatar.tsx:118`
 - **Builds:**
   - `lib/jmap-client/availability/` client
   - `calendars_availability` cache (per person per UTC week, `fetchedAt`) and the cached teammates list, in a new schema version
@@ -258,7 +259,7 @@ Decided:
   - fetch at once on range change; a 60-second availability tick for the state check, the visible range and the prefetch (current week + 4 weeks); the 10-second calendar tick is untouched
   - drop a person's cached weeks when their `version` changes or they leave the list; evict weeks older than 30 days outside the prefetch window, at most 60 per person
   - virtual read-only calendars `availability:{username}` feeding the grid; cache keyed `[username+weekStart]`
-  - **Team availability** section in `calendar-availability-sidebar.tsx`: own row first, avatar rows, hidden by default, collapsible, filter above 8 rows
+  - **Team availability** section in `calendar-availability-sidebar.tsx`: own row first, colour-dot rows with the name and no avatar (the dot is the on/off toggle), hidden by default, a header with a show/hide-all dot (half filled when some rows are on) and a collapse chevron, filter above 8 rows
   - Calendar hosts the shared `NoticeBar`; one `info` notice while offline with ticked teammates ("updated …" stamp, plus the uncached-weeks sentence when it applies); `Notice` action made optional with a test
   - row marker for `complete: false`
   - no growth of `calendar-workspace.tsx` or `use-calendar-controller.ts`
