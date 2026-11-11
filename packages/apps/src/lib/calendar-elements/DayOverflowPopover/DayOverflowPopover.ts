@@ -98,6 +98,7 @@ export class DayOverflowPopover extends BaseElement {
               .summary=${event.summary}
               .color=${event.color}
               .rsvp=${event.rsvp ?? ""}
+              .overlay=${event.overlay ?? ""}
               style=${styleMap({
                 "--_lc-all-day-day-number-space": "0px",
               })}

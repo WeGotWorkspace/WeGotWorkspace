@@ -570,6 +570,59 @@ export const TeamAvailabilityOffline: Story = {
   },
 };
 
+/** Busy blocks in a month (#1911): Ada shares details, Grace only busy times. */
+export const TeamAvailabilityBusyMonth: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    initialView: "month",
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+};
+
+function findBusyCard(root: ParentNode, summary: string): HTMLElement | null {
+  for (const el of root.querySelectorAll('event-card[data-overlay="availability"]')) {
+    if ((el as HTMLElement & { summary?: string }).summary === summary) return el as HTMLElement;
+  }
+  for (const el of root.querySelectorAll("*")) {
+    if (el.shadowRoot) {
+      const found = findBusyCard(el.shadowRoot, summary);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Clicking a busy block opens its read-only popover: person, title, time, location. */
+export const TeamAvailabilityBusyPopover: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const card = await waitFor(() => {
+      const found = findBusyCard(canvasElement, "Roadmap review");
+      if (!found) throw new Error("busy card not ready");
+      return found;
+    });
+    await userEvent.click(card);
+    const popover = await waitFor(() => {
+      const found = canvasElement.ownerDocument.querySelector(".calendar-availability-popover");
+      if (!(found instanceof HTMLElement)) throw new Error("popover not open");
+      return found;
+    });
+    await expect(popover.textContent).toContain("Ada Lovelace");
+    await expect(popover.textContent).toContain("Roadmap review");
+    await expect(popover.textContent).toContain("Room Babbage");
+  },
+};
+
 /** A JMAP server with the contract's TeamMember methods behind the section. */
 function mockTeamAvailabilitySource() {
   const server = new MockJmapServer();

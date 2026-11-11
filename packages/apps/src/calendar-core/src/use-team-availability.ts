@@ -372,18 +372,33 @@ export function useTeamAvailability({
     [memberList],
   );
 
-  return {
-    online: presetMode && preset.offline ? false : online,
-    members: orderedMembers,
-    shownIds,
-    toggleShown,
-    setShown,
-    collapsed,
-    toggleCollapsed,
-    incompleteIds: summary.incompleteIds,
-    periodsByUser: summary.periodsByUser,
-    colors,
-    overlayEvents,
-    coverage: summary.coverage,
-  };
+  const effectiveOnline = presetMode && preset.offline ? false : online;
+  return useMemo(
+    () => ({
+      online: effectiveOnline,
+      members: orderedMembers,
+      shownIds,
+      toggleShown,
+      setShown,
+      collapsed,
+      toggleCollapsed,
+      incompleteIds: summary.incompleteIds,
+      periodsByUser: summary.periodsByUser,
+      colors,
+      overlayEvents,
+      coverage: summary.coverage,
+    }),
+    [
+      collapsed,
+      colors,
+      effectiveOnline,
+      orderedMembers,
+      overlayEvents,
+      setShown,
+      shownIds,
+      summary,
+      toggleCollapsed,
+      toggleShown,
+    ],
+  );
 }

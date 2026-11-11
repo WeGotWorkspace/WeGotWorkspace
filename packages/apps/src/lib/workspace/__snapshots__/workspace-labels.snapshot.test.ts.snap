@@ -302,6 +302,18 @@ exports[`workspace label snapshot > resolved labels match the snapshot: calendar
     "Offline · teammates' availability updated Alpha.",
     "Offline · teammates' availability updated Alpha.",
   ],
+  "teamAvailabilityPreviewLocation": "Location",
+  "teamAvailabilityPreviewNoDetails": "Only busy times are shared.",
+  "teamAvailabilityPreviewTime": "Time",
+  "teamAvailabilityPreviewTitle": [
+    "0's availability",
+    "1's availability",
+    "2's availability",
+    "Alpha's availability",
+    "Alpha's availability",
+    "Alpha's availability",
+    "Alpha's availability",
+  ],
   "teamAvailabilitySection": "Team availability",
   "teamAvailabilitySelf": "You (as teammates see you)",
   "teamAvailabilityShow": [

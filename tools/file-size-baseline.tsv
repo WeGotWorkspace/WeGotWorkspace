@@ -1,10 +1,10 @@
 packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	916	grandfathered
-packages/apps/src/calendar-core/src/calendar-workspace.tsx	1253	grandfathered
+packages/apps/src/calendar-core/src/calendar-workspace.tsx	1252	grandfathered
 packages/apps/src/calendar-core/src/use-calendar-controller.ts	1474	grandfathered
 packages/apps/src/contacts-core/src/contacts-edit-utils.ts	815	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1439	grandfathered
 packages/apps/src/lib/api/wgw/http.ts	943	grandfathered
-packages/apps/src/lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts	2376	docs/architecture/calendar-react-lit.md
+packages/apps/src/lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts	2362	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	833	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/TimeLine/TimeLine.ts	2318	docs/architecture/calendar-react-lit.md
