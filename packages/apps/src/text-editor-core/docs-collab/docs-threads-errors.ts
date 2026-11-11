@@ -2,14 +2,7 @@ import { parseApiErrorJson } from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 
 /** A failed `/files/threads` request, with the API error code when the body has one. */
-export class DocsThreadsRequestError extends WgwRequestError {
-  readonly code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message, status);
-    this.code = code;
-  }
-}
+export class DocsThreadsRequestError extends WgwRequestError {}
 
 /** The server no longer knows the `since` state (expired, or from before a reset). */
 export function isDocsThreadsCannotCalculateChanges(error: unknown): boolean {

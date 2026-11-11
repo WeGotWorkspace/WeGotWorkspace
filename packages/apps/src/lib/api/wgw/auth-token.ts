@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 
 export type WgwAuthTokenOptions = {
@@ -44,7 +45,10 @@ export async function fetchWgwAuthToken({
     // ignore; handled by the checks below
   }
   if (!res.ok || !data.access_token) {
-    throw new Error(data.error || `Auth token request failed (${res.status})`);
+    throw new WgwRequestError(
+      data.error || `Auth token request failed (${res.status})`,
+      res.status,
+    );
   }
   return data.access_token;
 }

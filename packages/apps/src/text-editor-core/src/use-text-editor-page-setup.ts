@@ -6,12 +6,9 @@ import { applyTextEditorPageSetup } from "@/text-editor-core/src/text-editor-pag
 
 const PAGE_STYLE_ATTRIBUTE = "data-text-editor-page";
 
-/** Whether the editor shows separate pages: the person chose pages and the source split is closed. */
-export function textEditorPaginated(
-  pageSetup: TextEditorPageSetup | undefined,
-  viewSource: boolean,
-): boolean {
-  return pageSetup?.layout === "pages" && !viewSource;
+/** Whether the editor shows separate pages: the person chose a paper, also beside the source. */
+export function textEditorPaginated(pageSetup: TextEditorPageSetup | undefined): boolean {
+  return pageSetup?.layout === "pages";
 }
 
 /** One `@page` rule while a Docs editor is mounted, so any print follows the paper size. */

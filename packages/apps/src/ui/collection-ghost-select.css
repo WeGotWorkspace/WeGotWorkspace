@@ -3,9 +3,11 @@
 /*
  * Ghost collection switcher (suite norm), above a detail title: the collection's
  * dot and name in its own colour, a chevron, no chrome, at small-button size.
- * Notes uses it for the notebook, Contacts for the address book. The name mixes
- * its colour 55% into the ink so even yellow reads at 4.5:1. The negative
- * inline margin keeps the dot in line with the title while the hover wash has room.
+ * Notes uses it for the notebook, Contacts for the address book. The name keeps the
+ * dot's own hue and chroma: a mix into the ink shifted the hue, so the text read as a
+ * glow next to the dot. Only the lightness moves, and only as far as 4.5:1 needs
+ * (yellow and green on white, indigo on dark). The negative inline margin keeps the
+ * dot in line with the title while the hover wash has room.
  */
 .collection-ghost-select {
   @apply inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium outline-none;
@@ -15,13 +17,14 @@
   border-radius: var(--control-radius-button);
   border: 0;
   background: transparent;
-  color: color-mix(
-    in oklch,
-    var(--collection-row-color, var(--workspace-foreground)) 55%,
-    var(--workspace-foreground)
-  );
+  --collection-ghost-select-dot: var(--collection-row-color, var(--workspace-foreground));
+  color: oklch(from var(--collection-ghost-select-dot) min(l, 0.5) c h);
   cursor: pointer;
   transition: background-color 150ms ease;
+}
+
+[data-theme="dark"] .collection-ghost-select {
+  color: oklch(from var(--collection-ghost-select-dot) max(l, 0.75) c h);
 }
 
 .collection-ghost-select:hover:not(:disabled),

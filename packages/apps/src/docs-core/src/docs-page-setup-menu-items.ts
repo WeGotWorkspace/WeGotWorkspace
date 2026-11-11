@@ -28,8 +28,9 @@ export function docsPageSetupButtonLabel(
 }
 
 /**
- * Menu rows: paper size (`None` shows no pages), then orientation. Each row is a one-tap
- * choice. Orientation has no meaning without paper, so it is off for `None`.
+ * Menu rows: paper size (`None` shows no pages), then orientation, then Fit to screen.
+ * Each row is a one-tap choice. Orientation and fit have no meaning without paper, so
+ * they are off for `None`.
  */
 export function docsPageSetupMenuItems({
   pageSetup,
@@ -58,6 +59,14 @@ export function docsPageSetupMenuItems({
       checked: !noPaper && pageSetup.orientation === "landscape",
       disabled: noPaper,
       onClick: () => setPageSetup({ orientation: "landscape" }),
+    },
+    { type: "separator", id: "after-orientation" },
+    {
+      id: "fit-to-screen",
+      label: labels.pageFitToScreen,
+      checked: !noPaper && pageSetup.fitToScreen === true,
+      disabled: noPaper,
+      onClick: () => setPageSetup({ fitToScreen: pageSetup.fitToScreen !== true }),
     },
   ];
 }

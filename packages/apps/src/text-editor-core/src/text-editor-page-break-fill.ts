@@ -1,5 +1,6 @@
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { textEditorScreenScale } from "@/text-editor-core/src/text-editor-fit-scale";
 
 /**
  * With pages on, `tiptap-pagination-plus` lays out pages as full-width floats that push
@@ -91,11 +92,18 @@ function clearVars(el: HTMLElement): boolean {
   return true;
 }
 
-function readPageEnds(dom: HTMLElement, domTop: number): PageEnd[] {
-  return Array.from(dom.querySelectorAll<HTMLElement>(PAGE_END_SELECTOR)).map((el) => {
+/** Edges of `el` from the top of the page column, in layout px (Fit to screen scales the screen). */
+function edgesFrom(dom: HTMLElement): (el: Element) => { top: number; bottom: number } {
+  const domTop = dom.getBoundingClientRect().top;
+  const scale = textEditorScreenScale(dom);
+  return (el) => {
     const rect = el.getBoundingClientRect();
-    return { top: rect.top - domTop, bottom: rect.bottom - domTop };
-  });
+    return { top: (rect.top - domTop) / scale, bottom: (rect.bottom - domTop) / scale };
+  };
+}
+
+function readPageEnds(dom: HTMLElement, edges: ReturnType<typeof edgesFrom>): PageEnd[] {
+  return Array.from(dom.querySelectorAll<HTMLElement>(PAGE_END_SELECTOR)).map(edges);
 }
 
 function measuredFallback(ends: readonly PageEnd[], fallback: PageEndFallback): PageEndFallback {
@@ -115,17 +123,17 @@ export function layoutPageBreaks(dom: HTMLElement, options: PageBreakFillOptions
     return breaks.map(clearVars).some(Boolean);
   }
 
-  const domTop = dom.getBoundingClientRect().top;
-  const ends = readPageEnds(dom, domTop);
+  const edges = edgesFrom(dom);
+  const ends = readPageEnds(dom, edges);
   const fallback = measuredFallback(ends, options.fallback());
   let changed = false;
 
   for (const el of breaks) {
     const previous = el.previousElementSibling as HTMLElement | null;
-    const contentBottom = previous ? previous.getBoundingClientRect().bottom - domTop : 0;
+    const contentBottom = previous ? edges(previous).bottom : 0;
     // Pull the break up against the content before it, past that block's bottom margin.
     const currentPull = Number.parseFloat(el.style.getPropertyValue("--page-break-pull")) || 0;
-    const gap = el.getBoundingClientRect().top - domTop - contentBottom;
+    const gap = edges(el).top - contentBottom;
     changed = setVar(el, "--page-break-pull", Math.max(0, gap + currentPull)) || changed;
 
     const afterBreak = previous?.matches('[data-type="page-break"]') ?? false;
@@ -153,11 +161,8 @@ function contentPageCountIsStale(dom: HTMLElement): boolean {
   if (!dom.classList.contains(PAGINATION_CLASS)) return false;
   const lastBlock = dom.lastElementChild;
   if (!lastBlock || lastBlock.matches("[data-rm-pagination]")) return false;
-  const domTop = dom.getBoundingClientRect().top;
-  return pageCountIsStale(
-    lastBlock.getBoundingClientRect().bottom - domTop,
-    readPageEnds(dom, domTop),
-  );
+  const edges = edgesFrom(dom);
+  return pageCountIsStale(edges(lastBlock).bottom, readPageEnds(dom, edges));
 }
 
 function scheduleRelayout(view: EditorView, frame: { id: number | null }) {
