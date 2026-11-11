@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 
@@ -7,13 +8,14 @@ export async function listNotifications(opts?: {
 }): Promise<NotificationInboxList> {
   const query = opts?.unread ? "?unread=1" : "";
   const res = await wgwFetch(`/notifications${query}`, { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /notifications failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /notifications failed (${res.status})`, res.status);
   return (await wgwReadJson(res)) as NotificationInboxList;
 }
 
 export async function ackNotification(id: string): Promise<void> {
   const res = await wgwFetch(`/notifications/${encodeURIComponent(id)}/ack`, { method: "POST" });
-  if (!res.ok) throw new Error(`POST /notifications/${id}/ack failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`POST /notifications/${id}/ack failed (${res.status})`, res.status);
 }
 
 /**
@@ -27,12 +29,13 @@ export async function ackLocalNotifications(ids: readonly string[]): Promise<voi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
   });
-  if (!res.ok) throw new Error(`POST /notifications/local-ack failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`POST /notifications/local-ack failed (${res.status})`, res.status);
 }
 
 export async function fetchVapidPublicKey(): Promise<string> {
   const res = await wgwFetch("/notifications/push/vapid-public-key");
-  if (!res.ok) throw new Error(`GET vapid-public-key failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET vapid-public-key failed (${res.status})`, res.status);
   const json = (await wgwReadJson(res)) as { publicKey?: string };
   return json.publicKey ?? "";
 }
@@ -57,7 +60,8 @@ export async function subscribePush(
       ...(scope === null ? {} : { scope }),
     }),
   });
-  if (!res.ok) throw new Error(`POST push subscription failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`POST push subscription failed (${res.status})`, res.status);
 }
 
 export async function unsubscribePush(endpoint: string): Promise<void> {
@@ -66,5 +70,6 @@ export async function unsubscribePush(endpoint: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint }),
   });
-  if (!res.ok) throw new Error(`DELETE push subscription failed (${res.status})`);
+  if (!res.ok)
+    throw new WgwRequestError(`DELETE push subscription failed (${res.status})`, res.status);
 }

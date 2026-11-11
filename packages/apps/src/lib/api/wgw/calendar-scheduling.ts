@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import type {
   CalendarInvitee,
@@ -37,7 +38,7 @@ export async function fetchCalendarSchedulingNotifications(): Promise<
   CalendarSchedulingNotification[]
 > {
   const response = await wgwFetch("/calendars/scheduling/notifications");
-  if (!response.ok) throw new Error("Could not load invitations");
+  if (!response.ok) throw new WgwRequestError("Could not load invitations", response.status);
   const body = (await wgwReadJson(response)) as { list?: CalendarSchedulingNotification[] };
   return Array.isArray(body.list) ? body.list : [];
 }
@@ -49,7 +50,7 @@ export type CalendarInviteesResponse = {
 
 export async function fetchCalendarSchedulingInvitees(): Promise<CalendarInviteesResponse> {
   const response = await wgwFetch("/calendars/scheduling/invitees");
-  if (!response.ok) throw new Error("Could not load invitees");
+  if (!response.ok) throw new WgwRequestError("Could not load invitees", response.status);
   const body = (await wgwReadJson(response)) as {
     list?: CalendarInvitee[];
     canSubmitEmail?: boolean;
