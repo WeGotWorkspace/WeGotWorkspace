@@ -495,3 +495,27 @@ html[data-modality="pointer"] .textarea.textarea--ghost:focus-visible,
   @apply min-h-0 resize-none;
   line-height: 1.5;
 }
+
+/* A ghost time field reads like the ghost dropdowns: their weight, padding and the
+ * same chevron (the native picker button keeps working, painted as the chevron). */
+.input.input--ghost[type="time"] {
+  @apply font-medium;
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  padding-inline: 0.625rem;
+}
+
+.input.input--ghost[type="time"]::-webkit-calendar-picker-indicator {
+  @apply size-4;
+  inset-inline-end: 0.625rem;
+  /* Lucide chevron-down, as `.collection-ghost-select__chevron`. */
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.input.input--ghost[type="time"]::-webkit-datetime-edit {
+  padding-inline-end: 1.5rem;
+}

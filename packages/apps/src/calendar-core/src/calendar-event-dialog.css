@@ -84,7 +84,6 @@
   );
 }
 
-.calendar-dialog-surface .calendar-event-dialog__form--compact .calendar-event-dialog__time-slot,
 .calendar-dialog-surface
   .calendar-event-dialog__form--compact
   .calendar-event-dialog__recurrence-ends-extra {
@@ -168,22 +167,28 @@
   min-width: 12rem;
 }
 
+/* Date and time as ghost dropdowns at the end of the row, like Time zone; the
+ * calendar and clock icons open their pickers. */
 .calendar-dialog-surface .calendar-event-dialog__datetime {
-  @apply grid items-center gap-2;
-  grid-template-columns: minmax(0, 1fr) var(--calendar-event-time-slot-width, 7.5rem);
+  @apply flex min-w-0 items-center justify-end gap-1;
 }
 
-/* Date chrome lives on shared LocaleDatePicker `.control-surface`; layout only here. */
-.calendar-dialog-surface .calendar-event-dialog__datetime .locale-date-picker {
-  @apply min-w-0 w-full;
+.calendar-dialog-surface .calendar-event-dialog__datetime .collection-ghost-select {
+  @apply font-medium;
+  margin-inline: 0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__time-slot {
-  @apply flex min-h-8 w-full min-w-0 items-center;
+  @apply flex shrink-0 items-center;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__time-slot .input[type="time"] {
-  @apply w-full min-w-0;
+.calendar-dialog-surface .calendar-event-dialog__time-slot:empty {
+  display: none;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__time-slot .input.input--ghost[type="time"] {
+  @apply w-auto;
+  margin-inline: 0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends {

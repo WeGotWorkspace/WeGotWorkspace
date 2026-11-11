@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { useId, useMemo, useState, type ComponentProps } from "react";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -28,6 +28,39 @@ export type CalendarEventFormWhenProps = {
   onFieldChange: CalendarEventFormFieldChange;
 };
 
+/**
+ * A time field that applies what you type when you leave it (or press Enter). The form
+ * keeps the end after the start, so applying every keystroke would fight the typing:
+ * "16:45" passes through "01:45" and the end would be pushed back each time.
+ */
+function EventTimeInput({
+  value,
+  onCommit,
+  ...props
+}: Omit<ComponentProps<typeof Input>, "type" | "value" | "onChange" | "onBlur"> & {
+  value: string;
+  onCommit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft !== null && draft !== value && draft !== "") onCommit(draft);
+    setDraft(null);
+  };
+  return (
+    <Input
+      {...props}
+      type="time"
+      variant="ghost"
+      value={draft ?? value}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") commit();
+      }}
+    />
+  );
+}
+
 /** Start, end, all-day, and time zone rows for the shared event form. */
 export function CalendarEventFormWhen({
   form,
@@ -49,11 +82,11 @@ export function CalendarEventFormWhen({
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--starts"
         layout="inline"
-        fill
         label={labels.eventStartLabel}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
+            variant="ghost"
             value={form.startDate}
             locale={locale}
             size={controlSize}
@@ -63,14 +96,13 @@ export function CalendarEventFormWhen({
           />
           <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
             {!form.allDay ? (
-              <Input
-                type="time"
+              <EventTimeInput
                 size={controlSize}
                 lang={locale}
                 value={form.startTime}
                 aria-label={`${labels.eventStartLabel} time`}
                 disabled={disabled}
-                onChange={(event) => onFieldChange("startTime", event.target.value)}
+                onCommit={(next) => onFieldChange("startTime", next)}
               />
             ) : null}
           </div>
@@ -79,11 +111,11 @@ export function CalendarEventFormWhen({
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--ends"
         layout="inline"
-        fill
         label={labels.eventEndLabel}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
+            variant="ghost"
             value={form.endDate}
             locale={locale}
             size={controlSize}
@@ -93,14 +125,13 @@ export function CalendarEventFormWhen({
           />
           <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
             {!form.allDay ? (
-              <Input
-                type="time"
+              <EventTimeInput
                 size={controlSize}
                 lang={locale}
                 value={form.endTime}
                 aria-label={`${labels.eventEndLabel} time`}
                 disabled={disabled}
-                onChange={(event) => onFieldChange("endTime", event.target.value)}
+                onCommit={(next) => onFieldChange("endTime", next)}
               />
             ) : null}
           </div>
