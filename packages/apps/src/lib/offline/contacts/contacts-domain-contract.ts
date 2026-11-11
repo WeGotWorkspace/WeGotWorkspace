@@ -1,5 +1,5 @@
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import type { ContactCard, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { createHybridContactsOperations } from "@/lib/offline/contacts-hybrid-operations";
 import {
   readContactsBootstrapFromCache,

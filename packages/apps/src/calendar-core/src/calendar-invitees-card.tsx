@@ -9,7 +9,7 @@ import {
   type CalendarAttendee,
   type CalendarInvitee,
   type CalendarParticipationStatus,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import {
   calendarInviteeSearchRows,
   searchRowToAttendee,
@@ -24,7 +24,7 @@ import {
 } from "@/calendar-core/src/calendar-invitee-availability-tag";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import {

@@ -6,7 +6,7 @@ import {
   type CalendarUtcRange,
 } from "@/lib/calendar-load-window";
 import { viewDateRange } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 
 /** Covers any week start and any time zone offset around a rendered period. */
 const VIEW_RANGE_PADDING_DAYS = 7;

@@ -14,7 +14,7 @@ import {
 } from "@/lib/offline/notes-jmap-inbound";
 import { getNoteFromCache, listNoteIdsBlockingSyncToken } from "@/lib/offline/notes-offline-store";
 import { noteBodyInRoom } from "@/notes-core/src/note-body-rooms";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 
 /** Inbound poll while push is down (REST `/changes` is the mock-tier fallback). */
 export const NOTES_CHANGES_POLL_MS = 10_000;

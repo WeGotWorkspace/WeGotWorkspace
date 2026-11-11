@@ -10,7 +10,7 @@ import {
   teammateAttendees,
   type TeamAvailabilityPeriod,
 } from "@/calendar-core/src/calendar-invitee-availability";
-import type { CalendarAttendee, CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
 import { JmapClient } from "@/lib/jmap-client";
 import { timedEvent } from "@/lib/jmap-client/mock/fixtures";
 import { MockJmapServer } from "@/lib/jmap-client/mock/MockJmapServer";

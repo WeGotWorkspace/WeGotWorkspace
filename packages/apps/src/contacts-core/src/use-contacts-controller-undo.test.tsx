@@ -3,7 +3,11 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppToastShowOptions } from "@/hooks/use-app-toast";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import type { ContactCard, ContactCardPatch, ContactsAPIOperations } from "./contacts-types";
+import type {
+  ContactCard,
+  ContactCardPatch,
+  ContactsAPIOperations,
+} from "@/lib/models/contacts-types";
 import { useContactsController } from "./use-contacts-controller";
 
 const { mockShow } = vi.hoisted(() => ({ mockShow: vi.fn() }));

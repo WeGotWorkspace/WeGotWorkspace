@@ -4,7 +4,7 @@ import { useState } from "react";
 import { expect, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
-import type { ChatMessage, ChatSendPayload } from "@/chat-ui/src/chat-types";
+import type { ChatMessage, ChatSendPayload } from "@/lib/models/chat-types";
 import { CHAT_STORY_AUTHOR_PRESENCE } from "@/chat-ui/stories/chat-stories.fixtures";
 import {
   THREAD_CURRENT_USER_ID,

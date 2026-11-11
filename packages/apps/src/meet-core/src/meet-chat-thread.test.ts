@@ -5,7 +5,7 @@ import {
   meetThreadReplies,
   upsertMeetChatMessage,
 } from "@/meet-core/src/meet-chat-thread";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 function message(
   partial: Partial<ChatMessage> & Pick<ChatMessage, "id" | "channelId">,

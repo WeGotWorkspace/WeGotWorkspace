@@ -15,7 +15,7 @@ import {
   getDocsCollabSyncState,
   subscribeDocsCollabSyncState,
 } from "@/text-editor-core/docs-collab/docs-collab-sync-registry";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 function fileApiPath(file: DriveFile): string | null {
   const path = file.apiPath?.trim();

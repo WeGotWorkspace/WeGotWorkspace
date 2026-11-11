@@ -1,5 +1,5 @@
 import { getTask } from "@/lib/api/wgw/tasks";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { withOutboxLock } from "@/lib/offline/core/connectivity-sync-runner";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";

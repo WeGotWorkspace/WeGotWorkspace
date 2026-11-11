@@ -3,7 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MeetAPIOperations } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations } from "@/lib/models/meet-types";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 import { useMeetCallSession } from "@/meet-core/src/use-meet-call-session";
 import type { UseMeetRtcOptions } from "@/meet-core/src/use-meet-rtc";

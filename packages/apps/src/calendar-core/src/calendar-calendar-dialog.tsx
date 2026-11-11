@@ -29,7 +29,7 @@ import type {
   CalendarDirectoryGroup,
   CalendarFeedInfo,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarPublishSection } from "@/calendar-core/src/calendar-publish-section";
 import { CalendarShareSection } from "@/calendar-core/src/calendar-share-section";

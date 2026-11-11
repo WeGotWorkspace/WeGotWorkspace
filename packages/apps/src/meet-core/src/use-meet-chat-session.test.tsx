@@ -3,7 +3,7 @@
  */
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ChatMessage, MeetChatOperations } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 
 const CLIENT_ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";

@@ -1,4 +1,4 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 /** UI path for a folder row (used as a move/drop destination). */
 export function driveFolderUiPath(file: DriveFile): string {

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
-import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
+import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
 
 export type DriveShareDialogState = {
   open: boolean;

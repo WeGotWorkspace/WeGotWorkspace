@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { extensionAvatarLabel, extensionHue } from "@/drive-core/src/drive-file-avatar-label";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 afterEach(cleanup);
 

@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
-import { formatBytesCompact } from "@/drive-core/src/drive-file-utils";
+import { formatBytesCompact } from "@/lib/files/file-name-utils";
 import { driveUploadBatchLabels as L } from "@/drive-core/src/drive-upload-batch-labels";
-import type { DriveUploadBatchAnswers } from "@/drive-core/src/drive-types";
+import type { DriveUploadBatchAnswers } from "@/lib/files/drive-types";
 import type {
   DriveUploadBatchQuestions,
   DriveUploadKnownSpaceCheck,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 
 /** Index page size for All Files (the search API's maximum). */
 export const DRIVE_ALL_FILES_PAGE_SIZE = 100;

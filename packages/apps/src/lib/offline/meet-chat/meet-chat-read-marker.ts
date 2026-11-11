@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
 import {

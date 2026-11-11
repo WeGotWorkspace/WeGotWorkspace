@@ -3,7 +3,7 @@ import { expect, within } from "storybook/test";
 import { DriveGridView } from "@/drive-core/src/drive-browser";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { extensionHue } from "@/drive-core/src/drive-file-avatar-label";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { createDriveBrowserStoryProps } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { driveStoryParameters, STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";

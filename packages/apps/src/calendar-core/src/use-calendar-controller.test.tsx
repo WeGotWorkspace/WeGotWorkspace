@@ -8,7 +8,7 @@ import {
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import * as calendarSearch from "@/calendar-core/src/calendar-search";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";

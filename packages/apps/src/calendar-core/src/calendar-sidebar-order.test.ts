@@ -4,7 +4,7 @@ import {
   sharedWithMeCalendarsForSidebar,
   sortCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 describe("sortCalendarsForSidebar", () => {
   it("orders by sortOrder ascending, then name", () => {

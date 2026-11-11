@@ -1,6 +1,6 @@
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { canBrowserPreviewImage } from "@/drive-core/src/drive-file-utils";
+import { canBrowserPreviewImage } from "@/lib/files/file-name-utils";
 
 export type DocsImageUploadHandler = (files: File[]) => Promise<void> | void;
 

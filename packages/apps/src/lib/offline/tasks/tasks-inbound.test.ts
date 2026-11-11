@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import {
   ingestRemoteTask,
   ingestRemoteTaskDestroyed,

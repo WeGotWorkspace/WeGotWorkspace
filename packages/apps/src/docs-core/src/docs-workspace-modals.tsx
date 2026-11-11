@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import type { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import type { useDocsController } from "@/docs-core/src/use-docs-controller";
 import { ShareDialog } from "@/share-ui/share-dialog";

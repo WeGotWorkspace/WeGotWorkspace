@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blurWorkspaceDetailEditor } from "@/hooks/blur-workspace-detail-editor";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 
 export type UseTasksListArgs = {

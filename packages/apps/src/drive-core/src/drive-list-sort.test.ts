@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { sortDriveFiles } from "@/drive-core/src/drive-list-sort";
 import { nextListSort } from "@/lib/list-sort";
 

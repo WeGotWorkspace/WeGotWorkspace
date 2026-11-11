@@ -3,7 +3,7 @@ import type {
   NoteMetadataField,
   NotesAPIOperations,
   NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+} from "@/lib/models/notes-types";
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,

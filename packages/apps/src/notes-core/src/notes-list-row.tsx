@@ -14,7 +14,7 @@ import {
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 
 /** The notebook at the foot of a row: its colour dot and its name. */

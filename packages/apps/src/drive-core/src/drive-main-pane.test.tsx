@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveFolderListingError } from "@/drive-core/src/use-drive-folder-listing-sync";
 
 vi.mock("@/hooks/use-app-toast", () => ({

@@ -8,7 +8,7 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from "react";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ContactSending } from "@/contacts-core/src/contacts-draft-rows";
 import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,

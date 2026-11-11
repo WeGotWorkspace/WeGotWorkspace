@@ -11,7 +11,7 @@ import {
   normalizeApiVirtualPath,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 
 const USER = "alice";
 const groupRoots = new Set(["Engineering"]);

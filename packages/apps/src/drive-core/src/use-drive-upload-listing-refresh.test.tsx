@@ -3,8 +3,8 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 
 const user = "ada";

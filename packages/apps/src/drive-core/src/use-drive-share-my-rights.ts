@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { DriveRights } from "@wgw/openapi-types/drive-types";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import { useShareAtPath } from "@/share-ui/use-share-at-path";
 
 export type UseDriveShareMyRightsArgs = {

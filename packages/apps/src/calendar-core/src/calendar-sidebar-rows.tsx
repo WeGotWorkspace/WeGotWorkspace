@@ -9,7 +9,7 @@ import {
 } from "@/calendar-core/src/calendar-collection-write";
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";

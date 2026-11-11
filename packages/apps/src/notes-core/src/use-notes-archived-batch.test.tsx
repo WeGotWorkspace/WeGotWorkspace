@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
-import type { NotesUIData } from "./notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({

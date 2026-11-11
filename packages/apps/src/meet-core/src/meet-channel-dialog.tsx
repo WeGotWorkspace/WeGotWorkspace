@@ -23,13 +23,13 @@ import {
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-field";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
-import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
-import { buildMeetCollectionInviteLink } from "@/meet-core/src/meet-route-search";
+import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
+import { buildMeetCollectionInviteLink } from "@/lib/meetings/meet-route-search";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { MeetChannelKind } from "@/meet-core/src/meet-types";
+import type { MeetChannelKind } from "@/lib/models/meet-types";
 import { workspaceOnlySharePrincipals } from "@/calendar-core/src/calendar-meet-channel-email";
 import "@/share-ui/share-ui.css";
 import "./meet-channel-dialog.css";

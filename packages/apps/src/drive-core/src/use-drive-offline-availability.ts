@@ -11,8 +11,8 @@ import { driveOutboxApiPath } from "@/lib/offline/drive/drive-outbox-flush";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { readDriveContentSyncProgress } from "@/lib/offline/drive/drive-content-sync";
 import { hasOfflineFileContent } from "@/lib/offline/shared/content-availability";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { parseFileSizeBytes } from "@/drive-core/src/drive-file-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { parseFileSizeBytes } from "@/lib/files/file-name-utils";
 import { normalizeDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 
 function fileApiPath(file: DriveFile): string | null {

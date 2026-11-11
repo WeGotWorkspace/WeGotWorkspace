@@ -10,7 +10,7 @@ import {
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import type { MeetThreadCallLayout } from "@/meet-core/src/meet-thread-placement";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 function CallStagePlaceholder() {
   return (

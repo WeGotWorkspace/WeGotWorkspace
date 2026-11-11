@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import {
   findMeetDirectMessagePerson,
   isMeetDirectMessageChannelId,

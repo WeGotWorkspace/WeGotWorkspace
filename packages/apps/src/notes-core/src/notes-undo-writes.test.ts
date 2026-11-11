@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
-import type { NotesAPIOperations } from "./notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { sendTagDelta } from "./notes-undo-writes";
 
 const note = (id: string) => ({ id }) as Note;

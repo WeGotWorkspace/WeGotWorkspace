@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
-import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetRtcSettings } from "@/lib/models/meet-types";
 import { useMeetCallSession } from "@/meet-core/src/use-meet-call-session";
 import { meetCanModerateKnocks, useMeetMutations } from "@/meet-core/src/use-meet-mutations";
 import { useMeetRoomState } from "@/meet-core/src/use-meet-room-state";

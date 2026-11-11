@@ -1,4 +1,4 @@
-import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/lib/meetings/meet-public-id";
 
 /**
  * Invite-link access: one URL for signed-in users and anonymous guests.

@@ -4,7 +4,7 @@ import {
 } from "@/lib/api/mock/contacts-bootstrap";
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import type { ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactsAPIOperations } from "@/lib/models/contacts-types";
 import {
   createHybridContactsOperations,
   loadContactsBootstrapHybrid,

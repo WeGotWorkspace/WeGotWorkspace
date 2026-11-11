@@ -17,8 +17,8 @@ vi.mock("@/hooks/use-app-toast", () => ({
     showError: showErrorToast,
   }),
 }));
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { useQueuedMutation, type QueuedMutationArgs } from "@/hooks/use-queued-mutation";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";

@@ -3,7 +3,7 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { JmapCalendarsClient, type JmapCalendar } from "@/lib/jmap-client";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
 import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
-import { shareRightsAllowWrite } from "@/share-ui/collection-share";
+import { shareRightsAllowWrite } from "@/lib/sharing/collection-share";
 import { calendarJmapClient } from "@/lib/api/wgw/calendar";
 
 /** Mock-tier writable calendars — same ids/names as the Calendar story bootstrap. */

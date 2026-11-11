@@ -20,7 +20,7 @@ import type {
   WgwMeetRoomStatusResponse,
   WgwMeetSendResponse,
 } from "@/lib/api/wgw/types";
-import type { MeetAPIOperations, MeetAppBootstrap } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetAppBootstrap } from "@/lib/models/meet-types";
 
 async function readApiError(res: Response, fallback: string): Promise<string> {
   try {

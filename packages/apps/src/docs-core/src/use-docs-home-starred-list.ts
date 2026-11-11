@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { useDriveStarredList } from "@/drive-core/src/use-drive-starred-list";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import {

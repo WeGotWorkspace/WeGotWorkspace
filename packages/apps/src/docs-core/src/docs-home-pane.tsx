@@ -9,10 +9,10 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
-import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import { useListSort } from "@/hooks/use-list-sort";
 import {

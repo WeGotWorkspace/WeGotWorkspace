@@ -2,8 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import type { DragEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import { useDriveMutations } from "./use-drive-mutations";
 import { buildList, buildShell } from "./use-drive-mutations-fixtures";
 

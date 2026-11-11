@@ -15,7 +15,7 @@ import {
   TASK_FIELD_SELECT_CONTENT_CLASS,
   TASK_FIELD_SELECT_ITEM_CLASS,
 } from "@/tasks-core/src/tasks-field-classes";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formValuesToTaskAlerts,

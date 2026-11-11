@@ -1,5 +1,5 @@
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { rememberOfflineUsername } from "@/lib/offline/core/offline-account";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -9,7 +9,7 @@ import {
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
-import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 

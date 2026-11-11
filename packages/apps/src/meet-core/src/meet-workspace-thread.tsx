@@ -1,8 +1,8 @@
 import { memo, type ReactNode } from "react";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
-import type { ChatAuthorPresenceMap, ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap, ChatMentionPrincipal } from "@/lib/models/chat-types";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 
 /** One Meet thread in the workspace rail: the parent, its replies, and reply actions. */
 export const MeetWorkspaceThread = memo(function MeetWorkspaceThread({

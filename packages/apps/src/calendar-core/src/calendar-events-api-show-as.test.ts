@@ -2,7 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it, vi } from "vitest";
 import type { CalendarEvent } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { createCalendarEventsApi } from "@/calendar-core/src/calendar-events-api";
 
 /** #1927: the grid's create/drag path keeps "Show as" right for all-day events. */

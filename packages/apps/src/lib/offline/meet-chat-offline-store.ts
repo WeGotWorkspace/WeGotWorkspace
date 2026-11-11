@@ -1,6 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { ChatMessage, MeetDirectoryGroup, MeetRtcSettings } from "@/meet-core/src/meet-types";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { ChatMessage, MeetDirectoryGroup, MeetRtcSettings } from "@/lib/models/meet-types";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { isWireDmChannel, meetChannelFromWire, type WgwChatChannel } from "@/lib/api/wgw/meet-chat";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {

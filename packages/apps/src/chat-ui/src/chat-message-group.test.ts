@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChatMessage } from "@/chat-ui/src/chat-types";
+import type { ChatMessage } from "@/lib/models/chat-types";
 import {
   CHAT_MESSAGE_GROUP_WINDOW_MS,
   chatMessageDayKey,

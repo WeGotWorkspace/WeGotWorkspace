@@ -11,7 +11,7 @@ import {
   normalizeParticipantAddress,
   type CalendarAttendee,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { AVAILABILITY_CAPABILITY, CORE_CAPABILITY, type JmapClient } from "@/lib/jmap-client";
 

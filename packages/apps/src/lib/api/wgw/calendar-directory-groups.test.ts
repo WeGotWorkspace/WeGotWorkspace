@@ -8,7 +8,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import { loadCalendarDirectoryGroups } from "@/lib/api/wgw/calendar";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 
 describe("loadCalendarDirectoryGroups", () => {
   beforeEach(() => {

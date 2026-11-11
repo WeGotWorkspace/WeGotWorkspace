@@ -10,7 +10,7 @@ import {
 } from "@/tasks-core/src/tasks-alert-mapping";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { absoluteReminderAlert, offsetReminderAlert } from "@/tasks-core/src/tasks-task-utils";
-import type { Task, TaskAlert } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskAlert } from "@/lib/models/tasks-types";
 
 describe("task alert mapping", () => {
   it("maps OffsetTrigger relativeTo end to relatedTo end and back", () => {

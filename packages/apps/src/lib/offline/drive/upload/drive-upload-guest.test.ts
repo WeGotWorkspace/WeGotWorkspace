@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 
