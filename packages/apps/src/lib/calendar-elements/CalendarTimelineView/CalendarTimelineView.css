@@ -53,6 +53,10 @@ time-line {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* The host pane's end / bottom gutter (`--lc-view-inset-*`), inside the scroller (day/week)
+     so its scrollbar sits at the pane edge. */
+  padding-inline-end: var(--lc-view-inset-inline-end, 0px);
+  padding-block-end: var(--lc-view-inset-block-end, 0px);
   /* Ancestor stacking context for TimeLine overlays. Isolating the custom-element host
      does not contain that host's own shadow z-index (create-preview 500 vs dialog z-50);
      a regular box around the host does, matching week/day's swipe-container trap.
@@ -89,6 +93,8 @@ time-line.timeline-main {
   align-items: start;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Scrolls: end clear of the host's floating search bar. */
+  padding-block-end: var(--lc-view-scroll-inset-block-end, var(--lc-view-inset-block-end, 0px));
   /* Breathing room between the sticky all-day shell and the timed grid, in the SCROLLED flow
      (a margin above the timed timeline, not shell padding — the shell stays a fully opaque
      sticky cover, so scrolled cards never peek through). At scrollTop 0 the first gridline

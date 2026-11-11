@@ -2,8 +2,6 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   type ChangeEvent,
-  type MouseEvent,
-  type PointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -31,8 +29,6 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
-import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
@@ -314,25 +310,6 @@ export function CalendarWorkspace({
   const [viewSelectOpen, setViewSelectOpen] = useState(false);
   const icsFileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [searchFabExpanded, setSearchFabExpanded] = useState(false);
-  const { query: searchFieldQuery, setQuery: setSearchFieldQuery } = useViewHeaderSearchQuery({
-    searchValue: searchQuery,
-    onSearchInput: setSearchQuery,
-    searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
-  });
-  const collapseSearchFab = useCallback(() => {
-    setSearchFabExpanded(false);
-  }, []);
-  const onSearchDismissPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    searchInputRef.current?.blur();
-  };
-  const onSearchDismissClick = (event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    collapseSearchFab();
-  };
 
   useWorkspaceListKeyboardShortcuts({
     searchInputRef,
@@ -813,6 +790,11 @@ export function CalendarWorkspace({
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            searchPlaceholder={L.searchPlaceholder}
+            searchValue={searchQuery}
+            onSearchInput={setSearchQuery}
+            searchMinLength={CALENDAR_SEARCH_MIN_QUERY_LENGTH}
+            searchInputRef={searchInputRef}
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
@@ -854,33 +836,6 @@ export function CalendarWorkspace({
             }
             actions={
               <div className="calendar-header-actions">
-                <div
-                  className="calendar-search-host"
-                  onFocusCapture={() => setSearchFabExpanded(true)}
-                  onKeyDownCapture={(event) => {
-                    if (event.key === "Escape") collapseSearchFab();
-                  }}
-                >
-                  {searchFabExpanded ? (
-                    <div
-                      className="calendar-search-dismiss"
-                      aria-hidden
-                      onPointerDown={onSearchDismissPointerDown}
-                      onClick={onSearchDismissClick}
-                    />
-                  ) : null}
-                  <CollectionSearchInput
-                    inputRef={searchInputRef}
-                    value={searchFieldQuery}
-                    onChange={setSearchFieldQuery}
-                    placeholder={L.searchPlaceholder}
-                    className={
-                      searchFabExpanded
-                        ? "calendar-search-field calendar-search-field--expanded"
-                        : "calendar-search-field"
-                    }
-                  />
-                </div>
                 <Select
                   value={view}
                   disabled={searchActive}
