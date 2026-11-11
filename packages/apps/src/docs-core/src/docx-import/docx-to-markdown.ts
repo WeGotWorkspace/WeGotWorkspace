@@ -21,6 +21,8 @@ export type DocxImage = {
 export type DocxConversion = {
   markdown: string;
   images: DocxImage[];
+  /** Images mammoth could not read (a linked picture, a missing part); they are left out. */
+  unreadableImages?: number;
 };
 
 /** Maps Word styles the default mammoth map leaves out. Verified in the #1619 spike. */
@@ -49,7 +51,8 @@ export function imagePlaceholder(index: number): string {
  * HTML fix-ups a style map cannot express:
  * - page breaks become the Docs page-break node;
  * - footnote and endnote references become plain "[n]" text, and mammoth's
- *   trailing note list becomes a "Notes" section without back-links.
+ *   trailing note list becomes a "Notes" section without back-links;
+ * - bold that covers a whole header cell is dropped (a header shows bold anyway).
  */
 export function tidyMammothHtml(html: string): string {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
@@ -76,6 +79,14 @@ export function tidyMammothHtml(html: string): string {
     let outer: Element = ref;
     while (outer.parentElement?.tagName === "SUP") outer = outer.parentElement;
     outer.replaceWith(doc.createTextNode(ref.textContent ?? ""));
+  }
+  // A header cell shows bold in a Doc anyway. Word files (ours included) often
+  // bold the whole header text too; keep only bold that covers part of a cell.
+  for (const strong of doc.querySelectorAll("th strong")) {
+    const parent = strong.parentElement;
+    if (parent && parent.textContent?.trim() === strong.textContent?.trim()) {
+      strong.replaceWith(...strong.childNodes);
+    }
   }
   // Google Docs underlines links directly; a link shows as one anyway.
   for (const underline of doc.querySelectorAll("a u"))
@@ -117,6 +128,7 @@ export function htmlToDocMarkdown(html: string): string {
 
 export async function convertDocxToMarkdown(bytes: Uint8Array): Promise<DocxConversion> {
   const images: DocxImage[] = [];
+  let unreadableImages = 0;
   const arrayBuffer = bytes.slice().buffer;
   const result = await mammoth.convertToHtml(
     // The browser build reads `arrayBuffer`, the Node build (Vitest) `buffer`.
@@ -124,12 +136,23 @@ export async function convertDocxToMarkdown(bytes: Uint8Array): Promise<DocxConv
     {
       styleMap: [...DOCX_STYLE_MAP],
       convertImage: mammoth.images.imgElement(async (image) => {
-        const data = new Uint8Array(await image.readAsArrayBuffer());
+        let data: Uint8Array;
+        try {
+          data = new Uint8Array(await image.readAsArrayBuffer());
+        } catch (error) {
+          // mammoth then drops the image; count it for the import report.
+          unreadableImages += 1;
+          throw error;
+        }
         const placeholder = imagePlaceholder(images.length + 1);
         images.push({ placeholder, contentType: image.contentType, bytes: data });
         return { src: placeholder };
       }),
     },
   );
-  return { markdown: htmlToDocMarkdown(tidyMammothHtml(result.value)), images };
+  return {
+    markdown: htmlToDocMarkdown(tidyMammothHtml(result.value)),
+    images,
+    unreadableImages,
+  };
 }

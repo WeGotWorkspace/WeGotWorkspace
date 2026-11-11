@@ -105,7 +105,8 @@ const LOCAL_SIGNATURE = 0x04034b50;
 /**
  * Reads the entries the way mammoth's JSZip does: from the central directory
  * (method, compressed size, local header offset), never from the local headers, so
- * what is counted is what gets inflated. Inflates every entry in 8 KiB slices (a
+ * what is counted is what gets inflated. Refuses entries that overlap, that read
+ * more bytes than the file holds, or that outnumber the end record's count. Inflates every entry in 8 KiB slices (a
  * deflate stream expands about 1032:1 at most) and throws {@link TOO_LARGE} as soon as
  * the real output passes the cap. Only the parts the report reads are kept.
  */
@@ -134,12 +135,16 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
   // JSZip shifts every offset by any gap between the directory and the end record.
   if (eocd !== cursor + centralSize) throw corrupt();
 
-  const kept: Record<string, Uint8Array[]> = {};
-  let unpackedBytes = 0;
-  let entries = 0;
+  // First read the whole directory and check it, then inflate. Entries may not
+  // overlap and may not read more bytes than the file holds: otherwise many
+  // entries could point at one long stream that inflates to almost nothing, and
+  // the unpacked-size cap would never stop the work.
+  type Entry = { name: string; method: number; localOffset: number; start: number; end: number };
+  const entries: Entry[] = [];
+  let compressedTotal = 0;
   // Like JSZip: read records for as long as the signature matches, whatever the count says.
   while (u32(cursor) === CENTRAL_SIGNATURE) {
-    entries += 1;
+    if (entries.length >= entryCount) throw corrupt();
     const method = u16(cursor + 10);
     const compressedSize = u32(cursor + 20);
     const nameLength = u16(cursor + 28);
@@ -158,8 +163,20 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
     const start = localOffset + 30 + localNameLength + u16(localOffset + 28);
     const end = start + compressedSize;
     if (end > bytes.length) throw corrupt();
+    compressedTotal += end - localOffset;
+    if (compressedTotal > bytes.length) throw corrupt();
     const name = strFromU8(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength));
+    entries.push({ name, method, localOffset, start, end });
+  }
+  if (entries.length !== entryCount || cursor !== eocd) throw corrupt();
+  const byOffset = [...entries].sort((a, b) => a.localOffset - b.localOffset);
+  for (let i = 1; i < byOffset.length; i += 1) {
+    if (byOffset[i].localOffset < byOffset[i - 1].end) throw corrupt();
+  }
 
+  const kept: Record<string, Uint8Array[]> = {};
+  let unpackedBytes = 0;
+  for (const { name, method, start, end } of entries) {
     const chunks: Uint8Array[] | null = isScannedPart(name) ? [] : null;
     if (chunks) kept[name] = chunks;
     const onChunk = (chunk: Uint8Array) => {
@@ -171,7 +188,7 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
       for (let at = start; at < end; at += SLICE_BYTES) {
         onChunk(bytes.subarray(at, Math.min(end, at + SLICE_BYTES)));
       }
-    } else if (compressedSize > 0) {
+    } else if (end > start) {
       const inflate = new Inflate((chunk) => onChunk(chunk));
       for (let at = start; at < end; at += SLICE_BYTES) {
         const next = Math.min(end, at + SLICE_BYTES);
@@ -179,7 +196,6 @@ function unpackCounting(bytes: Uint8Array, maxUnpackedBytes: number): Record<str
       }
     }
   }
-  if (entries !== entryCount || cursor !== eocd) throw corrupt();
   const parts: Record<string, Uint8Array> = {};
   for (const [name, chunks] of Object.entries(kept)) {
     const whole = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));

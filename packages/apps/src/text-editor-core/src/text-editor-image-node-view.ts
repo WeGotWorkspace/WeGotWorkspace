@@ -9,6 +9,10 @@ import {
   mountTextEditorImageDeleteControl,
 } from "@/text-editor-core/src/text-editor-image-delete-control";
 import { isHttpImageSrc, parseDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
+import {
+  forgetShownImageBlob,
+  rememberShownImageBlob,
+} from "@/text-editor-core/src/text-editor-image-shown-blob";
 
 export { DOCS_IMAGE_DELETE_LABEL };
 
@@ -204,6 +208,7 @@ export function createDocsImageNodeView(
       URL.revokeObjectURL(objectUrl);
       objectUrl = undefined;
     }
+    forgetShownImageBlob(img);
   };
 
   const syncDeleteAvailability = () => {
@@ -248,6 +253,7 @@ export function createDocsImageNodeView(
         const blob = await fetchContent(nodeId);
         if (cancelled || generation !== token) return;
         objectUrl = URL.createObjectURL(blob);
+        rememberShownImageBlob(img, blob);
         img.src = objectUrl;
       } catch {
         if (cancelled || generation !== token) return;

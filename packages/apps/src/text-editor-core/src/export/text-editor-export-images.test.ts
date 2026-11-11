@@ -69,6 +69,33 @@ describe("collectExportImages", () => {
     expect(fetcher).toHaveBeenCalledWith("fn-fedcba9876543210fedcba9876543210", signal);
   });
 
+  it("reuses the bytes an image already shows, without fetching its blob: URL", async () => {
+    // Production's CSP (connect-src 'self') refuses fetch() of a blob: URL.
+    const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    const createObjectURL = vi.fn(() => "blob:shown-image");
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = vi.fn();
+    const fetchSpy = vi.fn(async () => {
+      throw new TypeError("Refused to connect: CSP connect-src 'self'");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      const fetcher = vi.fn<DocsImageContentFetcher>(async () => new Blob([png(30, 40)]));
+      const editor = editorWith(fetcher, [DRIVE_A]);
+      await vi.waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+      fetcher.mockRejectedValue(new Error("offline"));
+
+      const images = await collectExportImages(editor, [DRIVE_A]);
+      expect(images.get(DRIVE_A)).toMatchObject({ type: "png", width: 30, height: 40 });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("gives null for an image that cannot be fetched or shown, without throwing", async () => {
     const editor = editorWith(async () => {
       throw new Error("offline");

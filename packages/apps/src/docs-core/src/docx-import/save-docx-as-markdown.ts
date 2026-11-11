@@ -135,7 +135,8 @@ async function convertDocxIntoNewDoc(
   try {
     const { markdown, failed } = await uploadImages(io, docPath, nodeId, conversion);
     await io.writeDoc(nodeId, markdown);
-    return { docPath, report: buildDocxImportReport(target.sourceName, scan.counts, failed) };
+    const notAdded = failed + (conversion.unreadableImages ?? 0);
+    return { docPath, report: buildDocxImportReport(target.sourceName, scan.counts, notAdded) };
   } catch (error) {
     await io.removeDoc(docPath, nodeId).catch(() => undefined);
     throw error;

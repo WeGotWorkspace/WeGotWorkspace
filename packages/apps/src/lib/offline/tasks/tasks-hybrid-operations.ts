@@ -366,8 +366,15 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         throw new Error(TASKS_IMPORT_OFFLINE_MESSAGE);
       }
       const result = await importTasksLive(icsText, opts);
+      // The server has the tasks now. A failed cache write must not report
+      // the import as failed: a retry would only say "Already in this list".
+      // Sync brings the cache up to date later.
       for (const task of result.list) {
-        await upsertTaskInCache(username, task, false);
+        try {
+          await upsertTaskInCache(username, task, false);
+        } catch {
+          // Cache only.
+        }
       }
       return result;
     },

@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
 import { fetchDocsImageContentByNodeId } from "@/text-editor-core/src/text-editor-image-content";
 import { parseDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
+import { shownImageBlobFor } from "@/text-editor-core/src/text-editor-image-shown-blob";
 
 /** Image formats a Word file embeds as they are. Anything else is re-encoded to PNG. */
 export type ExportImageType = "png" | "jpg" | "gif" | "bmp";
@@ -105,11 +106,11 @@ export function editorImageFetcher(editor: Editor): DocsImageContentFetcher {
   return fetchContent ?? fetchDocsImageContentByNodeId;
 }
 
-/** The blob the node view already shows for `src`, if any (works offline). */
-async function shownImageBlob(editor: Editor, src: string): Promise<Blob | null> {
-  let objectUrl: string | null = null;
+/** The blob the node view already shows for `src`, if any (works offline, no fetch). */
+function shownImageBlob(editor: Editor, src: string): Blob | null {
+  let blob: Blob | null = null;
   editor.state.doc.descendants((node, pos) => {
-    if (objectUrl) return false;
+    if (blob) return false;
     if (node.type.name !== "image" || node.attrs.src !== src) return true;
     const dom = editor.view.nodeDOM(pos);
     const img =
@@ -118,16 +119,10 @@ async function shownImageBlob(editor: Editor, src: string): Promise<Blob | null>
         : dom instanceof HTMLElement
           ? dom.querySelector("img")
           : null;
-    if (img?.src.startsWith("blob:")) objectUrl = img.src;
+    if (img) blob = shownImageBlobFor(img);
     return false;
   });
-  if (!objectUrl) return null;
-  try {
-    const res = await fetch(objectUrl);
-    return res.ok ? await res.blob() : null;
-  } catch {
-    return null;
-  }
+  return blob;
 }
 
 /** A network fetch that has not answered by then counts as failed (offline can hang). */
@@ -168,8 +163,7 @@ async function collectOne(
   const nodeId = parseDriveFnSrc(src);
   if (!nodeId) return null;
   // The bytes the editor already shows need no network, so this also works offline.
-  const blob =
-    (await shownImageBlob(editor, src)) ?? (await fetchWithTimeout(fetcher, nodeId, signal));
+  const blob = shownImageBlob(editor, src) ?? (await fetchWithTimeout(fetcher, nodeId, signal));
   return blob ? exportImageFromBlob(blob) : null;
 }
 
