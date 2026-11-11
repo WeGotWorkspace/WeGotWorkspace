@@ -2,8 +2,8 @@
 
 /**
  * Conventional compact toggle. Parents publish `--switch-*`.
- * On-track follows text ink (`--switch-on-bg` → `--workspace-foreground`).
- * Off-track is a lighter tint of that same ink.
+ * On-track is the selection mark (`--switch-on-bg`, bright sky); off-track a light
+ * tint of the text ink.
  * Never stretch: width is the track, not 100%.
  */
 .switch {
@@ -23,7 +23,9 @@
   flex-grow: 0;
   flex-shrink: 0;
   flex-basis: auto;
-  align-self: flex-start;
+  /* Follows the parent's alignment (centred beside a field); the max sizes keep a
+   * stretching parent from growing the track. */
+  align-self: auto;
   aspect-ratio: auto;
   width: var(--switch-track-width);
   min-width: var(--switch-track-width);
