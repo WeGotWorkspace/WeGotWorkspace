@@ -251,9 +251,11 @@ if [[ "$CHANNEL" == "zip" ]]; then
     echo ".env.path names ${ENV_FILE}, which is missing or inside ${TREE_REAL}" >&2
     exit 1
   fi
-  ENV_STATUS="$(curl -s -o /dev/null -w '%{http_code}' "${BASE}/packages/api/.env")"
-  if [[ "$ENV_STATUS" == "200" ]]; then
-    echo "/packages/api/.env is served (HTTP 200)" >&2
+  # The front controller may answer any path (SPA shell, 404), so check what
+  # comes back rather than the status alone.
+  ENV_STATUS="$(curl -s -o "$WORK/env-probe.txt" -w '%{http_code}' "${BASE}/packages/api/.env")"
+  if grep -q '^APP_KEY=' "$WORK/env-probe.txt"; then
+    echo "/packages/api/.env is served (HTTP ${ENV_STATUS})" >&2
     exit 1
   fi
   DATA_DIR="$(sed -n 's/^WGW_DATA_DIR=//p' "$ENV_REAL" | tail -1)"
