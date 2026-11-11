@@ -24,7 +24,8 @@ import { useTeamAvailability } from "@/calendar-core/src/use-team-availability";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
@@ -886,15 +887,13 @@ export function CalendarWorkspace({
                   onOpenChange={setViewSelectOpen}
                   onValueChange={(next) => selectView(next as CalendarViewId)}
                 >
-                  <SelectTrigger
-                    size="md"
+                  <CollectionGhostSelectTrigger
                     className="calendar-view-select"
                     aria-label={L.viewSelectLabel}
                     disabled={searchActive}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
+                    label={<SelectValue />}
+                  />
+                  <SelectContent align="end">
                     {CALENDAR_VIEW_ORDER.map((id) => (
                       <SelectItem key={id} value={id}>
                         {viewLabels[id]}

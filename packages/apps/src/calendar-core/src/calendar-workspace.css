@@ -35,8 +35,6 @@
   /* Now-line, time label, and today day-number pills (day, week, month, year). */
   --lc-higlight-color: var(--color-error);
   --lc-today-on-color: var(--workspace-accent-foreground);
-  /* Grid chrome follows the workspace pair — not light-dark() slate. */
-  --lc-grid-base-color: var(--workspace-foreground);
   --lc-weekend-day-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-surface-bg: var(--workspace-surface);
 
@@ -113,8 +111,7 @@
     justify-self: end;
   }
 
-  /* Keep Week select shrinkable; height stays control md (36px) like IconButton
-   * / ViewModeToggle. Do not compact a subset of header chrome below md. */
+  /* Keep the view select shrinkable. */
   .calendar-workspace .calendar-header-actions .calendar-view-select {
     @apply min-w-0;
   }
@@ -161,10 +158,11 @@
   display: none;
 }
 
+/* The view switcher is a ghost dropdown as tall as the header buttons beside it, with room
+ * from the search field and the view toggle so its hover wash does not touch them. */
 .calendar-workspace .calendar-header-actions .calendar-view-select {
-  width: auto;
-  min-width: 7rem;
-  background-color: var(--input-background);
+  margin-inline: 0.5rem;
+  min-block-size: var(--control-height-lg, 2.5rem);
 }
 
 .calendar-workspace .calendar-sidebar-dot {

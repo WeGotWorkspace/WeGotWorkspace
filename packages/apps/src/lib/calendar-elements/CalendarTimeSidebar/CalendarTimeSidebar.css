@@ -59,9 +59,20 @@
 .hour-labels {
   @apply block h-full min-h-0 pointer-events-none;
   padding-inline: var(--_lc-time-sidebar-inline-padding, 0);
+  padding-inline-end: calc(
+    var(--_lc-time-sidebar-inline-padding, 0px) + var(--_lc-time-sidebar-grid-gap, 0px)
+  );
   /* Hour lines live on the timed grid only (TimeLine `.cell-main--grid`). An opaque
      gutter so labels sit on a clean surface and no line crosses the glyphs. */
   background-color: var(--_lc-time-sidebar-layer-bg);
+}
+
+/* Width only: the now badge's widest time in the badge's type, so the gutter fits the badge. */
+.now-badge-sizer {
+  @apply block h-0 overflow-hidden invisible whitespace-nowrap tabular-nums;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .hour-label-row:last-child {
@@ -82,12 +93,13 @@
 
 /* Current-time clock pill: vertically centered on --_lc-now-badge-top (set by the composed
    timeline as a % of the timed slot, matching the TimeLine marker). The timed slot and
-   timed grid share the same top, so no extra offset. Inline inset is 0 and padding-inline
-   uses the same token as `.hour-labels`, so the digits share the hour labels' x-position. */
+   timed grid share the same top, so no extra offset. Inline inset is the grid gap and
+   padding-inline uses the same token as `.hour-labels`, so the digits share the hour labels'
+   x-position. */
 .now-badge {
   @apply text-end tabular-nums whitespace-nowrap;
   position: absolute;
-  inset-inline-end: 0;
+  inset-inline-end: var(--_lc-time-sidebar-grid-gap, 0px);
   top: var(--_lc-now-badge-top, 0%);
   z-index: var(--_lc-z-overlay-raised);
   isolation: isolate;
@@ -107,7 +119,8 @@
 
 @media (max-width: 40rem) {
   .hour-label,
-  .now-badge {
+  .now-badge,
+  .now-badge-sizer {
     font-size: var(--_lc-time-label-font-size, 0.625rem);
   }
 }

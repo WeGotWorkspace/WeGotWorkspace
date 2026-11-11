@@ -15,8 +15,11 @@
      These tokens are consumed inside <time-line>'s shadow (classes + inline color)
      because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
-  /* Denser than shared chrome `--border` (8%) so hour/day rules stay visible. */
-  --_lc-grid-line-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  /* The suite hairline (sidebar edge, list rows), so the grid reads like the rest of the UI. */
+  --_lc-grid-line-color: var(
+    --workspace-divider-color,
+    color-mix(in oklch, var(--workspace-foreground) 8%, transparent)
+  );
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
   --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
@@ -111,11 +114,14 @@ time-line.timeline-main {
   --time-line-grid-color: var(--_lc-grid-line-color);
   /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */
   --_lc-time-sidebar-inline-padding: 6px;
+  /* Extra room between the gutter's labels and the grid. */
+  --_lc-time-sidebar-grid-gap: 6px;
 }
 
 @media (max-width: 40rem) {
   .timeline-layout--composed {
     --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-sidebar-grid-gap: 2px;
     --_lc-time-label-font-size: 0.625rem;
     --_lc-weekday-header-font-size: 0.75rem;
   }
@@ -127,6 +133,7 @@ time-line.timeline-main {
   .timeline-week-number,
   calendar-weekday-header.timeline-day-header-row {
     --_lc-time-sidebar-inline-padding: 4px;
+    --_lc-time-sidebar-grid-gap: 2px;
     --_lc-time-label-font-size: 0.625rem;
     --_lc-weekday-header-font-size: 0.75rem;
   }
@@ -162,7 +169,8 @@ time-line.timeline-main {
    the right edge automatically under RTL. It paints above the sidebar's sticky slots
    (z 2/3 in its shadow tree) and the all-day shell (z 3).
    Horizontal: same inline-end inset as the time-column labels (shared
-   --_lc-time-sidebar-inline-padding + justify/text-end), so the right edge of W##
+   --_lc-time-sidebar-inline-padding + --_lc-time-sidebar-grid-gap + justify/text-end),
+   so the right edge of W##
    lines up with the right edge of "12:00 PM".
    Vertical: date-mode weekday buttons are inline-flex + items-center with the day
    name beside a --_lc-weekday-day-number-size pill. Copying font/padding alone left
@@ -184,6 +192,9 @@ time-line.timeline-main {
   min-height: var(--_lc-weekday-header-item-min-height, 24px);
   padding-block: var(--_lc-weekday-header-item-padding-block, 3px);
   padding-inline: var(--_lc-time-sidebar-inline-padding, 6px);
+  padding-inline-end: calc(
+    var(--_lc-time-sidebar-inline-padding, 6px) + var(--_lc-time-sidebar-grid-gap, 0px)
+  );
   font-family: inherit;
   font-size: var(--_lc-weekday-header-font-size, 14px);
   font-weight: 500;
@@ -338,24 +349,6 @@ time-line.timeline-timed {
   --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--workspace-surface));
   /* Same four-side gutter as all-day bars. */
   --time-line-event-inline-inset: 1px;
-}
-
-/* Drop the 0.5px block-axis viewport border so hour tiles are exactly
-   --_lc-timeline-hour-height tall (same as the gutter). Keep the inline edge
-   as the vertical divider next to the time column. */
-time-line.timeline-timed::part(viewport) {
-  border-block-width: 0;
-}
-
-@supports (color: color-mix(in srgb, black, white)) {
-  .timeline-layout--composed,
-  time-line.timeline-timed {
-    --time-line-grid-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, var(--workspace-foreground)) 12%,
-      var(--_lc-surface-bg, var(--workspace-surface))
-    );
-  }
 }
 
 /* Fine pointers tighten the short-event floor to 28px (grid parity: the grid stack's
@@ -738,11 +731,7 @@ time-line::part(overflow-dot) {
     );
   }
 
-  /* Chrome off: no outer border, no vertical cell grid. Keep a hairline between week rows. */
-  time-line.timeline-main::part(viewport) {
-    border: none;
-  }
-
+  /* Chrome off: no vertical cell grid. Keep a hairline between week rows. */
   /* 1fr is minmax(auto, 1fr): nowrap / spanning event min-content stretches some days.
      minmax(0, 1fr) keeps seven equal tracks. Do not clip cell-main — multi-day bars
      paint across cells on purpose. */
@@ -806,10 +795,6 @@ time-line::part(overflow-dot) {
   --_lc-event-card-heading-overflow: clip;
   --_lc-event-card-heading-mask: linear-gradient(to right, #000 calc(100% - 12px), transparent);
   --_lc-event-card-heading-mask-rtl: linear-gradient(to left, #000 calc(100% - 12px), transparent);
-}
-
-:host([force-compact]) time-line.timeline-main::part(viewport) {
-  border: none;
 }
 
 :host([force-compact]) time-line.timeline-main::part(cells) {
