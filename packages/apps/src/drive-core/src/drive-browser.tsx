@@ -83,8 +83,24 @@ function multiSelectAttr(selectionMode: boolean, selectedIds: string[]) {
   return selectionMode || selectedIds.length > 1 ? "true" : "false";
 }
 
+/**
+ * The one item of a list or grid that Tab reaches (roving focus): the current item,
+ * else the first selected, else the first. ↑/↓ then move focus within the list.
+ */
+function listFocusId(
+  items: DriveFile[],
+  activeId: string | null | undefined,
+  selectedIds: string[],
+): string | undefined {
+  const visible = (id: string | null | undefined): id is string =>
+    !!id && items.some((file) => file.id === id);
+  if (visible(activeId)) return activeId;
+  return selectedIds.find(visible) ?? items[0]?.id;
+}
+
 export function DriveGridView({
   items,
+  activeId,
   filePreviews,
   selectedIds,
   starred,
@@ -116,6 +132,8 @@ export function DriveGridView({
   itemChrome = "manage",
 }: {
   items: DriveFile[];
+  /** The current item (keyboard focus lands here). */
+  activeId?: string | null;
   filePreviews: Record<string, FilePreviewPayload>;
   selectedIds: string[];
   starred: Record<string, boolean>;
@@ -158,6 +176,7 @@ export function DriveGridView({
 }) {
   const folders = items.filter((i) => i.kind === "folder");
   const files = items.filter((i) => i.kind !== "folder");
+  const focusId = listFocusId([...folders, ...files], activeId, selectedIds);
 
   return (
     <div
@@ -172,6 +191,7 @@ export function DriveGridView({
                 key={f.id}
                 file={f}
                 isSelected={selectedIds.includes(f.id)}
+                isFocusTarget={f.id === focusId}
                 selectionMode={selectionMode}
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
@@ -208,6 +228,7 @@ export function DriveGridView({
                 file={f}
                 preview={filePreviews[f.id]}
                 isSelected={selectedIds.includes(f.id)}
+                isFocusTarget={f.id === focusId}
                 selectionMode={selectionMode}
                 isStarred={!!starred[f.id]}
                 isDragging={isItemDragging(f.id)}
@@ -257,6 +278,7 @@ function FileTile({
   file,
   preview,
   isSelected,
+  isFocusTarget = false,
   selectionMode,
   isStarred,
   isDragging,
@@ -287,6 +309,8 @@ function FileTile({
   file: DriveFile;
   preview?: FilePreviewPayload;
   isSelected: boolean;
+  /** The tile Tab reaches (roving focus). */
+  isFocusTarget?: boolean;
   selectionMode: boolean;
   isStarred: boolean;
   isDragging: boolean;
@@ -321,6 +345,7 @@ function FileTile({
   return (
     <div
       data-drive-file-id={file.id}
+      data-list-item-id={file.id}
       onContextMenu={
         pickerChrome
           ? undefined
@@ -345,6 +370,8 @@ function FileTile({
         type="button"
         aria-label={file.title}
         className="drive-tile__hit"
+        tabIndex={isFocusTarget ? 0 : -1}
+        data-list-item-focus=""
         onClick={(e) => {
           if (lp.fired.current) return;
           onSelect(e);
@@ -435,6 +462,7 @@ export function DriveListView({
   showLocationColumn = false,
   locationColumnLabel = "Location",
   showKindColumn = true,
+  showSizeColumn = true,
   offlineAvailableIds,
   offlinePinnedIds,
   offlinePendingSyncIds,
@@ -445,10 +473,13 @@ export function DriveListView({
   pinLoadingId,
   offlineBadgeLabels,
   itemChrome = "manage",
+  isItemDisabled,
   sort,
   onSort,
 }: {
   items: DriveFile[];
+  /** A picker row that cannot be chosen (a file when picking a folder): dimmed, no click. */
+  isItemDisabled?: (file: DriveFile) => boolean;
   /** Column sort; omit for a list that keeps its given order (headers stay plain). */
   sort?: DriveListSort;
   onSort?: (key: DriveListSortKey) => void;
@@ -465,6 +496,8 @@ export function DriveListView({
   locationColumnLabel?: string;
   /** Show the "Kind" column. Defaults to `true`; Docs home hides it (all documents). */
   showKindColumn?: boolean;
+  /** Show the "Size" column. Defaults to `true`; the folder picker hides it. */
+  showSizeColumn?: boolean;
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePinnedIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
@@ -509,12 +542,26 @@ export function DriveListView({
       label
     );
   const ariaSort = (key: DriveListSortKey) => (sort ? listSortAria(sort, key) : undefined);
+  // The last column always lines up at the end (actions, else the last data column).
+  const endColumn = pickerChrome
+    ? showSizeColumn
+      ? "size"
+      : showKindColumn
+        ? "kind"
+        : "modified"
+    : "actions";
+  const endAlign = (key: "modified" | "kind") => (endColumn === key ? "end" : "start");
+  const focusId = listFocusId(items, activeId, selectedIds);
   return (
     <div
       className="drive-list-view"
       data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
     >
-      <table className="drive-list-table">
+      <table
+        className="drive-list-table"
+        role="grid"
+        aria-multiselectable={!pickerChrome || undefined}
+      >
         <thead className="list-head-bar">
           <tr className="drive-list-head">
             <th className="drive-list-col-name drive-list-head__cell" aria-sort={ariaSort("name")}>
@@ -534,25 +581,33 @@ export function DriveListView({
               </th>
             ) : null}
             <th
-              className="drive-list-col-modified drive-list-head__cell hidden sm:table-cell"
+              className={cn(
+                "drive-list-col-modified drive-list-head__cell hidden sm:table-cell",
+                endColumn === "modified" && "drive-list-head__cell--align-end",
+              )}
               aria-sort={ariaSort("modified")}
             >
-              {head("modified", labels.listColumnLastModified)}
+              {head("modified", labels.listColumnLastModified, endAlign("modified"))}
             </th>
             {showKindColumn ? (
               <th
-                className="drive-list-col-kind drive-list-head__cell hidden lg:table-cell"
+                className={cn(
+                  "drive-list-col-kind drive-list-head__cell hidden lg:table-cell",
+                  endColumn === "kind" && "drive-list-head__cell--align-end",
+                )}
                 aria-sort={ariaSort("kind")}
               >
-                {head("kind", labels.listColumnKind)}
+                {head("kind", labels.listColumnKind, endAlign("kind"))}
               </th>
             ) : null}
-            <th
-              className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
-              aria-sort={ariaSort("size")}
-            >
-              {head("size", labels.listColumnSize, "end")}
-            </th>
+            {showSizeColumn ? (
+              <th
+                className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
+                aria-sort={ariaSort("size")}
+              >
+                {head("size", labels.listColumnSize, "end")}
+              </th>
+            ) : null}
             {pickerChrome ? null : (
               <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
                 {labels.listColumnActions}
@@ -566,6 +621,7 @@ export function DriveListView({
             const folderPath = isFolder ? driveFolderUiPath(f) : "";
             const isSelected = selectedIds.includes(f.id);
             const isActive = f.id === activeId;
+            const isDisabled = isItemDisabled?.(f) ?? false;
             const isOfflineAvailable = offlineAvailableIds?.has(f.id) ?? false;
             const isOfflinePendingSync = offlinePendingSyncIds?.has(f.id) ?? false;
             const isPinning = pinLoadingId === f.apiPath;
@@ -591,8 +647,13 @@ export function DriveListView({
             return (
               <tr
                 key={f.id}
+                data-list-item-id={f.id}
+                data-list-item-focus=""
+                tabIndex={f.id === focusId ? 0 : -1}
+                aria-selected={isSelected}
                 data-selection-mode={selectionMode ? "true" : "false"}
-                onClick={(e) => onSelect(f.id, e)}
+                aria-disabled={isDisabled || undefined}
+                onClick={isDisabled ? undefined : (e) => onSelect(f.id, e)}
                 onDoubleClick={selectionMode ? undefined : () => onOpen(f)}
                 onTouchStart={pickerChrome ? undefined : lp.start}
                 onTouchEnd={pickerChrome ? undefined : lp.cancel}
@@ -616,6 +677,7 @@ export function DriveListView({
                   isFolder && dropZone.isDropTarget && "drive-list-row--drop-target",
                   isSelected && "drive-list-row--selected",
                   isActive && !isSelected && "drive-list-row--active",
+                  isDisabled && "drive-list-row--disabled",
                 )}
               >
                 <td
@@ -666,17 +728,29 @@ export function DriveListView({
                     <DriveLocationLabel file={f} />
                   </td>
                 ) : null}
-                <td className="drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap">
+                <td
+                  className={cn(
+                    "drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap",
+                    endColumn === "modified" && "text-right",
+                  )}
+                >
                   {formatDriveModified(f)}
                 </td>
                 {showKindColumn ? (
-                  <td className="drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted">
+                  <td
+                    className={cn(
+                      "drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted",
+                      endColumn === "kind" && "text-right",
+                    )}
+                  >
                     {DRIVE_KIND_LABEL[f.kind]}
                   </td>
                 ) : null}
-                <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
-                  {f.size}
-                </td>
+                {showSizeColumn ? (
+                  <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
+                    {f.size}
+                  </td>
+                ) : null}
                 {pickerChrome ? null : (
                   <td
                     className="drive-list-col-actions py-2"

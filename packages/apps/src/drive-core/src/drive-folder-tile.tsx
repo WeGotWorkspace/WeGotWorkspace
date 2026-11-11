@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function DriveFolderTile({
   file,
   isSelected,
+  isFocusTarget = false,
   selectionMode,
   isStarred,
   isDragging,
@@ -44,6 +45,8 @@ export function DriveFolderTile({
 }: {
   file: DriveFile;
   isSelected: boolean;
+  /** The tile Tab reaches (roving focus). */
+  isFocusTarget?: boolean;
   selectionMode: boolean;
   isStarred: boolean;
   isDragging: boolean;
@@ -72,6 +75,7 @@ export function DriveFolderTile({
   // button (axe nested-interactive); the overlay button is the click target.
   return (
     <div
+      data-list-item-id={file.id}
       onContextMenu={
         pickerChrome
           ? undefined
@@ -99,6 +103,8 @@ export function DriveFolderTile({
         type="button"
         aria-label={file.title}
         className="drive-tile__hit"
+        tabIndex={isFocusTarget ? 0 : -1}
+        data-list-item-focus=""
         onClick={(e) => {
           if (lp.fired.current) return;
           onSelect(e);
