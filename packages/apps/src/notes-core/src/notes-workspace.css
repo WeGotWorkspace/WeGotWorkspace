@@ -153,14 +153,6 @@
 }
 
 /*
- * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker).
- * Height/radius come from the shared primitive; fill is `--input-background`.
- */
-.notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--input-background);
-}
-
-/*
  * Detail Star / Archive / batch toggles + notebook Select portal:
  * selected icon fg stays notebook-aware (`--notes-detail-accent-strong`);
  * outline washes use the Notes app accent so portaled menus match sidebar
