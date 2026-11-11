@@ -72,13 +72,14 @@
  * Inline (suite norm for dialogs and settings): caption and description start, control
  * end, rows split by the suite hairline. The control lines up with the caption, not
  * with caption + description: a two-row grid, the description alone on the second row.
- * Two equal columns: caption and description never reach past the middle, the control
- * never past it the other way (a long value truncates). Phones keep two columns; the
- * text wraps.
+ * Columns of one third (caption) and two thirds (control), so fields get room; the
+ * description may reach half the row. Neither side reaches into the other (a long
+ * value truncates). Phones keep two
+ * columns; the text wraps.
  */
 .field-label-row--inline {
   @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 }
 
 .field-label-row--inline + .field-label-row--inline {
@@ -103,10 +104,12 @@
   line-height: 1.25rem;
 }
 
-/* One step below the label. */
+/* One step below the label. The control sits on the label line only, so the
+ * description may run under it, up to half the row. */
 .field-label-row__description {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
+  max-width: 50%;
   font-size: var(--input-font-size-xs, 0.75rem);
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
@@ -126,6 +129,12 @@
 /* `fill`: a text field takes the whole end column. */
 .field-label-row--fill .field-label-row__control > * {
   @apply min-w-0 flex-1;
+}
+
+/* Under a field that fills its column the description keeps to the label column. */
+.field-label-row--fill .field-label-row__description {
+  grid-column: 1;
+  max-width: none;
 }
 
 /* A ghost dropdown stays inside the column, hover wash included. */

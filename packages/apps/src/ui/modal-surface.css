@@ -4,7 +4,8 @@
   --modal-inset: 1rem;
   --modal-close-size: var(--control-height-md, 2.25rem);
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
-  --modal-max-width: 32rem;
+  /* Wide enough for a field in the two-thirds column; a confirm stays narrow. */
+  --modal-max-width: 36rem;
   --modal-max-height: 100dvh;
   @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
 }
@@ -14,6 +15,10 @@
  * suppress the native :focus-visible ring (thick blue rounded outline). Button
  * / close / toggle rings stay on those primitives.
  */
+.ui-modal-surface[role="alertdialog"] {
+  --modal-max-width: 32rem;
+}
+
 .ui-modal-surface:focus,
 .ui-modal-surface:focus-visible {
   @apply outline-none;
@@ -141,8 +146,7 @@
 
 /*
  * Component that renders a <form> (e.g. CalendarEventForm) still pins its footer.
- * No clipping here: the form's own field list scrolls, and the footer hairline
- * reaches the surface edges.
+ * No clipping here: the form's own field list scrolls above it.
  */
 .ui-modal-body:has(> form) {
   @apply flex flex-col overflow-visible;
@@ -158,11 +162,9 @@
   background-color: var(--background, var(--workspace-surface));
 }
 
-/* Centered dialogs: the footer sits under a full-width hairline (suite norm). */
+/* Centered dialogs: no rule above the footer, the space where it was instead. */
 .ui-modal-surface--center .ui-modal-footer {
-  margin-inline: calc(-1 * var(--modal-inset));
-  padding: var(--modal-inset) var(--modal-inset) 0;
-  border-top: 1px solid var(--workspace-divider-color);
+  padding-top: var(--modal-inset);
 }
 
 /* `DialogFooter start`: a side action at the start, the answers at the end. */
