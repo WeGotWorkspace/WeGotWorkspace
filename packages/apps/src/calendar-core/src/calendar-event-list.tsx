@@ -1,14 +1,15 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { CalendarDays, Repeat } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
+import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { useIsTouch } from "@/hooks/use-is-touch";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import {
   formatAgendaDayLabel,
-  formatAgendaItemTime,
+  formatAgendaItemTimes,
   formatAgendaLongDate,
   formatAgendaWeekday,
   type AgendaDay,
@@ -22,7 +23,13 @@ export type CalendarEventListProps = {
   locale: string;
   /** The occurrence open in the detail pane. */
   activeKey?: string;
-  onSelect: (key: string) => void;
+  /** Multi-select (as in Tasks, Notes, Contacts): the picked occurrences. */
+  selectedIds?: readonly string[];
+  selectionMode?: boolean;
+  /** A click (plain, Cmd/Ctrl or Shift) on a row. */
+  onItemClick: (key: string, event: MouseEvent) => void;
+  /** A long press on touch: starts multi-select with that row. */
+  onItemLongPress?: (key: string) => void;
   emptyLabel: string;
   untitledLabel: string;
   /** Search results span years: put the year in the day headings. */
@@ -31,17 +38,26 @@ export type CalendarEventListProps = {
   footer?: ReactNode;
 };
 
+/** The list's multi-select wiring, handed on as one (period list and search results). */
+export type CalendarEventListSelection = Pick<
+  CalendarEventListProps,
+  "selectedIds" | "selectionMode" | "onItemClick" | "onItemLongPress"
+>;
+
 /**
  * Calendar list mode: the suite list (sticky day headings + `ListItem` rows, as in
- * Contacts and Tasks). Each row: title with its time top right, the location as the
+ * Contacts and Tasks). Each row: title with its start top right and its end under it, the location as the
  * preview, the calendar on the meta line.
  */
 export function CalendarEventList({
   days,
   calendars,
   locale,
-  activeKey,
-  onSelect,
+  activeKey = "",
+  selectedIds = [],
+  selectionMode = false,
+  onItemClick,
+  onItemLongPress,
   emptyLabel,
   untitledLabel,
   showYearInHeadings = false,
@@ -57,8 +73,18 @@ export function CalendarEventList({
     );
   }
 
+  const multiSelect = selectionMode || selectedIds.length > 1;
   return (
     <div className="calendar-event-list">
+      <WorkspaceSwipeList
+        isTouch={isTouch}
+        // As in Tasks: only the single open event paints as active.
+        activeId={multiSelect ? "" : activeKey}
+        selectedIds={selectedIds}
+        selectionMode={multiSelect}
+        onItemClick={onItemClick}
+        onItemLongPress={onItemLongPress}
+      >
       {days.map(({ date, items }) => {
         const headingId = `calendar-event-list-day-${date.toString()}`;
         return (
@@ -72,6 +98,7 @@ export function CalendarEventList({
             />
             {items.map((item) => {
               const { event } = item;
+              const times = formatAgendaItemTimes(locale, item);
               const calendar = calendars.find((entry) => entry.id === event.calendarId);
               return (
                 <ListItem
@@ -80,7 +107,8 @@ export function CalendarEventList({
                   itemId={item.id}
                   title={event.data.summary.trim()}
                   emptyTitle={untitledLabel}
-                  date={formatAgendaItemTime(locale, item)}
+                  date={times.start}
+                  dateBelow={times.end}
                   metaPosition="below"
                   text={event.data.location?.trim() || null}
                   subtitle={
@@ -96,18 +124,18 @@ export function CalendarEventList({
                       ? [<Repeat key="repeat" className="size-3.5" aria-hidden />]
                       : []
                   }
-                  isActive={item.id === activeKey}
+                  isActive={false}
                   isSelected={false}
                   selectionMode={false}
                   isTouch={isTouch}
                   isDragging={false}
-                  onClick={() => onSelect(item.id)}
                 />
               );
             })}
           </section>
         );
       })}
+      </WorkspaceSwipeList>
       {footer}
     </div>
   );

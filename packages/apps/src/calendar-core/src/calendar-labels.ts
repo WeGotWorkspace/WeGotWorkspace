@@ -126,10 +126,22 @@ export type CalendarUILabels = {
   searchTitle: string;
   searchNoMatch: string;
   /** `{start}` / `{end}` are locale month+year of the searched window. */
-  searchScope: string;
   toastEventCreated: string;
   toastEventUpdated: string;
   toastEventSaveUndone: string;
+  deleteEventConfirmTitle: string;
+  deleteEventsConfirmTitle: (count: number) => string;
+  deleteEventsConfirmBody: (count: number) => string;
+  toastEventsDeleted: (count: number) => string;
+  toastEventsMoved: (count: number) => string;
+  selectionLabel: string;
+  selectionTitle: (count: number) => string;
+  selectionMoveToCalendar: string;
+  selectionMoveDescription: string;
+  selectionMoveField: string;
+  selectionMove: string;
+  selectionDone: string;
+  deleteEventConfirmBody: string;
   toastEventDeleted: string;
   toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
@@ -442,10 +454,25 @@ export const defaultCalendarLabels: CalendarUILabels = {
   searchPlaceholder: "Search events…",
   searchTitle: "Search",
   searchNoMatch: "No matching events in downloaded calendars",
-  searchScope: "{start} – {end}",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventSaveUndone: "Event change undone.",
+  deleteEventConfirmTitle: "Delete event?",
+  deleteEventsConfirmTitle: (count) => (count === 1 ? "Delete event?" : `Delete ${count} events?`),
+  deleteEventsConfirmBody: (count) =>
+    count === 1
+      ? "This event will be removed from your calendar."
+      : "These events will be removed from your calendar. Repeating events lose only the selected dates.",
+  toastEventsDeleted: (count) => (count === 1 ? "Event deleted" : `${count} events deleted`),
+  toastEventsMoved: (count) => (count === 1 ? "Event moved" : `${count} events moved`),
+  selectionLabel: "Multiple selection",
+  selectionTitle: (count) => (count === 1 ? "1 event selected" : `${count} events selected`),
+  selectionMoveToCalendar: "Move to calendar",
+  selectionMoveDescription: "Repeating events move with their whole series.",
+  selectionMoveField: "Calendar",
+  selectionMove: workspaceLabels.dialog.move,
+  selectionDone: workspaceLabels.dialog.done,
+  deleteEventConfirmBody: "This event will be removed from your calendar.",
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",

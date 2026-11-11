@@ -205,15 +205,9 @@
   min-height: 0;
 }
 
-/* Search results in the list column: the scope tags, then the suite list. */
+/* Search results in the list column: the suite list. */
 .calendar-workspace .calendar-search-results {
   @apply flex min-h-full flex-col;
-}
-
-.calendar-workspace .calendar-search-results__scope {
-  /* On the list rows' text line, like the day headings. */
-  @apply flex shrink-0 flex-wrap items-center gap-1.5 pb-1 pt-3;
-  padding-inline: calc(var(--list-item-inset, 0.5rem) + var(--list-item-padding-x, 1.25rem));
 }
 
 .calendar-workspace .calendar-search-results--empty .calendar-event-list {

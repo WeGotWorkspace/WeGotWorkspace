@@ -163,6 +163,26 @@ export function formatAgendaLongDate(locale: string, date: Temporal.PlainDate): 
   );
 }
 
+/**
+ * When an item runs on its day, as a start and (when it has one) an end line:
+ * 17:45 / 19:54, All day / until 13 Nov, Continues / 10:00, 17:45 / 13 Nov…
+ */
+export function formatAgendaItemTimes(
+  locale: string,
+  item: AgendaItem,
+): { start: string; end?: string } {
+  const endDate = item.end.subtract({ nanoseconds: 1 }).toPlainDate();
+  if (item.event.data.allDay === true) {
+    return item.continuesToNextDay
+      ? { start: "All day", end: `until ${formatDate(locale, endDate)}` }
+      : { start: "All day" };
+  }
+  const time = (value: Temporal.PlainDateTime) => formatShortTime(locale, value);
+  const start = item.continuesFromPreviousDay ? "Continues" : time(item.start);
+  const end = item.continuesToNextDay ? formatDate(locale, endDate) : time(item.end);
+  return { start, end };
+}
+
 /** When an item runs on its day: "17:45 - 19:54", "All day", "Continues - 10:00"… */
 export function formatAgendaItemTime(locale: string, item: AgendaItem): string {
   if (item.event.data.allDay === true) {

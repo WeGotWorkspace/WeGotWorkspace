@@ -83,6 +83,17 @@ export function DropdownMenu({
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
   // After "back", focus returns to the row that opened the submenu.
   const [returnFocusId, setReturnFocusId] = useState<string | null>(null);
+  // A menu that unmounts while open (its item swapped the view it sat in) still says it
+  // closed, so whatever the host blocked while it was open is released.
+  const openRef = useRef(false);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  useEffect(
+    () => () => {
+      if (openRef.current) onOpenChangeRef.current?.(false);
+    },
+    [],
+  );
   if (disabled) return <>{trigger}</>;
   const openSubmenu = items.find(
     (item): item is DropdownMenuSubmenuProps => isSubmenu(item) && item.id === openSubmenuId,
@@ -90,6 +101,7 @@ export function DropdownMenu({
   return (
     <RadixDropdownMenu
       onOpenChange={(open) => {
+        openRef.current = open;
         onOpenChange?.(open);
         if (open) return;
         setOpenSubmenuId(null);

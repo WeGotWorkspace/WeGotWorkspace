@@ -1,33 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Circle } from "lucide-react";
 import { CollectionListEnd } from "@/collection-layout/src/collection-list-end";
 import { useCollectionListEndReached } from "@/collection-layout/src/use-collection-list-end-reached";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import { CalendarEventList } from "@/calendar-core/src/calendar-event-list";
+import {
+  CalendarEventList,
+  type CalendarEventListSelection,
+} from "@/calendar-core/src/calendar-event-list";
 import {
   calendarSearchPageStart,
-  formatCalendarSearchScopeLabel,
   searchOccurrencesToEngineMap,
   unifiedSearchOccurrences,
   visibleSearchOccurrences,
-  type CalendarSearchDateRange,
   type CalendarSearchResults,
 } from "@/calendar-core/src/calendar-search";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
-import { Tag } from "@/tag/src/tag";
 import { groupAgendaDays } from "@/lib/calendar-elements/utils/agenda-days";
 
 export type CalendarSearchResultsListProps = {
   results: CalendarSearchResults;
-  searchRange: CalendarSearchDateRange;
-  visibleCalendars: readonly CalendarInfo[];
   labels: CalendarUILabels;
   locale: string;
   calendars: readonly CalendarInfo[];
   timezone?: string;
   /** The occurrence open in the detail pane. */
   activeKey?: string;
-  onEventSelected: (key: string) => void;
+  selection: CalendarEventListSelection;
 };
 
 function searchResultsSessionKey(results: CalendarSearchResults): string {
@@ -43,14 +40,12 @@ function searchResultsSessionKey(results: CalendarSearchResults): string {
 
 export function CalendarSearchResultsList({
   results,
-  searchRange,
-  visibleCalendars,
   labels,
   locale,
   calendars,
   timezone,
   activeKey,
-  onEventSelected,
+  selection,
 }: CalendarSearchResultsListProps) {
   const listEndRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +71,6 @@ export function CalendarSearchResultsList({
     firstUpcomingKey && visible.some((row) => row.key === firstUpcomingKey),
   );
   const empty = results.upcoming.length === 0 && results.past.length === 0;
-  const rangeLabel = formatCalendarSearchScopeLabel(labels.searchScope, searchRange, locale);
   const loadMore = useCallback(() => {
     setPageState((prev) => {
       if (prev.sessionKey !== sessionKey) return { sessionKey, extraPages: 0 };
@@ -104,22 +98,12 @@ export function CalendarSearchResultsList({
         empty ? "calendar-search-results calendar-search-results--empty" : "calendar-search-results"
       }
     >
-      <div className="calendar-search-results__scope">
-        <Tag label={rangeLabel} icon={<CalendarDays />} />
-        {visibleCalendars.map((calendar) => (
-          <Tag
-            key={calendar.id}
-            label={calendar.name}
-            icon={<Circle fill={calendar.color ?? "currentColor"} strokeWidth={0} />}
-          />
-        ))}
-      </div>
       <CalendarEventList
         days={empty ? [] : days}
         calendars={calendars}
         locale={locale}
         activeKey={activeKey}
-        onSelect={onEventSelected}
+        {...selection}
         emptyLabel={labels.searchNoMatch}
         untitledLabel={labels.untitledEvent}
         showYearInHeadings

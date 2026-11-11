@@ -30,10 +30,14 @@ import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { WorkspaceApp, type WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
+import { useCalendarListSelection } from "@/calendar-core/src/use-calendar-list-selection";
+import { unifiedSearchOccurrences } from "@/calendar-core/src/calendar-search";
+import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { CalendarEventList } from "@/calendar-core/src/calendar-event-list";
 import { groupAgendaDays } from "@/lib/calendar-elements/utils/agenda-days";
 import { visibleEventsInRange } from "@/lib/calendar-elements/CalendarViewBase/renderedEvents";
@@ -246,6 +250,8 @@ export function CalendarWorkspace({
     searchRange,
     dateRange,
     undoLatest,
+    deleteCalendarEvents,
+    moveCalendarEvents,
   } = controller;
   const { showError, showSuccess } = useAppToast();
   const handleInvitationResponded = useCallback(() => {
@@ -289,6 +295,9 @@ export function CalendarWorkspace({
       operations,
     });
   const [invitationsOpen, setInvitationsOpen] = useState(false);
+  const { confirmDialog, requestConfirm } = useConfirmDialog({
+    contentClassName: "calendar-dialog-surface",
+  });
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const availability = useTeamAvailability({
     source: availabilitySource,
@@ -737,12 +746,27 @@ export function CalendarWorkspace({
     setEventPreview(null);
     setEventTimesDraft(null);
   };
-  const detailDelete =
+  const detailDeleteNow =
     eventPreview?.interactiveEdit && editor?.mode === "edit"
       ? deleteEditedEvent
       : eventPreview && !eventPreview.invitation && previewCanEdit
         ? deleteFromPreview
         : undefined;
+  /** Detail header Delete: asks first. A repeating occurrence already asks which ones
+   * (the scope dialog), so it goes straight on. */
+  const detailDelete =
+    detailDeleteNow &&
+    (liveEventPreview?.recurrenceId
+      ? () => leaveEventDetail(detailDeleteNow)
+      : () =>
+          requestConfirm({
+            title: L.deleteEventConfirmTitle,
+            description: L.deleteEventConfirmBody,
+            confirmLabel: L.delete,
+            cancelLabel: L.cancel,
+            variant: "destructive",
+            onConfirm: () => leaveEventDetail(detailDeleteNow),
+          }));
   /** Wide list mode: the list header has room for the full range title. */
   const wideList = listLayout && !detailOverlay;
   /** The invitations inbox is the grid's: list mode has no trigger and hides the panel
@@ -786,6 +810,38 @@ export function CalendarWorkspace({
     return groupAgendaDays(expanded.entries(), { timezone, range: dateRange });
   }, [dateRange, listEvents, listLayout, surfaceDisplay.timezone, visibleCalendarIds]);
   const activeEventKey = liveEventPreview ? eventPreviewOccurrenceKey(liveEventPreview) : undefined;
+  /** The list's rows in order, with each one's calendar (period list or search results). */
+  const listRows = useMemo(() => {
+    const rows = new Map<string, string>();
+    if (searching) {
+      for (const occurrence of unifiedSearchOccurrences(searchResults)) {
+        rows.set(occurrence.key, occurrence.calendarId);
+      }
+    } else {
+      for (const day of periodDays) {
+        for (const item of day.items) rows.set(item.id, item.event.calendarId);
+      }
+    }
+    return rows;
+  }, [periodDays, searchResults, searching]);
+  const listRowIds = useMemo(() => [...listRows.keys()], [listRows]);
+  const listRowCalendarId = useCallback((key: string) => listRows.get(key), [listRows]);
+  const listSelection = useCalendarListSelection({
+    L,
+    visibleIds: listRowIds,
+    resetKey: `${presentation}|${view}|${anchor}|${searching ? searchQuery : ""}`,
+    activeKey: activeEventKey ?? "",
+    calendars,
+    calendarIdOf: listRowCalendarId,
+    openEvent: openEventPreview,
+    requestConfirm,
+    deleteEvents: (keys) => {
+      if (activeEventKey && keys.includes(activeEventKey)) leaveEventDetail(closeEventDetail);
+      deleteCalendarEvents(keys);
+    },
+    moveEvents: moveCalendarEvents,
+  });
+  const multiSelected = listLayout && listSelection.multiSelected;
 
   const sidebarEl = (
     <AppSidebar
@@ -922,6 +978,7 @@ export function CalendarWorkspace({
             searchValue: searchQuery,
             onSearchInput: setSearchQuery,
             searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
+                  searchHidden: multiSelected,
             searchInputRef,
           }
         : {})}
@@ -982,14 +1039,12 @@ export function CalendarWorkspace({
   const listContentEl = searching ? (
     <CalendarSearchResultsList
       results={searchResults}
-      searchRange={searchRange}
-      visibleCalendars={calendars.filter((calendar) => visibleCalendarIds.has(calendar.id))}
       calendars={calendars}
       timezone={surfaceDisplay.timezone}
       activeKey={activeEventKey}
       labels={L}
       locale={locale}
-      onEventSelected={openEventPreview}
+      selection={listSelection.selection}
     />
   ) : (
     <CalendarEventList
@@ -997,7 +1052,7 @@ export function CalendarWorkspace({
       calendars={calendars}
       locale={locale}
       activeKey={activeEventKey}
-      onSelect={openEventPreview}
+      {...listSelection.selection}
       emptyLabel={L.noEventsInRange}
       untitledLabel={L.untitledEvent}
     />
@@ -1206,6 +1261,7 @@ export function CalendarWorkspace({
             listContent: listContentEl,
             hasItems: true,
             emptyLabel: "",
+            floatingActionBar: listSelection.selectionBar,
           })}
           actionBar={(chrome) => {
             // Phones: a bar only on the open overlay (Back + Delete).
@@ -1217,13 +1273,14 @@ export function CalendarWorkspace({
                 onBack={back ? () => leaveEventDetail(closeEventDetail) : undefined}
                 backLabel={title}
                 rightActions={
-                  detailDelete
+                  detailDelete && !multiSelected
                     ? [
                         {
                           id: "delete",
                           label: L.delete,
                           icon: <Trash2 />,
-                          onClick: () => leaveEventDetail(detailDelete),
+                          onClick: detailDelete,
+                          severity: "danger",
                           disabled: editorBusy,
                         },
                       ]
@@ -1237,10 +1294,19 @@ export function CalendarWorkspace({
           detailClassName="calendar-event-detail-pane"
           detailScrollResetKey={activeEventKey ?? null}
           detail={() =>
-            eventPaneEl ?? (
-              <CollectionState icon={<CalendarDays className="size-12" />}>
-                {L.selectEvent}
-              </CollectionState>
+            multiSelected ? (
+              <MultiSelectionView
+                count={listSelection.selectedIds.length}
+                label={L.selectionLabel}
+                title={L.selectionTitle}
+                actions={listSelection.selectionBarButtons}
+              />
+            ) : (
+              (eventPaneEl ?? (
+                <CollectionState icon={<CalendarDays className="size-12" />}>
+                  {L.selectEvent}
+                </CollectionState>
+              ))
             )
           }
         />
@@ -1265,6 +1331,8 @@ export function CalendarWorkspace({
         </SideDrawer>
       ) : null}
       {listLayout ? null : eventPopoverEl}
+      {confirmDialog}
+      {listSelection.moveDialog}
       {overlayPreview ? (
         <CalendarOverlayPopover
           preview={overlayPreview}

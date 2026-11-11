@@ -26,7 +26,7 @@ import {
   normalizeCalendarSearchQuery,
   type CalendarRouteState,
 } from "@/calendar-core/src/calendar-route-search";
-import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import { splitOccurrenceKey, type CalendarEventsMap } from "@/lib/calendar-engine";
 import {
   calendarEventToForm,
   createIntentToForm,
@@ -929,6 +929,150 @@ export function useCalendarController({
     });
   }, [deleteCalendarEvent, editor]);
 
+  /** Selected rows → their events: each master once, with the occurrences picked of it. */
+  const groupOccurrenceKeys = useCallback(
+    (keys: readonly string[]) => {
+      const groups = new Map<string, { recurrenceIds: string[]; whole: boolean }>();
+      for (const key of keys) {
+        const { masterId, recurrenceId } = splitOccurrenceKey(key);
+        const group = groups.get(masterId) ?? { recurrenceIds: [], whole: false };
+        if (recurrenceId) group.recurrenceIds.push(recurrenceId);
+        else group.whole = true;
+        groups.set(masterId, group);
+      }
+      return [...groups].map(([eventId, group]) => {
+        const original = data.events.find((entry) => entry.id === eventId);
+        return { eventId, original, isWireEvent: Boolean(original), ...group };
+      });
+    },
+    [data.events],
+  );
+
+  /**
+   * Multi-select Delete: each selected row goes. A repeating event loses only the picked
+   * occurrences (as rows they are single dates); anything else is deleted. One write with
+   * Undo, sent after the grace period like a single delete.
+   */
+  const deleteCalendarEvents = useCallback(
+    (keys: readonly string[]) => {
+      if (!operations || keys.length === 0) return;
+      const groups = groupOccurrenceKeys(keys);
+      const hidden = groups.flatMap((group) =>
+        group.whole || group.recurrenceIds.length === 0
+          ? [group.eventId]
+          : group.recurrenceIds.map((rid) => `${group.eventId}::${rid}`),
+      );
+      setPendingDeletedEventIds((current) => new Set([...current, ...hidden]));
+      const rollback = () =>
+        setPendingDeletedEventIds((current) => {
+          const next = new Set(current);
+          for (const id of hidden) next.delete(id);
+          return next;
+        });
+      queueMutation({
+        key: `calendar:delete-events:${hidden.join(",")}`,
+        toastMessage: L.toastEventsDeleted(keys.length),
+        icon: createElement(Trash2, { className: "size-4" }),
+        irreversible: true,
+        execute: async () => {
+          for (const group of groups) {
+            const targetId = group.isWireEvent
+              ? group.eventId
+              : ((await resolveEventId?.(group.eventId)) ?? group.eventId);
+            const occurrencesOnly =
+              !group.whole &&
+              group.recurrenceIds.length > 0 &&
+              (group.original ? eventIsRecurringSeries(group.original) : true);
+            if (!occurrencesOnly) {
+              await operations.deleteEvent(targetId);
+              continue;
+            }
+            let overrides = group.original?.recurrenceOverrides ?? {};
+            for (const rid of group.recurrenceIds) {
+              overrides = exclusionRecurrenceOverrides(
+                group.original ? { ...group.original, recurrenceOverrides: overrides } : undefined,
+                rid,
+              );
+            }
+            await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
+          }
+          onMutated?.();
+        },
+        undo: rollback,
+        undoToastMessage: L.toastEventDeleteUndone,
+      });
+    },
+    [groupOccurrenceKeys, operations, queueMutation, resolveEventId, onMutated, L],
+  );
+
+  /**
+   * Multi-select Move to calendar: each selected event (a repeating one as its whole
+   * series) is recreated in `calendarId` and its original deleted, as a single move does.
+   * One write; Undo moves them back.
+   */
+  const moveCalendarEvents = useCallback(
+    (keys: readonly string[], calendarId: string) => {
+      if (!operations) return;
+      const organizer = sessionEmail
+        ? { email: sessionEmail, name: sessionName || sessionEmail }
+        : undefined;
+      const moves = groupOccurrenceKeys(keys)
+        .filter((group) => group.original && group.original.calendarIds?.[calendarId] !== true)
+        .map((group) => {
+          const form = calendarEventToForm(group.original!);
+          return {
+            eventId: group.eventId,
+            draft: draftFromForm({ ...form, calendarId }, organizer),
+            originalDraft: draftFromForm(form, organizer),
+            movedToId: undefined as string | undefined,
+          };
+        });
+      if (moves.length === 0) return;
+      ensureCalendarVisible(calendarId);
+      queueMutation(
+        calendarEventWrite(
+          {
+            key: `calendar:move-events:${moves.map((move) => move.eventId).join(",")}`,
+            successToast: L.toastEventsMoved(moves.length),
+            mutation: async (markCompleted) => {
+              for (const move of moves) {
+                const created = await operations.createEvent(move.draft);
+                move.movedToId = created.id;
+                markCompleted(`${MOVE_STEPS.create}:${move.eventId}`);
+                await operations.deleteEvent(move.eventId);
+                markCompleted(`${MOVE_STEPS.delete}:${move.eventId}`);
+              }
+            },
+            revert: async (completed) => {
+              for (const move of moves) {
+                const steps =
+                  completed === null
+                    ? null
+                    : new Set(
+                        [MOVE_STEPS.create, MOVE_STEPS.delete].filter((step) =>
+                          completed.has(`${step}:${move.eventId}`),
+                        ),
+                      );
+                await revertEventMove(operations, steps, move);
+              }
+            },
+          },
+          { onMutated, undoToastMessage: L.toastEventSaveUndone },
+        ),
+      );
+    },
+    [
+      groupOccurrenceKeys,
+      operations,
+      sessionEmail,
+      sessionName,
+      ensureCalendarVisible,
+      queueMutation,
+      onMutated,
+      L,
+    ],
+  );
+
   const canCreateCalendar = Boolean(operations?.createCalendar);
   const canSubscribeCalendar = Boolean(operations?.subscribeCalendar);
   const handleImportCalendarCreated = useCallback(
@@ -1435,6 +1579,8 @@ export function useCalendarController({
     saveEditor,
     deleteEditorEvent,
     deleteCalendarEvent,
+    deleteCalendarEvents,
+    moveCalendarEvents,
     L,
     locale,
     surfaceDisplay: { locale, timezone: timeZone, weekStart, visibleHours, visibleHoursStart },
