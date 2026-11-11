@@ -6,6 +6,14 @@ export type CalendarFreeBusyStatus = "busy" | "free";
 
 export const DEFAULT_FREE_BUSY_STATUS: CalendarFreeBusyStatus = "busy";
 
+/**
+ * "Show as" for a new event: all-day starts Free (deadlines and notices should not
+ * block a whole day for teammates), timed starts Busy. Wire fallback stays busy.
+ */
+export function newEventFreeBusyStatus(allDay: boolean): CalendarFreeBusyStatus {
+  return allDay ? "free" : DEFAULT_FREE_BUSY_STATUS;
+}
+
 /** JSCalendar `Alert.action` this UI persists. Leftover `"email"` / `"audio"` map to display. */
 export type CalendarAlertAction = "display";
 
