@@ -13,8 +13,8 @@
  * xs/sm/md stay below 1rem on every screen: phones keep the desktop size (the
  * iOS focus zoom is stopped once, by the viewport tag in `index.html`). Do not
  * re-set font-size here or at product callsites.
- * Radius stays global `--control-radius` on the shared surface — do not remap
- * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
+ * Radius is the control corner `--control-radius-button`, shared with buttons — do not
+ * remap soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
  * Password variant: trailing show/hide toggle (wrapper + field + control).
  * Ghost variant: no chrome at rest, an ink wash on hover/typing (detail-sheet values).
@@ -27,7 +27,7 @@
   @apply outline-none focus:outline-none focus-visible:outline-none;
   @apply disabled:cursor-not-allowed;
   border-color: var(--input-border-color, var(--control-border-color));
-  border-radius: var(--control-radius);
+  border-radius: var(--control-radius-button);
   /* Transparent fallback — `none` cannot compose with other shadows. */
   box-shadow: var(--input-shadow, 0 0 transparent);
   font-size: var(--input-font-size, 1rem);

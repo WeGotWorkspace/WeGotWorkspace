@@ -187,7 +187,7 @@
   --menu-item-line-height: 1.25rem;
   /* Sidebar rows (menu-item and collection rows) and their selected wash: the
      control corner, so rows, buttons and fields round alike. */
-  --sidebar-item-radius: var(--control-radius);
+  --sidebar-item-radius: var(--control-radius-button);
   /* Minimum row height for lists and tables (Drive/Docs listing, pickers, admin). */
   --list-row-height: 3rem;
   /* List rows: inline padding (headers align to it) and their rounding (taller rows,
@@ -295,10 +295,10 @@
    */
   --control-radius-button-pill: var(--control-radius-button);
   /*
-   * Buttons (icon buttons, ghost dropdowns and fields too) round like the input:
-   * one corner for every control.
+   * The control corner: buttons, icon buttons, ghost dropdowns, fields and sidebar
+   * rows. A touch rounder than cards and menus (`--control-radius`).
    */
-  --control-radius-button: var(--control-radius);
+  --control-radius-button: 0.5rem;
   /*
    * Panel overlay motion — AppSidebar mobile slide + SideDrawer/Sheet enter/exit.
    * Keep duration + easing in sync across left chrome and right drawers.

@@ -24,8 +24,8 @@
   background-color: var(--input-background);
   border: 1px solid var(--input-border-color, var(--control-border-color));
   border-inline-start-width: 0;
-  border-start-end-radius: var(--control-radius);
-  border-end-end-radius: var(--control-radius);
+  border-start-end-radius: var(--control-radius-button);
+  border-end-end-radius: var(--control-radius-button);
   box-shadow: var(--input-shadow, 0 0 transparent);
   user-select: none;
 }
