@@ -47,6 +47,8 @@ The `coverage-ratchet` job runs on push to `main` when the workflow is not cance
 
 API coverage counts only `packages/api/app/Services/<Domain>`, from clover paths under `app/Services/`. Controllers, models, and the rest of `packages/api` are outside the ratchet.
 
+The API suite runs with coverage in four `api-coverage-shard` jobs (`scripts/phpunit-shard.php`, each with `--coverage-php`). The `api-coverage` job then merges the shards into one clover file with `php scripts/merge-coverage.php <clover.xml> <shard.cov>...`.
+
 `node tools/coverage-ratchet.mjs check` compares the reports to the baseline. `check --json` prints that report as JSON on stdout. `update` sets each existing key to `max(baseline, current)`, adds new keys, and drops keys that are gone. It does not record a drop, including a drop under the 0.5 point threshold. Run `update` after raising coverage, then commit the baseline.
 
 `update --reseed` writes the current report as-is and drops keys the report does not contain. It prints each key that went down and each key that disappeared. It exists only to align the baseline with the first CI-measured report (the current apps baseline came from a local merge). It is not a way to accept a regression. A pull request that reseeds must say why and link the CI run whose artifacts it used.
