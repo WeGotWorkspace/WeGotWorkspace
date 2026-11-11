@@ -1,7 +1,8 @@
 name: CI MySQL (full)
 
 # MySQL parity safety net: runs the ENTIRE PHPUnit suite against MySQL.
-# PR CI only runs the MySQL parity subset (see ci.yml `api-mysql`); this workflow
+# The merge queue runs only the MySQL parity subset (ci.yml `api-mysql`; a pull
+# request runs it only with the run-full-ci label). This workflow
 # guarantees full MySQL coverage without adding wall-clock to every pull request.
 # The suite is split into round-robin file shards (scripts/phpunit-shard.php):
 # one job ran past its 45-minute timeout once the ownership matrix landed.
