@@ -47,8 +47,8 @@
   max-height: min(var(--modal-max-height), 100dvh);
   overflow: hidden;
   gap: 1rem;
-  /* Same shape as the sidebar panels; the same hairline as the sidebar edge. */
-  border-radius: var(--sidebar-panel-radius, 1rem);
+  /* The control corner, like the fields and buttons inside; the sidebar edge hairline. */
+  border-radius: var(--control-radius);
   border-color: var(--workspace-divider-color);
 }
 
