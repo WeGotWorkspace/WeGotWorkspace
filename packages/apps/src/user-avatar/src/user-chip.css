@@ -143,6 +143,16 @@
   @apply min-w-0 truncate font-medium;
 }
 
+.user-chip__adornment {
+  @apply inline-flex shrink-0 items-center;
+  margin-inline-start: 0.375rem;
+}
+
+.user-chip__adornment svg {
+  width: calc(var(--user-chip-mark-icon) + 0.125rem);
+  height: calc(var(--user-chip-mark-icon) + 0.125rem);
+}
+
 .user-chip__remove {
   @apply relative z-10 inline-flex shrink-0 cursor-pointer items-center justify-center;
   @apply appearance-none border-0 bg-transparent p-0 opacity-70 transition-opacity hover:opacity-100;

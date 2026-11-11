@@ -8,28 +8,28 @@ export type OfflineBodySyncProgress = {
   updatedAt: number;
 };
 
-type UseOfflineBodySyncProgressOptions = {
+type UseOfflineBodySyncRunningOptions = {
   enabled: boolean;
   readProgress: () => Promise<OfflineBodySyncProgress>;
   pollMs?: number;
 };
 
-export function useOfflineBodySyncProgress({
+/**
+ * Whether the background body sync is running, polled from its stored progress.
+ *
+ * Only the flag is state: the counts change on every poll while a sync runs, and
+ * each change would re-render the caller's whole page (1,000 Docs rows) for nothing.
+ */
+export function useOfflineBodySyncRunning({
   enabled,
   readProgress,
   pollMs = 1500,
-}: UseOfflineBodySyncProgressOptions): OfflineBodySyncProgress {
-  const [progress, setProgress] = useState<OfflineBodySyncProgress>({
-    running: false,
-    total: 0,
-    synced: 0,
-    failed: 0,
-    updatedAt: 0,
-  });
+}: UseOfflineBodySyncRunningOptions): boolean {
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
-      setProgress((prev) => ({ ...prev, running: false }));
+      setRunning(false);
       return;
     }
     let cancelled = false;
@@ -38,7 +38,7 @@ export function useOfflineBodySyncProgress({
     const tick = async () => {
       const next = await readProgress().catch(() => null);
       if (!cancelled && next) {
-        setProgress(next);
+        setRunning(next.running);
       }
       if (cancelled) return;
       timer = setTimeout(tick, pollMs);
@@ -51,5 +51,5 @@ export function useOfflineBodySyncProgress({
     };
   }, [enabled, pollMs, readProgress]);
 
-  return progress;
+  return running;
 }
