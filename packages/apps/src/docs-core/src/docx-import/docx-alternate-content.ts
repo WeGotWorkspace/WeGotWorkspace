@@ -68,7 +68,7 @@ export function startTags(xml: string, name: string): { tag: string; end: number
     const start = xml.indexOf(open, from);
     if (start < 0) return tags;
     const next = xml[start + open.length];
-    if (next !== ">" && next !== "/" && !isTagBoundary(next)) {
+    if (!isTagBoundary(next)) {
       from = start + open.length;
       continue;
     }
