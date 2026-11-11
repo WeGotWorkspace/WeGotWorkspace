@@ -36,7 +36,7 @@ runs:
         fetch-depth: 0
         persist-credentials: false
 
-    - uses: pnpm/action-setup@v6.1.0
+    - uses: pnpm/action-setup@v6.1.1
       with:
         package_json_file: pr/package.json
 
