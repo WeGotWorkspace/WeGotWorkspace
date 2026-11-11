@@ -59,15 +59,18 @@ PR title: same Conventional Commits style as commit subject when possible.
 
 ## Required CI (branch protection on `main`)
 
-From root [README.md](../../../README.md):
+Branch protection on `main` requires these checks:
 
 - `build` (CI)
+- `apps-e2e` (CI)
 - `SAST (CodeQL JS/TS)`
 - `SAST (Semgrep PHP)`
 - `Secrets (Gitleaks)`
 - `SCA (Trivy)`
 
 `SAST (Psalm PHP)` runs in the security workflow and is not a required status check.
+
+CI has two tiers. A pull request runs the fast checks (`mcp-server`, `api-quality`, `apps-quality`, `build`, `chromatic`, and the security workflow). The heavy jobs (`apps-e2e`, `api-mysql`, `upgrade-e2e`, `install-zip-sqlite`) run in the merge queue; `apps-e2e` and `api-mysql` also run on pushes to `main`. The queue only waits for required checks, so `build` waits for `api-mysql`, `upgrade-e2e`, and `install-zip-sqlite` and fails when one of them failed. On a pull request those three are skipped, and `apps-e2e` reports success without running, so the required checks are met. To run the heavy jobs on a pull request, for example when it changes e2e specs, migrations, or the installer, add the `run-full-ci` label. It takes effect on the next CI run the review-loop gate lets through (a human push or a hand-over label); adding the label alone starts nothing.
 
 Fix failing checks before expecting merge.
 
@@ -88,7 +91,7 @@ gh pr merge <number> --auto --merge
 
 Skip `gh pr ready` when the PR is already ready for review. `--auto` adds it to the queue once its own required checks are green. The queue then runs `merge_group` checks and merges.
 
-Queue settings: merge method **merge**, build concurrency **2**, only merge non-failing pull requests, minimum and maximum group size **1**, status check timeout **120 minutes**.
+Queue settings: merge method **merge**, build concurrency **5**, only merge non-failing pull requests, minimum group size **1**, maximum group size **5**, status check timeout **120 minutes**. Each queued pull request gets its own `merge_group` run; the group size only decides how many green entries merge at once.
 
 Add `--delete-branch` only when the user asks to delete the remote branch after merge. The repo already deletes the head branch on merge.
 
