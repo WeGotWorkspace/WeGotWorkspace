@@ -149,6 +149,7 @@ export type CalendarUILabels = {
   editEventTitle: string;
   createEventTitle: string;
   eventTitleLabel: string;
+  eventTitlePlaceholder: string;
   eventCalendarLabel: string;
   eventStartLabel: string;
   eventEndLabel: string;
@@ -195,6 +196,7 @@ export type CalendarUILabels = {
   /** Persistent hint after keeping both. */
   eventMeetEmailGuestsNoAccessHint: string;
   eventNotesLabel: string;
+  eventNotesPlaceholder: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
   eventDetailsMoreInvitees: (count: number) => string;
@@ -203,7 +205,6 @@ export type CalendarUILabels = {
   eventShowAsBusy: string;
   eventShowAsFree: string;
   /** Under "Show as" while an all-day event is Free (#1927). */
-  eventShowAsAllDayFreeHint: string;
   eventAlarmsLabel: string;
   eventAlarmsNone: string;
   eventAlarmAdd: string;
@@ -266,8 +267,6 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
-  /** Busy invited teammate (#1614): the warning tag beside their name. */
-  eventAttendeesAvailabilityBusyTag: string;
   /** Busy tooltip heading. */
   eventAttendeesAvailabilityBusyWith: string;
   /** Busy tooltip row for a period without a title (owner shares the time only). */
@@ -472,6 +471,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   editEventTitle: "Edit event",
   createEventTitle: "New event",
   eventTitleLabel: "Title",
+  eventTitlePlaceholder: "Add title",
   eventCalendarLabel: "Calendar",
   eventStartLabel: "Starts",
   eventEndLabel: "Ends",
@@ -507,12 +507,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Description",
+  eventNotesPlaceholder: "Add description",
   eventDetailsEdit: workspaceLabels.dialog.edit,
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
-  eventShowAsAllDayFreeHint: "Set to Busy for time off, so teammates see you as away.",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
   eventAlarmAdd: "Add alert",
@@ -572,7 +572,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
-  eventAttendeesAvailabilityBusyTag: "Busy",
   eventAttendeesAvailabilityBusyWith: "Busy at this time",
   eventAttendeesAvailabilityBusyUntitled: "Busy",
   eventAttendeesAvailabilityAllDay: "All day",

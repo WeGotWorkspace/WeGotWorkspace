@@ -31,8 +31,6 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import { ShareAccessRow } from "@/share-ui/share-access-row";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { Tag } from "@/tag/src/tag";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { ControlSize } from "@/ui/control-size";
@@ -132,81 +130,63 @@ function rsvpToneClass(status: CalendarParticipationStatus): string | undefined 
   }
 }
 
-/** Busy at the event's time (#1614): a warning tag by the name, the overlaps in its tooltip. */
-function BusyTag({
-  rsvpLabel,
-  rows,
-  labels,
-}: {
-  rsvpLabel: string;
-  rows: string[];
-  labels: CalendarUILabels;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className="calendar-invitees-card__busy"
-          tabIndex={0}
-          aria-label={`${labels.eventAttendeesAvailabilityBusyWith}: ${rows.join("; ")}`}
-        >
-          <Tag label={labels.eventAttendeesAvailabilityBusyTag} tone="warning" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <CalendarInviteeBusyTooltip rsvpLabel={rsvpLabel} rows={rows} labels={labels} />
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-/** A participant as a Share member row: avatar, name and address, the RSVP as a washed tag. */
-function ParticipantRow({
-  attendee,
-  invitees,
-  statusLabel,
-  toneClass,
-  showRemove,
-  removeLabel,
-  onRemove,
-  busyRows,
-  labels,
-}: {
+type ParticipantTagProps = {
   attendee: Pick<CalendarAttendee, "email" | "name">;
   invitees: CalendarInvitee[];
   statusLabel: string;
   toneClass?: string;
-  /** Keep the remove column (disabled without `onRemove`) so the tags line up. */
-  showRemove: boolean;
   removeLabel: string;
   onRemove?: () => void;
   /** Overlapping periods when this teammate is busy at the event's time (#1614). */
   busyRows?: string[] | null;
   labels: CalendarUILabels;
-}) {
-  // Teammates show their username (like Share rows), guests from outside their email.
+};
+
+/**
+ * A participant as a tag: the name (an outside guest's email), the RSVP as the tag's dot
+ * and wash and as its tooltip, with any busy time under it.
+ */
+function ParticipantTag({
+  attendee,
+  invitees,
+  statusLabel,
+  toneClass,
+  removeLabel,
+  onRemove,
+  busyRows,
+  labels,
+}: ParticipantTagProps) {
   const teammate = inviteeForAttendee(attendee, invitees);
   const name = teammate?.name || attendee.name;
   const handle = teammate ? teammate.username : attendee.email;
+  const label = name || handle;
   return (
-    <ShareAccessRow
-      mark={
-        <SharePrincipalMark
-          principalType="user"
-          displayName={name || handle}
-          subtitle={name && name !== handle ? handle : undefined}
-          size="sm"
-          labeled
-          nameEnd={
-            busyRows ? <BusyTag rsvpLabel={statusLabel} rows={busyRows} labels={labels} /> : null
-          }
-        />
-      }
-      trailing={<Tag label={statusLabel} className={toneClass} dot />}
-      showRemove={showRemove}
-      removeLabel={removeLabel}
-      onRemove={onRemove}
-    />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="calendar-invitees-card__tag"
+          tabIndex={0}
+          aria-label={`${label}, ${statusLabel}`}
+        >
+          <Tag
+            label={label}
+            className={cn(toneClass, busyRows && "calendar-invitees-card__tag--busy")}
+            dot
+            size="lg"
+            removable={Boolean(onRemove)}
+            onRemove={onRemove}
+            removeAriaLabel={`${removeLabel}: ${label}`}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {busyRows ? (
+          <CalendarInviteeBusyTooltip rsvpLabel={statusLabel} rows={busyRows} labels={labels} />
+        ) : (
+          statusLabel
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -334,16 +314,15 @@ export function CalendarInviteesCard({
       </>
     ) : null;
 
-  const rows = (
+  const participants = (
     <>
       {organizer ? (
-        <ParticipantRow
+        <ParticipantTag
           key={`organizer:${organizer.email}`}
           attendee={organizer}
           invitees={people}
           statusLabel={labels.eventAttendeesOrganizer}
           toneClass="calendar-invitees-status-mark--organizer"
-          showRemove={!locked && listed.length > 0}
           removeLabel={labels.eventAttendeesRemove}
           labels={labels}
         />
@@ -357,13 +336,12 @@ export function CalendarInviteesCard({
         );
 
         return (
-          <ParticipantRow
+          <ParticipantTag
             key={attendee.email}
             attendee={attendee}
             invitees={people}
             statusLabel={status}
             toneClass={rsvpToneClass(attendee.participationStatus)}
-            showRemove={!locked}
             removeLabel={labels.eventAttendeesRemove}
             onRemove={
               locked
@@ -404,7 +382,7 @@ export function CalendarInviteesCard({
       footer={footer}
       addControl={addControl}
     >
-      {rows}
+      <div className="calendar-invitees-card__tags">{participants}</div>
     </ShareAccessCard>
   );
 }

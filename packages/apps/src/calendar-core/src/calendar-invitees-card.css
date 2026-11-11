@@ -1,24 +1,35 @@
 @import "../../styles.css" reference;
 @import "./calendar-rsvp-status.css";
 
-/* Participants are Share member rows; the RSVP is a washed tag at the row's end. */
+/* Participants are tags: the RSVP is the tag's wash and dot. */
 .calendar-invitees-card {
   container: calendar-invitees / inline-size;
 }
 
-/* Busy teammate (#1614): the warning tag by the name takes focus for its tooltip. */
-.calendar-invitees-card__busy {
-  @apply inline-flex shrink-0 rounded-full outline-none;
-}
-
-.calendar-invitees-card__busy:focus-visible {
-  box-shadow: 0 0 0 2px var(--ring);
-}
-
+/* Busy teammate (#1614): the overlaps in the tag's tooltip. */
 .calendar-invitee-busy-tooltip__title {
   @apply mt-1 font-medium;
 }
 
 .calendar-invitee-busy-tooltip ul {
   @apply mt-0.5 flex flex-col gap-0.5;
+}
+
+/* One tag per participant under the add field, from the start. */
+.calendar-invitees-card__tags {
+  @apply flex flex-wrap justify-start gap-1.5;
+}
+
+/* The tag takes focus for its tooltip (the RSVP, and any busy time). */
+.calendar-invitees-card__tag {
+  @apply inline-flex min-w-0 max-w-full rounded-full outline-none;
+}
+
+.calendar-invitees-card__tag:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* Busy at the event's time (#1614): the dot turns the warning colour. */
+.calendar-invitees-card__tag--busy {
+  --tag-tone-color: var(--color-warning);
 }

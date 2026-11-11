@@ -1,3 +1,4 @@
+import { Type } from "lucide-react";
 import { useId } from "react";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
@@ -64,6 +65,7 @@ export function CalendarEventFormTitle({
       layout="inline"
       fill
       label={labels.eventTitleLabel}
+      labelIcon={<Type aria-hidden />}
       htmlFor={titleId}
     >
       <NameColorRow className="calendar-event-dialog__title-row">
@@ -73,6 +75,7 @@ export function CalendarEventFormTitle({
           size={controlSize}
           value={form.title}
           onChange={(event) => onFieldChange("title", event.target.value)}
+          placeholder={labels.eventTitlePlaceholder}
           disabled={fieldsDisabled}
           autoFocus={autoFocusTitle && !readOnly}
         />

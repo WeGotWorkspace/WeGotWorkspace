@@ -34,7 +34,9 @@ function resizeTextarea(element: HTMLTextAreaElement, minRows: number, maxRows: 
 
   element.style.height = "auto";
   const scrollHeight = element.scrollHeight;
-  const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+  // `scrollHeight` leaves out the border; the border-box height needs it, or the last
+  // line is clipped by the border width.
+  const nextHeight = Math.min(Math.max(scrollHeight + border, minHeight), maxHeight);
   element.style.height = `${nextHeight}px`;
   element.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
 }

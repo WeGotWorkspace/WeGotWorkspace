@@ -1,3 +1,4 @@
+import { Repeat } from "lucide-react";
 import { useId, useMemo } from "react";
 import {
   patchCalendarEventForm,
@@ -16,7 +17,7 @@ import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 
 type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
   key: K,
@@ -71,6 +72,7 @@ export function CalendarEventFormRecurrence({
       className="calendar-event-dialog__field calendar-event-dialog__field--repeat"
       layout="inline"
       label={labels.eventRepeatLabel}
+      labelIcon={<Repeat aria-hidden />}
       htmlFor={repeatId}
       below={
         showRecurrenceEnds ? (
@@ -82,10 +84,11 @@ export function CalendarEventFormRecurrence({
               }
               disabled={disabled}
             >
-              <SelectTrigger size={controlSize} aria-label={labels.eventRecurrenceEndsLabel}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              <CollectionGhostSelectTrigger
+                aria-label={labels.eventRecurrenceEndsLabel}
+                label={<SelectValue />}
+              />
+              <SelectContent align="end">
                 <SelectItem value="never">{labels.eventRecurrenceEndsNever}</SelectItem>
                 <SelectItem value="until">{labels.eventRecurrenceEndsOnDate}</SelectItem>
                 <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
@@ -94,6 +97,7 @@ export function CalendarEventFormRecurrence({
             {form.recurrenceEnds === "until" ? (
               <div className="calendar-event-dialog__recurrence-ends-extra">
                 <LocaleDatePicker
+                  variant="ghost"
                   value={form.recurrenceUntilDate || form.startDate}
                   locale={locale}
                   size={controlSize}

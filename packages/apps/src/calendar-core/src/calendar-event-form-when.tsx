@@ -1,3 +1,4 @@
+import { CalendarDays, Sun } from "lucide-react";
 import { useId, useMemo, useState, type ComponentProps } from "react";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
@@ -7,7 +8,7 @@ import {
   eventTimeZoneSelectValue,
 } from "@/calendar-core/src/calendar-timezones";
 import type { ControlSize } from "@/ui/control-size";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import { FieldLabelRow, useFieldLabelMode } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
@@ -77,12 +78,44 @@ export function CalendarEventFormWhen({
     [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
   );
 
+  // Icon rows (the popover): the time zone sits in the All day row, after the switch.
+  const iconRows = useFieldLabelMode() === "icon";
+  const allDaySwitch = (
+    <Switch
+      id={allDayId}
+      checked={form.allDay}
+      onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
+      disabled={disabled}
+    />
+  );
+  const timeZoneSelect = (
+    <Select
+      value={eventTimeZoneSelectValue(form.timeZone)}
+      onValueChange={(value) => onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))}
+      disabled={disabled}
+    >
+      <CollectionGhostSelectTrigger
+        id={timeZoneId}
+        aria-label={iconRows ? labels.eventTimeZoneLabel : undefined}
+        label={<SelectValue />}
+      />
+      <SelectContent align={iconRows ? "start" : "end"} className="max-h-72">
+        {timeZoneOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--starts"
         layout="inline"
         label={labels.eventStartLabel}
+        labelIcon={<CalendarDays aria-hidden />}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
@@ -112,6 +145,7 @@ export function CalendarEventFormWhen({
         className="calendar-event-dialog__field calendar-event-dialog__field--ends"
         layout="inline"
         label={labels.eventEndLabel}
+        labelIcon={<CalendarDays aria-hidden />}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
@@ -141,38 +175,26 @@ export function CalendarEventFormWhen({
         className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
         layout="inline"
         label={labels.eventAllDayLabel}
+        labelIcon={<Sun aria-hidden />}
         htmlFor={allDayId}
       >
-        <Switch
-          id={allDayId}
-          checked={form.allDay}
-          onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
-          disabled={disabled}
-        />
+        {iconRows ? (
+          <div className="calendar-event-dialog__all-day">
+            {allDaySwitch}
+            {form.allDay ? null : timeZoneSelect}
+          </div>
+        ) : (
+          allDaySwitch
+        )}
       </FieldLabelRow>
-      {!form.allDay ? (
+      {!form.allDay && !iconRows ? (
         <FieldLabelRow
           className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
           layout="inline"
           label={labels.eventTimeZoneLabel}
           htmlFor={timeZoneId}
         >
-          <Select
-            value={eventTimeZoneSelectValue(form.timeZone)}
-            onValueChange={(value) =>
-              onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))
-            }
-            disabled={disabled}
-          >
-            <CollectionGhostSelectTrigger id={timeZoneId} label={<SelectValue />} />
-            <SelectContent align="end" className="max-h-72">
-              {timeZoneOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {timeZoneSelect}
         </FieldLabelRow>
       ) : null}
     </div>

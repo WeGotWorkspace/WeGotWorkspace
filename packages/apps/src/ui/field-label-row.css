@@ -42,26 +42,56 @@
 }
 
 /**
- * Icon-only label in front of the control (horizontal). Used by dense forms
- * such as the calendar event editor.
+ * Icon-labelled (`FieldLabelRowIconLabels`, a compact editor such as the event popover):
+ * the field's icon in front, the control right after it (a `fill` field across the
+ * row); one column. A description and a `below` list stack under the control.
  */
 .field-label-row--icon {
-  @apply mb-4 flex items-start gap-2 space-y-0 last:mb-0;
+  @apply mb-0 flex items-start gap-4 space-y-0;
 }
 
 .field-label-row__icon-label {
   @apply inline-flex shrink-0 cursor-default items-center justify-center;
-  /* Match default control height so the icon lines up with the first row.
-   * Parents (e.g. compact event form) may set `--field-label-icon-min-height`. */
+  /* Match the control height so the icon sits on the first line of the control.
+   * Parents (e.g. the compact event form) may set `--field-label-icon-min-height`. */
   min-height: var(
     --field-label-icon-min-height,
     var(--input-height, var(--control-height-md, 2.25rem))
   );
-  color: var(--field-label-color, var(--workspace-foreground));
+  /* A cue, not a caption: the quiet description tone. */
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 .field-label-row__icon-label > svg {
-  @apply size-3.5 shrink-0;
+  @apply size-4 shrink-0;
+}
+
+/* At least the icon's band, so a shorter control (a ghost dropdown, a switch) is centred
+ * on the icon too. */
+.field-label-row--icon > .field-label-row__control {
+  @apply flex flex-col items-start justify-center gap-2;
+  min-height: var(
+    --field-label-icon-min-height,
+    var(--input-height, var(--control-height-md, 2.25rem))
+  );
+}
+
+.field-label-row--icon.field-label-row--fill > .field-label-row__control {
+  @apply items-stretch;
+}
+
+/* The control column stacks vertically here: a `fill` field takes the width by stretching,
+ * so it keeps its own height (a growing text field) instead of the row's flex share. */
+.field-label-row--icon.field-label-row--fill > .field-label-row__control > * {
+  flex: none;
+}
+
+.field-label-row--icon .field-label-row__description {
+  max-width: none;
+}
+
+.field-label-row--icon .field-label-row__below {
+  @apply mt-0 w-full;
 }
 
 .field-label-row__control {
@@ -189,6 +219,7 @@
 }
 
 /* A ghost dropdown stays inside the column, hover wash included. */
-.field-label-row--inline .field-label-row__control > .collection-ghost-select {
+.field-label-row--inline .field-label-row__control > .collection-ghost-select,
+.field-label-row--icon .field-label-row__control > .collection-ghost-select {
   margin-inline: 0;
 }

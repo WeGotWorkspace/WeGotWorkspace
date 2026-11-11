@@ -1,3 +1,4 @@
+import { Bell, StickyNote } from "lucide-react";
 import { useId } from "react";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
@@ -8,7 +9,8 @@ import { useInviteeAvailability } from "@/calendar-core/src/use-invitee-availabi
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Textarea } from "@/ui/textarea";
+import { TextareaAutosize } from "@/ui/textarea-autosize";
+import "@/note-detail-view/src/note-detail-view.css";
 
 type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
   key: K,
@@ -100,8 +102,8 @@ export function CalendarEventFormSecondary({
           <FieldLabelRow
             className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
             layout="inline"
-            fill
             label={labels.eventAlarmsLabel}
+            labelIcon={<Bell aria-hidden />}
           >
             <div className="calendar-event-dialog__alarms-field">
               <CalendarAlarmsRows
@@ -122,15 +124,19 @@ export function CalendarEventFormSecondary({
             layout="inline"
             fill
             label={labels.eventNotesLabel}
+            labelIcon={<StickyNote aria-hidden />}
             htmlFor={notesId}
           >
-            <Textarea
+            <TextareaAutosize
               id={notesId}
-              size={controlSize}
+              className="note-detail-view__notes calendar-event-dialog__notes"
               value={form.description}
               onChange={(event) => onFieldChange("description", event.target.value)}
+              placeholder={labels.eventNotesPlaceholder}
               disabled={fieldsDisabled}
-              rows={3}
+              minRows={2}
+              // Grows with the text, however long: the form scrolls, not the field.
+              maxRows={Number.POSITIVE_INFINITY}
             />
           </FieldLabelRow>
         )}

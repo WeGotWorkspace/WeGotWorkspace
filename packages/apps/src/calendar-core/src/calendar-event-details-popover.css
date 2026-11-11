@@ -27,10 +27,13 @@
     --calendar-event-details-try-above, --calendar-event-details-try-below;
 }
 
+/* The editor: a compact variant of the dialogs, with the dialog's padding (icon rows, one
+ * column; see `fieldLabels="icon"` on CalendarEventForm). Narrower than the dialogs. */
 .calendar-dialog-surface.calendar-event-details-popover--editable {
-  /* Keep narrower than New event Dialog (32rem) — do not share that token. */
   --calendar-event-details-popover-editable-max-inline-size: 24rem;
-  @apply gap-0 p-3;
+  --calendar-event-details-popover-inset: 1.5rem;
+  @apply gap-0;
+  padding: var(--calendar-event-details-popover-inset);
   width: min(var(--calendar-event-details-popover-editable-max-inline-size), calc(100vw - 1.5rem));
   max-width: min(
     var(--calendar-event-details-popover-editable-max-inline-size),
@@ -42,6 +45,13 @@
   );
   min-width: min(18rem, calc(100vw - 1.5rem));
   max-height: 50vh;
+}
+
+/* The fields scroll edge to edge, so the scrollbar sits at the popover's edge, not in
+ * its padding beside the rows. */
+.calendar-dialog-surface.calendar-event-details-popover--editable .calendar-event-dialog__fields {
+  margin-inline: calc(-1 * var(--calendar-event-details-popover-inset));
+  padding-inline: var(--calendar-event-details-popover-inset);
 }
 
 @position-try --calendar-event-details-try-start {
@@ -141,6 +151,7 @@
     margin: 0;
     min-width: 0;
     max-inline-size: none;
+    --calendar-event-details-popover-inset: var(--modal-inset, 1rem);
     padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
     padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
     padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));

@@ -507,6 +507,9 @@ html[data-modality="pointer"] .textarea.textarea--ghost:focus-visible,
 
 .input.input--ghost[type="time"]::-webkit-calendar-picker-indicator {
   @apply size-4;
+  /* The UA pads the picker button and the mask fills that box, so padding grows the glyph. */
+  box-sizing: border-box;
+  padding: 0;
   inset-inline-end: 0.625rem;
   /* Lucide chevron-down, as `.collection-ghost-select__chevron`. */
   background: currentColor;

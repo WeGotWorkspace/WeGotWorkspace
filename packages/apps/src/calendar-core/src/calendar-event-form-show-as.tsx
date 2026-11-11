@@ -1,5 +1,5 @@
+import { CircleDot } from "lucide-react";
 import { useId } from "react";
-import { Callout } from "@/callout/src/callout";
 import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
@@ -16,36 +16,24 @@ export type CalendarEventFormShowAsProps = {
   form: CalendarEventFormValue;
   labels: CalendarUILabels;
   disabled: boolean;
-  /** Someone else's event: no time-off hint, the viewer cannot change it. */
-  readOnly?: boolean;
   onFieldChange: CalendarEventFormFieldChange;
 };
 
-/** Busy/free availability field for the shared event form. All-day Free gets a time-off hint. */
+/** Busy/free availability field for the shared event form. */
 export function CalendarEventFormShowAs({
   form,
   labels,
   disabled,
-  readOnly = false,
   onFieldChange,
 }: CalendarEventFormShowAsProps) {
   const showAsId = useId();
-  const showTimeOffHint = !readOnly && form.allDay && form.freeBusyStatus === "free";
   return (
     <FieldLabelRow
       className="calendar-event-dialog__field calendar-event-dialog__field--availability"
       layout="inline"
       label={labels.eventShowAs}
+      labelIcon={<CircleDot aria-hidden />}
       htmlFor={showAsId}
-      below={
-        showTimeOffHint ? (
-          <Callout
-            severity="info"
-            className="calendar-event-dialog__show-as-hint"
-            title={labels.eventShowAsAllDayFreeHint}
-          />
-        ) : null
-      }
     >
       <Select
         value={form.freeBusyStatus}

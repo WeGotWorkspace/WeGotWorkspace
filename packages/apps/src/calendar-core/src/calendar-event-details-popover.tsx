@@ -239,6 +239,7 @@ export function CalendarEventDetailsPopover({
         busy={surfaceBusy}
         autoFocusTitle={editMode === "create"}
         controlSize="sm"
+        fieldLabels="icon"
         collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
         {...edit}
         availabilityEventId={editMode === "edit" ? preview.eventId : undefined}

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
-import { Copy, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
-import { IconButton } from "@/button/src/icon-button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { copyShareText } from "@/share-ui/share-path-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import "@/share-ui/share-ui.css";
 import {
@@ -93,7 +91,6 @@ function CalendarMeetUrlRow({
   onChange,
   onBlur,
   meetMenu,
-  onCopied,
 }: {
   href: string;
   labels: CalendarUILabels;
@@ -102,11 +99,9 @@ function CalendarMeetUrlRow({
   controlSize?: ControlSize;
   onChange?: (value: string) => void;
   onBlur?: () => void;
-  /** Meet actions dropdown (new link + channels) after copy. */
+  /** Meet actions dropdown (join, new link, channels) after the link. */
   meetMenu?: ReactNode;
-  onCopied?: () => void;
 }) {
-  const trimmed = href.trim();
   return (
     <div className="calendar-event-dialog__meet-row share-dialog__link-row">
       <ShareDialogInput
@@ -125,18 +120,6 @@ function CalendarMeetUrlRow({
             : undefined
         }
         onBlur={onBlur}
-      />
-      <IconButton
-        label={labels.copyHttpsUrl}
-        icon={<Copy className="size-3.5" aria-hidden />}
-        size={controlSize}
-        variant="outline"
-        disabled={!trimmed}
-        onClick={() => {
-          void copyShareText(trimmed).then((copied) => {
-            if (copied) onCopied?.();
-          });
-        }}
       />
       {meetMenu}
     </div>
@@ -356,7 +339,6 @@ export function CalendarMeetCard({
           labels={labels}
           readOnly
           controlSize={controlSize}
-          onCopied={() => showSuccess(labels.toastFeedCopied)}
           meetMenu={
             <CalendarMeetJoin
               href={form.meetingUrl}
@@ -380,6 +362,7 @@ export function CalendarMeetCard({
           layout="inline"
           fill
           label={labels.eventMeetLinkLabel}
+          labelIcon={<Video aria-hidden />}
         >
           {readonlyRow}
         </FieldLabelRow>
@@ -398,7 +381,6 @@ export function CalendarMeetCard({
       readOnly={copyOnly}
       disabled={disabled}
       controlSize={controlSize}
-      onCopied={() => showSuccess(labels.toastFeedCopied)}
       onChange={
         copyOnly
           ? undefined
@@ -478,6 +460,7 @@ export function CalendarMeetCard({
         layout="inline"
         fill
         label={labels.eventMeetLinkLabel}
+        labelIcon={<Video aria-hidden />}
       >
         <div className="calendar-event-dialog__meet-field">
           {urlRow}

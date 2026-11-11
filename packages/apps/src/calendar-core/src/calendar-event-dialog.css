@@ -77,6 +77,34 @@
   border-top: 0;
 }
 
+/* Icon rows (the popover): one column, split by the suite hairline like the dialog
+ * rows, with less room around each. */
+.calendar-dialog-surface .calendar-event-dialog__form--icons .field-label-row--icon {
+  @apply py-1.5;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__form--icons .calendar-event-dialog__field--title {
+  @apply pt-0;
+  border-top: 0;
+}
+
+/* The notes: plain text like a task's notes (no field), the first line on the label (or
+ * the icon). In the dialogs the text lines up with the fields above it (sm padding); with
+ * icon rows, with the ghost dropdowns' values. */
+.calendar-dialog-surface .calendar-event-dialog__notes {
+  @apply mb-0;
+  padding-inline: var(--calendar-event-notes-padding-x, 0.75rem);
+  /* The fields' size, not the note body's prose size. */
+  font-size: var(--input-font-size-sm, 0.875rem);
+  line-height: 1.5;
+  padding-block: calc((var(--field-label-icon-min-height, 2.25rem) - 1lh) / 2);
+}
+
+.calendar-dialog-surface .calendar-event-dialog__form--icons {
+  --calendar-event-notes-padding-x: 0.625rem;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__form--compact {
   /* The field height (the sm control plus the field step). */
   --field-label-icon-min-height: calc(
@@ -94,8 +122,54 @@
   @apply flex flex-col gap-2;
 }
 
+/* Alarms in the dialogs: a dropdown column and a trash column at the row's end, so the
+ * trailing None (no trash) lines up with the dropdowns above it. The caption sits on the
+ * first alarm's line, not on the middle of the list. */
+.calendar-dialog-surface .field-label-row--inline:has(.calendar-event-dialog__alarms-field) {
+  align-items: baseline;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__alarms-field {
-  @apply flex flex-col gap-2;
+  @apply grid items-center gap-1;
+  grid-template-columns: auto auto;
+  justify-content: end;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarms-field .calendar-event-dialog__alarm-row {
+  display: contents;
+}
+
+/* No alarm set yet: no trash column, so None ends at the row's end like the other rows. */
+.calendar-dialog-surface
+  .calendar-event-dialog__alarms-field:not(:has(.calendar-event-dialog__alarm-remove)) {
+  grid-template-columns: auto;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarms-field .calendar-event-dialog__alarm-offset {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__alarms-field .calendar-event-dialog__alarm-remove {
+  grid-column: 2;
+}
+
+/* Icon rows (the popover): one alarm per line, the offsets after the icon, the trash
+ * buttons at the row's end. */
+.calendar-dialog-surface .field-label-row--icon .calendar-event-dialog__alarms-field {
+  @apply flex flex-col self-stretch;
+  align-items: stretch;
+}
+
+.calendar-dialog-surface
+  .field-label-row--icon
+  .calendar-event-dialog__alarms-field
+  .calendar-event-dialog__alarm-row {
+  display: flex;
+}
+
+.calendar-dialog-surface .field-label-row--icon .calendar-event-dialog__alarm-remove {
+  margin-inline-start: auto;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__card {
@@ -124,40 +198,18 @@
   @apply min-w-0 flex-1;
 }
 
-/*
- * Primary segmented Join + menu (mirrors SidebarSegmentedNewMenu), sized via
- * IconButton `size` to match the Meet URL row density.
- */
-.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger {
-  @apply flex min-w-0 shrink-0 items-stretch gap-0;
-  --loading-spinner-color: currentColor;
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__meet-menu-trigger
-  .calendar-event-dialog__meet-menu-trigger__join.button {
-  @apply rounded-e-none;
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__meet-menu-trigger
-  .calendar-event-dialog__meet-menu-trigger__menu.button {
-  @apply shrink-0 rounded-s-none px-0;
-  border-inline-start: 1px solid
-    color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
-}
-
 /* Read-only Meet: same URL row as edit — input + copy + compact Join (not stacked). */
 .calendar-dialog-surface .calendar-event-dialog__meet-readonly {
   @apply min-w-0;
 }
 
+/* Alarms: ghost dropdowns that hug their value, a trash beside each set one. */
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-1 items-center gap-2;
+  @apply flex min-w-0 items-center gap-1;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-0 w-full;
+  margin-inline: 0;
 }
 
 @import "../../lib/calendar-event-calendar-picker.css";
@@ -165,6 +217,16 @@
 /* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
 .calendar-event-dialog__meet-menu {
   min-width: 12rem;
+}
+
+/* The popover's All day row: the switch, then the time zone (a timed event only). */
+.calendar-dialog-surface .calendar-event-dialog__all-day {
+  @apply flex min-w-0 items-center gap-3;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__all-day .collection-ghost-select {
+  @apply min-w-0;
+  margin-inline: 0;
 }
 
 /* Date and time as ghost dropdowns at the end of the row, like Time zone; the
@@ -191,25 +253,24 @@
   margin-inline: 0;
 }
 
+/* Ends: ghost dropdowns like Repeat above, with the date or count after them; at the row's
+ * end in the dialogs, from the start in the popover. */
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends {
-  @apply grid items-center gap-2;
-  grid-template-columns: minmax(0, 1fr);
+  @apply flex min-w-0 flex-wrap items-center justify-end gap-1;
 }
 
-.calendar-dialog-surface
-  .calendar-event-dialog__recurrence-ends:has(.calendar-event-dialog__recurrence-ends-extra) {
-  grid-template-columns: minmax(6.5rem, 1fr) minmax(8.5rem, 1fr);
+.calendar-dialog-surface .field-label-row--icon .calendar-event-dialog__recurrence-ends {
+  @apply justify-start;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__recurrence-ends > .select-trigger {
-  @apply w-full min-w-0;
+.calendar-dialog-surface .calendar-event-dialog__recurrence-ends .collection-ghost-select {
+  margin-inline: 0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra {
   @apply flex min-h-8 min-w-0 items-center gap-1;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra .locale-date-picker,
 .calendar-dialog-surface .calendar-event-dialog__recurrence-count {
   @apply w-full;
 }
