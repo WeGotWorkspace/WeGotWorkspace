@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
+import { Temporal } from "@js-temporal/polyfill";
 import {
+  createIntentToForm,
   emptyCalendarEventForm,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
@@ -87,6 +89,27 @@ export const Default: Story = {
     await expect(
       canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationPlaceholder),
     ).toBeTruthy();
+  },
+};
+
+/** #1927: a new all-day event starts as "Show as: Free" with the time-off hint. */
+export const AllDayFree: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    form: {
+      ...createIntentToForm("default", {
+        start: Temporal.PlainDateTime.from("2033-01-12T00:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-13T00:00:00"),
+        allDay: true,
+      }),
+      title: "Release day",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const showAs = canvas.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs });
+    await expect(showAs).toHaveTextContent(defaultCalendarLabels.eventShowAsFree);
+    await expect(canvas.getByText(defaultCalendarLabels.eventShowAsAllDayFreeHint)).toBeTruthy();
   },
 };
 
