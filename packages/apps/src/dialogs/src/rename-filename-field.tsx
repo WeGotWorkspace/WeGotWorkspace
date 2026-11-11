@@ -1,15 +1,16 @@
 import { useEffect, useId, useRef } from "react";
 import { Input } from "@/ui/input";
+import { controlSizeClassName } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
-
-import "@/dialogs/src/rename-filename-field.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type RenameFilenameFieldProps = {
   baseName: string;
   onBaseNameChange: (value: string) => void;
-  /** When set, shown read-only after the input (e.g. `.md`). */
+  /** When set, shown read-only at the end of the field (e.g. `.md`). */
   extension?: string;
+  /** For a `<label htmlFor>` (a dialog row). */
+  id?: string;
   disabled?: boolean;
   autoFocus?: boolean;
   /**
@@ -18,27 +19,31 @@ export type RenameFilenameFieldProps = {
    */
   focusKey?: string | number | null;
   placeholder?: string;
-  /** Accessible name; defaults to `placeholder`, which alone is not a label. */
+  /** Accessible name when no label points at `id`; defaults to `placeholder`. */
   ariaLabel?: string;
   className?: string;
   onEnter?: () => void;
 };
 
+/**
+ * A file's name without its extension. The extension sits inside the same field as
+ * quiet text, so name and extension read as one field of the canonical size.
+ */
 export function RenameFilenameField({
   baseName,
   onBaseNameChange,
   extension,
+  id,
   disabled = false,
   autoFocus = false,
   focusKey = null,
   placeholder,
-  ariaLabel = placeholder,
+  ariaLabel = id ? undefined : placeholder,
   className,
   onEnter,
 }: RenameFilenameFieldProps) {
   const extensionId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const showExtension = Boolean(extension);
 
   useEffect(() => {
     if (focusKey == null) return;
@@ -51,49 +56,36 @@ export function RenameFilenameField({
     return () => cancelAnimationFrame(frame);
   }, [focusKey]);
 
-  if (!showExtension) {
-    return (
-      <Input
-        ref={inputRef}
-        autoFocus={autoFocus}
-        className={className}
-        {...NO_AUTOFILL}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        value={baseName}
-        disabled={disabled}
-        onChange={(event) => onBaseNameChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            onEnter?.();
-          }
-        }}
-      />
-    );
+  const fieldProps = {
+    id,
+    autoFocus,
+    ...NO_AUTOFILL,
+    placeholder,
+    "aria-label": ariaLabel,
+    value: baseName,
+    disabled,
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => onBaseNameChange(event.target.value),
+    onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        onEnter?.();
+      }
+    },
+  };
+
+  if (!extension) {
+    return <Input ref={inputRef} className={className} {...fieldProps} />;
   }
 
   return (
-    <div className={cn("rename-filename-field", className)}>
-      <Input
+    <div className={cn("input input--suffix", controlSizeClassName("input", "md"), className)}>
+      <input
         ref={inputRef}
-        autoFocus={autoFocus}
-        className="rename-filename-field__input"
-        {...NO_AUTOFILL}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        value={baseName}
-        disabled={disabled}
+        className="input__field"
         aria-describedby={extensionId}
-        onChange={(event) => onBaseNameChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            onEnter?.();
-          }
-        }}
+        {...fieldProps}
       />
-      <span id={extensionId} className="rename-filename-field__extension" aria-hidden>
+      <span id={extensionId} className="input__suffix">
         {extension}
       </span>
     </div>

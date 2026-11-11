@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useId, useState } from "react";
 import { Button } from "@/button/src/button";
 import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
 import {
@@ -11,11 +11,17 @@ import {
 } from "@/ui/dialog";
 import { splitMarkdownDialogDefaultName } from "@/drive-core/src/drive-create-markdown-dialog-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
+import { drivePickerListingTheme } from "@/drive-core/src/drive-folder-picker-utils";
+import { FieldLabelRow } from "@/ui/field-label-row";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
 import "@/drive-core/src/drive-create-markdown-dialog.css";
+
+/** Nothing is moved when creating; one array, so the picker keeps its selection. */
+const NOTHING_MOVES: string[] = [];
 
 export type DriveCreateDialogKind = "document" | "folder";
 
@@ -37,7 +43,6 @@ export function DriveCreateMarkdownDialog({
   currentUsername,
   groupRootNames,
   rootLabels,
-  rootIcon,
   isSubmitting = false,
   hideName = false,
   errorMessage,
@@ -61,8 +66,6 @@ export function DriveCreateMarkdownDialog({
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
   rootLabels?: Readonly<Record<string, string>>;
-  /** Optional icon for drive-root rows (Docs: HardDrive). */
-  rootIcon?: ReactNode;
   isSubmitting?: boolean;
   /** Only the folder is asked: the caller names the documents (Docs: several Word files). */
   hideName?: boolean;
@@ -73,6 +76,7 @@ export function DriveCreateMarkdownDialog({
   onConfirm: (fileName: string, destinationPath: string) => void;
 }) {
   const isFolder = kind === "folder";
+  const nameFieldId = useId();
   const extension = isFolder ? "" : splitMarkdownDialogDefaultName(defaultName).extension;
   const [draftBaseName, setDraftBaseName] = useState("");
   const [focusSession, setFocusSession] = useState<string | null>(null);
@@ -120,23 +124,34 @@ export function DriveCreateMarkdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={dialogSurfaceClassName}>
+      <DialogContent
+        className={dialogSurfaceClassName}
+        {...(copy.description ? {} : { "aria-describedby": undefined })}
+      >
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>{copy.description}</DialogDescription>
+          {copy.description ? <DialogDescription>{copy.description}</DialogDescription> : null}
         </DialogHeader>
 
         <div className="drive-create-markdown-dialog__fields">
           {hideName ? null : (
-            <RenameFilenameField
-              focusKey={nextFocusSession}
-              placeholder={copy.placeholder}
-              baseName={draftBaseName}
-              extension={extension || undefined}
-              disabled={isSubmitting}
-              onBaseNameChange={setDraftBaseName}
-              onEnter={handleConfirm}
-            />
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={workspaceLabels.dialog.nameField}
+              htmlFor={nameFieldId}
+            >
+              <RenameFilenameField
+                id={nameFieldId}
+                focusKey={nextFocusSession}
+                placeholder={copy.placeholder}
+                baseName={draftBaseName}
+                extension={extension || undefined}
+                disabled={isSubmitting}
+                onBaseNameChange={setDraftBaseName}
+                onEnter={handleConfirm}
+              />
+            </FieldLabelRow>
           )}
           {open ? (
             <DriveFolderPicker
@@ -144,14 +159,14 @@ export function DriveCreateMarkdownDialog({
               labels={labels}
               files={files}
               groupPaths={groupPaths}
-              moveIds={[]}
+              moveIds={NOTHING_MOVES}
               initialBrowsePath={initialBrowsePath}
               initialSelectedPath={initialSelectedPath}
               operations={operations}
               currentUsername={currentUsername}
               groupRootNames={groupRootNames}
               rootLabels={rootLabels}
-              rootIcon={rootIcon}
+              listingTheme={drivePickerListingTheme(dialogSurfaceClassName)}
               onDestinationChange={handleDestinationChange}
             />
           ) : null}

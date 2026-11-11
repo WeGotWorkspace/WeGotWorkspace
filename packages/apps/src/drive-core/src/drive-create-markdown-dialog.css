@@ -1,6 +1,10 @@
 @import "../../styles.css" reference;
 
-/* The name field, the folder browser and an error stack with room between them. */
+/* The Name row, the Location row with its list, and an error. Rows bring their own room. */
 .drive-create-markdown-dialog__fields {
-  @apply flex flex-col gap-4;
+  @apply flex flex-col;
+}
+
+.drive-create-markdown-dialog__fields > [role="alert"] {
+  @apply mt-3;
 }

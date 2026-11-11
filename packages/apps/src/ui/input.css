@@ -231,7 +231,8 @@ html[data-modality="pointer"]
 }
 
 .input--search,
-.input--password {
+.input--password,
+.input--suffix {
   @apply gap-2;
 }
 
@@ -242,8 +243,15 @@ html[data-modality="pointer"]
 }
 
 .input--search:focus-within:not(:has(.input__field:read-only)),
-.input--password:focus-within:not(:has(.input__field:read-only)) {
+.input--password:focus-within:not(:has(.input__field:read-only)),
+.input--suffix:focus-within:not(:has(.input__field:read-only)) {
   background-color: var(--input-background-focus, var(--input-background, transparent));
+}
+
+/* A fixed tail inside the field (a file extension): quiet ink, not part of the value. */
+.input__suffix {
+  @apply shrink-0 select-none;
+  color: color-mix(in oklab, var(--color-foreground) 60%, transparent);
 }
 
 .input__field {

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { HardDrive } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
 import { RenameFileDialog } from "@/dialogs/src/rename-file-dialog";
 import {
@@ -94,7 +93,6 @@ export function DocsHomeModals({
     () => buildDocsFolderPickerRootLabels(groupRoots, labels.homeMyDrive),
     [groupRoots, labels.homeMyDrive],
   );
-  const folderPickerRootIcon = useMemo(() => <HardDrive />, []);
   const moveTarget = moveState ? actions.fileById(moveState.ids[0]!) : null;
 
   return (
@@ -158,7 +156,6 @@ export function DocsHomeModals({
         currentUsername={username}
         groupRootNames={groupRootNames}
         rootLabels={folderPickerRootLabels}
-        rootIcon={folderPickerRootIcon}
         dialogSurfaceClassName="docs-dialog-surface"
         onClose={closeMove}
         onConfirm={confirmMove}
@@ -182,7 +179,6 @@ export function DocsHomeModals({
           currentUsername={username}
           groupRootNames={groupRootNames}
           rootLabels={folderPickerRootLabels}
-          rootIcon={folderPickerRootIcon}
           dialogSurfaceClassName="docs-dialog-surface"
           onClose={createDialog.closeCreateDialog}
           onConfirm={createDialog.confirmCreateDocument}

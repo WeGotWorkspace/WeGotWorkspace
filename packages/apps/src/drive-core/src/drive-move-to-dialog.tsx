@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -9,7 +9,10 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { cn } from "@/lib/utils";
-import { resolveDriveFolderPickerStartPath } from "@/drive-core/src/drive-folder-picker-utils";
+import {
+  drivePickerListingTheme,
+  resolveDriveFolderPickerStartPath,
+} from "@/drive-core/src/drive-folder-picker-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -26,11 +29,9 @@ type DriveMoveToDialogShared = {
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
   rootLabels?: Readonly<Record<string, string>>;
-  /** Optional icon for drive-root rows (Docs: HardDrive). */
-  rootIcon?: ReactNode;
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
   dialogSurfaceClassName?: string;
-  /** Docs image-insert file-select: Docs blue listing chrome (not Drive green). */
+  /** Docs chrome on the listing; defaults from `dialogSurfaceClassName`. */
   listingTheme?: "docs";
   onClose: () => void;
 };
@@ -62,15 +63,12 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
     currentUsername,
     groupRootNames,
     rootLabels,
-    rootIcon,
     dialogSurfaceClassName = "drive-dialog-surface",
     listingTheme,
     onClose,
   } = props;
   const fileSelect = props.mode === "file-select";
-  const docsListingTheme =
-    listingTheme ??
-    (fileSelect && dialogSurfaceClassName.includes("docs-dialog-surface") ? "docs" : undefined);
+  const docsListingTheme = listingTheme ?? drivePickerListingTheme(dialogSurfaceClassName);
   const moveIds = fileSelect ? [] : props.moveIds;
   const singleItemParent = props.singleItemParent;
   const onConfirm = fileSelect ? undefined : props.onConfirm;
@@ -114,7 +112,6 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             currentUsername={currentUsername}
             groupRootNames={groupRootNames}
             rootLabels={rootLabels}
-            rootIcon={rootIcon}
             listingTheme={docsListingTheme}
             onDestinationChange={handleDestinationChange}
             onSelectedFileChange={handleSelectedFileChange}
