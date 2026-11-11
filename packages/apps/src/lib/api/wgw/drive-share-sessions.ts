@@ -1,13 +1,10 @@
+import { ApiError } from "@/lib/api/api-error";
 import type { DriveShareSessionResponse } from "@wgw/openapi-types/drive-types";
 import { wgwApiBaseUrl, wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
 
-export class ShareSessionError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string,
-  ) {
-    super(message);
+export class ShareSessionError extends ApiError {
+  constructor(message: string, status: number, code?: string) {
+    super(message, status, code);
     this.name = "ShareSessionError";
   }
 }

@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import type {
   Task,
   TaskCreate,
@@ -17,17 +18,8 @@ import {
   checkNowAfterWrite,
 } from "@/lib/offline/core/collection-check-now";
 
-export class TasksRequestError extends Error {
-  status: number;
-  /** API error code from the JSON body (`{ error, code }`), when there is one. */
-  code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+/** `code` is the API error code from the JSON body (`{ error, code }`), when there is one. */
+export class TasksRequestError extends ApiError {}
 
 export function isTasksCannotCalculateChanges(error: unknown): boolean {
   return error instanceof TasksRequestError && error.code === "cannotCalculateChanges";

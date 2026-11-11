@@ -1,6 +1,7 @@
 /**
  * Meet app HTTP client (`/api/v1/meetings/rooms`, `/api/v1/rooms/{roomId}/*`).
  */
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import {
   wgwApiBaseUrl,
   wgwEnsureFreshAccessToken,
@@ -52,7 +53,7 @@ async function wgwMeetJson<T>(
 ): Promise<T> {
   const res = await fetchImpl(path, init);
   if (!res.ok) {
-    throw new Error(await readApiError(res, fallback));
+    throw new WgwRequestError(await readApiError(res, fallback), res.status);
   }
   return (await res.json()) as T;
 }
@@ -133,7 +134,7 @@ function createMeetOperations(fetchImpl: typeof wgwFetch | HttpSignalingFetch): 
         return { reserved: false, active: false };
       }
       if (!res.ok) {
-        throw new Error(await readApiError(res, `GET ${path} failed`));
+        throw new WgwRequestError(await readApiError(res, `GET ${path} failed`), res.status);
       }
       return readRoomStatus(await res.json());
     },

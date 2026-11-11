@@ -6,7 +6,6 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { DocsOutlineItem } from "@/docs-core/src/docs-outline";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { cn } from "@/lib/utils";
-import { useItemsWithAppSettingsRow } from "@/settings-core/src/workspace-app-settings-sidebar";
 
 import "@/docs-core/src/docs-outline-sidebar.css";
 
@@ -72,9 +71,9 @@ export function DocsOutlineSidebar({
     });
   }, [activeIndex, items, labels.outlineEmpty, onSelect]);
 
-  // First section: the way back to the documents, then Settings (the editor
-  // sidebar has no primary button whose menu could hold it).
-  const firstItems = useItemsWithAppSettingsRow("docs", showBackToHome ? homeItems : NO_ITEMS);
+  // First section: the way back to the documents. No Settings row here: Docs settings sit
+  // on the documents list, one step back.
+  const firstItems = showBackToHome ? homeItems : NO_ITEMS;
 
   return (
     <>
