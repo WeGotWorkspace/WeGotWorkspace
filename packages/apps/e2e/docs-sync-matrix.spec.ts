@@ -354,8 +354,10 @@ const ACTIONS = {
     nets: { one: ["off"], same: ["aOff"] },
     seed: async () => undefined,
     run: async (a, _b, c) => {
-      await createDoc(a, c, token(c, "a"));
+      // The name is taken on the server while A is offline, before A creates it. Not after:
+      // an online tab of the same person sends A's queued create at once.
       await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
+      await createDoc(a, c, token(c, "a"));
     },
     landed: async (s, _m, c) => {
       const kept = docPath(c.dir, `${c.name} (1)`);
@@ -380,12 +382,20 @@ const ACTIONS = {
   },
   /** Gap 2: the other tab (or person) has the Doc open and types offline while A renames it. */
   renameOpen: {
-    nets: { same: ["both", "bOff"], diff: ["bOff"] },
+    nets: { same: ["both", "aOff", "bOff"], diff: ["bOff"] },
     bView: "editor",
     run: async (a, b, c) => {
       await typeAtEnd(b!, token(c, "b"));
       await renameFromRow(a, `${c.name}.md`, `${c.name} v2`);
       await expect(row(a, `${c.name} v2.md`)).toBeVisible();
+      if (c.tabs === "same" && c.net === "aOff") {
+        // B follows the queued rename, then reloads before it lands: it opens the new name.
+        const renamed = `${c.name} v2`;
+        await expect.poll(() => editorShows(b!), { timeout: 20_000 }).toContain(renamed);
+        await b!.reload();
+        await expect(b!.locator(".ProseMirror")).toContainText(token(c, "b"), { timeout: 60_000 });
+        await expect.poll(() => editorShows(b!), { timeout: 20_000 }).toContain(renamed);
+      }
     },
     landed: async (s, _m, c) =>
       isOnly(s.active, docPath(c.dir, `${c.name} v2`)) &&
@@ -826,22 +836,7 @@ async function runCase(browser: Browser, c: Case): Promise<void> {
  * marked as expected to fail, so the run stays green and a fix shows up as
  * "expected to fail, but passed": then drop the entry.
  */
-const BUGS: Record<string, number[]> = {
-  // Offline, the Move dialog does not list folders.
-  "move · one · off": [2033],
-  "move · same · aOff": [2033],
-  "move · same · both": [2033],
-  // Another tab's Starred list does not follow a star.
-  "star · same · on": [2034],
-  "star · same · aOff": [2034],
-  "unstar · same · aOff": [2034],
-  // Another tab's Trash keeps a Doc whose offline restore landed.
-  "restore · same · aOff": [2035],
-  // The teammate keeps a Team Doc the owner moved to Trash.
-  "trash · diff · on": [2036],
-  "trash · diff · both": [2036],
-  "trash · diff · aOff": [2036],
-};
+const BUGS: Record<string, number[]> = {};
 
 function expectKnownBugs(title: string): void {
   const bugs = BUGS[title] ?? [];

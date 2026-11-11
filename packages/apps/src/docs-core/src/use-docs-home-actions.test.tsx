@@ -216,6 +216,8 @@ describe("useDocsHomeActions", () => {
     expect(result.current.starred["search:file:users/alice/A.md"]).toBeUndefined();
 
     rerender({ key: 1 });
+    // The Starred view stays filtered by the stars it has while it reads them again.
+    expect(result.current.starsReady).toBe(true);
     await waitFor(() => expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true));
     expect(operations.listStars).toHaveBeenCalledTimes(2);
   });

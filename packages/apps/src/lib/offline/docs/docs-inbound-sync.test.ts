@@ -22,6 +22,7 @@ vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importO
 import {
   applyDocsInboundChanges,
   docsListingRowsDiffer,
+  docsPathAfterQueuedRenames,
   mergeLiveDocsListing,
   readDocsPendingWrites,
   subscribeDocsCachesChanged,
@@ -320,6 +321,39 @@ describe("readDocsPendingWrites", () => {
 
     expect(pending.get("users/alice/old.md")).toMatchObject({ deleting: true, queued: true });
     expect(pending.get("users/alice/Sub/new.md")?.fields).toEqual(new Set(["location"]));
+  });
+});
+
+describe("docsPathAfterQueuedRenames", () => {
+  const rename = (from: string, destination: string, to: string): DocsOutboxPayload => ({
+    op: "rename",
+    from,
+    destination,
+    to,
+  });
+
+  it("follows a queued rename of the Doc, then a move of its folder, in queue order", () => {
+    const payloads = [
+      rename("/users/alice/Plans/Roadmap.md", "/users/alice/Plans", "Roadmap v2.md"),
+      { op: "star", path: "/users/alice/Plans/Roadmap v2.md", starred: true } as const,
+      rename("/users/alice/Plans", "/users/alice/Archive", "Plans"),
+    ];
+    expect(docsPathAfterQueuedRenames(payloads, "users/alice/Plans/Roadmap.md")).toBe(
+      "/users/alice/Archive/Plans/Roadmap v2.md",
+    );
+  });
+
+  it("is null when no queued rename moves the path, and ignores trash", () => {
+    const payloads: DocsOutboxPayload[] = [
+      rename("/users/alice/Other.md", "/users/alice", "Other 2.md"),
+      {
+        op: "trash",
+        from: "/users/alice/Roadmap.md",
+        destination: "/users/alice/.Trash",
+        to: "Roadmap.md",
+      },
+    ];
+    expect(docsPathAfterQueuedRenames([...payloads, null], "/users/alice/Roadmap.md")).toBeNull();
   });
 });
 

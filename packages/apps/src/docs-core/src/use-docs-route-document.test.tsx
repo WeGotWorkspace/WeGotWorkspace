@@ -32,6 +32,7 @@ function deps(overrides: Partial<DocsLocatorDeps> = {}): DocsLocatorDeps {
     recordLocation: vi.fn(async () => undefined),
     isOnline: () => true,
     ownedByQueuedWrite: vi.fn(async () => false),
+    queuedRenameTarget: vi.fn(async (_path: string): Promise<string | null> => null),
     ...overrides,
   };
 }
@@ -324,24 +325,43 @@ describe("useDocsRouteDocument", () => {
 
   it("keeps a followed rename that is still queued when a refresh answers the old path", async () => {
     const renamed = "/users/alice/Roadmap v2.md";
-    const ownedByQueuedWrite = vi.fn(async (path: string) => path === renamed);
+    const queuedRenameTarget = vi.fn(async (_path: string): Promise<string | null> => null);
     const fetchLocation = vi.fn(async () => ({ id: ID, path: PATH }));
-    const { result, rerender } = render({ id: ID }, deps({ fetchLocation, ownedByQueuedWrite }));
+    const locator = deps({ fetchLocation, queuedRenameTarget });
+    const { result, rerender } = render({ id: ID }, locator);
     await waitFor(() => expect(result.current.document).toMatchObject({ path: PATH }));
 
     // Another tab renamed it offline; this tab followed, then reconnects before the rename lands.
+    queuedRenameTarget.mockImplementation(async (path: string) => (path === PATH ? renamed : null));
     await act(async () => result.current.followPath(renamed));
+    vi.mocked(locator.recordLocation).mockClear();
     rerender({ search: { id: ID }, refreshKey: 1 });
-    await waitFor(() => expect(ownedByQueuedWrite).toHaveBeenCalledWith(renamed));
+    await waitFor(() => expect(fetchLocation).toHaveBeenCalledTimes(2));
     await act(async () => {});
+
     expect(result.current.document).toEqual({ status: "ready", path: renamed, nodeId: ID });
+    // The server's old path was recorded on the way; the followed path is recorded last.
+    expect(vi.mocked(locator.recordLocation).mock.calls.at(-1)).toEqual([ID, renamed]);
 
     // Once the rename landed, the server agrees.
-    ownedByQueuedWrite.mockResolvedValue(false);
+    queuedRenameTarget.mockResolvedValue(null);
     fetchLocation.mockResolvedValue({ id: ID, path: renamed });
     rerender({ search: { id: ID }, refreshKey: 2 });
     await waitFor(() => expect(fetchLocation).toHaveBeenCalledTimes(3));
     expect(result.current.document).toEqual({ status: "ready", path: renamed, nodeId: ID });
+  });
+
+  it("opens where a queued rename leads when the tab loads before the rename lands", async () => {
+    const renamed = "/users/alice/Roadmap v2.md";
+    const locator = deps({
+      queuedRenameTarget: vi.fn(async (path: string) => (path === PATH ? renamed : null)),
+    });
+    const { result } = render({ id: ID }, locator);
+
+    await waitFor(() =>
+      expect(result.current.document).toEqual({ status: "ready", path: renamed, nodeId: ID }),
+    );
+    expect(vi.mocked(locator.recordLocation).mock.calls.at(-1)).toEqual([ID, renamed]);
   });
 
   it("re-checks when the tab is shown again", async () => {
