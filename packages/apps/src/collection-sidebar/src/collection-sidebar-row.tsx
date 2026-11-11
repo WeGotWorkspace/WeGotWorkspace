@@ -4,6 +4,7 @@ import { IconButton } from "@/button/src/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
+import { VisibilityDot } from "./visibility-dot";
 import "./collection-sidebar-row.css";
 
 const NESTED_ROW_CONTROL = "button, a, input, [role='button']";
@@ -27,6 +28,8 @@ export type CollectionSidebarRowProps = {
   visible?: boolean;
   /** Independent of `onSelect`. Omit to hide the visibility checkbox. */
   onToggleVisibility?: () => void;
+  /** Visibility toggle's accessible name; default "Show {name}" / "Hide {name}". */
+  visibilityLabel?: string;
   /** Independent of `onToggleVisibility`. Calendar: create-target only. */
   onSelect?: () => void;
   onEdit?: () => void;
@@ -96,6 +99,7 @@ export function CollectionSidebarRow({
   selected = false,
   visible = true,
   onToggleVisibility,
+  visibilityLabel,
   onSelect,
   onEdit,
   editLabel = "Edit",
@@ -139,20 +143,13 @@ export function CollectionSidebarRow({
         <span className={bem(blocks, "__leading")}>
           {onToggleVisibility ? (
             /* Suite norm: a coloured dot, grey while the collection is hidden. */
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={visible}
-              data-state={visible ? "checked" : "unchecked"}
-              aria-label={`${visible ? "Hide" : "Show"} ${name}`}
+            <VisibilityDot
+              checked={visible}
+              label={visibilityLabel ?? `${visible ? "Hide" : "Show"} ${name}`}
+              onToggle={onToggleVisibility}
               className={bem(blocks, "__visibility")}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleVisibility();
-              }}
-            >
-              <span className={bem(blocks, "__visibility-dot")} aria-hidden />
-            </button>
+              dotClassName={bem(blocks, "__visibility-dot")}
+            />
           ) : null}
           {showColorDotLeading ? <span className={bem(blocks, "__dot")} aria-hidden /> : null}
           {leading ? (

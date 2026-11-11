@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Rss } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   type ChangeEvent,
@@ -15,9 +15,12 @@ import { IconButton } from "@/button/src/button";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import {
-  CollectionSidebarMark,
-  CollectionSidebarRow,
-} from "@/collection-sidebar/src/collection-sidebar-row";
+  CalendarSidebarRows,
+  MyCalendarsSidebarSection,
+} from "@/calendar-core/src/calendar-sidebar-rows";
+import { CalendarAvailabilitySidebar } from "@/calendar-core/src/calendar-availability-sidebar";
+import { CalendarNoticeBar } from "@/calendar-core/src/calendar-notice-bar";
+import { useTeamAvailability } from "@/calendar-core/src/use-team-availability";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -61,15 +64,17 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
-import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
 import {
-  CalendarTaskDueSidebarRows,
+  CalendarOverlayPopover,
+  resolveCalendarOverlayPreview,
+  type CalendarOverlayPreview,
+} from "@/calendar-core/src/calendar-overlay-preview";
+import {
+  CalendarRemindersSidebar,
   partitionCalendarTaskDueSidebarLists,
 } from "@/calendar-core/src/calendar-task-due-sidebar";
-import { parseTaskDueOverlayKey } from "@/calendar-core/src/calendar-task-due-overlay";
 import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
 import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
-import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
 import { personalOwnerLabel } from "@/calendar-core/src/calendar-workspace-props";
 import { useCalendarSharePrincipals } from "@/calendar-core/src/use-calendar-share-principals";
 import {
@@ -87,21 +92,19 @@ import {
   rsvpRecurrenceIdForEvent,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
-import type { CalendarInfo, CalendarViewId } from "@/lib/models/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import {
   canManageCalendarSharing,
-  canOpenCalendarSettings,
   canWriteCalendarCollection,
   isCalendarEventFormReadOnly,
 } from "@/calendar-core/src/calendar-collection-write";
-import { isSharedWithMeCalendar, type CalendarShareWith } from "@/calendar-core/src/calendar-share";
+import type { CalendarShareWith } from "@/calendar-core/src/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ownedAndTeamCalendarsForSidebar,
   sharedWithMeCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
-import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { CALENDAR_VIEW_ORDER } from "@/calendar-core/src/calendar-workspace-nav";
@@ -110,98 +113,6 @@ import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import "./calendar-workspace.css";
-
-function CalendarSidebarRows({
-  calendars,
-  hiddenCalendarIds,
-  defaultCalendarId,
-  canDeleteCalendars,
-  canUnsubscribe,
-  editLabel,
-  subscribedLabel,
-  viewOnlyLabel,
-  pendingCalendarIds,
-  pendingSyncLabel,
-  onToggleVisibility,
-  onSelectDefault,
-  onEdit,
-}: {
-  calendars: CalendarInfo[];
-  hiddenCalendarIds: ReadonlySet<string>;
-  defaultCalendarId?: string;
-  canDeleteCalendars: boolean;
-  canUnsubscribe: boolean;
-  editLabel: string;
-  subscribedLabel: string;
-  viewOnlyLabel: string;
-  pendingCalendarIds?: ReadonlySet<string>;
-  pendingSyncLabel: string;
-  onToggleVisibility: (calendarId: string) => void;
-  onSelectDefault: (calendarId: string) => void;
-  onEdit: (calendarId: string) => void;
-}) {
-  return (
-    <>
-      {calendars.map((calendar) => {
-        const visible = !hiddenCalendarIds.has(calendar.id);
-        const subscribed = isSubscribedCalendar(calendar);
-        const viewOnly = !canWriteCalendarCollection(calendar);
-        const mayEdit = canOpenCalendarSettings(calendar);
-        const mayDelete = subscribed
-          ? canUnsubscribe
-          : (calendar.mayDelete !== false || isSharedWithMeCalendar(calendar)) &&
-            canDeleteCalendars;
-        const canManage = mayEdit || mayDelete;
-        const selected = calendar.id === defaultCalendarId;
-        return (
-          <CollectionSidebarRow
-            key={calendar.id}
-            blockName="calendar-sidebar-row"
-            name={calendar.name}
-            color={calendar.color}
-            selected={selected}
-            visible={visible}
-            onToggleVisibility={() => onToggleVisibility(calendar.id)}
-            onSelect={() => onSelectDefault(calendar.id)}
-            onEdit={canManage ? () => onEdit(calendar.id) : undefined}
-            editLabel={editLabel}
-            badges={
-              <>
-                {subscribed ? (
-                  <CollectionSidebarMark
-                    label={subscribedLabel}
-                    className="calendar-sidebar-row__subscription"
-                  >
-                    <Rss className="size-3.5" aria-hidden />
-                  </CollectionSidebarMark>
-                ) : null}
-                {viewOnly && !subscribed ? (
-                  <CollectionSidebarMark
-                    label={viewOnlyLabel}
-                    className="calendar-sidebar-row__readonly"
-                  >
-                    <Eye className="size-3.5" aria-hidden />
-                  </CollectionSidebarMark>
-                ) : null}
-              </>
-            }
-            trailing={
-              pendingCalendarIds?.has(calendar.id) ? (
-                <span
-                  className="calendar-sidebar-row__pending-sync"
-                  role="img"
-                  aria-label={pendingSyncLabel}
-                >
-                  <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
-                </span>
-              ) : null
-            }
-          />
-        );
-      })}
-    </>
-  );
-}
 
 export function CalendarWorkspace({
   data,
@@ -223,6 +134,8 @@ export function CalendarWorkspace({
   onJoinMeeting,
   taskDueBootstrap,
   onOpenTaskInTasks,
+  availabilitySource,
+  availabilityPreset,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -242,7 +155,7 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
-  const { hiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
+  const { hiddenOverlayTaskListIds, setHiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
     useCalendarOverlayHiddenIds();
   const taskDueOverlay = useCalendarTaskDueOverlay({
     preset: taskDueBootstrap ?? null,
@@ -272,6 +185,7 @@ export function CalendarWorkspace({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    setCalendarsVisible,
     selectDefaultCalendar,
     visibleCalendarIds,
     defaultCalendarId,
@@ -367,6 +281,16 @@ export function CalendarWorkspace({
     });
   const [invitationsOpen, setInvitationsOpen] = useState(false);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
+  const availability = useTeamAvailability({
+    source: availabilitySource,
+    preset: availabilityPreset,
+    viewer: session.user.username,
+    view,
+    anchor,
+    weekStart: surfaceDisplay.weekStart,
+    online,
+    busyLabel: L.teamAvailabilityBusy,
+  });
   const editCalendar =
     calendarDialog?.mode === "edit"
       ? (calendars.find((calendar) => calendar.id === calendarDialog.calendarId) ?? null)
@@ -424,10 +348,7 @@ export function CalendarWorkspace({
     /** When true, the popover hosts the editor form for this selection. */
     interactiveEdit?: boolean;
   } | null>(null);
-  const [taskDuePreview, setTaskDuePreview] = useState<{
-    marker: TaskDueOverlayMarker;
-    origin?: CalendarEventSelectionOrigin;
-  } | null>(null);
+  const [overlayPreview, setOverlayPreview] = useState<CalendarOverlayPreview | null>(null);
   const [eventTimesDraft, setEventTimesDraft] = useState<CalendarEventTimesDraft | null>(null);
   const liveEventPreview = useMemo(() => {
     if (!eventPreview) return null;
@@ -573,7 +494,7 @@ export function CalendarWorkspace({
 
   const closeEventPreview = useCallback(() => {
     setEventPreview(null);
-    setTaskDuePreview(null);
+    setOverlayPreview(null);
     setEventTimesDraft(null);
   }, []);
 
@@ -596,16 +517,16 @@ export function CalendarWorkspace({
 
   const openEventPreview = useCallback(
     (key: string, origin?: CalendarEventSelectionOrigin) => {
-      const overlayTaskId = parseTaskDueOverlayKey(key);
-      if (overlayTaskId) {
-        const marker =
-          taskDueOverlay.markers.find((entry) => entry.key === key) ??
-          taskDueOverlay.markers.find((entry) => entry.taskId === overlayTaskId);
-        if (!marker) return;
+      const overlay = resolveCalendarOverlayPreview(key, origin, {
+        taskDueMarkers: taskDueOverlay.markers,
+        availability,
+      });
+      if (overlay !== undefined) {
+        if (!overlay) return;
         setEventTimesDraft(null);
         closeEditor();
         setEventPreview(null);
-        setTaskDuePreview({ marker, origin });
+        setOverlayPreview(overlay);
         return;
       }
       const model = resolveCalendarEventPreview(key, {
@@ -628,7 +549,7 @@ export function CalendarWorkspace({
           isOrganizer: sessionIsOrganizer,
         });
       setEventTimesDraft(null);
-      setTaskDuePreview(null);
+      setOverlayPreview(null);
       if (canInteractiveEdit) {
         void openEditEventKey(key);
         setEventPreview({ model, origin, interactiveEdit: true });
@@ -647,6 +568,7 @@ export function CalendarWorkspace({
       setEventPreview({ model, origin });
     },
     [
+      availability,
       calendars,
       closeEditor,
       data.events,
@@ -861,36 +783,28 @@ export function CalendarWorkspace({
               />
             }
           >
-            <SidebarSection title={L.myCalendarsSection}>
-              <CalendarSidebarRows calendars={myCalendars} {...calendarRowProps} />
-            </SidebarSection>
+            <MyCalendarsSidebarSection
+              rowProps={{ calendars: myCalendars, ...calendarRowProps }}
+              onSetVisible={setCalendarsVisible}
+              labels={L}
+            />
             {sharedWithMeCalendars.length > 0 ? (
               <SidebarSection title={L.sharedWithMeSection}>
                 <CalendarSidebarRows calendars={sharedWithMeCalendars} {...calendarRowProps} />
               </SidebarSection>
             ) : null}
-            {overlayOwnedLists.length > 0 ? (
-              <SidebarSection title={L.tasksSection}>
-                <CalendarTaskDueSidebarRows
-                  lists={overlayOwnedLists}
-                  hiddenListIds={hiddenOverlayTaskListIds}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  onToggleVisibility={toggleOverlayTaskListVisibility}
-                />
-              </SidebarSection>
-            ) : null}
-            {overlaySharedLists.length > 0 ? (
-              <SidebarSection title={L.sharedTaskListsSection}>
-                <CalendarTaskDueSidebarRows
-                  lists={overlaySharedLists}
-                  hiddenListIds={hiddenOverlayTaskListIds}
-                  viewOnlyLabel={L.viewOnlyCalendarBadge}
-                  onToggleVisibility={toggleOverlayTaskListVisibility}
-                />
-              </SidebarSection>
-            ) : null}
+            <CalendarAvailabilitySidebar availability={availability} labels={L} />
+            <CalendarRemindersSidebar
+              lists={overlayOwnedLists}
+              sharedLists={overlaySharedLists}
+              hiddenListIds={hiddenOverlayTaskListIds}
+              onSetHiddenListIds={setHiddenOverlayTaskListIds}
+              onToggleVisibility={toggleOverlayTaskListVisibility}
+              labels={L}
+            />
           </AppSidebar>
         }
+        mainNotice={<CalendarNoticeBar availability={availability} labels={L} locale={locale} />}
         mainHeader={
           <ViewHeader
             title={searchActive ? L.searchTitle : title}
@@ -1025,6 +939,7 @@ export function CalendarWorkspace({
                   {...surfaceDisplay}
                   events={surfaceEventsForView ?? surface?.events ?? new Map()}
                   taskDueMarkers={taskDueOverlay.overlayEvents}
+                  availabilityBlocks={availability.overlayEvents}
                   visibleCalendarIds={[...visibleCalendarIds]}
                   selectedCalendarId={defaultCalendarId}
                   contextValue={surface?.contextValue}
@@ -1049,8 +964,8 @@ export function CalendarWorkspace({
                   }
                   pendingCreateIntent={pendingCreateIntent}
                   selectedEventKey={
-                    taskDuePreview
-                      ? taskDuePreview.marker.key
+                    overlayPreview
+                      ? overlayPreview.key
                       : liveEventPreview && previewCanResize
                         ? eventPreviewOccurrenceKey(liveEventPreview)
                         : ""
@@ -1234,13 +1149,12 @@ export function CalendarWorkspace({
           }
         />
       ) : null}
-      {taskDuePreview ? (
-        <CalendarTaskDuePopover
-          open
-          marker={taskDuePreview.marker}
+      {overlayPreview ? (
+        <CalendarOverlayPopover
+          preview={overlayPreview}
           labels={L}
           locale={locale}
-          origin={taskDuePreview.origin}
+          timeZone={surfaceDisplay.timezone}
           onClose={closeEventPreview}
           onOpenInTasks={onOpenTaskInTasks}
         />

@@ -52,6 +52,10 @@ export abstract class EventBase extends BaseElement {
   @property({ type: String, reflect: true })
   rsvp: "" | "needs-action" | "tentative" = "";
 
+  /** Render-only overlay kind, passed to the inner event card (`data-overlay`). */
+  @property({ type: String })
+  overlay = "";
+
   static get properties() {
     return {
       start: { type: String },

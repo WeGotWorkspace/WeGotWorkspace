@@ -148,6 +148,27 @@
   opacity: 0.72;
 }
 
+/* Teammate busy blocks (#1911): read-only, so a quiet hatched tint instead of a solid
+   card, a regular-weight title, and no press-to-drag cursor. */
+:host([data-overlay="availability"]) .event-card-shell::before {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(
+          in srgb,
+          var(--_lc-event-accent-color, var(--_lc-event-card-accent-color)) 12%,
+          transparent
+        )
+        0 4px,
+      transparent 4px 9px
+    ),
+    color-mix(in srgb, var(--_lc-event-card-bg) 55%, transparent);
+}
+
+:host([data-overlay="availability"]) .event-card-heading {
+  font-weight: 500;
+}
+
 /* Past events fade instead of strikethrough; interaction states (set via
    --_lc-event-card-past-opacity from EventBase) restore emphasis. */
 :host([past]) .event-card-shell {
@@ -175,6 +196,10 @@
 
   :host(:active) {
     @apply cursor-grab;
+  }
+
+  :host([data-overlay="availability"]:active) {
+    @apply cursor-pointer;
   }
 
   :host([past]:hover) .event-card-shell {

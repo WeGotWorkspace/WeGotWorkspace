@@ -11,6 +11,10 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { TasksUIData } from "@/lib/models/tasks-types";
+import type {
+  TeamAvailabilityPreset,
+  TeamAvailabilitySource,
+} from "@/calendar-core/src/use-team-availability";
 
 export type CalendarWorkspaceProps = {
   data: CalendarUIData;
@@ -39,6 +43,10 @@ export type CalendarWorkspaceProps = {
   taskDueBootstrap?: TasksUIData;
   /** App-owned navigation to `/tasks/lists/{listId}?task=`. */
   onOpenTaskInTasks?: (href: string) => void;
+  /** `TeamMember/*` for the Team availability section (#1910); omitted = no section. */
+  availabilitySource?: TeamAvailabilitySource | null;
+  /** Story/test fixture for Team availability — skips Dexie and the network. */
+  availabilityPreset?: TeamAvailabilityPreset;
 };
 
 export function calendarDirectoryGroupsFromBootstrap(

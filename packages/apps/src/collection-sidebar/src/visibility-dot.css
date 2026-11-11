@@ -1,0 +1,67 @@
+@import "../../styles.css" reference;
+
+/* Visibility toggle: a coloured dot, grey while off, half-filled while some are on. */
+.visibility-dot {
+  @apply relative z-10 inline-flex shrink-0 items-center justify-center rounded-full;
+  --visibility-dot-size: var(--collection-sidebar-row-leading-size, 0.875rem);
+  --visibility-dot-color: var(--collection-row-color, var(--workspace-foreground));
+  --visibility-dot-off: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
+  /* The dot stays small; its hit area is a square as tall as a row (40px, 44px
+   * on touch). It reaches left into the row padding and stops halfway to the
+   * label, so tapping the label still does what the label does. */
+  --visibility-dot-hit-size: 2.5rem;
+  width: var(--visibility-dot-size);
+  height: var(--visibility-dot-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  outline: none;
+}
+
+@media (pointer: coarse) {
+  .visibility-dot {
+    --visibility-dot-hit-size: 2.75rem;
+  }
+}
+
+.visibility-dot::before {
+  content: "";
+  position: absolute;
+  inset-block: calc((var(--visibility-dot-size) - var(--visibility-dot-hit-size)) / 2);
+  inset-inline-end: -0.25rem;
+  width: var(--visibility-dot-hit-size);
+  border-radius: var(--control-radius);
+}
+
+.visibility-dot:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.visibility-dot__dot {
+  @apply size-2.5 rounded-full;
+  background-color: var(--visibility-dot-color);
+  transition:
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.visibility-dot[data-state="unchecked"] .visibility-dot__dot {
+  background-color: var(--visibility-dot-off);
+}
+
+.visibility-dot[data-state="indeterminate"] .visibility-dot__dot {
+  background: linear-gradient(
+    90deg,
+    var(--visibility-dot-color) 50%,
+    var(--visibility-dot-off) 50%
+  );
+}
+
+@media (hover: hover) {
+  .visibility-dot:hover .visibility-dot__dot {
+    transform: scale(1.2);
+  }
+}

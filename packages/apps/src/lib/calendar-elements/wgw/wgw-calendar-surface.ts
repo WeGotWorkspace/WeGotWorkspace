@@ -49,6 +49,7 @@ export class WgwCalendarSurface extends LitElement {
       selectedCalendarId: { type: String, attribute: false },
       events: { attribute: false },
       taskDueMarkers: { attribute: false },
+      availabilityBlocks: { attribute: false },
       visibleCalendarIds: { attribute: false },
       pendingCreateIntent: { attribute: false },
       selectedEventKey: { type: String, attribute: "selected-event-key" },
@@ -66,6 +67,8 @@ export class WgwCalendarSurface extends LitElement {
   events: EventsMap = new Map();
   /** Render-only Tasks due markers; merged after calendar visibility filter. */
   taskDueMarkers: EventsMap = new Map();
+  /** Teammates' read-only busy blocks (`availability:{username}`); merged after the filter too. */
+  availabilityBlocks: EventsMap = new Map();
   visibleCalendarIds?: string[];
   /** Create-dialog range while the React editor is open (drag-create preview persist). */
   pendingCreateIntent: PendingCreateGeometry | null = null;
@@ -104,9 +107,14 @@ export class WgwCalendarSurface extends LitElement {
       this.events,
       this.visibleCalendarIds,
     );
-    if (!this.taskDueMarkers || this.taskDueMarkers.size === 0) return filtered;
+    const overlays = [this.taskDueMarkers, this.availabilityBlocks].filter(
+      (overlay) => overlay && overlay.size > 0,
+    );
+    if (overlays.length === 0) return filtered;
     const next: EventsMap = new Map(filtered);
-    for (const [key, event] of this.taskDueMarkers) next.set(key, event);
+    for (const overlay of overlays) {
+      for (const [key, event] of overlay) next.set(key, event);
+    }
     return next;
   }
 

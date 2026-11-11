@@ -1,0 +1,10 @@
+@import "../../styles.css" reference;
+
+.calendar-availability-sidebar__filter {
+  margin-bottom: calc(var(--spacing, 0.25rem) * 1);
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+}
+
+.calendar-availability-sidebar__incomplete {
+  color: var(--color-warning, color-mix(in oklab, var(--workspace-foreground) 60%, transparent));
+}

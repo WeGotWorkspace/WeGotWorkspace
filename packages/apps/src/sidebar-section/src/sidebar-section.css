@@ -38,6 +38,28 @@ h4.sidebar-section__title {
   min-height: var(--control-height-xs, 1.75rem);
 }
 
+.sidebar-section .sidebar-section__fold {
+  @apply shrink-0;
+  margin-inline-start: auto;
+}
+
+/* Show/hide-all dot: sits in the rows' leading column, in the full neutral ink. */
+.sidebar-section__heading--toggle-all {
+  justify-content: flex-start;
+}
+
+.sidebar-section__heading--toggle-all .sidebar-section__title {
+  flex: 1 1 auto;
+}
+
+.sidebar-section__heading .sidebar-section__toggle-all {
+  /* Rows carry a 1px transparent border; match it so the dots share one x. */
+  margin-inline-start: 1px;
+  --visibility-dot-color: var(--workspace-foreground);
+  /* As tall as the heading, so it never reaches into the rows around it. */
+  --visibility-dot-hit-size: var(--control-height-xs, 1.75rem);
+}
+
 /* A short note in place of a section's rows (for example "not in a Team yet"). */
 .sidebar-section__note {
   @apply text-sm text-muted-foreground;

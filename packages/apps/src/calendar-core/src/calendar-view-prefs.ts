@@ -17,7 +17,19 @@ export type CalendarViewPrefs = {
    * `hiddenTaskListIds`. Default (omitted / empty) = every list shown.
    */
   hiddenOverlayTaskListIds?: string[];
+  /** Teammates ticked in Team availability. Default (omitted) = nobody: rows start hidden. */
+  shownAvailabilityIds?: string[];
+  /** Team availability section folded on this device. */
+  availabilityCollapsed?: boolean;
+  /** Reminders section folded on this device. */
+  remindersCollapsed?: boolean;
+  /** My calendars section folded on this device. */
+  myCalendarsCollapsed?: boolean;
 };
+
+/** View prefs that remember whether a sidebar section is folded. */
+export type CalendarSectionCollapsedPref =
+  "availabilityCollapsed" | "remindersCollapsed" | "myCalendarsCollapsed";
 
 function hasWindowStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -53,6 +65,17 @@ export function parseCalendarViewPrefs(raw: string | null): CalendarViewPrefs | 
     const hiddenOverlayTaskListIds = parseStoredIdList(record.hiddenOverlayTaskListIds);
     if (hiddenOverlayTaskListIds !== undefined) {
       prefs.hiddenOverlayTaskListIds = hiddenOverlayTaskListIds;
+    }
+    const shownAvailabilityIds = parseStoredIdList(record.shownAvailabilityIds);
+    if (shownAvailabilityIds !== undefined) prefs.shownAvailabilityIds = shownAvailabilityIds;
+    if (typeof record.availabilityCollapsed === "boolean") {
+      prefs.availabilityCollapsed = record.availabilityCollapsed;
+    }
+    if (typeof record.remindersCollapsed === "boolean") {
+      prefs.remindersCollapsed = record.remindersCollapsed;
+    }
+    if (typeof record.myCalendarsCollapsed === "boolean") {
+      prefs.myCalendarsCollapsed = record.myCalendarsCollapsed;
     }
     return Object.keys(prefs).length > 0 ? prefs : null;
   } catch {
@@ -91,6 +114,18 @@ export function patchCalendarViewPrefs(partial: CalendarViewPrefs): CalendarView
   }
   if (partial.hiddenOverlayTaskListIds !== undefined) {
     next.hiddenOverlayTaskListIds = partial.hiddenOverlayTaskListIds;
+  }
+  if (partial.shownAvailabilityIds !== undefined) {
+    next.shownAvailabilityIds = partial.shownAvailabilityIds;
+  }
+  if (partial.availabilityCollapsed !== undefined) {
+    next.availabilityCollapsed = partial.availabilityCollapsed;
+  }
+  if (partial.remindersCollapsed !== undefined) {
+    next.remindersCollapsed = partial.remindersCollapsed;
+  }
+  if (partial.myCalendarsCollapsed !== undefined) {
+    next.myCalendarsCollapsed = partial.myCalendarsCollapsed;
   }
   writeCalendarViewPrefs(next);
   return Object.keys(next).length > 0 ? next : null;

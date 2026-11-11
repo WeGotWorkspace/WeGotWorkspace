@@ -118,3 +118,17 @@ describe("calendar sidebar sections", () => {
     ]);
   });
 });
+
+describe("team availability calendars", () => {
+  it("never puts a virtual availability calendar in My calendars or Shared with me", () => {
+    const calendars: CalendarInfo[] = [
+      { id: "default", name: "Personal", color: "#6366f1" },
+      { id: "availability:alice", name: "Alice", color: "#0ea5e9", mayShare: false },
+      { id: "availability:bob", name: "Bob", color: "#14b8a6", isSharee: true },
+    ];
+    expect(ownedAndTeamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
+      "default",
+    ]);
+    expect(sharedWithMeCalendarsForSidebar(calendars)).toEqual([]);
+  });
+});

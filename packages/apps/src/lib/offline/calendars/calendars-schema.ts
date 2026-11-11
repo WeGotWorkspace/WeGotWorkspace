@@ -47,6 +47,29 @@ export type OfflineCalendarInviteeRow = {
   data: string;
 };
 
+/** One teammate's busy periods for one UTC week (#1910). */
+export type OfflineCalendarAvailabilityRow = {
+  /** Teammate username (their JMAP account id). */
+  username: string;
+  /** Monday of the UTC week, `YYYY-MM-DD`. */
+  weekStart: string;
+  /** JSON-serialized `JmapBusyPeriod[]` overlapping that week. */
+  periods: string;
+  complete: boolean;
+  /** The teammate's `TeamMember.version` when fetched. */
+  version: string;
+  /** Epoch ms. */
+  fetchedAt: number;
+};
+
+/** The cached `TeamMember/get` list; the state lives in `meta`. */
+export type OfflineCalendarTeamMemberRow = {
+  id: string;
+  sortOrder: number;
+  /** JSON-serialized `JmapTeamMember`. */
+  data: string;
+};
+
 export const CALENDARS_DOMAIN = "calendars";
 
 registerOfflineDomainTables({
@@ -70,6 +93,13 @@ registerOfflineDomainTables({
       stores: {
         calendars_inbox: "id, sortOrder",
         calendars_invitees: "username, sortOrder",
+      },
+    },
+    {
+      version: CALENDARS_OFFLINE_VERSION.availability,
+      stores: {
+        calendars_availability: "[username+weekStart], username, fetchedAt",
+        calendars_team_members: "id, sortOrder",
       },
     },
   ],
@@ -117,5 +147,18 @@ export function calendarsInviteesTable(
   return db.table<OfflineCalendarInviteeRow, string>("calendars_invitees") as EntityTable<
     OfflineCalendarInviteeRow,
     "username"
+  >;
+}
+
+export function calendarsAvailabilityTable(db: WgwOfflineDatabase) {
+  return db.table<OfflineCalendarAvailabilityRow, [string, string]>("calendars_availability");
+}
+
+export function calendarsTeamMembersTable(
+  db: WgwOfflineDatabase,
+): EntityTable<OfflineCalendarTeamMemberRow, "id"> {
+  return db.table<OfflineCalendarTeamMemberRow, string>("calendars_team_members") as EntityTable<
+    OfflineCalendarTeamMemberRow,
+    "id"
   >;
 }

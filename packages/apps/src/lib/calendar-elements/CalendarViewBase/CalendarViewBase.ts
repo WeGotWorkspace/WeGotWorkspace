@@ -41,10 +41,8 @@ import {
   isCalendarEventException,
   isCalendarEventRecurring,
 } from "../types/calendarEventSemantics.js";
-import {
-  isTaskDueOverlayKey,
-  preserveTaskDueOverlayEvents,
-} from "@/calendar-core/src/calendar-task-due-overlay";
+import { preserveRenderOnlyOverlayEvents } from "@/calendar-core/src/calendar-task-due-overlay";
+import { isRenderOnlyOverlayKey } from "@/calendar-core/src/calendar-render-overlay";
 
 type EventsMap = CalendarEventsMap;
 type EventEntry = [string, ApiCalendarEvent];
@@ -291,8 +289,8 @@ export abstract class CalendarViewBase extends BaseElement {
   }> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return { handled: false, accepted: true };
     if (
-      isTaskDueOverlayKey(detail.envelope.eventId) ||
-      isTaskDueOverlayKey(
+      isRenderOnlyOverlayKey(detail.envelope.eventId) ||
+      isRenderOnlyOverlayKey(
         resolveEventMapKey(this.events ?? new Map(), detail.envelope) ?? undefined,
       )
     ) {
@@ -462,7 +460,7 @@ export abstract class CalendarViewBase extends BaseElement {
     detail: EventDeleteRequestDetail,
   ): Promise<boolean> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return false;
-    if (isTaskDueOverlayKey(detail.envelope.eventId)) return true;
+    if (isRenderOnlyOverlayKey(detail.envelope.eventId)) return true;
     const events = this.#viewMapFromContext(this.#eventsAPI);
     const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return false;
@@ -750,11 +748,11 @@ export abstract class CalendarViewBase extends BaseElement {
       typeof operation.input.target.key === "string"
         ? operation.input.target.key
         : undefined;
-    if (isTaskDueOverlayKey(targetKey)) {
+    if (isRenderOnlyOverlayKey(targetKey)) {
       return { nextState: this.events ?? new Map(), changes: [], effects: [] };
     }
     const result = this.#eventsAPI.apply(operation);
-    this.events = preserveTaskDueOverlayEvents(this.events, result.nextState);
+    this.events = preserveRenderOnlyOverlayEvents(this.events, result.nextState);
     return { ...result, nextState: this.events };
   }
 

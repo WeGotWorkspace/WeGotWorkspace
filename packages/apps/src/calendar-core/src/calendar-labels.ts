@@ -36,9 +36,17 @@ export type CalendarUILabels = {
   toastImportFailed: string;
   toastImportOffline: string;
   myCalendarsSection: string;
+  myCalendarsShowAll: string;
+  myCalendarsHideAll: string;
+  myCalendarsCollapse: string;
+  myCalendarsExpand: string;
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
+  tasksSectionShowAll: string;
+  tasksSectionHideAll: string;
+  tasksSectionCollapse: string;
+  tasksSectionExpand: string;
   /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
@@ -280,6 +288,32 @@ export type CalendarUILabels = {
   conflictRemaining: (count: number) => string;
   conflictKeepMine: string;
   conflictUseServer: string;
+  /** Team availability sidebar and its offline notice (#1910). */
+  teamAvailabilitySection: string;
+  teamAvailabilitySelf: string;
+  teamAvailabilityShow: (name: string) => string;
+  teamAvailabilityHide: (name: string) => string;
+  teamAvailabilityShowSelf: string;
+  teamAvailabilityHideSelf: string;
+  teamAvailabilityFilter: string;
+  teamAvailabilityNoMatch: string;
+  teamAvailabilityIncomplete: string;
+  teamAvailabilityCollapse: string;
+  teamAvailabilityExpand: string;
+  teamAvailabilityShowAll: string;
+  teamAvailabilityHideAll: string;
+  calendarNoticeBarLabel: string;
+  teamAvailabilityOfflineUpdated: (age: string) => string;
+  teamAvailabilityOfflineUncached: string;
+  teamAvailabilityOfflineNone: string;
+  teamAvailabilityJustNow: string;
+  /** Title of a busy block whose owner shares no details. */
+  teamAvailabilityBusy: string;
+  // Busy-block popover (#1911).
+  teamAvailabilityPreviewTitle: (name: string) => string;
+  teamAvailabilityPreviewNoDetails: string;
+  teamAvailabilityPreviewTime: string;
+  teamAvailabilityPreviewLocation: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -312,8 +346,16 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
   myCalendarsSection: "My calendars",
+  myCalendarsShowAll: "Show all my calendars",
+  myCalendarsHideAll: "Hide all my calendars",
+  myCalendarsCollapse: "Collapse My calendars",
+  myCalendarsExpand: "Expand My calendars",
   sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
   tasksSection: "Reminders",
+  tasksSectionShowAll: "Show all reminders",
+  tasksSectionHideAll: "Hide all reminders",
+  tasksSectionCollapse: "Collapse Reminders",
+  tasksSectionExpand: "Expand Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
@@ -539,6 +581,30 @@ export const defaultCalendarLabels: CalendarUILabels = {
     count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
   conflictKeepMine: workspaceLabels.sync.keepMine,
   conflictUseServer: "Use server",
+  teamAvailabilitySection: "Team availability",
+  teamAvailabilitySelf: "You (as teammates see you)",
+  teamAvailabilityShow: (name) => `Show ${name}'s availability`,
+  teamAvailabilityHide: (name) => `Hide ${name}'s availability`,
+  teamAvailabilityShowSelf: "Show your own availability",
+  teamAvailabilityHideSelf: "Hide your own availability",
+  teamAvailabilityFilter: "Filter teammates",
+  teamAvailabilityNoMatch: "No teammates match",
+  teamAvailabilityIncomplete: "Some busy times could not be loaded.",
+  teamAvailabilityCollapse: "Collapse Team availability",
+  teamAvailabilityExpand: "Expand Team availability",
+  teamAvailabilityShowAll: "Show all teammates' availability",
+  teamAvailabilityHideAll: "Hide all teammates' availability",
+  calendarNoticeBarLabel: "Calendar notices",
+  teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
+  teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
+  teamAvailabilityOfflineNone:
+    "Offline · teammates' availability for this period is not available offline.",
+  teamAvailabilityJustNow: "just now",
+  teamAvailabilityBusy: "Busy",
+  teamAvailabilityPreviewTitle: (name) => `${name}'s availability`,
+  teamAvailabilityPreviewNoDetails: "Only busy times are shared.",
+  teamAvailabilityPreviewTime: "Time",
+  teamAvailabilityPreviewLocation: "Location",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
