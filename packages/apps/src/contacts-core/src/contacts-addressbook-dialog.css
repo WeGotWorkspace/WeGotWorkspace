@@ -1,5 +1,0 @@
-@import "../../styles.css" reference;
-
-.contacts-addressbook-dialog__share {
-  @apply mt-4;
-}

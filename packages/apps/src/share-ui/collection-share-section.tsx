@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { buttonVariants } from "@/button/src/button";
 import {
   displayNameForSharePrincipal,
@@ -73,6 +72,7 @@ export function CollectionShareSection({
 }: CollectionShareSectionProps) {
   const locked = disabled || !online;
   const [query, setQuery] = useState("");
+  const addFieldId = useId();
   const [results, setResults] = useState<CollectionSharePrincipal[]>([]);
   const [searching, setSearching] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
@@ -118,7 +118,7 @@ export function CollectionShareSection({
     <>
       {!online ? <p className="share-dialog__error">{copy.offline}</p> : null}
       <ShareAccessCard
-        titleIcon={<Users className="size-4" />}
+        htmlFor={addFieldId}
         title={copy.title}
         description={noTeam ? noTeamYetCopy : copy.hint}
         addControl={
@@ -137,6 +137,7 @@ export function CollectionShareSection({
             }}
           >
             <ShareDialogInput
+              id={addFieldId}
               value={query}
               disabled={locked || busy}
               placeholder={copy.placeholder}
@@ -157,7 +158,6 @@ export function CollectionShareSection({
               key={grant.id}
               principalType={grant.isGroup ? "group" : "user"}
               displayName={title}
-              principalId={grant.isGroup ? undefined : grant.id}
               subtitle={grant.isGroup ? undefined : grant.id}
               access={permission === "edit" ? "edit" : "view"}
               editable={accessSelect && !locked && !busy}

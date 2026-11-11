@@ -379,7 +379,6 @@ export function CalendarInviteesCard({
   return (
     <ShareAccessCard
       className={cn("calendar-event-dialog__card calendar-invitees-card", className)}
-      titleIcon={<Users className="size-4" />}
       title={labels.eventAttendeesLabel}
       description={showNoTeam ? noTeamYetCopy : labels.eventAttendeesHint}
       footer={footer}

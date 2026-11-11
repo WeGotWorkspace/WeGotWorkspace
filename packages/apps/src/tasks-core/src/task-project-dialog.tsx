@@ -29,7 +29,6 @@ import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";
-import "./task-project-dialog.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type TaskProjectDialogState =
@@ -278,27 +277,25 @@ export function TaskProjectDialog({
             />
 
             {showShare && share && dialog?.mode === "edit" ? (
-              <div className="task-project-dialog__share">
-                <CollectionShareSection
-                  collectionId={dialog.listId}
-                  shareWith={dialog.shareWith}
-                  knownPrincipals={share.knownPrincipals}
-                  online={share.online}
-                  noTeam={share.noTeam}
-                  dialogClassName={contentClassName}
-                  copy={{
-                    title: labels.shareListSectionTitle,
-                    hint: labels.shareListSectionHint,
-                    placeholder: labels.shareListAddPlaceholder,
-                    empty: labels.shareListSearchEmpty,
-                    offline: labels.shareListOffline,
-                    removeTitle: labels.removeListShareTitle,
-                    removeConfirm: labels.removeListShareConfirm,
-                  }}
-                  onSearchPrincipals={share.onSearchPrincipals}
-                  onPatchShareWith={share.onPatchShareWith}
-                />
-              </div>
+              <CollectionShareSection
+                collectionId={dialog.listId}
+                shareWith={dialog.shareWith}
+                knownPrincipals={share.knownPrincipals}
+                online={share.online}
+                noTeam={share.noTeam}
+                dialogClassName={contentClassName}
+                copy={{
+                  title: labels.shareListSectionTitle,
+                  hint: labels.shareListSectionHint,
+                  placeholder: labels.shareListAddPlaceholder,
+                  empty: labels.shareListSearchEmpty,
+                  offline: labels.shareListOffline,
+                  removeTitle: labels.removeListShareTitle,
+                  removeConfirm: labels.removeListShareConfirm,
+                }}
+                onSearchPrincipals={share.onSearchPrincipals}
+                onPatchShareWith={share.onPatchShareWith}
+              />
             ) : null}
 
             <DialogFooter

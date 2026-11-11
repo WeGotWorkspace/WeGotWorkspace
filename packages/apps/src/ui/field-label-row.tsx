@@ -54,6 +54,13 @@ export type FieldLabelRowProps = {
    * hugs its content (a dropdown, a switch).
    */
   fill?: boolean;
+  /**
+   * `inline` layout: content under the row, across its full width (an add field and a
+   * list of people, alarms).
+   */
+  below?: ReactNode;
+  /** `inline` layout: the row opens a section; its caption is a step bigger, full ink. */
+  section?: boolean;
 };
 
 function hasVisibleCaption(label: string | undefined): boolean {
@@ -99,6 +106,8 @@ function FieldLabelRowInline({
   label,
   description,
   fill,
+  below,
+  section,
   children,
   readOnly,
   icon,
@@ -112,6 +121,7 @@ function FieldLabelRowInline({
         "field-label-row",
         "field-label-row--inline",
         fill && "field-label-row--fill",
+        section && "field-label-row--section",
         className,
       )}
     >
@@ -124,6 +134,7 @@ function FieldLabelRowInline({
         {description ? <p className="field-label-row__description">{description}</p> : null}
       </div>
       <div className="field-label-row__control">{children}</div>
+      {below != null ? <div className="field-label-row__below">{below}</div> : null}
     </div>
   );
 }
@@ -145,6 +156,8 @@ export function FieldLabelRow({
   layout = "stacked",
   description,
   fill,
+  below,
+  section,
 }: FieldLabelRowProps): ReactNode {
   if (layout === "inline") {
     return (
@@ -152,6 +165,8 @@ export function FieldLabelRow({
         label={label}
         description={description}
         fill={fill}
+        below={below}
+        section={section}
         readOnly={readOnly}
         icon={icon}
         className={className}

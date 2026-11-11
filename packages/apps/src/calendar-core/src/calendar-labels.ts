@@ -97,6 +97,10 @@ export type CalendarUILabels = {
   publishCalendarHttpsLabel: string;
   publishCalendarBusyLabel: string;
   publishCalendarBusyHint: string;
+  publishCalendarTurnOn: string;
+  publishCalendarTurnOff: string;
+  publishCalendarBusyTurnOn: string;
+  publishCalendarBusyTurnOff: string;
   copyHttpsUrl: string;
   /** Tooltip / accessible name for the webcal:// subscribe link. */
   openInCalendar: string;
@@ -413,6 +417,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarHttpsLabel: "Web address",
   publishCalendarBusyLabel: "Busy only",
   publishCalendarBusyHint: "Publish times only. Titles, people, and notes stay off the feed.",
+  publishCalendarTurnOn: "Publish this calendar",
+  publishCalendarTurnOff: "Stop publishing this calendar",
+  publishCalendarBusyTurnOn: "Publish busy times only",
+  publishCalendarBusyTurnOff: "Publish full event details",
   copyHttpsUrl: workspaceLabels.sharing.copyLink,
   openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",

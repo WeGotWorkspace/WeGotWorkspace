@@ -39,7 +39,6 @@ import {
   isLikelyCalendarFeedUrl,
 } from "@/calendar-core/src/calendar-subscription";
 import "@/share-ui/share-ui.css";
-import "./calendar-calendar-dialog.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export const CALENDAR_COLOR_SWATCHES = [
@@ -344,18 +343,16 @@ export function CalendarCalendarDialog({
             ) : null}
 
             {showShare && share ? (
-              <div className="calendar-calendar-dialog__share">
-                <CalendarShareSection
-                  calendar={share.calendar}
-                  labels={labels}
-                  knownPrincipals={share.knownPrincipals}
-                  disabled={busy}
-                  online={share.online}
-                  noTeam={share.noTeam}
-                  onSearchPrincipals={share.onSearchPrincipals}
-                  onPatchShareWith={share.onPatchShareWith}
-                />
-              </div>
+              <CalendarShareSection
+                calendar={share.calendar}
+                labels={labels}
+                knownPrincipals={share.knownPrincipals}
+                disabled={busy}
+                online={share.online}
+                noTeam={share.noTeam}
+                onSearchPrincipals={share.onSearchPrincipals}
+                onPatchShareWith={share.onPatchShareWith}
+              />
             ) : null}
 
             <DialogFooter

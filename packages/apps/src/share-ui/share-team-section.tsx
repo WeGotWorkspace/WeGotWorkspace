@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw/openapi-types/drive-types";
 import { CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
@@ -51,6 +50,7 @@ export function ShareTeamSection({
     [atPath.memberAccess],
   );
   const [query, setQuery] = useState("");
+  const addFieldId = useId();
   const [results, setResults] = useState<DriveSharePrincipalEntry[]>([]);
   const [searching, setSearching] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
@@ -108,7 +108,7 @@ export function ShareTeamSection({
   return (
     <>
       <ShareAccessCard
-        titleIcon={<Users className="size-4" />}
+        htmlFor={addFieldId}
         title={shareLabels.teamSectionTitle}
         description={noTeam ? noTeamYetCopy : shareLabels.teamSectionHint}
         addControl={
@@ -124,6 +124,7 @@ export function ShareTeamSection({
             }}
           >
             <ShareDialogInput
+              id={addFieldId}
               value={query}
               disabled={disabled}
               placeholder={shareLabels.addTeamGrantPlaceholder}
@@ -183,7 +184,6 @@ export function ShareTeamSection({
               key={member.username}
               principalType="user"
               displayName={member.displayName}
-              principalId={member.username}
               subtitle={subtitle}
               inheritedFromPath={inherited ? member.source.sharePath : undefined}
               access={member.access}

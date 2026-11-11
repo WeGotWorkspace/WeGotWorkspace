@@ -1,6 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { Copy, Globe2, RefreshCw } from "lucide-react";
-import { Card } from "@/card/src/card";
+import { Copy, RefreshCw } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -80,7 +79,9 @@ export function ShareLinkSection({
   /** Fresh plaintext only for this mount after enable/regenerate — never persisted. */
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const publicSwitchId = useId();
   const passwordSwitchId = useId();
+  const passwordFieldId = useId();
 
   useEffect(() => {
     setPasswordRequired(hasPassword);
@@ -162,66 +163,69 @@ export function ShareLinkSection({
   const dialogCopy = confirmAction ? confirmDialogCopy[confirmAction] : null;
 
   return (
-    <Card
-      titleIcon={<Globe2 className="size-4" />}
-      title={shareLabels.publicSectionTitle}
-      description={
-        !enabled
-          ? shareLabels.publicDisabledHint
-          : isFolder && level === "edit"
-            ? shareLabels.publicEnabledAddFilesHint
-            : shareLabels.publicEnabledHint
-      }
-      action={
-        <span className="share-dialog__switch-touch">
-          <Switch
-            checked={enabled}
-            disabled={disabled || mutations.busyKey === "public-toggle"}
-            onCheckedChange={(next) => {
-              if (!next && enabled) {
-                setConfirmAction("disable-public");
-                return;
+    <>
+      <FieldLabelRow
+        layout="inline"
+        section
+        label={shareLabels.publicSectionTitle}
+        htmlFor={publicSwitchId}
+        description={
+          !enabled
+            ? shareLabels.publicDisabledHint
+            : isFolder && level === "edit"
+              ? shareLabels.publicEnabledAddFilesHint
+              : shareLabels.publicEnabledHint
+        }
+        below={
+          enabled && directPublic ? (
+            <div className="share-dialog__link-row">
+              <ShareDialogInput
+                type="text"
+                value={url}
+                readOnly
+                aria-label={shareLabels.linkLabel}
+              />
+              <IconButton
+                label={shareLabels.copyLink}
+                icon={<Copy aria-hidden />}
+                variant="outline"
+                disabled={!token}
+                onClick={() => void handleCopyLink()}
+              />
+              <IconButton
+                label={shareLabels.regenerateLink}
+                icon={<RefreshCw aria-hidden />}
+                variant="outline"
+                title={shareLabels.regenerateLinkHint}
+                disabled={disabled}
+                onClick={() => setConfirmAction("regenerate-link")}
+              />
+            </div>
+          ) : null
+        }
+      >
+        <Switch
+          id={publicSwitchId}
+          tooltip={enabled ? shareLabels.turnOffPublicLink : shareLabels.turnOnPublicLink}
+          checked={enabled}
+          disabled={disabled || mutations.busyKey === "public-toggle"}
+          onCheckedChange={(next) => {
+            if (!next && enabled) {
+              setConfirmAction("disable-public");
+              return;
+            }
+            void (async () => {
+              const generatedPassword = await mutations.setPublicEnabled(next);
+              if (generatedPassword) {
+                revealPassword(generatedPassword);
               }
-              void (async () => {
-                const generatedPassword = await mutations.setPublicEnabled(next);
-                if (generatedPassword) {
-                  revealPassword(generatedPassword);
-                }
-              })();
-            }}
-            aria-label={shareLabels.enablePublicAccess}
-          />
-        </span>
-      }
-    >
-      {enabled && directPublic ? (
-        <div className="share-dialog__link-controls">
-          <div className="share-dialog__link-row">
-            <ShareDialogInput
-              type="text"
-              value={url}
-              readOnly
-              aria-label={shareLabels.publicSectionTitle}
-            />
-            <IconButton
-              label={shareLabels.copyLink}
-              icon={<Copy className="size-3.5" aria-hidden />}
-              size="sm"
-              variant="outline"
-              disabled={!token}
-              onClick={() => void handleCopyLink()}
-            />
-            <IconButton
-              label={shareLabels.regenerateLink}
-              icon={<RefreshCw className="size-3.5" aria-hidden />}
-              size="sm"
-              variant="outline"
-              title={shareLabels.regenerateLinkHint}
-              disabled={disabled}
-              onClick={() => setConfirmAction("regenerate-link")}
-            />
-          </div>
+            })();
+          }}
+        />
+      </FieldLabelRow>
 
+      {enabled && directPublic ? (
+        <>
           {isFolder ? (
             <ShareLinkLevelRow
               value={level}
@@ -237,6 +241,9 @@ export function ShareLinkSection({
           >
             <Switch
               id={passwordSwitchId}
+              tooltip={
+                passwordRequired ? shareLabels.stopRequiringPassword : shareLabels.requirePassword
+              }
               checked={passwordRequired}
               disabled={disabled || passwordBusy}
               onCheckedChange={(next) => {
@@ -259,46 +266,47 @@ export function ShareLinkSection({
             />
           </FieldLabelRow>
 
-          <div className="share-dialog__link-row">
-            <ShareDialogInput
-              type="text"
-              value={passwordFieldValue}
-              readOnly
-              disabled={!passwordRequired || disabled || passwordBusy}
-              aria-label={
-                passwordRevealed
-                  ? shareLabels.requirePassword
-                  : passwordRequired
-                    ? shareLabels.passwordHiddenLabel
-                    : shareLabels.passwordDisabledPlaceholder
-              }
-              placeholder={passwordRequired ? undefined : shareLabels.passwordDisabledPlaceholder}
-            />
-            {passwordRevealed ? (
-              <IconButton
-                label={shareLabels.copyPassword}
-                icon={<Copy className="size-3.5" aria-hidden />}
-                size="sm"
-                variant="outline"
-                disabled={disabled || passwordBusy}
-                onClick={() => void handleCopyPassword()}
-              />
-            ) : null}
-            <IconButton
-              label={shareLabels.regeneratePassword}
-              icon={<RefreshCw className="size-3.5" aria-hidden />}
-              size="sm"
-              variant="outline"
-              title={
-                passwordRequired && !passwordRevealed
-                  ? shareLabels.regeneratePasswordToViewHint
-                  : shareLabels.regeneratePasswordHint
-              }
-              disabled={!passwordRequired || disabled || passwordBusy}
-              onClick={() => setConfirmAction("regenerate-password")}
-            />
-          </div>
-        </div>
+          {passwordRequired ? (
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={shareLabels.passwordLabel}
+              htmlFor={passwordFieldId}
+            >
+              <div className="share-dialog__link-row">
+                <ShareDialogInput
+                  id={passwordFieldId}
+                  type="text"
+                  value={passwordFieldValue}
+                  readOnly
+                  disabled={disabled || passwordBusy}
+                  aria-description={passwordRevealed ? undefined : shareLabels.passwordHiddenLabel}
+                />
+                {passwordRevealed ? (
+                  <IconButton
+                    label={shareLabels.copyPassword}
+                    icon={<Copy aria-hidden />}
+                    variant="outline"
+                    disabled={disabled || passwordBusy}
+                    onClick={() => void handleCopyPassword()}
+                  />
+                ) : null}
+                <IconButton
+                  label={shareLabels.regeneratePassword}
+                  icon={<RefreshCw aria-hidden />}
+                  variant="outline"
+                  title={
+                    passwordRevealed
+                      ? shareLabels.regeneratePasswordHint
+                      : shareLabels.regeneratePasswordToViewHint
+                  }
+                  disabled={disabled || passwordBusy}
+                  onClick={() => setConfirmAction("regenerate-password")}
+                />
+              </div>
+            </FieldLabelRow>
+          ) : null}
+        </>
       ) : null}
 
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
@@ -318,6 +326,6 @@ export function ShareLinkSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   );
 }

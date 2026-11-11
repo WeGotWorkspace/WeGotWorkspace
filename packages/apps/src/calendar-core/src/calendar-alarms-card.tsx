@@ -1,4 +1,4 @@
-import { Bell, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
@@ -218,7 +218,6 @@ export function CalendarAlarmsCard(props: CalendarAlarmsCardProps) {
   return (
     <ShareAccessCard
       className="calendar-event-dialog__card calendar-alarms-card"
-      titleIcon={<Bell />}
       title={props.labels.eventAlarmsLabel}
     >
       <CalendarAlarmsRows {...props} />

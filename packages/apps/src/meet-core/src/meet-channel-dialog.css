@@ -10,10 +10,6 @@
   --color-emerald: var(--workspace-accent);
 }
 
-.meet-channel-dialog__share {
-  @apply mt-4;
-}
-
 .meet-channel-dialog__link-row .input,
 .meet-channel-dialog__link-row input {
   @apply min-w-0 flex-1;

@@ -104,6 +104,21 @@
   line-height: 1.25rem;
 }
 
+/* A row that opens a section (Team access, a public link): the caption a step bigger,
+ * full ink, so the rows under it read as its content. */
+.field-label-row--section .field-label-row__label {
+  @apply font-semibold;
+  font-size: var(--input-font-size-lg, 1rem);
+  line-height: 1.5rem;
+  color: var(--workspace-foreground);
+}
+
+/* Sections stand apart by a gap, not a hairline: room above one that follows other rows. */
+.field-label-row--inline + .field-label-row--section {
+  @apply mt-6;
+  border-top: 0;
+}
+
 /* One step below the label. The control sits on the label line only, so the
  * description may run under it, up to half the row. */
 .field-label-row__description {
@@ -135,6 +150,31 @@
 .field-label-row--fill .field-label-row__description {
   grid-column: 1;
   max-width: none;
+}
+
+/* A row without a control of its own (a heading over a `below` list): caption and
+ * description take the full row. */
+.field-label-row--inline:has(> .field-label-row__control:empty) .field-label-row__label {
+  grid-column: 1 / -1;
+}
+
+.field-label-row--inline:has(> .field-label-row__control:empty) .field-label-row__description {
+  max-width: none;
+}
+
+.field-label-row--inline > .field-label-row__control:empty {
+  display: none;
+}
+
+/* `below`: a list under the row, across its full width. */
+.field-label-row__below {
+  @apply mt-3 flex min-w-0 flex-col gap-2;
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.field-label-row__below:empty {
+  display: none;
 }
 
 /* A ghost dropdown stays inside the column, hover wash included. */

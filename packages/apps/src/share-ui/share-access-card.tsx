@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { Card } from "@/card/src/card";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { cn } from "@/lib/utils";
 
 import "@/share-ui/share-ui.css";
 
 export type ShareAccessCardProps = {
   title: string;
-  titleIcon?: ReactNode;
+  /** The add field: the caption names it. */
+  htmlFor?: string;
   description?: ReactNode;
   className?: string;
   children?: ReactNode;
@@ -14,10 +15,10 @@ export type ShareAccessCardProps = {
   footer?: ReactNode;
 };
 
-/** Presentational Team-access card: header, member rows, then add input. */
+/** Who has access: caption on top, then the add field and the member rows. */
 export function ShareAccessCard({
   title,
-  titleIcon,
+  htmlFor,
   description,
   className,
   children,
@@ -25,17 +26,22 @@ export function ShareAccessCard({
   footer,
 }: ShareAccessCardProps) {
   return (
-    <Card
+    <FieldLabelRow
+      layout="inline"
+      section
       className={cn("share-access-card", className)}
-      titleIcon={titleIcon}
-      title={title}
+      label={title}
+      htmlFor={htmlFor}
       description={description}
+      below={
+        <>
+          {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
+          {children}
+          {footer}
+        </>
+      }
     >
-      <div className="share-access-card__body">
-        {children}
-        {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
-      </div>
-      {footer}
-    </Card>
+      {null}
+    </FieldLabelRow>
   );
 }

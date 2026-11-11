@@ -1,5 +1,0 @@
-@import "../../styles.css" reference;
-
-.task-project-dialog__share {
-  @apply mt-4;
-}

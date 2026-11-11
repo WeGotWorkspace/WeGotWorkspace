@@ -63,8 +63,7 @@ function atPathWithLevel(defaultAccess: "view" | "edit" | "full"): DriveShareAtP
 }
 
 function passwordInput(): HTMLInputElement {
-  return (screen.queryByRole("textbox", { name: shareLabels.passwordHiddenLabel }) ??
-    screen.getByRole("textbox", { name: shareLabels.requirePassword })) as HTMLInputElement;
+  return screen.getByRole("textbox", { name: shareLabels.passwordLabel }) as HTMLInputElement;
 }
 
 describe("ShareLinkSection password show-once", () => {
@@ -76,7 +75,7 @@ describe("ShareLinkSection password show-once", () => {
     renderLinkSection(atPathWithPassword(true));
 
     expect(passwordInput().value).toBe(SHARE_PASSWORD_MASK);
-    expect(passwordInput().getAttribute("aria-label")).toBe(shareLabels.passwordHiddenLabel);
+    expect(passwordInput().getAttribute("aria-description")).toBe(shareLabels.passwordHiddenLabel);
     expect(screen.queryByRole("button", { name: shareLabels.copyPassword })).toBeNull();
   });
 

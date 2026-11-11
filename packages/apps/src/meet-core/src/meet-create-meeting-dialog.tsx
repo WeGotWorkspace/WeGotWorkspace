@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import {
@@ -27,8 +27,7 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import { calendarInviteesFromShareDirectory } from "@/calendar-core/src/calendar-meet-channel-email";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
-import { Card } from "@/card/src/card";
-import { CardRow } from "@/card/src/card-row";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Switch } from "@/ui/switch";
 import {
   seedEditMeetingForm,
@@ -127,6 +126,7 @@ export function MeetCreateMeetingDialog({
 }: MeetCreateMeetingDialogProps) {
   const calendarId = useMemo(() => pickDefaultCalendarId(calendars) ?? "", [calendars]);
   const [scheduled, setScheduled] = useState(false);
+  const scheduleSwitchId = useId();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<CalendarEventFormValue>(() =>
     seedReservedInstantMeeting(calendarId, workspaceOrigin),
@@ -351,20 +351,22 @@ export function MeetCreateMeetingDialog({
       }}
       afterMeetAccessory={
         mode === "create" ? (
-          <Card className="calendar-event-dialog__card meet-create-meeting-dialog__schedule">
-            <CardRow title={meetLabels.scheduleMeeting}>
-              <Switch
-                checked={scheduled}
-                onCheckedChange={(checked) => {
-                  const next = checked === true;
-                  setScheduled(next);
-                  if (!next) setForm(applyInstantTimes);
-                }}
-                aria-label={meetLabels.scheduleMeeting}
-                disabled={busy}
-              />
-            </CardRow>
-          </Card>
+          <FieldLabelRow
+            layout="inline"
+            label={meetLabels.scheduleMeeting}
+            htmlFor={scheduleSwitchId}
+          >
+            <Switch
+              id={scheduleSwitchId}
+              checked={scheduled}
+              onCheckedChange={(checked) => {
+                const next = checked === true;
+                setScheduled(next);
+                if (!next) setForm(applyInstantTimes);
+              }}
+              disabled={busy}
+            />
+          </FieldLabelRow>
         ) : undefined
       }
       meetOperations={meetOperations}

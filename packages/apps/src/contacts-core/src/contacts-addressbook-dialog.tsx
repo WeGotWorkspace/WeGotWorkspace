@@ -32,7 +32,6 @@ import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { persistAddressBookColor } from "@/contacts-core/src/contacts-view-prefs";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import "@/share-ui/share-ui.css";
-import "@/contacts-core/src/contacts-addressbook-dialog.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type { ContactsAddressBookDialogState };
@@ -171,27 +170,25 @@ export function ContactsAddressBookDialog({
               </FieldLabelRow>
 
               {showShare && share ? (
-                <div className="contacts-addressbook-dialog__share">
-                  <CollectionShareSection
-                    collectionId={dialog.bookId}
-                    shareWith={dialog.shareWith}
-                    knownPrincipals={share.knownPrincipals}
-                    online={share.online}
-                    noTeam={share.noTeam}
-                    dialogClassName={contentClassName}
-                    copy={{
-                      title: labels.shareAddressBookTitle,
-                      hint: labels.shareAddressBookHint,
-                      placeholder: labels.shareAddressBookPlaceholder,
-                      empty: labels.shareAddressBookEmpty,
-                      offline: labels.shareAddressBookOffline,
-                      removeTitle: labels.removeAddressBookShareTitle,
-                      removeConfirm: labels.removeAddressBookShareConfirm,
-                    }}
-                    onSearchPrincipals={share.onSearchPrincipals}
-                    onPatchShareWith={share.onPatchShareWith}
-                  />
-                </div>
+                <CollectionShareSection
+                  collectionId={dialog.bookId}
+                  shareWith={dialog.shareWith}
+                  knownPrincipals={share.knownPrincipals}
+                  online={share.online}
+                  noTeam={share.noTeam}
+                  dialogClassName={contentClassName}
+                  copy={{
+                    title: labels.shareAddressBookTitle,
+                    hint: labels.shareAddressBookHint,
+                    placeholder: labels.shareAddressBookPlaceholder,
+                    empty: labels.shareAddressBookEmpty,
+                    offline: labels.shareAddressBookOffline,
+                    removeTitle: labels.removeAddressBookShareTitle,
+                    removeConfirm: labels.removeAddressBookShareConfirm,
+                  }}
+                  onSearchPrincipals={share.onSearchPrincipals}
+                  onPatchShareWith={share.onPatchShareWith}
+                />
               ) : null}
 
               <DialogFooter

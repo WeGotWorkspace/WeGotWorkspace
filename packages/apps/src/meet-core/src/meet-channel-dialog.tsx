@@ -303,30 +303,28 @@ export function MeetChannelDialog({
             ) : null}
 
             {showShare && share && dialog?.mode === "edit" ? (
-              <div className="meet-channel-dialog__share">
-                <CollectionShareSection
-                  collectionId={dialog.channelId}
-                  shareWith={dialog.shareWith}
-                  knownPrincipals={share.knownPrincipals}
-                  online={share.online}
-                  noTeam={share.noTeam}
-                  dialogClassName={contentClassName}
-                  accessSelect={false}
-                  copy={{
-                    title: meetLabels.shareChannelSectionTitle,
-                    hint: meetLabels.shareChannelSectionHint,
-                    placeholder: meetLabels.shareChannelAddPlaceholder,
-                    empty: meetLabels.shareChannelSearchEmpty,
-                    offline: meetLabels.shareChannelOffline,
-                    removeTitle: meetLabels.removeChannelShareTitle,
-                    removeConfirm: meetLabels.removeChannelShareConfirm,
-                  }}
-                  onSearchPrincipals={async (query) =>
-                    workspaceOnlySharePrincipals(await share.onSearchPrincipals(query))
-                  }
-                  onPatchShareWith={share.onPatchShareWith}
-                />
-              </div>
+              <CollectionShareSection
+                collectionId={dialog.channelId}
+                shareWith={dialog.shareWith}
+                knownPrincipals={share.knownPrincipals}
+                online={share.online}
+                noTeam={share.noTeam}
+                dialogClassName={contentClassName}
+                accessSelect={false}
+                copy={{
+                  title: meetLabels.shareChannelSectionTitle,
+                  hint: meetLabels.shareChannelSectionHint,
+                  placeholder: meetLabels.shareChannelAddPlaceholder,
+                  empty: meetLabels.shareChannelSearchEmpty,
+                  offline: meetLabels.shareChannelOffline,
+                  removeTitle: meetLabels.removeChannelShareTitle,
+                  removeConfirm: meetLabels.removeChannelShareConfirm,
+                }}
+                onSearchPrincipals={async (query) =>
+                  workspaceOnlySharePrincipals(await share.onSearchPrincipals(query))
+                }
+                onPatchShareWith={share.onPatchShareWith}
+              />
             ) : null}
 
             <DialogFooter
