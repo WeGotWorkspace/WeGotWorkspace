@@ -322,6 +322,28 @@ describe("useDocsRouteDocument", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it("keeps a followed rename that is still queued when a refresh answers the old path", async () => {
+    const renamed = "/users/alice/Roadmap v2.md";
+    const ownedByQueuedWrite = vi.fn(async (path: string) => path === renamed);
+    const fetchLocation = vi.fn(async () => ({ id: ID, path: PATH }));
+    const { result, rerender } = render({ id: ID }, deps({ fetchLocation, ownedByQueuedWrite }));
+    await waitFor(() => expect(result.current.document).toMatchObject({ path: PATH }));
+
+    // Another tab renamed it offline; this tab followed, then reconnects before the rename lands.
+    await act(async () => result.current.followPath(renamed));
+    rerender({ search: { id: ID }, refreshKey: 1 });
+    await waitFor(() => expect(ownedByQueuedWrite).toHaveBeenCalledWith(renamed));
+    await act(async () => {});
+    expect(result.current.document).toEqual({ status: "ready", path: renamed, nodeId: ID });
+
+    // Once the rename landed, the server agrees.
+    ownedByQueuedWrite.mockResolvedValue(false);
+    fetchLocation.mockResolvedValue({ id: ID, path: renamed });
+    rerender({ search: { id: ID }, refreshKey: 2 });
+    await waitFor(() => expect(fetchLocation).toHaveBeenCalledTimes(3));
+    expect(result.current.document).toEqual({ status: "ready", path: renamed, nodeId: ID });
+  });
+
   it("re-checks when the tab is shown again", async () => {
     const fetchLocation = vi.fn(async () => ({ id: ID, path: PATH }));
     const { result } = render({ id: ID }, deps({ fetchLocation }));

@@ -41,6 +41,7 @@ import {
   DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
   DOC_STATUS_SNAPSHOT_UNAVAILABLE,
+  docStatusAfterJoinFailure,
 } from "./docs-collab-status";
 import { isCollabDocumentGoneError } from "./docs-collab-utils";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
@@ -476,7 +477,7 @@ export function useDocsCollabJoin({
         if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
-        setDocStatus(error instanceof Error ? error.message : String(error));
+        setDocStatus((prev) => docStatusAfterJoinFailure(prev, error));
       } finally {
         if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }

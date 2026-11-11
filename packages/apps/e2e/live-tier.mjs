@@ -100,6 +100,14 @@ export const notesSyncMatrixSpecPattern = /notes-sync-matrix\.spec\.ts/;
  */
 export const tasksSyncMatrixSpecPattern = /tasks-sync-matrix\.spec\.ts/;
 
+/**
+ * Docs sync matrix (#1563): every action × tab setup × connectivity case on a
+ * Doc (create, rename, move, body edit, empty body, trash, restore, delete,
+ * star, share), plus a case per fixed offline gap. Its own nightly job, like
+ * the Notes matrix.
+ */
+export const docsSyncMatrixSpecPattern = /docs-sync-matrix\.spec\.ts/;
+
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 

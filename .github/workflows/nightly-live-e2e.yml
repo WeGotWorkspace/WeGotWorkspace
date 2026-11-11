@@ -124,7 +124,8 @@ jobs:
 
   sync-matrix:
     # The Notes matrix needs about 90 minutes on one runner for its 110 cases,
-    # the Tasks matrix about 65 minutes for its 152, so each runs in 4 shards.
+    # the Tasks matrix about 65 minutes for its 152, and the Docs matrix
+    # about 30 for its 81, so each runs in 4 shards.
     # Each shard boots its own PHP, Vite, and SQLite, so the shards share nothing.
     name: ${{ matrix.app }} sync matrix (${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
@@ -141,6 +142,10 @@ jobs:
           - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 2 }
           - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 3 }
           - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 4 }
+          - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 1 }
+          - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 2 }
+          - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 3 }
+          - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 4 }
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
@@ -242,7 +247,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Download the `live-e2e-artifacts`, `notes-sync-matrix-artifacts-<shard>` or `tasks-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
+              "Download the `live-e2e-artifacts`, `notes-sync-matrix-artifacts-<shard>`, `tasks-sync-matrix-artifacts-<shard>` or `docs-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
             ].join("\n");
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {

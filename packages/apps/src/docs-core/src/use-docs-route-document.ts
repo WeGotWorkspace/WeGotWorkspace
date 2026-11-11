@@ -75,6 +75,8 @@ export function useDocsRouteDocument({
   const checkedIdRef = useRef<string | null>(null);
   /** The id whose editor is mounted now. */
   const openNodeIdRef = useRef<string | null>(null);
+  /** The path the editor has open now. */
+  const openPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -104,6 +106,13 @@ export function useDocsRouteDocument({
       const result = await locateDocsById(id, locator, signal);
       if (signal.aborted) return;
       if (result.kind === "found") {
+        // The open Doc followed a rename this browser still has queued (#1563):
+        // the server answer predates it, so moving back would undo the follow.
+        const openPath = openNodeIdRef.current === id ? openPathRef.current : null;
+        if (openPath && openPath !== result.path) {
+          const queued = await locator.ownedByQueuedWrite(openPath).catch(() => false);
+          if (signal.aborted || queued) return;
+        }
         rememberDocsLocation(id, result.path);
         setIdState({ id, status: "ready", path: result.path });
         return;
@@ -183,7 +192,6 @@ export function useDocsRouteDocument({
 
   const retry = useCallback(() => setRecheck((n) => n + 1), []);
 
-  const openPathRef = useRef<string | null>(null);
   /**
    * A save to the open path was refused as gone. `true` when the id lives
    * elsewhere now and the editor moves there; `false` when it is really gone.
