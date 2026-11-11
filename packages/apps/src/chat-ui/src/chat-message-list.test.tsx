@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
-import type { ChatMessage } from "@/chat-ui/src/chat-types";
+import type { ChatMessage } from "@/lib/models/chat-types";
 
 const CURRENT_USER = "demo.user";
 

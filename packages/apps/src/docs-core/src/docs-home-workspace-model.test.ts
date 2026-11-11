@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import {

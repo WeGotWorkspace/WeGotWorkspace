@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
-import type { CalendarInvitee } from "@/calendar-core/src/calendar-attendees";
+import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
 } from "@/calendar-core/src/calendar-share";
-import type { CalendarAPIOperations, CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import { calendarDirectoryGroupsFromBootstrap } from "@/calendar-core/src/calendar-workspace-props";
-import { viewerHasNoTeam } from "@/share-ui/collection-share";
+import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 
 type UseCalendarSharePrincipalsOptions = {
   data: CalendarUIData;

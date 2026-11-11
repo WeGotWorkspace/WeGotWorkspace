@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { HardDrive } from "lucide-react";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/drive-core/src/drive-folder-picker.css";

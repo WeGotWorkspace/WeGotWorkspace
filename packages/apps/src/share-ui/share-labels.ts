@@ -1,4 +1,4 @@
-import type { ShareUIPermission } from "@/share-ui/share-access-map";
+import type { ShareUIPermission } from "@/lib/sharing/share-access-map";
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 /**

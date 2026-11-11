@@ -1,5 +1,5 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/meet-call-bar-roster";
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";

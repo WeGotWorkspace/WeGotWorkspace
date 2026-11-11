@@ -14,7 +14,7 @@ import {
   isSessionEventInvitee,
   isSessionEventOrganizer,
   sessionEventInviteeStatus,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import {
   detailsPopoverAnchorOrigin,
@@ -27,10 +27,10 @@ import {
   type CalendarEventPreviewModel,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";

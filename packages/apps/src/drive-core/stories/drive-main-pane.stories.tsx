@@ -7,7 +7,7 @@ import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-sto
 import { useDrivePaneStoryController } from "@/drive-core/stories/drive-pane-stories.harness";
 import { DarkThemeRoot } from "@/drive-core/stories/drive-story-dark-theme";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 const EMPTY_DRIVE_FILES: DriveFile[] = [];
 

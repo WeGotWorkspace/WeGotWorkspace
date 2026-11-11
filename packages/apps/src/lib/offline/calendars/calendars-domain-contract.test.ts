@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 import {
   calendarsHybridDomainOperations,

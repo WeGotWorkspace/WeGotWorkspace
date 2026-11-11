@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { contactsGroupViewKey } from "@/contacts-core/src/contacts-group-utils";
 import { useContactsPaneStoryController } from "./contacts-pane-stories.harness";

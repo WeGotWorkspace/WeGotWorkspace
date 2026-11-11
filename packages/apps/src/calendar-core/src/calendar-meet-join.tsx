@@ -6,7 +6,7 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   parseCalendarMeetHref,
   type CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import type { ControlSize } from "@/ui/control-size";
 import "./calendar-meet-join.css";
 

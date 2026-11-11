@@ -4,7 +4,7 @@ import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import {
   cachedCollectionAudience,
   cachedItemAudience,

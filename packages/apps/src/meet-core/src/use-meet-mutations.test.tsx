@@ -5,7 +5,7 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mergeMeetRoomChatIntoChannel, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import { useMeetMutations } from "@/meet-core/src/use-meet-mutations";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";

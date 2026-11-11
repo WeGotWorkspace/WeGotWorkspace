@@ -1,4 +1,4 @@
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { DRIVE_DOCS_EDITOR_STORY_FILES } from "@/drive-core/src/drive-docs-story-files";
 
 export const DRIVE_MOCK_FILES: DriveFile[] = [

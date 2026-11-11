@@ -14,7 +14,7 @@ import {
   contactCardToEditDraft,
   type ContactEditDraft,
 } from "@/contacts-core/src/contacts-edit-utils";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 /** What a contact's card is known to hold: the draft it matches, and the card it came from. */
 export type ContactSynced = { json: string; base: string };

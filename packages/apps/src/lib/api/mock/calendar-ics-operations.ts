@@ -4,7 +4,7 @@ import type {
   CalendarFeedInfo,
   CalendarInfo,
   CalendarSubscriptionInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 
 type MockCalendarIcsState = {
   subscriptions: Map<string, CalendarSubscriptionInfo>;

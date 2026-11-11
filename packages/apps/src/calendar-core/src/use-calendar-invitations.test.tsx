@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";

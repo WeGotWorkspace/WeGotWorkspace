@@ -1,5 +1,6 @@
-import type { ShareUIPermission } from "@/share-ui/share-access-map";
-import type { SharePrincipalKind } from "@/share-ui/share-principal-mark";
+import type { ShareUIPermission } from "@/lib/sharing/share-access-map";
+
+export type SharePrincipalKind = "user" | "group";
 
 export const SHARE_GROUP_PREFIX = "groups/";
 

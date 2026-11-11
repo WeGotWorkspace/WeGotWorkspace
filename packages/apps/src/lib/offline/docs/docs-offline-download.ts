@@ -1,4 +1,4 @@
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";

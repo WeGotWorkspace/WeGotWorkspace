@@ -5,7 +5,7 @@ import {
   mergeShareWith,
   type CollectionSharePrincipal,
   type CollectionShareWith,
-} from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import { noPeopleOrTeamsFoundCopy, noTeamYetCopy } from "@/share-ui/share-labels";
 

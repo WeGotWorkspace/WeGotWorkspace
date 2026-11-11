@@ -1,6 +1,6 @@
 import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 

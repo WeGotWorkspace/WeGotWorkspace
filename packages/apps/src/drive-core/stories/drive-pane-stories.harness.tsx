@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 

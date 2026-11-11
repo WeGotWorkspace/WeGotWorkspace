@@ -18,11 +18,7 @@ import type {
   WgwDriveStarsResponse,
   WgwDriveUserData,
 } from "@/lib/api/wgw/types";
-import type {
-  DriveAPIOperations,
-  DriveAppBootstrap,
-  DriveUIData,
-} from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import { DRIVE_READ_BLOB_MAX_BYTES, readResponseBlobWithin } from "@/lib/files/read-blob-limit";

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import {
   FOLDER_LISTING_RETRY_DELAYS_MS,
   isRetryableListingError,

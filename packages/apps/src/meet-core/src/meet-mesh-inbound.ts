@@ -7,7 +7,7 @@ import {
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 import type { PresenceChannelMessage } from "@/presence-core/src/presence-types";
 
 export type MeetMeshChannelAcl = {

@@ -12,7 +12,7 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { NotesListRow } from "@/notes-core/src/notes-list-row";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";

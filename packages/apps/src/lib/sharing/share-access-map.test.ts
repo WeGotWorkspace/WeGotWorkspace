@@ -6,7 +6,7 @@ import {
   NOTES_SHARE_UI_PERMISSIONS,
   SHARE_UI_PERMISSIONS,
   uiPermissionToAccess,
-} from "@/share-ui/share-access-map";
+} from "@/lib/sharing/share-access-map";
 
 describe("share-access-map", () => {
   it("maps UI permissions to API access levels", () => {

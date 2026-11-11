@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
-import { NOTES_SHARE_UI_PERMISSIONS, SHARE_UI_PERMISSIONS } from "@/share-ui/share-access-map";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
+import { NOTES_SHARE_UI_PERMISSIONS, SHARE_UI_PERMISSIONS } from "@/lib/sharing/share-access-map";
 import { ShareLinkSection } from "@/share-ui/share-link-section";
 import { shareLabels } from "@/share-ui/share-labels";
 import { ShareTeamSection } from "@/share-ui/share-team-section";

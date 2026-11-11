@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { ContactsDetailAddressBookSelect } from "./contacts-detail-address-book-select";
 import { defaultContactsLabels } from "./contacts-labels";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 const twoBooks = [
   { id: "default", name: "Ada", isDefault: true },

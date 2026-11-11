@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChatReactionBar } from "@/chat-ui/src/chat-reaction-bar";
-import type { ChatReaction } from "@/chat-ui/src/chat-types";
+import type { ChatReaction } from "@/lib/models/chat-types";
 import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import { CHAT_STORY_CURRENT_USER_ID } from "@/chat-ui/stories/chat-stories.fixtures";
 

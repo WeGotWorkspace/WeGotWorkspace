@@ -1,4 +1,4 @@
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 
 const DOCS_STARRED_PATHS_META_KEY = "docs.starredPaths";

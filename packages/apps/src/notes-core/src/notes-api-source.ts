@@ -6,7 +6,7 @@ import {
   loadNotesBootstrapHybrid,
 } from "@/lib/offline/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 
 export type NotesApiSource = {
   loadBootstrap: () => Promise<NotesAppBootstrap>;

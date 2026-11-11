@@ -3,8 +3,8 @@ import { DriveAccessDetail } from "@/drive-core/src/drive-access-detail";
 import { DriveAccessPersonDrawer } from "@/drive-core/src/drive-access-person-drawer";
 import { DriveAccessTree } from "@/drive-core/src/drive-access-tree";
 import { useDriveAccessController } from "@/drive-core/src/use-drive-access-controller";
-import type { ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import "@/drive-core/src/drive-access.css";
 
 export type DriveAccessPaneProps = {

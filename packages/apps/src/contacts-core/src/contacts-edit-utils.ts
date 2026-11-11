@@ -12,7 +12,7 @@ import type {
   ContactCard,
   ContactCardCreate,
   ContactCardPatch,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 
 export const CONTACTS_CREATE_ID = "__contacts_create__";
 

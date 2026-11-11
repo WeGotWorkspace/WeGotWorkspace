@@ -1,11 +1,8 @@
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
-import type { DriveUnifiedSearchResult } from "@/drive-core/src/drive-types";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
-import {
-  formatBytesCompact,
-  driveLocationLabel,
-  driveShareFlagsFromListing,
-} from "@/drive-core/src/drive-file-utils";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
+import type { DriveUnifiedSearchResult } from "@/lib/files/drive-types";
+import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
+import { driveLocationLabel, driveShareFlagsFromListing } from "@/drive-core/src/drive-file-utils";
+import { formatBytesCompact } from "@/lib/files/file-name-utils";
 
 export { driveLocationLabel } from "@/drive-core/src/drive-file-utils";
 

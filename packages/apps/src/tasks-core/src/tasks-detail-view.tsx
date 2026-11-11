@@ -7,7 +7,7 @@ import { NotesNotebookSelect } from "@/notes-core/src/notes-notebook-select";
 import { Checkbox } from "@/ui/checkbox";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { isTaskCompleted, taskListDotColor, taskListName } from "@/tasks-core/src/tasks-task-utils";
 import { taskFieldControls, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";

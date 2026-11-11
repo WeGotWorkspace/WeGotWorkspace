@@ -3,7 +3,7 @@ import type {
   NotesDirectoryGroup,
   NotesNotebookCollection,
   NotesSharedNotebook,
-} from "@/notes-core/src/notes-types";
+} from "@/lib/models/notes-types";
 
 export type NotesSeedData = {
   notes: Note[];

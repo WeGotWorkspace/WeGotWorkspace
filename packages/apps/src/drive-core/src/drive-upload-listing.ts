@@ -1,8 +1,8 @@
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveUploadBatchRequest } from "@/drive-core/src/drive-upload-batch-dialog";
 import { hasDriveUploadBatchQuestions } from "@/lib/offline/drive/upload/drive-upload-batch-questions";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 
 /**
  * Bring the folder's upload placeholders in `previous` in line with the

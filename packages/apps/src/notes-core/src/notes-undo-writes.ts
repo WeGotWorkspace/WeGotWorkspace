@@ -1,7 +1,7 @@
 import { settleAll, type CompletedWriteKeys } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
 import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
-import type { NoteMetadataField, NotesAPIOperations } from "./notes-types";
+import type { NoteMetadataField, NotesAPIOperations } from "@/lib/models/notes-types";
 
 /**
  * Server writes for Notes actions and their Undo (#1854). Every write sends a delta: one

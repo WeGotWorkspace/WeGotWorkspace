@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { TaskList } from "@/tasks-core/src/tasks-types";
+import type { TaskList } from "@/lib/models/tasks-types";
 import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";
 
 /**

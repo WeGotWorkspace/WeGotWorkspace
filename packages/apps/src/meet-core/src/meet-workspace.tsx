@@ -9,8 +9,8 @@ import {
   sharePrincipalsFromDirectory,
   sharesTeamWithViewer,
   viewerHasNoTeam,
-} from "@/share-ui/collection-share";
-import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
+} from "@/lib/sharing/collection-share";
+import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import {
   meetChannelComposerPlaceholder,
@@ -56,7 +56,7 @@ import {
   findMeetDirectMessagePerson,
   meetDirectMessagePeople,
 } from "@/meet-core/src/meet-direct-messages";
-import type { ChatMessage, MeetChannel } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChannel } from "@/lib/models/meet-types";
 import {
   meetInitialCallLayoutForChannel,
   useMeetCallLayout,

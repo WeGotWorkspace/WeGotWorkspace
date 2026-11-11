@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Smile } from "lucide-react";
 import { REACTION_EMOJIS } from "@/reaction-picker/src/reaction-emojis";
 import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
-import type { ChatReaction } from "@/chat-ui/src/chat-types";
+import type { ChatReaction } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-reaction-bar.css";

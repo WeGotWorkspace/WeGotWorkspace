@@ -1,6 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import type { NotesAPIOperations, NotesUIData } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesUIData } from "@/lib/models/notes-types";
 
 export type NotesWorkspaceProps = {
   data: NotesUIData;

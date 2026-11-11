@@ -3,14 +3,14 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
-import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
 import type { MeetChannelSections } from "@/meet-core/src/meet-channel-partition";
 import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 import {
   MeetDirectMessageRows,
   MeetSidebarRows,

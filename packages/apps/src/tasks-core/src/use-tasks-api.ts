@@ -25,7 +25,7 @@ import { subscribeTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-wri
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import type { TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { TasksUIData } from "@/lib/models/tasks-types";
 import { useTasksLiveInbound } from "@/tasks-core/src/use-tasks-live-inbound";
 import {
   createDefaultTasksApiSource,

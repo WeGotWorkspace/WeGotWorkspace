@@ -16,7 +16,7 @@ import {
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
-import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
+import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import "@/lib/offline/docs/docs-schema";
 
 const listFileNodeEntries = vi.hoisted(() => vi.fn());

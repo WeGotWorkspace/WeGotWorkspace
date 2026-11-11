@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import type { NotesUILabels } from "./notes-labels";
-import type { NotesAPIOperations, NotesUIData } from "./notes-types";
+import type { NotesAPIOperations, NotesUIData } from "@/lib/models/notes-types";
 import { useArchivedNoteFollowsView } from "./use-archived-note-follows-view";
 import { useNoteArchivedElsewhere } from "./use-note-archived-elsewhere";
 import { useNoteCreated } from "./use-note-created";

@@ -1,5 +1,5 @@
 import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
-import type { MeetChannel, MeetChannelKind } from "@/meet-core/src/meet-types";
+import type { MeetChannel, MeetChannelKind } from "@/lib/models/meet-types";
 
 export type MeetGuestInviteChannel = Pick<MeetChannel, "name" | "kind" | "topic">;
 

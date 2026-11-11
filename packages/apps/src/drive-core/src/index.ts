@@ -8,5 +8,5 @@ export type {
   DriveShareMutationOpts,
   DriveUIData,
   DriveAppBootstrap,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-types";
 export { driveLabels } from "@/drive-core/src/drive-labels";
