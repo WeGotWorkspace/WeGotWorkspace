@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwApiBaseUrl, wgwReadJson } from "@/lib/api/wgw/http";
 import type {
   WgwInstallerActionResponse,
@@ -101,7 +102,10 @@ async function requestInstallerAction(
     signal: opts?.signal,
   });
   if (!res.ok) {
-    throw new Error(await readInstallerError(res, `POST /installer/action failed (${res.status})`));
+    throw new WgwRequestError(
+      await readInstallerError(res, `POST /installer/action failed (${res.status})`),
+      res.status,
+    );
   }
   return (await wgwReadJson(res)) as WgwInstallerActionResponse;
 }
@@ -111,8 +115,9 @@ export async function fetchInstallerBootstrap(
 ): Promise<WgwInstallerBootstrapResponse> {
   const res = await installerRequest("/bootstrap", { signal: opts?.signal });
   if (!res.ok) {
-    throw new Error(
+    throw new WgwRequestError(
       await readInstallerError(res, `GET /installer/bootstrap failed (${res.status})`),
+      res.status,
     );
   }
   return (await wgwReadJson(res)) as WgwInstallerBootstrapResponse;

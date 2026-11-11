@@ -6,7 +6,8 @@ vi.mock("@/lib/api/wgw/http", () => ({
 }));
 
 import { wgwFetch } from "@/lib/api/wgw/http";
-import { subscribePush } from "./notifications";
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import { listNotifications, subscribePush } from "./notifications";
 
 describe("subscribePush", () => {
   beforeEach(() => {
@@ -49,5 +50,22 @@ describe("subscribePush", () => {
     await expect(
       subscribePush({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }, "/"),
     ).rejects.toThrow("422");
+  });
+});
+
+describe("notification request failures", () => {
+  beforeEach(() => {
+    vi.mocked(wgwFetch).mockReset();
+  });
+
+  it("throws a WgwRequestError with the same message and the HTTP status", async () => {
+    vi.mocked(wgwFetch).mockResolvedValue(new Response("", { status: 503 }));
+
+    const error = await listNotifications().catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(WgwRequestError);
+    expect((error as WgwRequestError).message).toBe("GET /notifications failed (503)");
+    expect((error as WgwRequestError).status).toBe(503);
+    expect((error as WgwRequestError).name).toBe("Error");
   });
 });

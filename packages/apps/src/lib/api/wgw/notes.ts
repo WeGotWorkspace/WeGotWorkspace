@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { DeleteNotebookAction } from "@/notes-core/src/notes-types";
 import type { Note } from "@/lib/models/note";
@@ -20,13 +21,7 @@ import {
   type NotesVjournalNotebook,
 } from "@/lib/api/wgw/notes-vjournal";
 
-export class NotesRequestError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
+export class NotesRequestError extends ApiError {}
 
 // --- JSON → WGW note shapes --------------------------------------------------------------------
 
