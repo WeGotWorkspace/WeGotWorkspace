@@ -698,6 +698,31 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(await readDriveSyncToken(username)).toBe("6");
   });
 
+  it("moves a Doc renamed elsewhere in every view when the full crawl finds it", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
+    await upsertDriveEntry(username, entry("/users/ada/kept.md", "fn-kept"));
+    const docs = [doc("users/ada/before.md", 1), doc("users/ada/kept.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    await writeDocsListingToCache(username, mine, { results: docs, hasMore: false });
+    fileNodeChanges.mockRejectedValue(
+      new JmapMethodError("FileNode/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    syncDriveMetadataTree.mockImplementation(async () => {
+      await driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username))).delete(
+        "users/ada/before.md",
+      );
+      await upsertDriveEntry(username, entry("/users/ada/after.md", "fn-ren"));
+      return { running: false, total: 2, synced: 2, failed: 0, updatedAt: 1 };
+    });
+    getFileNodes.mockResolvedValue({ accountId: "ada", state: "8", list: [], notFound: [] });
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.usedFullResync).toBe(true);
+    expect(await listed(all)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
+    expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
+  });
+
   it("keeps a Doc with unsaved text in every view when it is deleted elsewhere", async () => {
     const path = "/users/ada/unsaved-view.md";
     await upsertDriveEntry(username, entry(path, "fn-unsaved-view"));

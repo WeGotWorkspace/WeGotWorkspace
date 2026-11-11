@@ -185,10 +185,15 @@ async function fullResync(
   signal?: AbortSignal,
 ): Promise<DriveInboundSyncResult> {
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
+  const before = await cachedPathsByNodeId(username);
   const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
     return { changed: true, listedChanges: true, usedFullResync: true, keptUnsavedPaths: [] };
   }
+  // A full crawl lists, it does not say what moved: the cached Docs views would keep a
+  // renamed Doc at its old name (#1563). Moves only: a node the crawl did not see may
+  // just be out of reach, so nothing is dropped here.
+  await applyDocsInboundChanges(username, await movesSince(username, before));
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   await writeDriveSyncToken(username, state.state);
   return {
@@ -263,7 +268,10 @@ async function applyFileNodeChanges(
 }
 
 /** What Docs needs to know about one placed node: moved from `previous`, or upserted. */
-function docsChangeFor(entry: WgwDriveDirectoryEntry, previous?: string): DocsInboundChange {
+function docsChangeFor(
+  entry: Pick<WgwDriveDirectoryEntry, "type" | "path"> & Partial<WgwDriveDirectoryEntry>,
+  previous?: string,
+): DocsInboundChange {
   const node = {
     directory: entry.type === "dir",
     size: entry.size ?? 0,
@@ -389,6 +397,36 @@ async function cachedPathsByNodeId(username: string): Promise<Map<string, string
     paths.set(nodeId, row.id.startsWith("/") ? row.id : `/${row.id}`);
   }
   return paths;
+}
+
+/** Nodes the Drive cache now has at another path than in `before`, as Docs moves. */
+async function movesSince(
+  username: string,
+  before: ReadonlyMap<string, string>,
+): Promise<DocsInboundChange[]> {
+  const after = await cachedPathsByNodeId(username);
+  const moved = [...before].flatMap(([nodeId, from]) => {
+    const to = after.get(nodeId);
+    return to && to !== from ? [{ from, to }] : [];
+  });
+  // A moved folder takes its contents along; their own moves would repeat it.
+  const folders = moved.map(({ from }) => `${from}/`);
+  const moves: DocsInboundChange[] = [];
+  for (const { from, to } of moved) {
+    if (folders.some((folder) => from.startsWith(folder))) continue;
+    const row = await driveRowAt(username, to);
+    if (!row) continue;
+    moves.push(docsChangeFor({ ...parseEntry(row.data), type: row.type, path: to }, from));
+  }
+  return moves;
+}
+
+function parseEntry(data: string): Partial<WgwDriveDirectoryEntry> {
+  try {
+    return JSON.parse(data) as Partial<WgwDriveDirectoryEntry>;
+  } catch {
+    return {};
+  }
 }
 
 async function pathsForNodeId(username: string, nodeId: string): Promise<string[]> {
