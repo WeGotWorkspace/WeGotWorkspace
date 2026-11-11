@@ -7,9 +7,9 @@ import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/brow
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
-  docsCollabPathKeyedSources,
+  migrateDocsCollabPathDatabaseToIdentity,
   migrateDocsCollabPendingSaveFromLegacy,
-  resolveDocsCollabDatabase,
+  resolveDocsCollabEditorDatabase,
 } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
@@ -529,15 +529,16 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const database = await resolveDocsCollabDatabase(room, urls.nodeId);
+    const database = await resolveDocsCollabEditorDatabase(room, urls.nodeId);
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) {
+      database.release();
       if (refs.ydocRef.current === ydoc) refs.ydocRef.current = null;
       ydoc.destroy();
       return;
     }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
-    rememberCollabRoomJoin(persistence, { room, urls });
+    rememberCollabRoomJoin(persistence, { room, urls }, database.release);
 
     const authTokenPromise = allowServerRequests
       ? refs.wireRef.current
@@ -558,11 +559,9 @@ export function useDocsCollabJoin({
     await persistence.whenSynced;
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
-    await migrateDocsCollabPendingSaveFromLegacy(
-      room,
-      persistence,
-      database.nodeId ? docsCollabPathKeyedSources(room) : undefined,
-    );
+    // By id, the path-keyed copy moves over unless another tab still has it open.
+    if (database.nodeId) await migrateDocsCollabPathDatabaseToIdentity(room, persistence);
+    else await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
 
     loadedStateRef.current = {
       ydoc,

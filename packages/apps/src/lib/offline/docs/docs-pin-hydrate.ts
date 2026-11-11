@@ -4,9 +4,8 @@ import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
-  docsCollabPathKeyedSources,
   docsCollabRoomKey,
-  migrateDocsCollabPendingSaveFromLegacy,
+  migrateDocsCollabPathDatabaseToIdentity,
   resolveDocsCollabDatabase,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
@@ -58,12 +57,9 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
   const persistence = new IndexeddbPersistence(database.name, ydoc);
   try {
     await persistence.whenSynced;
-    if (database.nodeId) {
-      await migrateDocsCollabPendingSaveFromLegacy(
-        room,
-        persistence,
-        docsCollabPathKeyedSources(room),
-      );
+    // An editor still has the path-keyed copy open (#1933): it owns the body.
+    if (database.nodeId && !(await migrateDocsCollabPathDatabaseToIdentity(room, persistence))) {
+      return;
     }
     if (isYDocEmpty(ydoc)) {
       applyContentSeedToYDoc(ydoc, "", documentFormat);
@@ -102,12 +98,11 @@ export async function hydrateDocsCollabForOffline({
 
   try {
     await persistence.whenSynced;
-    if (database.nodeId) {
-      await migrateDocsCollabPendingSaveFromLegacy(
-        room,
-        persistence,
-        docsCollabPathKeyedSources(room),
-      );
+    // An editor still has the path-keyed copy open (#1933). It owns the body
+    // and saves it; filling the id-keyed copy now would leave its text behind
+    // when it later opens by id.
+    if (database.nodeId && !(await migrateDocsCollabPathDatabaseToIdentity(room, persistence))) {
+      return;
     }
 
     if (keepLocalCopy && !isYDocEmpty(ydoc)) return;
