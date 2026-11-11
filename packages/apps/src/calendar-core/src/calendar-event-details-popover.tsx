@@ -241,6 +241,7 @@ export function CalendarEventDetailsPopover({
         controlSize="sm"
         collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
         {...edit}
+        availabilityEventId={editMode === "edit" ? preview.eventId : undefined}
         mode={editMode}
       />
     ) : (
