@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  attendeeRoleFromRoles,
   attendeesEqual,
   attendeesFromParticipants,
+  attendeesIncludeInvitee,
   eventCardRsvpAttr,
   isLikelyEmail,
   isSessionEventInvitee,
   isSessionEventOrganizer,
   listedInviteeAttendees,
+  normalizeParticipationStatus,
   organizerAttendeeForList,
   sessionEventInviteeStatus,
   organizerAddress,
@@ -234,5 +237,33 @@ describe("calendar attendees", () => {
         "carol@example.test",
       ),
     ).toBe(false);
+  });
+
+  it("finds an invitee among attendees by email or by username alias", () => {
+    const carol = { username: "carol", email: "carol@example.test", name: "Carol" };
+    const row = {
+      email: "mailto:Carol@Example.test",
+      name: "Carol",
+      participationStatus: "accepted" as const,
+    };
+    expect(attendeesIncludeInvitee([row], carol)).toBe(true);
+    expect(attendeesIncludeInvitee([], carol)).toBe(false);
+    expect(attendeesIncludeInvitee([{ ...row, email: "dave@example.test" }], carol)).toBe(false);
+  });
+
+  it("normalizes every participation status and falls back to needs-action", () => {
+    expect(normalizeParticipationStatus("ACCEPTED")).toBe("accepted");
+    expect(normalizeParticipationStatus(" Tentative ")).toBe("tentative");
+    expect(normalizeParticipationStatus("declined")).toBe("declined");
+    expect(normalizeParticipationStatus("delegated")).toBe("delegated");
+    expect(normalizeParticipationStatus("needs_action")).toBe("needs-action");
+    expect(normalizeParticipationStatus(undefined)).toBe("needs-action");
+  });
+
+  it("reads the optional role from a role map or a role list", () => {
+    expect(attendeeRoleFromRoles({ optional: true, attendee: false })).toBe("optional");
+    expect(attendeeRoleFromRoles(["optional", ""])).toBe("optional");
+    expect(attendeeRoleFromRoles(["attendee"])).toBe("required");
+    expect(attendeeRoleFromRoles(undefined)).toBe("required");
   });
 });
