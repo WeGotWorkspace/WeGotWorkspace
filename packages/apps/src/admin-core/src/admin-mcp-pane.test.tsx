@@ -11,7 +11,13 @@ import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
 import { shareLabels } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
-afterEach(() => {
+// A save resolves after the test's last assertion and then sets state. Wait for
+// it before teardown, or React runs that update with no window left.
+let pendingSave: Promise<unknown> | null = null;
+
+afterEach(async () => {
+  await pendingSave?.catch(() => undefined);
+  pendingSave = null;
   cleanup();
 });
 
@@ -41,7 +47,9 @@ function Harness({
         opts?: Parameters<AdminAPIOperations["saveSettings"]>[1],
       ) => {
         saveSpy(values, opts);
-        return mock.saveSettings(values, opts);
+        const save = mock.saveSettings(values, opts);
+        pendingSave = save;
+        return save;
       },
     };
   }, [bootstrap.data, saveSpy]);
