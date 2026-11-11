@@ -42,15 +42,11 @@ export type CalendarUILabels = {
   myCalendarsSection: string;
   myCalendarsShowAll: string;
   myCalendarsHideAll: string;
-  myCalendarsCollapse: string;
-  myCalendarsExpand: string;
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
   tasksSectionShowAll: string;
   tasksSectionHideAll: string;
-  tasksSectionCollapse: string;
-  tasksSectionExpand: string;
   /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
@@ -308,8 +304,6 @@ export type CalendarUILabels = {
   teamAvailabilityFilter: string;
   teamAvailabilityNoMatch: string;
   teamAvailabilityIncomplete: string;
-  teamAvailabilityCollapse: string;
-  teamAvailabilityExpand: string;
   teamAvailabilityShowAll: string;
   teamAvailabilityHideAll: string;
   calendarNoticeBarLabel: string;
@@ -363,14 +357,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   myCalendarsSection: "My calendars",
   myCalendarsShowAll: "Show all my calendars",
   myCalendarsHideAll: "Hide all my calendars",
-  myCalendarsCollapse: "Collapse My calendars",
-  myCalendarsExpand: "Expand My calendars",
   sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
   tasksSection: "Reminders",
   tasksSectionShowAll: "Show all reminders",
   tasksSectionHideAll: "Hide all reminders",
-  tasksSectionCollapse: "Collapse Reminders",
-  tasksSectionExpand: "Expand Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
@@ -611,8 +601,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityFilter: "Filter teammates",
   teamAvailabilityNoMatch: "No teammates match",
   teamAvailabilityIncomplete: "Some busy times could not be loaded.",
-  teamAvailabilityCollapse: "Collapse Team availability",
-  teamAvailabilityExpand: "Expand Team availability",
   teamAvailabilityShowAll: "Show all teammates' availability",
   teamAvailabilityHideAll: "Hide all teammates' availability",
   calendarNoticeBarLabel: "Calendar notices",

@@ -30,11 +30,7 @@ export function MyCalendarsSidebarSection({
   onSetVisible: (calendarIds: readonly string[], visible: boolean) => void;
   labels: Pick<
     CalendarUILabels,
-    | "myCalendarsSection"
-    | "myCalendarsShowAll"
-    | "myCalendarsHideAll"
-    | "myCalendarsCollapse"
-    | "myCalendarsExpand"
+    "myCalendarsSection" | "myCalendarsShowAll" | "myCalendarsHideAll"
   >;
 }) {
   const { collapsed, toggleCollapsed } = useCalendarSectionCollapsed("myCalendarsCollapsed");
@@ -44,8 +40,6 @@ export function MyCalendarsSidebarSection({
       title={labels.myCalendarsSection}
       collapsed={collapsed}
       onToggleCollapsed={toggleCollapsed}
-      collapseLabel={labels.myCalendarsCollapse}
-      expandLabel={labels.myCalendarsExpand}
       toggleAll={sectionToggleAll({
         ids,
         isOn: (id) => !rowProps.hiddenCalendarIds.has(id),
