@@ -7,12 +7,16 @@
  * without an update, or is still listed at or under 800.
  * `update` only lowers a stored count or deletes a row that is now <= 800.
  * It never raises a count and never adds a path.
- * `rebaseline` rewrites existing rows to the current line count (may raise).
- * Use it only to refresh a stale baseline after integrating main — not to
- * excuse growth on a feature PR. Never called from CI or done gates.
- * CI (`check-growth`) warns when a count rises or a new baseline row appears
- * versus the PR base. Raising the baseline requires code-owner review of
- * `tools/file-size-baseline.tsv` (not a label bypass).
+ * `rebaseline <reason>` rewrites existing rows to the current line count (may
+ * raise) and stamps each raised row with a `rebaseline <date> <reason>` marker.
+ * Use it only after a counting-rule change or to refresh a stale baseline after
+ * integrating main — not to excuse growth on a feature PR. Never called from CI
+ * or done gates.
+ * CI (`check-growth`) fails when a count rises or a new baseline row appears
+ * versus the PR base, unless that row's reason gains an approval marker the
+ * base row did not have: `approved #<issue>` or `rebaseline …` (#1631). The
+ * marker is visible in the diff; `tools/file-size-baseline.tsv` still needs
+ * code-owner review.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -419,39 +423,76 @@ export function nextBaseline(counts, rows, { ceiling: limit = ceiling } = {}) {
  * @param {{ ceiling?: number }} [options]
  * @returns {{ rows: typeof rows }}
  */
-export function rebaselineRows(counts, rows, { ceiling: limit = ceiling } = {}) {
+export function rebaselineRows(counts, rows, { ceiling: limit = ceiling, why, date } = {}) {
   /** @type {typeof rows} */
   const next = [];
   for (const row of rows) {
     const actual = counts.get(row.path);
     if (actual === undefined || actual <= limit) continue;
-    next.push({ path: row.path, count: actual, reason: row.reason });
+    const raised = actual > row.count && why !== undefined;
+    const reason = raised ? rebaselineReason(row.reason, why, date ?? today()) : row.reason;
+    next.push({ path: row.path, count: actual, reason });
   }
   return { rows: next };
 }
 
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /**
- * Pure growth check: head may lower or delete rows, but must not raise a
- * count or introduce a path that was absent on the base baseline.
- * @param {{ path: string, count: number, reason: string }[]} baseRows
- * @param {{ path: string, count: number, reason: string }[]} headRows
+ * Approval markers in a baseline reason: `approved #<issue>` and
+ * `rebaseline <date> <reason>`. Markers end at `;` or a tab.
+ * @param {string} reason
  * @returns {string[]}
  */
-export function baselineGrowthErrors(baseRows, headRows) {
+export function approvalMarkers(reason) {
+  const markers = String(reason).match(/\bapproved #\d+\b|\brebaseline [^;\t]+/g) ?? [];
+  return markers.map((marker) => marker.trim());
+}
+
+/**
+ * Growth versus the base baseline, split by whether the head row carries an
+ * approval marker its base row did not have. A marker that was already on the
+ * base row approved an earlier change, not this one.
+ * @param {{ path: string, count: number, reason: string }[]} baseRows
+ * @param {{ path: string, count: number, reason: string }[]} headRows
+ * @returns {{ blocked: string[], approved: string[] }}
+ */
+export function classifyBaselineGrowth(baseRows, headRows) {
+  const baseByPath = new Map(baseRows.map((row) => [row.path, row]));
   /** @type {string[]} */
-  const errors = [];
-  const baseByPath = new Map(baseRows.map((row) => [row.path, row.count]));
-  for (const row of headRows) {
-    if (!baseByPath.has(row.path)) {
-      errors.push(`${row.path}: new baseline row`);
-      continue;
+  const blocked = [];
+  /** @type {string[]} */
+  const approved = [];
+  for (const head of headRows) {
+    const base = baseByPath.get(head.path);
+    let growth = null;
+    if (base === undefined) growth = `${head.path}: new baseline row`;
+    else if (head.count > base.count) {
+      growth = `${head.path}: baseline grew from ${base.count} to ${head.count}`;
     }
-    const baseCount = baseByPath.get(row.path);
-    if (row.count > baseCount) {
-      errors.push(`${row.path}: baseline grew from ${baseCount} to ${row.count}`);
-    }
+    if (growth === null) continue;
+
+    const before = new Set(base === undefined ? [] : approvalMarkers(base.reason));
+    const added = approvalMarkers(head.reason).filter((marker) => !before.has(marker));
+    if (added.length > 0) approved.push(`${growth} (${added.join(", ")})`);
+    else blocked.push(growth);
   }
-  return errors;
+  return { blocked, approved };
+}
+
+/**
+ * Reason for a row that `rebaseline` raised: keeps the old reason and adds a
+ * dated marker that `check-growth` accepts.
+ * @param {string} reason
+ * @param {string} why
+ * @param {string} date YYYY-MM-DD
+ */
+export function rebaselineReason(reason, why, date) {
+  const marker = `rebaseline ${date} ${String(why).replace(/[;\s]+/g, " ").trim()}`;
+  const kept = String(reason).trim();
+  return kept === "" ? marker : `${kept}; ${marker}`;
 }
 
 /** Drop pnpm's forwarded `--` so `pnpm run check:file-size-growth -- <ref>` works. */
@@ -546,10 +587,16 @@ function update() {
   console.log(`File-size baseline updated (${next.length} rows).`);
 }
 
-function rebaseline() {
+function rebaseline(why) {
+  if (!why || why.trim() === "") {
+    console.error(
+      'usage: file-size-ratchet.mjs rebaseline "<reason>" — the reason is stamped on every raised row so check-growth accepts it',
+    );
+    process.exit(2);
+  }
   const counts = countedFiles();
   const rows = readBaseline();
-  const { rows: next } = rebaselineRows(counts, rows, { ceiling });
+  const { rows: next } = rebaselineRows(counts, rows, { ceiling, why });
   writeFileSync(baselinePath, formatBaseline(next));
   console.log(`File-size baseline rebaselined (${next.length} rows).`);
 }
@@ -567,18 +614,25 @@ function checkGrowth(baseRef) {
     process.exit(1);
   }
   const headRows = readBaseline();
-  const warnings = baselineGrowthErrors(baseRows, headRows);
-  if (warnings.length > 0) {
-    console.log(
-      `File-size baseline growth versus ${baseRef} (${warnings.length}); code-owner review of tools/file-size-baseline.tsv is required:\n`,
-    );
-    for (const warning of warnings) {
-      console.log(`::warning title=File-size baseline growth::${warning}`);
-      console.log(`  - ${warning}`);
-    }
-    return;
+  const { blocked, approved } = classifyBaselineGrowth(baseRows, headRows);
+  for (const growth of approved) {
+    console.log(`::warning title=File-size baseline growth (approved)::${growth}`);
+    console.log(`  - approved: ${growth}`);
   }
-  console.log(`File-size baseline growth check passed versus ${baseRef}.`);
+  if (blocked.length > 0) {
+    console.error(
+      `File-size baseline growth versus ${baseRef} without an approval marker (${blocked.length}). ` +
+        "Split the file instead, or add `approved #<issue>` to the row's reason (code-owner review of tools/file-size-baseline.tsv):\n",
+    );
+    for (const growth of blocked) {
+      console.log(`::error title=File-size baseline growth::${growth}`);
+      console.error(`  - ${growth}`);
+    }
+    process.exit(1);
+  }
+  console.log(
+    `File-size baseline growth check passed versus ${baseRef}${approved.length > 0 ? ` (${approved.length} approved)` : ""}.`,
+  );
 }
 
 function main() {
@@ -600,11 +654,11 @@ function main() {
     return;
   }
   if (command === "rebaseline") {
-    rebaseline();
+    rebaseline(rest.join(" "));
     return;
   }
   console.error(
-    "usage: file-size-ratchet.mjs check [tree] | check-growth <baseRef> | update | rebaseline | check-docs",
+    "usage: file-size-ratchet.mjs check [tree] | check-growth <baseRef> | update | rebaseline <reason> | check-docs",
   );
   process.exit(2);
 }
