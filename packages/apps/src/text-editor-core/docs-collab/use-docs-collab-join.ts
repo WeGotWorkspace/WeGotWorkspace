@@ -37,10 +37,12 @@ import {
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
 import {
+  DOC_STATUS_CONNECTING,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
   DOC_STATUS_SNAPSHOT_UNAVAILABLE,
+  docStatusAfterJoinFailure,
 } from "./docs-collab-status";
 import { isCollabDocumentGoneError } from "./docs-collab-utils";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
@@ -463,20 +465,20 @@ export function useDocsCollabJoin({
       const token = {};
       meshJoinInFlightRef.current = token;
       const isCurrent = () => isJoinGenerationCurrent(generation, refs.joinGenerationRef);
-      setDocStatus((prev) => prev || "Connecting to collaborators…");
+      setDocStatus((prev) => prev || DOC_STATUS_CONNECTING);
       setStatus(docsLabels.statusConnecting);
       try {
         const meshPeers = await joinMesh(name, authToken, isCurrent);
         if (meshPeers === null || !isCurrent()) return;
         setConnectingPeers(meshPeers);
         refreshMeshUi();
-        setDocStatus((prev) => (prev === "Connecting to collaborators…" ? "" : prev));
+        setDocStatus((prev) => (prev === DOC_STATUS_CONNECTING ? "" : prev));
         trySeedFromFile();
       } catch (error) {
         if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
-        setDocStatus(error instanceof Error ? error.message : String(error));
+        setDocStatus((prev) => docStatusAfterJoinFailure(prev, error));
       } finally {
         if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }

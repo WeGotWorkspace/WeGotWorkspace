@@ -45,6 +45,26 @@ type Options = {
 };
 
 /**
+ * Where the server's path for `id` leads once this device's queued renames
+ * land (#1563). The server answer predates them: an editor that followed a
+ * rename made offline in another tab would otherwise jump back to the old
+ * name on reconnect or reload, while its text already lives at the new one.
+ * Remembers and records the answer.
+ */
+async function pathAfterQueuedRenames(
+  id: string,
+  serverPath: string,
+  locator: DocsLocatorDeps,
+): Promise<string> {
+  const queued = await locator.queuedRenameTarget(serverPath).catch(() => null);
+  const path = queued ?? serverPath;
+  rememberDocsLocation(id, path);
+  // The server's answer was recorded on the way; record where the queue leads instead.
+  if (queued) await locator.recordLocation(id, queued).catch(() => {});
+  return path;
+}
+
+/**
  * Route search → the Doc to open (#1751). `?id=` resolves to the current path,
  * and is re-checked on `refreshKey` and when the tab is shown again, so a rename
  * elsewhere moves the editor to the new path. `?file=` waits for its id and is
@@ -75,6 +95,8 @@ export function useDocsRouteDocument({
   const checkedIdRef = useRef<string | null>(null);
   /** The id whose editor is mounted now. */
   const openNodeIdRef = useRef<string | null>(null);
+  /** The path the editor has open now. */
+  const openPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -104,8 +126,9 @@ export function useDocsRouteDocument({
       const result = await locateDocsById(id, locator, signal);
       if (signal.aborted) return;
       if (result.kind === "found") {
-        rememberDocsLocation(id, result.path);
-        setIdState({ id, status: "ready", path: result.path });
+        const path = await pathAfterQueuedRenames(id, result.path, locator);
+        if (signal.aborted) return;
+        setIdState({ id, status: "ready", path });
         return;
       }
       // Once open, a Doc that is gone or unreachable stays mounted: the
@@ -183,7 +206,6 @@ export function useDocsRouteDocument({
 
   const retry = useCallback(() => setRecheck((n) => n + 1), []);
 
-  const openPathRef = useRef<string | null>(null);
   /**
    * A save to the open path was refused as gone. `true` when the id lives
    * elsewhere now and the editor moves there; `false` when it is really gone.
@@ -191,9 +213,10 @@ export function useDocsRouteDocument({
   const relocate = useCallback(async (): Promise<boolean> => {
     if (!id || !canResolve) return false;
     const result = await locateDocsById(id, locator).catch(() => null);
-    if (result?.kind !== "found" || result.path === openPathRef.current) return false;
-    rememberDocsLocation(id, result.path);
-    setIdState({ id, status: "ready", path: result.path });
+    if (result?.kind !== "found") return false;
+    const path = await pathAfterQueuedRenames(id, result.path, locator);
+    if (path === openPathRef.current) return false;
+    setIdState({ id, status: "ready", path });
     return true;
   }, [canResolve, id, locator]);
 

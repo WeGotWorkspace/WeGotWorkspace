@@ -40,6 +40,7 @@ final class FileNodeIndexService
         private readonly FileNodeContentHasher $hasher,
         private readonly FileNodeRootMarkers $markers,
         private readonly FileNodeSequence $seq,
+        private readonly FileNodeDepartures $departures,
     ) {}
 
     // ---------------------------------------------------------------
@@ -427,6 +428,7 @@ final class FileNodeIndexService
         }
 
         $newParent = $this->ensureParentIndexed($toKey);
+        $moved = [['node_id' => (string) $row->node_id, 'from_key' => $fromKey]];
 
         $fromPrefix = $fromKey.'/';
         $descendants = JmapFileNode::query()
@@ -437,6 +439,7 @@ final class FileNodeIndexService
             if (! str_starts_with((string) $descendant->storage_key, $fromPrefix)) {
                 continue;
             }
+            $moved[] = ['node_id' => (string) $descendant->node_id, 'from_key' => (string) $descendant->storage_key];
             $descendant->storage_key = $toKey.'/'.substr((string) $descendant->storage_key, strlen($fromPrefix));
             $descendant->save();
         }
@@ -445,8 +448,12 @@ final class FileNodeIndexService
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $row->change_seq = $this->seq->next();
+        $seq = $this->seq->next();
+        $row->change_seq = $seq;
         $row->save();
+        if ($fromKey !== $toKey) {
+            $this->departures->record($moved, $seq);
+        }
         // Old and new root sets, including share roots inside a moved folder.
         $this->markers->touch($fromKey, withDescendantShares: true);
         $this->markers->touch($toKey, withDescendantShares: true);
@@ -633,6 +640,7 @@ final class FileNodeIndexService
     public function pruneTombstones(int $retentionDays): int
     {
         $cutoff = now()->subDays(max(1, $retentionDays));
+        $this->seq->raisePruned($this->departures->pruneBefore($cutoff));
         $stale = JmapFileNode::query()
             ->whereNotNull('deleted_at')
             ->where('deleted_at', '<', $cutoff)
@@ -688,6 +696,11 @@ final class FileNodeIndexService
                 $updated[] = $nodeId;
             }
         }
+        // Nodes that moved out of sight are destroyed for this caller (#2036).
+        array_push($destroyed, ...$this->departures->destroyedSince(
+            $since,
+            fn (string $key): bool => $this->isVisibleKey($key, $roots),
+        ));
 
         return [
             'created' => array_values(array_unique($created)),

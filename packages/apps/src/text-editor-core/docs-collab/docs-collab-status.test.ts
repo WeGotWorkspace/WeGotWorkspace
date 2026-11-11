@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  DOC_STATUS_CONNECTING,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_NOTE_TOO_LARGE,
   DOC_STATUS_RESTORED_WORKING_VERSION,
+  docStatusAfterJoinFailure,
   isSaveFailureDocStatus,
   isToastDocStatus,
   isTransientDocStatus,
@@ -41,5 +43,19 @@ describe("isSaveFailureDocStatus / isToastDocStatus", () => {
     expect(isToastDocStatus("Save failed: invalid_markdown")).toBe(true);
     expect(isToastDocStatus("Editing offline")).toBe(false);
     expect(isToastDocStatus("Connecting to collaborators…")).toBe(false);
+  });
+});
+
+describe("docStatusAfterJoinFailure", () => {
+  it("does not show a network failure: offline is the indicator's job (#1563)", () => {
+    const offline = new TypeError("Failed to fetch");
+    expect(docStatusAfterJoinFailure(DOC_STATUS_CONNECTING, offline)).toBe("");
+    expect(docStatusAfterJoinFailure("Editing offline", offline)).toBe("Editing offline");
+  });
+
+  it("shows any other failure as it is", () => {
+    expect(docStatusAfterJoinFailure(DOC_STATUS_CONNECTING, new Error("Room is full"))).toBe(
+      "Room is full",
+    );
   });
 });

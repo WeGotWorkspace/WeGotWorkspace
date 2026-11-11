@@ -1,6 +1,9 @@
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+
 export const TRANSIENT_DOC_STATUS_DISMISS_MS = 4000;
 
 export const DOC_STATUS_LOADING_DOCUMENT = "Loading document…";
+export const DOC_STATUS_CONNECTING = "Connecting to collaborators…";
 export const DOC_STATUS_LOADED_SHARED_DOCUMENT = "Loaded shared document";
 export const DOC_STATUS_RESTORED_WORKING_VERSION = "Restored working version";
 export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";
@@ -40,4 +43,16 @@ export function isSaveFailureDocStatus(status: string): boolean {
  */
 export function isToastDocStatus(status: string): boolean {
   return isTransientDocStatus(status) || isSaveFailureDocStatus(status);
+}
+
+/**
+ * The footer status after joining collaborators failed. A network failure
+ * (offline, or the server out of reach) is not news: the connection indicator
+ * already says so, and edits are kept locally. So it only clears the
+ * "Connecting…" line instead of showing the raw "Failed to fetch" (#1563).
+ * Any other error is shown as it is.
+ */
+export function docStatusAfterJoinFailure(previous: string, error: unknown): string {
+  if (isFetchNetworkError(error)) return previous === DOC_STATUS_CONNECTING ? "" : previous;
+  return error instanceof Error ? error.message : String(error);
 }
