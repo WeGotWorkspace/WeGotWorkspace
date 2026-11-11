@@ -2,7 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!--
+      The one iOS focus-zoom stop for the whole suite: iOS Safari zooms the page when
+      a field or editor under 16px gets focus; `maximum-scale=1` stops that, so text
+      keeps its desktop size on phones. iOS still allows pinch-zoom. Runtime HTML copies
+      this tag (`readViewportMeta`); `pwa-document-shell.test.ts` guards it.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

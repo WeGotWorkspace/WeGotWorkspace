@@ -142,6 +142,9 @@ export type TasksUILabels = {
   selectionMoveDescription: string;
   selectionDone: string;
   moveConfirm: string;
+  /** Moving the open task to another list (same confirm as Notes and Contacts). */
+  moveTaskTitle: string;
+  moveTaskDescription: (listName: string) => string;
   deleteSelectedTitle: (count: number) => string;
   deleteSelectedBody: (count: number) => string;
   toastTasksCompleted: (count: number) => string;
@@ -320,6 +323,8 @@ export const defaultTasksLabels: TasksUILabels = {
   selectionMoveDescription: "Choose a list for the selected tasks.",
   selectionDone: workspaceLabels.dialog.done,
   moveConfirm: workspaceLabels.dialog.move,
+  moveTaskTitle: "Move task?",
+  moveTaskDescription: (listName) => `Move this task to “${listName}”?`,
   deleteSelectedTitle: (count) => (count === 1 ? "Delete task?" : `Delete ${count} tasks?`),
   deleteSelectedBody: (count) =>
     count === 1

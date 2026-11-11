@@ -135,6 +135,43 @@ describe("TasksDetailView", () => {
     expect(onSave).toHaveBeenCalledWith(task.id, expect.objectContaining({ priority: 1 }));
   });
 
+  it("moves to another list only once the move is confirmed", () => {
+    const onConfirmMove = vi.fn<(listName: string, move: () => void) => void>();
+    const { task, onSave } = renderDetail({ onConfirmMove });
+    const target = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
+
+    fireEvent.click(screen.getByRole("combobox", { name: L.addTaskList }));
+    fireEvent.click(screen.getByRole("option", { name: target.name }));
+
+    // Asked, not moved: Cancel is simply never calling `move`.
+    expect(onConfirmMove).toHaveBeenCalledTimes(1);
+    expect(onConfirmMove).toHaveBeenCalledWith(target.name, expect.any(Function));
+    expect(onSave).not.toHaveBeenCalled();
+
+    act(() => {
+      onConfirmMove.mock.calls[0][1]();
+    });
+    expect(onSave).toHaveBeenCalledWith(task.id, expect.objectContaining({ listId: target.id }));
+  });
+
+  it("keeps the list when the move is cancelled", () => {
+    vi.useFakeTimers();
+    const onConfirmMove = vi.fn();
+    const { task, onSave } = renderDetail({ onConfirmMove });
+    const target = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
+
+    fireEvent.click(screen.getByRole("combobox", { name: L.addTaskList }));
+    fireEvent.click(screen.getByRole("option", { name: target.name }));
+    act(() => {
+      vi.advanceTimersByTime(TASK_DETAIL_SAVE_DEBOUNCE_MS);
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: L.addTaskList }).textContent).not.toContain(
+      target.name,
+    );
+  });
+
   it("saves what was typed when the task closes before the pause ends", () => {
     vi.useFakeTimers();
     const { task, onSave, unmount } = renderDetail();

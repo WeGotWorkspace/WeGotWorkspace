@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSlashMenu } from "@/text-editor-core/src/text-editor-slash-menu";
 import { TextEditorTableControls } from "@/text-editor-core/src/text-editor-table-controls";
+import { useTextEditorFitScale } from "@/text-editor-core/src/use-text-editor-fit-scale";
 import "@/ui/paper-sheet.css";
 
 export type TextEditorSheetVariant = "sheet" | "inline";
@@ -22,6 +23,8 @@ export type TextEditorSheetProps = {
   pageBreak?: boolean;
   /** Docs pages on screen: the surface drops its sheet chrome, each page draws its own. */
   paginated?: boolean;
+  /** With pages: pages wider than the sheet shrink to fit it. */
+  fitToScreen?: boolean;
   /** Absolutely positioned overlays (e.g. margin comment cards). */
   overlay?: ReactNode;
   className?: string;
@@ -38,17 +41,20 @@ export function TextEditorSheet({
   onInsertImage,
   pageBreak = false,
   paginated = false,
+  fitToScreen = false,
   overlay,
   className,
 }: TextEditorSheetProps) {
-  // BEM block/modifiers must NOT pass through `cn` (tailwind-merge): it treats
-  // the shared `text-` prefix as one utility group and keeps only the last
-  // `text-editor-sheet*` class, silently dropping the base + co-modifiers (e.g.
-  // `--fill` next to `--paginated`). `clsx` preserves every class as authored.
+  useTextEditorFitScale(editor, fitToScreen && paginated && variant === "sheet");
+
   const onChromeMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     focusTextEditorFromChromeEvent(event, editor);
   };
 
+  // BEM block/modifiers must NOT pass through `cn` (tailwind-merge): it treats
+  // the shared `text-` prefix as one utility group and keeps only the last
+  // `text-editor-sheet*` class, silently dropping the base + co-modifiers (e.g.
+  // `--fill` next to `--paginated`). `clsx` preserves every class as authored.
   return (
     <div
       className={clsx(

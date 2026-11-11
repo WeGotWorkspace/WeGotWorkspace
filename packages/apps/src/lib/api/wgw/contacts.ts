@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import type {
   AddressBook,
   ContactCard,
@@ -31,14 +32,7 @@ import {
   checkNowAfterWrite,
 } from "@/lib/offline/core/collection-check-now";
 
-export class ContactsRequestError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
+export class ContactsRequestError extends ApiError {}
 
 /**
  * JmapClient fetches sessionUrl and the session's absolute apiUrl verbatim;

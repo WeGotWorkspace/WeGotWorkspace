@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import {
   downloadFileNodeWithTicket,
   downloadFolderAsZipWithTicket,
@@ -104,7 +105,7 @@ async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
 
 async function fetchAllDirectoryEntries(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /files/children failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /files/children failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
   return payload.data.files;
 }
@@ -258,7 +259,8 @@ function createSharedDriveOperations(): Pick<
       params.set("search", query.trim());
       params.set("limit", String(Math.min(100, opts?.limit ?? 100)));
       const res = await wgwFetch(`/files?${params.toString()}`, { signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files?search= failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`GET /files?search= failed (${res.status})`, res.status);
       const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
       return payload.data.files.filter(isVisibleDriveEntry);
     },
@@ -342,7 +344,8 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
     },
     async readFileBlob(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`GET /files/content failed (${res.status})`, res.status);
       const name = parentAndName(path).from || "download";
       return readResponseBlobWithin(res, DRIVE_READ_BLOB_MAX_BYTES, name);
     },

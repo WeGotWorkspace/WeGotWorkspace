@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   JmapCalendarsClient,
@@ -247,12 +248,9 @@ export async function deleteCalendarLive(calendarId: string, client?: JmapClient
   checkNowAfterWrite([before]);
 }
 
-export class CalendarImportError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
+export class CalendarImportError extends ApiError {
+  constructor(message: string, status: number) {
+    super(message, status);
     this.name = "CalendarImportError";
   }
 }
