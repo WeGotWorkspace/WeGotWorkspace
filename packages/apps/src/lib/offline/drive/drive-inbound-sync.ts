@@ -404,11 +404,19 @@ async function movesSince(
   username: string,
   before: ReadonlyMap<string, string>,
 ): Promise<DocsInboundChange[]> {
-  const after = await cachedPathsByNodeId(username);
   const moves: DocsInboundChange[] = [];
   for (const [nodeId, from] of before) {
-    const to = after.get(nodeId);
-    if (!to || to === from) continue;
+    // A Doc with unsaved text keeps its old row while the crawl upserts the new
+    // path, so one node id can have several rows; the destination is the one
+    // path that differs from `from`.
+    const bare = (path: string): string => path.replace(/^\/+/, "");
+    const rows = await driveEntriesTable(accountDb(username))
+      .where("nodeId")
+      .equals(nodeId)
+      .toArray();
+    const others = new Set(rows.map((r) => bare(r.id)).filter((id) => id !== bare(from)));
+    if (others.size !== 1) continue;
+    const to = `/${[...others][0]}`;
     const row = await driveRowAt(username, to);
     // Each file carries its own from and to; a folder move would also drag along
     // children that were deleted or moved elsewhere in the same window.

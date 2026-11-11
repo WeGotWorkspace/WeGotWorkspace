@@ -25,6 +25,7 @@ import {
   upsertDriveEntry,
   writeDriveBootstrapToCache,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import "@/lib/offline/drive/drive-schema";
 import {
@@ -739,7 +740,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
       const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
       for (const id of [
         "users/ada/Plans",
-        "users/ada/Plans/keep.md",
+        // keep.md stays: a Doc with unsaved text keeps its old row during the crawl.
         "users/ada/Plans/out.md",
         "users/ada/Plans/gone.md",
       ]) {
@@ -752,8 +753,15 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     });
     getFileNodes.mockResolvedValue({ accountId: "ada", state: "9", list: [], notFound: [] });
 
+    const heard: Array<[string, string]> = [];
+    const stop = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
     await syncDriveInboundFromFileNodes(username);
+    stop();
 
+    expect(heard.map(([from, to]) => [from.replace(/^\//, ""), to.replace(/^\//, "")])).toEqual([
+      ["users/ada/Plans/keep.md", "users/ada/Archive/keep.md"],
+      ["users/ada/Plans/out.md", "users/ada/Loose.md"],
+    ]);
     const rows = (await listed(all)) ?? [];
     expect(rows).toContain("users/ada/Archive/keep.md");
     expect(rows).toContain("users/ada/Loose.md");
