@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { CalendarDays, Globe, Sun } from "lucide-react";
+import { useId, useMemo } from "react";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -11,7 +10,8 @@ import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
 
 export type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
@@ -37,6 +37,8 @@ export function CalendarEventFormWhen({
   disabled,
   onFieldChange,
 }: CalendarEventFormWhenProps) {
+  const allDayId = useId();
+  const timeZoneId = useId();
   const timeZoneOptions = useMemo(
     () => eventTimeZoneOptions(locale, labels.eventTimeZoneLocalLabel, form.timeZone),
     [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
@@ -46,9 +48,9 @@ export function CalendarEventFormWhen({
     <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--starts"
+        layout="inline"
+        fill
         label={labels.eventStartLabel}
-        labelMode="icon"
-        icon={<CalendarDays className="size-3.5" aria-hidden />}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
@@ -76,9 +78,9 @@ export function CalendarEventFormWhen({
       </FieldLabelRow>
       <FieldLabelRow
         className="calendar-event-dialog__field calendar-event-dialog__field--ends"
+        layout="inline"
+        fill
         label={labels.eventEndLabel}
-        labelMode="icon"
-        icon={<CalendarDays className="size-3.5" aria-hidden />}
       >
         <div className="calendar-event-dialog__datetime">
           <LocaleDatePicker
@@ -104,57 +106,44 @@ export function CalendarEventFormWhen({
           </div>
         </div>
       </FieldLabelRow>
-      <div className="calendar-event-dialog__when-meta">
+      <FieldLabelRow
+        className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
+        layout="inline"
+        label={labels.eventAllDayLabel}
+        htmlFor={allDayId}
+      >
+        <Switch
+          id={allDayId}
+          checked={form.allDay}
+          onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
+          disabled={disabled}
+        />
+      </FieldLabelRow>
+      {!form.allDay ? (
         <FieldLabelRow
-          className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
-          label={labels.eventAllDayLabel}
-          labelMode="icon"
-          icon={<Sun className="size-3.5" aria-hidden />}
+          className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
+          layout="inline"
+          label={labels.eventTimeZoneLabel}
+          htmlFor={timeZoneId}
         >
-          <div className="calendar-event-dialog__all-day">
-            <Switch
-              checked={form.allDay}
-              onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
-              aria-label={labels.eventAllDayLabel}
-              disabled={disabled}
-            />
-            <span className="calendar-event-dialog__all-day-caption" aria-hidden>
-              {labels.eventAllDayLabel}
-            </span>
-          </div>
-        </FieldLabelRow>
-        {!form.allDay ? (
-          <FieldLabelRow
-            className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
-            label={labels.eventTimeZoneLabel}
-            labelMode="icon"
-            icon={<Globe className="size-3.5" aria-hidden />}
+          <Select
+            value={eventTimeZoneSelectValue(form.timeZone)}
+            onValueChange={(value) =>
+              onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))
+            }
+            disabled={disabled}
           >
-            <Select
-              value={eventTimeZoneSelectValue(form.timeZone)}
-              onValueChange={(value) =>
-                onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))
-              }
-              disabled={disabled}
-            >
-              <SelectTrigger
-                size={controlSize}
-                className="calendar-event-dialog__timezone-trigger"
-                aria-label={labels.eventTimeZoneLabel}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {timeZoneOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldLabelRow>
-        ) : null}
-      </div>
+            <CollectionGhostSelectTrigger id={timeZoneId} label={<SelectValue />} />
+            <SelectContent align="end" className="max-h-72">
+              {timeZoneOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldLabelRow>
+      ) : null}
     </div>
   );
 }

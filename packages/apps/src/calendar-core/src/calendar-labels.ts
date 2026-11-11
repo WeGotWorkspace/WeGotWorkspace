@@ -117,6 +117,7 @@ export type CalendarUILabels = {
   toastFeedPublished: string;
   toastFeedUnpublished: string;
   toastFeedCopied: string;
+  toastMeetLinkReplaced: string;
   toastFeedFailed: string;
   toastCalendarSaveFailed: string;
   viewsSection: string;
@@ -162,6 +163,8 @@ export type CalendarUILabels = {
   eventLocationPlaceholder: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
+  /** Row caption of the meeting link in the event form. */
+  eventMeetLinkLabel: string;
   /** Accessible name for the Meet actions menu trigger. */
   eventMeetAdd: string;
   /** Menu item: generate an ad-hoc meeting link. */
@@ -263,8 +266,8 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
-  /** Busy invited teammate (#1614): appended to the participant tag's accessible name. */
-  eventAttendeesAvailabilityBusyStatus: string;
+  /** Busy invited teammate (#1614): the warning tag beside their name. */
+  eventAttendeesAvailabilityBusyTag: string;
   /** Busy tooltip heading. */
   eventAttendeesAvailabilityBusyWith: string;
   /** Busy tooltip row for a period without a title (owner shares the time only). */
@@ -437,6 +440,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastFeedPublished: "Calendar published",
   toastFeedUnpublished: "Feed unpublished",
   toastFeedCopied: "Link copied",
+  toastMeetLinkReplaced: "New meeting link created. The old link no longer works.",
   toastFeedFailed: "Could not update calendar feed",
   toastCalendarSaveFailed: "Could not save calendar",
   viewsSection: "Views",
@@ -478,6 +482,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventLocationPlaceholder: "Add location",
   eventMeetSectionTitle: "Meet",
+  eventMeetLinkLabel: "Meeting link",
   eventMeetAdd: "Create Meet Room URL",
   eventMeetNewLink: "New meeting link",
   eventMeetPickChannel: "Attach a Meet channel link",
@@ -567,7 +572,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
-  eventAttendeesAvailabilityBusyStatus: "busy at this time",
+  eventAttendeesAvailabilityBusyTag: "Busy",
   eventAttendeesAvailabilityBusyWith: "Busy at this time",
   eventAttendeesAvailabilityBusyUntitled: "Busy",
   eventAttendeesAvailabilityAllDay: "All day",

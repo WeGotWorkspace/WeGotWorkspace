@@ -68,7 +68,6 @@ export type CalendarMeetCardProps = {
   /** `field` matches the flat event-form FieldLabelRow chrome (popover / redesigned dialog). */
   presentation?: "card" | "field";
   className?: string;
-  fieldIcon?: ReactNode;
   /** Shared control height (`sm` / 32px in dialogs and the event popover). Default `sm`. */
   controlSize?: ControlSize;
   onChange: (next: CalendarEventFormValue) => void;
@@ -160,7 +159,6 @@ export function CalendarMeetCard({
   emailGuestHint,
   presentation = "card",
   className,
-  fieldIcon,
   controlSize = "sm",
   abandonStagedReserveRef,
   onChange,
@@ -269,6 +267,7 @@ export function CalendarMeetCard({
         { meetingUrl: href, meetRoomCode: room },
         onChange,
       );
+      if (replaceExisting) showSuccess(labels.toastMeetLinkReplaced);
     } finally {
       inflightRef.current = false;
       setReserving(false);
@@ -378,9 +377,9 @@ export function CalendarMeetCard({
       return (
         <FieldLabelRow
           className={cn("calendar-event-dialog__meet", className)}
-          label={labels.eventMeetSectionTitle}
-          labelMode="icon"
-          icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
+          layout="inline"
+          fill
+          label={labels.eventMeetLinkLabel}
         >
           {readonlyRow}
         </FieldLabelRow>
@@ -476,9 +475,9 @@ export function CalendarMeetCard({
     return (
       <FieldLabelRow
         className={cn("calendar-event-dialog__meet", className)}
-        label={labels.eventMeetSectionTitle}
-        labelMode="icon"
-        icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
+        layout="inline"
+        fill
+        label={labels.eventMeetLinkLabel}
       >
         <div className="calendar-event-dialog__meet-field">
           {urlRow}

@@ -45,141 +45,36 @@
   gap: 0.5rem;
 }
 
+/*
+ * Rows of the suite dialog norm (`FieldLabelRow layout="inline"`): caption start,
+ * control end, one hairline between rows; a section (Participants) stands apart by a
+ * gap. Groups and bands are only wrappers, so every row is a direct grid item.
+ */
 .calendar-dialog-surface .calendar-event-dialog__fields {
-  /*
-   * Uniform gap between standalone fields and group wrappers.
-   * In-group rhythm uses --calendar-event-field-group-gap on `.field-group`.
-   */
-  --calendar-event-field-gap: 1rem; /* 16px — between groups / standalone fields */
-  --calendar-event-field-group-gap: 0.5rem; /* 8px — within Location+Meet / When */
   @apply grid min-h-0 flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto;
-  column-gap: 0.75rem;
-  row-gap: var(--calendar-event-field-gap);
   overscroll-behavior: contain;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__field--title {
-  grid-column: 1 / -1;
+.calendar-dialog-surface .calendar-event-dialog__field-group,
+.calendar-dialog-surface .calendar-event-dialog__secondary,
+.calendar-dialog-surface .calendar-event-dialog__secondary-start,
+.calendar-dialog-surface .calendar-event-dialog__secondary-end {
+  display: contents;
 }
 
-/*
- * Own vertical rhythm: grid/flex `gap` only. Kill FieldLabelRow mb-4 and any
- * leaked `.field-label-row + .field-label-row { mt-* }` from other surfaces.
- */
-.calendar-dialog-surface .calendar-event-dialog__fields .field-label-row,
-.calendar-dialog-surface .calendar-event-dialog__fields .calendar-event-dialog__field {
-  margin-top: 0;
-  margin-bottom: 0;
-  min-width: 0;
+/* Rows sit in different wrappers, so the hairline is set here, not by sibling rules. */
+.calendar-dialog-surface .calendar-event-dialog__fields .field-label-row--inline {
+  border-top: 1px solid var(--workspace-divider-color);
 }
 
-.calendar-dialog-surface .calendar-event-dialog__field--location {
-  grid-column: 1 / -1;
+.calendar-dialog-surface .calendar-event-dialog__fields .calendar-event-dialog__field--title {
+  @apply pt-0;
+  border-top: 0;
 }
 
-/**
- * Location+Meet and When (starts → ends → all-day/timezone).
- * Parent `.fields` owns the larger between-group gap; groups only tighten inside.
- */
-.calendar-dialog-surface .calendar-event-dialog__field-group {
-  grid-column: 1 / -1;
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: var(--calendar-event-field-group-gap);
-}
-
-/* All-day + timezone share one row inside the When group. */
-.calendar-dialog-surface .calendar-event-dialog__when-meta {
-  display: flex;
-  min-width: 0;
-  /* Equal-height columns, then center each FieldLabelRow’s icon + control. */
-  align-items: stretch;
-  /* Wider than in-row icon→control gap so all-day and timezone read as two sections. */
-  gap: 1.25rem;
-  /*
-   * Shared track height for icons, toggle, caption, and Select.
-   * Compact form remaps --field-label-icon-min-height to the sm field height.
-   */
-  --when-meta-row-height: var(
-    --field-label-icon-min-height,
-    var(--input-height, var(--control-height-md, 2.25rem))
-  );
-  min-height: var(--when-meta-row-height);
-}
-
-/*
- * FieldLabelRow--icon defaults to mb-4 / last:mb-0 and items-start.
- * Zero margin (incl. leaked sibling mt) and center contents on one midline.
- */
-.calendar-dialog-surface .calendar-event-dialog__when-meta > .field-label-row--icon {
-  display: flex;
-  align-items: center;
-  margin-top: 0;
-  margin-bottom: 0;
-  min-height: var(--when-meta-row-height);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__when-meta .field-label-row__icon-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  min-height: var(--when-meta-row-height);
-  height: var(--when-meta-row-height);
-  line-height: 0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__when-meta .field-label-row__control {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  min-width: 0;
-  flex: 1 1 auto;
-  min-height: var(--when-meta-row-height);
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__when-meta
-  > .calendar-event-dialog__field--all-day {
-  flex-shrink: 0;
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__when-meta
-  > .calendar-event-dialog__field--timezone {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__all-day {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  box-sizing: border-box;
-  min-height: var(--when-meta-row-height);
-  height: var(--when-meta-row-height);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__all-day .switch {
-  /* Switch defaults to align-self:flex-start; keep it on the shared center line. */
-  align-self: center;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__all-day-caption {
-  font-size: 0.875rem;
-  line-height: 1;
-  color: var(--field-label-color, var(--workspace-foreground));
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__when-meta
-  .calendar-event-dialog__timezone-trigger {
-  box-sizing: border-box;
-  min-height: var(--when-meta-row-height);
-  height: var(--when-meta-row-height);
+.calendar-dialog-surface .calendar-event-dialog__fields .field-label-row--section {
+  @apply mt-6;
+  border-top: 0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form--compact {
@@ -196,34 +91,12 @@
   @apply min-h-8;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__repeat-stack {
-  @apply flex flex-col gap-2;
-}
-
 .calendar-dialog-surface .calendar-event-dialog__meet-field {
   @apply flex flex-col gap-2;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__show-as-field {
-  @apply flex min-w-0 flex-col gap-2;
-}
-
 .calendar-dialog-surface .calendar-event-dialog__alarms-field {
   @apply flex flex-col gap-2;
-}
-
-.calendar-dialog-surface .calendar-invitees-card__field-body {
-  @apply flex flex-col gap-2;
-}
-
-/*
- * Invitees / Alarms / Description stay direct participants in `.fields` gap
- * (no nested secondary gap doubling the rhythm).
- */
-.calendar-dialog-surface .calendar-event-dialog__secondary,
-.calendar-dialog-surface .calendar-event-dialog__secondary-start,
-.calendar-dialog-surface .calendar-event-dialog__secondary-end {
-  display: contents;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__card {
@@ -236,12 +109,6 @@
 
 .calendar-dialog-surface .calendar-event-dialog__card .card__header-row .button {
   @apply shrink-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
-.calendar-dialog-surface .calendar-event-dialog__timezone-trigger,
-.calendar-dialog-surface .calendar-event-dialog__show-as-trigger {
-  @apply w-full min-w-0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {

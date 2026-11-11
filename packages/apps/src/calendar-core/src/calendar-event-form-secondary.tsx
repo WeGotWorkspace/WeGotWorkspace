@@ -1,4 +1,4 @@
-import { Bell, StickyNote, Users } from "lucide-react";
+import { useId } from "react";
 import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
@@ -27,6 +27,8 @@ export type CalendarEventFormSecondaryProps = {
   canSubmitEmail: boolean;
   noTeam?: boolean;
   sessionEmail?: string;
+  /** The viewer, for their own participant row. */
+  self?: CalendarInvitee;
   controlSize: ControlSize;
   meetEmailGuestHint?: string;
   hideInvitees?: boolean;
@@ -50,6 +52,7 @@ export function CalendarEventFormSecondary({
   canSubmitEmail,
   noTeam = false,
   sessionEmail,
+  self,
   controlSize,
   meetEmailGuestHint,
   hideInvitees = false,
@@ -58,6 +61,7 @@ export function CalendarEventFormSecondary({
   availabilityEventId,
   onFieldChange,
 }: CalendarEventFormSecondaryProps) {
+  const notesId = useId();
   // Planning aid for whoever edits the event; a read-only view asks nothing.
   const availability = useInviteeAvailability({
     form,
@@ -72,7 +76,6 @@ export function CalendarEventFormSecondary({
           <CalendarInviteesCard
             className="calendar-event-dialog__field calendar-event-dialog__field--invitees"
             presentation="field"
-            fieldIcon={<Users className="size-3.5" aria-hidden />}
             attendees={form.attendees}
             invitees={invitees}
             contactCards={contactCards}
@@ -83,6 +86,7 @@ export function CalendarEventFormSecondary({
             canSubmitEmail={canSubmitEmail}
             noTeam={noTeam}
             sessionEmail={sessionEmail}
+            self={self}
             controlSize={controlSize}
             meetEmailGuestHint={meetEmailGuestHint}
             availability={availability}
@@ -95,9 +99,9 @@ export function CalendarEventFormSecondary({
         {hideAlarms ? null : (
           <FieldLabelRow
             className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
+            layout="inline"
+            fill
             label={labels.eventAlarmsLabel}
-            labelMode="icon"
-            icon={<Bell className="size-3.5" aria-hidden />}
           >
             <div className="calendar-event-dialog__alarms-field">
               <CalendarAlarmsRows
@@ -115,16 +119,16 @@ export function CalendarEventFormSecondary({
         {hideNotes ? null : (
           <FieldLabelRow
             className="calendar-event-dialog__field calendar-event-dialog__field--notes"
+            layout="inline"
+            fill
             label={labels.eventNotesLabel}
-            labelMode="icon"
-            icon={<StickyNote className="size-3.5" aria-hidden />}
+            htmlFor={notesId}
           >
             <Textarea
+              id={notesId}
               size={controlSize}
               value={form.description}
               onChange={(event) => onFieldChange("description", event.target.value)}
-              placeholder={labels.eventNotesLabel}
-              aria-label={labels.eventNotesLabel}
               disabled={fieldsDisabled}
               rows={3}
             />

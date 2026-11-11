@@ -1,3 +1,4 @@
+import { CalendarClock } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -43,7 +44,6 @@ import {
 } from "@/lib/meetings/meet-route-search";
 import "@/calendar-core/src/calendar-workspace.css";
 import "@/meet-core/src/meet-channel-dialog.css";
-import "./meet-create-meeting-dialog.css";
 
 export type MeetCreateMeetingDialogProps = {
   open: boolean;
@@ -348,11 +348,14 @@ export function MeetCreateMeetingDialog({
         hideInvitees: false,
         hideNotes: !scheduled,
         meetCopyOnly: true,
+        inviteesFirst: true,
       }}
       afterMeetAccessory={
         mode === "create" ? (
           <FieldLabelRow
             layout="inline"
+            section
+            icon={<CalendarClock aria-hidden />}
             label={meetLabels.scheduleMeeting}
             htmlFor={scheduleSwitchId}
           >
@@ -372,6 +375,7 @@ export function MeetCreateMeetingDialog({
       meetOperations={meetOperations}
       workspaceOrigin={workspaceOrigin}
       sessionUsername={sessionUsername}
+      sessionDisplayName={sessionDisplayName}
       sessionEmail={sessionEmail}
       contactCards={contactCards}
       invitees={resolvedInvitees}

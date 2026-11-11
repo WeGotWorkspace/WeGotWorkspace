@@ -332,7 +332,7 @@
   --input-height: calc(var(--control-height-md) + var(--input-height-step));
   --input-padding-x: 0.875rem;
   /*
-   * Control type scale (shared by Input, Button, Select, UserChip, …).
+   * Control type scale (shared by Input, Button, Select, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16, on phones too: the
    * iOS focus zoom is stopped once, by the viewport tag in `index.html`.

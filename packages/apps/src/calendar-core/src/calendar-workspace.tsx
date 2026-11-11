@@ -1047,6 +1047,7 @@ export function CalendarWorkspace({
                   canSubmitEmail: invitations.canSubmitEmail,
                   sessionEmail,
                   sessionUsername: session.user.username,
+                  sessionDisplayName: session.user.displayName,
                   meetOperations,
                   workspaceOrigin,
                   onJoinMeeting,
@@ -1072,6 +1073,7 @@ export function CalendarWorkspace({
                     canSubmitEmail: invitations.canSubmitEmail,
                     sessionEmail,
                     sessionUsername: session.user.username,
+                    sessionDisplayName: session.user.displayName,
                     recurrenceId: editor.recurrenceId,
                     thisInstanceLocked:
                       Boolean(editor.recurrenceId) &&
@@ -1106,6 +1108,7 @@ export function CalendarWorkspace({
                       invitees: invitations.invitees,
                       sessionEmail,
                       sessionUsername: session.user.username,
+                      sessionDisplayName: session.user.displayName,
                       meetOperations,
                       workspaceOrigin,
                       onJoinMeeting,
@@ -1178,6 +1181,7 @@ export function CalendarWorkspace({
           noTeam={attendeePickerNoTeam}
           sessionEmail={sessionEmail}
           sessionUsername={session.user.username}
+          sessionDisplayName={session.user.displayName}
           meetOperations={meetOperations}
           workspaceOrigin={workspaceOrigin}
           onJoinMeeting={onJoinMeeting}

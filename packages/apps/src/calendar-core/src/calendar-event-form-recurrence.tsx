@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { Repeat } from "lucide-react";
+import { useId, useMemo } from "react";
 import {
   patchCalendarEventForm,
   type CalendarEventFormValue,
@@ -13,6 +12,7 @@ import {
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
 import type { ControlSize } from "@/ui/control-size";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
@@ -44,6 +44,7 @@ export function CalendarEventFormRecurrence({
   onChange,
   onFieldChange,
 }: CalendarEventFormRecurrenceProps) {
+  const repeatId = useId();
   const recurrenceLocked = form.recurrencePreset === "custom";
   const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
   const recurrenceOptions = useMemo(() => {
@@ -68,32 +69,11 @@ export function CalendarEventFormRecurrence({
   return (
     <FieldLabelRow
       className="calendar-event-dialog__field calendar-event-dialog__field--repeat"
+      layout="inline"
       label={labels.eventRepeatLabel}
-      labelMode="icon"
-      icon={<Repeat className="size-3.5" aria-hidden />}
-    >
-      <div className="calendar-event-dialog__repeat-stack">
-        <Select
-          value={form.recurrencePreset}
-          onValueChange={(value) => setRecurrencePreset(value as EditableRecurrencePresetId)}
-          disabled={recurrenceLocked || disabled}
-        >
-          <SelectTrigger
-            size={controlSize}
-            className="calendar-event-dialog__repeat-trigger"
-            aria-label={labels.eventRepeatLabel}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {recurrenceOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {showRecurrenceEnds ? (
+      htmlFor={repeatId}
+      below={
+        showRecurrenceEnds ? (
           <div className="calendar-event-dialog__recurrence-ends">
             <Select
               value={form.recurrenceEnds}
@@ -146,8 +126,23 @@ export function CalendarEventFormRecurrence({
               </div>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        ) : null
+      }
+    >
+      <Select
+        value={form.recurrencePreset}
+        onValueChange={(value) => setRecurrencePreset(value as EditableRecurrencePresetId)}
+        disabled={recurrenceLocked || disabled}
+      >
+        <CollectionGhostSelectTrigger id={repeatId} label={<SelectValue />} />
+        <SelectContent align="end">
+          {recurrenceOptions.map((option) => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </FieldLabelRow>
   );
 }
