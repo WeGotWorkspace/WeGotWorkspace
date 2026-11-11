@@ -124,11 +124,6 @@
   @apply min-w-0 truncate;
 }
 
-.collection-sidebar-row__name-leading {
-  @apply inline-flex shrink-0 items-center;
-  margin-inline-end: calc(var(--spacing, 0.25rem) * 1);
-}
-
 .collection-sidebar-row__mark {
   @apply inline-flex size-3.5 shrink-0 items-center justify-center;
   color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
