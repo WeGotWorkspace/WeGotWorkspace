@@ -13,9 +13,20 @@
  * import each other in both directions where one side is an app package
  * (the #1638 cycle count; allowlisted directions count as a side).
  *
- * The totals match the `warn` count of the rule in a normal lint run. The
- * script always exits 0: the rule is a warning while #1638 is in progress.
+ * The totals match the `warn` count of the rule in a normal lint run.
+ *
+ * Baseline (#1642 candidate 4, "warn mode with a baseline"):
+ *
+ *   lint:boundaries --check    exit 1 when an edge is new or has more files
+ *                              than scripts/import-boundaries-baseline.json
+ *   lint:boundaries --update   lower the baseline to today's counts; it never
+ *                              raises a count and never adds an edge
+ *
+ * An edge that shrank only prints a notice, so a move in #1638 does not have
+ * to touch the baseline in the same pull request. Raising a count or adding
+ * an edge means editing the JSON by hand, which a reviewer sees.
  */
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,6 +38,9 @@ const RULE_ID = "wgw-boundaries/import-boundaries";
 const EDGE = /^Import edge: (\S+) \((\w+)\) -> (\S+) \((\w+)\)\.$/;
 
 const appsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const baselinePath = path.join(appsRoot, "scripts/import-boundaries-baseline.json");
+
+const BASELINE_DOC = "See .agents/skills/apps-ui/import-boundaries.md.";
 
 /**
  * @typedef {{ from: string, fromLayer: string, to: string, toLayer: string,
@@ -139,6 +153,54 @@ export function formatSummary(summary) {
   return out.join("\n");
 }
 
+/**
+ * @param {ReturnType<typeof summarize>} summary
+ * @param {Record<string, number>} baseline files per "from -> to" edge
+ */
+export function compareToBaseline(summary, baseline) {
+  const failures = [];
+  const notices = [];
+  const seen = new Set();
+  for (const edge of summary.edges) {
+    const key = `${edge.from} -> ${edge.to}`;
+    seen.add(key);
+    const allowed = baseline[key];
+    if (allowed === undefined) {
+      failures.push(`new edge ${key} (${edge.files} files). ${BASELINE_DOC}`);
+    } else if (edge.files > allowed) {
+      failures.push(`${key} grew from ${allowed} to ${edge.files} files. ${BASELINE_DOC}`);
+    } else if (edge.files < allowed) {
+      notices.push(`${key} dropped from ${allowed} to ${edge.files} files`);
+    }
+  }
+  for (const key of Object.keys(baseline)) {
+    if (!seen.has(key)) notices.push(`${key} is gone`);
+  }
+  return { failures, notices };
+}
+
+/**
+ * Lower every count to today's value and drop edges that are gone. Never
+ * raises a count, never adds an edge.
+ *
+ * @param {ReturnType<typeof summarize>} summary
+ * @param {Record<string, number>} baseline
+ */
+export function lowerBaseline(summary, baseline) {
+  const current = new Map(summary.edges.map((edge) => [`${edge.from} -> ${edge.to}`, edge.files]));
+  /** @type {Record<string, number>} */
+  const next = {};
+  for (const key of Object.keys(baseline).sort()) {
+    const files = current.get(key);
+    if (files !== undefined) next[key] = Math.min(files, baseline[key]);
+  }
+  return next;
+}
+
+function readBaseline() {
+  return JSON.parse(readFileSync(baselinePath, "utf8")).edges;
+}
+
 async function main() {
   const eslint = new ESLint({
     cwd: appsRoot,
@@ -151,6 +213,28 @@ async function main() {
   });
   const results = await eslint.lintFiles(["src/**/*.{ts,tsx}"]);
   const summary = summarize(collectEdges(results));
+  if (process.argv.includes("--check")) {
+    const { failures, notices } = compareToBaseline(summary, readBaseline());
+    for (const notice of notices) {
+      process.stdout.write(
+        `Notice: ${notice}; pnpm --filter @wgw/apps run lint:boundaries --update can lower the baseline\n`,
+      );
+    }
+    for (const failure of failures) process.stderr.write(`Import boundaries: ${failure}\n`);
+    if (failures.length > 0) process.exit(1);
+    process.stdout.write(
+      `Import-boundary baseline passed (${summary.warnings} import lines in ${summary.files} files).\n`,
+    );
+    return;
+  }
+  if (process.argv.includes("--update")) {
+    const edges = lowerBaseline(summary, readBaseline());
+    writeFileSync(baselinePath, `${JSON.stringify({ edges }, null, 2)}\n`);
+    process.stdout.write(
+      `Wrote ${Object.keys(edges).length} edges to ${path.relative(appsRoot, baselinePath)}\n`,
+    );
+    return;
+  }
   if (process.argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
   } else {
