@@ -90,6 +90,21 @@
   text-box: auto;
 }
 
+/* A title that opens a menu: the ghost dropdown trigger in the title's own face, its
+ * wash not clipped. No negative inset: the wash would touch the controls beside it. */
+.view-header__title--menu {
+  overflow: visible;
+}
+
+.view-header__title-menu.collection-ghost-select {
+  font: inherit;
+  color: inherit;
+  max-width: 100%;
+  margin-inline-start: 0;
+  /* As tall as the header buttons beside it. */
+  min-block-size: var(--control-height-lg, 2.5rem);
+}
+
 @media (width >= 48rem) {
   .view-header__title-block {
     @apply text-base;

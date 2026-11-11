@@ -118,6 +118,8 @@ export type CalendarUILabels = {
   toastCalendarSaveFailed: string;
   viewsSection: string;
   untitledEvent: string;
+  /** Detail pane (list mode) with no event selected. */
+  selectEvent: string;
   allDay: string;
   noEventsInRange: string;
   searchPlaceholder: string;
@@ -434,6 +436,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastCalendarSaveFailed: "Could not save calendar",
   viewsSection: "Views",
   untitledEvent: "Untitled event",
+  selectEvent: "Select an event",
   allDay: "All day",
   noEventsInRange: CALENDAR_LIST_EMPTY_LABEL,
   searchPlaceholder: "Search events…",

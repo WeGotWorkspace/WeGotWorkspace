@@ -26,7 +26,7 @@
 .content > calendar-timeline-view[mode="year"],
 .content > calendar-list-view {
   padding-inline-end: var(--lc-view-inset-inline-end, 0px);
-  padding-block-end: var(--lc-view-scroll-inset-block-end, var(--lc-view-inset-block-end, 0px));
+  padding-block-end: var(--lc-view-inset-block-end, 0px);
 }
 
 /* Fallback enter animation for day/week/month/year swaps (no View Transitions API). */

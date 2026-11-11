@@ -93,8 +93,6 @@ time-line.timeline-main {
   align-items: start;
   overflow-x: hidden;
   overflow-y: auto;
-  /* Scrolls: end clear of the host's floating search bar. */
-  padding-block-end: var(--lc-view-scroll-inset-block-end, var(--lc-view-inset-block-end, 0px));
   /* Breathing room between the sticky all-day shell and the timed grid, in the SCROLLED flow
      (a margin above the timed timeline, not shell padding — the shell stays a fully opaque
      sticky cover, so scrolled cards never peek through). At scrollTop 0 the first gridline

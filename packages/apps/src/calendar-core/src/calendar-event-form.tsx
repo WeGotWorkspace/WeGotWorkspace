@@ -112,6 +112,16 @@ export type CalendarEventFormProps = {
    * `icon`: an icon in front of each field and one column (the event popover).
    */
   fieldLabels?: "caption" | "icon";
+  /**
+   * The host saves each change as it is made (list mode's detail pane): no Save/Cancel,
+   * and an invitee's answer is sent at once.
+   */
+  autosave?: boolean;
+  /**
+   * The calendar dropdown above a large title, as in Tasks and Notes (the event dialog
+   * and list mode's detail pane). Off: a Title row (the popover, Meet).
+   */
+  heading?: boolean;
 };
 
 /** Editable event fields + footer shared by the create dialog and interactive details popover. */
@@ -151,6 +161,8 @@ export function CalendarEventForm({
   autoFocusTitle = true,
   controlSize = "sm",
   fieldLabels = "caption",
+  autosave = false,
+  heading = false,
 }: CalendarEventFormProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   // The viewer as a teammate, so their own participant row reads like the others.
@@ -180,10 +192,16 @@ export function CalendarEventForm({
       isOrganizer,
     });
   const fieldsDisabled = busy || readOnly;
-  const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
-  const showInvitationRsvp = invitationMode && Boolean(onRsvp);
-  const showSaveCancel = !invitationMode && (!readOnly || showInviteeRsvp);
-  const calendarPickerInteractive = invitationMode || showInviteeRsvp;
+  const inviteeCanRespond = mode === "edit" && Boolean(onRsvp) && isInvitee;
+  // With autosave an invitee answers with the RSVP buttons, as on an invitation.
+  const showInviteeRsvp = inviteeCanRespond && !autosave;
+  /** Answers go out at once (an invitation, or an invitee in the autosaving pane). */
+  const answersAtOnce = invitationMode || (autosave && inviteeCanRespond);
+  const showInvitationRsvp = answersAtOnce && Boolean(onRsvp);
+  const showSaveCancel = !autosave && !invitationMode && (!readOnly || showInviteeRsvp);
+  const showFooter =
+    showSaveCancel || showInvitationRsvp || showInviteeRsvp || (Boolean(onDelete) && !readOnly);
+  const calendarPickerInteractive = invitationMode || inviteeCanRespond;
   const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
     incomingRsvp ?? "",
@@ -269,6 +287,7 @@ export function CalendarEventForm({
   const fields = (
     <div className="calendar-event-dialog__fields">
       <CalendarEventFormTitle
+        variant={heading ? "heading" : "row"}
         form={form}
         calendars={calendars}
         labels={labels}
@@ -280,7 +299,7 @@ export function CalendarEventForm({
         hideCalendarPicker={layout?.hideCalendarPicker}
         calendarPickerInteractive={calendarPickerInteractive}
         showInviteeRsvp={showInviteeRsvp}
-        invitationMode={invitationMode}
+        invitationMode={answersAtOnce}
         draftCalendarId={draftCalendarId}
         incomingRsvp={incomingRsvp}
         onDraftCalendarIdChange={setDraftCalendarId}
@@ -414,26 +433,28 @@ export function CalendarEventForm({
           fields
         )}
 
-        <CalendarEventFormFooter
-          mode={mode}
-          labels={labels}
-          busy={busy}
-          controlSize={controlSize}
-          readOnly={readOnly}
-          valid={valid}
-          canSubmit={canSubmit}
-          saveLabel={saveLabel}
-          showInvitationRsvp={showInvitationRsvp}
-          showInviteeRsvp={showInviteeRsvp}
-          showSaveCancel={showSaveCancel}
-          inviteeRsvp={inviteeRsvp}
-          draftRsvp={draftRsvp}
-          draftCalendarId={draftCalendarId}
-          onDraftRsvpChange={setDraftRsvp}
-          onRsvp={onRsvp}
-          onDelete={onDelete}
-          onDismiss={dismiss}
-        />
+        {showFooter ? (
+          <CalendarEventFormFooter
+            mode={mode}
+            labels={labels}
+            busy={busy}
+            controlSize={controlSize}
+            readOnly={readOnly}
+            valid={valid}
+            canSubmit={canSubmit}
+            saveLabel={saveLabel}
+            showInvitationRsvp={showInvitationRsvp}
+            showInviteeRsvp={showInviteeRsvp}
+            showSaveCancel={showSaveCancel}
+            inviteeRsvp={inviteeRsvp}
+            draftRsvp={draftRsvp}
+            draftCalendarId={draftCalendarId}
+            onDraftRsvpChange={setDraftRsvp}
+            onRsvp={onRsvp}
+            onDelete={onDelete}
+            onDismiss={dismiss}
+          />
+        ) : null}
       </form>
       <CalendarMeetChannelEmailDialog
         open={collisionOpen}

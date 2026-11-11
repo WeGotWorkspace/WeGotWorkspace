@@ -5,8 +5,6 @@ import { styleMap } from "lit/directives/style-map.js";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import "../EventCard/EventCard.js";
 import type { CalendarEvent as EventInput } from "@/lib/calendar-engine";
-import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
-import { eventOccurrenceInDisplayZone } from "../utils/event-display-time.js";
 import { renderCalendarIcon } from "../icons/CalendarIcon.js";
 import {
   isCalendarEventException,
@@ -16,26 +14,19 @@ import { clampAgendaDaysPerWeek, daysPerWeekFromInput } from "../utils/DaysPerWe
 import { eventSelectionOriginFromElement } from "../types/CalendarEventRequests.js";
 import { getEventColorStyles } from "../utils/EventColor.js";
 import { resolveLocale } from "../utils/Locale.js";
-import { formatShortTime } from "../utils/TimeFormatting.js";
+import {
+  formatAgendaDayLabel,
+  formatAgendaItemTime,
+  formatAgendaLongDate,
+  formatAgendaWeekday,
+  groupAgendaDays,
+  type AgendaDay,
+  type AgendaItem,
+} from "../utils/agenda-days.js";
 import collectionStateStyle from "@/collection-state/src/collection-state.css?inline";
 import listStickyHeaderStyle from "@/list-sticky-header/src/list-sticky-header.css?inline";
 import { CALENDAR_LIST_EMPTY_LABEL } from "./calendar-list-empty-label.js";
 import componentStyle from "./CalendarListView.css?inline";
-
-type AgendaItem = {
-  id: string;
-  event: EventInput;
-  start: Temporal.PlainDateTime;
-  end: Temporal.PlainDateTime;
-  displayDate: Temporal.PlainDate;
-  continuesFromPreviousDay: boolean;
-  continuesToNextDay: boolean;
-};
-
-type AgendaDay = {
-  date: Temporal.PlainDate;
-  items: AgendaItem[];
-};
 
 @customElement("calendar-list-view")
 export class CalendarListView extends CalendarViewBase {
@@ -225,214 +216,39 @@ export class CalendarListView extends CalendarViewBase {
   }
 
   get #agendaDays(): AgendaDay[] {
-    const grouped = new Map<string, AgendaItem[]>();
     if (this.useEventSet) {
-      for (const [id, event] of (this.events ?? new Map()).entries()) {
-        this.#pushEventDays(grouped, id, event);
-      }
-      return this.#sortedAgendaDays(grouped);
-    }
-
-    const rangeStart = this.startDate;
-    const rangeEndExclusive = rangeStart.add({ days: this.daysPerWeek });
-    const renderedEvents = this.getRenderedEvents({
-      start: rangeStart.toPlainDateTime({ hour: 0, minute: 0, second: 0 }),
-      end: rangeEndExclusive.toPlainDateTime({ hour: 0, minute: 0, second: 0 }),
-    });
-
-    for (const [id, event] of renderedEvents.entries()) {
-      const start = this.#toDisplayDateTime(event);
-      const end = this.#toDisplayEnd(event);
-      if (Temporal.PlainDateTime.compare(end, start) <= 0) continue;
-      if (!this.#eventOverlapsRange(start, end, rangeStart, rangeEndExclusive)) continue;
-      this.#pushEventDays(grouped, id, event, rangeStart, rangeEndExclusive);
-    }
-
-    return this.#sortedAgendaDays(grouped);
-  }
-
-  #pushEventDays(
-    grouped: Map<string, AgendaItem[]>,
-    id: string,
-    event: EventInput,
-    rangeStart?: Temporal.PlainDate,
-    rangeEndExclusive?: Temporal.PlainDate,
-  ) {
-    const start = this.#toDisplayDateTime(event);
-    const end = this.#toDisplayEnd(event);
-    if (Temporal.PlainDateTime.compare(end, start) <= 0) return;
-
-    const eventStartDate = start.toPlainDate();
-    const eventEndDateInclusive = end.subtract({ nanoseconds: 1 }).toPlainDate();
-    const firstDisplayDate =
-      rangeStart && Temporal.PlainDate.compare(eventStartDate, rangeStart) < 0
-        ? rangeStart
-        : eventStartDate;
-    const lastDisplayDate =
-      rangeEndExclusive &&
-      Temporal.PlainDate.compare(eventEndDateInclusive, rangeEndExclusive.subtract({ days: 1 })) > 0
-        ? rangeEndExclusive.subtract({ days: 1 })
-        : eventEndDateInclusive;
-
-    let displayDate = firstDisplayDate;
-    while (Temporal.PlainDate.compare(displayDate, lastDisplayDate) <= 0) {
-      const key = displayDate.toString();
-      const dayItems = grouped.get(key) ?? [];
-      dayItems.push({
-        id,
-        event,
-        start,
-        end,
-        displayDate,
-        continuesFromPreviousDay: Temporal.PlainDate.compare(eventStartDate, displayDate) < 0,
-        continuesToNextDay: Temporal.PlainDate.compare(eventEndDateInclusive, displayDate) > 0,
+      return groupAgendaDays((this.events ?? new Map()).entries(), {
+        timezone: this.timezone,
+        sortDirection: this.sortDirection,
       });
-      grouped.set(key, dayItems);
-      displayDate = displayDate.add({ days: 1 });
     }
-  }
-
-  #sortedAgendaDays(grouped: Map<string, AgendaItem[]>): AgendaDay[] {
-    const days = Array.from(grouped.entries())
-      .sort(([a], [b]) =>
-        Temporal.PlainDate.compare(Temporal.PlainDate.from(a), Temporal.PlainDate.from(b)),
-      )
-      .map(([date, items]) => ({
-        date: Temporal.PlainDate.from(date),
-        items: items.sort((a, b) => this.#compareAgendaItems(a, b)),
-      }));
-    return this.sortDirection === "desc" ? days.reverse() : days;
-  }
-
-  #eventOverlapsRange(
-    start: Temporal.PlainDateTime,
-    end: Temporal.PlainDateTime,
-    rangeStart: Temporal.PlainDate,
-    rangeEndExclusive: Temporal.PlainDate,
-  ): boolean {
-    const rangeStartDateTime = rangeStart.toPlainDateTime({ hour: 0, minute: 0, second: 0 });
-    const rangeEndDateTime = rangeEndExclusive.toPlainDateTime({ hour: 0, minute: 0, second: 0 });
-    return (
-      Temporal.PlainDateTime.compare(start, rangeEndDateTime) < 0 &&
-      Temporal.PlainDateTime.compare(end, rangeStartDateTime) > 0
-    );
-  }
-
-  #compareAgendaItems(a: AgendaItem, b: AgendaItem): number {
-    const startDiff = Temporal.PlainDateTime.compare(a.start, b.start);
-    if (startDiff !== 0) return startDiff;
-    const endDiff = Temporal.PlainDateTime.compare(a.end, b.end);
-    if (endDiff !== 0) return endDiff;
-    return a.event.data.summary.localeCompare(b.event.data.summary);
+    const start = this.startDate;
+    const end = start.add({ days: this.daysPerWeek });
+    const renderedEvents = this.getRenderedEvents({
+      start: start.toPlainDateTime({ hour: 0, minute: 0, second: 0 }),
+      end: end.toPlainDateTime({ hour: 0, minute: 0, second: 0 }),
+    });
+    return groupAgendaDays(renderedEvents.entries(), {
+      timezone: this.timezone,
+      range: { start, end },
+      sortDirection: this.sortDirection,
+    });
   }
 
   #formatDayLabel(date: Temporal.PlainDate): string {
-    return new Intl.DateTimeFormat(this.#resolvedLocale, {
-      month: "short",
-      day: "numeric",
-      ...(this.showYearInHeadings ? { year: "numeric" as const } : {}),
-      timeZone: "UTC",
-    }).format(this.#toDate(date));
+    return formatAgendaDayLabel(this.#resolvedLocale, date, this.showYearInHeadings);
   }
 
   #formatWeekday(date: Temporal.PlainDate): string {
-    return new Intl.DateTimeFormat(this.#resolvedLocale, {
-      weekday: "long",
-      timeZone: "UTC",
-    }).format(this.#toDate(date));
+    return formatAgendaWeekday(this.#resolvedLocale, date);
   }
 
   #formatLongDateLabel(date: Temporal.PlainDate): string {
-    return new Intl.DateTimeFormat(this.#resolvedLocale, {
-      dateStyle: "full",
-      timeZone: "UTC",
-    }).format(this.#toDate(date));
+    return formatAgendaLongDate(this.#resolvedLocale, date);
   }
 
   #formatItemTime(item: AgendaItem): string {
-    if (this.#isAllDayEvent(item.event)) {
-      const startDate = item.start.toPlainDate();
-      const endDate = item.end.subtract({ nanoseconds: 1 }).toPlainDate();
-      if (Temporal.PlainDate.compare(startDate, endDate) === 0) {
-        return item.continuesFromPreviousDay ? "All day (continues)" : "All day";
-      }
-      if (!item.continuesFromPreviousDay && item.continuesToNextDay) {
-        return `All day - until ${this.#formatDate(endDate)}`;
-      }
-      if (item.continuesFromPreviousDay && !item.continuesToNextDay) {
-        return `All day - ends ${this.#formatDate(endDate)}`;
-      }
-      return "All day (continues)";
-    }
-
-    const startsAndEndsSameDay = Temporal.PlainDate.compare(
-      item.start.toPlainDate(),
-      item.end.toPlainDate(),
-    );
-    if (startsAndEndsSameDay === 0) {
-      return `${this.#formatTime(item.start)} - ${this.#formatTime(item.end)}`;
-    }
-    if (!item.continuesFromPreviousDay && item.continuesToNextDay) {
-      return `${this.#formatTime(item.start)} - continues`;
-    }
-    if (item.continuesFromPreviousDay && !item.continuesToNextDay) {
-      return `Continues - ${this.#formatTime(item.end)}`;
-    }
-    if (item.continuesFromPreviousDay && item.continuesToNextDay) {
-      return "Continues";
-    }
-    return `${this.#formatDateTime(item.start)} - ${this.#formatDateTime(item.end)}`;
-  }
-
-  #formatDate(date: Temporal.PlainDate): string {
-    return new Intl.DateTimeFormat(this.#resolvedLocale, {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(this.#toDate(date));
-  }
-
-  #formatDateTime(dateTime: Temporal.PlainDateTime): string {
-    return new Intl.DateTimeFormat(this.#resolvedLocale, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }).format(this.#toDate(dateTime));
-  }
-
-  #formatTime(dateTime: Temporal.PlainDateTime): string {
-    return formatShortTime(this.#resolvedLocale, dateTime);
-  }
-
-  #toDate(value: Temporal.PlainDate | Temporal.PlainDateTime): Date {
-    if (value instanceof Temporal.PlainDate) {
-      return new Date(Date.UTC(value.year, value.month - 1, value.day));
-    }
-    return new Date(
-      Date.UTC(
-        value.year,
-        value.month - 1,
-        value.day,
-        value.hour,
-        value.minute,
-        value.second,
-        value.millisecond,
-      ),
-    );
-  }
-
-  #toDisplayDateTime(event: EventInput): Temporal.PlainDateTime {
-    return eventOccurrenceInDisplayZone(event.data.start, event.data, this.timezone);
-  }
-
-  #toDisplayEnd(event: EventInput): Temporal.PlainDateTime {
-    return eventOccurrenceInDisplayZone(resolvedDataEnd(event.data), event.data, this.timezone);
-  }
-
-  #isAllDayEvent(event: EventInput): boolean {
-    return event.data.allDay === true;
+    return formatAgendaItemTime(this.#resolvedLocale, item);
   }
 
   #isRecurringEvent(event: EventInput): boolean {
