@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\Log;
  * here, never at a call site.
  *
  * Each step is best-effort: the disk change already happened, so a failure
- * is logged and never fails the request.
+ * never fails the request. It logs at error: the index, sidecars or threads
+ * no longer match the disk.
  */
 final class DrivePathBookkeeping
 {
@@ -57,7 +58,6 @@ final class DrivePathBookkeeping
         $this->attempt(
             'drive_share_move_rewrite_failed',
             fn (): int => $this->shares->rewritePathPrefix('/'.$fromKey, '/'.$toKey),
-            'error',
         );
         $this->attempt(
             'docs_thread_path_sync_failed',
@@ -97,12 +97,12 @@ final class DrivePathBookkeeping
      * @param  callable(): T  $operation
      * @return T|null
      */
-    private function attempt(string $event, callable $operation, string $level = 'warning'): mixed
+    private function attempt(string $event, callable $operation): mixed
     {
         try {
             return $operation();
         } catch (\Throwable $e) {
-            Log::log($level, $event, ['error' => $e->getMessage()]);
+            Log::error($event, ['error' => $e->getMessage()]);
 
             return null;
         }

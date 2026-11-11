@@ -77,7 +77,7 @@ class EventDispatchPlugin extends ServerPlugin
             );
         } catch (\Throwable $e) {
             try {
-                Log::warning('event_dispatch_failed', [
+                Log::error('event_dispatch_failed', [
                     'entry' => 'dav_plugin',
                     'method' => $method,
                     'path' => $path,

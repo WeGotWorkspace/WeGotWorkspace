@@ -29,7 +29,7 @@ final class BestEffortSearchIndexSync
     private function logFailure(string $domain, ?string $davPath, ?string $principal, \Throwable $e): void
     {
         try {
-            Log::warning('search_index_sync_failed', [
+            Log::error('search_index_sync_failed', [
                 'domain' => $domain,
                 'dav_path' => $davPath,
                 'principal' => $principal,

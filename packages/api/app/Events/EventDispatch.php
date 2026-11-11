@@ -62,7 +62,7 @@ final class EventDispatch
     private function logFailure(WorkspaceEvent $event, WorkspaceEventListener $listener, \Throwable $e): void
     {
         try {
-            Log::warning('event_dispatch_failed', [
+            Log::error('event_dispatch_failed', [
                 'event_id' => $event->eventId,
                 'domain' => $event->domain,
                 'action' => $event->action,

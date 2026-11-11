@@ -85,7 +85,7 @@ final class JmapNoteStateService
     private function logFailure(string $op, string $username, string $key, QueryException $exception): void
     {
         try {
-            Log::warning('jmap_note_state_failed', [
+            Log::error('jmap_note_state_failed', [
                 'op' => $op,
                 'username' => $username,
                 'key' => $key,

@@ -150,7 +150,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
                 default => $this->index->recordContentWrite($key, $method === 'PUT' ? $this->writtenSha($key) : null),
             };
         } catch (\Throwable $e) {
-            Log::warning('file_node_index_sync_failed', [
+            Log::error('file_node_index_sync_failed', [
                 'method' => $request->getMethod(),
                 'path' => $request->getPath(),
                 'error' => $e->getMessage(),

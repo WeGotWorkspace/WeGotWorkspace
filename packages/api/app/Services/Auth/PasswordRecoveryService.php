@@ -21,6 +21,13 @@ final class PasswordRecoveryService
 {
     public const int TOKEN_TTL_SECONDS = 15 * 60;
 
+    /**
+     * Skip reasons that mean the install cannot send recovery mail at all, so
+     * an admin must act; logged at error. The others come from what the
+     * caller typed and stay warnings.
+     */
+    private const array MISCONFIGURED_REASONS = ['cannot_submit', 'no_public_url'];
+
     public function __construct(
         private MailDeliveryService $mailDelivery,
         private PasswordResetMailFactory $resetMail,
@@ -165,6 +172,7 @@ final class PasswordRecoveryService
 
     private function logSkipped(string $reason): void
     {
-        Log::warning('password-recovery.skipped', ['reason' => $reason]);
+        $level = in_array($reason, self::MISCONFIGURED_REASONS, true) ? 'error' : 'warning';
+        Log::log($level, 'password-recovery.skipped', ['reason' => $reason]);
     }
 }
