@@ -3,7 +3,8 @@
 // Two files go into a new notebook: one with front matter, a paragraph and an
 // inline PNG (uploaded to Drive), one that is only whitespace (skipped). The
 // note shows in the list, in a reload, and in a second tab without a manual
-// refresh. Offline, the menu item is disabled and opens no picker.
+// refresh. Offline, the menu item is disabled and opens no picker. Going
+// offline with the dialog open disables Import, and no notebook is made.
 import { expect, test } from "./helpers/live-test";
 import { prepareNotesForOfflineSync } from "./helpers/notes-live";
 
@@ -99,5 +100,52 @@ test.describe("Notes Markdown import (live app)", () => {
     await page.waitForTimeout(500);
     expect(opened).toBe(false);
     await page.context().setOffline(false);
+  });
+
+  test("offline with the dialog open: Import is disabled and no notebook is made", async ({
+    page,
+  }) => {
+    const notebookName = `Offline import ${Date.now()}`;
+
+    await prepareNotesForOfflineSync(page);
+    await page.getByRole("button", { name: "More create options" }).click();
+    const fileChooser = page.waitForEvent("filechooser");
+    await page.getByRole("menuitem", { name: "Import Markdown files" }).click();
+    await (
+      await fileChooser
+    ).setFiles([{ name: "a.md", mimeType: "text/markdown", buffer: Buffer.from("# A\n") }]);
+
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Notebook" }).click();
+    await page.getByRole("option", { name: /Create notebook|New notebook/i }).click();
+    await dialog.getByLabel("Notebook name").fill(notebookName);
+
+    await page.context().setOffline(true);
+    await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({ timeout: 15_000 });
+    const submit = dialog.getByRole("button", { name: "Import", exact: true });
+    await expect(submit).toBeDisabled();
+    await expect(dialog.getByText("Importing notes needs an internet connection")).toBeVisible();
+    await submit.click({ force: true }).catch(() => undefined);
+
+    await page.context().setOffline(false);
+    await expect(page.locator('[data-connectivity="offline"]')).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await page.reload();
+    await expect(page.getByRole("button", { name: "More create options" })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const names = await page.evaluate(async () => {
+      const accessToken = localStorage.getItem("wgw.api.access_token");
+      const response = await fetch("/api/v1/notes/notebooks", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const body = (await response.json()) as { list?: { name: string }[] };
+      return (body.list ?? []).map((notebook) => notebook.name);
+    });
+    expect(names).not.toContain(notebookName);
+    await expect(page.getByText(notebookName)).toHaveCount(0);
   });
 });

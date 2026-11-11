@@ -25,6 +25,8 @@ export type TasksImportDialogProps = {
   preferredTaskListId?: string;
   busy?: boolean;
   error?: string | null;
+  /** Import is disabled offline, with the reason in the dialog. */
+  offline?: boolean;
   result?: TaskImportResponse | null;
   onClose: () => void;
   onImport: (file: File, destination: IcsImportDestination) => void;
@@ -69,6 +71,7 @@ export function TasksImportDialog({
   preferredTaskListId,
   busy = false,
   error = null,
+  offline = false,
   result = null,
   onClose,
   onImport,
@@ -106,6 +109,7 @@ export function TasksImportDialog({
       defaultColor={DEFAULT_TASK_LIST_COLOR}
       busy={busy}
       error={error}
+      unavailableReason={offline ? L.importOffline : null}
       result={result ? tasksImportResultView(result, L) : null}
       onClose={onClose}
       onImport={onImport}

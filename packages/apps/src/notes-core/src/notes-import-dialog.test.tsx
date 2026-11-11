@@ -45,6 +45,18 @@ describe("NotesImportDialog", () => {
     expect(onImport).toHaveBeenCalledWith(files, { mode: "existing", notebook: notebooks[1] });
   });
 
+  it("disables Import offline and says why", () => {
+    const { onImport } = renderDialog({
+      defaultNotebookId: "work",
+      unavailableReason: L.importOffline,
+    });
+    const submit = screen.getByRole("button", { name: L.importSubmit });
+    expect(submit).toHaveProperty("disabled", true);
+    expect(screen.getByText(L.importOffline)).toBeTruthy();
+    fireEvent.submit(submit.closest("form")!);
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
   it("falls back to the default notebook when the view is not writable", () => {
     const { onImport } = renderDialog({ defaultNotebookId: "shared-read-only" });
     fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));

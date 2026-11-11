@@ -12,12 +12,19 @@ import {
   type NotesMarkdownImportResult,
 } from "@/notes-core/src/notes-markdown-import-run";
 import type { NotesImportDestination } from "@/notes-core/src/notes-import-dialog";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 export type UseNotesMarkdownImportOptions = {
   operations?: Pick<NotesAPIOperations, "markdownImport">;
-  /** Makes the notebook for a "new notebook" destination; undefined when it failed. */
+  /**
+   * Makes the notebook for a "new notebook" destination on the server; undefined
+   * when it failed. Never a stand-in queued offline: every file would fail on it.
+   */
   createNotebook: (name: string) => Promise<NotesNotebookCollection | undefined>;
-  labels: Pick<NotesUILabels, "importedNotes" | "importNoMarkdownFiles" | "importFailed">;
+  labels: Pick<
+    NotesUILabels,
+    "importedNotes" | "importNoMarkdownFiles" | "importFailed" | "importOffline"
+  >;
   /** After a batch that imported at least one note: select the notebook, refresh. */
   onImported?: (notebook: NotesNotebookCollection, notes: Note[]) => void;
   /** Tests pass a no-op so network retries do not wait. */
@@ -109,6 +116,11 @@ export function useNotesMarkdownImport({
         return;
       }
       if (running.current) return;
+      // The dialog may have opened while online.
+      if (!readBrowserOnline()) {
+        setImportError(L.importOffline);
+        return;
+      }
       running.current = true;
       const pending = files.filter((file) => !importedFiles.current.has(file));
       setImportBusy(true);

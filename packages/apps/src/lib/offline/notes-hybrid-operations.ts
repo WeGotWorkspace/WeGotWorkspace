@@ -65,6 +65,10 @@ import {
   settleNoteArchivedElsewhere,
 } from "@/lib/offline/notes/notes-archived-elsewhere";
 
+/** A notebook create that must reach the server (an import) found no connection. */
+export const NOTES_NOTEBOOK_OFFLINE_MESSAGE =
+  "Creating this notebook requires an internet connection";
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -527,6 +531,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         ...(local.groupSlug ? { groupSlug: local.groupSlug } : {}),
       });
       if (!readBrowserOnline()) {
+        if (opts?.requireServer) throw new Error(NOTES_NOTEBOOK_OFFLINE_MESSAGE);
         await upsertNotebookInCache(username, local);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
@@ -542,6 +547,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         await runner.flush();
         return created;
       } catch (error) {
+        if (opts?.requireServer) throw error;
         rethrowUnlessOfflineQueue(error, opts?.signal);
         await upsertNotebookInCache(username, local);
         await enqueueOutboxMutation(username, {

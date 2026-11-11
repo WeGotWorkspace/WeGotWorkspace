@@ -13,6 +13,7 @@ import { notesNotesTable, notesNotebooksTable } from "@/lib/offline/notes/notes-
 import {
   createHybridNotesOperations,
   fetchNotesHybridBootstrap,
+  NOTES_NOTEBOOK_OFFLINE_MESSAGE,
 } from "@/lib/offline/notes-hybrid-operations";
 
 const username = "alice";
@@ -77,6 +78,7 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
 
 import {
   archiveNoteItem,
+  createNotebook as createNotebookApi,
   createNoteItem,
   deleteNoteItem,
   restoreNoteItem,
@@ -771,5 +773,36 @@ describe("fetchNotesHybridBootstrap", () => {
         expect.objectContaining({ name: "Ideas", color: "#ec4899" }),
       ]),
     );
+  });
+
+  describe("a notebook an import creates", () => {
+    it("is not queued offline", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+      await expect(
+        createHybridNotesOperations(username).createNotebook("Imported", { requireServer: true }),
+      ).rejects.toThrow(NOTES_NOTEBOOK_OFFLINE_MESSAGE);
+      expect(createNotebookApi).not.toHaveBeenCalled();
+      expect(await listOutboxMutations(username)).toHaveLength(0);
+    });
+
+    it("is not queued when the network drops during the create", async () => {
+      const dropped = new TypeError("network request failed");
+      vi.mocked(createNotebookApi).mockRejectedValue(dropped);
+
+      await expect(
+        createHybridNotesOperations(username).createNotebook("Imported", { requireServer: true }),
+      ).rejects.toBe(dropped);
+      expect(await listOutboxMutations(username)).toHaveLength(0);
+    });
+
+    it("an ordinary new notebook still queues offline", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+      const local = await createHybridNotesOperations(username).createNotebook("Later");
+
+      expect(local.id).toBe("Later");
+      expect(await listOutboxMutations(username)).toHaveLength(1);
+    });
   });
 });

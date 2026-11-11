@@ -198,4 +198,55 @@ describe("splitElements", () => {
       outside: "a",
     });
   });
+
+  it("skips a longer tag name inside an element and still finds its close", () => {
+    const xml = "<mc:Fallback><mc:FallbackX>x</mc:FallbackX></mc:Fallback>after";
+    expect(splitElements(xml, "mc:Fallback")).toEqual({
+      inside: "<mc:Fallback><mc:FallbackX>x</mc:FallbackX></mc:Fallback>",
+      outside: "after",
+    });
+  });
+});
+
+describe("scanDocx on crafted XML (no tab freeze)", () => {
+  const timed = (body: Record<string, string>) => {
+    const zip = zipSync(Object.fromEntries(Object.entries(body).map(([k, v]) => [k, strToU8(v)])));
+    const started = performance.now();
+    const scan = scanDocx(zip);
+    return { scan, ms: performance.now() - started };
+  };
+
+  it("walks many self-closing children of one element in linear time", () => {
+    const inner = "<mc:Fallback/>".repeat(500_000);
+    const { scan, ms } = timed({
+      "word/document.xml": `<w:document><mc:Fallback>${inner}</mc:Fallback></w:document>`,
+    });
+    expect(scan.ok).toBe(true);
+    expect(ms).toBeLessThan(2_000);
+  }, 20_000);
+
+  it("reads many unterminated tags in linear time", () => {
+    const junk = '<w:t <w:rFonts w:ascii="X" <w:footnote '.repeat(200_000);
+    const { scan, ms } = timed({
+      "word/document.xml": `<w:document>${junk}</w:document>`,
+      "word/header1.xml": junk,
+      "word/footnotes.xml": junk,
+    });
+    expect(scan.ok).toBe(true);
+    expect(ms).toBeLessThan(2_000);
+  }, 20_000);
+
+  it("still counts fonts, notes and header text the same way", () => {
+    const { scan } = timed({
+      "word/document.xml":
+        '<w:document><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr></w:r>' +
+        '<w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/></w:rPr></w:r></w:document>',
+      "word/header1.xml":
+        '<w:hdr><w:p><w:r><w:t xml:space="preserve">Top </w:t><w:t/><w:tab/><w:t>line</w:t></w:r></w:p></w:hdr>',
+      "word/footnotes.xml":
+        '<w:footnotes><w:footnote w:type="separator" w:id="-1"/><w:footnote w:id="1"><w:p/></w:footnote>' +
+        "<w:footnotePr/></w:footnotes>",
+    });
+    expect(scan.ok && scan.counts).toMatchObject({ fonts: 1, footnotes: 1, headersAndFooters: 1 });
+  });
 });

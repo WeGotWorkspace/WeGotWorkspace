@@ -35,6 +35,11 @@ export type TasksUIData = {
 export type TasksMutationOpts = {
   signal?: AbortSignal;
   ifMatch?: string;
+  /**
+   * Fail instead of queueing the write offline: the caller needs the server's
+   * answer now (an import into a new list).
+   */
+  requireServer?: boolean;
 };
 
 /**

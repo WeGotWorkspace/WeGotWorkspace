@@ -63,6 +63,28 @@ describe("TasksImportDialog", () => {
     expect(onImport).toHaveBeenCalledWith(file, { mode: "existing", collectionId: "work" });
   });
 
+  it("disables Import offline and says why", () => {
+    const onImport = vi.fn();
+    renderDialog(
+      <TasksImportDialog
+        open
+        file={file}
+        labels={L}
+        taskLists={bootstrap.data.taskLists}
+        preferredTaskListId="work"
+        offline
+        onClose={vi.fn()}
+        onImport={onImport}
+      />,
+    );
+
+    const submit = screen.getByRole("button", { name: L.importSubmit });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(L.importOffline)).toBeTruthy();
+    fireEvent.submit(submit.closest("form")!);
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
   it("preselects a writable shared list in view", () => {
     const onImport = vi.fn();
     const sharedWritable = {

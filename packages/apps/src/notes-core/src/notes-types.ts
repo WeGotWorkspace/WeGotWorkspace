@@ -83,7 +83,13 @@ export type NotesAPIOperations = {
   restoreNote: (id: string, opts?: { signal?: AbortSignal }) => Promise<Note>;
   createNotebook: (
     name: string,
-    opts?: { signal?: AbortSignal; color?: string | null; groupSlug?: string | null },
+    opts?: {
+      signal?: AbortSignal;
+      color?: string | null;
+      groupSlug?: string | null;
+      /** Fail instead of queueing offline: the caller needs the server's notebook now. */
+      requireServer?: boolean;
+    },
   ) => Promise<NotesNotebookCollection>;
   patchNotebook?: (
     notebookId: string,
