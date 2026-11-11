@@ -23,6 +23,7 @@ import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Switch } from "@/ui/switch";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
 
@@ -101,7 +102,6 @@ export function UserDialog({
           >
             <Input
               id={usernameId}
-              size="sm"
               value={username}
               readOnly={Boolean(initial)}
               onChange={(event) => setUsername(event.currentTarget.value)}
@@ -111,7 +111,6 @@ export function UserDialog({
           <FormField layout="inline" fill label="Display name" htmlFor={displayNameId}>
             <Input
               id={displayNameId}
-              size="sm"
               value={displayName}
               onChange={(event) => setDisplayName(event.currentTarget.value)}
             />
@@ -120,7 +119,6 @@ export function UserDialog({
             <Input
               id={emailId}
               type="email"
-              size="sm"
               value={email}
               onChange={(event) => setEmail(event.currentTarget.value)}
             />
@@ -242,7 +240,6 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <Input
             id={passwordId}
             variant="password"
-            size="sm"
             value={password}
             onChange={(event) => setPassword(event.currentTarget.value)}
           />
@@ -251,7 +248,6 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <Input
             id={confirmPasswordId}
             variant="password"
-            size="sm"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.currentTarget.value)}
           />
@@ -326,7 +322,7 @@ export function GroupDialog({
         <FormField layout="inline" fill label="Team name" htmlFor={nameId}>
           <Input
             id={nameId}
-            size="sm"
+            {...NO_AUTOFILL}
             value={name}
             onChange={(event) => setName(event.currentTarget.value)}
           />

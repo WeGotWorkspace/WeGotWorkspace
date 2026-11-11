@@ -9,9 +9,8 @@ import {
 } from "@/contacts-core/src/contacts-address-book-select";
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
 import { defaultWritableAddressBookId } from "@/contacts-core/src/contacts-addressbook-write";
-import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import "@/contacts-core/src/contacts-create-group-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type ContactsCreateGroupDialogLabels = Pick<
   ContactsUILabels,
@@ -88,10 +87,7 @@ export function ContactsCreateGroupDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className={contentClassName} aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="contacts-create-group-dialog__title">
-            <ContactsGroupIcon book={addressBookId || undefined} />
-            {labels.newGroup}
-          </DialogTitle>
+          <DialogTitle>{labels.newGroup}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -109,8 +105,8 @@ export function ContactsCreateGroupDialog({
             <Input
               ref={nameInputRef}
               id="contacts-create-group-name"
+              {...NO_AUTOFILL}
               autoFocus
-              size="sm"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />

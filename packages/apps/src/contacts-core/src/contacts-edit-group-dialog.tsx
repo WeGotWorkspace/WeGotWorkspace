@@ -27,9 +27,9 @@ import {
   ContactsAddressBookSelect,
   type ContactsAddressBookSelectBook,
 } from "@/contacts-core/src/contacts-address-book-select";
-import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import "@/contacts-core/src/contacts-edit-group-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type ContactsEditGroupDialogLabels = Pick<
   ContactsUILabels,
@@ -119,10 +119,7 @@ export function ContactsEditGroupDialog({
       >
         <DialogContent className={contentClassName}>
           <DialogHeader>
-            <DialogTitle className="contacts-edit-group-dialog__title">
-              <ContactsGroupIcon book={addressBookId || undefined} />
-              {labels.renameGroup}
-            </DialogTitle>
+            <DialogTitle>{labels.renameGroup}</DialogTitle>
             <DialogDescription className="contacts-edit-group-dialog__hint">
               {labels.renameGroupDescription}
             </DialogDescription>
@@ -142,8 +139,8 @@ export function ContactsEditGroupDialog({
             >
               <Input
                 id="contacts-edit-group-name"
+                {...NO_AUTOFILL}
                 autoFocus
-                size="sm"
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
               />

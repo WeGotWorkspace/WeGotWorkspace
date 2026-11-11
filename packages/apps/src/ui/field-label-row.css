@@ -72,12 +72,13 @@
  * Inline (suite norm for dialogs and settings): caption and description start, control
  * end, rows split by the suite hairline. The control lines up with the caption, not
  * with caption + description: a two-row grid, the description alone on the second row.
- * The control column fits its content up to about half the row; a long value
- * truncates. Phones keep two columns; the text wraps.
+ * Two equal columns: caption and description never reach past the middle, the control
+ * never past it the other way (a long value truncates). Phones keep two columns; the
+ * text wraps.
  */
 .field-label-row--inline {
   @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
-  grid-template-columns: minmax(0, 1fr) fit-content(55%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .field-label-row--inline + .field-label-row--inline {
@@ -123,10 +124,6 @@
 }
 
 /* `fill`: a text field takes the whole end column. */
-.field-label-row--fill {
-  grid-template-columns: minmax(0, 1fr) 55%;
-}
-
 .field-label-row--fill .field-label-row__control > * {
   @apply min-w-0 flex-1;
 }

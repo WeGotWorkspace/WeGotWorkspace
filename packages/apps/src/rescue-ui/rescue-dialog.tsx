@@ -22,6 +22,7 @@ import type { ParkedWrite } from "@/lib/offline/core/parked-writes";
 import { groupParkedWrites, type RescueTarget } from "@/lib/offline/core/rescue-parked-writes";
 import type { RescueContainer, RescueView } from "@/rescue-ui/rescue-adapter";
 import "@/rescue-ui/rescue-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type RescueDialogProps<T, C extends RescueContainer> = {
   open: boolean;
@@ -184,6 +185,7 @@ export function RescueDialog<T, C extends RescueContainer>({
               >
                 <Input
                   id={`${id}-new-name`}
+                  {...NO_AUTOFILL}
                   value={newName}
                   onChange={(event) => updateDraft({ newName: event.target.value })}
                   disabled={busy}

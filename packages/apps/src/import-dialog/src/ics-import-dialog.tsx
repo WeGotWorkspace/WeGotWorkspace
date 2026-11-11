@@ -21,6 +21,7 @@ import {
   type IcsImportDestination,
 } from "@/lib/ics-import/ics-file";
 import "./ics-import-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 /** Destination value for "create a new collection" in the destination menu. */
 export const NEW_COLLECTION_IMPORT_VALUE = "__new_collection__";
@@ -199,8 +200,8 @@ export function IcsImportDialog({
               <NameColorRow>
                 <Input
                   id={nameFieldId}
+                  {...NO_AUTOFILL}
                   className={NAME_COLOR_ROW_INPUT_CLASS}
-                  size="sm"
                   value={name}
                   disabled={busy}
                   onChange={(event) => setName(event.target.value)}
@@ -214,7 +215,6 @@ export function IcsImportDialog({
                   <ColorSwatchTrigger
                     color={color}
                     label={labels.colorLabel}
-                    size="sm"
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>

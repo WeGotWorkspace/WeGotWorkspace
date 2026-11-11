@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { Input } from "@/ui/input";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 const TAG_NAME_INPUT_ID = "notes-rename-tag-name";
 
@@ -88,8 +89,7 @@ export function NotesRenameTagDialog({
           <Input
             id={TAG_NAME_INPUT_ID}
             value={draft}
-            size="sm"
-            autoComplete="off"
+            {...NO_AUTOFILL}
             aria-invalid={valid ? undefined : true}
             aria-describedby={hint ? hintId : undefined}
             onChange={(event) => setDraft(event.target.value)}

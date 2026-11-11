@@ -3,6 +3,7 @@ import { Input } from "@/ui/input";
 import { cn } from "@/lib/utils";
 
 import "@/dialogs/src/rename-filename-field.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type RenameFilenameFieldProps = {
   baseName: string;
@@ -56,7 +57,7 @@ export function RenameFilenameField({
         ref={inputRef}
         autoFocus={autoFocus}
         className={className}
-        size="sm"
+        {...NO_AUTOFILL}
         placeholder={placeholder}
         aria-label={ariaLabel}
         value={baseName}
@@ -78,7 +79,7 @@ export function RenameFilenameField({
         ref={inputRef}
         autoFocus={autoFocus}
         className="rename-filename-field__input"
-        size="sm"
+        {...NO_AUTOFILL}
         placeholder={placeholder}
         aria-label={ariaLabel}
         value={baseName}

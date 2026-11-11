@@ -54,7 +54,6 @@ export function MailDeliveryTestDialog({
           <Input
             id="admin-mail-delivery-test-to"
             type="email"
-            size="sm"
             autoComplete="email"
             value={to}
             onChange={(event) => setTo(event.target.value)}

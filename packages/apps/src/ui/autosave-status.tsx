@@ -88,16 +88,21 @@ const STATUS_TONE: Record<AutosaveStatus, TagTone> = {
 };
 
 /**
- * The save state for a dialog header's end slot. When the label changes the tag
- * glides to its new width; Saved fades out after a moment (the tag keeps its place).
+ * The save state for a dialog header's end slot. Hidden until the user changes
+ * something (nothing has been saved yet when the dialog opens). When the label
+ * changes the tag glides to its new width; Saved fades out after a moment (the tag
+ * keeps its place).
  */
 export function AutosaveStatusTag(): ReactNode {
   const status = useContext(AutosaveStatusValueContext);
-  const [faded, setFaded] = useState(false);
+  const [faded, setFaded] = useState(true);
+  const changedRef = useRef(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const widthRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (status !== "saved") changedRef.current = true;
+    if (!changedRef.current) return;
     setFaded(false);
     if (status !== "saved") return;
     const timer = setTimeout(() => setFaded(true), AUTOSAVE_SAVED_VISIBLE_MS);

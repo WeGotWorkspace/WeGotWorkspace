@@ -33,6 +33,7 @@ import type { MeetChannelKind } from "@/lib/models/meet-types";
 import { workspaceOnlySharePrincipals } from "@/calendar-core/src/calendar-meet-channel-email";
 import "@/share-ui/share-ui.css";
 import "./meet-channel-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type MeetChannelDialogState =
   | null
@@ -238,8 +239,8 @@ export function MeetChannelDialog({
             >
               <Input
                 id="meet-channel-name"
+                {...NO_AUTOFILL}
                 autoFocus
-                size="sm"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
               />

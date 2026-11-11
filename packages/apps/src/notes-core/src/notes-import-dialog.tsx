@@ -12,6 +12,7 @@ import type {
   NotesMarkdownImportProgress,
   NotesMarkdownImportResult,
 } from "@/notes-core/src/notes-markdown-import-run";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type NotesImportDestination =
   { mode: "existing"; notebook: NotesNotebookCollection } | { mode: "create"; name: string };
@@ -220,7 +221,7 @@ export function NotesImportDialog({
             >
               <Input
                 id="notes-import-name"
-                size="sm"
+                {...NO_AUTOFILL}
                 value={name}
                 disabled={busy}
                 onChange={(event) => setName(event.target.value)}

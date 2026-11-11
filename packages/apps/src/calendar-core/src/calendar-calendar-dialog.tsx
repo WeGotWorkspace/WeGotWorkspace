@@ -40,6 +40,7 @@ import {
 } from "@/calendar-core/src/calendar-subscription";
 import "@/share-ui/share-ui.css";
 import "./calendar-calendar-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export const CALENDAR_COLOR_SWATCHES = [
   "#6366f1",
@@ -295,8 +296,8 @@ export function CalendarCalendarDialog({
               <NameColorRow>
                 <Input
                   id="calendar-calendar-name"
+                  {...NO_AUTOFILL}
                   className={NAME_COLOR_ROW_INPUT_CLASS}
-                  size="sm"
                   autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
                   disabled={busy || nameReadOnly}
@@ -315,7 +316,6 @@ export function CalendarCalendarDialog({
                   <ColorSwatchTrigger
                     color={selectedColor}
                     label={labels.calendarColorLabel}
-                    size="sm"
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>

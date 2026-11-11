@@ -1,5 +1,0 @@
-@import "../../styles.css" reference;
-
-.contacts-create-group-dialog__title {
-  @apply flex items-center gap-2;
-}

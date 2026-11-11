@@ -33,6 +33,7 @@ import { persistAddressBookColor } from "@/contacts-core/src/contacts-view-prefs
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import "@/share-ui/share-ui.css";
 import "@/contacts-core/src/contacts-addressbook-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type { ContactsAddressBookDialogState };
 
@@ -141,8 +142,8 @@ export function ContactsAddressBookDialog({
                 <NameColorRow>
                   <Input
                     id="contacts-addressbook-name"
+                    {...NO_AUTOFILL}
                     className={NAME_COLOR_ROW_INPUT_CLASS}
-                    size="sm"
                     value={contactsAddressBookDisplayName(
                       {
                         id: dialog.bookId,
@@ -163,7 +164,6 @@ export function ContactsAddressBookDialog({
                     <ColorSwatchTrigger
                       color={selectedColor}
                       label={labels.addressBookColorLabel}
-                      size="sm"
                       aria-haspopup="dialog"
                     />
                   </SwatchColorPicker>

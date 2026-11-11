@@ -8,15 +8,15 @@ type GhostContentProps = {
   /** Before the label: a collection dot, a status or priority icon. */
   leading?: ReactNode;
   label: ReactNode;
-  disabled?: boolean;
 };
 
-function GhostContent({ leading, label, disabled }: GhostContentProps) {
+/** The chevron stays when disabled: the value still reads as a choice, only dimmed. */
+function GhostContent({ leading, label }: GhostContentProps) {
   return (
     <>
       {leading}
       <span className="collection-ghost-select__name">{label}</span>
-      {disabled ? null : <ChevronDown className="collection-ghost-select__chevron" aria-hidden />}
+      <ChevronDown className="collection-ghost-select__chevron" aria-hidden />
     </>
   );
 }
@@ -43,7 +43,7 @@ export const CollectionGhostSelectTrigger = forwardRef<
       disabled={disabled}
       {...props}
     >
-      <GhostContent leading={leading} label={label} disabled={disabled} />
+      <GhostContent leading={leading} label={label} />
     </SelectPrimitive.Trigger>
   );
 });
@@ -62,7 +62,7 @@ export const CollectionGhostButton = forwardRef<HTMLButtonElement, CollectionGho
         disabled={disabled}
         {...props}
       >
-        <GhostContent leading={leading} label={label} disabled={disabled} />
+        <GhostContent leading={leading} label={label} />
       </button>
     );
   },

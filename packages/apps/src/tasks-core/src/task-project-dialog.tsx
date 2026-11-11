@@ -30,6 +30,7 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";
 import "./task-project-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type TaskProjectDialogState =
   | null
@@ -252,8 +253,8 @@ export function TaskProjectDialog({
               <NameColorRow>
                 <Input
                   id="task-project-name"
+                  {...NO_AUTOFILL}
                   className={NAME_COLOR_ROW_INPUT_CLASS}
-                  size="sm"
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
