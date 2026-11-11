@@ -13,6 +13,7 @@ import {
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { cn } from "@/lib/utils";
 import { Tag, type TagTone } from "@/tag/src/tag";
+import { glideSize } from "@/ui/size-glide";
 import "@/ui/autosave-status.css";
 
 /**
@@ -26,10 +27,6 @@ export type AutosaveStatus = "saved" | "saving" | "unsaved";
 
 /** How long Saved stays before it fades: long enough to read, then out of the way. */
 export const AUTOSAVE_SAVED_VISIBLE_MS = 2000;
-
-/** The tag resizes to its new label like the list rows move (same easing). */
-const RESIZE_DURATION_MS = 200;
-const RESIZE_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 type AutosaveStatusApi = {
   report: (id: string, status: AutosaveStatus | null) => void;
@@ -120,12 +117,7 @@ export function AutosaveStatusTag(): ReactNode {
     for (const animation of running) animation.cancel();
     const next = tag.getBoundingClientRect().width;
     widthRef.current = next;
-    if (previous === null || Math.abs(previous - next) < 1) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    tag.animate([{ width: `${previous}px` }, { width: `${next}px` }], {
-      duration: RESIZE_DURATION_MS,
-      easing: RESIZE_EASING,
-    });
+    if (previous !== null) glideSize(tag, "width", previous, next);
   }, [status]);
 
   return (

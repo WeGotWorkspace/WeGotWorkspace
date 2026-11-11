@@ -6,7 +6,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { DialogCloseButton } from "@/ui/dialog-close-button";
 import { withNestedLayerDismissGuard } from "@/ui/dialog-nested-layer";
-import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
+import { useLayerAttachRef } from "@/ui/inert-outside-layer";
+import { attachCenteredModal } from "@/ui/modal-layer";
 import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
@@ -39,7 +40,9 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContentLayer = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->((props, ref) => <DialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+>((props, ref) => (
+  <DialogPrimitive.Content ref={useLayerAttachRef(ref, attachCenteredModal)} {...props} />
+));
 DialogContentLayer.displayName = "DialogContentLayer";
 
 const DialogContent = React.forwardRef<

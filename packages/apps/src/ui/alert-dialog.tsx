@@ -7,7 +7,8 @@ import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 import "@/ui/overlay-paper.css";
 import { buttonVariants } from "@/button/src/button";
-import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
+import { useLayerAttachRef } from "@/ui/inert-outside-layer";
+import { attachCenteredModal } from "@/ui/modal-layer";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -34,7 +35,9 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContentLayer = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->((props, ref) => <AlertDialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+>((props, ref) => (
+  <AlertDialogPrimitive.Content ref={useLayerAttachRef(ref, attachCenteredModal)} {...props} />
+));
 AlertDialogContentLayer.displayName = "AlertDialogContentLayer";
 
 const AlertDialogContent = React.forwardRef<
