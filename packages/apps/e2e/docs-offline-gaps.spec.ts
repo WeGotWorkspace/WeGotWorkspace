@@ -7,6 +7,7 @@
 //    delete and Shared with me say they need a connection.
 // 4. "Changes synced" only shows once changes reached the server.
 // 5. No "Failed to fetch" and no uncaught error anywhere on Docs home offline.
+// 6. Text typed while reconnect moves an offline-created Doc onto its id stays (#1933).
 import { expect, test, type BrowserContext, type Page, type Route } from "./helpers/live-test";
 import {
   appendToActiveDocBody,
@@ -465,5 +466,105 @@ test("gap 5: Docs home offline shows no Failed to fetch and throws nothing", asy
 
   await context.setOffline(false);
   await page.waitForTimeout(5000);
+  expect(errors).toEqual([]);
+});
+
+/** IndexedDB names this tab can see, for the collab copies of one Doc. */
+async function databaseNames(page: Page): Promise<string[]> {
+  return page.evaluate(async () =>
+    (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : [])),
+  );
+}
+
+test("gap 6: text typed while reconnect moves an offline-created Doc onto its id stays", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const id = run();
+  const base = `Gaps race ${id}`;
+  const apiPath = `${HOME}/${base}.md`;
+  const typedOffline = `offline-${id}`;
+  const typedOnReconnect = `reconnect-${id}`;
+  const typedAfterMove = `aftermove-${id}`;
+  await gotoDocsHome(page);
+  await page.waitForTimeout(2000);
+  await goOffline(context, page);
+
+  await page.getByRole("button", { name: "New document" }).first().click();
+  const dialog = page.getByRole("dialog");
+  // The picker opens on Drives, or already inside Personal on a fresh account.
+  await expect(dialog.getByText("Personal").first()).toBeVisible();
+  const personalRow = dialog.getByRole("row", { name: "Personal" });
+  if (await personalRow.count()) await personalRow.click();
+  await dialog.getByRole("textbox").first().fill(base);
+  await dialog
+    .getByRole("button", { name: /create/i })
+    .last()
+    .click();
+  await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
+  await appendToActiveDocBody(page, typedOffline);
+  await page.waitForTimeout(2000);
+  const pathDb = `${apiPath.replace(/^\/+/, "")}:v2`;
+  expect(await databaseNames(page)).toContain(pathDb);
+
+  // Hold the listing that starts background hydration until the id is known,
+  // and every save, so only the local copies can carry the text over a reload.
+  let releaseListing: () => void = () => undefined;
+  const listingHeld = new Promise<void>((resolve) => {
+    releaseListing = resolve;
+  });
+  const holdListing = async (route: Route) => {
+    await listingHeld;
+    await route.fallback();
+  };
+  let releaseSaves: () => void = () => undefined;
+  const savesHeld = new Promise<void>((resolve) => {
+    releaseSaves = resolve;
+  });
+  const holdSaves = async (route: Route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    await savesHeld;
+    return route.fallback().catch(() => undefined);
+  };
+  await context.route("**/api/v1/search/results**", holdListing);
+  await context.route("**/api/v1/files/collaboration**", holdSaves);
+
+  await context.setOffline(false);
+  // The queued create reaches the server, and Docs learns the file's id.
+  await expect.poll(() => serverText(apiPath), { timeout: 45_000 }).not.toBeNull();
+  await expect.poll(() => editorNodeId(page), { timeout: 30_000 }).not.toBe("");
+  const nodeId = editorNodeId(page);
+  await appendToActiveDocBody(page, typedOnReconnect);
+  await page.waitForTimeout(1000);
+
+  // Background hydration now runs for the open Doc.
+  releaseListing();
+  await expect
+    .poll(async () => (await databaseNames(page)).includes(`${nodeId}:v3`), { timeout: 30_000 })
+    .toBe(true);
+  await page.waitForTimeout(2000);
+  await appendToActiveDocBody(page, typedAfterMove);
+  await page.waitForTimeout(2000);
+
+  await page.reload();
+  await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
+  for (const token of [typedOffline, typedOnReconnect, typedAfterMove]) {
+    await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 15_000 });
+  }
+
+  // A second tab opened by id shows the same text.
+  const second = await context.newPage();
+  errors.push(...watchErrors(second));
+  await second.goto(`/docs?id=${nodeId}`);
+  await expect(second.locator(".ProseMirror")).toContainText(typedAfterMove, { timeout: 30_000 });
+
+  releaseSaves();
+  await context.unroute("**/api/v1/files/collaboration**", holdSaves);
+  await context.unroute("**/api/v1/search/results**", holdListing);
+  for (const token of [typedOffline, typedOnReconnect, typedAfterMove]) {
+    await expect.poll(() => serverText(apiPath), { timeout: 45_000 }).toContain(token);
+  }
   expect(errors).toEqual([]);
 });

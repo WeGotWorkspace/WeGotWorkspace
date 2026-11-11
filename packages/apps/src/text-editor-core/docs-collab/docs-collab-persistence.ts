@@ -6,6 +6,10 @@ import { readDocsNodeIdForPath } from "@/lib/offline/docs/docs-node-paths";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 import { readOfflineDocsUsername, readOfflineDriveUsername } from "@/lib/offline/offline-session";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
+import {
+  holdDocsCollabPathDatabase,
+  withDocsCollabPathDatabaseFree,
+} from "./docs-collab-path-db-lock";
 import { isYDocEmpty } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
@@ -102,6 +106,27 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
   }
 }
 
+/**
+ * Moves the path-keyed copy and pre-v2 names into the identity database just
+ * opened. Skips, and resolves `false`, while an editor in any tab still has
+ * the path-keyed copy open (#1933): clearing it would close that editor's
+ * store and drop what it types next. The next open by id moves it.
+ */
+export async function migrateDocsCollabPathDatabaseToIdentity(
+  roomKey: string,
+  targetPersistence: IndexeddbPersistence,
+): Promise<boolean> {
+  const moved = await withDocsCollabPathDatabaseFree(roomKey, async () => {
+    await migrateDocsCollabPendingSaveFromLegacy(
+      roomKey,
+      targetPersistence,
+      docsCollabPathKeyedSources(roomKey),
+    );
+    return true;
+  });
+  return moved === true;
+}
+
 /** `null` when the browser cannot list databases; callers then open the name. */
 async function listedIndexedDbNames(): Promise<ReadonlySet<string> | null> {
   if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
@@ -172,6 +197,30 @@ export async function resolveDocsCollabDatabase(
     room,
     nodeId,
   };
+}
+
+export type DocsCollabEditorDatabase = DocsCollabDatabaseChoice & {
+  /** Lets go of a path-keyed copy once the editor closed it; a no-op otherwise. */
+  release: () => void;
+};
+
+/**
+ * The database an editor opens. A path-keyed copy is held from before the
+ * lookup until `release` runs, so a background move cannot clear it while
+ * the editor writes to it (#1933). A move that finished while the hold waited
+ * learned the id: the editor then opens the id-keyed copy instead.
+ */
+export async function resolveDocsCollabEditorDatabase(
+  apiPath: string,
+  knownNodeId?: string,
+): Promise<DocsCollabEditorDatabase> {
+  const room = docsCollabRoomKey(apiPath);
+  const idKnown = Boolean(knownNodeId || (await cachedNodeIdForRoom(room)));
+  const hold = idKnown ? null : await holdDocsCollabPathDatabase(room);
+  const choice = await resolveDocsCollabDatabase(apiPath, knownNodeId);
+  if (hold && !choice.nodeId) return { ...choice, release: hold };
+  hold?.();
+  return { ...choice, release: () => undefined };
 }
 
 /**

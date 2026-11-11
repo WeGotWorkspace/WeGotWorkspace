@@ -437,7 +437,7 @@ describe("useDocsCollabJoin teardown", () => {
     });
 
     expect(closeStore).toHaveBeenCalledTimes(1);
-    expect(closeStore.mock.calls[0]?.[2]).toEqual({ upload: true });
+    expect(closeStore.mock.calls[0]?.[2]).toMatchObject({ upload: true });
     resetDocsCollabMeshLingerForTests();
   });
 

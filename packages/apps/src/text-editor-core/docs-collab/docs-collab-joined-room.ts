@@ -28,9 +28,14 @@ export function leaveCollabRoom(
   persistence: IndexeddbPersistence | null,
   saveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>,
   current: CollabRoomLeftUnsaved,
+  /** Runs once the store is closed (releases the editor's hold on it). */
+  afterClose?: () => void,
 ): void {
   const saveDue = cancelSaveTimer(saveTimerRef);
-  if (!persistence) return;
+  if (!persistence) {
+    afterClose?.();
+    return;
+  }
   const remembered = joinedRooms.get(persistence);
   joinedRooms.delete(persistence);
   // Same room: this render's urls are newer than the join's (a save hold
@@ -38,5 +43,6 @@ export function leaveCollabRoom(
   const joined = remembered && remembered.room !== current.room ? remembered : current;
   void closeCollabRoomStore(persistence, saveDue ? joined : null, {
     upload: !joined.urls.roomNotPersistent,
+    afterClose,
   });
 }
