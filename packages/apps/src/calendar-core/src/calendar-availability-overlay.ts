@@ -103,7 +103,10 @@ export function resolveAvailabilityColors(
 }
 
 /** A teammate's resolved colour; their avatar colour when not in the list. */
-function availabilityColorToken(username: string, colors?: AvailabilityColors): UserAvatarColor {
+export function availabilityColorToken(
+  username: string,
+  colors?: AvailabilityColors,
+): UserAvatarColor {
   return colors?.get(username) ?? avatarColorForUserId(username);
 }
 
