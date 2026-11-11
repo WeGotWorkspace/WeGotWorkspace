@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
-import type { ContactCard, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { contactMutationOpts } from "@/contacts-core/src/contacts-undo-writes";
 
 type UseContactsDeleteCardsArgs = {

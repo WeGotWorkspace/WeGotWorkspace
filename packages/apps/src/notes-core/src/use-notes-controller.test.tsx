@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
 import { NOTES_VIEW_PREFS_STORAGE_KEY } from "./notes-view-prefs";
-import type { NotesUIData } from "./notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 
 const toastApi = {

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { taskToFormValue } from "@/tasks-core/src/tasks-task-form";
-import type { Task, TaskPatch, TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({

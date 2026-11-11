@@ -1,7 +1,8 @@
 import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
+import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export type CalendarUILabels = {
   appTitle: string;
@@ -35,9 +36,17 @@ export type CalendarUILabels = {
   toastImportFailed: string;
   toastImportOffline: string;
   myCalendarsSection: string;
+  myCalendarsShowAll: string;
+  myCalendarsHideAll: string;
+  myCalendarsCollapse: string;
+  myCalendarsExpand: string;
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
+  tasksSectionShowAll: string;
+  tasksSectionHideAll: string;
+  tasksSectionCollapse: string;
+  tasksSectionExpand: string;
   /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
@@ -182,6 +191,8 @@ export type CalendarUILabels = {
   eventShowAs: string;
   eventShowAsBusy: string;
   eventShowAsFree: string;
+  /** Under "Show as" while an all-day event is Free (#1927). */
+  eventShowAsAllDayFreeHint: string;
   eventAlarmsLabel: string;
   eventAlarmsNone: string;
   eventAlarmAdd: string;
@@ -244,6 +255,14 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
+  /** Busy invited teammate (#1614): appended to the participant tag's accessible name. */
+  eventAttendeesAvailabilityBusyStatus: string;
+  /** Busy tooltip heading. */
+  eventAttendeesAvailabilityBusyWith: string;
+  /** Busy tooltip row for a period without a title (owner shares the time only). */
+  eventAttendeesAvailabilityBusyUntitled: string;
+  /** Busy tooltip time for an all-day period. */
+  eventAttendeesAvailabilityAllDay: string;
   rsvpAccept: string;
   rsvpMaybe: string;
   rsvpDecline: string;
@@ -269,6 +288,32 @@ export type CalendarUILabels = {
   conflictRemaining: (count: number) => string;
   conflictKeepMine: string;
   conflictUseServer: string;
+  /** Team availability sidebar and its offline notice (#1910). */
+  teamAvailabilitySection: string;
+  teamAvailabilitySelf: string;
+  teamAvailabilityShow: (name: string) => string;
+  teamAvailabilityHide: (name: string) => string;
+  teamAvailabilityShowSelf: string;
+  teamAvailabilityHideSelf: string;
+  teamAvailabilityFilter: string;
+  teamAvailabilityNoMatch: string;
+  teamAvailabilityIncomplete: string;
+  teamAvailabilityCollapse: string;
+  teamAvailabilityExpand: string;
+  teamAvailabilityShowAll: string;
+  teamAvailabilityHideAll: string;
+  calendarNoticeBarLabel: string;
+  teamAvailabilityOfflineUpdated: (age: string) => string;
+  teamAvailabilityOfflineUncached: string;
+  teamAvailabilityOfflineNone: string;
+  teamAvailabilityJustNow: string;
+  /** Title of a busy block whose owner shares no details. */
+  teamAvailabilityBusy: string;
+  // Busy-block popover (#1911).
+  teamAvailabilityPreviewTitle: (name: string) => string;
+  teamAvailabilityPreviewNoDetails: string;
+  teamAvailabilityPreviewTime: string;
+  teamAvailabilityPreviewLocation: string;
 };
 
 export const defaultCalendarLabels: CalendarUILabels = {
@@ -301,15 +346,23 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
   myCalendarsSection: "My calendars",
-  sharedWithMeSection: "Shared with me",
+  myCalendarsShowAll: "Show all my calendars",
+  myCalendarsHideAll: "Hide all my calendars",
+  myCalendarsCollapse: "Collapse My calendars",
+  myCalendarsExpand: "Expand My calendars",
+  sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
   tasksSection: "Reminders",
+  tasksSectionShowAll: "Show all reminders",
+  tasksSectionHideAll: "Hide all reminders",
+  tasksSectionCollapse: "Collapse Reminders",
+  tasksSectionExpand: "Expand Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
   taskDueListLabel: "List",
   subscribedCalendarsSection: "Subscriptions",
   teamCalendarBadge: "Team calendar",
-  viewOnlyCalendarBadge: "View only",
+  viewOnlyCalendarBadge: workspaceLabels.sharing.viewOnly,
   calendarDirectoryLabel: defaultOwnerScopeLabels.label,
   calendarDirectoryPersonal: defaultOwnerScopeLabels.personal,
   calendarDirectoryGroup: defaultOwnerScopeLabels.group,
@@ -319,18 +372,18 @@ export const defaultCalendarLabels: CalendarUILabels = {
   editCalendar: "Edit calendar",
   editCalendarTitle: "Edit calendar",
   createCalendarTitle: "New calendar",
-  calendarNameLabel: "Name",
-  calendarColorLabel: "Color",
+  calendarNameLabel: workspaceLabels.dialog.nameField,
+  calendarColorLabel: workspaceLabels.dialog.colorField,
   deleteCalendar: "Delete calendar",
   deleteCalendarConfirmTitle: "Delete calendar?",
   deleteCalendarConfirmDescription:
     "Events on this calendar will be permanently deleted. This cannot be undone.",
-  changeCalendarOwnerConfirmTitle: "Change owner?",
+  changeCalendarOwnerConfirmTitle: workspaceLabels.sharing.changeOwnerTitle,
   changeCalendarOwnerConfirmToGroup: (groupName) =>
     `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeCalendarOwnerConfirmToPersonal:
     "This calendar will move to your personal calendars. Events and existing shares stay. Other team members lose access unless they have a share.",
-  changeCalendarOwnerConfirm: "Change owner",
+  changeCalendarOwnerConfirm: workspaceLabels.sharing.changeOwner,
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
   subscribeCalendarSubmit: "Subscribe",
@@ -351,7 +404,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarHttpsLabel: "Web address",
   publishCalendarBusyLabel: "Busy only",
   publishCalendarBusyHint: "Publish times only. Titles, people, and notes stay off the feed.",
-  copyHttpsUrl: "Copy link",
+  copyHttpsUrl: workspaceLabels.sharing.copyLink,
   openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",
   unpublishCalendarDescription:
@@ -432,11 +485,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Description",
-  eventDetailsEdit: "Edit",
+  eventDetailsEdit: workspaceLabels.dialog.edit,
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
+  eventShowAsAllDayFreeHint: "Set to Busy for time off, so teammates see you as away.",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
   eventAlarmAdd: "Add alert",
@@ -457,10 +511,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsOnDate: "Ends on date",
   eventRecurrenceEndsAfter: "Ends after",
   eventRecurrenceEndsCountSuffix: "times",
-  save: "Save",
-  saveChanges: "Save",
-  cancel: "Cancel",
-  delete: "Delete",
+  save: workspaceLabels.dialog.save,
+  saveChanges: workspaceLabels.dialog.save,
+  cancel: workspaceLabels.dialog.cancel,
+  delete: workspaceLabels.dialog.delete,
   invitationsSection: "Invitations",
   invitationsEmpty: "No pending invitations. Invites you receive will appear here.",
   invitationsEmptyResponded: "No responded invitations yet.",
@@ -496,6 +550,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
+  eventAttendeesAvailabilityBusyStatus: "busy at this time",
+  eventAttendeesAvailabilityBusyWith: "Busy at this time",
+  eventAttendeesAvailabilityBusyUntitled: "Busy",
+  eventAttendeesAvailabilityAllDay: "All day",
   rsvpAccept: "Accept",
   rsvpMaybe: "Maybe",
   rsvpDecline: "Decline",
@@ -506,27 +564,51 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastRsvpUpdated: "Invitation updated",
   toastRsvpUndone: "Invitation change undone.",
   toastInvitationCancelled: "This invitation was cancelled",
-  pendingSync: "Pending sync",
-  shareCalendarSectionTitle: "Team access",
+  pendingSync: workspaceLabels.sync.pending,
+  shareCalendarSectionTitle: workspaceLabels.sharing.teamAccess,
   shareCalendarSectionHint: sharePrincipalCopy.sectionHint,
   shareCalendarAddPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareCalendarSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareCalendarOffline: "Sharing changes require a connection.",
   shareCalendarFailed: "Could not update sharing.",
   sharedCalendar: "Shared with you",
-  removeCalendarShareTitle: "Remove access?",
+  removeCalendarShareTitle: workspaceLabels.sharing.removeAccessTitle,
   removeCalendarShareConfirm: sharePrincipalCopy.removeConfirm("calendar"),
-  conflictTitle: "Sync conflict",
+  conflictTitle: workspaceLabels.sync.conflictTitle,
   conflictDescription: (title) =>
     `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,
   conflictRemaining: (count) =>
     count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
-  conflictKeepMine: "Keep mine",
+  conflictKeepMine: workspaceLabels.sync.keepMine,
   conflictUseServer: "Use server",
+  teamAvailabilitySection: "Team availability",
+  teamAvailabilitySelf: "You (as teammates see you)",
+  teamAvailabilityShow: (name) => `Show ${name}'s availability`,
+  teamAvailabilityHide: (name) => `Hide ${name}'s availability`,
+  teamAvailabilityShowSelf: "Show your own availability",
+  teamAvailabilityHideSelf: "Hide your own availability",
+  teamAvailabilityFilter: "Filter teammates",
+  teamAvailabilityNoMatch: "No teammates match",
+  teamAvailabilityIncomplete: "Some busy times could not be loaded.",
+  teamAvailabilityCollapse: "Collapse Team availability",
+  teamAvailabilityExpand: "Expand Team availability",
+  teamAvailabilityShowAll: "Show all teammates' availability",
+  teamAvailabilityHideAll: "Hide all teammates' availability",
+  calendarNoticeBarLabel: "Calendar notices",
+  teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
+  teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
+  teamAvailabilityOfflineNone:
+    "Offline · teammates' availability for this period is not available offline.",
+  teamAvailabilityJustNow: "just now",
+  teamAvailabilityBusy: "Busy",
+  teamAvailabilityPreviewTitle: (name) => `${name}'s availability`,
+  teamAvailabilityPreviewNoDetails: "Only busy times are shared.",
+  teamAvailabilityPreviewTime: "Time",
+  teamAvailabilityPreviewLocation: "Location",
 };
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
-  return { ...defaultCalendarLabels, ...overrides };
+  return mergeWorkspaceLabels(defaultCalendarLabels, overrides);
 }
 
 /** Tooltip / aria-label pair for header prev/next — same unit `shiftAnchor` steps. */

@@ -4,7 +4,7 @@ import { ListItem } from "@/list-item/src/list-item";
 import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formatTaskDueRelative,

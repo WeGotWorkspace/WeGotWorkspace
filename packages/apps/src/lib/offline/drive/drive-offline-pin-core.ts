@@ -1,5 +1,5 @@
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
+import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
 import {

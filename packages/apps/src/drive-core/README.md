@@ -12,7 +12,7 @@ Public (`src/drive-core/src/index.ts`):
 
 - `DriveApp` (`src/drive-core/src/drive-app.tsx`)
 - `DriveWorkspace` (`src/drive-core/src/drive-workspace.tsx`)
-- `DriveAPIOperations`, `DriveUIData`, `DriveAppBootstrap` (`src/drive-core/src/drive-types.ts`)
+- `DriveAPIOperations`, `DriveUIData`, `DriveAppBootstrap` (defined in `src/lib/files/drive-types.ts`, re-exported here)
 - `driveLabels` (`src/drive-core/src/drive-labels.ts`)
 
 Internal composition (import from `@/drive-core/src/…` in stories or sibling packages):

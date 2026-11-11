@@ -4,18 +4,32 @@ import { Callout } from "@/callout/src/callout";
 import { cn } from "@/lib/utils";
 import "@/notice-bar/src/notice-bar.css";
 
-/** Something waiting on the user. It stays until the app clears it, so it cannot be dismissed. */
+/** The button that settles a notice. Label and handler come together or not at all. */
+type NoticeAction =
+  | {
+      actionLabel: string;
+      onAction: () => void;
+      /** While the action runs (e.g. a retry in flight). */
+      actionDisabled?: boolean;
+    }
+  | {
+      /** An `info` notice can just state something (e.g. offline data age). */
+      actionLabel?: undefined;
+      onAction?: undefined;
+      actionDisabled?: undefined;
+    };
+
+/** Something the user should know. It stays until the app clears it, so it cannot be dismissed. */
 export type Notice = {
   id: string;
   tone?: "warning" | "error" | "info";
   icon?: ReactNode;
   /** One sentence: what waits and where. */
   title: ReactNode;
-  actionLabel: string;
-  onAction: () => void;
-  /** While the action runs (e.g. a retry in flight). */
-  actionDisabled?: boolean;
-};
+} & NoticeAction;
+
+/** A notice that always has its settle button (sync retry, rescue). */
+export type ActionNotice = Notice & { actionLabel: string; onAction: () => void };
 
 export type NoticeBarProps = {
   notices: readonly (Notice | null | undefined)[];
@@ -43,13 +57,15 @@ export function NoticeBar({ notices, label, className }: NoticeBarProps) {
             icon={notice.icon}
             title={notice.title}
             action={
-              <Button
-                label={notice.actionLabel}
-                onClick={notice.onAction}
-                disabled={notice.actionDisabled}
-                variant="outline"
-                size="sm"
-              />
+              notice.actionLabel !== undefined ? (
+                <Button
+                  label={notice.actionLabel}
+                  onClick={notice.onAction}
+                  disabled={notice.actionDisabled}
+                  variant="outline"
+                  size="sm"
+                />
+              ) : undefined
             }
           />
         </div>

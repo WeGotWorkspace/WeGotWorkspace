@@ -1,4 +1,4 @@
-import type { ContactsMutationOpts } from "@/contacts-core/src/contacts-types";
+import type { ContactsMutationOpts } from "@/lib/models/contacts-types";
 import { createCardViaSet, deleteCardViaSet, patchCardViaSet } from "@/lib/api/wgw/contacts-set";
 import { getCard } from "@/lib/api/wgw/contacts";
 

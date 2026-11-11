@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
-import type { DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import { mergeDriveUploadPlaceholders } from "@/drive-core/src/drive-upload-listing";
 
 const user = "ada";

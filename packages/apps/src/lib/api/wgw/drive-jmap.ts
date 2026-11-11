@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/api-error";
 import {
   wgwApiBaseUrl,
   wgwFetch,
@@ -31,11 +32,7 @@ import type {
   WgwDriveUserData,
   WgwDriveUserResponse,
 } from "@/lib/api/wgw/types";
-import type {
-  DriveMutationOpts,
-  DriveUIData,
-  DriveUploadProgress,
-} from "@/drive-core/src/drive-types";
+import type { DriveMutationOpts, DriveUIData, DriveUploadProgress } from "@/lib/files/drive-types";
 
 export { DRIVE_READ_BLOB_MAX_BYTES, DriveFileTooLargeToOpenError };
 
@@ -81,13 +78,10 @@ export class UnsupportedDrivePathError extends Error {
 }
 
 /** HTTP failure from Drive context or an RFC 8620 blob endpoint. */
-export class DriveTransportError extends Error {
-  readonly status: number;
-
+export class DriveTransportError extends ApiError {
   constructor(message: string, status: number) {
-    super(message);
+    super(message, status);
     this.name = "DriveTransportError";
-    this.status = status;
   }
 }
 

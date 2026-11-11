@@ -1,4 +1,4 @@
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 function stripNullMapEntries<T>(
   target: Record<string, T> | undefined,

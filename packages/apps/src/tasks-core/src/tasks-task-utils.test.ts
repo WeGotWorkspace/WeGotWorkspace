@@ -21,7 +21,7 @@ import {
   taskAlertsFromList,
   taskListDotColor,
 } from "./tasks-task-utils";
-import type { Task } from "./tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 
 const sampleTasks: Task[] = [
   {

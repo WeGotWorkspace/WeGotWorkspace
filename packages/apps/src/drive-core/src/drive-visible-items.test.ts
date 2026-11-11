@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filterDriveVisibleItems } from "@/drive-core/src/drive-visible-items";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 
 const sampleFile = (overrides: Partial<DriveFile>): DriveFile => ({
   id: "f-1",

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
-import type { ChatMessage as ChatMessageModel } from "@/chat-ui/src/chat-types";
+import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
 import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import {
   CHAT_STORY_AUTHOR_PRESENCE,

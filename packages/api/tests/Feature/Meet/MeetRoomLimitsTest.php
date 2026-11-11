@@ -31,7 +31,7 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
             'name' => 'Five',
         ])
             ->assertStatus(409)
-            ->assertJson(['error' => 'room_full']);
+            ->assertExactJson(['error' => 'room_full', 'code' => 'room_full']);
     }
 
     public function test_knock_on_empty_room_returns_not_active(): void
@@ -41,7 +41,7 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
             'name' => self::KNOCK_PREFIX.'Waiting Guest',
         ])
             ->assertNotFound()
-            ->assertJson(['error' => 'room_not_active']);
+            ->assertExactJson(['error' => 'room_not_active', 'code' => 'room_not_active']);
     }
 
     public function test_knock_join_succeeds_when_host_is_present(): void

@@ -5,7 +5,7 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
-import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
+import type { TasksAPIOperations } from "@/lib/models/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({

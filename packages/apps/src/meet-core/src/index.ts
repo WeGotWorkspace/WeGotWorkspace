@@ -55,7 +55,7 @@ export type {
   MeetChatOperations,
   MeetRtcSettings,
   MeetUIData,
-} from "@/meet-core/src/meet-types";
+} from "@/lib/models/meet-types";
 export { meetLabels } from "@/meet-core/src/meet-labels";
 export type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 export type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-props";

@@ -5,6 +5,7 @@ import { createSharedTasksLists } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   CalendarTaskDueSidebarRows,
+  CalendarRemindersSidebar,
   partitionCalendarTaskDueSidebarLists,
 } from "@/calendar-core/src/calendar-task-due-sidebar";
 
@@ -74,5 +75,73 @@ describe("Calendar task due sidebar", () => {
         .closest(".calendar-sidebar-row")
         ?.querySelector(".calendar-sidebar-row__edit"),
     ).toBeNull();
+  });
+});
+
+describe("Calendar Reminders section", () => {
+  beforeEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
+
+  function renderSection(hidden: string[]) {
+    const { ownedLists } = partitionCalendarTaskDueSidebarLists(createSharedTasksLists());
+    const onSetHiddenListIds = vi.fn();
+    const view = render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarRemindersSidebar
+          lists={ownedLists}
+          hiddenListIds={new Set(hidden)}
+          onSetHiddenListIds={onSetHiddenListIds}
+          onToggleVisibility={vi.fn()}
+          labels={defaultCalendarLabels}
+        />
+      </TooltipProvider>,
+    );
+    return { ownedLists, onSetHiddenListIds, view };
+  }
+
+  it("shows all lists from the heading while some are hidden, keeping other hidden ids", () => {
+    const { ownedLists, onSetHiddenListIds } = renderSection(["work", "elsewhere"]);
+    expect(ownedLists.map((list) => list.id)).toContain("work");
+    const all = screen.getByRole("checkbox", { name: "Show all reminders" });
+    expect(all.getAttribute("aria-checked")).toBe("mixed");
+    fireEvent.click(all);
+    expect([...onSetHiddenListIds.mock.calls[0]![0]]).toEqual(["elsewhere"]);
+  });
+
+  it("hides every list from the heading while all are shown", () => {
+    const { ownedLists, onSetHiddenListIds } = renderSection([]);
+    const all = screen.getByRole("checkbox", { name: "Hide all reminders" });
+    expect(all.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(all);
+    expect(new Set(onSetHiddenListIds.mock.calls[0]![0])).toEqual(
+      new Set(ownedLists.map((list) => list.id)),
+    );
+  });
+
+  it("folds and remembers the fold", () => {
+    renderSection([]);
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Reminders" }));
+    expect(screen.queryByText("Personal")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Expand Reminders" }).getAttribute("aria-expanded"),
+    ).toBe("false");
+    cleanup();
+    renderSection([]);
+    expect(screen.queryByText("Personal")).toBeNull();
+  });
+
+  it("renders nothing without lists", () => {
+    const { container } = render(
+      <CalendarRemindersSidebar
+        lists={[]}
+        hiddenListIds={new Set()}
+        onSetHiddenListIds={vi.fn()}
+        onToggleVisibility={vi.fn()}
+        labels={defaultCalendarLabels}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
   });
 });

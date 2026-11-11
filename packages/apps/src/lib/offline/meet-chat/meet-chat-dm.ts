@@ -11,7 +11,7 @@
  * lookups live in meet-chat-offline-store.
  */
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import { meetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
 
 /** Virtual DM-rail channel id (`dm:{peer}`) for a wire dm row; null for other kinds. */

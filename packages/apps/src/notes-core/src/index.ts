@@ -5,5 +5,9 @@ export { useNotesAPI } from "./use-notes-api";
 export { createDefaultNotesApiSource } from "./notes-api-source";
 export type { NotesApiSource } from "./notes-api-source";
 export type { NotesWorkspaceProps } from "./notes-workspace-props";
-export type { NotesUIData, NotesAPIOperations, DeleteNotebookAction } from "./notes-types";
+export type {
+  NotesUIData,
+  NotesAPIOperations,
+  DeleteNotebookAction,
+} from "@/lib/models/notes-types";
 export { defaultNotesLabels, mergeNotesLabels, type NotesUILabels } from "./notes-labels";

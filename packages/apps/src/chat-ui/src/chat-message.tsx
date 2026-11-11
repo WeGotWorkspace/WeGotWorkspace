@@ -3,7 +3,8 @@ import { MessageSquare, MessageSquareReply, Pencil, Smile, Trash2 } from "lucide
 import { IconButton } from "@/button/src/icon-button";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
-import { UserAvatar, type UserAvatarPresence } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { type UserAvatarPresence } from "@/lib/models/user-presence";
 import { ChatLinkPreview } from "@/chat-ui/src/chat-link-preview";
 import { ChatReactionBar } from "@/chat-ui/src/chat-reaction-bar";
 import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
@@ -15,7 +16,7 @@ import {
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime, formatChatTimeShort } from "@/chat-ui/src/chat-message-group";
-import type { ChatMessage as ChatMessageModel } from "@/chat-ui/src/chat-types";
+import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";
 import "@/chat-ui/src/chat-ui.css";

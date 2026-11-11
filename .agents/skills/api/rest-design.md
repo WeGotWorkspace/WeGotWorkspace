@@ -53,9 +53,32 @@ Collab used `/collab/*` with the same shapes; file paths now resolve to `f_*` ro
 ## Microsoft REST guidelines (applied)
 
 - Nouns for resources; HTTP methods express actions.
-- Stable error shape (`error`, `message`, HTTP status).
+- Stable error shape: the HTTP status plus a JSON body, see [Errors](#errors).
 - Version prefix `/api/v1` (breaking replace — no legacy aliases).
 - Prefer query parameters for filters and sub-resource selectors (`?path=`, `?search=`).
+
+## Errors
+
+Every API error is an exception that implements `App\Exceptions\RendersApiError`. `bootstrap/app.php` renders it in one hook. Do not add a render hook per exception class. New code throws one of the two families below instead of returning its own error array.
+
+The body is JSON with the HTTP status:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `error` | string, always | See the two families below. |
+| `code` | string, optional | Stable machine code, such as `not_found`, `bad_request`, `forbidden`, `rate_limited`. Clients classify on the status and `code`. |
+| `message` | string, optional | Realtime family only: a sentence for a person. |
+
+Two families send this body:
+
+- **`ApiHttpException`** (most routes). `error` is a sentence and `code` names the case: `{ "error": "File not found.", "code": "not_found" }`. Throw `new ApiHttpException($status, $sentence, $code)`; pass response headers such as `Retry-After` in its last argument. Laravel does not report it.
+- **`DomainResponseException`** (realtime routes: `MeetResponseException`, `CollabResponseException`, `PrincipalResponseException` on `/meetings/rooms*`, `/rooms/{roomId}/*` and the collaborative document endpoints). `error` is the machine code, `code` repeats it, and `message` is an optional sentence: `{ "error": "auth_required", "code": "auth_required", "message": "Sign in to join document collaboration." }`. The realtime clients read `error` first, so its value stays a code. Throw `new MeetResponseException($status, $code, $sentence)`; rewrap a signaling failure with `MeetResponseException::fromSignaling($e)`. Laravel still reports these (logging decision in `.agents/specs/1646-error-shape/plan.md`).
+
+The catch-all hook gives any other exception on `api/*` the `ApiHttpException` body with a status-derived `code` (`server_error` for a 500, with a generic sentence unless `APP_DEBUG`).
+
+Bodies that keep their own protocol shape and do not go through this hook: JMAP problem details (RFC 8620), OAuth errors on the MCP authorization endpoints (`{ error, error_description }`, RFC 6749), Sabre DAV XML, MCP tool errors, and the installer wizard result (`{ ok, error, error_code, state }`).
+
+Internal signals stay internal: `JmapMethodException` and `FileNodeSetError` become JMAP method errors, and `RtcSignalingException` is always rewrapped by the realtime services. Do not make them implement `RendersApiError`.
 
 ## WebDAV
 

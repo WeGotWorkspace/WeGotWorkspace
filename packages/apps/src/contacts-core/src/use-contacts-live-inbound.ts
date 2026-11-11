@@ -10,7 +10,7 @@ import {
   ingestRemoteContactCardDestroyed,
   reconcileContactsSnapshot,
 } from "@/lib/offline/contacts-jmap-inbound";
-import type { AddressBook, ContactCard } from "@/contacts-core/src/contacts-types";
+import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 
 /** Inbound `/changes` poll while push is down. */
 export const CONTACTS_CHANGES_POLL_MS = 10_000;

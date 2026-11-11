@@ -15,7 +15,7 @@ import {
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
-import type { NotesUIData } from "./notes-types";
+import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 
 const toastApi = {

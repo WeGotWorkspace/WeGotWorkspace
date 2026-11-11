@@ -1,5 +1,5 @@
 import { getCard } from "@/lib/api/wgw/contacts";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { withOutboxLock } from "@/lib/offline/core/connectivity-sync-runner";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";

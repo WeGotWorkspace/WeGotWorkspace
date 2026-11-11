@@ -15,8 +15,11 @@
  *
  * `:where` so a later import of this file cannot reset product `--primary`
  * back to a hard fill. The app loads every product CSS file; Storybook loads one.
+ * One `:where()` per host, never `:where(a, b, …)`: see `workspace-derive.css`.
  */
-:where(.admin-workspace, .settings-workspace, .notes-workspace) {
+:where(.admin-workspace),
+:where(.settings-workspace),
+:where(.notes-workspace) {
   --workspace-root-bg: var(--workspace-surface);
 
   --workspace-main-content-max-width: 42rem;

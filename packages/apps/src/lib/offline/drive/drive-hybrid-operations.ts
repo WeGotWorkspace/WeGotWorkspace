@@ -3,13 +3,9 @@ import {
   ensureTrashFolder,
   listTrashEntryNames,
   resolveFreeName,
-} from "@/drive-core/src/drive-batch-utils";
-import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/drive-core/src/drive-path-utils";
-import type {
-  DriveAPIOperations,
-  DriveAppBootstrap,
-  DriveUIData,
-} from "@/drive-core/src/drive-types";
+} from "@/lib/files/drive-entry-names";
+import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/lib/files/drive-path-utils";
+import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   ConnectivitySyncRunner,
@@ -17,7 +13,7 @@ import {
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import {
   applyDocsStarToggle,
   readDocsStarredPaths,

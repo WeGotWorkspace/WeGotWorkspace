@@ -31,7 +31,7 @@ import {
 } from "./notes-note-utils";
 import { resolveNotesCreateTarget } from "./notes-create-target";
 import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
-import type { NoteMetadataField } from "./notes-types";
+import type { NoteMetadataField } from "@/lib/models/notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";

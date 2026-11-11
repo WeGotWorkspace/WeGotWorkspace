@@ -7,7 +7,7 @@ import {
   type CalendarEvent,
 } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import {
   alignOfflineEventIds,
   calendarInfosToEngineMap,
@@ -19,6 +19,7 @@ import {
 import { applyCalendarEventPatch } from "@/lib/offline/calendars/calendars-patch-merge";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { resolveEventMapKey } from "@/lib/calendar-elements/domain/events-api/resolveEventMapKey.js";
+import { availabilityPeriodEvent } from "@/calendar-core/src/calendar-availability-overlay";
 
 function engineEvent(
   id: string,
@@ -256,6 +257,55 @@ describe("createCalendarEventsApi", () => {
     expect(removed.changes).toEqual([]);
     expect(operations.deleteEvent).not.toHaveBeenCalled();
     expect(context.getEvents().has("task:milk")).toBe(true);
+  });
+
+  it("blocks create, move, resize, and remove on a teammate's availability blocks", () => {
+    const operations = operationsStub();
+    const busy = availabilityPeriodEvent(
+      "alice",
+      0,
+      {
+        start: "2033-01-12T09:00:00",
+        timeZone: "Europe/Amsterdam",
+        duration: "PT1H",
+        showWithoutTime: false,
+      },
+      "Busy",
+    )!;
+    const events = new Map<string, CalendarEvent>([
+      ["availability:alice#0", busy],
+      ["standup", engineEvent("standup")],
+    ]);
+    const context = createCalendarEventsApi({ getEvents: () => events, calendars, operations });
+
+    const created = context.create({
+      event: {
+        calendarId: "availability:alice",
+        data: {
+          summary: "Sneaky",
+          start: Temporal.PlainDateTime.from("2033-01-11T09:00:00"),
+          duration: Temporal.Duration.from("PT1H"),
+        },
+      },
+    });
+    expect(created.changes).toEqual([]);
+    const moved = context.move({
+      target: { key: "availability:alice#0" },
+      scope: "single",
+      delta: Temporal.Duration.from("PT1H"),
+    });
+    expect(moved.changes).toEqual([]);
+    const resized = context.resizeEnd({
+      target: { key: "availability:alice#0" },
+      scope: "single",
+      toEnd: Temporal.PlainDateTime.from("2033-01-12T12:00:00"),
+    });
+    expect(resized.changes).toEqual([]);
+    const removed = context.remove({ target: { key: "availability:alice#0" }, scope: "single" });
+    expect(removed.changes).toEqual([]);
+    expect(operations.createEvent).not.toHaveBeenCalled();
+    expect(operations.patchEvent).not.toHaveBeenCalled();
+    expect(operations.deleteEvent).not.toHaveBeenCalled();
   });
 
   it("rejects create, move, and resize on a read-only collection", async () => {

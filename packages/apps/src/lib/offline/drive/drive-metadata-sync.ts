@@ -6,7 +6,7 @@ import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availabili
 import { writeDriveBootstrapToCache } from "@/lib/offline/drive/drive-directory-offline-store";
 import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { rememberDriveFolderNodeId } from "@/lib/offline/drive/upload/drive-upload-target";
-import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
+import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 
 const DRIVE_METADATA_SYNC_META_KEY = "drive:metadata-sync:progress";

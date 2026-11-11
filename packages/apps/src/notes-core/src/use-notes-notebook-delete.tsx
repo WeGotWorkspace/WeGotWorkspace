@@ -13,7 +13,7 @@ import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
 import { canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 import { isViewOnlyNotebook, notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 

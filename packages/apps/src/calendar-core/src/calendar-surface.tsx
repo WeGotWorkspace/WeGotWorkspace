@@ -5,7 +5,7 @@ import type { WgwCalendarSurface } from "@/lib/calendar-elements/wgw/wgw-calenda
 import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 import {
   bindCalendarEventSelected,
   measureCalendarCreatePreviewOrigin,
@@ -15,6 +15,8 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
+
+const EMPTY_EVENTS: CalendarEventsMap = new Map();
 
 /** Lit surface time-range view (list vs grid is `presentation`). */
 export type CalendarSurfaceViewId = CalendarViewId;
@@ -39,6 +41,8 @@ export type CalendarSurfaceProps = {
   events: CalendarEventsMap;
   /** Render-only Tasks due markers merged after calendar visibility filter. */
   taskDueMarkers?: CalendarEventsMap;
+  /** Render-only teammates' busy blocks, merged after the visibility filter. */
+  availabilityBlocks?: CalendarEventsMap;
   visibleCalendarIds?: string[];
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
@@ -109,6 +113,7 @@ export function CalendarSurface({
   startDate,
   events,
   taskDueMarkers,
+  availabilityBlocks,
   visibleCalendarIds,
   selectedCalendarId,
   contextValue,
@@ -146,6 +151,7 @@ export function CalendarSurface({
     host.startDate = startDate;
     host.events = events;
     host.taskDueMarkers = taskDueMarkers ?? new Map();
+    host.availabilityBlocks = availabilityBlocks ?? EMPTY_EVENTS;
     host.visibleCalendarIds = visibleCalendarIds;
     host.selectedCalendarId = selectedCalendarId;
     // Keep EventsAPI selection aligned with the React sidebar create-target.
@@ -175,6 +181,7 @@ export function CalendarSurface({
     startDate,
     events,
     taskDueMarkers,
+    availabilityBlocks,
     visibleCalendarIds,
     selectedCalendarId,
     contextValue,

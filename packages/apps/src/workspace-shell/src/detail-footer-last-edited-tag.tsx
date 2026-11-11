@@ -3,7 +3,8 @@ import { CalendarDays } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { Tag } from "@/tag/src/tag";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import { UserPresenceDot, type UserAvatarPresence } from "@/user-avatar/src/user-avatar";
+import type { UserAvatarPresence } from "@/lib/models/user-presence";
+import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 
 /** Landed save vs a save that has not reached the server yet. */

@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import { DriveShareIndicators, DriveTileMeta } from "@/drive-core/src/drive-browser-indicators";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";

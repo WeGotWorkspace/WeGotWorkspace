@@ -1,25 +1,17 @@
+import { ApiError } from "@/lib/api/api-error";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import {
   cachedCollectionAudience,
   cachedItemAudience,
   checkNowAfterWrite,
 } from "@/lib/offline/core/collection-check-now";
 
-export class NotesVjournalRequestError extends Error {
-  status: number;
-  code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+export class NotesVjournalRequestError extends ApiError {}
 
 export function isNotesCannotCalculateChanges(error: unknown): boolean {
   return error instanceof NotesVjournalRequestError && error.code === "cannotCalculateChanges";

@@ -1,8 +1,8 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
-import type { ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
+import type { ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";

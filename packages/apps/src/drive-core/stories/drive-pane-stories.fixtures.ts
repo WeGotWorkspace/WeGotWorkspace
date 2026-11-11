@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
+import type { DriveFile, FileKind } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";

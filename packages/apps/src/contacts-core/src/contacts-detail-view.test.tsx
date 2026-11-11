@@ -17,7 +17,7 @@ import {
   emptyContactEditDraft,
   type ContactEditDraft,
 } from "./contacts-edit-utils";
-import type { ContactCard } from "./contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 beforeAll(() => {
   // Radix menus and popovers measure and scroll; jsdom has none of it.

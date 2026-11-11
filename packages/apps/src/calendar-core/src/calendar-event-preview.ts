@@ -7,10 +7,7 @@ import {
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
-import {
-  listedInviteeAttendees,
-  type CalendarAttendee,
-} from "@/calendar-core/src/calendar-attendees";
+import { listedInviteeAttendees, type CalendarAttendee } from "@/lib/models/calendar-attendees";
 import {
   calendarEventToForm,
   emptyCalendarEventForm,
@@ -29,7 +26,7 @@ import {
   toLocalRecurrenceId,
 } from "@/calendar-core/src/calendar-recurrence-scope";
 import { recurrencePresetOptionLabel } from "@/calendar-core/src/calendar-recurrence-presets";
-import { meetingUrlFromCalendarEvent } from "@/calendar-core/src/calendar-meet-link";
+import { meetingUrlFromCalendarEvent } from "@/lib/meetings/calendar-meet-link";
 
 export type CalendarEventPreviewModel = {
   eventId: string;

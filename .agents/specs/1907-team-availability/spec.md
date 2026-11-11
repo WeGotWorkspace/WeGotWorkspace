@@ -1,11 +1,11 @@
-Source: #1907 (body-hash: 34d30576)
+Source: #1907 (body-hash: 17c4b1b9)
 Goal: WeGotWorkspace/Product#43
 
 # Team availability
 
-Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate to an event, the invitee list shows whether they are free at that time, next to their RSVP status. There is no separate "find a time" UI yet.
+Each user can share their busy times with everyone who shares a Team with them. Teammates appear in the Calendar sidebar and can be toggled on and off; their busy times render on the grid like a read-only calendar. When you invite a teammate who is busy at that time, their participant tag shows a warning. There is no separate "find a time" UI yet.
 
-Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness.
+Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-up #1914). Written against `origin/main` at `82bd51d` (2026-11-04); every line reference in plan.md is pinned to the same commit. Revised three times on 2026-11-04, after two external reviews and the PR review loop: busy times are **computed on request**, not copied into a projected calendar (see plan.md, Considered); round 2 settled caching, cost bounds, incomplete results and cache invalidation; the review loop settled whole-week requests, the settings stamp and completeness. Owner settings were simplified on 2026-11-09 after the product owner's screenshot review of #1974.
 
 ## Goal
 
@@ -13,13 +13,14 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 - **One API, three users.** A vendor JMAP capability `urn:wgw:jmap:availability` with `TeamMember/get` (who may I see) and `TeamMember/getAvailability` (busy periods for a range). The sidebar, the invitee list (#1614) and the offline clash follow-up (#1914) all use it.
 - **Privacy first.** A master switch, "Share my availability with my Teams", is **off** by default. While it is off, nobody gets anything for that user.
 - **Owner settings.** With the switch on, the user sees in Settings → Calendar their own personal event calendars and their Team calendars:
-  - **(a) include:** whether the calendar counts. Every calendar starts checked.
+  - **(a) include:** whether the calendar counts. Every calendar starts included.
   - **(b) detail:** for personal calendars, whether teammates see only the time (`busy`, the default) or also the title and location (`details`). Team calendars are always time only.
+  - Both choices are one select per calendar: "Do not add", "Time only" or (personal calendars only) "Title and location". Product owner, 2026-11-09.
 - ICS subscriptions are never listed and never count.
-- **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can uncheck a Team calendar for themselves.
+- **An event in a Team calendar applies to the whole Team.** It counts for every member, whatever the invite list or a member's reply. If it is not for the whole Team, it does not belong on the Team calendar, or it is marked "Show as: Free". Each member can set a Team calendar to "Do not add" for themselves.
 - **"Show as: Free" always wins**, in personal and Team calendars, for a series or one occurrence.
 - **Calendar sidebar.** A **Team availability** section lists teammates who share with the user. Rows are hidden by default. Ticking one shows that person's busy blocks for whatever range the user is looking at, including months or a year ahead.
-- **Invitee list.** In the event editor, each invitee who is a teammate sharing availability shows "Free" or "Busy" for the event's time, next to their RSVP status.
+- **Invitee list.** In the event editor, an invitee who is a teammate sharing availability and is busy at the event's time gets a warning on their participant tag.
 - **Offline.** The client caches what it fetched (per person, per week) and prefetches the current week plus the next 4 weeks for ticked teammates. Offline, cached weeks still paint. One notice in the shared notice bar (the one Tasks uses for offline changes after access changed) states how old the data is, and says when a visible week was never fetched, so empty never passes for free.
 - **Never falsely free.** When the server could not work out all of a person's busy time (an event it could not read, a recurrence over the limit, or too many periods), the result says so. The UI then never claims "Free" for that person and range.
 - **Project calendars (later, #810).** When Projects land, a member joins a Project in the UI. Joining is not an access rule (Teams are), but it is the switch that makes that Project's calendar count toward the member's availability. Product owner, 2026-11-04.
@@ -27,7 +28,7 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
 ## Non-goals
 
 - A "find a time" suggestion or a planning grid (later step on Product#43)
-- A day strip of busy blocks inside the event editor. The invitee list shows one Free/Busy status for the event's own time; the grid is the place to look around.
+- A day strip of busy blocks inside the event editor. The invitee list only warns about a busy teammate at the event's own time; the grid is the place to look around.
 - Warning after reconnect about events planned offline that now clash (#1914)
 - Sharing availability outside a shared Team, with external guests, or as a public URL
 - New availability surfaces over CalDAV. The existing CalDAV outbox free/busy report is brought under this Epic's rules (see API, CalDAV free/busy); nothing else is exposed over CalDAV.
@@ -174,28 +175,30 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow (file-size ratchet); the popover lives in its own file.
 - **Sidebar.**
   - A **Team availability** section after **Shared with me**, in its own file. `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow (file-size ratchet).
-  - Rows show a `user-avatar` and the person's name. The caller's own row comes first, "You (as teammates see you)", when their switch is on.
-  - Rows are hidden by default. The section is collapsible, with a filter input above 8 rows.
+  - Rows show a colour dot and the person's name, with no avatar. The dot is the row's on/off toggle. The caller's own row comes first, "You (as teammates see you)", when their switch is on. Product owner, 2026-11-10: avatars in the sidebar look busy.
+  - Rows are hidden by default. The section header has a neutral show/hide-all dot (half filled when some rows are on) and a collapse chevron. My calendars and Reminders get the same header in the same change (#1958). A filter input appears above 8 rows.
+  - Each teammate gets one colour for their sidebar dot, their busy blocks and the busy popover. Start from their avatar colour; when two teammates in the section would share a colour, walk all teammates (also the hidden ones) in username order and give the later one the next free avatar colour. Colours repeat only above 8 teammates. Avatar colours elsewhere in the suite do not change. Product owner, 2026-11-09: a busy block only says "Busy", so colour is how you tell people apart.
   - A row whose visible range came back with `complete: false` shows a small marker with the tooltip "Some busy times could not be loaded."
   - The existing partition helpers (`calendar-sidebar-order.ts`) must never place a virtual availability calendar in My calendars or Shared with me.
 - **Invitee list (#1614).**
-  - In `calendar-invitees-card.tsx`, each invitee who appears in `TeamMember/get` gets an availability tag next to the RSVP tag: "Free" or "Busy".
+  - In `calendar-invitees-card.tsx`, an invitee who appears in `TeamMember/get` and is busy at the event's time gets a warning on their own participant tag: a warning colour wash, a trailing warning icon, and "busy at this time" in its accessible name. There is no separate "Free" or "Busy" label; a free teammate's tag looks like any other. Product owner, 2026-11-09, on screenshots of #1962.
   - It is for the event's own time: the occurrence being edited, or the first occurrence of a new series.
-  - "Busy" has a tooltip with the overlapping times, and their titles when the owner shares details.
+  - The busy tag's tooltip shows the overlapping times, and their titles when the owner shares details.
   - Saved events pass their id as `excludeEventId`.
   - It updates (debounced) when the time, the all-day flag or the invitees change.
   - It requests the UTC week (or weeks) containing the event, so the server answers from the same per-week cache entries as the sidebar. Invitees are matched to `TeamMember` ids by `CalendarInvitee.username`. The answer is not written to the client cache, because it carries the exclusion.
-  - Invitees who are not teammates sharing availability (switch off, no shared Team, external guests) get no tag.
-  - When the result for that invitee is `complete: false`, there is no tag: the UI never claims "Free" on partial data.
-  - It never blocks saving. Online only: offline, no tags show and no extra text.
+  - Invitees who are not teammates sharing availability (switch off, no shared Team, external guests) get no warning.
+  - When the result for that invitee is `complete: false`, there is no warning either. With no visible "Free" label, the UI never claims free on partial data.
+  - It never blocks saving. Online only: offline, no warnings show and no extra text.
   - `calendar-workspace.tsx` and `use-calendar-controller.ts` do not grow; the logic lives in its own module.
 - **Owner settings** in one **Availability** section of Settings → Calendar, in its own file:
   - Master switch "Share my availability with my Teams", off by default. While off, only one explanatory line shows.
   - While on:
-    - the Teams that can see it, or a note that the user is in no Team yet
-    - one row per own personal event calendar (color, name): a checkbox "Counts toward my availability" (checked by default) and a select "Teammates see": "Time only" (default) or "Title and location", disabled while unchecked
-    - one row per Team calendar: the same checkbox, a fixed "Time only", and the hint "Every event on this Team calendar counts for the whole Team, also if you decline it."
+    - a **Calendars** list. No list of Teams and no "no Team yet" note: who can see it follows from Teams, and the switch line already says so.
+    - one row per own personal event calendar (color, name) with one select and no visible label: "Do not add", "Time only" (default) or "Title and location". "Do not add" stores `include: false`; the other two store `include: true` plus the detail.
+    - one row per Team calendar (color, name, a "Team" tag) with the same select limited to "Do not add" and "Time only". The tag has the suite tooltip "Counts for the whole Team". It opens on hover and keyboard focus; tap-to-open is a shared tooltip matter, not handled here.
     - a footer line: "Events marked 'Show as: Free' never count."
+    - Simplified by the product owner on screenshots, 2026-11-09 (#1974): no "Who can see it" block, no "Counts toward my availability" checkbox, no "Teammates see" label, and the Team hint moved into the tag's tooltip.
   - Save goes through the REST resource and calls `notifySettingsSliceSaved`. Offline shows an error toast, like share and publish.
 - **Event editor: all-day default (#1927).**
   - A new all-day event starts with "Show as: Free". A new timed event keeps "Busy".
@@ -212,12 +215,12 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - Marked "Show as: Free", it counts for nobody.
   - X sees only "Busy", never the title, and cannot tell a Team B event from U's own.
   - Known residue: X can infer that several teammates are busy at the same moment. Accepted, because it is time only.
-- **Team calendar as a notice board.** All-day entries default to Free. Timed entries that are Busy block every member. A member can uncheck that Team calendar.
-- **A member declines a Team event.** They stay busy. The settings hint says so.
+- **Team calendar as a notice board.** All-day entries default to Free. Timed entries that are Busy block every member. A member can set that Team calendar to "Do not add".
+- **A member declines a Team event.** They stay busy. The settings screen does not repeat this rule; the "Team" tag's tooltip only says the calendar counts for the whole Team.
 - **Time off entered as an all-day event.** It defaults to Free, so it does not block until the author sets Busy. The editor hint says so.
 - **Owner turns a calendar off, or the switch off.** The next fetch reflects it. Teammates' caches keep old data until their next online fetch. Turning the switch off makes the person disappear from `TeamMember/get`, and the client then drops their rows and cache.
 - **A user removed from a Team.** On the next request they are in `notFound`. The client drops their row and their cached weeks. If they still share another Team with the viewer, nothing changes.
-- **A user with no Team.** `TeamMember/get` returns an empty list. The settings pane shows the "no Team yet" note.
+- **A user with no Team.** `TeamMember/get` returns an empty list. The settings pane shows no extra note; with the switch on, nobody sees anything until the user joins a Team.
 - **Owner changes their display name.** The `TeamMember/get` state changes and rows update.
 - **Recurring events** are expanded per request. An oversized recurrence is skipped and logged and does not fail the call.
 - **Floating-time and all-day events** keep their wall-clock time (`timeZone: null`, `showWithoutTime`). Display-zone conversion stays client-side (#981).
@@ -232,9 +235,9 @@ Technical translation of Epic #1907 (Tasks #1908–#1913, #1927, #1614; follow-u
   - `Notice` gets an optional action (`actionLabel` and `onAction` become optional together), because this notice has nothing to settle. Existing notices keep their action; a test covers a notice without one.
   - The section header and the popover carry no offline text of their own.
   - Planning offline is not blocked. A clash found after reconnect is #1914.
-  - The settings pane needs a connection (error toast). The invitee tags simply do not show.
-- **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no tag.
-- **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members uncheck what they do not want. With Projects (#810), joining a Project becomes that switch.
+  - The settings pane needs a connection (error toast). Offline, no availability warning shows and there is no extra text.
+- **Incomplete result.** A person with `complete: false` for the visible range shows the row marker; their blocks still render. The invitee tag shows no warning; a plain tag never claims free, so no third state is needed. Decided 2026-11-09 with #1962; the sidebar marker is where "could not be loaded" is said.
+- **More Team calendars.** A Team with several event calendars makes every member busy for all of them by default. Members set the ones they do not want to "Do not add". With Projects (#810), joining a Project becomes that switch.
 
 ## Follow-up issues
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import type { TasksAPIOperations, TasksUIData } from "@/tasks-core/src/tasks-types";
+import type { TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
 import { buildDisplayTasks, filterTasksBySearch } from "@/tasks-core/src/tasks-task-utils";
 import { useTasksExitAnimation } from "@/tasks-core/src/use-tasks-exit-animation";
 import { useTasksList } from "@/tasks-core/src/use-tasks-list";
@@ -128,6 +128,7 @@ export function useTasksController({
     itemDragHandlers: list.itemDragHandlers,
     sidebarDropZoneProps: list.sidebarDropZoneProps,
     confirmDialog: mutations.confirmDialog,
+    requestMoveTask: mutations.requestMoveTask,
     activeId: list.activeId,
     activeTask: list.activeTask,
     closeTask: list.closeTask,

@@ -1,23 +1,36 @@
 @import "../styles.css" reference;
 
 /*
- * List head bar (suite list norm): the sticky, frosted, rounded bar above list
- * content. A table header row (`thead.list-head-bar`) and a grid section heading
- * (`h3.list-head-bar`) look the same. It sticks with a little air at the top of
- * the scroller, and content scrolls visibly under the glass. Labels read like
- * sidebar section labels.
+ * List head bar (suite list norm): the sticky header above list content, the same
+ * calm bar as the Contacts letters and the chat days (`list-sticky-header--frost`):
+ * flush at the top of the scroller, square, no rule, the pane fill frosted so rows
+ * blur past beneath it. A table header row (`thead.list-head-bar`) and a grid
+ * section heading (`h3.list-head-bar`) look the same. Labels read like sidebar
+ * section labels.
  *
- * A `thead` gets its height from its cells and cannot take border-radius, so the
- * rounding is a clip-path for both.
+ * Full width: a host that insets its list sets `--list-head-bleed` to that inset,
+ * and the bar's fill runs out to the pane edges. A block bar widens itself. A
+ * `thead` cannot, and a table paints a row group's background and blur per cell
+ * (each column got its own blurred edge), so the fill is one layer behind the
+ * header row instead, from pane edge to pane edge.
+ *
+ * That layer hangs off the first header cell, not the row: WebKit (Safari, every
+ * iOS browser) does not position against a `tr`, so a row-anchored layer covered
+ * the whole table and blurred every row away. The cell anchors it everywhere, and
+ * the table's wrapper is a size container so the layer can span the full row.
  */
 .list-head-bar {
+  --list-head-bar-fill: color-mix(
+    in oklch,
+    var(--collection-list-pane-fill, var(--workspace-surface)) var(--scheme-frost-paper),
+    transparent
+  );
   position: sticky;
-  top: var(--list-head-sticky-gap, 0.75rem);
+  top: 0;
   z-index: 2;
-  background: var(--frost-background);
+  background: var(--list-head-bar-fill);
   -webkit-backdrop-filter: var(--frost-blur);
   backdrop-filter: var(--frost-blur);
-  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: normal;
@@ -28,6 +41,35 @@
   color: var(--workspace-label-color, var(--workspace-foreground));
 }
 
+thead.list-head-bar {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The table's wrapper measures the row (`100cqw` below is the table's width). */
+:has(> table > thead.list-head-bar) {
+  container-type: inline-size;
+}
+
+/* On the first cell, not the row: a row's own `::before` would count as a column. */
+thead.list-head-bar > tr > :first-child {
+  position: relative;
+}
+
+thead.list-head-bar > tr > :first-child::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  inset-inline-start: calc(-1 * var(--list-head-bleed, 0px));
+  width: calc(100cqw + 2 * var(--list-head-bleed, 0px));
+  background: var(--list-head-bar-fill);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  pointer-events: none;
+}
+
 /* Block bars (grid section headings) size themselves like a list row. */
 .list-head-bar:not(thead) {
   display: flex;
@@ -35,7 +77,8 @@
   gap: 0.375rem;
   min-width: 0;
   height: var(--list-row-height, 3rem);
-  padding-inline: var(--list-row-padding-x, 1rem);
+  margin-inline: calc(-1 * var(--list-head-bleed, 0px));
+  padding-inline: calc(var(--list-row-padding-x, 1rem) + var(--list-head-bleed, 0px));
 }
 
 /* Header cells take the bar's type; without this a `th` falls back to bold. */

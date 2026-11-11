@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { taskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";

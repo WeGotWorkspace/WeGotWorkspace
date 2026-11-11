@@ -14,6 +14,12 @@ import {
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
 import {
+  createTeamAvailabilityFixture,
+  seedMockTeamAvailability,
+} from "@/calendar-core/src/calendar-availability-fixture";
+import { teamAvailabilitySourceFromJmap } from "@/calendar-core/src/use-team-availability";
+import { JmapClient, MockJmapServer } from "@/lib/jmap-client";
+import {
   calendarStaticSurfaceFor,
   calendarStoryOperations,
 } from "@/calendar-core/stories/calendar-story-shared";
@@ -181,6 +187,32 @@ export const SeededMonthSidebar: Story = {
     ).toBeTruthy();
     expectSearchLeftOfViewSelect(canvasElement);
     expectNoSearchChrome(canvasElement);
+
+    // My calendars heading: show/hide-all dot and a fold, beside the New event menu.
+    const mine = sidebarSection(canvasElement, defaultCalendarLabels.myCalendarsSection);
+    const hideAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsHideAll,
+    });
+    await expect(hideAll).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(hideAll);
+    const showAll = within(mine).getByRole("checkbox", {
+      name: defaultCalendarLabels.myCalendarsShowAll,
+    });
+    await expect(showAll).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(within(mine).getByRole("checkbox", { name: "Show Personal" }));
+    await expect(showAll).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(showAll);
+    await expect(
+      within(mine).getByRole("checkbox", { name: defaultCalendarLabels.myCalendarsHideAll }),
+    ).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsCollapse }),
+    );
+    await expect(within(mine).queryByText("Personal")).toBeNull();
+    await userEvent.click(
+      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsExpand }),
+    );
+    await expect(within(mine).getByText("Personal")).toBeTruthy();
   },
 };
 
@@ -379,6 +411,247 @@ export const TaskDueOverlayWeek: Story = {
       expect(summaries).toContain("Buy milk");
       expect(summaries).not.toContain("Review API spec");
     });
+
+    // The heading's dot: half-filled while only some lists show; it shows all.
+    const showAll = within(tasksSection).getByRole("checkbox", {
+      name: defaultCalendarLabels.tasksSectionShowAll,
+    });
+    await expect(showAll).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(showAll);
+    await waitFor(() =>
+      expect(collectEventCardSummaries(canvasElement)).toContain("Review API spec"),
+    );
+    await userEvent.click(
+      within(tasksSection).getByRole("checkbox", {
+        name: defaultCalendarLabels.tasksSectionHideAll,
+      }),
+    );
+    await waitFor(() => {
+      const summaries = collectEventCardSummaries(canvasElement);
+      expect(summaries).not.toContain("Buy milk");
+      expect(summaries).not.toContain("Review API spec");
+    });
+
+    // Folding keeps the dot, so everything can come back without unfolding.
+    await userEvent.click(
+      within(tasksSection).getByRole("button", {
+        name: defaultCalendarLabels.tasksSectionCollapse,
+      }),
+    );
+    await expect(within(tasksSection).queryByText("Personal")).toBeNull();
+    await userEvent.click(
+      within(tasksSection).getByRole("checkbox", {
+        name: defaultCalendarLabels.tasksSectionShowAll,
+      }),
+    );
+    await waitFor(() => expect(collectEventCardSummaries(canvasElement)).toContain("Buy milk"));
+    await userEvent.click(
+      within(tasksSection).getByRole("button", { name: defaultCalendarLabels.tasksSectionExpand }),
+    );
+    await expect(within(tasksSection).getByText("Personal")).toBeTruthy();
+  },
+};
+
+const teamAvailabilityArgs = {
+  ...bootstrap,
+  surface: staticSurface,
+  initialAnchor: MOCK_CALENDAR_ANCHOR,
+  initialView: "week" as const,
+};
+
+/** Team availability (#1910): own row plus two teammates, Ada and Grace ticked. */
+export const TeamAvailabilityThree: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    const rows = within(within(section).getByRole("list")).getAllByRole("checkbox");
+    await expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Show your own availability",
+      "Hide Ada Lovelace's availability",
+      "Hide Grace Hopper's availability",
+    ]);
+    await expect(within(section).queryByRole("searchbox")).toBeNull();
+
+    // The heading's dot: mixed while some are on, then shows and hides everyone.
+    const all = within(section).getByRole("checkbox", {
+      name: defaultCalendarLabels.teamAvailabilityShowAll,
+    });
+    await expect(all).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(all);
+    await waitFor(() =>
+      expect(
+        within(section).getByRole("checkbox", { name: "Hide your own availability" }),
+      ).toBeTruthy(),
+    );
+    await userEvent.click(
+      within(section).getByRole("checkbox", {
+        name: defaultCalendarLabels.teamAvailabilityHideAll,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        within(section).getByRole("checkbox", {
+          name: defaultCalendarLabels.teamAvailabilityShowAll,
+        }),
+      ).toHaveAttribute("aria-checked", "false"),
+    );
+  },
+};
+
+/** Twelve rows: the filter shows; Alan's weeks came back incomplete. */
+export const TeamAvailabilityTwelve: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 12, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace", "alan"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    const list = within(section).getByRole("list");
+    await expect(within(list).getAllByRole("checkbox")).toHaveLength(12);
+    await expect(
+      within(section).getByRole("img", { name: defaultCalendarLabels.teamAvailabilityIncomplete }),
+    ).toBeTruthy();
+    await userEvent.type(
+      within(section).getByRole("searchbox", {
+        name: defaultCalendarLabels.teamAvailabilityFilter,
+      }),
+      "gr",
+    );
+    await waitFor(() => expect(within(list).getAllByRole("checkbox")).toHaveLength(1));
+  },
+};
+
+/** Rows start hidden: nothing ticked, nothing on the grid. */
+export const TeamAvailabilityHiddenByDefault: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: [],
+    },
+  },
+};
+
+/** Offline in a month view whose later weeks were never fetched. */
+export const TeamAvailabilityOffline: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    initialView: "month",
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({
+        count: 3,
+        anchor: MOCK_CALENDAR_ANCHOR,
+        cachedWeeksAfter: 1,
+        fetchedAt: Date.now() - 2 * 60 * 60 * 1000,
+      }),
+      shownIds: ["ada", "grace"],
+      offline: true,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = canvas.getByRole("region", { name: defaultCalendarLabels.calendarNoticeBarLabel });
+    await expect(bar.textContent).toContain(
+      "Offline · teammates' availability updated 2 hours ago.",
+    );
+    await expect(bar.textContent).toContain(defaultCalendarLabels.teamAvailabilityOfflineUncached);
+  },
+};
+
+/** Busy blocks in a month (#1911): Ada shares details, Grace only busy times. */
+export const TeamAvailabilityBusyMonth: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    initialView: "month",
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+};
+
+function findBusyCard(root: ParentNode, summary: string): HTMLElement | null {
+  for (const el of root.querySelectorAll('event-card[data-overlay="availability"]')) {
+    if ((el as HTMLElement & { summary?: string }).summary === summary) return el as HTMLElement;
+  }
+  for (const el of root.querySelectorAll("*")) {
+    if (el.shadowRoot) {
+      const found = findBusyCard(el.shadowRoot, summary);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Clicking a busy block opens its read-only popover: person, title, time, location. */
+export const TeamAvailabilityBusyPopover: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...teamAvailabilityArgs,
+    availabilityPreset: {
+      ...createTeamAvailabilityFixture({ count: 3, anchor: MOCK_CALENDAR_ANCHOR }),
+      shownIds: ["ada", "grace"],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const card = await waitFor(() => {
+      const found = findBusyCard(canvasElement, "Roadmap review");
+      if (!found) throw new Error("busy card not ready");
+      return found;
+    });
+    await userEvent.click(card);
+    const popover = await waitFor(() => {
+      const found = canvasElement.ownerDocument.querySelector(".calendar-availability-popover");
+      if (!(found instanceof HTMLElement)) throw new Error("popover not open");
+      return found;
+    });
+    await expect(popover.textContent).toContain("Ada Lovelace");
+    await expect(popover.textContent).toContain("Roadmap review");
+    await expect(popover.textContent).toContain("Room Babbage");
+  },
+};
+
+/** A JMAP server with the contract's TeamMember methods behind the section. */
+function mockTeamAvailabilitySource() {
+  const server = new MockJmapServer();
+  seedMockTeamAvailability(
+    server.availability,
+    createTeamAvailabilityFixture({
+      count: 12,
+      anchor: MOCK_CALENDAR_ANCHOR,
+      cachedWeeksBefore: 26,
+      cachedWeeksAfter: 26,
+    }),
+  );
+  return teamAvailabilitySourceFromJmap(
+    new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch }),
+  );
+}
+
+/**
+ * The live path against the mock JMAP server: ticks, fetches, the Dexie cache
+ * and the device prefs all run, so ticked rows and cached weeks survive a reload.
+ */
+export const TeamAvailabilityMockServer: Story = {
+  args: {
+    ...teamAvailabilityArgs,
+    session: {
+      ...bootstrap.session,
+      user: { ...bootstrap.session.user, username: "me", displayName: "Morgan Reed" },
+    },
+    availabilitySource: mockTeamAvailabilitySource(),
   },
 };
 

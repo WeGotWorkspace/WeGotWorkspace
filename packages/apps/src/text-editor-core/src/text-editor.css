@@ -1116,6 +1116,7 @@
 
   body.text-editor-print-active .text-editor-sheet__surface--print .ProseMirror {
     box-sizing: border-box !important;
+    transform: none !important;
     max-width: none !important;
     width: 100% !important;
     height: auto !important;

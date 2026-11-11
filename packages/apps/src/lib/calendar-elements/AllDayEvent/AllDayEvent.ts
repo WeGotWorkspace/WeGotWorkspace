@@ -515,6 +515,7 @@ export class AllDayEvent extends EventBase {
         .exception=${this.isException}
         ?past=${this.isPast}
         .rsvp=${this.rsvp}
+        .overlay=${this.overlay}
         style=${styleMap(inset.style)}
       >
         ${

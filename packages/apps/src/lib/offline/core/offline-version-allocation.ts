@@ -62,6 +62,7 @@ export const CALENDARS_OFFLINE_VERSION = {
   tables: 50,
   groups: 51,
   scheduling: 52,
+  availability: 53,
 } as const;
 
 /** Meet chat version steps within the meet-chat block (60–69). */

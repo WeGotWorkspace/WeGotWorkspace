@@ -1,4 +1,4 @@
-packages/apps/src/calendar-core/src/use-calendar-controller.ts#useCalendarController	1297	3	grandfathered
+packages/apps/src/calendar-core/src/use-calendar-controller.ts#useCalendarController	1295	3	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx#useContactsController	1300	9	grandfathered
 packages/apps/src/docs-core/src/use-docs-controller.tsx#useDocsController	251	3	grandfathered
 packages/apps/src/docs-core/src/use-docs-home-actions.tsx#useDocsHomeActions	402	1	grandfathered
@@ -18,7 +18,7 @@ packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	725	2
 packages/apps/src/notes-core/src/use-notes-notebook-mutations.tsx#useNotesNotebookMutations	231	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-shell.tsx#useNotesShell	185	6	grandfathered
 packages/apps/src/share-ui/use-share-mutations.ts#useShareMutations	217	0	grandfathered
-packages/apps/src/tasks-core/src/use-tasks-mutations.tsx#useTasksMutations	308	0	grandfathered
+packages/apps/src/tasks-core/src/use-tasks-mutations.tsx#useTasksMutations	260	0	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-join.ts#useDocsCollabJoin	619	2	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-mesh.ts#useDocsCollabMesh	304	0	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-save.ts#useDocsCollabSave	218	0	grandfathered

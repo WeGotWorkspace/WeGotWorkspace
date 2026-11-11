@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useMeetMeshSync } from "@/meet-core/src/use-meet-mesh-sync";
-import type { ChatMessage, MeetChannel } from "@/meet-core/src/meet-types";
+import type { ChatMessage, MeetChannel } from "@/lib/models/meet-types";
 import { PresenceStoreValueProvider } from "@/presence-core/src/presence-provider";
 import { createPresenceStore, type PresenceStore } from "@/presence-core/src/presence-store";
 import type {

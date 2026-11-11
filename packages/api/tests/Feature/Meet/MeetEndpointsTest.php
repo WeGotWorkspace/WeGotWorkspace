@@ -22,7 +22,7 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
         $response = $this->getJson('/api/v1/meetings/rooms/'.self::ROOM_ID);
 
         $response->assertNotFound();
-        $response->assertJson(['error' => 'not_found']);
+        $response->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_guest_join_returns_session_key_and_peers(): void
@@ -43,7 +43,7 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
         $response = $this->getJson('/api/v1/rooms/'.self::ROOM_ID.'/events?peerId=peer-alpha');
 
         $response->assertUnauthorized();
-        $response->assertJson(['error' => 'auth_required']);
+        $response->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_guest_join_poll_leave_flow(): void
@@ -75,7 +75,7 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
 
         $this->getJson('/api/v1/meetings/rooms/'.self::ROOM_ID)
             ->assertNotFound()
-            ->assertJson(['error' => 'not_found']);
+            ->assertExactJson(['error' => 'not_found', 'code' => 'not_found', 'message' => 'Meeting room is not reserved.']);
     }
 
     public function test_guest_rejoin_reuses_session_key(): void
@@ -115,7 +115,7 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
             'text' => 'hello',
         ])
             ->assertUnauthorized()
-            ->assertJson(['error' => 'auth_required']);
+            ->assertExactJson(['error' => 'auth_required', 'code' => 'auth_required', 'message' => 'Sign in or re-open the guest join link to start a signaling session.']);
     }
 
     public function test_guest_chat_delivers_to_other_peer_via_poll(): void

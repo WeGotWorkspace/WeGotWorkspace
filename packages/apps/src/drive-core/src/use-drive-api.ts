@@ -7,7 +7,7 @@ import {
   createDefaultDriveApiSource,
   type DriveApiSource,
 } from "@/drive-core/src/drive-api-source";
-import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
+import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { subscribeOfflineDeviceContentSettings } from "@/lib/offline/core/offline-device-settings";
 import { syncDocsBodiesFromHomeListing } from "@/lib/offline/docs/docs-body-sync";
 import { listAllCachedDriveEntryPaths } from "@/lib/offline/drive/drive-directory-offline-store";

@@ -1,5 +1,5 @@
 import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes-bootstrap-sync";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 
 /**
  * Tell the other open tabs after an archive, restore, or delete. They share

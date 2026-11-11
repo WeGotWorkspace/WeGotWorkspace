@@ -1,6 +1,6 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { createDriveFileKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both";
-import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
+import { ensureTrashFolder } from "@/lib/files/drive-entry-names";
 import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { parentAndName } from "@/lib/files/api-path";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";

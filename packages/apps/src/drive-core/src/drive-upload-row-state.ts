@@ -1,5 +1,5 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveUploadErrorCode } from "@/lib/offline/drive/upload/drive-upload-schema";
 import type {
   DriveUploadBatchView,

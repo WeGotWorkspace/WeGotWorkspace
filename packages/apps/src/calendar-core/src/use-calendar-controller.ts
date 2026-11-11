@@ -11,7 +11,7 @@ import type {
   CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import {
   isViewShowingToday,
   rangeToPlainDateTimeStrings,
@@ -38,7 +38,7 @@ import {
   formToPatch,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
-import { meetingUrlFromLinks } from "@/calendar-core/src/calendar-meet-link";
+import { meetingUrlFromLinks } from "@/lib/meetings/calendar-meet-link";
 import {
   canChangeCalendarOwner,
   canOpenCalendarSettings,
@@ -96,6 +96,7 @@ import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-pre
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
+import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 import {
   calendarEventWrite,
@@ -371,16 +372,13 @@ export function useCalendarController({
     });
   }, []);
 
+  /** Shows or hides several calendars at once (My calendars' show/hide-all dot). */
+  const setCalendarsVisible = useCallback((calendarIds: readonly string[], visible: boolean) => {
+    setHiddenCalendarIds((current) => withIds(current, calendarIds, !visible));
+  }, []);
+
   const toggleCalendarVisibility = useCallback((calendarId: string) => {
-    setHiddenCalendarIds((current) => {
-      const next = new Set(current);
-      if (next.has(calendarId)) {
-        next.delete(calendarId);
-      } else {
-        next.add(calendarId);
-      }
-      return next;
-    });
+    setHiddenCalendarIds((current) => withIds(current, [calendarId], !current.has(calendarId)));
   }, []);
 
   const visibleCalendarIds = useMemo(
@@ -1427,6 +1425,7 @@ export function useCalendarController({
     calendars,
     hiddenCalendarIds,
     toggleCalendarVisibility,
+    setCalendarsVisible,
     ensureCalendarVisible,
     selectDefaultCalendar,
     visibleCalendarIds,

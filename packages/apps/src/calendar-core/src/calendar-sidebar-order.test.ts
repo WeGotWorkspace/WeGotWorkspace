@@ -4,7 +4,7 @@ import {
   sharedWithMeCalendarsForSidebar,
   sortCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
-import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 describe("sortCalendarsForSidebar", () => {
   it("orders by sortOrder ascending, then name", () => {
@@ -116,5 +116,19 @@ describe("calendar sidebar sections", () => {
     expect(sharedWithMeCalendarsForSidebar([inboundInbox]).map((entry) => entry.id)).toEqual([
       "shared-inbox",
     ]);
+  });
+});
+
+describe("team availability calendars", () => {
+  it("never puts a virtual availability calendar in My calendars or Shared with me", () => {
+    const calendars: CalendarInfo[] = [
+      { id: "default", name: "Personal", color: "#6366f1" },
+      { id: "availability:alice", name: "Alice", color: "#0ea5e9", mayShare: false },
+      { id: "availability:bob", name: "Bob", color: "#14b8a6", isSharee: true },
+    ];
+    expect(ownedAndTeamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
+      "default",
+    ]);
+    expect(sharedWithMeCalendarsForSidebar(calendars)).toEqual([]);
   });
 });

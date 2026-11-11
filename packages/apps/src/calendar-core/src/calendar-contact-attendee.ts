@@ -7,14 +7,14 @@ import {
   normalizeParticipantAddress,
   type CalendarAttendee,
   type CalendarInvitee,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import {
   contactDisplayName,
   filterCardsBySearch,
   mapEntriesSorted,
 } from "@/contacts-core/src/contacts-display-utils";
 import { isContactGroupCard } from "@/contacts-core/src/contacts-group-utils";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarInviteeSearchSource = "teammate" | "contact" | "typed-email";
 

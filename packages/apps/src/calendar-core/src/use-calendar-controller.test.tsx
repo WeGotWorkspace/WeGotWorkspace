@@ -8,7 +8,7 @@ import {
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
-import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import * as calendarSearch from "@/calendar-core/src/calendar-search";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
@@ -732,6 +732,15 @@ describe("useCalendarController view + create intent", () => {
     const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
 
     expect(result.current.defaultCalendarId).toBe("default");
+  });
+
+  it("setCalendarsVisible hides and shows several calendars, keeping the others", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+    act(() => result.current.toggleCalendarVisibility("default"));
+    act(() => result.current.setCalendarsVisible(["work", "missing"], false));
+    expect([...result.current.hiddenCalendarIds].sort()).toEqual(["default", "missing", "work"]);
+    act(() => result.current.setCalendarsVisible(["work", "missing"], true));
+    expect([...result.current.hiddenCalendarIds]).toEqual(["default"]);
   });
 
   it("selectDefaultCalendar sets create target and unhides a hidden calendar", () => {

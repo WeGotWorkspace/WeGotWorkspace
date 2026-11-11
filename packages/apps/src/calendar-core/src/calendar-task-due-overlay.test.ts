@@ -1,17 +1,17 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,
   filterVisibleCalendarEventsKeepingOverlay,
   isTaskDueOverlayEvent,
   isTaskDueOverlayKey,
   mapTaskToDueOverlayMarker,
-  mergeTaskDueOverlayEvents,
-  omitTaskDueOverlayEvents,
+  mergeRenderOnlyOverlayEvents,
+  omitRenderOnlyOverlayEvents,
   parseTaskDueOverlayKey,
-  preserveTaskDueOverlayEvents,
+  preserveRenderOnlyOverlayEvents,
   TASK_DUE_OVERLAY_ALL_DAY_DURATION,
   TASK_DUE_OVERLAY_TIMED_DURATION,
   taskDueOverlayKey,
@@ -232,15 +232,15 @@ describe("task due overlay mapping", () => {
     const calendar: CalendarEventsMap = new Map([
       ["dentist", vevent("dentist", "default", "#111")],
     ]);
-    const merged = mergeTaskDueOverlayEvents(calendar, overlay.events);
+    const merged = mergeRenderOnlyOverlayEvents(calendar, overlay.events);
     expect(merged.size).toBe(2);
     expect(isTaskDueOverlayEvent(merged.get("task:milk"))).toBe(true);
 
-    const afterApply = preserveTaskDueOverlayEvents(
+    const afterApply = preserveRenderOnlyOverlayEvents(
       merged,
       new Map([["dentist", vevent("dentist", "default", "#222")]]),
     );
     expect(afterApply.get("task:milk")?.data.summary).toBe("Buy milk");
-    expect(omitTaskDueOverlayEvents(afterApply).has("task:milk")).toBe(false);
+    expect(omitRenderOnlyOverlayEvents(afterApply).has("task:milk")).toBe(false);
   });
 });

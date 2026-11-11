@@ -32,10 +32,7 @@ final class MeetActorResolver
             return $this->ownerMarkerForGuestSession($sessionKey);
         }
 
-        throw new MeetResponseException(401, [
-            'error' => 'auth_required',
-            'message' => 'Sign in or re-open the guest join link to start a signaling session.',
-        ]);
+        throw new MeetResponseException(401, 'auth_required', 'Sign in or re-open the guest join link to start a signaling session.');
     }
 
     /**

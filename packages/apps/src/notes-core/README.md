@@ -13,7 +13,7 @@ Public (`src/notes-core/src/index.ts`):
 - `NotesApp` (`src/notes-core/src/notes-app.tsx`)
 - `NotesWorkspace` (`src/notes-core/src/notes-workspace.tsx`)
 - `useNotesAPI`, `createDefaultNotesApiSource` (`src/notes-core/src/use-notes-api.ts`, `notes-api-source.ts`)
-- `NotesAPIOperations`, `NotesUIData`, `DeleteNotebookAction` (`src/notes-core/src/notes-types.ts`)
+- `NotesAPIOperations`, `NotesUIData`, `DeleteNotebookAction` (defined in `src/lib/models/notes-types.ts`, re-exported here)
 - `defaultNotesLabels`, `mergeNotesLabels` (`src/notes-core/src/notes-labels.ts`)
 
 Internal composition:

@@ -9,6 +9,8 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
+import { jmapTeamAvailabilitySource } from "@/calendar-core/src/calendar-invitee-availability";
+import { TeamAvailabilityProvider } from "@/calendar-core/src/use-invitee-availability";
 import {
   applyPendingSyncToEngineEvents,
   useCalendarPendingSync,
@@ -17,11 +19,12 @@ import { useCalendarRangeLoad } from "@/calendar-core/src/use-calendar-range-loa
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
+import { teamAvailabilitySourceFromJmap } from "@/calendar-core/src/use-team-availability";
 import {
   openCalendarMeetHref,
   type CalendarMeetChannelOption,
   type CalendarMeetRequestOptions,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { isWireDmChannel, listChatChannels } from "@/lib/api/wgw/meet-chat";
 
@@ -95,6 +98,14 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     reloadFromCache,
   } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict });
   const { online } = useConnectivity();
+  const teamAvailability = useMemo(
+    () => (jmapClient ? jmapTeamAvailabilitySource(jmapClient) : null),
+    [jmapClient],
+  );
+  const availabilitySource = useMemo(
+    () => (jmapClient ? teamAvailabilitySourceFromJmap(jmapClient) : null),
+    [jmapClient],
+  );
 
   // The route follows the view, so its view and date are the period on screen.
   useCalendarRangeLoad({
@@ -183,28 +194,30 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
         errorTitle={defaultCalendarLabels.appTitle}
         successVersion={successVersion}
         render={(key) => (
-          <CalendarWorkspace
-            key={key}
-            data={data}
-            session={session}
-            operations={operations}
-            surface={syncedSurface}
-            pendingEventIds={pendingEventIds}
-            initialView={initialView}
-            initialPresentation={initialPresentation}
-            initialAnchor={initialAnchor}
-            initialSearchQuery={initialSearchQuery}
-            onRouteStateChange={handleRouteStateChange}
-            onLogout={() => {
-              window.location.assign("/logout");
-            }}
-            meetOperations={meetOperations}
-            workspaceOrigin={workspaceOrigin}
-            onJoinMeeting={handleJoinMeeting}
-            onOpenTaskInTasks={(href) => {
-              window.location.assign(href);
-            }}
-          />
+          <TeamAvailabilityProvider key={key} source={teamAvailability}>
+            <CalendarWorkspace
+              data={data}
+              session={session}
+              operations={operations}
+              surface={syncedSurface}
+              pendingEventIds={pendingEventIds}
+              initialView={initialView}
+              initialPresentation={initialPresentation}
+              initialAnchor={initialAnchor}
+              initialSearchQuery={initialSearchQuery}
+              onRouteStateChange={handleRouteStateChange}
+              onLogout={() => {
+                window.location.assign("/logout");
+              }}
+              meetOperations={meetOperations}
+              workspaceOrigin={workspaceOrigin}
+              onJoinMeeting={handleJoinMeeting}
+              onOpenTaskInTasks={(href) => {
+                window.location.assign(href);
+              }}
+              availabilitySource={availabilitySource}
+            />
+          </TeamAvailabilityProvider>
         )}
       />
       <CalendarConflictDialog

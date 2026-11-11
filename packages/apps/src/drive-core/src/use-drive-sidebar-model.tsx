@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { HardDrive } from "lucide-react";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-browser-sidebar";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { DriveUploadsBadge } from "@/drive-core/src/drive-uploads-badge";

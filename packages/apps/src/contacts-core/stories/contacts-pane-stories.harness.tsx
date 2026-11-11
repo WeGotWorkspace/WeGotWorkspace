@@ -6,7 +6,7 @@ import type {
   ContactCardPatch,
   ContactsAPIOperations,
   ContactsUIData,
-} from "@/contacts-core/src/contacts-types";
+} from "@/lib/models/contacts-types";
 import { useContactsController } from "@/contacts-core/src/use-contacts-controller";
 import { splitVcardBlocks } from "@/contacts-core/src/contacts-vcard-import";
 

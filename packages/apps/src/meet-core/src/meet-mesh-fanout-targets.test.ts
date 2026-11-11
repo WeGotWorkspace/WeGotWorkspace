@@ -4,7 +4,7 @@ import {
   meetMeshFanoutUsernamesUnion,
   meetMeshSenderMayHint,
 } from "@/meet-core/src/meet-mesh-fanout-targets";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 function channel(overrides: Partial<MeetChannel> & Pick<MeetChannel, "id">): MeetChannel {
   return {

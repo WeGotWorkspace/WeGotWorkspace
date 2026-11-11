@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
-import type { MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/lib/models/meet-types";
 
 function channel(
   partial: Partial<MeetChannel> & Pick<MeetChannel, "id" | "name" | "kind">,

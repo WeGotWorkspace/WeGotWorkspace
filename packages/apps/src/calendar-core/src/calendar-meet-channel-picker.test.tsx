@@ -7,7 +7,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type {
   CalendarMeetChannelOption,
   CalendarMeetOperations,
-} from "@/calendar-core/src/calendar-meet-link";
+} from "@/lib/meetings/calendar-meet-link";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const L = defaultCalendarLabels;

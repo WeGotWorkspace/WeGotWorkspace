@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { cn } from "@/lib/utils";
 import {
   type FolderDropZoneProps,

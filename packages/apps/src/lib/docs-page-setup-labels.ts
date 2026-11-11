@@ -13,6 +13,7 @@ export const docsPageSetupLabels = {
   pagePaperNone: "None",
   pageOrientationPortrait: "Portrait",
   pageOrientationLandscape: "Landscape",
+  pageFitToScreen: "Fit to screen",
   settingsDescription: "Default paper for new documents",
   settingsPaper: "Default paper size",
   settingsOrientation: "Default orientation",
@@ -22,7 +23,11 @@ export const docsPageSetupLabels = {
 
 export type DocsPageSetupLabels = Pick<
   typeof docsPageSetupLabels,
-  "pageSetup" | "pagePaperNone" | "pageOrientationPortrait" | "pageOrientationLandscape"
+  | "pageSetup"
+  | "pagePaperNone"
+  | "pageOrientationPortrait"
+  | "pageOrientationLandscape"
+  | "pageFitToScreen"
 >;
 
 /** None first, then the paper sizes. */

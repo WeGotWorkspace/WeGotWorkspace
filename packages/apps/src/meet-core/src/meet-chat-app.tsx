@@ -6,7 +6,7 @@ import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat-offline-store
 import { latestMessageInChannel } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
@@ -39,9 +39,9 @@ import {
   meetChannelIdsEqual,
   meetCollectionIdFromPublic,
   meetPublicChannelId,
-} from "@/meet-core/src/meet-public-id";
+} from "@/lib/meetings/meet-public-id";
 import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
-import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/meet-core/src/meet-types";
+import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";
 import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";

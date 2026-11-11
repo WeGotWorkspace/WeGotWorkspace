@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwErrorMessageFromBody, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import type {
@@ -19,7 +20,7 @@ import type {
   DriveSharedWithMeDataResponse,
   DriveSharedWithMeEntry,
 } from "@wgw/openapi-types/drive-types";
-import type { DriveShareMutationOpts, DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareMutationOpts, DriveShareOperations } from "@/lib/files/drive-types";
 
 function pathQuery(path: string): string {
   return `path=${encodeURIComponent(normalizePath(path))}`;
@@ -47,7 +48,7 @@ async function postShareJson<T>(
   });
   if (!res.ok) {
     const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`POST ${path} failed (${res.status}): ${detail}`);
+    throw new WgwRequestError(`POST ${path} failed (${res.status}): ${detail}`, res.status);
   }
   return (await wgwReadJson(res)) as T;
 }
@@ -66,7 +67,7 @@ async function patchShareJson(
   });
   if (!res.ok) {
     const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`PATCH ${path} failed (${res.status}): ${detail}`);
+    throw new WgwRequestError(`PATCH ${path} failed (${res.status}): ${detail}`, res.status);
   }
   const payload = (await wgwReadJson(res)) as DriveShareDataResponse;
   return payload.data;
@@ -76,7 +77,7 @@ async function deleteShareRequest(path: string, opts?: DriveShareMutationOpts): 
   const res = await wgwFetch(path, { method: "DELETE", signal: opts?.signal });
   if (!res.ok) {
     const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`DELETE ${path} failed (${res.status}): ${detail}`);
+    throw new WgwRequestError(`DELETE ${path} failed (${res.status}): ${detail}`, res.status);
   }
 }
 

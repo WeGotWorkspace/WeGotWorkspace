@@ -16,17 +16,19 @@ import {
   formToDraft,
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
+import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {
-  isTaskDueOverlayEvent,
-  isTaskDueOverlayKey,
-} from "@/calendar-core/src/calendar-task-due-overlay";
+  isRenderOnlyOverlayEvent,
+  isRenderOnlyOverlayKey,
+} from "@/calendar-core/src/calendar-render-overlay";
+import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 
 const OFFLINE_ACCOUNT_ID = "offline";
 
@@ -88,6 +90,8 @@ function blocksCollectionWrite(
   calendars: readonly CalendarInfo[],
 ): boolean {
   return operationCalendarIds(operation, events).some((id) => {
+    // A teammate's virtual availability calendar is read-only and never stored.
+    if (isAvailabilityCalendarId(id)) return true;
     const calendar = calendars.find((entry) => entry.id === id);
     return calendar != null && !canWriteCalendarCollection(calendar);
   });
@@ -291,7 +295,13 @@ function patchFromEngineEvent(
   masterKey: string,
   event: CalendarEvent,
 ): CalendarEventPatch {
-  const patch = formToFullPatch(engineEventToForm(event));
+  // The engine never holds "Show as", alerts or links: a drag must not reset them.
+  const {
+    freeBusyStatus: _freeBusyStatus,
+    alerts: _alerts,
+    links: _links,
+    ...patch
+  } = formToFullPatch(engineEventToForm(event));
   const overrides = recurrenceOverridesFromEngineMap(events, persistEventId(masterKey));
   if (overrides) patch.recurrenceOverrides = overrides;
   return patch;
@@ -329,7 +339,11 @@ export async function persistCalendarEventChanges(
       continue;
     }
     if (change.type === "created") {
-      const draft = formToDraft(engineEventToForm(change.event));
+      const form = engineEventToForm(change.event);
+      const draft = formToDraft({
+        ...form,
+        freeBusyStatus: newEventFreeBusyStatus(form.allDay),
+      });
       if (!draft.calendarId) continue;
       const persistId = persistEventId(change.key);
       const created = await operations.createEvent({
@@ -400,9 +414,9 @@ export function createCalendarEventsApi(args: CreateCalendarEventsApiArgs): Cale
         ? target.eventId
         : undefined;
     if (
-      isTaskDueOverlayKey(targetKey) ||
-      isTaskDueOverlayKey(targetEventId) ||
-      (target ? isTaskDueOverlayEvent(eventForTarget(currentEvents(), target)) : false)
+      isRenderOnlyOverlayKey(targetKey) ||
+      isRenderOnlyOverlayKey(targetEventId) ||
+      (target ? isRenderOnlyOverlayEvent(eventForTarget(currentEvents(), target)) : false)
     ) {
       return { nextState: currentEvents(), changes: [], effects: [] };
     }
