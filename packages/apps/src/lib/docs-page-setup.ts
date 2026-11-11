@@ -15,6 +15,7 @@ import { normalizeApiVirtualPath } from "@/lib/files/api-path";
  *
  * Two records: the default (Docs settings), which new documents start with, and an
  * override per document (Page setup in the document's header), keyed by its path.
+ * Fit to screen is about this screen, not the document, so it lives in the default only.
  */
 export const DOCS_PAGE_SETUP_STORAGE_KEY = "wgw.ui.docs.pageSetup";
 export const DOCS_PAGE_SETUP_OVERRIDES_KEY = "wgw.ui.docs.pageSetup.byDoc";
@@ -27,6 +28,8 @@ const CHANGE_EVENT = "wgw-docs-page-setup";
 export type DocsPageSetupPrefs = {
   format?: TextEditorPaperChoice;
   orientation?: TextEditorPageOrientation;
+  /** Shrink pages wider than the screen or pane to fit it; on when unset. For every document. */
+  fitToScreen?: boolean;
 };
 
 /** One document's own page setup: both choices, so a later default change leaves it alone. */
@@ -64,6 +67,7 @@ export function parseDocsPageSetupPrefs(raw: string | null): DocsPageSetupPrefs 
   const prefs: DocsPageSetupPrefs = {};
   if (isTextEditorPaperChoice(record.format)) prefs.format = record.format;
   if (isTextEditorPageOrientation(record.orientation)) prefs.orientation = record.orientation;
+  if (typeof record.fitToScreen === "boolean") prefs.fitToScreen = record.fitToScreen;
   // Before `none` there was a separate Pages / Continuous switch.
   if (record.layout === "continuous") prefs.format = "none";
   return prefs;
@@ -205,16 +209,22 @@ function browserLocales(): readonly string[] {
   return navigator.languages?.length ? navigator.languages : [navigator.language ?? ""];
 }
 
-/** Stored choices over the defaults: portrait, Letter or A4 by locale; pages unless `none`. */
+/**
+ * Stored choices over the defaults: portrait, Letter or A4 by locale; pages unless `none`,
+ * fitted to the screen unless turned off.
+ */
 export function resolveDocsPageSetup(
   prefs: DocsPageSetupPrefs,
   locales: readonly string[] = browserLocales(),
 ): TextEditorPageSetup {
   const format = prefs.format ?? defaultTextEditorPageFormat(locales);
+  const layout = format === "none" ? "continuous" : "pages";
   return {
     format,
     orientation: prefs.orientation ?? "portrait",
-    layout: format === "none" ? "continuous" : "pages",
+    layout,
+    // On unless turned off: pages shrink to the screen or pane by default.
+    ...(layout === "pages" && prefs.fitToScreen !== false ? { fitToScreen: true } : {}),
   };
 }
 
@@ -227,7 +237,9 @@ export function resolveDocPageSetup(
 ): TextEditorPageSetup {
   const own = path ? docOverrides[docsPageSetupDocKey(path)] : undefined;
   return resolveDocsPageSetup(
-    own ? { format: own.format, orientation: own.orientation } : prefs,
+    own
+      ? { format: own.format, orientation: own.orientation, fitToScreen: prefs.fitToScreen }
+      : prefs,
     locales,
   );
 }

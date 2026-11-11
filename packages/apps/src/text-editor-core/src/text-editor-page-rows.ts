@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { textEditorScreenScale } from "@/text-editor-core/src/text-editor-fit-scale";
 import { documentTables } from "./text-editor-page-columns";
 
 /**
@@ -42,9 +43,11 @@ function oversizeRows(view: EditorView, options: PageRowsOptions): number[] {
   if (!options.isEnabled() || !view.dom.classList.contains(PAGINATION_CLASS)) return [];
   const limit = options.contentHeight();
   if (!(limit > 0)) return [];
+  // Fit to screen scales the page column on screen; the limit is in layout px.
+  const scale = textEditorScreenScale(view.dom);
   return tableRowPositions(view.state.doc).filter((pos) => {
     const dom = view.nodeDOM(pos);
-    return dom instanceof HTMLElement && dom.getBoundingClientRect().height > limit;
+    return dom instanceof HTMLElement && dom.getBoundingClientRect().height / scale > limit;
   });
 }
 

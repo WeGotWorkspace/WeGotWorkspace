@@ -18,6 +18,7 @@ When building or refactoring UI in `packages/apps/src/**/*.{ts,tsx,css}`:
 | Primitive API / CSS variables / action surfaces | This file |
 | Component / pane API design | [components.md](components.md) |
 | TypeScript conventions | [typescript.md](typescript.md) |
+| Which module may import which (layers, app-package allowlist) | [import-boundaries.md](import-boundaries.md) |
 | Workspace shell / *App / *Workspace | [workspace](../workspace/SKILL.md) |
 | Accessibility / WCAG | [accessibility](../accessibility/SKILL.md) |
 | Storybook stories | [storybook](../storybook/SKILL.md) |
