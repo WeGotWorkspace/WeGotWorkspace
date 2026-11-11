@@ -62,7 +62,7 @@ final class FileNodeRootMarkers
                 $this->pending[$root] = true;
             }
         } catch (\Throwable $e) {
-            Log::warning('file_node_root_marker_lookup_failed', ['key' => $key, 'error' => $e->getMessage()]);
+            Log::error('file_node_root_marker_lookup_failed', ['key' => $key, 'error' => $e->getMessage()]);
         }
         if ($this->depth === 0) {
             $this->flush();
@@ -163,7 +163,7 @@ final class FileNodeRootMarkers
             // One statement; an existing row counts up, a new row starts at 1.
             JmapFileNodeRootMarker::query()->upsert($rows, ['root_hash'], ['marker' => DB::raw('marker + 1')]);
         } catch (\Throwable $e) {
-            Log::warning('file_node_root_marker_bump_failed', ['roots' => count($roots), 'error' => $e->getMessage()]);
+            Log::error('file_node_root_marker_bump_failed', ['roots' => count($roots), 'error' => $e->getMessage()]);
         }
     }
 

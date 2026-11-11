@@ -44,6 +44,13 @@ Build a **new Laravel application** that matches the **HTTP contract** in OpenAP
 - **Tests:** Feature tests per route group before a domain is "done"
 - **Files:** Flysystem via `WgwStorage` (see [storage-flysystem.md](storage-flysystem.md))
 
+## Log levels
+
+- **`Log::error`** — a write we promised did not happen, data is now inconsistent (an index, sidecar, star, thread or event did not follow), or the install is misconfigured. Someone should look. A `catch (\Throwable)` around a best-effort side effect logs here.
+- **`Log::warning`** — a designed limit or policy kicked in, or user input was rejected, and the system behaved as designed.
+
+`tests/Architecture/FailureLogLevelTest` fails when a `*_failed` event logs at warning without a listed reason.
+
 ## Forbidden (migration theater)
 
 - Restoring or referencing `packages/api/src/`, `MailApi`, `*Kernel`, `ApiKernel`, `DomainRouteService`

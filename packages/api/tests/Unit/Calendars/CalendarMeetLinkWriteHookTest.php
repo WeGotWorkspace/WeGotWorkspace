@@ -94,7 +94,7 @@ final class CalendarMeetLinkWriteHookTest extends WgwDatabaseTestCase
 
         $this->assertNull(MeetReservation::query()->find(self::ROOM));
         Event::assertDispatched(MessageLogged::class, function (MessageLogged $event): bool {
-            return $event->level === 'warning'
+            return $event->level === 'error'
                 && $event->message === CalendarMeetLinkWriteHook::RESERVE_FAILED_LOG
                 && ($event->context['event_uid'] ?? null) === 'meet-log-1'
                 && ($event->context['room_ids'] ?? null) === [self::ROOM]

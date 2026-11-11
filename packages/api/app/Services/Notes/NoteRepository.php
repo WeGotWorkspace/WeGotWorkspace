@@ -737,7 +737,7 @@ final class NoteRepository
     private function logAuxiliaryTableFailure(string $table, string $username, QueryException $exception): void
     {
         try {
-            Log::warning('notes_auxiliary_table_failed', [
+            Log::error('notes_auxiliary_table_failed', [
                 'table' => $table,
                 'username' => $username,
                 'message' => $exception->getMessage(),

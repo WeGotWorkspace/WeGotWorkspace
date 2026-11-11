@@ -36,7 +36,7 @@ final class CalendarMeetLinkWriteHook
         try {
             $this->apply($newIcs, $ownerPrincipal, $createdBy);
         } catch (\Throwable $e) {
-            Log::warning(self::RESERVE_FAILED_LOG, [
+            Log::error(self::RESERVE_FAILED_LOG, [
                 'room_ids' => $this->roomIds($newIcs),
                 'event_uid' => $this->analysis->primaryUid($newIcs),
                 'exception' => $e::class,
