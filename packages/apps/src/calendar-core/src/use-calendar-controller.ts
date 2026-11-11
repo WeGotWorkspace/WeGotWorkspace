@@ -92,7 +92,7 @@ import {
   dismissSidebarOverlay,
   isSidebarOverlayViewport,
 } from "@/workspace-shell/src/sidebar-breakpoint";
-import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
@@ -309,7 +309,7 @@ export function useCalendarController({
     (next: CalendarViewId) => {
       if (viewRef.current === next) return;
       viewRef.current = next;
-      persistCalendarRoutePrefs(next, presentationRef.current);
+      calendarViewPrefs.patch({ view: next, presentation: presentationRef.current });
       setView(next);
       dismissSidebarOverlay(() => setSidebarOpen(false));
       onViewChange?.(next);
@@ -322,7 +322,7 @@ export function useCalendarController({
     (next: CalendarPresentation) => {
       if (presentationRef.current === next) return;
       presentationRef.current = next;
-      persistCalendarRoutePrefs(viewRef.current, next);
+      calendarViewPrefs.patch({ view: viewRef.current, presentation: next });
       setPresentationState(next);
       emitRouteState(currentRouteState());
     },
@@ -398,7 +398,7 @@ export function useCalendarController({
       presentationRef.current = next.presentation;
       anchorRef.current = next.date;
       searchQueryRef.current = normalizeCalendarSearchQuery(next.searchQuery);
-      persistCalendarRoutePrefs(next.view, next.presentation);
+      calendarViewPrefs.patch({ view: next.view, presentation: next.presentation });
       setView(next.view);
       setPresentationState(next.presentation);
       setAnchorState(next.date);

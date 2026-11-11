@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
 import {
   CALENDAR_VIEW_PREFS_STORAGE_KEY,
-  readCalendarViewPrefs,
+  calendarViewPrefs,
 } from "@/calendar-core/src/calendar-view-prefs";
 
 describe("useCalendarSectionCollapsed", () => {
@@ -14,8 +14,8 @@ describe("useCalendarSectionCollapsed", () => {
     expect(reminders.result.current.collapsed).toBe(false);
     act(() => reminders.result.current.toggleCollapsed());
     expect(reminders.result.current.collapsed).toBe(true);
-    expect(readCalendarViewPrefs()).toMatchObject({ remindersCollapsed: true });
-    expect(readCalendarViewPrefs()?.availabilityCollapsed).toBeUndefined();
+    expect(calendarViewPrefs.read()).toMatchObject({ remindersCollapsed: true });
+    expect(calendarViewPrefs.read()?.availabilityCollapsed).toBeUndefined();
 
     const again = renderHook(() => useCalendarSectionCollapsed("remindersCollapsed"));
     expect(again.result.current.collapsed).toBe(true);

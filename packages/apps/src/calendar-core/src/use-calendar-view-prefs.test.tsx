@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
-import { readCalendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -58,7 +58,7 @@ describe("useCalendarController device prefs", () => {
       result.current.setPresentation("list");
     });
 
-    expect(readCalendarViewPrefs()).toMatchObject({
+    expect(calendarViewPrefs.read()).toMatchObject({
       view: "week",
       presentation: "list",
     });
