@@ -405,11 +405,11 @@ async function movesSince(
   before: ReadonlyMap<string, string>,
 ): Promise<DocsInboundChange[]> {
   const moves: DocsInboundChange[] = [];
+  const bare = (path: string): string => path.replace(/^\/+/, "");
   for (const [nodeId, from] of before) {
     // A Doc with unsaved text keeps its old row while the crawl upserts the new
     // path, so one node id can have several rows; the destination is the one
     // path that differs from `from`.
-    const bare = (path: string): string => path.replace(/^\/+/, "");
     const rows = await driveEntriesTable(accountDb(username))
       .where("nodeId")
       .equals(nodeId)
