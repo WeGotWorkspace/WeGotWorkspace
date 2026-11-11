@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { useWatch, type Control } from "react-hook-form";
+import { CalendarClock } from "lucide-react";
 import { Button } from "@/button/src/button";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
 import type {
@@ -37,7 +38,7 @@ export function SettingsCalendarAvailabilitySection({
 }) {
   const controller = useSettingsCalendarAvailability(operations);
   return (
-    <SettingsPaneCard title={labels.title}>
+    <SettingsPaneCard title={labels.title} icon={<CalendarClock aria-hidden />}>
       <AvailabilityBody controller={controller} />
     </SettingsPaneCard>
   );
@@ -124,7 +125,6 @@ function AvailabilityCalendars({
       ) : (
         <p className="settings-availability__hint">{labels.calendarsNone}</p>
       )}
-      <p className="settings-availability__hint">{labels.footer}</p>
     </section>
   );
 }

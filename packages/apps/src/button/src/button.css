@@ -70,8 +70,8 @@
 }
 
 .button--variant-primary {
-  background-color: var(--button-primary-background, var(--workspace-accent));
-  color: var(--button-primary-color, var(--workspace-accent-foreground));
+  background-color: var(--workspace-accent);
+  color: var(--workspace-accent-foreground);
 }
 
 .button--variant-primary:hover {

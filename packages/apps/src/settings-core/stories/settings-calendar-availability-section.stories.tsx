@@ -67,7 +67,6 @@ export const SwitchOff: Story = {
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(canvas.getByText(labels.offHint)).toBeInTheDocument();
     await expect(canvas.queryByText(labels.calendarsHeading)).toBeNull();
-    await expect(canvas.queryByText(labels.footer)).toBeNull();
   },
 };
 
@@ -81,7 +80,7 @@ export const OnWithoutCalendars: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(labels.calendarsNone)).toBeInTheDocument();
-    await expect(canvas.getByText(labels.footer)).toBeInTheDocument();
+    await expect(canvas.getByText(labels.calendarsHeading)).toBeInTheDocument();
   },
 };
 

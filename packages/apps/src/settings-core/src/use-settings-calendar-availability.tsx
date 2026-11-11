@@ -49,7 +49,7 @@ function isOffline(error: unknown): boolean {
 export function useSettingsCalendarAvailability(
   operations: CalendarAvailabilitySettingsOperations = defaultCalendarAvailabilitySettingsOperations(),
 ): SettingsCalendarAvailabilityController {
-  const { showError } = useAppToast();
+  const { showError, showSuccess } = useAppToast();
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
   const [phase, setPhase] = useState<CalendarAvailabilityPhase>("loading");
@@ -135,7 +135,12 @@ export function useSettingsCalendarAvailability(
       if (!getConnectivitySnapshot()) throw new AvailabilitySettingsOfflineError();
       const update = calendarAvailabilityUpdateFromForm(base, values);
       requestRef.current += 1;
-      apply(await operationsRef.current.save(update));
+      const saved = await operationsRef.current.save(update);
+      apply(saved);
+      // Sharing on or off is the one change people want confirmed; calendar choices stay quiet.
+      if (saved.enabled !== base.enabled) {
+        showSuccess(saved.enabled ? labels.sharingOn : labels.sharingOff);
+      }
       notifySettingsSliceSaved(CALENDAR_AVAILABILITY_SLICE);
       calendarAvailabilitySavedTopic.publish(
         { type: "calendar-availability-saved" },

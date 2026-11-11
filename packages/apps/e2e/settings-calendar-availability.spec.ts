@@ -15,7 +15,7 @@ type AvailabilityCalendar = {
   source: "personal" | "team";
 };
 
-const SWITCH = "Share my availability with my Teams";
+const SWITCH = "Share my availability";
 const SAVED = "Availability settings saved";
 const SAVE_OFFLINE = "Availability settings need a connection. Try again when you are online.";
 const DO_NOT_ADD = "Do not add";

@@ -87,15 +87,14 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText(labels.offHint)).toBeTruthy();
     expect(screen.queryByText(labels.calendarsHeading)).toBeNull();
-    expect(screen.queryByText(labels.footer)).toBeNull();
   });
 
-  it("shows the calendars with their defaults and the footer once on, without a Teams list", async () => {
+  it("shows the calendars with their defaults once on, without a Teams list", async () => {
     renderSection(createMockCalendarAvailabilitySettingsOperations());
     fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
 
     expect(screen.queryByText(labels.offHint)).toBeNull();
-    expect(screen.getByText(labels.footer)).toBeTruthy();
+    expect(screen.getByText(labels.calendarsHeading)).toBeTruthy();
     expect(screen.queryByText("Design")).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
     const personal = calendarRow("Personal");
@@ -119,7 +118,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
+    await screen.findByText(labels.calendarsHeading);
     expect(optionNames("Work")).toEqual([labels.exclude, labels.detailBusy, labels.detailDetails]);
   });
 
@@ -142,7 +141,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
+    await screen.findByText(labels.calendarsHeading);
     const team = calendarRow("Editorial");
     expect(within(team).getByRole("combobox").textContent).toContain(labels.detailBusy);
     expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
@@ -154,7 +153,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
+    await screen.findByText(labels.calendarsHeading);
     const team = calendarRow("Editorial");
     expect(within(calendarRow("Work")).queryByText(labels.teamBadge)).toBeNull();
     // Only in the tooltip, not as a line in the row.

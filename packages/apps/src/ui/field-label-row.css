@@ -97,6 +97,8 @@
 }
 
 .field-label-row--inline .field-label-row__label {
+  /* Room between a leading mark (a color dot, a section icon) and the caption. */
+  @apply gap-2;
   grid-column: 1;
   grid-row: 1;
   /* Same size as the controls (inputs, dropdowns). */
@@ -111,6 +113,10 @@
   font-size: var(--input-font-size-lg, 1rem);
   line-height: 1.5rem;
   color: var(--workspace-foreground);
+}
+
+.field-label-row--section .field-label-row__label > svg {
+  @apply size-4;
 }
 
 /* Sections stand apart by a gap, not a hairline: room above one that follows other rows. */

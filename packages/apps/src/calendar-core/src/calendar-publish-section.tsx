@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Globe2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -46,6 +46,7 @@ export function CalendarPublishSection({
       <FieldLabelRow
         layout="inline"
         section
+        icon={<Globe2 aria-hidden />}
         label={labels.publishCalendarTitle}
         htmlFor={publishSwitchId}
         description={

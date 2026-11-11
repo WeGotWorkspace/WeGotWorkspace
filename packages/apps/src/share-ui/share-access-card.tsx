@@ -6,6 +6,8 @@ import "@/share-ui/share-ui.css";
 
 export type ShareAccessCardProps = {
   title: string;
+  /** Section icon before the caption. */
+  icon?: ReactNode;
   /** The add field: the caption names it. */
   htmlFor?: string;
   description?: ReactNode;
@@ -18,6 +20,7 @@ export type ShareAccessCardProps = {
 /** Who has access: caption on top, then the add field and the member rows. */
 export function ShareAccessCard({
   title,
+  icon,
   htmlFor,
   description,
   className,
@@ -31,6 +34,7 @@ export function ShareAccessCard({
       section
       className={cn("share-access-card", className)}
       label={title}
+      icon={icon}
       htmlFor={htmlFor}
       description={description}
       below={

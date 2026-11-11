@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { Users } from "lucide-react";
 import { buttonVariants } from "@/button/src/button";
 import {
   displayNameForSharePrincipal,
@@ -119,6 +120,7 @@ export function CollectionShareSection({
       {!online ? <p className="share-dialog__error">{copy.offline}</p> : null}
       <ShareAccessCard
         htmlFor={addFieldId}
+        icon={<Users aria-hidden />}
         title={copy.title}
         description={noTeam ? noTeamYetCopy : copy.hint}
         addControl={

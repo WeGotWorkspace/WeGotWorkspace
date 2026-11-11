@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { Users } from "lucide-react";
 import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw/openapi-types/drive-types";
 import { CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
@@ -109,6 +110,7 @@ export function ShareTeamSection({
     <>
       <ShareAccessCard
         htmlFor={addFieldId}
+        icon={<Users aria-hidden />}
         title={shareLabels.teamSectionTitle}
         description={noTeam ? noTeamYetCopy : shareLabels.teamSectionHint}
         addControl={
