@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { createMemoryHistory } from "@tanstack/react-router";
+import { wegotworkspaceMockRoutes } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 import { WeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-router";
 
 export type WeGotWorkspaceProps = {
@@ -19,5 +20,7 @@ export function WeGotWorkspace({ initialPath = "/login" }: WeGotWorkspaceProps) 
     [initialPath],
   );
 
-  return <WeGotWorkspaceRouter mode="mock" history={history} />;
+  return (
+    <WeGotWorkspaceRouter mode="mock" history={history} mockRoutes={wegotworkspaceMockRoutes} />
+  );
 }

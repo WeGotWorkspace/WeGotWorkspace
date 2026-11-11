@@ -101,16 +101,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes("scroll-timeline-polyfill")) {
               return "scroll-timeline";
             }
-            if (
-              id.includes("/docs-collab/docs-comments/") ||
-              id.includes("/docs-collab/use-docs-comments")
-            ) {
-              return "docs-comments";
-            }
-            // Keep Lit calendar custom-element registration out of the main chunk.
-            if (id.includes("/lib/calendar-elements/")) {
-              return "calendar-elements";
-            }
           },
         },
       },

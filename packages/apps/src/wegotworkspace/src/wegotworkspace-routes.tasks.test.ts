@@ -1,6 +1,6 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 
 describe("wegotworkspace tasks routes", () => {
@@ -8,7 +8,7 @@ describe("wegotworkspace tasks routes", () => {
     const history = createMemoryHistory({
       initialEntries: [`/tasks/lists/${INBOX_TASK_LIST_ID}`],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const listMatch = router.state.matches.find((match) => match.params.listId);
@@ -21,7 +21,7 @@ describe("wegotworkspace tasks routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/tasks/state/all"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     const route = router.routesByPath["/tasks"];
     expect(route?.options.beforeLoad).toEqual(expect.any(Function));
     expect(() => route?.options.beforeLoad?.({} as never)).toThrow();
@@ -31,7 +31,7 @@ describe("wegotworkspace tasks routes", () => {
     const history = createMemoryHistory({
       initialEntries: [`/tasks/lists/${INBOX_TASK_LIST_ID}?task=task-inbox-demo`],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.search).toMatchObject({ task: "task-inbox-demo" });
@@ -43,7 +43,7 @@ describe("wegotworkspace tasks routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/tasks/state/today"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const stateMatch = router.state.matches.find((match) => match.params.stateSlug);
