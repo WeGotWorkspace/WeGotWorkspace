@@ -111,8 +111,12 @@ html:not([data-modality="pointer"])
 
 /* `leadingControl`: the control sits beside the row button, over the reserved slot,
  * on the title line. Same start as the row text: the pill inset plus its padding. */
+/* On touch the frame is a flex item of the swipe row: without `min-width: 0` a long
+   title widened it past the screen instead of truncating (Tasks rows). */
 .list-item__frame {
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .list-item__leading-control-slot {

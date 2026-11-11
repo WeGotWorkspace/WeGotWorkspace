@@ -1,3 +1,4 @@
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { wgwErrorMessageFromBody, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import type {
   CalendarFeed,
@@ -12,7 +13,7 @@ export const CALENDAR_SUBSCRIPTION_STALE_MS = 60 * 60 * 1000;
 async function throwUnlessOk(res: Response, method: string, path: string): Promise<void> {
   if (res.ok || res.status === 204) return;
   const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-  throw new Error(`${method} ${path} failed (${res.status}): ${detail}`);
+  throw new WgwRequestError(`${method} ${path} failed (${res.status}): ${detail}`, res.status);
 }
 
 async function readOkJson<T>(res: Response, method: string, path: string): Promise<T> {

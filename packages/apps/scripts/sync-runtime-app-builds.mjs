@@ -70,10 +70,23 @@ export function readFirstPaintStyle(indexHtml) {
   return style;
 }
 
+/**
+ * The viewport tag from the built `index.html`, verbatim: it carries the suite's one
+ * iOS focus-zoom stop (`maximum-scale=1`), so runtime HTML must not write its own.
+ */
+export function readViewportMeta(indexHtml) {
+  const meta = indexHtml.match(/<meta\s+name="viewport"[^>]*>/)?.[0];
+  if (!meta || !/maximum-scale=1\b/.test(meta)) {
+    throw new Error("Built index.html has no viewport meta with maximum-scale=1.");
+  }
+  return meta.replace(/\s+/g, " ");
+}
+
 export function renderIndexHtml({
   title,
   scriptPath,
   cssPath,
+  viewportMeta,
   firstPaintStyle,
   assetBase = "",
   fontPreloads = RUNTIME_FONT_PRELOADS,
@@ -82,7 +95,7 @@ export function renderIndexHtml({
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    ${viewportMeta}
     <title>${title}</title>
 ${renderFontPreloadTags(assetBase, fontPreloads)}
     ${firstPaintStyle}
@@ -110,9 +123,9 @@ export function syncRuntimeAppBuilds() {
   }
 
   const pwaServiceWorkerFiles = listPwaServiceWorkerFiles(distRoot);
-  const firstPaintStyle = readFirstPaintStyle(
-    readFileSync(resolve(distRoot, "index.html"), "utf8"),
-  );
+  const builtIndexHtml = readFileSync(resolve(distRoot, "index.html"), "utf8");
+  const firstPaintStyle = readFirstPaintStyle(builtIndexHtml);
+  const viewportMeta = readViewportMeta(builtIndexHtml);
 
   for (const module of modules) {
     const targetDist = resolve(runtimeAppsRoot, module.name, "dist");
@@ -154,6 +167,7 @@ export function syncRuntimeAppBuilds() {
       title: module.title,
       scriptPath: `${assetBase}/assets/${mainJs}`,
       cssPath: `${assetBase}/assets/${mainCss}`,
+      viewportMeta,
       firstPaintStyle,
       assetBase,
       fontPreloads,

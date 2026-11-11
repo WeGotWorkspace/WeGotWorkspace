@@ -1,13 +1,10 @@
 import { useCallback } from "react";
-import { CheckCircle2, Circle, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/tasks-core/src/tasks-types";
-import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
-import { TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import {
   canWriteTaskList,
   isTaskCompleted,
-  mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
@@ -19,6 +16,7 @@ import { moveTasksBack, moveTasksToList, statusWrites } from "@/tasks-core/src/t
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 import type { TasksExitAnimationState } from "@/tasks-core/src/use-tasks-exit-animation";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
+import { useCreateTaskFromForm } from "@/tasks-core/src/use-create-task-from-form";
 import { useTaskDetailAutosave } from "@/tasks-core/src/use-task-detail-autosave";
 import { useTasksSelectionActions } from "@/tasks-core/src/use-tasks-selection-actions";
 
@@ -61,78 +59,15 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [operations, setTasks, tasks],
   );
 
-  const createTaskFromForm = useCallback(
-    async ({
-      title,
-      description,
-      listId,
-      workflowStatus,
-      priority,
-      due,
-      showWithoutTime,
-      timeZone,
-      alerts,
-    }: TasksTaskFormValue) => {
-      if (!operations || !title.trim()) return;
-      const targetList = taskLists.find((list) => list.id === listId);
-      if (!canWriteTaskList(targetList)) return;
-      ensureTaskListVisible(listId);
-      const trimmedTitle = title.trim();
-      const trimmedDescription = description.trim() || null;
-      const status = workflowStatus ?? "needs-action";
-      const taskPriority = priority === TASK_PRIORITY_NONE ? null : priority;
-      const taskDue = due ?? null;
-      const taskShowWithoutTime = taskDue ? (showWithoutTime ?? true) : undefined;
-      const taskTimeZone = taskDue && showWithoutTime === false ? (timeZone ?? null) : null;
-      const taskAlerts = alerts;
-      const tempId = `pending-${crypto.randomUUID()}`;
-      const optimistic: Task = {
-        "@type": "Task",
-        id: tempId,
-        taskListId: listId,
-        uid: tempId,
-        title: trimmedTitle,
-        description: trimmedDescription,
-        due: taskDue,
-        showWithoutTime: taskShowWithoutTime,
-        timeZone: taskTimeZone,
-        workflowStatus: status,
-        priority: taskPriority,
-        isDraft: false,
-        sortOrder: Number.MAX_SAFE_INTEGER,
-        categories: [],
-        alerts: taskAlerts,
-      };
-
-      setTasks((prev) => [...prev, optimistic]);
-
-      try {
-        const created = await operations.createTask({
-          title: trimmedTitle,
-          description: trimmedDescription,
-          taskListIds: { [listId]: true },
-          workflowStatus: status,
-          priority: taskPriority,
-          due: taskDue,
-          ...(taskDue
-            ? {
-                showWithoutTime: taskShowWithoutTime,
-                timeZone: taskTimeZone,
-              }
-            : {}),
-          alerts: taskAlerts,
-        });
-        setTasks((prev) =>
-          prev.map((task) => (task.id === tempId ? mergeCreatedTask(optimistic, created) : task)),
-        );
-        shell.show(L.toastTaskAdded, { icon: <Plus className="size-4" /> });
-      } catch {
-        setTasks((prev) => prev.filter((task) => task.id !== tempId));
-        showMutationError();
-      }
-    },
-    [L.toastTaskAdded, operations, setTasks, shell, showMutationError, taskLists],
-  );
+  const createTaskFromForm = useCreateTaskFromForm({
+    L,
+    taskLists,
+    setTasks,
+    operations,
+    ensureTaskListVisible,
+    show: shell.show,
+    showMutationError,
+  });
 
   const { autosaveTask, setStatusInOrder } = useTaskDetailAutosave({
     tasks,
@@ -263,6 +198,20 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     [L.cancel, L.delete, L.deleteConfirmBody, L.deleteConfirmTitle, deleteTasks, requestConfirm],
   );
 
+  /** The open task's list switcher: confirm before the move, as Notes and Contacts do. */
+  const requestMoveTask = useCallback(
+    (listName: string, move: () => void) => {
+      requestConfirm({
+        title: L.moveTaskTitle,
+        description: L.moveTaskDescription(listName),
+        confirmLabel: L.moveConfirm,
+        cancelLabel: L.cancel,
+        onConfirm: move,
+      });
+    },
+    [L, requestConfirm],
+  );
+
   const moveToList = useCallback(
     (ids: string[], listId: string) => {
       if (!operations) return;
@@ -331,6 +280,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
     selectionBarButtons,
     autosaveTask,
     requestDeleteTask,
+    requestMoveTask,
     moveToList,
     confirmDialog,
     handleTaskExitAnimationEnd,
