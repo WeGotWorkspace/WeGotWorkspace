@@ -723,6 +723,44 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
   });
 
+  it("moves each file on its own when the full crawl finds a renamed folder", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/Plans", "fn-plans", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));
+    await upsertDriveEntry(username, entry("/users/ada/Plans/out.md", "fn-out"));
+    await upsertDriveEntry(username, entry("/users/ada/Plans/gone.md", "fn-gone"));
+    const docs = ["keep.md", "out.md", "gone.md"].map((name, at) =>
+      doc(`users/ada/Plans/${name}`, at + 1),
+    );
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    fileNodeChanges.mockRejectedValue(
+      new JmapMethodError("FileNode/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    syncDriveMetadataTree.mockImplementation(async () => {
+      const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+      for (const id of [
+        "users/ada/Plans",
+        "users/ada/Plans/keep.md",
+        "users/ada/Plans/out.md",
+        "users/ada/Plans/gone.md",
+      ]) {
+        await table.delete(id);
+      }
+      await upsertDriveEntry(username, entry("/users/ada/Archive", "fn-plans", "dir"));
+      await upsertDriveEntry(username, entry("/users/ada/Archive/keep.md", "fn-keep"));
+      await upsertDriveEntry(username, entry("/users/ada/Loose.md", "fn-out"));
+      return { running: false, total: 3, synced: 3, failed: 0, updatedAt: 1 };
+    });
+    getFileNodes.mockResolvedValue({ accountId: "ada", state: "9", list: [], notFound: [] });
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const rows = (await listed(all)) ?? [];
+    expect(rows).toContain("users/ada/Archive/keep.md");
+    expect(rows).toContain("users/ada/Loose.md");
+    expect(rows).not.toContain("users/ada/Archive/gone.md");
+    expect(rows).not.toContain("users/ada/Archive/out.md");
+  });
+
   it("keeps a Doc with unsaved text in every view when it is deleted elsewhere", async () => {
     const path = "/users/ada/unsaved-view.md";
     await upsertDriveEntry(username, entry(path, "fn-unsaved-view"));
