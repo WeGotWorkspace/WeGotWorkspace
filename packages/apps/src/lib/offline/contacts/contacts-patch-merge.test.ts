@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 import {
   applyContactPatch,
   coalesceContactPatches,

@@ -8,7 +8,7 @@ import { TasksListPanel, type TasksListPanelProps } from "@/tasks-core/src/tasks
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
 import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import { formatTaskDueRelative } from "@/tasks-core/src/tasks-task-utils";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const bootstrap = createTasksAppBootstrap();

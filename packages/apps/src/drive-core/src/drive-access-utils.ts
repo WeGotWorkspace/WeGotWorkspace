@@ -4,7 +4,7 @@ import type {
   DriveShareGrantSourceEntry,
   DriveSharePublicSummary,
 } from "@wgw/openapi-types/drive-types";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 
 export type DriveAccessFilter = "all" | "external" | "public" | "groups";
 

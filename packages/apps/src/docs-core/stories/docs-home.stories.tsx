@@ -3,16 +3,16 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
-import { resolveFreeName } from "@/drive-core/src/drive-batch-utils";
+import { resolveFreeName } from "@/lib/files/drive-entry-names";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import {
   apiPathFromUiPath,
   DRIVE_TRASH_DIR_NAME,
   DRIVE_TRASH_UI_PATH,
   normalizeApiVirtualPath,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 import { apiPathFromSearchSourceKey } from "@/drive-core/src/drive-search-utils";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";

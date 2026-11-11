@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { driveLabels } from "./drive-labels";
-import type { DriveFile } from "./drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { useDriveMutations } from "./use-drive-mutations";
 import { buildList, buildShell } from "./use-drive-mutations-fixtures";
 import type { DriveShellState } from "./use-drive-shell";

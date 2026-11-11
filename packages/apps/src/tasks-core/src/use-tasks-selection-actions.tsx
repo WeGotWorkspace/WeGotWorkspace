@@ -3,7 +3,7 @@ import { CheckCircle2, ListTodo, Trash2 } from "lucide-react";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-types";
 import type { ConfirmDialogRequest } from "@/hooks/use-confirm-dialog";
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { canWriteTaskList, isTaskCompleted } from "@/tasks-core/src/tasks-task-utils";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";

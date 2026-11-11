@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import {
   CONTACTS_LIST_CARD_ROW_REM,
   CONTACTS_LIST_HEADER_ROW_REM,

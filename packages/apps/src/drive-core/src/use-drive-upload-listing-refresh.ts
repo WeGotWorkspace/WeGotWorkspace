@@ -1,7 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { apiPathFromUiPath } from "@/drive-core/src/drive-path-utils";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { apiPathFromUiPath } from "@/lib/files/drive-path-utils";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { mergeDriveUploadPlaceholders } from "@/drive-core/src/drive-upload-listing";
 
 export type UseDriveUploadListingRefreshArgs = {

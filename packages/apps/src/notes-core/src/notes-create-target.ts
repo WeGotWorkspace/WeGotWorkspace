@@ -1,7 +1,7 @@
 import { preferredCollectionName } from "@/lib/default-collection-prefs";
 import { parseGroupNotebookPath } from "@/notes-core/src/notes-note-utils";
 import { findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
-import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 
 export type NotesCreateTarget = {
   /** Display name — still sent for the legacy name-keyed fallback. */

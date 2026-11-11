@@ -1,11 +1,11 @@
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
-import { canBrowserPreviewImage, inferFileKindFromName } from "@/drive-core/src/drive-file-utils";
+import { canBrowserPreviewImage, inferFileKindFromName } from "@/lib/files/file-name-utils";
 import { canMoveDriveItemsToFolder, driveFolderUiPath } from "@/drive-core/src/drive-item-path";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import {
   DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT,
   DRIVE_TRASH_UI_PATH,
-} from "@/drive-core/src/drive-path-utils";
+} from "@/lib/files/drive-path-utils";
 
 /** Move / New-doc vs Insert-image on the shared Drive folder picker. */
 export type DrivePickerMode = "folder-destination" | "file-select";

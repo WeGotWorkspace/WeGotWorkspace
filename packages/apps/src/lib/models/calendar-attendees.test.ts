@@ -12,7 +12,7 @@ import {
   organizerAddress,
   ownEventRsvpPresentation,
   participantsFromAttendees,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 
 describe("calendar attendees", () => {
   it("round-trips invitees and marks the organizer", () => {

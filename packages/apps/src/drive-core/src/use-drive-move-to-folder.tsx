@@ -5,8 +5,8 @@ import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import { driveRestoreMoves, moveDriveRows } from "@/drive-core/src/drive-undo-writes";
 import { type DriveRestoreMove } from "@/drive-core/src/drive-batch-utils";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   driveRowsById,
   patchAllFilesRows,

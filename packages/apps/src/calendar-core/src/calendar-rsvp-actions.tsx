@@ -3,7 +3,7 @@ import { Check, CircleHelp, Clock, Forward, X, type LucideIcon } from "lucide-re
 import {
   normalizeParticipationStatus,
   type CalendarParticipationStatus,
-} from "@/calendar-core/src/calendar-attendees";
+} from "@/lib/models/calendar-attendees";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";

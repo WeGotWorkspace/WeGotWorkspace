@@ -27,7 +27,7 @@ import type {
   CalendarAPIOperations,
   CalendarEventPatch,
   CalendarInfo,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 
 const OFFLINE_ACCOUNT_ID = "offline";
 

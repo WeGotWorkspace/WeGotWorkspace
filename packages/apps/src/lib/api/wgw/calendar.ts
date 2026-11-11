@@ -14,7 +14,7 @@ import type {
   CalendarEventPatch,
   CalendarInfo,
   CalendarPatch,
-} from "@/calendar-core/src/calendar-types";
+} from "@/lib/models/calendar-types";
 import {
   calendarInfoFromJmap,
   calendarSharePrincipalsFromDirectory,

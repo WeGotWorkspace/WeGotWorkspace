@@ -1,4 +1,4 @@
-import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import type { Task, TaskList } from "@/lib/models/tasks-types";
 import {
   listRemovedIds,
   readPendingWrites,

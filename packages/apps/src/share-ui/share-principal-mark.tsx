@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
 import type { ControlSize } from "@/ui/control-size";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
-
-export type SharePrincipalKind = "user" | "group";
 
 type SharePrincipalMarkProps = {
   principalType: SharePrincipalKind;

@@ -1,4 +1,4 @@
-import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
+import { normalizeParticipationStatus } from "@/lib/models/calendar-attendees";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import { formatInvitationWhen } from "@/calendar-core/src/calendar-invitation-when";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";

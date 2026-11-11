@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { DriveUploadQueueModel } from "@/drive-core/src/drive-upload-queue";
-import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { takeDriveUploadRetryAfterSignIn } from "@/drive-core/src/drive-upload-sign-in";
 
 /**

@@ -1,4 +1,4 @@
-import type { FileKind } from "@/drive-core/src/drive-models";
+import type { FileKind } from "@/lib/files/drive-models";
 
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"]);
 const VIDEO_EXT = new Set(["mp4", "webm", "mov", "m4v"]);

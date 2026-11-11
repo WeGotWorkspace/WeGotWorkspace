@@ -1,4 +1,4 @@
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
 
 /**
  * Hues for common extensions, grouped by family so a PDF always reads red and a

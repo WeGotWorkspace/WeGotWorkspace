@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Select, SelectContent, SelectItem } from "@/ui/select";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
-import type { Task } from "@/tasks-core/src/tasks-types";
+import type { Task } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   TASK_WORKFLOW_STATUSES,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MEET_ROOM_CODE_PATTERN } from "@/calendar-core/src/calendar-meet-link";
-import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
+import { MEET_ROOM_CODE_PATTERN } from "@/lib/meetings/calendar-meet-link";
+import { createMeetPeerId, createMeetRoomCode } from "@/lib/meetings/meet-room-id";
 
 describe("meet room id", () => {
   it("creates peer ids with the expected alphabet length", () => {

@@ -8,7 +8,7 @@ import {
   parseDriveRouteSearch,
 } from "@/drive-core/src/drive-route-search";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
-import type { ViewKey } from "@/drive-core/src/drive-models";
+import type { ViewKey } from "@/lib/files/drive-models";
 import { useDriveAPI } from "@/drive-core/src/use-drive-api";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import type { DriveAppProps } from "@/drive-core/src/drive-app-props";

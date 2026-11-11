@@ -44,7 +44,7 @@ describe("useContactsController group rename", () => {
       addressBookIds: { default: true },
       name: { full: "Empty Group" },
       members: { "urn:uuid:missing-member": true },
-    } as unknown as import("@/contacts-core/src/contacts-types").ContactCard;
+    } as unknown as import("@/lib/models/contacts-types").ContactCard;
 
     const data = {
       ...bootstrap.data,

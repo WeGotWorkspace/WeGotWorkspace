@@ -31,7 +31,7 @@ export {
   type DocsHomeDrive,
   type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
-export { DOCS_EDITOR_EXTENSIONS } from "@/drive-core/src/drive-models";
+export { DOCS_EDITOR_EXTENSIONS } from "@/lib/files/drive-models";
 export {
   docsApiPathFromSearch,
   docsHrefFromApiPath,

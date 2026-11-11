@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 
 function shouldOpenDocsCollab(filePath: string | null, isGuestSession: boolean): boolean {
   return isDocsCollabEditablePath(filePath) && !isGuestSession;

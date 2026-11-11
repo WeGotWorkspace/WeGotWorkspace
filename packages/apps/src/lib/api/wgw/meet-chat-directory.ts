@@ -9,8 +9,8 @@ import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   sharePrincipalsFromDirectory,
   type CollectionSharePrincipal,
-} from "@/share-ui/collection-share";
-import type { MeetDirectoryGroup } from "@/meet-core/src/meet-types";
+} from "@/lib/sharing/collection-share";
+import type { MeetDirectoryGroup } from "@/lib/models/meet-types";
 
 const GROUP_PRINCIPAL_PREFIX = "principals/groups/";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
-import type { NotesAPIOperations } from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { notifyOtherTabsOnStructuralChanges } from "./notes-cross-tab-notify";
 
 vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({

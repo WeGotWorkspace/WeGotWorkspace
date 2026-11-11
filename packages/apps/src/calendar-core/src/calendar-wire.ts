@@ -1,6 +1,6 @@
-import { participantsFromAttendees } from "@/calendar-core/src/calendar-attendees";
+import { participantsFromAttendees } from "@/lib/models/calendar-attendees";
 import type { JmapCalendarEvent, JSCalendarRecurrenceRule } from "@/lib/jmap-client";
-import type { CalendarEventDraft, CalendarEventPatch } from "@/calendar-core/src/calendar-types";
+import type { CalendarEventDraft, CalendarEventPatch } from "@/lib/models/calendar-types";
 
 /** Pure JSCalendar wire shaping shared by the jmap transport and the offline layer. */
 

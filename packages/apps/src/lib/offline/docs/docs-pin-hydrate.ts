@@ -1,6 +1,6 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {

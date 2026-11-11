@@ -13,11 +13,11 @@ import {
   DRIVE_LIST_SORT_STORAGE_KEY,
   sortDriveFiles,
 } from "@/drive-core/src/drive-list-sort";
-import type { DriveFile } from "@/drive-core/src/drive-models";
-import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
+import type { DriveFile } from "@/lib/files/drive-models";
+import { uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { isDocsEditorPreviewFile } from "@/lib/file-preview/file-preview-utils";
 
 const WRITE_QUEUE_DELAY_MS = 2500;

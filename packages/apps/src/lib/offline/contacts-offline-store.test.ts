@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, beforeEach } from "vitest";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import type { ContactCard } from "@/lib/models/contacts-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {

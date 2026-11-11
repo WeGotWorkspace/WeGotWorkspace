@@ -4,7 +4,7 @@ import {
   type CalendarRangeLabelDensity,
 } from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
 import { viewDateRange } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
+import type { CalendarViewId } from "@/lib/models/calendar-types";
 
 export function calendarViewRangeTitle(
   view: CalendarViewId,

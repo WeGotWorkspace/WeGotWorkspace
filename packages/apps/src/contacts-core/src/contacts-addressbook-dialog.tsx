@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
-import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import {
   ADDRESS_BOOK_DOT_COLORS,
   addressBookDotColor,

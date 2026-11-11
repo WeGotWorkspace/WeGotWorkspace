@@ -8,8 +8,8 @@ import {
   shareRightsForPermission,
   type CollectionSharePrincipal,
   type CollectionShareWith,
-} from "@/share-ui/collection-share";
-import { NOTES_SHARE_UI_PERMISSIONS } from "@/share-ui/share-access-map";
+} from "@/lib/sharing/collection-share";
+import { NOTES_SHARE_UI_PERMISSIONS } from "@/lib/sharing/share-access-map";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { noTeamYetCopy, shareLabels } from "@/share-ui/share-labels";

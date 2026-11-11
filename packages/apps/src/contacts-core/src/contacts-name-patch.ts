@@ -1,5 +1,5 @@
 import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
-import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts-types";
+import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 type NameComponent = NonNullable<NonNullable<ContactCard["name"]>["components"]>[number];
 type DraftKind = "given" | "given2" | "surname";

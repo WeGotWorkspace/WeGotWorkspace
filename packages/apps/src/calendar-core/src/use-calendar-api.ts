@@ -15,7 +15,7 @@ import {
 } from "@/lib/offline/offline-session";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
-import type { CalendarUIData } from "@/calendar-core/src/calendar-types";
+import type { CalendarUIData } from "@/lib/models/calendar-types";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import {
   createDefaultCalendarApiSource,

@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import { createDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import type { DriveFile } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/lib/files/drive-models";
 import "@/drive-core/src/drive-browser.css";
 
 const noop = () => {};

@@ -13,7 +13,7 @@ export type {
   CalendarSharePrincipal,
   CalendarShareRights,
   CalendarShareWith,
-} from "./calendar-types";
+} from "@/lib/models/calendar-types";
 export { useCalendarAPI } from "./use-calendar-api";
 export { createDefaultCalendarApiSource } from "./calendar-api-source";
 export type { CalendarApiSource } from "./calendar-api-source";
@@ -25,7 +25,7 @@ export type {
   CalendarPresentation,
   CalendarUIData,
   CalendarViewId,
-} from "./calendar-types";
+} from "@/lib/models/calendar-types";
 export {
   canManageCalendarSharing,
   canWriteCalendarCollection,
@@ -61,4 +61,4 @@ export {
   type CalendarAttendee,
   type CalendarAttendeeRole,
   type CalendarInvitee,
-} from "./calendar-attendees";
+} from "@/lib/models/calendar-attendees";

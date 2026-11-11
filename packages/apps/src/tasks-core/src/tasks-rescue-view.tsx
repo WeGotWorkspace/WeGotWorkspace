@@ -2,7 +2,7 @@ import { ListPlus } from "lucide-react";
 import type { RescueLabels, RescueView } from "@/rescue-ui/rescue-adapter";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
-import type { TaskList } from "@/tasks-core/src/tasks-types";
+import type { TaskList } from "@/lib/models/tasks-types";
 
 /** The Tasks words of the shared rescue dialog. */
 export function tasksRescueLabels(L: TasksUILabels): RescueLabels {

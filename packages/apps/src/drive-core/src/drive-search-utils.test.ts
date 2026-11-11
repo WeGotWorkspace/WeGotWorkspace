@@ -6,7 +6,7 @@ import {
   isSharedDriveApiPath,
   parentVirtualPath,
 } from "@/drive-core/src/drive-search-utils";
-import type { DriveUnifiedSearchResult } from "@/drive-core/src/drive-types";
+import type { DriveUnifiedSearchResult } from "@/lib/files/drive-types";
 
 describe("parentVirtualPath", () => {
   it("returns My Drive for single-segment UI paths", () => {

@@ -1,6 +1,6 @@
 import type { DocsAPIOperations, DocsUIData } from "@/docs-core/src/docs-types";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
-import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
 export type DocsWorkspaceProps = {
