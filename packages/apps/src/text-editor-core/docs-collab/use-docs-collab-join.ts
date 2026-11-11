@@ -117,8 +117,6 @@ export function useDocsCollabJoin({
    */
   const loadedStateRef = useRef<{ ydoc: Y.Doc; stateVector: Map<number, number> } | null>(null);
   const serverJoinStartedRef = useRef(false);
-  /** Lets go of the path-keyed copy this session opened (#1933). */
-  const releaseDatabaseRef = useRef<(() => void) | null>(null);
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.
     setSnapshotPreview(null);
@@ -168,14 +166,7 @@ export function useDocsCollabJoin({
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
     if (meshSession) lingerDocsCollabMeshSession(room, meshSession);
-    const releaseDatabase = releaseDatabaseRef.current ?? undefined;
-    releaseDatabaseRef.current = null;
-    leaveCollabRoom(
-      refs.persistenceRef.current,
-      refs.saveTimerRef,
-      { room, urls },
-      releaseDatabase,
-    );
+    leaveCollabRoom(refs.persistenceRef.current, refs.saveTimerRef, { room, urls });
     refs.persistenceRef.current = null;
     refs.ydocRef.current = null;
     loadedStateRef.current = null;
@@ -545,8 +536,7 @@ export function useDocsCollabJoin({
     }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
-    releaseDatabaseRef.current = database.release;
-    rememberCollabRoomJoin(persistence, { room, urls });
+    rememberCollabRoomJoin(persistence, { room, urls }, database.release);
 
     const authTokenPromise = allowServerRequests
       ? refs.wireRef.current

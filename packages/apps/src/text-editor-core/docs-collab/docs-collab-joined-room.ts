@@ -6,12 +6,17 @@ import { cancelSaveTimer } from "./docs-collab-save-timer";
 /** The room and urls each open store was joined with. */
 const joinedRooms = new WeakMap<IndexeddbPersistence, CollabRoomLeftUnsaved>();
 
-/** Records the room a store was opened for, at join. */
+/** Lets go of the path-keyed copy each open store holds (#1933). */
+const databaseReleases = new WeakMap<IndexeddbPersistence, () => void>();
+
+/** Records the room a store was opened for, at join, and how to release its copy. */
 export function rememberCollabRoomJoin(
   persistence: IndexeddbPersistence,
   joined: CollabRoomLeftUnsaved,
+  release?: () => void,
 ): void {
   joinedRooms.set(persistence, joined);
+  if (release) databaseReleases.set(persistence, release);
 }
 
 /**
@@ -28,14 +33,12 @@ export function leaveCollabRoom(
   persistence: IndexeddbPersistence | null,
   saveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>,
   current: CollabRoomLeftUnsaved,
-  /** Runs once the store is closed (releases the editor's hold on it). */
-  afterClose?: () => void,
 ): void {
   const saveDue = cancelSaveTimer(saveTimerRef);
-  if (!persistence) {
-    afterClose?.();
-    return;
-  }
+  if (!persistence) return;
+  // Released only once the store has closed, so its unsaved mark moves along.
+  const afterClose = databaseReleases.get(persistence);
+  databaseReleases.delete(persistence);
   const remembered = joinedRooms.get(persistence);
   joinedRooms.delete(persistence);
   // Same room: this render's urls are newer than the join's (a save hold
