@@ -26,10 +26,9 @@
  * to touch the baseline in the same pull request. Raising a count or adding
  * an edge means editing the JSON by hand, which a reviewer sees.
  */
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { readFileSync, writeFileSync } from "node:fs";
 
 import { ESLint } from "eslint";
 
