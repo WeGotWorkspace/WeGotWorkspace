@@ -62,9 +62,14 @@
     var(--workspace-foreground)
   );
 
-  --input-background: transparent;
-  --input-background-focus: var(--input-background);
+  /*
+   * Text fields and selects have no border, only a faint fill: the header icon
+   * button's hover wash at rest, its selected-under-the-pointer wash while focused.
+   */
+  --input-background: var(--button-hover-background);
+  --input-background-focus: var(--button-outline-active-hover-background);
   --input-background-disabled: var(--input-background);
+  --input-border-color: transparent;
 
   --button-outline-color: var(--workspace-foreground);
   --button-outline-hover-color: var(--workspace-accent);

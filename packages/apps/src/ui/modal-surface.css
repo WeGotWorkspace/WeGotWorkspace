@@ -31,7 +31,7 @@
  */
 .ui-modal-surface--center {
   --control-height-md: var(--control-height-sm, 2rem);
-  --input-height: var(--control-height-sm, 2rem);
+  --input-height: calc(var(--control-height-sm, 2rem) + var(--input-height-step, 0px));
   @apply flex flex-col;
   /* Center with the individual `translate` property only — never also set
    * `transform: translate(...)`. Prod Lightning CSS drops `translate: none`

@@ -325,8 +325,10 @@
   --control-height-md: 2.25rem;
   --control-height-lg: 2.5rem;
   --control-height-xl: 2.75rem;
-  --input-height: var(--control-height-md);
-  --input-padding-x: 0.75rem;
+  /* Fields are one step taller than buttons of the same size (room around the text). */
+  --input-height-step: 0.25rem;
+  --input-height: calc(var(--control-height-md) + var(--input-height-step));
+  --input-padding-x: 0.875rem;
   /*
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
@@ -609,6 +611,7 @@ select {
 /*
  * Pane headers and the sidebar: `md` controls (the IconButton default) step up
  * to the header control height, so every header and sidebar button is 40px.
+ * Fields there (search, a view select) stay in line with those buttons.
  */
 :is(
   .app-sidebar,
@@ -620,4 +623,5 @@ select {
   .docs-collab-sidebar-panel__header
 ) {
   --control-height-md: var(--workspace-header-control-height);
+  --input-height-step: 0px;
 }

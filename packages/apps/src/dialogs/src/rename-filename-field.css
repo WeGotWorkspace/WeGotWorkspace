@@ -20,12 +20,16 @@
   /* Same face as `.input--size-sm`. Base `--input-font-size` is 1rem. */
   font-size: var(--input-font-size-sm, 0.875rem);
   color: color-mix(in oklab, var(--color-foreground) 72%, transparent);
-  background-color: color-mix(in oklab, var(--color-muted) 55%, var(--color-background) 45%);
-  /* Same hairline as `.input`. No start border — the name field's end edge is the seam. */
-  border: 1px solid var(--control-border-color);
+  /* Same fill and edge as `.input`, so name and extension read as one field. */
+  background-color: var(--input-background);
+  border: 1px solid var(--input-border-color, var(--control-border-color));
   border-inline-start-width: 0;
   border-start-end-radius: var(--control-radius);
   border-end-end-radius: var(--control-radius);
   box-shadow: var(--input-shadow, 0 0 transparent);
   user-select: none;
+}
+
+.rename-filename-field:focus-within .rename-filename-field__extension {
+  background-color: var(--input-background-focus, var(--input-background));
 }

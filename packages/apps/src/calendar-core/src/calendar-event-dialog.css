@@ -99,7 +99,7 @@
   gap: 1.25rem;
   /*
    * Shared track height for icons, toggle, caption, and Select.
-   * Compact form remaps --field-label-icon-min-height → --control-height-sm.
+   * Compact form remaps --field-label-icon-min-height to the sm field height.
    */
   --when-meta-row-height: var(
     --field-label-icon-min-height,
@@ -183,7 +183,10 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form--compact {
-  --field-label-icon-min-height: var(--control-height-sm, 2rem);
+  /* The field height (the sm control plus the field step). */
+  --field-label-icon-min-height: calc(
+    var(--control-height-sm, 2rem) + var(--input-height-step, 0px)
+  );
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form--compact .calendar-event-dialog__time-slot,
