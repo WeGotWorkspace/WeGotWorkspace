@@ -8,6 +8,7 @@ use App\Support\AppPaths;
 use App\Support\InstallLayout;
 use App\Support\WgwEnvLocation;
 use App\Support\WgwInstallConfig;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Moves a fresh install's packages/api/.env into its data directory when that
@@ -43,6 +44,27 @@ final class EnvFileRelocator
         private DataDirCandidateResolver $dataDirs,
         private EnvFileWriter $envFiles = new EnvFileWriter,
     ) {}
+
+    /**
+     * The install's last step. Never fails the install: on any problem the
+     * .env stays in packages/api, where it was during the install.
+     */
+    public function relocateAfterInstall(): void
+    {
+        try {
+            $result = $this->relocateIntoDataDir();
+        } catch (\Throwable $e) {
+            Log::error('installer.env_relocation_failed', ['error' => $e->getMessage()]);
+
+            return;
+        }
+        if (in_array($result['status'], self::FAILURES, true)) {
+            Log::error('installer.env_relocation_failed', $result);
+
+            return;
+        }
+        Log::info('installer.env_location', $result);
+    }
 
     /**
      * @return array{status: string, path: string}
