@@ -27,6 +27,7 @@ use App\Http\Support\WgwOversizedPost;
 use App\Services\Auth\RefreshCookie;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Support\PublicAppUrl;
+use App\Support\WgwEnvLocation;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -195,6 +196,15 @@ $app = Application::configure(basePath: dirname(__DIR__))
         GuestUploadRateLimiters::register();
     })
     ->create();
+
+// A fresh install whose data directory is outside the published tree keeps
+// its .env there too (#1484). Web, artisan, the queue and the scheduler all
+// boot through this file, so they all read the same one.
+$relocatedEnv = WgwEnvLocation::relocatedForBoot($app->basePath());
+if ($relocatedEnv !== null) {
+    $app->useEnvironmentPath(dirname($relocatedEnv));
+    $app->loadEnvironmentFrom(basename($relocatedEnv));
+}
 
 $storagePath = getenv('WGW_STORAGE_PATH');
 if (! is_string($storagePath) || $storagePath === '') {

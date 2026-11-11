@@ -11,6 +11,7 @@ use App\Support\InstallLayout;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 final class InstallerWizardService
 {
@@ -28,6 +29,7 @@ final class InstallerWizardService
         private InstallerWindow $window,
         private InstallerDatabaseHostGuard $hosts,
         private DataDirInstallCoordinator $dataDirs,
+        private EnvFileRelocator $envRelocator,
     ) {}
 
     /**
@@ -413,6 +415,7 @@ final class InstallerWizardService
 
         $this->apiEnv->ensure($this->paths->installRoot(), $appUrl);
         @chmod($this->paths->lockFile(), 0600);
+        $this->relocateEnvFile();
 
         $this->saveWizardState([
             'step' => 'done',
@@ -428,6 +431,28 @@ final class InstallerWizardService
         $adminPath = InstallerWebBase::url($webBase, '/admin/');
 
         return InstallerWebBase::url($webBase, '/login?return='.rawurlencode($adminPath));
+    }
+
+    /**
+     * Last install step: the .env follows a data directory outside the
+     * published tree (#1484). Never fails the install; the .env then stays in
+     * packages/api, where it was during the install.
+     */
+    private function relocateEnvFile(): void
+    {
+        try {
+            $result = $this->envRelocator->relocateIntoDataDir();
+        } catch (\Throwable $e) {
+            Log::error('installer.env_relocation_failed', ['error' => $e->getMessage()]);
+
+            return;
+        }
+        if (in_array($result['status'], EnvFileRelocator::FAILURES, true)) {
+            Log::error('installer.env_relocation_failed', $result);
+
+            return;
+        }
+        Log::info('installer.env_location', $result);
     }
 
     /**

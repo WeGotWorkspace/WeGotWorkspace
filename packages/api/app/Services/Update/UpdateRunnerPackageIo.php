@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Update;
 
 use App\Services\Installer\ApiRuntimeEnvService;
+use App\Support\WgwEnvLocation;
 use App\Support\WgwInstallConfig;
 use Illuminate\Support\Facades\DB;
 
@@ -418,7 +419,7 @@ final class UpdateRunnerPackageIo
         if ($apiRoot === null) {
             return;
         }
-        $env = $apiRoot.'/.env';
+        $env = WgwEnvLocation::envFile($apiRoot);
         if (! is_file($env)) {
             return;
         }
