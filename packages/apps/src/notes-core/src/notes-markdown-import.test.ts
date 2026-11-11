@@ -93,6 +93,14 @@ describe("tags", () => {
     expect(parsed.tags).toEqual(["work", "to-do"]);
     expect(parsed.droppedTags).toEqual(["2024", "café", "with space"]);
   });
+
+  it("drops a tag longer than the server allows, and keeps the note", () => {
+    const long = "a".repeat(256);
+    const max = "b".repeat(255);
+    const parsed = parseMarkdownNote(`---\ntags: [${long}, ${max}, work]\n---\nBody`, "a.md");
+    expect(parsed.tags).toEqual([max, "work"]);
+    expect(parsed.droppedTags).toEqual([long]);
+  });
 });
 
 describe("images", () => {

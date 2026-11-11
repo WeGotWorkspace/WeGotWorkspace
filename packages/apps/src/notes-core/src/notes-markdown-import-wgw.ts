@@ -4,6 +4,7 @@ import {
   createNote as createVjournalNote,
   deleteNote as deleteVjournalNote,
   getNote as getVjournalNote,
+  isNotesAlreadyExists,
   noteFromVjournal,
   patchNote as patchVjournalNote,
 } from "@/lib/api/wgw/notes-vjournal";
@@ -32,10 +33,21 @@ async function publishSavedNote(username: string, note: Note): Promise<void> {
 export function createWgwNotesMarkdownImport(username: string): NotesMarkdownImportOperations {
   return {
     createNote: async ({ notebook, uid, title, categories }, opts) => {
-      const created = await createVjournalNote(
-        { notebookId: notebook.id, title, body: "", categories, uid },
-        opts,
-      );
+      let created;
+      try {
+        created = await createVjournalNote(
+          { notebookId: notebook.id, title, body: "", categories, uid },
+          opts,
+        );
+      } catch (error) {
+        // A retry after a lost answer: the first create did land, and the server
+        // answers 409 for the uid. Carry on with that note (the API id is the uid),
+        // but only when it is in this notebook; never touch a note elsewhere.
+        if (!isNotesAlreadyExists(error)) throw error;
+        const existing = await getVjournalNote(uid, opts);
+        if (existing.notebookId !== notebook.id) throw error;
+        created = existing;
+      }
       // Not cached or announced yet: other tabs would load the empty body.
       return noteFromVjournal(created, [notebook]);
     },

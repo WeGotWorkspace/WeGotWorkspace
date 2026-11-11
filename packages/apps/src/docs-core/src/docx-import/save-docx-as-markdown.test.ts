@@ -92,6 +92,15 @@ describe("saveDocxAsMarkdown", () => {
     expect(result.report.lines.at(-1)).toMatchObject({ id: "failedImages", count: 1 });
   });
 
+  it("reports images the converter could not read", async () => {
+    const { io } = fakeIo(reportDocx);
+    const result = await saveDocxAsMarkdown("/users/ann/Plan.docx", io, async () => ({
+      ...conversion("Text"),
+      unreadableImages: 2,
+    }));
+    expect(result.report.lines.at(-1)).toMatchObject({ id: "failedImages", count: 2 });
+  });
+
   it("does not upload an image type a Doc cannot show", async () => {
     const { io } = fakeIo(reportDocx);
     const result = await saveDocxAsMarkdown("/users/ann/Plan.docx", io, async () =>
@@ -202,6 +211,42 @@ describe("saveDocxAsMarkdown", () => {
       shifted.set(gap, eocdOf(zip));
       shifted.set(zip.subarray(eocdOf(zip)), eocdOf(zip) + gap.length);
       refused(shifted);
+    });
+
+    const centralRecords = (zip: Uint8Array) => {
+      const dv = view(zip);
+      const records: number[] = [];
+      for (let i = 0; i + 46 <= zip.length; i += 1) {
+        if (dv.getUint32(i, true) === 0x02014b50) records.push(i);
+      }
+      return records;
+    };
+
+    it("refuses entries that point at the same data (overlapping zip bomb)", () => {
+      const zip = twoParts();
+      const [first, second] = centralRecords(zip);
+      const dv = view(zip);
+      // The second entry now reads the first entry's local header and data.
+      dv.setUint32(second + 42, dv.getUint32(first + 42, true), true);
+      dv.setUint32(second + 20, dv.getUint32(first + 20, true), true);
+      expect(scanDocx(zip, CAP)).toEqual({ ok: false, refusal: "corrupt-zip" });
+    });
+
+    it("refuses an entry that claims more compressed bytes than the file holds", () => {
+      const zip = twoParts();
+      const [first] = centralRecords(zip);
+      // Still inside the file, but it runs over the second entry.
+      view(zip).setUint32(first + 20, zip.length - 200, true);
+      expect(scanDocx(zip, CAP)).toEqual({ ok: false, refusal: "corrupt-zip" });
+    });
+
+    it("still reads a normal Word file", () => {
+      const zip = zipSync({
+        "word/document.xml": strToU8("<w:document/>"),
+        "word/styles.xml": strToU8("<w:styles/>"),
+        "word/media/a.png": new Uint8Array(100),
+      });
+      expect(scanDocx(zip, CAP).ok).toBe(true);
     });
 
     it("refuses a zip64 marker in the end record", () => {

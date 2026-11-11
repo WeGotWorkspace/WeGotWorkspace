@@ -144,6 +144,22 @@ describe("exportRuns (what Print shows)", () => {
     ]);
   });
 
+  it("drops a line break a pending suggestion deletes, as Print hides it", () => {
+    expect(
+      exportRuns([
+        { type: "text", text: "Line one" },
+        { type: "hardBreak", marks: [{ type: "deletion", attrs: { id: "s1" } }] },
+        { type: "text", text: " and two" },
+        { type: "hardBreak" },
+        { type: "text", text: "Three" },
+      ]),
+    ).toEqual([
+      { kind: "text", text: "Line one and two" },
+      { kind: "break" },
+      { kind: "text", text: "Three" },
+    ]);
+  });
+
   it("drops links that are not http(s), mailto or tel", () => {
     expect(
       exportRuns([

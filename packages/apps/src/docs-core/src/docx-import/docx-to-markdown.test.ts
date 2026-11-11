@@ -40,7 +40,8 @@ describe("convertDocxToMarkdown", () => {
 
   it("keeps a table with its header row", async () => {
     const { markdown } = await convertDocxToMarkdown(fixture("table.docx"));
-    expect(markdown).toMatch(/\| \*\*Item\*\* +\| \*\*Price\*\* +\|/);
+    // The header row stays a header; its whole-cell bold is dropped (it shows bold anyway).
+    expect(markdown).toMatch(/\| Item +\| Price +\|\n\| -+ \| -+ \|/);
     expect(markdown).toMatch(/\| Coffee +\| € 3 +\|/);
     expect(markdown).toContain("End of table.");
   });
@@ -67,6 +68,48 @@ describe("convertDocxToMarkdown", () => {
     expect(markdown).toContain("Dates may move.");
     expect(markdown).not.toContain("footnote-");
     expect(markdown).not.toContain("↑");
+  });
+
+  it("counts a linked picture it cannot read, so the report can list it", async () => {
+    const drawing = (attr: string) =>
+      `<w:r><w:drawing><wp:inline><wp:docPr id="1" name="Pic"/><a:graphic><a:graphicData><pic:pic>` +
+      `<pic:blipFill><a:blip ${attr}/></pic:blipFill></pic:pic></a:graphicData></a:graphic>` +
+      `</wp:inline></w:drawing></w:r>`;
+    const ns = [
+      'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"',
+      'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"',
+      'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"',
+      'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"',
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"',
+    ].join(" ");
+    const docx = zipSync({
+      "[Content_Types].xml": strToU8(
+        '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+          "</Types>",
+      ),
+      "_rels/.rels": strToU8(
+        '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+          "</Relationships>",
+      ),
+      "word/_rels/document.xml.rels": strToU8(
+        '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rIdLink" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="file:///C:/pictures/logo.png" TargetMode="External"/>' +
+          "</Relationships>",
+      ),
+      "word/document.xml": strToU8(
+        `<?xml version="1.0"?><w:document ${ns}><w:body>` +
+          `<w:p><w:r><w:t>Before</w:t></w:r>${drawing('r:link="rIdLink"')}</w:p>` +
+          `</w:body></w:document>`,
+      ),
+    });
+    const { markdown, images, unreadableImages } = await convertDocxToMarkdown(docx);
+    expect(markdown.trim()).toBe("Before");
+    expect(images).toEqual([]);
+    expect(unreadableImages).toBe(1);
   });
 
   it("turns a Word page break into a Doc page break", async () => {

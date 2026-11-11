@@ -125,7 +125,8 @@ export function exportRuns(nodes: JSONContent[] | undefined): ExportRun[] {
   const runs: ExportRun[] = [];
   for (const node of nodes ?? []) {
     if (node.type === "hardBreak") {
-      runs.push({ kind: "break" });
+      // Print hides a line break a pending suggestion deletes; so does Word.
+      if (!isDeleted(node)) runs.push({ kind: "break" });
       continue;
     }
     if (node.type !== "text" || isDeleted(node) || !node.text) continue;
@@ -140,7 +141,7 @@ export function exportRuns(nodes: JSONContent[] | undefined): ExportRun[] {
 function plainText(nodes: JSONContent[] | undefined): string {
   return (nodes ?? [])
     .map((node) => {
-      if (node.type === "hardBreak") return "\n";
+      if (node.type === "hardBreak") return isDeleted(node) ? "" : "\n";
       if (node.type !== "text" || isDeleted(node)) return "";
       return node.text ?? "";
     })
