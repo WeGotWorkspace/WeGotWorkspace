@@ -49,6 +49,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - **`use*API`**: `useMemo` default **`*ApiSource`**, **`placeholderData`** for stable loading shape, **`useWorkspaceApi`** with `loadBootstrap`, `createOperations`, `fallbackSession`. Keeps Storybook and routes consistent.
 - **Operations** optional on props/hooks so panes render without writes in stories.
 - **Target DI pipeline:** App → `operations` → controller → pane slices — see [apps-ui/components.md](../apps-ui/components.md). Legacy direct `@/lib/api/wgw` imports in controllers are tech debt; file refactor issues rather than copying the pattern.
+- **Per-device view prefs** (hidden / known collections, folded sections, route view): bind **`createViewPrefsStore`** (`@/lib/view-prefs-store`) once in `<app>-core/src/<app>-view-prefs.ts` with key `wgw.ui.<app>.viewPrefs` and a field schema; pass `store.hiddenCollection(hiddenKey, knownKey)` to **`useHiddenCollectionIds`**. Reference: `notes-view-prefs.ts`. Do not copy parse / read / write / patch into a new app.
 - **Toasts / saves**: domain hooks (`useSettingsProfileForm`) use **`useRunWithAppToast`** (or project equivalent) around server calls; keep **zod** schema + **`settingsProfileFormToRequest`**-style mappers next to the schema file.
 
 ## Shell chrome
