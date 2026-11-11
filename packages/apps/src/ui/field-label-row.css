@@ -147,6 +147,11 @@
   margin-block: calc((1.25rem - var(--control-height-sm, 2rem)) / 2);
 }
 
+/* A multi-line field: the caption sits on the field's first line, not on its middle. */
+.field-label-row--inline:has(> .field-label-row__control textarea) {
+  align-items: baseline;
+}
+
 /* `fill`: a text field takes the whole end column. */
 .field-label-row--fill .field-label-row__control > * {
   @apply min-w-0 flex-1;
