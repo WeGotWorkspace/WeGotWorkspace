@@ -11,6 +11,7 @@ import {
 } from "@/docs-core/src/docs-collab-permissions";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
+import { DocsOpening } from "@/docs-core/src/docs-opening";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
@@ -677,7 +678,7 @@ function DocsCollabWorkspaceInner({
             <div className="docs-workspace__editor">
               {collabSession && snapshotPreview ? (
                 <DocsFilePreview fileName={resolvedDocumentTitle} content={snapshotPreview} />
-              ) : collabSession ? (
+              ) : collabSession && !awaitingContent ? (
                 <DocsCollabEditor
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
@@ -686,7 +687,7 @@ function DocsCollabWorkspaceInner({
                   format={editorFormat}
                   sheetFill
                   viewSource={viewSource}
-                  editable={permissions.editable && !awaitingContent}
+                  editable={permissions.editable}
                   ariaLabel={labels.editor}
                   formattingDisabled={formatBarMode === "commentOnly"}
                   formatBar={
@@ -712,7 +713,9 @@ function DocsCollabWorkspaceInner({
                   onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
                   pageSetup={pageSetup.pageSetup}
                 />
-              ) : null}
+              ) : (
+                <DocsOpening />
+              )}
               <WorkspaceDetailFooter
                 className="docs-workspace__stats-footer"
                 start={
