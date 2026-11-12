@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Installer;
 
 use App\Support\AppPaths;
+use App\Support\WgwEnvLocation;
 
 final class InstallerEnvChecker
 {
@@ -47,7 +48,7 @@ final class InstallerEnvChecker
         }
 
         $checks = [];
-        $env = $apiRoot.'/.env';
+        $env = WgwEnvLocation::envFile($apiRoot);
         $example = $apiRoot.'/.env.example';
         if (is_file($env)) {
             $checks[] = [
