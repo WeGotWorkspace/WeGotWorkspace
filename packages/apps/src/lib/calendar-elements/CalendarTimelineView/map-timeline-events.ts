@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { isRenderOnlyOverlayEvent } from "@/calendar-core/src/calendar-render-overlay";
+import { isRenderOnlyOverlayEvent } from "@/lib/calendar/calendar-render-overlay";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
 import {
   isCalendarEventException,

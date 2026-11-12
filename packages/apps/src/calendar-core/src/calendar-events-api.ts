@@ -22,8 +22,8 @@ import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collect
 import {
   isRenderOnlyOverlayEvent,
   isRenderOnlyOverlayKey,
-} from "@/calendar-core/src/calendar-render-overlay";
-import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
+} from "@/lib/calendar/calendar-render-overlay";
+import { isAvailabilityCalendarId } from "@/lib/calendar/calendar-render-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,

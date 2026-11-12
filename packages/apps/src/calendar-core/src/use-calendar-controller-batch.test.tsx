@@ -6,7 +6,7 @@ import { useCalendarController } from "@/calendar-core/src/use-calendar-controll
 import { groupOccurrenceKeys } from "@/calendar-core/src/use-calendar-event-deletes";
 import { createCalendarAutosaveWrites } from "@/calendar-core/src/calendar-autosave-writes";
 import { calendarEventToForm } from "@/calendar-core/src/calendar-editor-model";
-import { patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import { patchToJmapPartial } from "@/lib/calendar/calendar-wire";
 import type { CalendarEditorState } from "@/calendar-core/src/use-calendar-controller";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 

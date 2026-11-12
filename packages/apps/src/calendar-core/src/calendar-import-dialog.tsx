@@ -2,10 +2,7 @@ import {
   defaultPickerCalendarId,
   writableCalendarsForPicker,
 } from "@/calendar-core/src/calendar-event-calendar-picker";
-import {
-  CALENDAR_COLOR_SWATCHES,
-  DEFAULT_CALENDAR_COLOR,
-} from "@/calendar-core/src/calendar-calendar-dialog";
+import { CALENDAR_COLOR_SWATCHES, DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type { CalendarIcsImportDestination } from "@/calendar-core/src/calendar-ics-import";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
