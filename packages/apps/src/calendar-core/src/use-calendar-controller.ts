@@ -10,6 +10,7 @@ import type {
   CalendarUIData,
   CalendarViewId,
 } from "@/lib/models/calendar-types";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   isViewShowingToday,
   rangeToPlainDateTimeStrings,
@@ -591,8 +592,14 @@ export function useCalendarController({
           : Boolean(target.recurrenceId);
 
         const keepOpen = Boolean(options.keepOpen);
-        const writeInOrder = (written: object, write: () => Promise<unknown>) =>
-          options.writes ? options.writes.run(target.eventId, original, written, write) : write();
+        const writeInOrder = <P extends object>(
+          build: (base: JmapCalendarEvent | undefined) => P | null,
+          write: (written: P) => Promise<unknown>,
+        ): Promise<unknown> => {
+          if (options.writes) return options.writes.run(target.eventId, loaded, build, write);
+          const written = build(original);
+          return written ? write(written) : Promise.resolve();
+        };
         const occurrenceKey = `${target.eventId}:${target.recurrenceId ?? ""}`;
         // An autosave asks once per occurrence, not on every pause in the typing.
         const rememberedScope =
@@ -642,8 +649,18 @@ export function useCalendarController({
               successToast: L.toastEventUpdated,
               mutation: async () => {
                 targetId = (await resolveEventId?.(target.eventId)) ?? target.eventId;
-                await writeInOrder({ recurrenceOverrides: overrides }, () =>
-                  operations.patchEvent(targetId, { recurrenceOverrides: overrides }),
+                await writeInOrder(
+                  (base) => {
+                    const next = base
+                      ? occurrenceRecurrenceOverrides(
+                          target.form,
+                          base,
+                          target.recurrenceId as string,
+                        )
+                      : overrides;
+                    return next ? { recurrenceOverrides: next } : null;
+                  },
+                  (written) => operations.patchEvent(targetId, written),
                 );
               },
               revert: async () => {
@@ -740,7 +757,15 @@ export function useCalendarController({
                 markCompleted(MOVE_STEPS.delete);
                 return;
               }
-              await writeInOrder(patch, () => operations.patchEvent(targetId, patch));
+              await writeInOrder(
+                (base) => {
+                  if (!base) return patch;
+                  const next = formToPatch(target.form, base);
+                  if (next.attendees && organizer) next.organizer = organizer;
+                  return Object.keys(next).length > 0 ? next : null;
+                },
+                (written) => operations.patchEvent(targetId, written),
+              );
             },
             revert: async (completed) => {
               if (patch.calendarId) {

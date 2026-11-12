@@ -239,4 +239,62 @@ describe("useCalendarController list-mode autosave", () => {
     const titles = vi.mocked(operations.patchEvent).mock.calls.map(([, patch]) => patch.title);
     expect(titles).toEqual(["Meet", form.title]);
   });
+
+  it("sends a location restored while the first write is out", async () => {
+    const operations = ops();
+    let releaseFirst = () => {};
+    vi.mocked(operations.patchEvent).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirst = () => resolve({ id: "dentist" } as never);
+        }),
+    );
+    const { result } = renderController(operations);
+    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
+    const form = calendarEventToForm(dentist);
+    const writes = createCalendarAutosaveWrites();
+    const autosave = (location: string) =>
+      result.current.saveEditor(undefined, {
+        keepOpen: true,
+        writes,
+        target: { mode: "edit", eventId: "dentist", form: { ...form, location } },
+      });
+
+    await act(async () => autosave("Elsewhere"));
+    await act(async () => autosave(form.location));
+    await act(async () => releaseFirst());
+
+    const calls = vi.mocked(operations.patchEvent).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1]![1].location).toBe(form.location);
+  });
+
+  it("diffs a later write against the last one that succeeded when an earlier one failed", async () => {
+    const operations = ops();
+    let failFirst = () => {};
+    vi.mocked(operations.patchEvent).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failFirst = () => reject(new Error("offline"));
+        }),
+    );
+    const { result } = renderController(operations);
+    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
+    const form = calendarEventToForm(dentist);
+    const writes = createCalendarAutosaveWrites();
+    const autosave = (values: Partial<typeof form>) =>
+      result.current.saveEditor(undefined, {
+        keepOpen: true,
+        writes,
+        target: { mode: "edit", eventId: "dentist", form: { ...form, ...values } },
+      });
+
+    await act(async () => autosave({ title: "Meet" }));
+    await act(async () => autosave({ title: "Meet", description: "Bring forms" }));
+    await act(async () => failFirst());
+
+    const calls = vi.mocked(operations.patchEvent).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1]![1]).toMatchObject({ title: "Meet", description: "Bring forms" });
+  });
 });

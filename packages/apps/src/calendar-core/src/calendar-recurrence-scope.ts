@@ -611,25 +611,35 @@ export function exclusionRecurrenceOverrides(
  */
 export function occurrenceRecurrenceOverrides(
   form: CalendarEventFormValue,
-  original: JmapCalendarEvent,
+  master: JmapCalendarEvent,
   recurrenceId: string,
 ): Record<string, JSCalendarPatchObject> | null {
-  const allDay = Boolean(original.showWithoutTime);
-  const localRid = toLocalRecurrenceId(recurrenceId, allDay, original.start);
+  const allDay = Boolean(master.showWithoutTime);
+  const localRid = toLocalRecurrenceId(recurrenceId, allDay, master.start);
+  // Diff against the occurrence as stored: the master with its override for this id applied.
+  const stored = master.recurrenceOverrides?.[localRid] ?? {};
+  const original = {
+    ...master,
+    ...Object.fromEntries(Object.entries(stored).filter(([key]) => !key.includes("/"))),
+  } as JmapCalendarEvent;
+  const storedAllDay = Boolean(original.showWithoutTime);
   const draft = formToDraft({ ...form, recurrencePreset: "none" });
   const patch: JSCalendarPatchObject = {};
 
   if (form.title.trim() !== (original.title ?? "")) patch.title = draft.title;
 
-  const defaultStart = allDay
-    ? `${localRid.includes("T") ? localRid.slice(0, 10) : localRid}T00:00:00`
-    : localRid;
+  const defaultStart =
+    typeof stored.start === "string"
+      ? stored.start
+      : allDay
+        ? `${localRid.includes("T") ? localRid.slice(0, 10) : localRid}T00:00:00`
+        : localRid;
   if (draft.start !== defaultStart) patch.start = draft.start;
 
-  const originalDuration = original.duration ?? (allDay ? "P1D" : "PT0S");
+  const originalDuration = original.duration ?? (storedAllDay ? "P1D" : "PT0S");
   if (draft.duration !== originalDuration) patch.duration = draft.duration;
 
-  if (form.allDay !== allDay) patch.showWithoutTime = form.allDay;
+  if (form.allDay !== storedAllDay) patch.showWithoutTime = form.allDay;
 
   const originalLocation = primaryLocationName(original);
   if (form.location.trim() !== originalLocation) {
@@ -659,7 +669,7 @@ export function occurrenceRecurrenceOverrides(
 
   if (Object.keys(patch).length === 0) return null;
 
-  const existing = original.recurrenceOverrides ?? {};
+  const existing = master.recurrenceOverrides ?? {};
   const previous = existing[localRid] ?? {};
   return {
     ...existing,
