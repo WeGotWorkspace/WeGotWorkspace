@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * "New note" pressed before the notebook list has loaded (#2055). A new note
@@ -10,17 +10,20 @@ import { useCallback, useEffect, useRef } from "react";
 export function useNoteCreateWhenReady(
   createNote: () => void,
   notebooksKnown: boolean,
-): () => void {
-  const waitingRef = useRef(false);
+): { createNote: () => void; pending: boolean } {
+  // `pending` is for the screen: the detail pane shows that the note is on its way.
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!notebooksKnown || !waitingRef.current) return;
-    waitingRef.current = false;
+    if (!notebooksKnown || !pending) return;
+    setPending(false);
     createNote();
+  }, [createNote, notebooksKnown, pending]);
+
+  const createWhenReady = useCallback(() => {
+    if (notebooksKnown) createNote();
+    else setPending(true);
   }, [createNote, notebooksKnown]);
 
-  return useCallback(() => {
-    if (notebooksKnown) createNote();
-    else waitingRef.current = true;
-  }, [createNote, notebooksKnown]);
+  return { createNote: createWhenReady, pending };
 }

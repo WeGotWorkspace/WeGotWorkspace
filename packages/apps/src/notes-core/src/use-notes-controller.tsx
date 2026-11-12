@@ -91,7 +91,7 @@ export function useNotesController({
   });
 
   // Every account has a default notebook: an empty list has not loaded yet (#2055).
-  const createNote = useNoteCreateWhenReady(
+  const { createNote, pending: noteCreatePending } = useNoteCreateWhenReady(
     mutations.createNote,
     shell.notebookCollections.length > 0,
   );
@@ -155,6 +155,7 @@ export function useNotesController({
     assignTagToNotes: mutations.assignTagToNotes,
     renameTag,
     createNote,
+    noteCreatePending,
     toggleStar: mutations.toggleStar,
     toggleArchive: mutations.toggleArchive,
     requestDeleteSelected: mutations.requestDeleteSelected,
