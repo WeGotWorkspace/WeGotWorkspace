@@ -148,6 +148,7 @@ jobs:
           - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 3 }
           - { app: Docs, spec: docs-sync-matrix, shards: 4, shard: 4 }
           - { app: Contacts, spec: contacts-sync-matrix, shards: 1, shard: 1 }
+          - { app: Calendar, spec: calendar-sync-matrix, shards: 1, shard: 1 }
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
@@ -249,7 +250,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Download the `live-e2e-artifacts`, `notes-sync-matrix-artifacts-<shard>`, `tasks-sync-matrix-artifacts-<shard>`, `docs-sync-matrix-artifacts-<shard>` or `contacts-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
+              "Download the `live-e2e-artifacts`, `notes-sync-matrix-artifacts-<shard>`, `tasks-sync-matrix-artifacts-<shard>`, `docs-sync-matrix-artifacts-<shard>`, `contacts-sync-matrix-artifacts-<shard>` or `calendar-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
             ].join("\n");
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
