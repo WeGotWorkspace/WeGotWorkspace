@@ -14,6 +14,23 @@ final class MailDeliverySettingsStore
 
     public function load(): MailDeliveryConfig
     {
+        $env = config('wgw.mail');
+        if (is_array($env) && trim((string) $env['smtp_host']) !== '') {
+            $password = (string) $env['smtp_password'];
+
+            return new MailDeliveryConfig(
+                from: trim((string) $env['from']),
+                transport: MailDeliveryConfig::TRANSPORT_SMTP,
+                smtpHost: trim((string) $env['smtp_host']),
+                smtpPort: $this->normalizePort($env['smtp_port']),
+                smtpSecurity: $this->normalizeSecurity($env['smtp_security']),
+                smtpUsername: trim((string) $env['smtp_username']),
+                smtpPassword: $password,
+                smtpPasswordSet: $password !== '',
+                managedByEnvironment: true,
+            );
+        }
+
         $encrypted = trim((string) AppSetting::getValue(SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD, ''));
         $password = $encrypted !== '' ? $this->secrets->decrypt($encrypted) : '';
 

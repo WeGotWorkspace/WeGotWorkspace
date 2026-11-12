@@ -8963,6 +8963,10 @@
                     "smtpPasswordSet": {
                         "type": "boolean",
                         "description": "True when a SMTP secret is stored. Never a password value."
+                    },
+                    "managedByEnvironment": {
+                        "type": "boolean",
+                        "description": "True when WGW_MAIL_* sets these values: smtpHost and smtpUsername are blank and saving mail settings is refused."
                     }
                 },
                 "required": [
@@ -8972,7 +8976,8 @@
                     "smtpPort",
                     "smtpSecurity",
                     "smtpUsername",
-                    "smtpPasswordSet"
+                    "smtpPasswordSet",
+                    "managedByEnvironment"
                 ]
             },
             "AdminMailDeliveryProbes": {

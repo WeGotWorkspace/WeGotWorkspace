@@ -11751,6 +11751,8 @@ export interface components {
             smtpUsername: string;
             /** @description True when a SMTP secret is stored. Never a password value. */
             smtpPasswordSet: boolean;
+            /** @description True when WGW_MAIL_* sets these values: smtpHost and smtpUsername are blank and saving mail settings is refused. */
+            managedByEnvironment: boolean;
         };
         AdminMailDeliveryProbes: {
             /** @description True when Admin saved a valid From. False when outbound mail uses the placeholder From. */

@@ -17,6 +17,7 @@ export function defaultMailDeliveryConfig(): AdminMailDeliveryConfig {
     smtpSecurity: "starttls",
     smtpUsername: "",
     smtpPasswordSet: false,
+    managedByEnvironment: false,
   };
 }
 

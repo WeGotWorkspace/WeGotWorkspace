@@ -59,6 +59,7 @@ export type AdminSettingsFormState = {
   mailDeliverySmtpSecurity: string;
   mailDeliverySmtpUsername: string;
   mailDeliverySmtpPassword: string;
+  mailDeliveryManagedByEnvironment: boolean;
   mcpEnabled: boolean;
 };
 
@@ -121,6 +122,7 @@ export function buildAdminSettingsFormState(
     ),
     mailDeliverySmtpUsername: data.mailDelivery.config.smtpUsername,
     mailDeliverySmtpPassword: "",
+    mailDeliveryManagedByEnvironment: data.mailDelivery.config.managedByEnvironment,
     mcpEnabled: data.mcp.enabled,
   };
 }
@@ -158,6 +160,9 @@ export function adminSettingsFormToMap(
   // Write-only: an untouched field must not wipe the stored secret.
   if (state.turnSecret.trim() !== "") {
     values.rtc_turn_secret = state.turnSecret.trim();
+  }
+  if (state.mailDeliveryManagedByEnvironment) {
+    return Object.fromEntries(Object.entries(values).filter(([key]) => !key.startsWith("mail_")));
   }
   return values;
 }

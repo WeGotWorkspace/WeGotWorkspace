@@ -29,6 +29,7 @@ final class MailDeliveryConfig
         public string $smtpUsername,
         public string $smtpPassword,
         public bool $smtpPasswordSet,
+        public bool $managedByEnvironment = false,
     ) {}
 
     public static function isUsableFrom(string $from): bool
@@ -61,18 +62,19 @@ final class MailDeliveryConfig
     }
 
     /**
-     * @return array{from: string, transport: string, smtpHost: string, smtpPort: int, smtpSecurity: string, smtpUsername: string, smtpPasswordSet: bool}
+     * @return array{from: string, transport: string, smtpHost: string, smtpPort: int, smtpSecurity: string, smtpUsername: string, smtpPasswordSet: bool, managedByEnvironment: bool}
      */
     public function publicArray(): array
     {
         return [
             'from' => $this->from,
             'transport' => $this->transport,
-            'smtpHost' => $this->smtpHost,
+            'smtpHost' => $this->managedByEnvironment ? '' : $this->smtpHost,
             'smtpPort' => $this->smtpPort,
             'smtpSecurity' => $this->smtpSecurity,
-            'smtpUsername' => $this->smtpUsername,
+            'smtpUsername' => $this->managedByEnvironment ? '' : $this->smtpUsername,
             'smtpPasswordSet' => $this->smtpPasswordSet,
+            'managedByEnvironment' => $this->managedByEnvironment,
         ];
     }
 }

@@ -54,6 +54,15 @@ return [
     ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
+    /** Platform mail. With the host set, all of it replaces Admin → Email delivery, which turns read-only. */
+    'mail' => [
+        'smtp_host' => env('WGW_MAIL_SMTP_HOST'),
+        'smtp_port' => env('WGW_MAIL_SMTP_PORT', 587),
+        'smtp_security' => env('WGW_MAIL_SMTP_SECURITY', 'starttls'),
+        'smtp_username' => env('WGW_MAIL_SMTP_USERNAME', ''),
+        'smtp_password' => env('WGW_MAIL_SMTP_PASSWORD', ''),
+        'from' => env('WGW_MAIL_FROM', ''),
+    ],
     /** Extra Host names, comma-separated, trusted in addition to the APP_URL host. */
     'trusted_hosts' => env('WGW_TRUSTED_HOSTS'),
 

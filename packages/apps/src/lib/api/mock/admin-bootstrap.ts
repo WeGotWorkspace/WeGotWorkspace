@@ -59,6 +59,7 @@ const DEFAULT_DATA: AdminUIData = {
       smtpSecurity: "starttls",
       smtpUsername: "relay",
       smtpPasswordSet: true,
+      managedByEnvironment: false,
     },
     capability: {
       canSubmit: true,

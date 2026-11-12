@@ -43,6 +43,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
   const delivery = controller.mailDelivery;
   const capability = delivery.capability;
   const selected = capability.selectedTransport ?? "none";
+  const managed = delivery.config.managedByEnvironment;
   const [testSendOpen, setTestSendOpen] = useState(false);
 
   return (
@@ -64,6 +65,14 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         message={lastTestSendLabel(delivery.lastTestSend)}
       />
 
+      {managed ? (
+        <Callout
+          severity="info"
+          title="Set by the server"
+          message="From, transport and SMTP come from the server environment (WGW_MAIL_*). Change them there."
+        />
+      ) : null}
+
       <Card title="From and transport">
         <p className="admin-email-delivery-pane__help">
           Platform email is separate from the Mail app IMAP/SMTP pane. Password recovery uses this
@@ -74,6 +83,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           <Input
             id="admin-mail-delivery-from"
             type="email"
+            disabled={managed}
             value={controller.settingsForm.mailDeliveryFrom}
             onChange={(event) => {
               const value = event.target.value;
@@ -86,6 +96,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         </FormField>
         <FormField htmlFor="admin-mail-delivery-transport" label="Transport">
           <Select
+            disabled={managed}
             value={controller.settingsForm.mailDeliveryTransport || "auto"}
             onValueChange={(value) =>
               controller.setSettingsForm((prev) => ({ ...prev, mailDeliveryTransport: value }))
@@ -113,6 +124,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField htmlFor="admin-mail-delivery-smtp-host" label="SMTP host">
           <Input
             id="admin-mail-delivery-smtp-host"
+            disabled={managed}
             value={controller.settingsForm.mailDeliverySmtpHost}
             onChange={(event) => {
               const value = event.target.value;
@@ -128,6 +140,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             <Input
               id="admin-mail-delivery-smtp-port"
               type="number"
+              disabled={managed}
               value={String(controller.settingsForm.mailDeliverySmtpPort)}
               onChange={(event) => {
                 const value = Number(event.target.value) || 0;
@@ -140,6 +153,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           </FormField>
           <FormField htmlFor="admin-mail-delivery-smtp-security" label="Security">
             <Select
+              disabled={managed}
               value={controller.settingsForm.mailDeliverySmtpSecurity || "starttls"}
               onValueChange={(value) =>
                 controller.setSettingsForm((prev) => ({
@@ -164,6 +178,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField htmlFor="admin-mail-delivery-smtp-username" label="SMTP username">
           <Input
             id="admin-mail-delivery-smtp-username"
+            disabled={managed}
             value={controller.settingsForm.mailDeliverySmtpUsername}
             onChange={(event) => {
               const value = event.target.value;
@@ -178,6 +193,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           <Input
             id="admin-mail-delivery-smtp-password"
             variant="password"
+            disabled={managed}
             autoComplete="new-password"
             value={controller.settingsForm.mailDeliverySmtpPassword}
             placeholder={
@@ -192,7 +208,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             }}
           />
         </FormField>
-        {delivery.config.smtpPasswordSet ? (
+        {delivery.config.smtpPasswordSet && !managed ? (
           <div className="admin-email-delivery-pane__actions">
             <Button
               label="Clear stored SMTP password"

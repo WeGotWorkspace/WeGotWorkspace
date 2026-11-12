@@ -28,6 +28,7 @@ export type AdminMailDeliveryConfig = {
   smtpSecurity: string;
   smtpUsername: string;
   smtpPasswordSet: boolean;
+  managedByEnvironment: boolean;
 };
 
 export type AdminMailDeliveryCapability = {
