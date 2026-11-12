@@ -12,6 +12,7 @@ import {
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { DocsOpening } from "@/docs-core/src/docs-opening";
 import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
@@ -230,6 +231,7 @@ function DocsCollabWorkspaceInner({
     pendingSync,
     failedSync,
     snapshotPreview,
+    awaitingContent,
     saveNow,
     resolveExternalWrite,
     onMarkdownChange,
@@ -676,7 +678,7 @@ function DocsCollabWorkspaceInner({
             <div className="docs-workspace__editor">
               {collabSession && snapshotPreview ? (
                 <DocsFilePreview fileName={resolvedDocumentTitle} content={snapshotPreview} />
-              ) : collabSession ? (
+              ) : collabSession && !awaitingContent ? (
                 <DocsCollabEditor
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
@@ -711,7 +713,9 @@ function DocsCollabWorkspaceInner({
                   onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
                   pageSetup={pageSetup.pageSetup}
                 />
-              ) : null}
+              ) : (
+                <DocsOpening />
+              )}
               <WorkspaceDetailFooter
                 className="docs-workspace__stats-footer"
                 start={

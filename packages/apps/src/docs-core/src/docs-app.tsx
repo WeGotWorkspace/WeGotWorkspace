@@ -7,6 +7,7 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
+import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -95,7 +96,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     },
     [fileNodeId, followPath, navigate],
   );
-  const { holdServerSave } = useDocsEditorPathFollow({
+  const { holdServerSave, holdUntilChecked } = useDocsEditorPathFollow({
     username: offlineUsername,
     filePath,
     onFollow: followMovedFile,
@@ -231,6 +232,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       authToken: collabAuthToken,
       // Held on this device while the server does not have this path yet, or may have moved it.
       roomNotPersistent: holdServerSave,
+      roomHeldUntilChecked: holdUntilChecked,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
@@ -242,6 +244,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     fileNodeId,
     filePath,
     holdServerSave,
+    holdUntilChecked,
     relocateRouteDocument,
     showCollab,
     showError,
@@ -285,6 +288,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               onCreateDocument={isGuestSession ? undefined : handleCreateHomeDocument}
               onLogout={handleLogout}
             />
+          ) : showCollab && !docsSessionKnown(phase, session.user.username) ? (
+            // Join the room once, under the person's own name (#2056).
+            <DocsRouteStatus document={{ status: "resolving" }} onRetry={retryRouteDocument} />
           ) : showCollab && collabUrls ? (
             <>
               {phase === "ready" && collabDocumentTitle ? (

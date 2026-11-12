@@ -23,6 +23,7 @@ export const liveTierSpecs = [
   "contacts-push",
   "docs-collab-access-revoked",
   "docs-collab-external-write",
+  "docs-collab-racing-open",
   "docs-collab-solo-read",
   "docs-collab-suggest-save",
   "docs-comments-expired-state",
