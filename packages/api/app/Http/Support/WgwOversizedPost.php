@@ -84,6 +84,10 @@ final class WgwOversizedPost
      */
     public static function exceedsLimit(?Request $request = null, ?int $contentLength = null): bool
     {
+        if (self::isStreamedDavPut($request)) {
+            return false;
+        }
+
         $max = self::iniBytes((string) ini_get('post_max_size'));
         if ($max <= 0) {
             return false;
@@ -95,6 +99,21 @@ final class WgwOversizedPost
         }
 
         return $length > $max;
+    }
+
+    /**
+     * A WebDAV PUT is streamed to disk by Sabre: neither PHP nor Laravel reads it
+     * into memory unless it is JSON or a form, so post_max_size is no bound.
+     */
+    private static function isStreamedDavPut(?Request $request): bool
+    {
+        $method = $request?->getMethod() ?? (string) ($_SERVER['REQUEST_METHOD'] ?? '');
+        $path = $request?->getPathInfo() ?? (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        $type = (string) ($request?->headers->get('Content-Type') ?? $_SERVER['CONTENT_TYPE'] ?? '');
+
+        return strtoupper($method) === 'PUT'
+            && preg_match('#(^|/)api/v\d+/#', $path) !== 1
+            && preg_match('#json|form#i', $type) !== 1;
     }
 
     public static function isChunkedTransfer(?Request $request = null): bool
