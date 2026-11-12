@@ -18,7 +18,10 @@ use Sabre\VObject\ITip\Message;
  * on the same `schedule` event right after that local delivery and, when the
  * message was delivered (schedule status 1.x) and is one the web app would
  * send, notifies as the web app does
- * ({@see CalendarSchedulingNotifier}).
+ * ({@see CalendarSchedulingNotifier}). Status 5.0 means the message reached the
+ * inbox but Sabre had no copy of the event to apply it to; a CANCEL or REPLY
+ * still notifies then (the web app clears the invite and rings the organizer
+ * either way), a REQUEST does not.
  *
  * Priority 110: after {@see CalendarScheduleDeliveryGuardPlugin} (90) and
  * Sabre's local delivery (100), before iMIP (120). A refused delivery stops
@@ -47,12 +50,16 @@ final class CalendarScheduleNotifyPlugin extends ServerPlugin
 
     public function afterLocalDelivery(Message $message): void
     {
-        if (! str_starts_with((string) $message->scheduleStatus, '1.')) {
+        $status = (string) $message->scheduleStatus;
+        $method = strtoupper((string) $message->method);
+        $delivered = str_starts_with($status, '1.')
+            || (str_starts_with($status, '5.0') && in_array($method, ['CANCEL', 'REPLY'], true));
+        if (! $delivered) {
             return;
         }
         // Sabre also delivers a minor update (a new description); the web app
         // sends none, so the attendee's bell does not ring again for it.
-        if (strtoupper((string) $message->method) === 'REQUEST' && ! $message->significantChange) {
+        if ($method === 'REQUEST' && ! $message->significantChange) {
             return;
         }
         $sender = DavCurrentUsername::of($this->server);

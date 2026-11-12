@@ -96,6 +96,38 @@ final class CalendarCalDavNotifyTest extends WgwDatabaseTestCase
         $this->assertCount(0, $this->rows('carol', 'invite'));
     }
 
+    public function test_caldav_cancel_clears_the_invite_row_when_the_attendee_has_no_copy(): void
+    {
+        $uid = 'caldav-notify-cancel-gone-'.uniqid();
+        $this->putEvent('bob', $uid, $this->ics($uid, 'NEEDS-ACTION'));
+        $this->assertCount(1, $this->rows('carol', 'invite'));
+        $carolUri = $this->objectUri('carol', $uid);
+
+        $this->assertSame(204, $this->davRequest('carol', 'DELETE', "/calendars/carol/default/{$carolUri}")['status']);
+        $this->assertSame(204, $this->davRequest('bob', 'DELETE', "/calendars/bob/default/{$uid}.ics")['status']);
+
+        $this->assertCount(0, $this->rows('carol', 'invite'));
+    }
+
+    public function test_caldav_rsvp_notifies_the_organizer_when_the_organizer_copy_is_gone(): void
+    {
+        $uid = 'caldav-notify-rsvp-gone-'.uniqid();
+        $this->putEvent('bob', $uid, $this->ics($uid, 'NEEDS-ACTION'));
+        $carolUri = $this->objectUri('carol', $uid);
+        $bobCalendarId = CalendarInstance::query()
+            ->where('principaluri', 'principals/bob')
+            ->where('uri', 'default')
+            ->value('calendarid');
+        CalendarObject::query()
+            ->where('calendarid', (int) $bobCalendarId)
+            ->where('uid', $uid)
+            ->delete();
+
+        $this->putEvent('carol', $uid, $this->ics($uid, 'ACCEPTED'), $carolUri);
+
+        $this->assertCount(1, $this->rows('bob', 'rsvp'));
+    }
+
     private function putEvent(string $username, string $uid, string $ics, ?string $objectUri = null): void
     {
         $path = "/calendars/{$username}/default/".($objectUri ?? "{$uid}.ics");
