@@ -12,7 +12,7 @@ import type {
   NotesMarkdownImportProgress,
   NotesMarkdownImportResult,
 } from "@/notes-core/src/notes-markdown-import-run";
-import "@/notes-core/src/notes-import-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type NotesImportDestination =
   { mode: "existing"; notebook: NotesNotebookCollection } | { mode: "create"; name: string };
@@ -153,9 +153,9 @@ export function NotesImportDialog({
       result={result ? importResultView(result, labels) : null}
       busy={busy}
       onClose={onClose}
-      className={cn("notes-dialog-surface notes-import-dialog", contentClassName)}
+      className={cn("notes-dialog-surface", contentClassName)}
       onOpenAutoFocus={(event) => {
-        // Start on Import: focusing the notebook picker pops its tooltip over the field label.
+        // Start on Import, the step the person came for.
         const submit = formRef.current?.querySelector<HTMLButtonElement>('button[type="submit"]');
         if (!submit || submit.disabled) return;
         event.preventDefault();
@@ -177,7 +177,6 @@ export function NotesImportDialog({
       ) : (
         <form
           ref={formRef}
-          className="notes-import-dialog__form"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -188,8 +187,13 @@ export function NotesImportDialog({
             onImport(files, destination);
           }}
         >
-          <FieldLabelRow label={labels.importDestinationLegend}>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.importDestinationLegend}
+            htmlFor="notes-import-notebook"
+          >
             <NotesNotebookSelect
+              id="notes-import-notebook"
               notebooks={[...notebooks]}
               value={
                 creating || !selected
@@ -198,7 +202,7 @@ export function NotesImportDialog({
               }
               labels={labels}
               ariaLabel={labels.importDestinationLegend}
-              size="sm"
+              triggerVariant="ghost"
               disabled={busy}
               createSelected={creating}
               onNotebookChange={(notebook) => {
@@ -209,10 +213,15 @@ export function NotesImportDialog({
             />
           </FieldLabelRow>
           {creating ? (
-            <FieldLabelRow label={labels.importNewNotebookName} htmlFor="notes-import-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.importNewNotebookName}
+              htmlFor="notes-import-name"
+            >
               <Input
                 id="notes-import-name"
-                size="sm"
+                {...NO_AUTOFILL}
                 value={name}
                 disabled={busy}
                 onChange={(event) => setName(event.target.value)}

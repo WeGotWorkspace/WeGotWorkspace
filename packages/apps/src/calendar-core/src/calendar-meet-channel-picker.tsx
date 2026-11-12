@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Hash, Video } from "lucide-react";
-import { IconButton } from "@/button/src/icon-button";
+import { Hash, Plus, Video } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import {
   DropdownMenu,
@@ -16,13 +15,14 @@ import {
   type CalendarMeetChannelOption,
 } from "@/lib/meetings/calendar-meet-link";
 import type { ControlSize } from "@/ui/control-size";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 
 export type CalendarMeetChannelPickerProps = {
   labels: CalendarUILabels;
   listChannels?: () => Promise<CalendarMeetChannelOption[]>;
   disabled?: boolean;
   reserving?: boolean;
-  /** Shared control height for the segmented Join + menu. Default `md`. */
+  /** Control height of the menu trigger. Default `md`. */
   size?: ControlSize;
   /** Current meeting URL; Join is enabled when non-empty. */
   meetingUrl?: string;
@@ -39,9 +39,9 @@ type ChannelLoadState =
   | { phase: "ready"; channels: CalendarMeetChannelOption[] };
 
 /**
- * Meet actions on the event form: primary segmented Join + menu to generate an
- * ad-hoc link or pick a `#` chat channel (lazy-loaded; meeting-kind collections
- * excluded; DMs already filtered upstream).
+ * Meet actions on the event form: a ghost video dropdown (like the calendar dot) to
+ * join, generate an ad-hoc link or pick a `#` chat channel (lazy-loaded; meeting-kind
+ * collections excluded; DMs already filtered upstream).
  */
 export function CalendarMeetChannelPicker({
   labels,
@@ -80,68 +80,64 @@ export function CalendarMeetChannelPicker({
   };
 
   return (
-    <div className="calendar-event-dialog__meet-menu-trigger">
-      <IconButton
-        label={labels.eventMeetJoin}
-        icon={<Video />}
-        size={size}
-        variant="primary"
-        disabled={!canJoin || controlsDisabled}
-        className="calendar-event-dialog__meet-menu-trigger__join"
-        onClick={handleJoin}
-      />
-      <DropdownMenu
-        onOpenChange={(open) => {
-          if (open && listChannels && state.phase !== "ready") loadChannels();
-        }}
-      >
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            label={labels.eventMeetAdd}
-            icon={reserving ? <LoadingSpinner size="sm" /> : <ChevronDown />}
-            size={size}
-            variant="primary"
-            disabled={controlsDisabled}
-            className="calendar-event-dialog__meet-menu-trigger__menu"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="calendar-event-dialog__meet-menu">
-          {onNewLink ? (
-            <DropdownMenuItem onSelect={() => onNewLink()}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open && listChannels && state.phase !== "ready") loadChannels();
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <ColorSwatchTrigger
+          label={labels.eventMeetAdd}
+          icon={reserving ? <LoadingSpinner size="sm" /> : <Video />}
+          size={size}
+          disabled={controlsDisabled}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="calendar-event-dialog__meet-menu">
+        {canJoin && onJoin ? (
+          <>
+            <DropdownMenuItem onSelect={handleJoin}>
               <Video className="size-3.5" aria-hidden />
-              {labels.eventMeetNewLink}
+              {labels.eventMeetJoin}
             </DropdownMenuItem>
-          ) : null}
-          {onNewLink && listChannels ? <DropdownMenuSeparator /> : null}
-          {listChannels && (state.phase === "loading" || state.phase === "idle") ? (
-            <DropdownMenuItem disabled>
-              <LoadingSpinner size="sm" />
-              {labels.eventMeetChannelsLoading}
-            </DropdownMenuItem>
-          ) : null}
-          {listChannels && state.phase === "error" ? (
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                loadChannels();
-              }}
-            >
-              {labels.eventMeetChannelsError}
-            </DropdownMenuItem>
-          ) : null}
-          {listChannels && state.phase === "ready" && state.channels.length === 0 ? (
-            <DropdownMenuItem disabled>{labels.eventMeetChannelsEmpty}</DropdownMenuItem>
-          ) : null}
-          {listChannels && state.phase === "ready"
-            ? state.channels.map((channel) => (
-                <DropdownMenuItem key={channel.id} onSelect={() => onPick?.(channel)}>
-                  <Hash className="size-3.5" aria-hidden />
-                  {channel.name}
-                </DropdownMenuItem>
-              ))
-            : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            {onNewLink || listChannels ? <DropdownMenuSeparator /> : null}
+          </>
+        ) : null}
+        {onNewLink ? (
+          <DropdownMenuItem onSelect={() => onNewLink()}>
+            <Plus className="size-3.5" aria-hidden />
+            {labels.eventMeetNewLink}
+          </DropdownMenuItem>
+        ) : null}
+        {onNewLink && listChannels ? <DropdownMenuSeparator /> : null}
+        {listChannels && (state.phase === "loading" || state.phase === "idle") ? (
+          <DropdownMenuItem disabled>
+            <LoadingSpinner size="sm" />
+            {labels.eventMeetChannelsLoading}
+          </DropdownMenuItem>
+        ) : null}
+        {listChannels && state.phase === "error" ? (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              loadChannels();
+            }}
+          >
+            {labels.eventMeetChannelsError}
+          </DropdownMenuItem>
+        ) : null}
+        {listChannels && state.phase === "ready" && state.channels.length === 0 ? (
+          <DropdownMenuItem disabled>{labels.eventMeetChannelsEmpty}</DropdownMenuItem>
+        ) : null}
+        {listChannels && state.phase === "ready"
+          ? state.channels.map((channel) => (
+              <DropdownMenuItem key={channel.id} onSelect={() => onPick?.(channel)}>
+                <Hash className="size-3.5" aria-hidden />
+                {channel.name}
+              </DropdownMenuItem>
+            ))
+          : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

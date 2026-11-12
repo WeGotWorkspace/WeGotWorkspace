@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -58,11 +58,23 @@ async function renderCalendarApp(initialPath: string) {
   const router = createWeGotWorkspaceRouter({ mode: "mock", history });
   await router.load();
   render(<RouterProvider router={router} />);
-  await screen.findByRole("combobox", { name: "Calendar view" });
+  await screen.findByRole("button", { name: /^View mode:/ });
   return { history };
 }
 
-describe("CalendarApp day dropdown → week (real surface)", { timeout: 15_000 }, () => {
+/** The range title's menu (period views, then Today). */
+function titleMenuTrigger(): HTMLElement {
+  return within(screen.getByRole("heading", { level: 2 })).getByRole("button");
+}
+
+/** Opens a header dropdown and picks `name` from it. */
+async function pickFromMenu(trigger: HTMLElement, name: string) {
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(within(await screen.findByRole("menu")).getByText(name));
+}
+
+describe("CalendarApp title menu day → week (real surface)", { timeout: 15_000 }, () => {
   beforeEach(() => {
     cleanup();
     mockDomApis();
@@ -76,8 +88,7 @@ describe("CalendarApp day dropdown → week (real surface)", { timeout: 15_000 }
     const { history } = await renderCalendarApp("/calendar/day/2026-08-19");
     expect(history.location.pathname).toBe("/calendar/day/2026-08-19");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Calendar view" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Week" }));
+    await pickFromMenu(titleMenuTrigger(), "Week");
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/week/2026-08-19");
@@ -111,10 +122,9 @@ describe("CalendarApp day dropdown → week (real surface)", { timeout: 15_000 }
     expect(document.querySelector(".calendar-main")?.getAttribute("data-view")).toBe("week");
     expect(litUpdates).toBeLessThan(40);
 
-    const viewSelect = screen.getByRole("combobox", { name: "Calendar view" });
-    expect(viewSelect.getAttribute("aria-disabled")).not.toBe("true");
-    fireEvent.click(viewSelect);
-    fireEvent.click(await screen.findByRole("option", { name: "Month" }));
+    const trigger = titleMenuTrigger();
+    expect(trigger.hasAttribute("disabled")).toBe(false);
+    await pickFromMenu(trigger, "Month");
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/month/2026-08-19");

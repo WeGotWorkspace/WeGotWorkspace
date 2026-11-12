@@ -16,8 +16,9 @@ export const docsPageSetupLabels = {
   pageFitToScreen: "Fit to screen",
   settingsDescription: "Default paper for new documents",
   settingsPaper: "Default paper size",
+  settingsPaperDescription: "Sets the starting sheet format for new docs",
   settingsOrientation: "Default orientation",
-  settingsSaved: "Docs settings saved",
+  settingsOrientationDescription: "Portrait or landscape view",
   settingsSaveError: "Could not save Docs settings",
 } as const;
 

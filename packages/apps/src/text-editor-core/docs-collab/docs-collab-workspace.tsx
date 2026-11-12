@@ -718,7 +718,11 @@ function DocsCollabWorkspaceInner({
                 start={
                   <DocsFooterTools
                     pageSetup={{ ...pageSetup, labels }}
-                    source={docsCollabSourceToggle(headerActionsInput)}
+                    source={
+                      editorFormat === "text"
+                        ? undefined
+                        : docsCollabSourceToggle(headerActionsInput)
+                    }
                   />
                 }
                 tags={

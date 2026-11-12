@@ -185,9 +185,7 @@ describe("NotesListPanel notebook labels", () => {
     expect(meta("n-2")).toContain("Work");
     expect(screen.queryByText("Drafts")).toBeNull();
     expect(
-      document.querySelector(
-        '[data-list-item-id="n-1"] .list-item__meta .notes-notebook-color-dot',
-      ),
+      document.querySelector('[data-list-item-id="n-1"] .list-item__meta .collection-color-dot'),
     ).toBeTruthy();
   });
 
@@ -203,7 +201,7 @@ describe("NotesListPanel notebook labels", () => {
     expect(row.querySelector(".list-item__body--preview")!.textContent).toBe("Body text");
     const notebook = row.querySelector(".list-item__meta .notes-list-panel__notebook")!;
     expect(notebook.textContent).toBe("Journal");
-    const dot = notebook.querySelector(".notes-notebook-color-dot") as HTMLElement;
+    const dot = notebook.querySelector(".collection-color-dot") as HTMLElement;
     expect(dot.style.getPropertyValue("--collection-row-color")).toBe("#ea8c72");
   });
 
@@ -234,7 +232,7 @@ describe("NotesListPanel notebook labels", () => {
     );
     expect(screen.getByText("Administratorss").closest(".list-item__meta")).toBeTruthy();
     expect(screen.queryByText("group-administrators")).toBeNull();
-    expect(container.querySelector(".list-item__meta .notes-notebook-color-dot")).toBeTruthy();
+    expect(container.querySelector(".list-item__meta .collection-color-dot")).toBeTruthy();
   });
 
   it("marks only starred notes with a star", () => {

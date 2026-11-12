@@ -77,7 +77,7 @@ export const Toolbar: Story = {
       "Bob",
     ]);
     await expect(document.querySelector(".collection-select__separator")).toBeNull();
-    await expect(document.querySelectorAll(".notes-notebook-color-dot").length).toBeGreaterThan(0);
+    await expect(document.querySelectorAll(".collection-color-dot").length).toBeGreaterThan(0);
     await expect(document.querySelector(".contacts-group-icon")).toBeNull();
 
     await userEvent.click(screen.getByRole("option", { name: "Engineering" }));
@@ -122,7 +122,7 @@ export const Ghost: Story = {
       name: defaultContactsLabels.personalAddressBook,
     });
     await expect(trigger).toHaveClass("collection-ghost-select");
-    await expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    await expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     await expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     await userEvent.click(trigger);
     await userEvent.click(await screen.findByRole("option", { name: "Engineering" }));

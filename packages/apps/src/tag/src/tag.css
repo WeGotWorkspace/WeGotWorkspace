@@ -39,6 +39,30 @@
   color: var(--tag-fg, color-mix(in oklch, var(--workspace-foreground) 80%, transparent));
 }
 
+/* Status washes: the hue mixed into the paper, the text pulled toward the ink so it
+ * stays readable in both themes. Pending is the sync blue: a save on its way. */
+.tag--tone-success {
+  --tag-tone-color: var(--color-success);
+}
+
+.tag--tone-warning {
+  --tag-tone-color: var(--color-warning);
+}
+
+.tag--tone-pending {
+  --tag-tone-color: var(--color-sync-pending);
+}
+
+.tag[class*="tag--tone-"] {
+  --tag-bg: color-mix(in oklab, var(--tag-tone-color) 18%, var(--workspace-surface));
+  --tag-fg: color-mix(in oklab, var(--tag-tone-color) 55%, var(--workspace-foreground));
+}
+
+.tag__dot {
+  @apply size-1.5 shrink-0 rounded-full;
+  background-color: var(--tag-tone-color, currentColor);
+}
+
 .tag--size-lg {
   --tag-height: 1.875rem;
   --tag-font-size: 0.875rem;

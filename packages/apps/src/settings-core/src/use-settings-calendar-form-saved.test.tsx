@@ -1,9 +1,13 @@
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
   readCalendarDisplayPrefs,
 } from "@/lib/calendar-display-prefs";
+import {
+  editSettingsField,
+  waitForSettingsAutosave,
+} from "@/settings-core/src/test-utils/settings-autosave";
 import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 import { useSettingsCalendarForm } from "@/settings-core/src/use-settings-calendar-form";
 
@@ -29,25 +33,25 @@ vi.mock("@/settings-core/src/settings-slice-saved", async () => {
 
 describe("useSettingsCalendarForm onSaved", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     window.localStorage.clear();
     vi.mocked(notifySettingsSliceSaved).mockClear();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     window.localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it("persists display prefs and emits notifySettingsSliceSaved", async () => {
+  it("autosaves display prefs after a change and emits notifySettingsSliceSaved", async () => {
     const { result } = renderHook(() => useSettingsCalendarForm());
 
-    await act(async () => {
-      result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
-      result.current.form.setValue("weekStart", "7", { shouldDirty: true });
-      result.current.form.setValue("inviteCalendarId", "work", { shouldDirty: true });
-      result.current.form.setValue("visibleHours", "16", { shouldDirty: true });
-      await result.current.save();
-    });
+    await editSettingsField(result.current.form, "timeZone", "Europe/Amsterdam");
+    await editSettingsField(result.current.form, "weekStart", "7");
+    await editSettingsField(result.current.form, "inviteCalendarId", "work");
+    await editSettingsField(result.current.form, "visibleHours", "16");
+    await waitForSettingsAutosave();
 
     expect(
       JSON.parse(window.localStorage.getItem(CALENDAR_DISPLAY_PREFS_STORAGE_KEY) ?? "{}"),
@@ -75,10 +79,8 @@ describe("useSettingsCalendarForm onSaved", () => {
     });
     const { result } = renderHook(() => useSettingsCalendarForm());
 
-    await act(async () => {
-      result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
-      await result.current.save();
-    });
+    await editSettingsField(result.current.form, "timeZone", "Europe/Amsterdam");
+    await waitForSettingsAutosave();
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });
 });

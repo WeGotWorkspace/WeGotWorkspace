@@ -34,15 +34,37 @@
   flex: 1;
   align-items: center;
   gap: 0.375rem;
-  overflow-x: auto;
+  /* Never scrolls: long paths fold their middle into a menu, long names truncate. */
+  overflow: hidden;
   padding-block: 0.125rem;
 }
 
 .path-breadcrumb__segment {
   display: flex;
-  flex-shrink: 0;
+  min-width: 0;
   align-items: center;
   gap: 0.375rem;
+}
+
+/* The menu button keeps its size; the names around it give way. */
+.path-breadcrumb__segment--menu {
+  flex-shrink: 0;
+}
+
+/* Taller than a line of text: it reaches into the space around the line instead of
+ * growing the row, so the path does not jump when the button shows up. */
+.path-breadcrumb__more {
+  margin-block: -0.5rem;
+}
+
+/* The full path in that menu: one entry per level, each indented a little more. */
+.path-breadcrumb__menu-item .menu-item__main {
+  margin-inline-start: calc(var(--path-breadcrumb-depth, 0) * 0.625rem);
+}
+
+.path-breadcrumb__menu-item .menu-item__icon-slot > svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .path-breadcrumb__separator {

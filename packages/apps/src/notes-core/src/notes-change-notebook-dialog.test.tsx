@@ -69,7 +69,7 @@ describe("NotesChangeNotebookDialog", () => {
     const trigger = screen.getByRole("combobox", { name: "Drafts" });
     expect(trigger.className).toContain("notes-notebook-select");
     expect(trigger.textContent).toContain("Drafts");
-    expect(trigger.querySelectorAll(".notes-notebook-color-dot")).toHaveLength(1);
+    expect(trigger.querySelectorAll(".collection-color-dot")).toHaveLength(1);
     expect(trigger.querySelector(".collection-sidebar-row__dot")).toBeNull();
     fireEvent.click(trigger);
 
@@ -80,7 +80,7 @@ describe("NotesChangeNotebookDialog", () => {
       defaultNotesLabels.addNotebook,
     ]);
     expect(document.querySelector(".collection-select__separator")).toBeTruthy();
-    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-dot')).toHaveLength(3);
+    expect(document.querySelectorAll('[role="listbox"] .collection-color-dot')).toHaveLength(3);
     expect(document.querySelector('[role="listbox"] .collection-sidebar-row__dot')).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",

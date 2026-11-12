@@ -85,6 +85,16 @@ export function attendeeIdentityKeys(
   return [...keys];
 }
 
+/** The teammate behind an attendee address (email or username), if they are one. */
+export function inviteeForAttendee(
+  attendee: Pick<CalendarAttendee, "email">,
+  invitees: CalendarInvitee[] = [],
+): CalendarInvitee | undefined {
+  const email = normalizeParticipantAddress(attendee.email);
+  if (!email) return undefined;
+  return invitees.find((invitee) => inviteeAliases(invitee).includes(email));
+}
+
 export function attendeesReferToSamePerson(
   left: Pick<CalendarAttendee, "email">,
   right: Pick<CalendarAttendee, "email">,

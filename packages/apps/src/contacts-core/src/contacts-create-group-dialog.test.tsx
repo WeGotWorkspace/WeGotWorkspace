@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsCreateGroupDialog,
   contactsCreateGroupDialogLabelsFrom,
@@ -58,8 +57,11 @@ const administratorsBook: ContactsAddressBookRow = {
   myRights: { mayRead: true, mayWrite: true, mayShare: true, mayDelete: false },
 };
 
+/** The ghost trigger is named by its book; the row's caption labels it (`htmlFor`). */
 function bookTrigger() {
-  return screen.getByRole("combobox", { name: defaultContactsLabels.createGroupAddressBookLabel });
+  return screen.getByLabelText(defaultContactsLabels.createGroupAddressBookLabel, {
+    selector: "[role=combobox]",
+  });
 }
 
 function selectedBookLabel() {
@@ -111,26 +113,6 @@ describe("ContactsCreateGroupDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultContactsLabels.createGroupButton }));
 
     expect(onConfirm).toHaveBeenCalledWith("Studio", "default");
-  });
-
-  it("tints the title group icon with the selected address book color", () => {
-    render(
-      <ContactsCreateGroupDialog
-        open
-        books={[ownerBook, teamBook]}
-        view="book:group-eng"
-        labels={labels}
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    );
-
-    const title = screen.getByText(defaultContactsLabels.newGroup);
-    const icon = title.querySelector(".contacts-group-icon") as HTMLElement | null;
-    expect(icon).toBeTruthy();
-    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe(
-      addressBookDotColor({ id: "group-eng" }),
-    );
   });
 
   it("defaults the picker to the writable book in view", () => {

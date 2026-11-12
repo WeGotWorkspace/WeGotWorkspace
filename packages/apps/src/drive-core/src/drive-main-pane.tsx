@@ -309,7 +309,7 @@ export function DriveMainPane({
           ) : (
             <>
               {viewMode === "grid" ? (
-                <DriveGridView {...gridBrowserProps} />
+                <DriveGridView {...gridBrowserProps} activeId={activeId} />
               ) : (
                 <DriveListView {...sharedBrowserProps} activeId={activeId} />
               )}

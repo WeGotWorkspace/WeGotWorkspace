@@ -12,6 +12,7 @@
  */
 export const liveTierSpecs = [
   "calendar-far-week-event",
+  "calendar-list-autosave-reload",
   "calendar-offline-week-event",
   "calendar-push",
   "calendar-team-availability-offline",

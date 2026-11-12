@@ -223,6 +223,7 @@ export function useNotesNotebookDelete({
             : null
         }
         labels={L}
+        fieldLabel={L.importDestinationLegend}
         title={L.deleteNotebookHasNotesTitle}
         description={L.deleteNotebookHasNotesDescription}
         confirmLabel={(destination) => L.deleteNotebookMoveToConfirm(destination)}

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Editor } from "@tiptap/react";
 import { useTextEditorFormatBarState } from "@/text-editor-core/src/use-text-editor-format-bar-state";
 import {
@@ -19,6 +19,7 @@ import {
   Strikethrough,
   Underline as UnderlineIcon,
   Undo2,
+  Unlink,
 } from "lucide-react";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { Button, IconButton } from "@/button/src/button";
@@ -29,6 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -106,6 +108,7 @@ export function TextEditorFormatBar({
 }: TextEditorFormatBarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const linkUrlId = useId();
   const enabled = new Set(groups);
 
   const state = useTextEditorFormatBarState(editor);
@@ -386,9 +389,9 @@ export function TextEditorFormatBar({
           <DialogHeader>
             <DialogTitle>{state.link ? "Edit link" : "Add link"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">URL</label>
+          <FieldLabelRow layout="inline" fill label="URL" htmlFor={linkUrlId}>
             <Input
+              id={linkUrlId}
               autoFocus
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
@@ -400,14 +403,22 @@ export function TextEditorFormatBar({
               }}
               placeholder="https://example.com"
             />
-          </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            {state.link ? (
-              <Button type="button" variant="outline" onClick={removeLink}>
-                Remove
-              </Button>
-            ) : null}
-            <Button type="button" variant="ghost" onClick={() => setLinkOpen(false)}>
+          </FieldLabelRow>
+          <DialogFooter
+            start={
+              state.link ? (
+                <IconButton
+                  variant="outline"
+                  severity="danger"
+                  size="md"
+                  icon={<Unlink className="size-3.5" aria-hidden />}
+                  label="Remove"
+                  onClick={removeLink}
+                />
+              ) : null
+            }
+          >
+            <Button type="button" variant="outline" onClick={() => setLinkOpen(false)}>
               Cancel
             </Button>
             <Button type="button" onClick={applyLink}>

@@ -62,9 +62,9 @@ describe("CalendarImportDialog", () => {
     );
 
     const trigger = destinationTrigger("Personal");
-    const triggerSwatch = trigger.querySelector(".color-swatch-trigger__dot");
-    expect(triggerSwatch).toBeTruthy();
-    expect((triggerSwatch as HTMLElement | null)?.style.backgroundColor).toBeTruthy();
+    // The ghost trigger carries the calendar's dot, coloured from the calendar.
+    expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
+    expect(trigger.style.getPropertyValue("--collection-row-color")).toBeTruthy();
     expect(screen.queryByLabelText(L.calendarNameLabel)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));
@@ -112,9 +112,7 @@ describe("CalendarImportDialog", () => {
 
     const name = screen.getByLabelText(L.calendarNameLabel);
     expect(name).toHaveProperty("value", "team-offsite");
-    expect(
-      destinationTrigger(L.newCalendar).querySelector(".color-swatch-trigger__dot"),
-    ).toBeNull();
+    expect(destinationTrigger(L.newCalendar).querySelector(".collection-color-dot")).toBeNull();
 
     fireEvent.change(name, { target: { value: "  Travel  " } });
     fireEvent.click(screen.getByRole("button", { name: L.importSubmit }));
@@ -138,9 +136,7 @@ describe("CalendarImportDialog", () => {
       />,
     );
 
-    expect(
-      destinationTrigger(L.newCalendar).querySelector(".color-swatch-trigger__dot"),
-    ).toBeNull();
+    expect(destinationTrigger(L.newCalendar).querySelector(".collection-color-dot")).toBeNull();
     const name = screen.getByLabelText(L.calendarNameLabel);
     expect(name).toHaveProperty("value", L.newCalendar);
 

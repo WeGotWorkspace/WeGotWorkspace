@@ -15,6 +15,7 @@ import {
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
@@ -585,7 +586,7 @@ function DriveMainHeader({
         trail.length > 0 ? (
           <span className="drive-main-header__trail">
             <PathBreadcrumb
-              items={trail}
+              items={withDriveRootIcons(trail)}
               currentPath={view.type === "folder" ? view.path : undefined}
               onNavigate={(path) => selectView({ type: "folder", path })}
             />

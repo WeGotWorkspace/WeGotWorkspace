@@ -434,6 +434,7 @@ export function TasksWorkspace({
         notebooks={moveTargets}
         value={moveValue}
         title={L.selectionMoveToList}
+        fieldLabel={L.importDestinationLegend}
         description={L.selectionMoveDescription}
         confirmLabel={L.moveConfirm}
         labels={{

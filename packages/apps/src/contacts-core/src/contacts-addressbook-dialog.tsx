@@ -32,7 +32,7 @@ import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { persistAddressBookColor } from "@/contacts-core/src/contacts-view-prefs";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import "@/share-ui/share-ui.css";
-import "@/contacts-core/src/contacts-addressbook-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type { ContactsAddressBookDialogState };
 
@@ -132,6 +132,8 @@ export function ContactsAddressBookDialog({
           {dialog ? (
             <>
               <FieldLabelRow
+                layout="inline"
+                fill
                 label={labels.addressBookNameLabel}
                 htmlFor="contacts-addressbook-name"
                 readOnly
@@ -139,8 +141,8 @@ export function ContactsAddressBookDialog({
                 <NameColorRow>
                   <Input
                     id="contacts-addressbook-name"
+                    {...NO_AUTOFILL}
                     className={NAME_COLOR_ROW_INPUT_CLASS}
-                    size="sm"
                     value={contactsAddressBookDisplayName(
                       {
                         id: dialog.bookId,
@@ -161,7 +163,6 @@ export function ContactsAddressBookDialog({
                     <ColorSwatchTrigger
                       color={selectedColor}
                       label={labels.addressBookColorLabel}
-                      size="sm"
                       aria-haspopup="dialog"
                     />
                   </SwatchColorPicker>
@@ -169,47 +170,45 @@ export function ContactsAddressBookDialog({
               </FieldLabelRow>
 
               {showShare && share ? (
-                <div className="contacts-addressbook-dialog__share">
-                  <CollectionShareSection
-                    collectionId={dialog.bookId}
-                    shareWith={dialog.shareWith}
-                    knownPrincipals={share.knownPrincipals}
-                    online={share.online}
-                    noTeam={share.noTeam}
-                    dialogClassName={contentClassName}
-                    copy={{
-                      title: labels.shareAddressBookTitle,
-                      hint: labels.shareAddressBookHint,
-                      placeholder: labels.shareAddressBookPlaceholder,
-                      empty: labels.shareAddressBookEmpty,
-                      offline: labels.shareAddressBookOffline,
-                      removeTitle: labels.removeAddressBookShareTitle,
-                      removeConfirm: labels.removeAddressBookShareConfirm,
-                    }}
-                    onSearchPrincipals={share.onSearchPrincipals}
-                    onPatchShareWith={share.onPatchShareWith}
-                  />
-                </div>
+                <CollectionShareSection
+                  collectionId={dialog.bookId}
+                  shareWith={dialog.shareWith}
+                  knownPrincipals={share.knownPrincipals}
+                  online={share.online}
+                  noTeam={share.noTeam}
+                  dialogClassName={contentClassName}
+                  copy={{
+                    title: labels.shareAddressBookTitle,
+                    hint: labels.shareAddressBookHint,
+                    placeholder: labels.shareAddressBookPlaceholder,
+                    empty: labels.shareAddressBookEmpty,
+                    offline: labels.shareAddressBookOffline,
+                    removeTitle: labels.removeAddressBookShareTitle,
+                    removeConfirm: labels.removeAddressBookShareConfirm,
+                  }}
+                  onSearchPrincipals={share.onSearchPrincipals}
+                  onPatchShareWith={share.onPatchShareWith}
+                />
               ) : null}
 
-              <DialogFooter className="contacts-addressbook-dialog__footer">
-                {canRemoveShared ? (
-                  <IconButton
-                    type="button"
-                    variant="outline"
-                    severity="danger"
-                    size="md"
-                    className="contacts-addressbook-dialog__remove"
-                    icon={<Trash2 className="size-3.5" aria-hidden />}
-                    label={labels.removeSharedAddressBook}
-                    onClick={() => setConfirmRemoveOpen(true)}
-                  />
-                ) : null}
-                <div className="contacts-addressbook-dialog__footer-end">
-                  <Button type="button" variant="outline" onClick={onClose}>
-                    {labels.addressBookDialogDone}
-                  </Button>
-                </div>
+              <DialogFooter
+                start={
+                  canRemoveShared ? (
+                    <IconButton
+                      type="button"
+                      variant="outline"
+                      severity="danger"
+                      size="md"
+                      icon={<Trash2 className="size-3.5" aria-hidden />}
+                      label={labels.removeSharedAddressBook}
+                      onClick={() => setConfirmRemoveOpen(true)}
+                    />
+                  ) : null
+                }
+              >
+                <Button type="button" onClick={onClose}>
+                  {labels.addressBookDialogDone}
+                </Button>
               </DialogFooter>
             </>
           ) : null}

@@ -36,7 +36,9 @@
   @apply ring-2 ring-ring;
 }
 
+/* Disabled or read-only: dimmed like a disabled button, chevron kept. */
 .collection-ghost-select:disabled {
+  @apply opacity-50;
   cursor: default;
 }
 

@@ -3,13 +3,11 @@ import { Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
 import type { ControlSize } from "@/ui/control-size";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 
 type SharePrincipalMarkProps = {
   principalType: SharePrincipalKind;
   displayName: string;
-  /** Stable identity key for per-user palette (user principals only). */
-  principalId?: string;
   /** Username / email / member count — uses UserAvatar identity SST (same as sidebar). */
   subtitle?: ReactNode;
   /** Badge beside the name (e.g. inherited label). */
@@ -31,11 +29,10 @@ type SharePrincipalMarkProps = {
   className?: string;
 };
 
-/** Thin domain wrapper around `UserAvatar` for share / collection ACL rows. */
+/** Thin domain wrapper around `UserAvatar` for share / collection ACL rows: neutral tint marks, like chat authors. */
 export function SharePrincipalMark({
   principalType,
   displayName,
-  principalId,
   subtitle,
   nameAccessory,
   nameEnd,
@@ -48,7 +45,6 @@ export function SharePrincipalMark({
     principalType === "group"
       ? "share-dialog__principal-mark--group"
       : "share-dialog__principal-mark--user";
-  const colorKey = principalType === "user" ? (principalId ?? displayName) : null;
   const showLabel = labeled || subtitle != null || nameAccessory != null || nameEnd != null;
 
   return (
@@ -59,7 +55,7 @@ export function SharePrincipalMark({
       nameEnd={showLabel ? nameEnd : undefined}
       compact={!showLabel}
       size={size}
-      color={colorKey ? avatarColorForUserId(colorKey) : undefined}
+      variant="tint"
       fallback={
         principalType === "group" ? (icon ?? <Users2 className="size-3.5" aria-hidden />) : icon
       }

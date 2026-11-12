@@ -26,9 +26,6 @@ export function useSettingsMeetForm() {
     write: writeMeetForm,
     subscribe: subscribeMeetLowData,
     saved: { panelId: "meet", sliceId: "meet-device" },
-    messages: {
-      success: meetLowDataLabels.settingsSaved,
-      error: meetLowDataLabels.settingsSaveError,
-    },
+    saveError: meetLowDataLabels.settingsSaveError,
   });
 }

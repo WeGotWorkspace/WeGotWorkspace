@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { useOnReconnect } from "@/hooks/use-connectivity";
-import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { useFormAutosave } from "@/hooks/use-form-autosave";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import {
@@ -15,7 +15,6 @@ import {
   calendarAvailabilitySavedTopic,
   defaultCalendarAvailabilitySettingsOperations,
 } from "@/settings-core/src/settings-calendar-availability-source";
-import { useRegisterSettingsDialogSave } from "@/settings-core/src/settings-dialog-pane-actions";
 import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 import type { CalendarAvailabilitySettings } from "@wgw/openapi-types/calendars-types";
 
@@ -31,7 +30,6 @@ export type SettingsCalendarAvailabilityController = {
   /** The settings as the server last returned them (names, colors, Teams). Set while ready. */
   settings: CalendarAvailabilitySettings | null;
   form: UseFormReturn<CalendarAvailabilityFormValues>;
-  save: () => Promise<void>;
   retry: () => void;
 };
 
@@ -41,16 +39,24 @@ function isOffline(error: unknown): boolean {
   return error instanceof AvailabilitySettingsOfflineError || isFetchNetworkError(error);
 }
 
+function sameFormValues(
+  a: CalendarAvailabilityFormValues,
+  b: CalendarAvailabilityFormValues,
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 /**
  * Server-side Team availability settings (#1912): read fresh when the pane opens, saved with
- * PUT. No local copy: offline the pane says it needs a connection, and Save shows an error toast.
+ * PUT as the user changes them. No local copy: offline the pane says it needs a connection, and a
+ * change shows an error toast.
  * A clean pane re-reads when another tab saved, when the window comes back to front, and when
  * the connection returns, so a second tab or device shows the current choices without a reload.
  */
 export function useSettingsCalendarAvailability(
   operations: CalendarAvailabilitySettingsOperations = defaultCalendarAvailabilitySettingsOperations(),
 ): SettingsCalendarAvailabilityController {
-  const runWithAppToast = useRunWithAppToast();
+  const { showError, showSuccess } = useAppToast();
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
   const [phase, setPhase] = useState<CalendarAvailabilityPhase>("loading");
@@ -60,15 +66,19 @@ export function useSettingsCalendarAvailability(
   const form = useForm<CalendarAvailabilityFormValues>({
     defaultValues: { enabled: false, calendars: [] },
   });
-  const { isDirty, isSubmitting } = form.formState;
+  const { isDirty } = form.formState;
   const dirtyRef = useRef(isDirty);
   dirtyRef.current = isDirty;
   const requestRef = useRef(0);
 
+  /** `submitted`: the values a save sent. An edit made since then stays, for the next save. */
   const apply = useCallback(
-    (next: CalendarAvailabilitySettings) => {
+    (next: CalendarAvailabilitySettings, submitted?: CalendarAvailabilityFormValues) => {
+      settingsRef.current = next;
       setSettings(next);
-      form.reset(calendarAvailabilityToForm(next));
+      if (!submitted || sameFormValues(form.getValues(), submitted)) {
+        form.reset(calendarAvailabilityToForm(next));
+      }
       setPhase("ready");
     },
     [form],
@@ -132,27 +142,27 @@ export function useSettingsCalendarAvailability(
   const save = form.handleSubmit(async (values) => {
     const base = settingsRef.current;
     if (!base) return;
-    await runWithAppToast(
-      async () => {
-        if (!getConnectivitySnapshot()) throw new AvailabilitySettingsOfflineError();
-        const update = calendarAvailabilityUpdateFromForm(base, values);
-        requestRef.current += 1;
-        apply(await operationsRef.current.save(update));
-        notifySettingsSliceSaved(CALENDAR_AVAILABILITY_SLICE);
-        calendarAvailabilitySavedTopic.publish(
-          { type: "calendar-availability-saved" },
-          { otherTabsOnly: true },
-        );
-      },
-      {
-        success: labels.saved,
-        successOptions: { icon: <Check className="size-4" /> },
-        mapError: (error) => (isOffline(error) ? labels.saveOffline : labels.saveError),
-      },
-    );
+    try {
+      if (!getConnectivitySnapshot()) throw new AvailabilitySettingsOfflineError();
+      const update = calendarAvailabilityUpdateFromForm(base, values);
+      requestRef.current += 1;
+      const saved = await operationsRef.current.save(update);
+      apply(saved, values);
+      // Sharing on or off is the one change people want confirmed; calendar choices stay quiet.
+      if (saved.enabled !== base.enabled) {
+        showSuccess(saved.enabled ? labels.sharingOn : labels.sharingOff);
+      }
+      notifySettingsSliceSaved(CALENDAR_AVAILABILITY_SLICE);
+      calendarAvailabilitySavedTopic.publish(
+        { type: "calendar-availability-saved" },
+        { otherTabsOnly: true },
+      );
+    } catch (error) {
+      showError(isOffline(error) ? labels.saveOffline : labels.saveError);
+    }
   });
 
-  useRegisterSettingsDialogSave(save, phase !== "ready" || !isDirty || isSubmitting);
+  useFormAutosave(form, save);
 
-  return { phase, settings, form, save, retry: () => void load(false) };
+  return { phase, settings, form, retry: () => void load(false) };
 }

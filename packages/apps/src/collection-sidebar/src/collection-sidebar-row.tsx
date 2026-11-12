@@ -4,7 +4,7 @@ import { IconButton } from "@/button/src/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
-import { VisibilityDot } from "./visibility-dot";
+import { VisibilityDot, type VisibilityDotChecked } from "./visibility-dot";
 import "./collection-sidebar-row.css";
 
 const NESTED_ROW_CONTROL = "button, a, input, [role='button']";
@@ -25,7 +25,8 @@ export type CollectionSidebarRowProps = {
   name: string;
   color: string;
   selected?: boolean;
-  visible?: boolean;
+  /** On, off, or `"mixed"` (an "All" row while some of its rows are on). */
+  visible?: VisibilityDotChecked;
   /** Independent of `onSelect`. Omit to hide the visibility checkbox. */
   onToggleVisibility?: () => void;
   /** Visibility toggle's accessible name; default "Show {name}" / "Hide {name}". */

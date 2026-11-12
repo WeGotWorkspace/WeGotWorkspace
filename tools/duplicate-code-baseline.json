@@ -8,8 +8,8 @@
       "duplicatedLines": 2326
     },
     "packages/apps/src": {
-      "clones": 80,
-      "duplicatedLines": 1255
+      "clones": 77,
+      "duplicatedLines": 1186
     }
   },
   "packages": {
@@ -58,7 +58,7 @@
       "duplicatedLines": 39
     },
     "packages/api/app/Services/Installer": {
-      "cloneCoverage": 1.33,
+      "cloneCoverage": 1.28,
       "duplicatedLines": 76
     },
     "packages/api/app/Services/Jmap": {
@@ -98,19 +98,19 @@
       "duplicatedLines": 58
     },
     "packages/apps/src/calendar-core": {
-      "cloneCoverage": 0.66,
-      "duplicatedLines": 125
+      "cloneCoverage": 0.15,
+      "duplicatedLines": 31
     },
     "packages/apps/src/contacts-core": {
-      "cloneCoverage": 1.95,
-      "duplicatedLines": 225
+      "cloneCoverage": 1.76,
+      "duplicatedLines": 200
     },
     "packages/apps/src/docs-core": {
       "cloneCoverage": 0.75,
       "duplicatedLines": 68
     },
     "packages/apps/src/drive-core": {
-      "cloneCoverage": 0.97,
+      "cloneCoverage": 0.95,
       "duplicatedLines": 135
     },
     "packages/apps/src/lib": {
@@ -122,7 +122,7 @@
       "duplicatedLines": 156
     },
     "packages/apps/src/lib/calendar-elements": {
-      "cloneCoverage": 3.34,
+      "cloneCoverage": 3.33,
       "duplicatedLines": 468
     },
     "packages/apps/src/lib/calendar-engine": {
@@ -134,7 +134,7 @@
       "duplicatedLines": 113
     },
     "packages/apps/src/lib/models": {
-      "cloneCoverage": 3.48,
+      "cloneCoverage": 3.45,
       "duplicatedLines": 44
     },
     "packages/apps/src/lib/offline": {
@@ -162,15 +162,15 @@
       "duplicatedLines": 53
     },
     "packages/apps/src/tasks-core": {
-      "cloneCoverage": 1.7,
-      "duplicatedLines": 125
+      "cloneCoverage": 1.39,
+      "duplicatedLines": 100
     },
     "packages/apps/src/text-editor-core": {
       "cloneCoverage": 1.69,
       "duplicatedLines": 411
     },
     "packages/apps/src/ui": {
-      "cloneCoverage": 0.85,
+      "cloneCoverage": 0.74,
       "duplicatedLines": 32
     },
     "packages/apps/src/wegotworkspace": {
