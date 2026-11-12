@@ -5,13 +5,14 @@ import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
+import { useDocsCollabContentGate } from "./use-docs-collab-content-gate";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
   migrateDocsCollabPathDatabaseToIdentity,
   migrateDocsCollabPendingSaveFromLegacy,
   resolveDocsCollabEditorDatabase,
 } from "./docs-collab-persistence";
-import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
+import { isJoinGenerationCurrent, resetSessionRefsForTeardown } from "./docs-collab-join-lifecycle";
 import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
@@ -112,6 +113,9 @@ export function useDocsCollabJoin({
   const [joined, setJoined] = useState(false);
   /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */
   const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
+  /** Read-only while the opened document is empty and its first content is on its way (#2056). */
+  const [awaitingContent, setAwaitingContent] = useState(false);
+  const releaseContent = useCallback(() => setAwaitingContent(false), []);
   const meshJoinInFlightRef = useRef<object | null>(null);
   /**
    * What the local copy held once IndexedDB finished loading. Only that can be
@@ -122,6 +126,7 @@ export function useDocsCollabJoin({
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.
     setSnapshotPreview(null);
+    setAwaitingContent(false);
     if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
     flushMeshSyncIfHydrated();
@@ -173,23 +178,7 @@ export function useDocsCollabJoin({
     refs.ydocRef.current = null;
     loadedStateRef.current = null;
     refs.awarenessRef.current = null;
-    const reset = createTeardownResetState();
-    refs.seedDoneRef.current = reset.seedDone;
-    refs.localDirtySinceLastSaveRef.current = reset.localDirtySinceLastSave;
-    refs.pendingServerSaveRef.current = reset.pendingServerSave;
-    refs.externalWriteHoldRef.current = false;
-    refs.externalWriteSeenRef.current = null;
-    refs.markdownOverrideRef.current = null;
-    refs.lastKnownMarkdownRef.current = reset.lastKnownMarkdown;
-    refs.lastSuccessfulSaveSignatureRef.current = reset.lastSuccessfulSaveSignature;
-    refs.saveFailedRef.current = reset.saveFailed;
-    refs.saveInFlightRef.current = reset.saveInFlight;
-    refs.saveRetryMsRef.current = reset.saveRetryMs;
-    refs.nextSaveAttemptAtRef.current = reset.nextSaveAttemptAt;
-    refs.saveTerminalKindRef.current = reset.saveTerminalKind;
-    refs.reconnectInFlightRef.current = reset.reconnectInFlight;
-    refs.joinedRoomRef.current = reset.joinedRoom;
-    refs.authTokenRef.current = reset.authToken;
+    resetSessionRefsForTeardown(refs);
     clearDocsCollabSyncState(room);
     // The sidecar may move on while the room is parked; re-learn it on rejoin.
     forgetSidecarEtag(room);
@@ -197,6 +186,7 @@ export function useDocsCollabJoin({
     setSession(null);
     setJoined(false);
     setSnapshotPreview(null);
+    setAwaitingContent(false);
     resetMeshUi();
     setDocStatus("");
     setLastSavedAt(null);
@@ -316,6 +306,7 @@ export function useDocsCollabJoin({
       // The room is already in backoff via onAttemptFailed; the reconnect path
       // retries the sidecar once that backoff allows it. Markdown stays a
       // read-only preview and is not written into the Y.Doc.
+      if (snapshot.kind === "failed") setAwaitingContent(false);
       if (snapshot.kind === "failed" && isCollabDocumentGoneError(snapshot.error)) {
         settleDocumentGone(refs, urls, setDocStatus);
         return;
@@ -431,6 +422,7 @@ export function useDocsCollabJoin({
           markDocReady();
           setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
         } else if (meshSession && meshSession.getPeerIds().length > 0) {
+          // A peer's copy or a later seed fills it; the gate waits for that.
           const tick = () => trySeedFromFile();
           refs.seedTimerRef.current = setTimeout(tick, 1000);
           setTimeout(tick, 3000);
@@ -444,6 +436,9 @@ export function useDocsCollabJoin({
         setDocStatus((prev) => (prev === DOC_STATUS_LOADING_DOCUMENT ? "" : prev));
       }
 
+      if (!isYDocEmpty(ydoc) || !seed || !refs.meshRef.current?.getPeerIds().length) {
+        setAwaitingContent(false);
+      }
       flushMeshSyncIfHydrated();
     },
     [
@@ -578,11 +573,9 @@ export function useDocsCollabJoin({
     const user = { name, color: colorForName(name) };
     awareness.setLocalStateField("user", user);
 
-    setSession({
-      ydoc,
-      awareness,
-      user,
-    });
+    // Typing into an empty document before its content lands loses keys (#2056).
+    setAwaitingContent(online && allowServerRequests && isYDocEmpty(ydoc));
+    setSession({ ydoc, awareness, user });
 
     ydoc.on("update", (update, origin) => {
       if (isRemoteUpdateOrigin(origin, refs.persistenceRef.current)) return;
@@ -700,10 +693,13 @@ export function useDocsCollabJoin({
     userName,
   ]);
 
+  useDocsCollabContentGate(session?.ydoc, awaitingContent, releaseContent);
+
   return {
     session,
     joined,
     snapshotPreview,
+    awaitingContent,
     join,
     teardown,
     markDocReady,

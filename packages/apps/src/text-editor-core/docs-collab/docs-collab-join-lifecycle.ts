@@ -1,3 +1,5 @@
+import type { DocsCollabSessionRefs } from "./docs-collab-types";
+
 export type JoinGenerationRefs = {
   joinGeneration: number;
   reconnectGeneration: number;
@@ -87,4 +89,45 @@ export function createTeardownUiReset(): TeardownUiReset {
     pendingSync: false,
     failedSync: false,
   };
+}
+
+type TeardownRefs = Pick<
+  DocsCollabSessionRefs,
+  | "seedDoneRef"
+  | "localDirtySinceLastSaveRef"
+  | "pendingServerSaveRef"
+  | "externalWriteHoldRef"
+  | "externalWriteSeenRef"
+  | "markdownOverrideRef"
+  | "lastKnownMarkdownRef"
+  | "lastSuccessfulSaveSignatureRef"
+  | "saveFailedRef"
+  | "saveInFlightRef"
+  | "saveRetryMsRef"
+  | "nextSaveAttemptAtRef"
+  | "saveTerminalKindRef"
+  | "reconnectInFlightRef"
+  | "joinedRoomRef"
+  | "authTokenRef"
+>;
+
+/** Put a session's refs back to their state before the first join. */
+export function resetSessionRefsForTeardown(refs: TeardownRefs): void {
+  const reset = createTeardownResetState();
+  refs.seedDoneRef.current = reset.seedDone;
+  refs.localDirtySinceLastSaveRef.current = reset.localDirtySinceLastSave;
+  refs.pendingServerSaveRef.current = reset.pendingServerSave;
+  refs.externalWriteHoldRef.current = false;
+  refs.externalWriteSeenRef.current = null;
+  refs.markdownOverrideRef.current = null;
+  refs.lastKnownMarkdownRef.current = reset.lastKnownMarkdown;
+  refs.lastSuccessfulSaveSignatureRef.current = reset.lastSuccessfulSaveSignature;
+  refs.saveFailedRef.current = reset.saveFailed;
+  refs.saveInFlightRef.current = reset.saveInFlight;
+  refs.saveRetryMsRef.current = reset.saveRetryMs;
+  refs.nextSaveAttemptAtRef.current = reset.nextSaveAttemptAt;
+  refs.saveTerminalKindRef.current = reset.saveTerminalKind;
+  refs.reconnectInFlightRef.current = reset.reconnectInFlight;
+  refs.joinedRoomRef.current = reset.joinedRoom;
+  refs.authTokenRef.current = reset.authToken;
 }

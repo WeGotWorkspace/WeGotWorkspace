@@ -82,6 +82,12 @@ export type DocsCollabEditorProps = {
   pageSetup?: TextEditorPageSetup;
 };
 
+/** True when someone already put the focus in another field while the document loaded. */
+function focusIsElsewhere(editorRoot: HTMLElement): boolean {
+  const active = document.activeElement;
+  return active !== null && active !== document.body && !editorRoot.contains(active);
+}
+
 export function DocsCollabEditor({
   ydoc,
   awareness,
@@ -145,10 +151,13 @@ export function DocsCollabEditor({
   const paginated = textEditorPaginated(pageSetup);
   const hasPages = pageSetup != null;
 
-  const resolvedAutofocus = autofocus ?? (editable ? "end" : false);
   // Capture mount intent only — do not re-focus when the parent later drops
-  // `autofocus={false}` (e.g. new-note title handoff).
-  const mountAutofocusRef = useRef(resolvedAutofocus);
+  // `autofocus={false}` (e.g. new-note title handoff). Without one, the end of
+  // the document gets the caret once it takes input: an opened document is
+  // read-only until its content has landed (#2056).
+  const mountAutofocusRef = useRef(autofocus);
+  const autofocusSettledRef = useRef(false);
+  const autofocusDeferredRef = useRef(false);
 
   const editor = useEditor(
     {
@@ -184,18 +193,22 @@ export function DocsCollabEditor({
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const pos = mountAutofocusRef.current;
-    if (pos === false) return;
-    editor.commands.focus(pos === true ? undefined : pos, { scrollIntoView: false });
-  }, [editor]);
-
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
     if (editor.isEditable !== editable) {
       // No update event: the content did not change. The save path reads one
       // as an edit, and a loaded document would count as unsaved work (#1787).
       editor.setEditable(editable, false);
     }
+    if (autofocusSettledRef.current) return;
+    const pos = mountAutofocusRef.current ?? (editable ? "end" : null);
+    if (pos === null) {
+      autofocusDeferredRef.current = true;
+      return;
+    }
+    autofocusSettledRef.current = true;
+    if (pos === false) return;
+    // A deferred focus must not take the caret from a field the person moved to meanwhile.
+    if (autofocusDeferredRef.current && focusIsElsewhere(editor.view.dom)) return;
+    editor.commands.focus(pos === true ? undefined : pos, { scrollIntoView: false });
   }, [editor, editable]);
 
   const { sourceValue, onSourceChange, onSourceFocus, onSourceBlur } = useTextEditorSourceSync({

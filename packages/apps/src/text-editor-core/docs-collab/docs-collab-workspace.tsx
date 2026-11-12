@@ -230,6 +230,7 @@ function DocsCollabWorkspaceInner({
     pendingSync,
     failedSync,
     snapshotPreview,
+    awaitingContent,
     saveNow,
     resolveExternalWrite,
     onMarkdownChange,
@@ -685,7 +686,7 @@ function DocsCollabWorkspaceInner({
                   format={editorFormat}
                   sheetFill
                   viewSource={viewSource}
-                  editable={permissions.editable}
+                  editable={permissions.editable && !awaitingContent}
                   ariaLabel={labels.editor}
                   formattingDisabled={formatBarMode === "commentOnly"}
                   formatBar={
