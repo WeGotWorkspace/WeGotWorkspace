@@ -205,6 +205,56 @@ jobs:
           APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
 
+  # Source, test and other line changes of a pull request (#1633), in the job
+  # summary and in one PR comment that each push updates. A signal, never a
+  # gate: the job fails only when the diff cannot be read, and a failed
+  # comment does not fail it. Not behind the review-loop gate, so the loop's
+  # agents see the numbers too. Fork and Dependabot runs get a read-only
+  # token, so they get the summary only.
+  pr-line-delta:
+    if: github.event_name == 'pull_request' && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The three-dot diff needs the merge base of base and head.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Line changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          node tools/github/pr-line-delta.mjs "$BASE_SHA" "$HEAD_SHA" > pr-line-delta.md
+          cat pr-line-delta.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update the pull request comment
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          IDS=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- pr-line-delta -->"))) | .id')
+          ID=${IDS%%$'\n'*}
+          if [[ -n "$ID" ]]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$ID" -F body=@pr-line-delta.md > /dev/null
+            echo "Updated comment $ID"
+          else
+            gh pr comment "$PR" --body-file pr-line-delta.md
+          fi
+
   # Mock-tier Playwright against a Storybook build. The Chromatic job also
   # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
   # skips merge_group. Building here keeps apps-e2e independent so it can be
