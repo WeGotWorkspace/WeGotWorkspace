@@ -75,7 +75,6 @@ export async function fetchAllDocsHomeListingPages(
     hasMore = Boolean(data.hasMore);
     offset = merged.length;
     if (page.length === 0) {
-      hasMore = false;
       break;
     }
   }
