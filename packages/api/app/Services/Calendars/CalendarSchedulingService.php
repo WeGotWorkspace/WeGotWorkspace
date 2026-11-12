@@ -10,8 +10,6 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\Conversion\ParticipantConversionSupport;
-use App\Services\Notify\CalendarInviteNotify;
-use App\Services\Notify\CalendarRsvpNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +37,7 @@ final class CalendarSchedulingService
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
         private readonly CalendarSchedulingReach $reach,
+        private readonly CalendarSchedulingNotifier $notifier,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -426,12 +425,7 @@ final class CalendarSchedulingService
         }
 
         // Suite tray fan-out after schedule-inbox land (does not replace the inbox).
-        if ($method === 'REQUEST') {
-            $this->notifyInviteRequest($actorUsername, $principalUri, $message);
-        }
-        if ($method === 'REPLY') {
-            $this->notifyRsvpReply($actorUsername, $principalUri, $message);
-        }
+        $this->notifier->delivered($actorUsername, $principalUri, $message);
     }
 
     /**
@@ -469,7 +463,7 @@ final class CalendarSchedulingService
     private function consumeCancel(string $actorUsername, string $principalUri, Message $message, ?array $existing): void
     {
         $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid, (string) $message->sender);
-        $this->notifyInviteClear($actorUsername, $principalUri, (string) $message->uid);
+        $this->notifier->inviteClear($actorUsername, $principalUri, (string) $message->uid);
 
         if ($existing === null) {
             return;
@@ -491,72 +485,6 @@ final class CalendarSchedulingService
 
         $caldav->updateCalendarObject($calendarId, (string) $object->uri, $newObject->serialize());
         $this->indexPath($principalUri, (string) $instance->uri, (string) $object->uri);
-    }
-
-    private function notifyInviteRequest(string $actorUsername, string $principalUri, Message $message): void
-    {
-        $invitee = $this->usernameFromPrincipalUri($principalUri);
-        if ($invitee === '') {
-            return;
-        }
-        $copy = CalendarInviteNotify::fromITipMessage($actorUsername, $message);
-        if ($copy === null) {
-            return;
-        }
-        $uid = trim((string) ($message->uid));
-        $this->eventDispatch->fireMutation(
-            $actorUsername,
-            'calendar',
-            CalendarInviteNotify::ACTION,
-            $uid !== '' ? 'calendars/invite/'.$uid : 'calendars/invite',
-            [
-                'recipients' => [$invitee],
-                ...$copy,
-            ],
-        );
-    }
-
-    private function notifyInviteClear(string $actorUsername, string $principalUri, string $uid): void
-    {
-        $invitee = $this->usernameFromPrincipalUri($principalUri);
-        $trimmedUid = trim($uid);
-        if ($invitee === '' || $trimmedUid === '') {
-            return;
-        }
-        $this->eventDispatch->fireMutation(
-            $actorUsername,
-            'calendar',
-            CalendarInviteNotify::ACTION,
-            'calendars/invite/'.$trimmedUid,
-            [
-                'recipients' => [$invitee],
-                ...CalendarInviteNotify::clearData($trimmedUid),
-            ],
-        );
-    }
-
-    private function notifyRsvpReply(string $actorUsername, string $principalUri, Message $message): void
-    {
-        $organizer = $this->usernameFromPrincipalUri($principalUri);
-        if ($organizer === '' || strcasecmp($organizer, $actorUsername) === 0) {
-            // Organizer is the writer (e.g. guest iMIP token path) — no self-notify loop.
-            return;
-        }
-        $copy = CalendarRsvpNotify::fromITipMessage($actorUsername, $message);
-        if ($copy === null) {
-            return;
-        }
-        $uid = trim((string) ($message->uid));
-        $this->eventDispatch->fireMutation(
-            $actorUsername,
-            'calendar',
-            CalendarRsvpNotify::ACTION,
-            $uid !== '' ? 'calendars/rsvp/'.$uid : 'calendars/rsvp',
-            [
-                'recipients' => [$organizer],
-                ...$copy,
-            ],
-        );
     }
 
     private function usernameFromPrincipalUri(string $principalUri): string
