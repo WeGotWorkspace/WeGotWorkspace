@@ -85,7 +85,10 @@ export default defineConfig(({ command, mode }) => {
           manifestTransforms: [
             (entries) => {
               const indexPath = path.join(__dirname, "dist", "index.html");
-              if (!existsSync(indexPath)) return { manifest: entries, warnings: [] };
+              // Keeping every entry would quietly bring back precache-all (#1628).
+              if (!existsSync(indexPath)) {
+                throw new Error(`Shell precache needs ${indexPath}: build wrote no index.html.`);
+              }
               const shell = shellAssetUrls(readFileSync(indexPath, "utf8"));
               return {
                 manifest: entries.filter((entry) => isShellPrecacheEntry(entry.url, shell)),

@@ -2,6 +2,7 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
+import { LAZY_ASSET_CACHE } from "./lib/offline/cache-loaded-lazy-assets";
 import { isLazyAssetRequest } from "./lib/offline/precache-shell";
 import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
 import {
@@ -30,10 +31,9 @@ type PushSubscriptionChangeEvent = ExtendableEvent & {
   readonly newSubscription?: PushSubscription | null;
 };
 
-const LAZY_ASSET_CACHE = "wgw-lazy-assets";
-
 // skipWaiting stays false in production: a new worker waits until existing tabs close.
-precacheAndRoute(self.__WB_MANIFEST);
+const precacheManifest = self.__WB_MANIFEST;
+precacheAndRoute(precacheManifest);
 if (import.meta.env.PROD) {
   registerRoute(
     new NavigationRoute(createHandlerBoundToURL("index.html"), {
@@ -46,10 +46,18 @@ if (import.meta.env.PROD) {
     ({ url }) => isLazyAssetRequest(url, self.location.origin),
     async ({ request }) => {
       const cache = await caches.open(LAZY_ASSET_CACHE);
-      const hit = await cache.match(request);
+      // The window stored the file without an Origin header, a module script sends one:
+      // the response says `Vary: Origin`, which must not turn that into a miss.
+      const hit = await cache.match(request, { ignoreVary: true });
       if (hit) return hit;
       const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
+      if (response.ok) {
+        try {
+          await cache.put(request, response.clone());
+        } catch {
+          // Quota or storage error: still return the network response.
+        }
+      }
       return response;
     },
   );
@@ -58,6 +66,31 @@ if (import.meta.env.PROD) {
   void self.skipWaiting();
 }
 clientsClaim();
+
+if (import.meta.env.PROD) {
+  self.addEventListener("activate", (event) => {
+    event.waitUntil(dropStaleLazyAssets());
+  });
+}
+
+const LAZY_BUILD_MARKER = "/.wgw-lazy-build";
+
+/**
+ * Lazy chunks have hashed names, so a deploy leaves the old ones behind. The
+ * first activation keeps what windows already stored; an activation of a
+ * different build empties the cache, and windows refill it as they load.
+ */
+async function dropStaleLazyAssets(): Promise<void> {
+  const build = precacheManifest.find((entry) => entry.url === "index.html")?.revision;
+  if (!build) return;
+  const cache = await caches.open(LAZY_ASSET_CACHE);
+  const marker = new Request(new URL(LAZY_BUILD_MARKER, self.location.origin).href);
+  const previous = await cache.match(marker);
+  if (previous && (await previous.text()) !== build) {
+    for (const request of await cache.keys()) await cache.delete(request);
+  }
+  await cache.put(marker, new Response(build));
+}
 
 self.addEventListener("push", (event) => {
   event.waitUntil(
