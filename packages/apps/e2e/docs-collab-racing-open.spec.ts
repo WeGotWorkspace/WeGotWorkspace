@@ -33,6 +33,29 @@ async function typeAsSoonAsEditable(page: Page, line: string): Promise<void> {
   await page.keyboard.type(line, { delay: 15 });
 }
 
+type EditorWindow = Window & { __racingOpenEditors?: number };
+
+/**
+ * Counts every editor the page mounts. A Doc that joins its room twice (first
+ * under a fallback name, then under the person's own) mounts a second editor a
+ * moment after the first showed, and keys typed in between are dropped.
+ */
+function countEditors(): void {
+  const page = window as EditorWindow;
+  page.__racingOpenEditors = 0;
+  const seen = new WeakSet<Element>();
+  new MutationObserver(() => {
+    const editor = document.querySelector(".ProseMirror");
+    if (!editor || seen.has(editor)) return;
+    seen.add(editor);
+    page.__racingOpenEditors = (page.__racingOpenEditors ?? 0) + 1;
+  }).observe(document, { subtree: true, childList: true });
+}
+
+async function editorsMounted(page: Page): Promise<number> {
+  return page.evaluate(() => (window as EditorWindow).__racingOpenEditors ?? 0);
+}
+
 /** The document's text from the editor state: the DOM also holds other people's cursor labels. */
 async function editorText(page: Page): Promise<string> {
   return page.evaluate(() => {
@@ -72,6 +95,7 @@ test.describe("Docs: two people open one document and type at once", () => {
       const owner = await openUser(browser, OWNER);
       const teammate = await openUser(browser, TEAMMATE);
       contexts.push(owner, teammate);
+      await Promise.all([owner.addInitScript(countEditors), teammate.addInitScript(countEditors)]);
 
       for (let round = 1; round <= ROUNDS; round += 1) {
         const stamp = `${Date.now()}-${round}`;
@@ -126,6 +150,12 @@ test.describe("Docs: two people open one document and type at once", () => {
             message: `round ${round}: both screens show the same document`,
           })
           .toEqual(await editorBlocks(a));
+
+        // The room is joined once: the editor is not swapped under the person's hands.
+        expect(
+          { owner: await editorsMounted(a), teammate: await editorsMounted(b) },
+          `round ${round}: the editor that first showed is the only one`,
+        ).toEqual({ owner: 1, teammate: 1 });
 
         await Promise.all([a.close(), b.close()]);
       }

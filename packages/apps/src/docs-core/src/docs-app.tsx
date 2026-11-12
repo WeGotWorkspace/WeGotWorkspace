@@ -7,6 +7,7 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
+import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -287,6 +288,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               onCreateDocument={isGuestSession ? undefined : handleCreateHomeDocument}
               onLogout={handleLogout}
             />
+          ) : showCollab && !docsSessionKnown(phase, session.user.username) ? (
+            // Join the room once, under the person's own name (#2056).
+            <DocsRouteStatus document={{ status: "resolving" }} onRetry={retryRouteDocument} />
           ) : showCollab && collabUrls ? (
             <>
               {phase === "ready" && collabDocumentTitle ? (
