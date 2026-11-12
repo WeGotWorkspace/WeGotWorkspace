@@ -15,6 +15,7 @@ use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
+use App\Dav\Server\CalendarScheduleNotifyPlugin;
 use App\Dav\Server\CollectionReportReadPlugin;
 use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\EventDispatchPlugin;
@@ -138,6 +139,7 @@ final class SabreServerFactory
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(app(WgwSchedulePlugin::class));
             $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
+            $server->addPlugin(app(CalendarScheduleNotifyPlugin::class));
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
