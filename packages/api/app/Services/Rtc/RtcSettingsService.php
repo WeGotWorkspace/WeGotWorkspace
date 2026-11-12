@@ -39,7 +39,7 @@ final class RtcSettingsService
     public function publicSettings(): array
     {
         return [
-            'stunUrls' => $this->normalizeRtcUrls(AppSetting::getValue(SettingKeys::RTC_STUN_URL, ''), 'stun'),
+            'stunUrls' => $this->normalizeRtcUrls($this->relaySetting(SettingKeys::RTC_STUN_URL), 'stun'),
             'turnAvailable' => $this->turnAvailable(),
             'forceRelay' => $this->forceRelay(),
             'debug' => $this->storedFlag(SettingKeys::RTC_DEBUG_LOGGING),
@@ -63,7 +63,7 @@ final class RtcSettingsService
      */
     public function turnUrls(): array
     {
-        $normalized = $this->normalizeRtcUrls(AppSetting::getValue(SettingKeys::RTC_TURN_URL, ''), 'turn');
+        $normalized = $this->normalizeRtcUrls($this->relaySetting(SettingKeys::RTC_TURN_URL), 'turn');
         if ($normalized === '') {
             return [];
         }
@@ -125,11 +125,24 @@ final class RtcSettingsService
         ];
     }
 
+    public function managedByEnvironment(): bool
+    {
+        return trim((string) config('wgw.rtc.environment.'.SettingKeys::RTC_TURN_URL)) !== '';
+    }
+
+    /** STUN URLs, TURN URLs or the TURN secret: all from the environment, or all from Admin. */
+    public function relaySetting(string $key): string
+    {
+        return trim((string) ($this->managedByEnvironment()
+            ? config('wgw.rtc.environment.'.$key)
+            : AppSetting::getValue($key, '')));
+    }
+
     public function turnSecret(): string
     {
-        $stored = trim((string) AppSetting::getValue(SettingKeys::RTC_TURN_SECRET, ''));
-        if ($stored === '') {
-            return '';
+        $stored = $this->relaySetting(SettingKeys::RTC_TURN_SECRET);
+        if ($stored === '' || $this->managedByEnvironment()) {
+            return $stored;
         }
 
         try {

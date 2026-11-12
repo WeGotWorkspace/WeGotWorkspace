@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\AppSetting;
 use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliverySettingsStore;
@@ -29,6 +30,10 @@ final class AdminSettingsService
      */
     public function save(array $values, bool $clearSmtpPassword = false, bool $clearTurnSecret = false): array
     {
+        $relayKeys = [SettingKeys::RTC_STUN_URL, SettingKeys::RTC_TURN_URL, SettingKeys::RTC_TURN_SECRET];
+        if ($this->rtcSettings->managedByEnvironment() && ($clearTurnSecret || array_intersect_key($values, array_flip($relayKeys)) !== [])) {
+            throw new ApiHttpException(409, 'STUN and TURN are set by the server environment.', 'conflict');
+        }
         $this->mailDelivery->persistAdminSave($values, $clearSmtpPassword);
         unset($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD], $values[SettingKeys::MAIL_DELIVERY_LAST_TEST_SEND]);
         $values = $this->resolveTurnSecret($values, $clearTurnSecret);

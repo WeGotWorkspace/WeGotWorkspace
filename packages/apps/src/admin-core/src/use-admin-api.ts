@@ -25,6 +25,7 @@ export function useAdminAPI(source?: AdminApiSource) {
         turnUrls: "",
         turnSecretSet: false,
         turnStaticCredentialsPresent: false,
+        managedByEnvironment: false,
         maxVideoProfile: "p720",
         maxVideoProfileRelay: "p360",
         debugLogging: false,

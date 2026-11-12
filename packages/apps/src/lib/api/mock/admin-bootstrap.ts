@@ -77,6 +77,7 @@ const DEFAULT_DATA: AdminUIData = {
     turnUrls: "",
     turnSecretSet: false,
     turnStaticCredentialsPresent: false,
+    managedByEnvironment: false,
     maxVideoProfile: "p720",
     maxVideoProfileRelay: "p360",
     debugLogging: false,

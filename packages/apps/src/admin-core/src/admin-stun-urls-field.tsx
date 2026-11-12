@@ -20,6 +20,7 @@ import { DEFAULT_PUBLIC_STUN_URLS, DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rt
 export type AdminStunUrlsFieldProps = {
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 };
 
 function sameUrls(a: readonly string[], b: readonly string[]): boolean {
@@ -31,13 +32,13 @@ function sameUrls(a: readonly string[], b: readonly string[]): boolean {
  * server the default is, a warning when it is empty, and a confirmed way back
  * to the default.
  */
-export function AdminStunUrlsField({ value, onChange }: AdminStunUrlsFieldProps) {
+export function AdminStunUrlsField({ value, onChange, disabled }: AdminStunUrlsFieldProps) {
   const [confirmRestore, setConfirmRestore] = useState(false);
   const urls = parseUrlList(value, "stun");
   const isDefault = sameUrls(urls, DEFAULT_PUBLIC_STUN_URLS);
 
   return (
-    <div className="mb-6">
+    <div className="mb-6" inert={disabled}>
       <FormField htmlFor="admin-realtime-stun-urls-1" label="STUN URLs">
         <AdminIceUrlList
           id="admin-realtime-stun-urls"

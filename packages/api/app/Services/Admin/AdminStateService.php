@@ -155,8 +155,8 @@ final class AdminStateService
         };
 
         return [
-            'stunUrls' => $normalizeUrls(AppSetting::getValue(SettingKeys::RTC_STUN_URL, '')),
-            'turnUrls' => $normalizeUrls(AppSetting::getValue(SettingKeys::RTC_TURN_URL, '')),
+            'stunUrls' => $normalizeUrls($this->rtcSettings->relaySetting(SettingKeys::RTC_STUN_URL)),
+            'turnUrls' => $normalizeUrls($this->rtcSettings->relaySetting(SettingKeys::RTC_TURN_URL)),
             'turnSecretSet' => $this->rtcSettings->turnSecret() !== '',
             'turnStaticCredentialsPresent' => $this->rtcSettings->legacyStaticCredentialsPresent(),
             'maxVideoProfile' => $this->rtcSettings->maxVideoProfile(),
@@ -169,6 +169,7 @@ final class AdminStateService
             'debugLogging' => $this->rtcSettings->storedFlag(SettingKeys::RTC_DEBUG_LOGGING),
             // The stored switch, not the served one: admin edits what it set.
             'forceRelay' => $this->rtcSettings->storedFlag(SettingKeys::RTC_FORCE_RELAY),
+            'managedByEnvironment' => $this->rtcSettings->managedByEnvironment(),
         ];
     }
 }

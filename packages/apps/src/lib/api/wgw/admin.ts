@@ -151,6 +151,7 @@ export function mapWgwAdminStateToUI(
       turnUrls: state.rtc.turnUrls,
       turnSecretSet: state.rtc.turnSecretSet,
       turnStaticCredentialsPresent: state.rtc.turnStaticCredentialsPresent,
+      managedByEnvironment: state.rtc.managedByEnvironment,
       maxVideoProfile: state.rtc.maxVideoProfile,
       maxVideoProfileRelay: state.rtc.maxVideoProfileRelay,
       debugLogging: state.rtc.debugLogging,

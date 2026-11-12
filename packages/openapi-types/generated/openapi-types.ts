@@ -8931,6 +8931,8 @@ export interface components {
             debugLogging: boolean;
             /** @description Stored switch. Served to clients only while a TURN relay is configured. */
             forceRelay: boolean;
+            /** @description True when WGW_RTC_TURN_URL is set: STUN, TURN and the secret come from the server environment and saving them is refused. */
+            managedByEnvironment: boolean;
         };
         AdminAppsSettings: {
             calendars: boolean;

@@ -88,6 +88,8 @@ export type AdminRtcSettings = {
   turnSecretSet: boolean;
   /** Credentials left over from the removed static TURN fields. */
   turnStaticCredentialsPresent: boolean;
+  /** STUN, TURN and the secret come from the server environment. */
+  managedByEnvironment: boolean;
   /** Highest video profile any client on this instance may send. */
   maxVideoProfile: string;
   /** Highest video profile a sender may use while its pair is relayed. */

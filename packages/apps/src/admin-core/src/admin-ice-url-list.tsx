@@ -15,6 +15,7 @@ export type AdminIceUrlListProps = {
   value: string;
   onChange: (value: string) => void;
   max?: number;
+  disabled?: boolean;
 };
 
 /**
@@ -28,6 +29,7 @@ export function AdminIceUrlList({
   value,
   onChange,
   max = MAX_ICE_URLS_PER_KIND,
+  disabled,
 }: AdminIceUrlListProps) {
   const [commaRefused, setCommaRefused] = useState(false);
   const rows = splitIceUrlRows(value);
@@ -51,7 +53,7 @@ export function AdminIceUrlList({
   };
 
   return (
-    <div className="admin-ice-url-list" role="group" aria-label={label}>
+    <div className="admin-ice-url-list" role="group" aria-label={label} inert={disabled}>
       {fields.map((url, index) => {
         const name = `${itemLabel} ${index + 1}`;
         const stored = index < rows.length;

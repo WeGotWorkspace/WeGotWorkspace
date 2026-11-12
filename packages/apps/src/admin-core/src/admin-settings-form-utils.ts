@@ -37,6 +37,7 @@ export type AdminSettingsFormState = {
   turnSecret: string;
   turnSecretSet: boolean;
   turnStaticCredentialsPresent: boolean;
+  rtcManagedByEnvironment: boolean;
   maxVideoProfile: string;
   maxVideoProfileRelay: string;
   rtcDebugLogging: boolean;
@@ -95,6 +96,7 @@ export function buildAdminSettingsFormState(
     turnSecret: "",
     turnSecretSet: data.rtc.turnSecretSet,
     turnStaticCredentialsPresent: data.rtc.turnStaticCredentialsPresent,
+    rtcManagedByEnvironment: data.rtc.managedByEnvironment,
     maxVideoProfile: data.rtc.maxVideoProfile,
     maxVideoProfileRelay: data.rtc.maxVideoProfileRelay,
     rtcDebugLogging: data.rtc.debugLogging,
@@ -129,8 +131,6 @@ export function adminSettingsFormToMap(
   state: AdminSettingsFormState,
 ): Record<string, string | number | boolean> {
   const values: Record<string, string | number | boolean> = {
-    rtc_stun_url: state.stunUrls,
-    rtc_turn_url: state.turnUrls,
     meet_max_video_profile: state.maxVideoProfile,
     meet_max_video_profile_relay: state.maxVideoProfileRelay,
     rtc_debug_logging: state.rtcDebugLogging,
@@ -152,6 +152,10 @@ export function adminSettingsFormToMap(
     mail_delivery_smtp_username: state.mailDeliverySmtpUsername,
     mcp_enabled: state.mcpEnabled,
   };
+  if (!state.rtcManagedByEnvironment) {
+    values.rtc_stun_url = state.stunUrls;
+    values.rtc_turn_url = state.turnUrls;
+  }
   if (state.mailDeliverySmtpPassword.trim() !== "") {
     values.mail_delivery_smtp_password = state.mailDeliverySmtpPassword;
   }

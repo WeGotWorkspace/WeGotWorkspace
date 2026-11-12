@@ -18,6 +18,7 @@ export type AdminRealtimeCollaborationPaneProps = {
 export function AdminRealtimeCollaborationPane({
   controller,
 }: AdminRealtimeCollaborationPaneProps) {
+  const managed = controller.settingsForm.rtcManagedByEnvironment;
   const relayReady =
     controller.settingsForm.turnSecretSet &&
     splitIceUrlRows(controller.settingsForm.turnUrls).some((url) => url !== "");
@@ -30,7 +31,13 @@ export function AdminRealtimeCollaborationPane({
           when direct peer-to-peer connections are blocked. Add up to three URLs of each kind, one
           per field.
         </p>
+        {managed ? (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Set by the server environment (WGW_RTC_*). Change them there.
+          </p>
+        ) : null}
         <AdminStunUrlsField
+          disabled={managed}
           value={controller.settingsForm.stunUrls}
           onChange={(stunUrls) => controller.setSettingsForm((prev) => ({ ...prev, stunUrls }))}
         />
@@ -39,6 +46,7 @@ export function AdminRealtimeCollaborationPane({
             id="admin-realtime-turn-urls"
             label="TURN URLs"
             itemLabel="TURN URL"
+            disabled={managed}
             value={controller.settingsForm.turnUrls}
             onChange={(turnUrls) => controller.setSettingsForm((prev) => ({ ...prev, turnUrls }))}
           />
@@ -47,6 +55,7 @@ export function AdminRealtimeCollaborationPane({
           <Input
             id="admin-realtime-turn-secret"
             variant="password"
+            disabled={managed}
             autoComplete="new-password"
             value={controller.settingsForm.turnSecret}
             placeholder={
@@ -73,7 +82,7 @@ export function AdminRealtimeCollaborationPane({
             relay stays disabled until you enter a shared secret here, which also removes them.
           </p>
         ) : null}
-        {controller.settingsForm.turnSecretSet ? (
+        {controller.settingsForm.turnSecretSet && !managed ? (
           <div className="flex justify-start">
             <Button
               label="Clear stored TURN secret"

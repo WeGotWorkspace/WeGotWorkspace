@@ -782,6 +782,10 @@
                     "forceRelay": {
                         "type": "boolean",
                         "description": "Stored switch. Served to clients only while a TURN relay is configured."
+                    },
+                    "managedByEnvironment": {
+                        "type": "boolean",
+                        "description": "True when WGW_RTC_TURN_URL is set: STUN, TURN and the secret come from the server environment and saving them is refused."
                     }
                 },
                 "required": [
@@ -792,7 +796,8 @@
                     "maxVideoProfile",
                     "maxVideoProfileRelay",
                     "debugLogging",
-                    "forceRelay"
+                    "forceRelay",
+                    "managedByEnvironment"
                 ]
             },
             "AdminAppsSettings": {
