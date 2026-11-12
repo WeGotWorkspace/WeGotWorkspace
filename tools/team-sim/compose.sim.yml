@@ -1,0 +1,27 @@
+# Team simulation (#1981) overlay on the sim worktree's compose.dev.yml.
+# Always run through `sim` (tools/team-sim/bin/sim.mjs), never by hand:
+#   docker compose -p wgw-sim --project-directory ~/.wgw-sim/checkout \
+#     -f ~/.wgw-sim/checkout/compose.dev.yml -f tools/team-sim/compose.sim.yml --profile mail ...
+# Parameters (set by sim): WGW_DOCKER_HTTP_PORT, WGW_SIM_DATA_DIR,
+# WGW_SIM_HARNESS_DIR, WGW_SIM_SMTP_PORT, WGW_SIM_MAIL_API_PORT, WGW_SIM_ADMIN_PASSWORD.
+services:
+  web:
+    ports: !override
+      - "127.0.0.1:${WGW_DOCKER_HTTP_PORT:?}:80"
+    environment:
+      WGW_DISABLE_LOGIN_THROTTLE: "1"
+      WGW_DEV_PASSWORD: ${WGW_SIM_ADMIN_PASSWORD:?}
+    volumes:
+      - ${WGW_SIM_DATA_DIR:?}:/var/www/install/wgw-content
+      - ${WGW_SIM_HARNESS_DIR:?}/docker/apache-workers.conf:/etc/apache2/conf-enabled/zz-wgw-sim-workers.conf:ro
+
+  scheduler:
+    environment:
+      WGW_DEV_PASSWORD: ${WGW_SIM_ADMIN_PASSWORD:?}
+    volumes:
+      - ${WGW_SIM_DATA_DIR:?}:/var/www/install/wgw-content
+
+  mailhog:
+    ports: !override
+      - "127.0.0.1:${WGW_SIM_SMTP_PORT:?}:1025"
+      - "127.0.0.1:${WGW_SIM_MAIL_API_PORT:?}:8025"
