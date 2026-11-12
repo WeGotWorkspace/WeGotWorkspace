@@ -73,7 +73,7 @@ export const NotebookGone: Story = {
 
     await userEvent.click(dialog.getByRole("button", { name: "Move to: New notebook" }));
     const journal = await screen.findByRole("menuitem", { name: "Journal" });
-    await expect(journal.querySelector(".notes-notebook-color-dot")).not.toBeNull();
+    await expect(journal.querySelector(".collection-color-dot")).not.toBeNull();
     await expect(screen.getByRole("menuitem", { name: "New notebook" })).toBeVisible();
     await userEvent.click(journal);
 

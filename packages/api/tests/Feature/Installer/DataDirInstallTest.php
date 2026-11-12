@@ -6,6 +6,8 @@ namespace Tests\Feature\Installer;
 
 use App\Services\Installer\DataDirChoice;
 use App\Services\Installer\DataDirRejected;
+use App\Services\Installer\EnvFileRelocator;
+use App\Support\WgwEnvLocation;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
@@ -86,7 +88,12 @@ final class DataDirInstallTest extends TestCase
             ->assertOk()
             ->assertJsonPath('ok', true);
 
-        $env = (string) file_get_contents($install.'/packages/api/.env');
+        // The .env followed the data directory out of the published tree (#1484).
+        $relocated = $this->real($outside).'/'.EnvFileRelocator::FILE_NAME;
+        $this->assertFileDoesNotExist($install.'/packages/api/.env');
+        $this->assertSame($relocated, WgwEnvLocation::relocatedForBoot($install.'/packages/api'));
+        $this->assertSame(0600, fileperms($relocated) & 0777);
+        $env = (string) file_get_contents($relocated);
         $this->assertStringContainsString('WGW_DATA_DIR='.$this->real($outside), $env);
         $this->assertStringContainsString('WGW_DB_DATABASE='.$this->real($outside).'/db.sqlite', $env);
         $this->assertFileExists($outside.'/db.sqlite');
@@ -246,6 +253,8 @@ final class DataDirInstallTest extends TestCase
 
         $env = (string) file_get_contents($install.'/packages/api/.env');
         $this->assertStringContainsString('WGW_DATA_DIR='.DataDirChoice::FALLBACK_PATH."\n", $env);
+        // A data directory inside the tree keeps the .env in place too.
+        $this->assertFileDoesNotExist($install.'/packages/api/'.WgwEnvLocation::POINTER_FILE);
         $this->assertFileExists($install.'/wgw-content/db.sqlite');
     }
 

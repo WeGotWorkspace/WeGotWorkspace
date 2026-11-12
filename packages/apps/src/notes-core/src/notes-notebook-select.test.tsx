@@ -149,8 +149,8 @@ describe("NotesNotebookSelect", () => {
       defaultNotesLabels.addNotebook,
     ]);
     expect(document.querySelector(".collection-select__separator")).toBeTruthy();
-    expect(container.querySelectorAll(".notes-notebook-color-dot")).toHaveLength(1);
-    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-dot')).toHaveLength(3);
+    expect(container.querySelectorAll(".collection-color-dot")).toHaveLength(1);
+    expect(document.querySelectorAll('[role="listbox"] .collection-color-dot')).toHaveLength(3);
     expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",
@@ -179,6 +179,28 @@ describe("NotesNotebookSelect", () => {
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
   });
 
+  it("hides the trigger tooltip while the list is open, so it cannot cover an option", () => {
+    renderSelect(
+      <NotesNotebookSelect
+        notebooks={notebooks}
+        value={{ id: "nb-drafts", name: "Drafts" }}
+        labels={defaultNotesLabels}
+        onNotebookChange={vi.fn()}
+        onCreateNotebook={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Drafts" });
+    fireEvent.focus(trigger);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole("option", { name: defaultNotesLabels.addNotebook })).toBeTruthy();
+    // The mouse leaves and comes back over the trigger while the list is open.
+    fireEvent.pointerLeave(trigger);
+    fireEvent.pointerMove(trigger);
+    expect(document.querySelector(".tooltip-ui")).toBeNull();
+  });
+
   it("reuses ColorSwatchTrigger for the swatch variant (icon + chevron, no caption)", () => {
     const { container } = renderSelect(
       <NotesNotebookSelect
@@ -195,7 +217,7 @@ describe("NotesNotebookSelect", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("notes-notebook-select--swatch");
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
     expect(trigger.querySelector(".collection-select__name")).toBeNull();
     expect(container.querySelector(".select-trigger__icon")).toBeNull();

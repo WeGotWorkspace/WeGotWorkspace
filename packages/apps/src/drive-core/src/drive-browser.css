@@ -175,14 +175,17 @@
   @apply flex shrink-0;
 }
 
+/*
+ * The list and grid views never select text, like `list-item__button` in Tasks,
+ * Contacts and Notes. A touch long press enters selection mode; it must not also
+ * start native text selection or the iOS callout (also on image thumbnails).
+ * The whole view, not only the items: iOS otherwise selects the nearest heading.
+ * Docs home renders these same views. Inputs keep their own text selection.
+ */
 .drive-workspace
-  :is(
-    .drive-folder-tile--selection-mode .drive-folder-tile__title,
-    .drive-file-tile--selection-mode .drive-file-tile__title,
-    .drive-file-tile--selection-mode .drive-file-tile__location,
-    .drive-list-row[data-selection-mode="true"] .drive-list-row__name
-  ) {
+  :is(.drive-grid-layout, .drive-list-view, .drive-list-row, .drive-file-tile, .drive-folder-tile) {
   @apply select-none;
+  -webkit-touch-callout: none;
 }
 
 /* File tiles: the light tile fill, as folder tiles. */
@@ -375,6 +378,17 @@
   background-color: var(--drive-item-hover-background);
 }
 
+/* A row reached by keyboard (Tab, ↑/↓): the suite focus ring, inside the clip. */
+.drive-workspace .drive-list-row {
+  outline: none;
+}
+
+.drive-workspace .drive-list-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: var(--list-row-radius, 0.625rem);
+}
+
 .drive-workspace .drive-list-row__name {
   @apply relative;
   transition: padding-inline-start 180ms ease;
@@ -402,6 +416,16 @@
 
 .drive-workspace .drive-list-row--selected:hover {
   background: var(--drive-item-selected-hover-background);
+}
+
+/* A picker row that cannot be chosen (a file when picking a folder). */
+.drive-workspace .drive-list-row--disabled {
+  @apply pointer-events-none;
+  color: color-mix(in oklab, var(--workspace-foreground) 42%, transparent);
+}
+
+.drive-workspace .drive-list-row--disabled .drive-file-avatar {
+  opacity: 0.45;
 }
 
 .drive-workspace .drive-list-row--dragging {

@@ -12,6 +12,7 @@
  */
 export const liveTierSpecs = [
   "calendar-far-week-event",
+  "calendar-list-autosave-reload",
   "calendar-offline-week-event",
   "calendar-push",
   "calendar-team-availability-offline",
@@ -26,13 +27,17 @@ export const liveTierSpecs = [
   "docs-collab-suggest-save",
   "docs-comments-expired-state",
   "docs-comments-open-no-write",
+  "docs-docx-save-as-markdown",
+  "docs-download-word",
   "docs-home-browse",
+  "docs-import-word-file",
   "docs-inbound-sync",
   "docs-offline-gaps",
   "docs-offline-sync",
   "docs-open-by-id",
   "docs-open-cached-row",
   "docs-page-break-two-tabs",
+  "docs-print",
   "docs-suggestion-reaction-author",
   "drive-file-node-push",
   "drive-first-sync",
@@ -59,6 +64,7 @@ export const liveTierSpecs = [
   "notes-collab-steady-typing",
   "notes-create-lost-response",
   "notes-leave-within-save-delay",
+  "notes-markdown-import",
   "notes-new-tab-unsaved-text",
   "notes-offline-sync",
   "notes-push-open-note",
@@ -73,6 +79,7 @@ export const liveTierSpecs = [
   "push-mesh-interval",
   "queued-write-reload",
   "settings-calendar-availability",
+  "tasks-ics-import",
   "tasks-inbound-sync",
   "tasks-push",
   "undo-offline",
@@ -93,6 +100,28 @@ export const notesSyncMatrixSpecPattern = /notes-sync-matrix\.spec\.ts/;
  * list deletes). Its own nightly job, like the Notes matrix.
  */
 export const tasksSyncMatrixSpecPattern = /tasks-sync-matrix\.spec\.ts/;
+
+/**
+ * Docs sync matrix (#1563): every action × tab setup × connectivity case on a
+ * Doc (create, rename, move, body edit, empty body, trash, restore, delete,
+ * star, share), plus a case per fixed offline gap. Its own nightly job, like
+ * the Notes matrix.
+ */
+export const docsSyncMatrixSpecPattern = /docs-sync-matrix\.spec\.ts/;
+
+/**
+ * Contacts sync matrix (#1565): the inbound cases (changes token on reload and
+ * on reconnect, full-list fallback, queued-write conflict check). Its own
+ * nightly job, like the Notes matrix.
+ */
+export const contactsSyncMatrixSpecPattern = /contacts-sync-matrix\.spec\.ts/;
+
+/**
+ * Calendar sync matrix (#1565): the open tab's inbound cases (changes through
+ * CalendarEvent/changes, full-list fallback, queued-write conflict check). Its
+ * own nightly job, like the Contacts matrix.
+ */
+export const calendarSyncMatrixSpecPattern = /calendar-sync-matrix\.spec\.ts/;
 
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;

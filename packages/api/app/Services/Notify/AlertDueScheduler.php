@@ -50,7 +50,7 @@ final class AlertDueScheduler
 
         foreach ($objects as $object) {
             if (! is_string($object->calendardata)) {
-                Log::warning('Skipping calendar object with null calendardata.', [
+                Log::error('Skipping calendar object with null calendardata.', [
                     'id' => $object->id,
                     'uri' => $object->uri,
                 ]);
@@ -138,7 +138,7 @@ final class AlertDueScheduler
             ->values()
             ->all();
 
-        Log::warning(sprintf('%d calendar objects with NULL calendardata skipped', $count), [
+        Log::error(sprintf('%d calendar objects with NULL calendardata skipped', $count), [
             'count' => $count,
             'ids' => $ids,
         ]);

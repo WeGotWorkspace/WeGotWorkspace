@@ -185,13 +185,15 @@
      one type size, set here only. Do not set font-size on an option elsewhere. */
   --menu-item-font-size: 0.875rem;
   --menu-item-line-height: 1.25rem;
-  /* Sidebar rows (menu-item and collection rows) and their selected wash. */
-  --sidebar-item-radius: 0.625rem;
+  /* Sidebar rows (menu-item and collection rows) and their selected wash: the
+     control corner, so rows, buttons and fields round alike. */
+  --sidebar-item-radius: var(--control-radius-button);
   /* Minimum row height for lists and tables (Drive/Docs listing, pickers, admin). */
   --list-row-height: 3rem;
-  /* List rows: inline padding (headers align to it) and the sidebar-item rounding. */
+  /* List rows: inline padding (headers align to it) and their rounding (taller rows,
+     a softer corner than the controls). */
   --list-row-padding-x: 1rem;
-  --list-row-radius: var(--sidebar-item-radius);
+  --list-row-radius: 0.625rem;
   /*
    * Pane header strip (main, list, detail and side-panel headers, and the sidebar
    * head): one height everywhere so the bottom rules line up across columns.
@@ -293,10 +295,10 @@
    */
   --control-radius-button-pill: var(--control-radius-button);
   /*
-   * Buttons (icon buttons and button-like triggers too) round like the sidebar
-   * rows, so a row and a button side by side share one corner.
+   * The control corner: buttons, icon buttons, ghost dropdowns, fields and sidebar
+   * rows. A touch rounder than cards and menus (`--control-radius`).
    */
-  --control-radius-button: var(--sidebar-item-radius);
+  --control-radius-button: 0.5rem;
   /*
    * Panel overlay motion — AppSidebar mobile slide + SideDrawer/Sheet enter/exit.
    * Keep duration + easing in sync across left chrome and right drawers.
@@ -325,10 +327,12 @@
   --control-height-md: 2.25rem;
   --control-height-lg: 2.5rem;
   --control-height-xl: 2.75rem;
-  --input-height: var(--control-height-md);
-  --input-padding-x: 0.75rem;
+  /* Fields are one step taller than buttons of the same size (room around the text). */
+  --input-height-step: 0.25rem;
+  --input-height: calc(var(--control-height-md) + var(--input-height-step));
+  --input-padding-x: 0.875rem;
   /*
-   * Control type scale (shared by Input, Button, Select, UserChip, …).
+   * Control type scale (shared by Input, Button, Select, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16, on phones too: the
    * iOS focus zoom is stopped once, by the viewport tag in `index.html`.
@@ -571,13 +575,16 @@
  * - `.tag-group__input` — chip scale
  * - `.text-editor-source__input` — shares `--text-editor-source-font-size` with the
  *   line-number gutter
+ * - `.calendar-event-dialog__notes` — the event popover's plain notes, field size tokens
  */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
     [type="image"]
   ):not(.note-detail-view__title):not(.tag-group__input):not(.input):not(.input__field),
-textarea:not(.note-detail-view__title):not(.textarea):not(.text-editor-source__input),
+textarea:not(.note-detail-view__title):not(.textarea):not(.text-editor-source__input):not(
+    .calendar-event-dialog__notes
+  ),
 select {
   font-size: max(1rem, 100%) !important;
 }
@@ -609,6 +616,7 @@ select {
 /*
  * Pane headers and the sidebar: `md` controls (the IconButton default) step up
  * to the header control height, so every header and sidebar button is 40px.
+ * Fields there (search, a view select) stay in line with those buttons.
  */
 :is(
   .app-sidebar,
@@ -620,4 +628,5 @@ select {
   .docs-collab-sidebar-panel__header
 ) {
   --control-height-md: var(--workspace-header-control-height);
+  --input-height-step: 0px;
 }

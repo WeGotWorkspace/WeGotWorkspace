@@ -12,7 +12,7 @@ import {
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import {
   CONTACTS_VIEW_PREFS_STORAGE_KEY,
-  readContactsViewPrefs,
+  contactsViewPrefs,
 } from "@/contacts-core/src/contacts-view-prefs";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -103,7 +103,7 @@ describe("ContactsAddressBookDialog", () => {
     );
     fireEvent.click(screen.getByRole("radio", { name: override }));
 
-    expect(readContactsViewPrefs()?.addressBookColors?.default).toBe(override);
+    expect(contactsViewPrefs.read()?.addressBookColors?.default).toBe(override);
     expect(addressBookDotColor({ id: "default" })).toBe(override);
     expect(addressBookDotColor({ id: "default" })).not.toBe(hashed);
     expect(addressBookDotColor({ id: "group-eng" })).not.toBe(override);

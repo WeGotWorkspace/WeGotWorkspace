@@ -1,7 +1,7 @@
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
-  DOCS_HOME_CATEGORIES,
-  DOCS_HOME_EXTENSIONS,
+  DOCS_HOME_LIST_CATEGORIES,
+  DOCS_HOME_LIST_EXTENSIONS,
   DOCS_HOME_SOURCES,
 } from "@/docs-core/src/docs-home-constants";
 import { sortDocsHomeResults } from "@/docs-core/src/use-docs-home-list";
@@ -121,8 +121,8 @@ export function docsHomeBrowseFiltersForApiPath(apiPath: string): DocsListingBro
     const entry: DocsListingBrowseFilters = {
       pathPrefix: pathPrefix || undefined,
       sources: [...DOCS_HOME_SOURCES],
-      extensions: [...DOCS_HOME_EXTENSIONS],
-      categories: [...DOCS_HOME_CATEGORIES],
+      extensions: [...DOCS_HOME_LIST_EXTENSIONS],
+      categories: [...DOCS_HOME_LIST_CATEGORIES],
     };
     const key = docsListingCacheKey(entry);
     if (seen.has(key)) return;

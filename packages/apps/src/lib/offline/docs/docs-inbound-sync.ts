@@ -19,7 +19,7 @@ import {
 } from "@/lib/offline/docs/docs-inbound-plan";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
-import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
+import { docsPathAfterMove, moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import { DOCS_DOMAIN, docsListingRowsTable } from "@/lib/offline/docs/docs-schema";
 import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
@@ -73,6 +73,37 @@ function docsPendingRowViews(row: OfflineOutboxRow): PendingRowView<DocsPendingF
     default:
       return [];
   }
+}
+
+/**
+ * Where `path` lives once the queued renames and moves land, in queue order,
+ * or null when none moves it (#1563). Trash is left out: an open Doc that is
+ * trashed stays at its path and the editor's own "gone" flow takes over.
+ */
+export function docsPathAfterQueuedRenames(
+  payloads: readonly (DocsOutboxPayload | null)[],
+  path: string,
+): string | null {
+  let current = docsSourceKey(path);
+  let moved = false;
+  for (const payload of payloads) {
+    if (payload?.op !== "rename") continue;
+    const to = nextPathAfterRename(payload.from, payload.destination, payload.to);
+    const next = docsPathAfterMove(current, payload.from, to);
+    if (next === null || next === current) continue;
+    current = next;
+    moved = true;
+  }
+  return moved ? `/${current}` : null;
+}
+
+/** {@link docsPathAfterQueuedRenames} for this account's Docs outbox. */
+export async function readDocsQueuedRenameTarget(
+  username: string,
+  path: string,
+): Promise<string | null> {
+  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
+  return docsPathAfterQueuedRenames(rows.map(parsePayload), path);
 }
 
 /** Queued Docs writes by listing path, through the shared engine. */

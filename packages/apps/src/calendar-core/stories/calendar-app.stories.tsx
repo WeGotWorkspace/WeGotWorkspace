@@ -7,10 +7,6 @@ import {
 } from "@/lib/api/mock/calendar-bootstrap";
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import {
-  calendarSearchRange,
-  formatCalendarSearchScopeLabel,
-} from "@/calendar-core/src/calendar-search";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
 import {
@@ -18,7 +14,7 @@ import {
   seedMockTeamAvailability,
 } from "@/calendar-core/src/calendar-availability-fixture";
 import { teamAvailabilitySourceFromJmap } from "@/calendar-core/src/use-team-availability";
-import { JmapClient, MockJmapServer } from "@/lib/jmap-client";
+import { JmapClient, MockJmapServer, type JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   calendarStaticSurfaceFor,
   calendarStoryOperations,
@@ -152,7 +148,7 @@ export const SeededMonthSidebar: Story = {
     await expect(
       personal?.closest(".calendar-sidebar-row")?.querySelector(".calendar-sidebar-row__edit"),
     ).toBeTruthy();
-    expectSearchLeftOfViewSelect(canvasElement);
+    expectGridHeader(canvasElement);
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole("button", { name: "Share calendar" })).toBeNull();
     await expect(
@@ -185,10 +181,8 @@ export const SeededMonthSidebar: Story = {
     await expect(
       canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }),
     ).toBeTruthy();
-    expectSearchLeftOfViewSelect(canvasElement);
-    expectNoSearchChrome(canvasElement);
 
-    // My calendars heading: show/hide-all dot and a fold, beside the New event menu.
+    // My calendars: an All row first (show/hide all), and a title that folds.
     const mine = sidebarSection(canvasElement, defaultCalendarLabels.myCalendarsSection);
     const hideAll = within(mine).getByRole("checkbox", {
       name: defaultCalendarLabels.myCalendarsHideAll,
@@ -205,13 +199,14 @@ export const SeededMonthSidebar: Story = {
     await expect(
       within(mine).getByRole("checkbox", { name: defaultCalendarLabels.myCalendarsHideAll }),
     ).toHaveAttribute("aria-checked", "true");
-    await userEvent.click(
-      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsCollapse }),
-    );
+    // The title folds the section.
+    const fold = within(mine).getByRole("button", {
+      name: defaultCalendarLabels.myCalendarsSection,
+    });
+    await userEvent.click(fold);
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
     await expect(within(mine).queryByText("Personal")).toBeNull();
-    await userEvent.click(
-      within(mine).getByRole("button", { name: defaultCalendarLabels.myCalendarsExpand }),
-    );
+    await userEvent.click(fold);
     await expect(within(mine).getByText("Personal")).toBeTruthy();
   },
 };
@@ -432,23 +427,26 @@ export const TaskDueOverlayWeek: Story = {
       expect(summaries).not.toContain("Review API spec");
     });
 
-    // Folding keeps the dot, so everything can come back without unfolding.
-    await userEvent.click(
-      within(tasksSection).getByRole("button", {
-        name: defaultCalendarLabels.tasksSectionCollapse,
-      }),
-    );
+    // The title folds the section, its All row included; unfolding brings both back.
+    const fold = within(tasksSection).getByRole("button", {
+      name: defaultCalendarLabels.tasksSection,
+    });
+    await userEvent.click(fold);
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
     await expect(within(tasksSection).queryByText("Personal")).toBeNull();
+    await expect(
+      within(tasksSection).queryByRole("checkbox", {
+        name: defaultCalendarLabels.tasksSectionShowAll,
+      }),
+    ).toBeNull();
+    await userEvent.click(fold);
+    await expect(within(tasksSection).getByText("Personal")).toBeTruthy();
     await userEvent.click(
       within(tasksSection).getByRole("checkbox", {
         name: defaultCalendarLabels.tasksSectionShowAll,
       }),
     );
     await waitFor(() => expect(collectEventCardSummaries(canvasElement)).toContain("Buy milk"));
-    await userEvent.click(
-      within(tasksSection).getByRole("button", { name: defaultCalendarLabels.tasksSectionExpand }),
-    );
-    await expect(within(tasksSection).getByText("Personal")).toBeTruthy();
   },
 };
 
@@ -471,8 +469,10 @@ export const TeamAvailabilityThree: Story = {
   },
   play: async ({ canvasElement }) => {
     const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    // The All row comes first, then one row per person.
     const rows = within(within(section).getByRole("list")).getAllByRole("checkbox");
     await expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      defaultCalendarLabels.teamAvailabilityShowAll,
       "Show your own availability",
       "Hide Ada Lovelace's availability",
       "Hide Grace Hopper's availability",
@@ -517,8 +517,9 @@ export const TeamAvailabilityTwelve: Story = {
   },
   play: async ({ canvasElement }) => {
     const section = sidebarSection(canvasElement, defaultCalendarLabels.teamAvailabilitySection);
+    // Twelve people plus the All row, which the filter leaves in place.
     const list = within(section).getByRole("list");
-    await expect(within(list).getAllByRole("checkbox")).toHaveLength(12);
+    await expect(within(list).getAllByRole("checkbox")).toHaveLength(13);
     await expect(
       within(section).getByRole("img", { name: defaultCalendarLabels.teamAvailabilityIncomplete }),
     ).toBeTruthy();
@@ -528,7 +529,7 @@ export const TeamAvailabilityTwelve: Story = {
       }),
       "gr",
     );
-    await waitFor(() => expect(within(list).getAllByRole("checkbox")).toHaveLength(1));
+    await waitFor(() => expect(within(list).getAllByRole("checkbox")).toHaveLength(2));
   },
 };
 
@@ -756,48 +757,64 @@ function searchStoryBootstrap(extraEvents: JmapCalendarEvent[] = []) {
     surface: calendarStaticSurfaceFor({ ...seeded, data }),
     initialAnchor: browseDate.toString(),
     initialView: "week" as const,
+    // Search lives in list mode (the floating bar over the list).
+    initialPresentation: "list" as const,
   };
 }
 
 const searchBootstrap = searchStoryBootstrap();
 
-function calendarSearchField(root: HTMLElement): HTMLElement {
-  return within(root).getByPlaceholderText(defaultCalendarLabels.searchPlaceholder);
+function calendarSearchField(root: HTMLElement): HTMLInputElement {
+  return within(root).getByPlaceholderText(
+    defaultCalendarLabels.searchPlaceholder,
+  ) as HTMLInputElement;
 }
 
-function expectNoSearchChrome(root: HTMLElement) {
+/** List mode's one search field: the header's floating bar over the list. */
+function expectOneSearchField(root: HTMLElement) {
   expect(
-    within(root).queryByRole("button", { name: defaultCalendarLabels.searchPlaceholder }),
-  ).toBeNull();
-  expect(root.querySelector(".calendar-search-trigger")).toBeNull();
-  expect(root.querySelector(".calendar-header-search")).toBeNull();
-  expect(root.querySelector(".view-header__search-stack")).toBeNull();
-  expect(root.ownerDocument.querySelector(".calendar-search-popover")).toBeNull();
-  expect(root.querySelectorAll(".calendar-search-field")).toHaveLength(1);
-  expect(
-    root.querySelectorAll('input[aria-label="' + defaultCalendarLabels.searchPlaceholder + '"]'),
+    root.querySelectorAll(`input[aria-label="${defaultCalendarLabels.searchPlaceholder}"]`),
   ).toHaveLength(1);
+  expect(calendarSearchField(root).closest(".view-header__search-stack")).toBeTruthy();
 }
 
-function expectSearchLeftOfViewSelect(root: HTMLElement) {
-  const field = calendarSearchField(root).closest(".calendar-search-field");
-  const actions = root.querySelector(".calendar-header-actions");
-  const select = actions?.querySelector(".calendar-view-select");
-  expect(field).toBeTruthy();
-  expect(actions?.contains(field)).toBe(true);
-  expect(select).toBeTruthy();
-  expect(
-    Boolean(
-      field &&
-      select &&
-      (field.compareDocumentPosition(select) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-    ),
-  ).toBe(true);
+/** The grid's header: no search (it lives in list mode), the view menu before ‹ ›. */
+function expectGridHeader(root: HTMLElement) {
+  expect(within(root).queryByPlaceholderText(defaultCalendarLabels.searchPlaceholder)).toBeNull();
+  const nav = root.querySelector(".calendar-header-nav");
+  if (!(nav instanceof HTMLElement)) throw new Error("header nav not found");
+  const [viewMode, ...arrows] = within(nav).getAllByRole("button");
+  expect(viewMode?.getAttribute("aria-label")).toMatch(/^View mode:/);
+  expect(arrows).toHaveLength(2);
 }
 
 /**
- * Hydrated `?q=` fills the always-visible field without stealing focus
- * (WCAG 2.4.3 / 3.2.1). `/` and ⌘/Ctrl+K select the current value.
+ * While search shows results the range rests: the title is "Search" without its menu
+ * (views, Today), and the view menu and ‹ › are disabled.
+ */
+function expectRangeControls(root: HTMLElement, enabled: boolean) {
+  expect(Boolean(root.querySelector(".view-header__title-menu"))).toBe(enabled);
+  const nav = root.querySelector(".calendar-header-nav");
+  if (!(nav instanceof HTMLElement)) throw new Error("header nav not found");
+  for (const button of within(nav).getAllByRole("button")) {
+    expect((button as HTMLButtonElement).disabled).toBe(!enabled);
+  }
+}
+
+/** The search result rows, in order. */
+function searchRows(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(".calendar-search-results [data-list-item-id]")];
+}
+
+function searchRowTitles(root: HTMLElement): string[] {
+  return searchRows(root).map(
+    (row) => row.querySelector(".list-item__title")?.textContent?.trim() ?? "",
+  );
+}
+
+/**
+ * Hydrated `?q=` fills the field without stealing focus (WCAG 2.4.3 / 3.2.1).
+ * `/` and ⌘/Ctrl+K select the current value.
  */
 export const SearchFromUrl: Story = {
   tags: ["vitest-ci"],
@@ -807,17 +824,15 @@ export const SearchFromUrl: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = calendarSearchField(canvasElement) as HTMLInputElement;
-    expectNoSearchChrome(canvasElement);
-    expectSearchLeftOfViewSelect(canvasElement);
-    await expect(input.closest(".calendar-search-field")).toBeTruthy();
+    const input = calendarSearchField(canvasElement);
+    expectOneSearchField(canvasElement);
     await expect(input).toHaveValue("client call");
     await expect(input).not.toHaveFocus();
     await expect(
       canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
     ).toBeTruthy();
-    await expect(collectEventCardSummaries(canvasElement).includes("Client call")).toBe(true);
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(true);
+    await waitFor(() => expect(searchRowTitles(canvasElement)).toContain("Client call"));
+    expectRangeControls(canvasElement, false);
     await userEvent.keyboard("/");
     await expect(input).toHaveFocus();
     await expect(input.selectionStart).toBe(0);
@@ -831,25 +846,25 @@ export const SearchIdle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = calendarSearchField(canvasElement);
-    expectNoSearchChrome(canvasElement);
-    expectSearchLeftOfViewSelect(canvasElement);
-    await expect(input.closest(".calendar-search-field")).toBeTruthy();
+    expectOneSearchField(canvasElement);
     await expect(input).not.toHaveFocus();
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(false);
-    await expect(canvasElement.querySelector("wgw-calendar-surface")).toBeTruthy();
+    expectRangeControls(canvasElement, true);
+    // Idle: the period's list, not search results.
+    await expect(canvasElement.querySelector(".calendar-event-list")).toBeTruthy();
+    await expect(canvasElement.querySelector(".calendar-search-results")).toBeNull();
     await expect(
       canvas.queryByRole("heading", { name: defaultCalendarLabels.searchTitle }),
     ).toBeNull();
     await userEvent.keyboard("/");
     await expect(input).toHaveFocus();
-    (input as HTMLInputElement).blur();
+    input.blur();
     await expect(input).not.toHaveFocus();
     await userEvent.keyboard("{Meta>}k{/Meta}");
     await expect(input).toHaveFocus();
   },
 };
 
-/** Compact viewport: same mounted field, CSS-repositioned as a right-hand FAB. */
+/** Phone width: the same one field; Escape clears it and lets go of focus. */
 export const SearchIdleCompact: Story = {
   tags: ["vitest-ci"],
   args: searchBootstrap,
@@ -872,21 +887,17 @@ export const SearchIdleCompact: Story = {
   },
   play: async ({ canvasElement }) => {
     const input = calendarSearchField(canvasElement);
-    expectNoSearchChrome(canvasElement);
-    expect(input.closest(".calendar-search-field")).toBeTruthy();
-    expect(input.closest(".calendar-header-actions")).toBeTruthy();
+    expectOneSearchField(canvasElement);
     await userEvent.keyboard("/");
     await expect(input).toHaveFocus();
-    const dismiss = canvasElement.querySelector(".calendar-search-dismiss");
-    expect(dismiss).toBeTruthy();
-    await userEvent.click(dismiss as HTMLElement);
+    await userEvent.type(input, "verg");
+    await userEvent.keyboard("{Escape}");
+    await expect(input).toHaveValue("");
     await expect(input).not.toHaveFocus();
-    expect(input.closest(".calendar-search-field--expanded")).toBeNull();
-    expect(canvasElement.querySelector(".calendar-search-dismiss")).toBeNull();
   },
 };
 
-/** Tablet / mid-width: still the FAB (sidebar-overlay floor), not the header field. */
+/** Tablet / mid-width: the same one field. */
 export const SearchIdleTablet: Story = {
   tags: ["vitest-ci"],
   args: searchBootstrap,
@@ -909,9 +920,7 @@ export const SearchIdleTablet: Story = {
   },
   play: async ({ canvasElement }) => {
     const input = calendarSearchField(canvasElement);
-    expectNoSearchChrome(canvasElement);
-    expect(input.closest(".calendar-search-field")).toBeTruthy();
-    expect(input.closest(".calendar-header-actions")).toBeTruthy();
+    expectOneSearchField(canvasElement);
     await userEvent.keyboard("/");
     await expect(input).toHaveFocus();
   },
@@ -925,17 +934,13 @@ export const SearchSprintRetro: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = calendarSearchField(canvasElement) as HTMLInputElement;
-    await expect(input).toHaveValue("sprint");
+    await expect(calendarSearchField(canvasElement)).toHaveValue("sprint");
     await waitFor(
       () => {
         expect(
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
-        const list = canvasElement.querySelector("calendar-list-view");
-        const items = list?.shadowRoot?.querySelectorAll(".agenda-event-item");
-        expect(items?.length).toBeGreaterThan(0);
-        expect(collectEventCardSummaries(canvasElement).includes("Sprint retro")).toBe(true);
+        expect(searchRowTitles(canvasElement)).toContain("Sprint retro");
       },
       { timeout: 4000 },
     );
@@ -947,96 +952,47 @@ export const SearchMatches: Story = {
   args: searchBootstrap,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = calendarSearchField(canvasElement);
-    await userEvent.type(input, "client call");
+    await userEvent.type(calendarSearchField(canvasElement), "client call");
     await waitFor(
       () => {
         expect(
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
-        expect(canvasElement.querySelectorAll("calendar-list-view")).toHaveLength(1);
+        expect(canvasElement.querySelectorAll(".calendar-search-results")).toHaveLength(1);
         expect(canvas.queryByRole("heading", { name: "Upcoming" })).toBeNull();
         expect(canvas.queryByRole("heading", { name: "Past" })).toBeNull();
       },
       { timeout: 3000 },
     );
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(true);
-    await expect(collectEventCardSummaries(canvasElement).includes("Client call")).toBe(true);
+    expectRangeControls(canvasElement, false);
+    await expect(searchRowTitles(canvasElement)).toContain("Client call");
   },
 };
 
 export const SearchNoMatch: Story = {
   tags: ["vitest-ci"],
   args: searchBootstrap,
-  decorators: [
-    (Story) => (
-      <div className="calendar-search-no-match-frame">
-        {/* Workspace height and flex come from @apply, which this Storybook
-            Vite config does not compile. The frame supplies that shell so the
-            empty-state rules under test can be measured. */}
-        <style>
-          {`.calendar-search-no-match-frame { display: flex; height: 800px; }
-            /* .workspace-columns is a row (h-dvh) in the app. Column here would
-               turn the invitations dock's 23rem flex-basis into height. */
-            .calendar-search-no-match-frame .calendar-workspace {
-              display: flex;
-              flex-direction: row;
-              align-items: stretch;
-              width: 100%;
-              height: 800px;
-              min-height: 0;
-            }
-            .calendar-search-no-match-frame .workspace-app-layout__main,
-            .calendar-search-no-match-frame .workspace-app-layout__main-scroll,
-            .calendar-search-no-match-frame .workspace-app-layout__main-content,
-            .calendar-search-no-match-frame .calendar-main,
-            .calendar-search-no-match-frame .calendar-search-results--empty {
-              display: flex;
-              flex: 1 1 auto;
-              flex-direction: column;
-              min-width: 0;
-              min-height: 0;
-            }
-            .calendar-search-no-match-frame .app-sidebar,
-            .calendar-search-no-match-frame .app-sidebar__scrim { display: none; }
-            .calendar-search-no-match-frame .workspace-app-layout__panel[data-open="false"] {
-              margin-right: calc(-1 * var(--calendar-invitations-column-width, 23rem));
-            }`}
-        </style>
-        <Story />
-      </div>
-    ),
-  ],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await userEvent.type(calendarSearchField(canvasElement), "zzzz-no-such-event");
     await waitFor(
       () => {
-        const list = canvasElement.querySelector("calendar-list-view");
-        const body = list?.shadowRoot?.querySelector(".collection-state__body");
-        expect(body?.textContent).toBe(defaultCalendarLabels.searchNoMatch);
-        const state = list?.shadowRoot?.querySelector(".collection-state");
-        const view = canvasElement.querySelector(".calendar-search-results__scroller");
-        if (!(state instanceof HTMLElement) || !(view instanceof HTMLElement)) {
-          throw new Error("search empty state view not ready");
+        const results = canvasElement.querySelector(".calendar-search-results--empty");
+        const state = results?.querySelector(".collection-state");
+        if (!(state instanceof HTMLElement) || !(results instanceof HTMLElement)) {
+          throw new Error("search empty state not ready");
         }
-        expectHorizontallyCentered(state, view);
-        const stateBox = state.getBoundingClientRect();
-        const viewBox = view.getBoundingClientRect();
-        expect(stateBox.top).toBeGreaterThan(viewBox.top + viewBox.height * 0.25);
+        expect(state.querySelector(".collection-state__body")?.textContent).toBe(
+          defaultCalendarLabels.searchNoMatch,
+        );
+        expectHorizontallyCentered(state, results);
       },
       { timeout: 3000 },
     );
-    await expect(canvas.queryByText(/Visible calendars/)).toBeNull();
-    const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
-    expect(noMatchScope?.textContent).toContain("Personal");
-    expect(noMatchScope?.textContent).toContain("Work");
-    // Scope window is relative to the real "today" — compute the expected start label.
-    const scopeStart = formatCalendarSearchScopeLabel("{start}", calendarSearchRange(), "en-US");
-    expect(noMatchScope?.textContent).toContain(scopeStart);
-    expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
-    await expect(canvas.queryByText(/Downloaded /)).toBeNull();
-    await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();
+    // No scope tags (searched range, calendars) above the results.
+    await expect(canvasElement.querySelector(".calendar-search-results .tag")).toBeNull();
+    await expect(
+      within(canvasElement).queryByText(defaultCalendarLabels.noEventsInRange),
+    ).toBeNull();
   },
 };
 
@@ -1050,59 +1006,41 @@ export const SearchTruncated: Story = {
         expect(
           canvas.getByRole("heading", { name: defaultCalendarLabels.searchTitle }),
         ).toBeTruthy();
-        expect(canvas.queryByText(/Visible calendars/)).toBeNull();
-        const scope = canvasElement.querySelector(".calendar-search-results__scope");
-        expect(scope?.textContent).toContain("Personal");
-        expect(scope?.textContent).toMatch(/[A-Z][a-z]{2} \d{4}/);
-        expect(scope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
-        expect(canvasElement.querySelector(".calendar-search-results__caption")).toBeNull();
-        expect(canvas.queryByText("Showing the next 100")).toBeNull();
-        expect(canvas.queryByText("Showing the most recent 100")).toBeNull();
-        const list = canvasElement.querySelector("calendar-list-view");
-        const items = list?.shadowRoot?.querySelectorAll(".agenda-event-item");
-        expect(items?.length).toBeGreaterThan(0);
-        expect(items?.length).toBeLessThanOrEqual(100);
-        const headingDates = [
-          ...(list?.shadowRoot?.querySelectorAll(".list-sticky-header__rest") ?? []),
-        ].map((node) => node.textContent ?? "");
-        expect(headingDates.some((label) => /\d{4}/.test(label))).toBe(true);
+        expect(canvasElement.querySelector(".calendar-search-results .tag")).toBeNull();
+        const rows = searchRows(canvasElement);
+        expect(rows.length).toBeGreaterThan(0);
+        expect(rows.length).toBeLessThanOrEqual(100);
+        // Results span years: the day headings carry the year.
+        expect(canvasElement.querySelector(".calendar-search-results")?.textContent).toMatch(
+          /\d{4}/,
+        );
       },
       { timeout: 4000 },
     );
   },
 };
 
+/** A result opens in the detail pane beside the results; the query stays. */
 export const SearchResultOpen: Story = {
   tags: ["vitest-ci"],
   args: searchBootstrap,
   play: async ({ canvasElement }) => {
     await userEvent.type(calendarSearchField(canvasElement), "client call");
     const row = await waitFor(() => {
-      const list = canvasElement.querySelector("calendar-list-view");
-      const item = list?.shadowRoot?.querySelector(".agenda-event-item");
-      if (!(item instanceof HTMLElement)) {
-        throw new Error("search result row not ready");
-      }
-      return item;
+      const first = searchRows(canvasElement)[0];
+      if (!first) throw new Error("search result row not ready");
+      return first;
     });
-    await userEvent.click(row);
+    await userEvent.click(row.querySelector(".list-item__title") ?? row);
     await waitFor(() => {
-      const popover = canvasElement.ownerDocument.querySelector(".calendar-event-details-popover");
-      expect(popover).toBeTruthy();
-      expect(canvasElement.querySelector("calendar-list-view")).toBeTruthy();
-      expect(canvasElement.querySelector("wgw-calendar-surface")).toBeNull();
-      expect((calendarSearchField(canvasElement) as HTMLInputElement).value).toBe("client call");
-      expect(labeledTodayButton(canvasElement).disabled).toBe(true);
-      expect(popover?.contains(canvasElement.ownerDocument.activeElement)).toBe(true);
-    });
-    // Modal hideOthers marks the story root aria-hidden; dismiss so afterEach
-    // a11y does not scan the still-tabbable ViewHeader query under that tree.
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => {
+      const pane = canvasElement.querySelector(".calendar-event-pane");
+      expect(pane).toBeTruthy();
       expect(
-        canvasElement.ownerDocument.querySelector(".calendar-event-details-popover"),
-      ).toBeNull();
+        within(pane as HTMLElement).getByLabelText(defaultCalendarLabels.eventTitleLabel),
+      ).toHaveValue("Client call");
     });
+    await expect(canvasElement.querySelector(".calendar-search-results")).toBeTruthy();
+    await expect(calendarSearchField(canvasElement)).toHaveValue("client call");
   },
 };
 
@@ -1111,10 +1049,8 @@ export const SearchTypingBurst: Story = {
   args: searchBootstrap,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = calendarSearchField(canvasElement);
-    await userEvent.type(input, "client call");
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(false);
-    await expect(canvasElement.querySelector("wgw-calendar-surface")).toBeTruthy();
+    expectRangeControls(canvasElement, true);
+    await userEvent.type(calendarSearchField(canvasElement), "client call");
     await waitFor(
       () => {
         expect(
@@ -1123,7 +1059,7 @@ export const SearchTypingBurst: Story = {
       },
       { timeout: 3000 },
     );
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(true);
+    expectRangeControls(canvasElement, false);
   },
 };
 
@@ -1132,23 +1068,23 @@ export const SearchClearImmediate: Story = {
   args: searchBootstrap,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = calendarSearchField(canvasElement);
-    await userEvent.type(input, "verg");
+    await userEvent.type(calendarSearchField(canvasElement), "verg");
     await userEvent.click(
       within(canvasElement.ownerDocument.body).getByRole("button", { name: "Clear search" }),
     );
-    await expect(
-      canvas.queryByRole("heading", { name: defaultCalendarLabels.searchTitle }),
-    ).toBeNull();
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(false);
-    await expect(canvasElement.querySelector("wgw-calendar-surface")).toBeTruthy();
+    const idle = async () => {
+      await expect(
+        canvas.queryByRole("heading", { name: defaultCalendarLabels.searchTitle }),
+      ).toBeNull();
+      expectRangeControls(canvasElement, true);
+      await expect(canvasElement.querySelector(".calendar-event-list")).toBeTruthy();
+    };
+    await idle();
+    // A late debounce must not bring the results back.
     await new Promise((resolve) => {
       window.setTimeout(resolve, 200);
     });
-    await expect(
-      canvas.queryByRole("heading", { name: defaultCalendarLabels.searchTitle }),
-    ).toBeNull();
-    await expect(labeledTodayButton(canvasElement).disabled).toBe(false);
+    await idle();
   },
 };
 
@@ -1160,37 +1096,34 @@ function expectHorizontallyCentered(state: HTMLElement, view: HTMLElement) {
   expect(Math.abs(stateMid - viewMid)).toBeLessThanOrEqual(2);
 }
 
-function labeledTodayButton(root: ParentNode): HTMLButtonElement {
-  const button = root.querySelector(".calendar-header-today");
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error("Today control not found");
-  }
-  return button;
-}
-
 export const Empty: Story = {
   tags: ["vitest-ci"],
   args: {
     data: { calendars: bootstrap.data.calendars, events: [] },
     session: bootstrap.session,
-    surface: { events: new Map(), contextValue: undefined, syncNow: () => {} },
+    surface: {
+      events: new Map(),
+      contextValue: undefined,
+      syncNow: () => {},
+      resolveJmapId: async () => undefined,
+    },
     initialAnchor: MOCK_CALENDAR_ANCHOR,
     initialView: "month",
     initialPresentation: "list",
   },
   play: async ({ canvasElement }) => {
+    // List mode: the empty period's list states it, centred in the list pane.
     await waitFor(() => {
-      const state = queryDeep(canvasElement, ".collection-state");
-      const view = canvasElement.querySelector(".calendar-main");
+      const view = canvasElement.querySelector(".calendar-event-list--empty");
+      const state = view?.querySelector(".collection-state");
       if (!(state instanceof HTMLElement) || !(view instanceof HTMLElement)) {
         throw new Error("list empty state not ready");
       }
       expect(state.querySelector(".collection-state__body")?.textContent).toBe(
         defaultCalendarLabels.noEventsInRange,
       );
-      expect(view.getBoundingClientRect().width).toBeGreaterThan(44 * 16);
       expectHorizontallyCentered(state, view);
+      expect(state.querySelector(".collection-state__icon")).toBeTruthy();
     });
-    await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
 };

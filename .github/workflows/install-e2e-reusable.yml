@@ -46,8 +46,25 @@ jobs:
       - name: Install JS workspace
         run: pnpm install --frozen-lockfile
 
+      # The browser cache CI's apps jobs fill. The runner image already has
+      # Chromium's system libraries, so --with-deps (apt) runs only on a
+      # cache miss: apt mirrors were unreachable for over an hour on 2026-11-11.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
       - name: Install Playwright
-        run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/api-e2e exec playwright install chromium
+          fi
 
       - name: Download the release ZIP
         uses: actions/download-artifact@v8

@@ -31,7 +31,7 @@ function renderWhen(
 }
 
 describe("CalendarEventFormWhen", () => {
-  it("keeps time inputs for timed events and reports start time edits", () => {
+  it("keeps time inputs for timed events and reports a start time once it is left", () => {
     const { onFieldChange } = renderWhen();
 
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(2);
@@ -40,9 +40,11 @@ describe("CalendarEventFormWhen", () => {
       document.querySelector(".calendar-event-dialog__time-slot")?.getAttribute("aria-hidden"),
     ).toBeNull();
 
-    fireEvent.change(screen.getByLabelText(`${labels.eventStartLabel} time`), {
-      target: { value: "11:30" },
-    });
+    const startTime = screen.getByLabelText(`${labels.eventStartLabel} time`);
+    fireEvent.change(startTime, { target: { value: "11:30" } });
+    // Typing is a draft: the form keeps the end after the start, so it applies on leave.
+    expect(onFieldChange).not.toHaveBeenCalled();
+    fireEvent.blur(startTime);
     expect(onFieldChange).toHaveBeenCalledWith("startTime", "11:30");
   });
 
@@ -52,8 +54,9 @@ describe("CalendarEventFormWhen", () => {
 
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
     expect(document.querySelector(".calendar-event-dialog__field--timezone")).toBeNull();
-    expect(document.querySelector(".calendar-event-dialog__all-day-caption")?.textContent).toBe(
-      labels.eventAllDayLabel,
+    expect(screen.getByRole("switch", { name: labels.eventAllDayLabel })).toHaveProperty(
+      "ariaChecked",
+      "true",
     );
     expect(
       document.querySelector(".calendar-event-dialog__time-slot")?.getAttribute("aria-hidden"),

@@ -2,23 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/button/src/button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   ContactsAddressBookSelect,
   suppressClosedSelectTypeahead,
 } from "@/contacts-core/src/contacts-address-book-select";
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
 import { defaultWritableAddressBookId } from "@/contacts-core/src/contacts-addressbook-write";
-import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import "@/contacts-core/src/contacts-create-group-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type ContactsCreateGroupDialogLabels = Pick<
   ContactsUILabels,
@@ -93,15 +85,9 @@ export function ContactsCreateGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={contentClassName}>
+      <DialogContent className={contentClassName} aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="contacts-create-group-dialog__title">
-            <ContactsGroupIcon book={addressBookId || undefined} />
-            {labels.newGroup}
-          </DialogTitle>
-          <DialogDescription className="contacts-create-group-dialog__hint">
-            {labels.createGroupAddressBookHint}
-          </DialogDescription>
+          <DialogTitle>{labels.newGroup}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -110,18 +96,30 @@ export function ContactsCreateGroupDialog({
             onConfirm(trimmed, addressBookId);
           }}
         >
-          <div className="contacts-create-group-dialog__fields">
-            <FieldLabelRow label={labels.createGroupNameLabel} htmlFor="contacts-create-group-name">
-              <Input
-                ref={nameInputRef}
-                id="contacts-create-group-name"
-                autoFocus
-                size="sm"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </FieldLabelRow>
+          <FieldLabelRow
+            layout="inline"
+            fill
+            label={labels.createGroupNameLabel}
+            htmlFor="contacts-create-group-name"
+          >
+            <Input
+              ref={nameInputRef}
+              id="contacts-create-group-name"
+              {...NO_AUTOFILL}
+              autoFocus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </FieldLabelRow>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.createGroupAddressBookLabel}
+            description={labels.createGroupAddressBookHint}
+            htmlFor="contacts-create-group-book"
+          >
             <ContactsAddressBookSelect
+              variant="toolbar"
+              triggerVariant="ghost"
               id="contacts-create-group-book"
               label={labels.createGroupAddressBookLabel}
               personalLabel={labels.personalAddressBook}
@@ -134,8 +132,8 @@ export function ContactsCreateGroupDialog({
                 nameInputRef.current?.focus();
               }}
             />
-          </div>
-          <DialogFooter className="contacts-create-group-dialog__footer">
+          </FieldLabelRow>
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               {labels.cancel}
             </Button>

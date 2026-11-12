@@ -1,7 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Editor } from "@tiptap/react";
-import { printTextEditorSheet, TEXT_EDITOR_PRINT_FORMATTED_CLASS } from "./text-editor-print";
+import {
+  printTextEditorSheet,
+  PRINT_IMAGE_WAIT_MS,
+  TEXT_EDITOR_PRINT_FORMATTED_CLASS,
+  waitForSheetImages,
+} from "./text-editor-print";
 
 function createMockEditor(editorRoot: HTMLElement, proseMirror?: HTMLElement): Editor {
   const dom = proseMirror ?? editorRoot.querySelector(".ProseMirror") ?? editorRoot;
@@ -52,11 +57,21 @@ function cn(...parts: Array<string | false | undefined>) {
 }
 
 describe("printTextEditorSheet", () => {
+  // Printing waits for images and two frames, so it finishes later. Fake timers and
+  // instant frames keep each test's print inside that test; `afterEach` runs what is left.
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
     vi.spyOn(window, "print").mockImplementation(() => {});
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.documentElement.classList.remove("text-editor-print-active");
     document.documentElement.style.removeProperty("--text-editor-print-page-margin");
@@ -112,5 +127,88 @@ describe("printTextEditorSheet", () => {
     expect(editorRoot.classList.contains(TEXT_EDITOR_PRINT_FORMATTED_CLASS)).toBe(true);
 
     editorRoot.remove();
+  });
+
+  it("prints in the light theme and puts dark mode back afterwards", () => {
+    document.documentElement.dataset.theme = "dark";
+    const { editorRoot, prose } = buildEditorDom();
+    try {
+      printTextEditorSheet(createMockEditor(editorRoot, prose));
+      // Paper is white: dark mode's light text would print grey.
+      expect(document.documentElement.dataset.theme).toBe("light");
+      window.dispatchEvent(new Event("afterprint"));
+      expect(document.documentElement.dataset.theme).toBe("dark");
+    } finally {
+      delete document.documentElement.dataset.theme;
+      editorRoot.remove();
+    }
+  });
+
+  it("waits for a Drive image that is still loading before printing", async () => {
+    const { editorRoot, prose } = buildEditorDom();
+    const img = document.createElement("img");
+    img.dataset.loading = "true";
+    prose.appendChild(img);
+
+    printTextEditorSheet(createMockEditor(editorRoot, prose));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(window.print).not.toHaveBeenCalled();
+
+    delete img.dataset.loading;
+    await vi.advanceTimersByTimeAsync(200);
+    expect(window.print).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new Event("afterprint"));
+    editorRoot.remove();
+  });
+
+  it("does not print and restores the page when the editor unmounts while an image loads", async () => {
+    document.documentElement.dataset.theme = "dark";
+    const { editorRoot, prose } = buildEditorDom();
+    const img = document.createElement("img");
+    img.dataset.loading = "true";
+    prose.appendChild(img);
+
+    try {
+      printTextEditorSheet(createMockEditor(editorRoot, prose));
+      expect(document.documentElement.dataset.theme).toBe("light");
+
+      editorRoot.remove();
+      await vi.advanceTimersByTimeAsync(200);
+
+      expect(window.print).not.toHaveBeenCalled();
+      expect(document.documentElement.dataset.theme).toBe("dark");
+      expect(document.body.classList.contains("text-editor-print-active")).toBe(false);
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+});
+
+describe("waitForSheetImages", () => {
+  it("gives up after the wait limit, so a failed image never blocks printing", async () => {
+    vi.useFakeTimers();
+    try {
+      const surface = document.createElement("div");
+      const img = document.createElement("img");
+      img.dataset.loading = "true";
+      surface.appendChild(img);
+      let done = false;
+      void waitForSheetImages(surface).then(() => {
+        done = true;
+      });
+      await vi.advanceTimersByTimeAsync(PRINT_IMAGE_WAIT_MS - 500);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(done).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not wait for an image without a source that is not loading (blocked or failed)", async () => {
+    const surface = document.createElement("div");
+    surface.appendChild(document.createElement("img"));
+    await expect(waitForSheetImages(surface, 10)).resolves.toBeUndefined();
   });
 });

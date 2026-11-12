@@ -22,7 +22,7 @@ import {
 import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { useDrivePaneStoryController } from "@/drive-core/stories/drive-pane-stories.harness";
-import { withDarkTheme } from "@/drive-core/stories/drive-story-dark-theme";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import type { DriveUploadQueueState } from "@/lib/offline/drive/upload/drive-upload-subscription";
@@ -220,7 +220,7 @@ export const ListView: Story = {
   render: () => <FolderHarness viewMode="list" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("table")).toBeInTheDocument();
+    await expect(await canvas.findByRole("grid")).toBeInTheDocument();
     await expectRings(canvasElement, 6);
     await expect(canvas.getByText(/Waiting for your answer/)).toBeInTheDocument();
     await expect(canvas.getByText(/Not saved on this device/)).toBeInTheDocument();

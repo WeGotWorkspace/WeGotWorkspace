@@ -34,6 +34,7 @@ function locator(overrides: Partial<DocsLocatorDeps> = {}): DocsLocatorDeps {
     recordLocation: vi.fn(async () => undefined),
     isOnline: () => true,
     ownedByQueuedWrite: vi.fn(async () => false),
+    queuedRenameTarget: vi.fn(async () => null),
     ...overrides,
   };
 }

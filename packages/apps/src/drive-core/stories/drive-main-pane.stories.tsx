@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { withDarkTheme } from "@/branding-playground/dark-theme-story";
 import { DRIVE_DOCS_EDITOR_STORY_FILES } from "@/drive-core/src/drive-docs-story-files";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { useDrivePaneStoryController } from "@/drive-core/stories/drive-pane-stories.harness";
-import { DarkThemeRoot } from "@/drive-core/stories/drive-story-dark-theme";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import type { DriveFile } from "@/lib/files/drive-models";
 
@@ -103,7 +103,7 @@ export const ListView: Story = {
   args: { preset: "default", viewMode: "list" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("table")).toBeInTheDocument();
+    await expect(canvas.getByRole("grid")).toBeInTheDocument();
     const studioAssets = canvas.getByText("Studio Assets");
     await userEvent.click(studioAssets);
     await expect(studioAssets.closest("tr")).toHaveClass(/drive-list-row--selected/);
@@ -131,13 +131,7 @@ export const ListViewSelectionModeDark: Story = {
   name: "List view selection mode (dark theme)",
   tags: ["vitest-ci"],
   args: { preset: "default", viewMode: "list" },
-  decorators: [
-    (Story) => (
-      <DarkThemeRoot>
-        <Story />
-      </DarkThemeRoot>
-    ),
-  ],
+  decorators: [withDarkTheme],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const row = canvas.getByText("Studio Assets").closest("tr");

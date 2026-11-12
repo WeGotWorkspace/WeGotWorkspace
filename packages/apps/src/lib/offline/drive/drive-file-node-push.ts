@@ -16,7 +16,8 @@ const localListeners = new Set<{ username: string; onChange: () => void }>();
 
 /**
  * Tell every tab of this browser, this one included, that another user's
- * change reached the Drive cache, so open listings fetch their folder again.
+ * change reached the Drive cache, or that writes queued offline landed, so
+ * open listings fetch their folder again.
  * The tabs share one `FileNode/changes` token: a tab that did not pull would
  * otherwise see an equal state and keep its old listing.
  */

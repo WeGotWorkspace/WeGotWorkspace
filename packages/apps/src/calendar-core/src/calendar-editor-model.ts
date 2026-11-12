@@ -583,6 +583,23 @@ export function formToDraft(form: CalendarEventFormValue): CalendarEventDraft {
   };
 }
 
+/** The signed-in user as an event's organizer (none without a session email). */
+export function sessionOrganizer(
+  email: string | undefined,
+  name: string | undefined,
+): { email: string; name: string } | undefined {
+  return email ? { email, name: name || email } : undefined;
+}
+
+/** `formToDraft` with the organizer set, as every create from the app sends it. */
+export function draftFromForm(
+  form: CalendarEventFormValue,
+  organizer?: { email: string; name?: string },
+): CalendarEventDraft {
+  const draft = formToDraft(form);
+  return organizer ? { ...draft, organizer } : draft;
+}
+
 export function formToPatch(
   form: CalendarEventFormValue,
   original: JmapCalendarEvent,
@@ -688,4 +705,16 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     ...(form.attendees.length ? { attendees: form.attendees } : {}),
     links: linksFromMeetingUrl(form.meetingUrl) ?? null,
   };
+}
+
+/** The edit as a patch on `base` (the whole form without one); a change of attendees
+ * names the organizer. */
+export function calendarEditPatch(
+  form: CalendarEventFormValue,
+  base: JmapCalendarEvent | undefined,
+  organizer?: { email: string; name?: string },
+): CalendarEventPatch {
+  const patch = base ? formToPatch(form, base) : formToFullPatch(form);
+  if (patch.attendees && organizer) patch.organizer = organizer;
+  return patch;
 }

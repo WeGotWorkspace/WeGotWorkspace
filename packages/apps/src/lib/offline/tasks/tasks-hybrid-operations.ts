@@ -16,6 +16,7 @@ import {
   deleteTaskList,
   fetchTasksLiveBootstrap,
   getTask,
+  importTasksLive,
   listTaskListChanges,
   patchTask,
   patchTaskList,
@@ -278,6 +279,8 @@ async function queueOfflineListDelete(
   });
 }
 
+export const TASKS_IMPORT_OFFLINE_MESSAGE = "ICS import requires an internet connection";
+
 export function createHybridTasksOperations(username: string): TasksAPIOperations {
   const runner = runnerFor(username);
 
@@ -358,8 +361,26 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         return queueOfflineMove(username, taskId, taskListId, existing, opts);
       }
     },
+    importTasks: async (icsText, opts) => {
+      if (!readBrowserOnline()) {
+        throw new Error(TASKS_IMPORT_OFFLINE_MESSAGE);
+      }
+      const result = await importTasksLive(icsText, opts);
+      // The server has the tasks now. A failed cache write must not report
+      // the import as failed: a retry would only say "Already in this list".
+      // Sync brings the cache up to date later.
+      for (const task of result.list) {
+        try {
+          await upsertTaskInCache(username, task, false);
+        } catch {
+          // Cache only.
+        }
+      }
+      return result;
+    },
     createTaskList: async (body, opts) => {
       if (!readBrowserOnline()) {
+        if (opts?.requireServer) throw new Error(TASKS_IMPORT_OFFLINE_MESSAGE);
         return queueOfflineListCreate(username, body);
       }
       try {
@@ -368,6 +389,7 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         await runner.flush();
         return list;
       } catch (error) {
+        if (opts?.requireServer) throw error;
         rethrowUnlessOfflineQueue(error, opts);
         return queueOfflineListCreate(username, body);
       }

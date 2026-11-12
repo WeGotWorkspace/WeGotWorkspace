@@ -2,6 +2,7 @@ import type {
   Task,
   TaskAlert,
   TaskCreate,
+  TaskImportResponse,
   TaskList,
   TaskListCreate,
   TaskListPatch,
@@ -9,7 +10,16 @@ import type {
 } from "@wgw/openapi-types/tasks-types";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 
-export type { Task, TaskAlert, TaskCreate, TaskList, TaskListCreate, TaskListPatch, TaskPatch };
+export type {
+  Task,
+  TaskAlert,
+  TaskCreate,
+  TaskImportResponse,
+  TaskList,
+  TaskListCreate,
+  TaskListPatch,
+  TaskPatch,
+};
 
 export type TaskProjectGroupOption = {
   slug: string;
@@ -25,6 +35,11 @@ export type TasksUIData = {
 export type TasksMutationOpts = {
   signal?: AbortSignal;
   ifMatch?: string;
+  /**
+   * Fail instead of queueing the write offline: the caller needs the server's
+   * answer now (an import into a new list).
+   */
+  requireServer?: boolean;
 };
 
 /**
@@ -46,4 +61,6 @@ export type TasksAPIOperations = {
     opts?: TasksMutationOpts & { onDestroyRemoveContents?: boolean },
   ) => Promise<void>;
   searchSharePrincipals?: (query: string) => Promise<CollectionSharePrincipal[]>;
+  /** ICS import into one task list (#1624). Online only. */
+  importTasks?: (icsText: string, opts: { taskListId: string }) => Promise<TaskImportResponse>;
 };

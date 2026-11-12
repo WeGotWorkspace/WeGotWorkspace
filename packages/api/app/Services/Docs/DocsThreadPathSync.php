@@ -108,7 +108,7 @@ final class DocsThreadPathSync
         try {
             $operation();
         } catch (\Throwable $e) {
-            Log::warning('docs_thread_path_sync_failed', [
+            Log::error('docs_thread_path_sync_failed', [
                 'uid' => (string) $row->uid,
                 'path' => (string) $row->doc_path,
                 'error' => $e->getMessage(),

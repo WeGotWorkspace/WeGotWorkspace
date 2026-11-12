@@ -220,7 +220,7 @@ class DriveStarService
 
     private function logStarSyncFailure(string $op, string $from, ?string $to, \Throwable $e): void
     {
-        Log::warning('drive_star_sync_failed', [
+        Log::error('drive_star_sync_failed', [
             'op' => $op,
             'from' => $from,
             'to' => $to,

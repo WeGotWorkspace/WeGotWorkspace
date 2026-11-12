@@ -14,8 +14,13 @@ import {
   captureOfflineDocsTrashSnapshot,
   createHybridDocsDriveOperations,
   DOCS_DELETE_NEEDS_CONNECTION,
+  flushDocsOutboxForAccount,
   undoOfflineDocsTrash,
 } from "@/lib/offline/docs/docs-hybrid-operations";
+import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
+import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
+import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
@@ -383,6 +388,8 @@ describe("createHybridDocsDriveOperations offline gaps (#1563)", () => {
     listDirectory: vi.fn(),
     listEntriesByPaths: vi.fn(),
     deleteItems: vi.fn(),
+    listStars: vi.fn(async (): Promise<string[]> => []),
+    setStar: vi.fn(async () => undefined),
   };
 
   beforeEach(async () => {
@@ -393,6 +400,80 @@ describe("createHybridDocsDriveOperations offline gaps (#1563)", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await docsListingRowsTable(db).clear();
+    await db.meta.clear();
+  });
+
+  it("lists the folders this device knows when offline, for the Move dialog (#2033)", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(username, {
+      type: "dir",
+      path: "/users/alice/Plans",
+      name: "Plans",
+      size: 0,
+      time: 1,
+      permissions: 0,
+    } as WgwDriveDirectoryEntry);
+    const operations = createHybridDocsDriveOperations(username);
+
+    const offline = await operations.listDirectory("/users/alice");
+
+    expect(live.listDirectory).not.toHaveBeenCalled();
+    expect(offline.directory.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "dir", path: "/users/alice/Plans" }),
+      ]),
+    );
+  });
+
+  it("tells every Docs tab about a star, online and queued (#2034)", async () => {
+    const heard = vi.fn();
+    const unsubscribe = subscribeDocsCachesChanged(username, heard);
+    const operations = createHybridDocsDriveOperations(username);
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await operations.setStar({ path: "/users/alice/A.md", starred: true });
+    expect(live.setStar).toHaveBeenCalledTimes(1);
+    expect(heard).toHaveBeenCalledTimes(1);
+
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await operations.setStar({ path: "/users/alice/B.md", starred: true });
+    expect(heard).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("keeps a star queued here when another tab reads the stars online (#2034)", async () => {
+    const operations = createHybridDocsDriveOperations(username);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await operations.setStar({ path: "/users/alice/Queued.md", starred: true });
+    await operations.setStar({ path: "/users/alice/Server.md", starred: false });
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.listStars.mockResolvedValue(["/users/alice/Server.md", "/users/alice/Other.md"]);
+    const stars = await operations.listStars();
+
+    expect(stars.sort()).toEqual(["/users/alice/Other.md", "/users/alice/Queued.md"]);
+    expect((await readDocsStarredPaths(username)).sort()).toEqual(stars);
+  });
+
+  it("tells open lists to fetch again once a queued restore landed (#2035)", async () => {
+    const operations = createHybridDocsDriveOperations(username);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await operations.renameItem({
+      from: `${trashDir}/Back.md`,
+      destination: "/users/alice",
+      to: "Back.md",
+    });
+    expect(await listOutboxMutations(username)).toHaveLength(1);
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.renameItem.mockResolvedValue(undefined);
+    const listsFetchAgain = vi.fn();
+    const unsubscribe = subscribeDriveRemoteChanges(username, listsFetchAgain);
+    const result = await flushDocsOutboxForAccount(username);
+
+    expect(result?.flushed).toBe(1);
+    expect(listsFetchAgain).toHaveBeenCalled();
+    unsubscribe();
   });
 
   it("lists a folder from this device when offline, with the last live listing", async () => {

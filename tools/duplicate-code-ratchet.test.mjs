@@ -5,6 +5,14 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  comparePackages,
+  copiedLinesPerFile,
+  measuredPackages,
+  nextPackages,
+  packageKey,
+  packageTotals,
+} from "./duplicate-code-packages.mjs";
+import {
   DUPLICATE_SCOPES,
   evaluate,
   formatBaseline,
@@ -18,6 +26,7 @@ import {
   nextBaseline,
   parseBaseline,
   summarizeReport,
+  summaryMarkdown,
 } from "./duplicate-code-ratchet.mjs";
 
 const apps = "packages/apps/src";
@@ -32,6 +41,7 @@ function baseline(appsTotals, apiTotals, extra = {}) {
       [api]: { clones: apiTotals[0], duplicatedLines: apiTotals[1] },
       [apps]: { clones: appsTotals[0], duplicatedLines: appsTotals[1] },
     },
+    packages: {},
     ...extra,
   };
 }
@@ -424,7 +434,221 @@ test("measureScopes finds a block copied between two files, ignoring .gitignore"
     );
     assert.equal(result[api].clones, 0);
     assert.equal(result[api].duplicatedLines, 0);
+    const demo = result[apps].packages[`${apps}/demo`];
+    assert.equal(demo.lines, 34, "two scanned files of 17 lines; the test file does not count");
+    assert.ok(demo.duplicatedLines >= 28, `got ${demo.duplicatedLines}`);
+    assert.equal(demo.cloneCoverage, Math.round((demo.duplicatedLines / 34) * 10000) / 100);
+    assert.deepEqual(result[api].packages, { [api]: { lines: 3, duplicatedLines: 0, cloneCoverage: 0 } });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("packageKey uses the coverage baseline keys for every package it lists", () => {
+  const coverageKeys = Object.keys(
+    JSON.parse(readFileSync(new URL("./coverage-baseline.json", import.meta.url), "utf8")),
+  );
+  assert.ok(coverageKeys.length > 0);
+  for (const key of coverageKeys) {
+    const file = key.startsWith(api) ? `${key}/Sub/Thing.php` : `${key}/src/thing.ts`;
+    assert.equal(packageKey(file), key, file);
+    if (key.startsWith(api)) assert.equal(packageKey(`${key}/Thing.php`), key);
+  }
+});
+
+test("packageKey gives files outside the coverage keys their nearest folder", () => {
+  assert.equal(packageKey(`${apps}/main.tsx`), apps);
+  assert.equal(packageKey(`${apps}/lib/utils.ts`), `${apps}/lib`);
+  assert.equal(packageKey(`${apps}/lib/offline/notes-outbox-flush.ts`), `${apps}/lib/offline`);
+  assert.equal(packageKey(`${apps}/notes-core/src/notes-workspace.tsx`), `${apps}/notes-core`);
+  assert.equal(packageKey(`${api}/Http/Controllers/CalendarController.php`), `${api}/Http`);
+  assert.equal(packageKey(`${api}/Services/Calendars/CalendarRepository.php`), `${api}/Services/Calendars`);
+  assert.equal(packageKey(`${api}/Services/Helper.php`), `${api}/Services`);
+  assert.equal(packageKey(`${api}/helpers.php`), api);
+  assert.equal(packageKey("packages/apps/vite.config.ts"), null);
+  assert.equal(packageKey("tools/duplicate-code-ratchet.mjs"), null);
+});
+
+test("copiedLinesPerFile counts both sides of a clone and overlapping clones once", () => {
+  const at = (file, start, end) => ({ path: file, start, end });
+  const copied = copiedLinesPerFile([
+    { first: at("a.ts", 1, 10), second: at("b.ts", 21, 30) },
+    { first: at("a.ts", 6, 15), second: at("c.ts", 1, 10) },
+  ]);
+  assert.deepEqual(Object.fromEntries(copied), { "a.ts": 15, "b.ts": 10, "c.ts": 10 });
+});
+
+test("packageTotals sums scanned and copied lines per package and rounds the percentage", () => {
+  const totals = packageTotals(
+    new Map([
+      [`${apps}/notes-core/src/a.ts`, 100],
+      [`${apps}/notes-core/src/b.ts`, 200],
+      [`${apps}/tasks-core/src/c.ts`, 50],
+      [`${apps}/tasks-core/src/empty.ts`, 0],
+      [`${api}/Services/Notes/Repo.php`, 300],
+    ]),
+    new Map([
+      [`${apps}/notes-core/src/a.ts`, 20],
+      [`${api}/Services/Notes/Repo.php`, 1],
+    ]),
+  );
+  assert.deepEqual(totals, {
+    [`${api}/Services/Notes`]: { lines: 300, duplicatedLines: 1, cloneCoverage: 0.33 },
+    [`${apps}/notes-core`]: { lines: 300, duplicatedLines: 20, cloneCoverage: 6.67 },
+    [`${apps}/tasks-core`]: { lines: 50, duplicatedLines: 0, cloneCoverage: 0 },
+  });
+  assert.deepEqual(Object.keys(totals), Object.keys(totals).sort(), "keys are sorted");
+});
+
+const pkg = (lines, duplicatedLines) => ({
+  lines,
+  duplicatedLines,
+  cloneCoverage: Math.round((duplicatedLines / lines) * 10000) / 100,
+});
+const entry = (lines, duplicatedLines) => {
+  const { cloneCoverage } = pkg(lines, duplicatedLines);
+  return { cloneCoverage, duplicatedLines };
+};
+
+test("comparePackages warns once per package whose copied lines grew, new packages from 0", () => {
+  const notes = `${apps}/notes-core`;
+  const tasks = `${apps}/tasks-core`;
+  const drive = `${apps}/drive-core`;
+  const chat = `${api}/Services/Chat`;
+  const { rows, warnings, dropped } = comparePackages(
+    { [notes]: pkg(1000, 60), [tasks]: pkg(500, 10), [drive]: pkg(800, 30), [chat]: pkg(400, 40) },
+    { [notes]: entry(1000, 50), [tasks]: entry(500, 20), [chat]: entry(400, 40), [`${api}/Gone`]: entry(10, 5) },
+  );
+  assert.deepEqual(warnings, [
+    `${apps}/drive-core: copied lines grew from 0 (not in the baseline) to 30 (3.75%). pnpm duplicate-code:report lists the duplicated blocks.`,
+    `${apps}/notes-core: copied lines grew from 50 (5%) to 60 (6%). pnpm duplicate-code:report lists the duplicated blocks.`,
+  ]);
+  assert.equal(dropped, 2, "tasks-core went down and a package that is gone counts as a drop");
+  assert.deepEqual(
+    rows.map((row) => [row.key, row.change]),
+    [
+      [`${api}/Gone`, -5],
+      [chat, 0],
+      [drive, 30],
+      [notes, 10],
+      [tasks, -10],
+    ],
+  );
+});
+
+test("comparePackages does not warn when only the percentage rose", () => {
+  const notes = `${apps}/notes-core`;
+  const { warnings } = comparePackages({ [notes]: pkg(500, 50) }, { [notes]: entry(1000, 50) });
+  assert.deepEqual(warnings, [], "deleting unrelated code raises the share but adds no copy");
+});
+
+test("evaluate ignores the per-package numbers, so they never fail the check", () => {
+  const notes = `${apps}/notes-core`;
+  const rows = baseline([101, 1755], [330, 5390], { packages: { [notes]: entry(1000, 10) } });
+  const current = {
+    [api]: { clones: 330, duplicatedLines: 5390, packages: {} },
+    [apps]: { clones: 101, duplicatedLines: 1755, packages: { [notes]: pkg(1000, 90) } },
+  };
+  assert.equal(comparePackages(measuredPackages(current), rows.packages).warnings.length, 1);
+  assert.deepEqual(evaluate(current, rows, settings).errors, []);
+});
+
+test("nextPackages lowers drops, keeps growth, adds new packages and leaves out zeros", () => {
+  const next = nextPackages(
+    {
+      [`${apps}/notes-core`]: pkg(1000, 40),
+      [`${apps}/tasks-core`]: pkg(500, 30),
+      [`${apps}/drive-core`]: pkg(800, 16),
+      [`${apps}/meet-core`]: pkg(300, 0),
+    },
+    {
+      [`${apps}/notes-core`]: entry(1000, 50),
+      [`${apps}/tasks-core`]: entry(500, 20),
+      [`${apps}/meet-core`]: entry(300, 12),
+      [`${api}/Gone`]: entry(10, 5),
+    },
+  );
+  assert.deepEqual(next, {
+    [`${apps}/drive-core`]: entry(800, 16),
+    [`${apps}/notes-core`]: entry(1000, 40),
+    [`${apps}/tasks-core`]: entry(500, 20),
+  });
+});
+
+test("nextBaseline also updates the package entries", () => {
+  const notes = `${apps}/notes-core`;
+  const current = {
+    [api]: { clones: 330, duplicatedLines: 5390, packages: {} },
+    [apps]: { clones: 100, duplicatedLines: 1740, packages: { [notes]: pkg(1000, 40) } },
+  };
+  const { baseline: next } = nextBaseline(
+    current,
+    baseline([101, 1755], [330, 5390], { packages: { [notes]: entry(1000, 50) } }),
+    settings,
+  );
+  assert.deepEqual(next?.packages, { [notes]: entry(1000, 40) });
+});
+
+test("parseBaseline checks the package entries and formatBaseline sorts them", () => {
+  const rows = baseline([101, 1755], [330, 5390], {
+    packages: { [`${apps}/tasks-core`]: entry(500, 20), [`${apps}/notes-core`]: entry(1000, 50) },
+  });
+  const text = formatBaseline(rows);
+  assert.deepEqual(parseBaseline(text), rows);
+  assert.ok(text.indexOf("notes-core") < text.indexOf("tasks-core"));
+
+  const { packages: _packages, ...withoutPackages } = rows;
+  assert.throws(() => parseBaseline(JSON.stringify(withoutPackages)), /baseline: packages must be an object/);
+  assert.throws(
+    () => parseBaseline(JSON.stringify({ ...rows, packages: { x: { cloneCoverage: 1, duplicatedLines: 1.5 } } })),
+    /baseline: x duplicatedLines must be a non-negative integer/,
+  );
+  assert.throws(
+    () => parseBaseline(JSON.stringify({ ...rows, packages: { x: { cloneCoverage: 101, duplicatedLines: 1 } } })),
+    /baseline: x cloneCoverage must be a percentage from 0 to 100/,
+  );
+});
+
+test("the committed baseline parses and lists only packages with copied lines", () => {
+  const committed = parseBaseline(
+    readFileSync(new URL("./duplicate-code-baseline.json", import.meta.url), "utf8"),
+  );
+  const keys = Object.keys(committed.packages);
+  assert.ok(keys.length > 0);
+  for (const key of keys) {
+    assert.ok(key === apps || key === api || key.startsWith(`${apps}/`) || key.startsWith(`${api}/`), key);
+    assert.ok(committed.packages[key].duplicatedLines > 0, key);
+  }
+});
+
+test("summaryMarkdown shows the scope totals and lists grown packages first", () => {
+  const notes = `${apps}/notes-core`;
+  const tasks = `${apps}/tasks-core`;
+  const meet = `${apps}/meet-core`;
+  const rows = baseline([101, 1755], [330, 5390], {
+    packages: { [notes]: entry(1000, 50), [tasks]: entry(100, 30) },
+  });
+  const current = {
+    [api]: { clones: 330, duplicatedLines: 5390 },
+    [apps]: { clones: 102, duplicatedLines: 1770 },
+  };
+  const comparison = comparePackages(
+    { [notes]: pkg(1000, 60), [tasks]: pkg(100, 30), [meet]: pkg(300, 0) },
+    rows.packages,
+  );
+  const markdown = summaryMarkdown({
+    jscpdVersion: "4.3.0",
+    baseline: rows,
+    current,
+    errors: [`${apps}: clones grew from 101 to 102`],
+    comparison,
+  });
+  assert.match(markdown, /^## Copied code \(jscpd 4\.3\.0, 70 tokens \/ 10 lines\)/);
+  assert.match(markdown, /\*\*The scope check failed\*\* \(1\): packages\/apps\/src: clones grew from 101 to 102/);
+  assert.match(markdown, /\| `packages\/apps\/src` \| 102 \| 1770 \| 101 \/ 1755 \|/);
+  assert.match(markdown, /1 package grew, 0 dropped; 1 package without copied lines is not listed\./);
+  const notesRow = markdown.indexOf(`| \`${notes}\` | 6% | 60 | 1000 | +10 ⚠️ |`);
+  const tasksRow = markdown.indexOf(`| \`${tasks}\` | 30% | 30 | 100 | = |`);
+  assert.ok(notesRow > 0 && tasksRow > notesRow, "a grown package comes before a higher share");
+  assert.ok(!markdown.includes(meet));
 });

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore, type ChangeEvent } from "react";
 import { Eye, ListTodo } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -40,6 +40,9 @@ import {
   type TaskListSidebarEntry,
 } from "@/tasks-core/src/use-tasks-sidebar-model";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
+import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
+import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
 import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
@@ -131,6 +134,7 @@ export function TasksWorkspace({
   notice,
 }: TasksWorkspaceProps) {
   const quickAddRef = useRef<HTMLInputElement>(null);
+  const icsFileInputRef = useRef<HTMLInputElement>(null);
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const isTouch = useIsTouch();
 
@@ -195,6 +199,7 @@ export function TasksWorkspace({
     patchShareWith,
     removeSharedList,
     deleteList,
+    icsImport,
   } = controller;
 
   const quickAdd = useCallback(
@@ -294,6 +299,15 @@ export function TasksWorkspace({
                   quickAddRef.current?.focus();
                 }}
                 onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
+                onImportTasks={
+                  icsImport.canImportTasks
+                    ? () => {
+                        dismissSidebarOverlay(c.closeSidebar);
+                        icsFileInputRef.current?.click();
+                      }
+                    : undefined
+                }
+                importOffline={!online}
               />
             }
             footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
@@ -420,6 +434,7 @@ export function TasksWorkspace({
         notebooks={moveTargets}
         value={moveValue}
         title={L.selectionMoveToList}
+        fieldLabel={L.importDestinationLegend}
         description={L.selectionMoveDescription}
         confirmLabel={L.moveConfirm}
         labels={{
@@ -476,6 +491,35 @@ export function TasksWorkspace({
         labels={taskProjectDialogLabelsFrom(L)}
         contentClassName="tasks-dialog-surface"
       />
+      <input
+        ref={icsFileInputRef}
+        type="file"
+        accept={ICS_FILE_ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        data-testid="tasks-ics-file-input"
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          const file = icsFileFromList(event.target.files);
+          event.target.value = "";
+          if (file) icsImport.beginImport(file);
+        }}
+      />
+      {icsImport.importFile ? (
+        <TasksImportDialog
+          open
+          file={icsImport.importFile}
+          labels={L}
+          taskLists={taskLists}
+          preferredTaskListId={view.startsWith("list:") ? view.slice("list:".length) : undefined}
+          busy={icsImport.importDialogBusy}
+          error={icsImport.importDialogError}
+          offline={!online}
+          result={icsImport.importResult}
+          onClose={icsImport.closeImportDialog}
+          onImport={icsImport.submitImportDialog}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }

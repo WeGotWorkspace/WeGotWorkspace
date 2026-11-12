@@ -94,9 +94,11 @@ export const CalendarPanel: Story = {
     const footer = canvasElement.ownerDocument.querySelector(".ui-modal-footer");
     expect(footer).toBeInstanceOf(HTMLElement);
     const footerQueries = within(footer as HTMLElement);
-    await expect(footerQueries.findByRole("button", { name: "Save" })).resolves.toBeTruthy();
+    // Preferences save themselves: Done closes, there is no Save or Cancel.
+    await expect(footerQueries.findByRole("button", { name: "Done" })).resolves.toBeTruthy();
     await expect(footerQueries.getByRole("button", { name: "Open in Settings" })).toBeTruthy();
-    await expect(footerQueries.getByRole("button", { name: "Cancel" })).toBeTruthy();
+    await expect(footerQueries.queryByRole("button", { name: "Save" })).toBeNull();
+    await expect(footerQueries.queryByRole("button", { name: "Cancel" })).toBeNull();
   },
 };
 
@@ -108,7 +110,7 @@ export const TasksPanel: Story = {
     await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Tasks" })).resolves.toBeTruthy();
-    const trigger = await body.findByRole("button", { name: /Default list: Inbox/i });
+    const trigger = await body.findByRole("combobox", { name: "Default list" });
     await expect(trigger.textContent).toContain("Inbox");
   },
 };
@@ -121,7 +123,7 @@ export const ContactsPanel: Story = {
     await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Contacts" })).resolves.toBeTruthy();
-    const trigger = await body.findByRole("button", { name: /Default address book: Personal/i });
+    const trigger = await body.findByRole("combobox", { name: "Default address book" });
     await expect(trigger.textContent).toContain("Personal");
   },
 };
@@ -134,7 +136,7 @@ export const NotesPanel: Story = {
     await openSettings(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Notes" })).resolves.toBeTruthy();
-    const trigger = await body.findByRole("button", { name: /Default notebook: The Journal/i });
+    const trigger = await body.findByRole("combobox", { name: "Default notebook" });
     await expect(trigger.textContent).toContain("The Journal");
   },
 };

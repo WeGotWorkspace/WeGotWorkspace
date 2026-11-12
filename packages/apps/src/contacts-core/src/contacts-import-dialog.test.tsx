@@ -78,8 +78,11 @@ const editSharee: ContactsAddressBookRow = {
 
 const sampleFiles = [new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf")];
 
+/** The ghost trigger is named by its book; the row's caption labels it (`htmlFor`). */
 function bookTrigger() {
-  return screen.getByRole("combobox", { name: defaultContactsLabels.importDestinationLegend });
+  return screen.getByLabelText(defaultContactsLabels.importDestinationLegend, {
+    selector: "[role=combobox]",
+  });
 }
 
 function selectedBookLabel() {
@@ -212,7 +215,7 @@ describe("ContactsImportDialog", () => {
 
     expect(screen.getByText(longError)).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
-    expect(document.querySelector(".contacts-import-dialog__error")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe(longError);
   });
 
   it("shows import progress while a batch is uploading", () => {

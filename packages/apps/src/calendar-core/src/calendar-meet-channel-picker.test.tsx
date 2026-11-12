@@ -86,45 +86,36 @@ describe("CalendarMeetChannelPicker (event-form Meet menu)", () => {
     cleanup();
   });
 
-  it("uses a primary segmented Join + menu instead of adjacent generate and channel buttons", () => {
+  it("puts Join, New meeting link and channels in one ghost video dropdown", () => {
     renderCard();
     const menuTrigger = meetMenuTrigger();
-    const join = screen.getByRole("button", { name: L.eventMeetJoin });
     expect(screen.getAllByRole("button", { name: L.eventMeetAdd })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: L.eventMeetJoin })).toBeNull();
     expect(screen.queryByRole("button", { name: L.eventMeetPickChannel })).toBeNull();
     expect(screen.queryByRole("button", { name: L.eventMeetNewLink })).toBeNull();
-    expect(menuTrigger.className).toContain("calendar-event-dialog__meet-menu-trigger__menu");
-    expect(menuTrigger.className).toContain("button--variant-primary");
-    expect(join.className).toContain("calendar-event-dialog__meet-menu-trigger__join");
-    expect(join.className).toContain("button--variant-primary");
-    expect(join).toHaveProperty("disabled", true);
-    expect(join.closest(".calendar-event-dialog__meet-menu-trigger")).toBeTruthy();
+    expect(menuTrigger.className).toContain("color-swatch-trigger");
+    expect(menuTrigger.querySelector(".color-swatch-trigger__icon svg")).toBeTruthy();
   });
 
-  it("shows tooltips on both Join and Meet menu IconButtons", async () => {
+  it("offers Join in the menu only while there is a meeting link", () => {
     renderCard();
-    const join = screen.getByRole("button", { name: L.eventMeetJoin });
-    const menuTrigger = meetMenuTrigger();
-
-    fireEvent.pointerMove(join);
-    expect((await screen.findByRole("tooltip")).textContent).toBe(L.eventMeetJoin);
-
-    fireEvent.pointerMove(menuTrigger);
-    expect((await screen.findByRole("tooltip", { name: L.eventMeetAdd })).textContent).toBe(
-      L.eventMeetAdd,
-    );
+    const menu = openMeetMenu();
+    expect(within(menu).queryByRole("menuitem", { name: L.eventMeetJoin })).toBeNull();
   });
 
-  it("enables Join when a meeting URL is present and calls onJoin", () => {
+  it("joins the meeting link from the menu", () => {
     const onJoin = vi.fn();
     const href = `${ORIGIN}/meet/guest?room=h8y8-ewp6-al8n`;
     renderCard({
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
       onJoin,
     });
-    const join = screen.getByRole("button", { name: L.eventMeetJoin });
-    expect(join).toHaveProperty("disabled", false);
-    fireEvent.click(join);
+    const menu = openMeetMenu();
+    const items = within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent?.trim());
+    expect(items[0]).toBe(L.eventMeetJoin);
+    fireEvent.click(within(menu).getByRole("menuitem", { name: L.eventMeetJoin }));
     expect(onJoin).toHaveBeenCalledWith(href);
   });
 

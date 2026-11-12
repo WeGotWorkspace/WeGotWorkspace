@@ -28,6 +28,7 @@ function NotesChangeNotebookDialogHarness({
       notebooks={seedNotebooks}
       value={current}
       labels={defaultNotesLabels}
+      fieldLabel={defaultNotesLabels.importDestinationLegend}
       onClose={() => setOpen(false)}
       onNotebookChange={(notebook) => {
         setCurrent(notebook);
@@ -104,6 +105,7 @@ export const DeleteNotebookChoice: Story = {
       notebooks={seedNotebooks}
       value={seedNotebooks[0] ?? { id: "journal", name: "The Journal" }}
       labels={defaultNotesLabels}
+      fieldLabel={defaultNotesLabels.importDestinationLegend}
       title={defaultNotesLabels.deleteNotebookHasNotesTitle}
       description={defaultNotesLabels.deleteNotebookHasNotesDescription}
       confirmLabel={defaultNotesLabels.deleteNotebookMoveToConfirm}

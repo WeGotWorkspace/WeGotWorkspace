@@ -43,15 +43,9 @@ function spiedOperations(seed: CalendarAvailabilitySettings) {
   return operations;
 }
 
+/** A calendar's row: its label (with the color dot) and its dropdown. */
 function calendarRow(name: string): HTMLElement {
-  const row = screen.getByText(name, { selector: ".settings-availability__calendar-label" });
-  return row.closest("li")!;
-}
-
-/** The texts an element's `aria-describedby` points at, in order. */
-function descriptions(element: HTMLElement): string[] {
-  const ids = (element.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
-  return ids.map((id) => document.getElementById(id)?.textContent ?? `missing #${id}`);
+  return screen.getByRole("combobox", { name }).closest<HTMLElement>(".field-label-row")!;
 }
 
 /** Picks one option in a calendar row's dropdown (Radix Select). */
@@ -87,19 +81,18 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText(labels.offHint)).toBeTruthy();
     expect(screen.queryByText(labels.calendarsHeading)).toBeNull();
-    expect(screen.queryByText(labels.footer)).toBeNull();
   });
 
-  it("shows the calendars with their defaults and the footer once on, without a Teams list", async () => {
+  it("shows the calendars with their defaults once on, without a Teams list", async () => {
     renderSection(createMockCalendarAvailabilitySettingsOperations());
     fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
 
-    expect(screen.queryByText(labels.offHint)).toBeNull();
-    expect(screen.getByText(labels.footer)).toBeTruthy();
+    expect(screen.getByText(labels.calendarsHeading)).toBeTruthy();
     expect(screen.queryByText("Design")).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    const personal = calendarRow("Personal");
-    expect(within(personal).getByRole("combobox").textContent).toContain(labels.detailBusy);
+    expect(screen.getByRole("combobox", { name: "Personal" }).textContent).toContain(
+      labels.detailBusy,
+    );
     expect(screen.queryByText("US Holidays")).toBeNull();
   });
 
@@ -119,7 +112,7 @@ describe("SettingsCalendarAvailabilitySection", () => {
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
+    await screen.findByText(labels.calendarsHeading);
     expect(optionNames("Work")).toEqual([labels.exclude, labels.detailBusy, labels.detailDetails]);
   });
 
@@ -133,7 +126,13 @@ describe("SettingsCalendarAvailabilitySection", () => {
     renderSection(createMockCalendarAvailabilitySettingsOperations(seed));
     const work = await screen.findByRole("combobox", { name: "Work" });
     expect(work.textContent).toContain(labels.exclude);
-    expect(calendarRow("Work").dataset.included).toBe("false");
+    // The calendar's name is dimmed while it does not count.
+    expect(within(calendarRow("Work")).getByText("Work").className).toContain(
+      "settings-availability__excluded",
+    );
+    expect(within(calendarRow("Editorial")).getByText("Editorial").className).not.toContain(
+      "settings-availability__excluded",
+    );
   });
 
   it("offers a Team calendar Do not add and Time only", async () => {
@@ -142,49 +141,36 @@ describe("SettingsCalendarAvailabilitySection", () => {
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
-    const team = calendarRow("Editorial");
-    expect(within(team).getByRole("combobox").textContent).toContain(labels.detailBusy);
+    await screen.findByText(labels.calendarsHeading);
+    expect(screen.getByRole("combobox", { name: "Editorial" }).textContent).toContain(
+      labels.detailBusy,
+    );
     expect(optionNames("Editorial")).toEqual([labels.exclude, labels.detailBusy]);
   });
 
-  it("puts a short whole-Team label in the suite tooltip on the Team tag", async () => {
+  it("says under a Team calendar that it counts for the whole Team", async () => {
     renderSection(
       createMockCalendarAvailabilitySettingsOperations(
         mockCalendarAvailabilitySettings({ enabled: true }),
       ),
     );
-    await screen.findByText(labels.footer);
-    const team = calendarRow("Editorial");
-    expect(within(calendarRow("Work")).queryByText(labels.teamBadge)).toBeNull();
-    // Only in the tooltip, not as a line in the row.
-    expect(screen.queryByText(labels.teamHint)).toBeNull();
-
-    // The tag can take keyboard focus, and focus opens the tooltip.
-    const tag = within(team).getByText(labels.teamBadge);
-    expect(tag.tabIndex).toBe(0);
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    act(() => tag.focus());
-    // A short label, like the suite's other tooltips.
-    expect((await screen.findByRole("tooltip")).textContent).toBe("Counts for the whole Team");
-    // Radix describes the tag by the tooltip once, not twice.
-    expect(descriptions(tag)).toEqual([labels.teamHint]);
-
-    fireEvent.keyDown(tag, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    await screen.findByText(labels.calendarsHeading);
+    expect(within(calendarRow("Editorial")).getByText(labels.teamHint)).toBeTruthy();
+    expect(within(calendarRow("Work")).queryByText(labels.teamHint)).toBeNull();
+    expect(screen.getAllByText(labels.teamHint)).toHaveLength(1);
   });
 
-  it("saves the switch and changed calendars through the REST operations", async () => {
+  it("saves the switch and changed calendars through the REST operations as they change", async () => {
     const operations = spiedOperations(mockCalendarAvailabilitySettings());
     renderSection(operations);
-    const save = await screen.findByRole("button", { name: "Save" });
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("switch", { name: labels.switch }));
+    // Changes within the autosave pause go out as one PUT.
     choose("Personal", labels.detailDetails);
     choose("Work", labels.exclude);
     choose("Editorial", labels.exclude);
-    fireEvent.click(save);
+    expect(operations.save).not.toHaveBeenCalled();
 
     await waitFor(() => expect(operations.save).toHaveBeenCalledTimes(1));
     expect(operations.save).toHaveBeenCalledWith({
@@ -195,29 +181,53 @@ describe("SettingsCalendarAvailabilitySection", () => {
         { calendarId: "group-editorial", include: false },
       ],
     });
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith(labels.saved, expect.anything()),
-    );
+    // Turning sharing on is confirmed; calendar choices stay quiet.
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(labels.sharingOn));
     expect(notifySettingsSliceSaved).toHaveBeenCalledWith({
       panelId: "calendar",
       sliceId: "calendar-availability",
     });
-    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
     expect(window.localStorage.length).toBe(0);
   });
 
-  it("shows an error toast and sends nothing when saving offline", async () => {
+  it("keeps and sends a change made while the previous save is still running", async () => {
+    const mock = createMockCalendarAvailabilitySettingsOperations();
+    let release!: () => void;
+    const firstSaveHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const save = vi.fn(async (update: Parameters<typeof mock.save>[0]) => {
+      if (save.mock.calls.length === 1) await firstSaveHeld;
+      return mock.save(update);
+    });
+    renderSection({ load: mock.load, save });
+    fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+
+    // The first PUT is still out when the user picks Do not add.
+    choose("Work", labels.exclude);
+    await act(async () => release());
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save).toHaveBeenLastCalledWith({
+      enabled: true,
+      calendars: [{ calendarId: "work", include: false }],
+    });
+    expect(screen.getByRole("combobox", { name: "Work" }).textContent).toContain(labels.exclude);
+  });
+
+  it("shows an error toast and sends nothing when a change is made offline", async () => {
     const operations = spiedOperations(mockCalendarAvailabilitySettings());
     renderSection(operations);
     fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
     act(() => setOnline(false));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(labels.saveOffline));
     expect(operations.save).not.toHaveBeenCalled();
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
-    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(
-      false,
+    // The change stays in the pane.
+    expect(screen.getByRole("switch", { name: labels.switch }).getAttribute("aria-checked")).toBe(
+      "true",
     );
   });
 
@@ -227,7 +237,6 @@ describe("SettingsCalendarAvailabilitySection", () => {
       save: () => Promise.reject(new Error("PUT /calendars/availability failed (422)")),
     });
     fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(labels.saveError));
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });

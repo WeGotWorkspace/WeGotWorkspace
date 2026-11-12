@@ -31,3 +31,14 @@ describe("calendarPeriodNavLabels", () => {
     ).toEqual({ previous: "Go back one week", next: "Advance one week" });
   });
 });
+
+describe("importTasksSkipped", () => {
+  it("says it for one task and them for more", () => {
+    expect(defaultCalendarLabels.importTasksSkipped(1)).toBe(
+      "1 task was skipped. Import it in Tasks.",
+    );
+    expect(defaultCalendarLabels.importTasksSkipped(3)).toBe(
+      "3 tasks were skipped. Import them in Tasks.",
+    );
+  });
+});

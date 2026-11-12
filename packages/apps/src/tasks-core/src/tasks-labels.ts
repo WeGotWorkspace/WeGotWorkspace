@@ -13,6 +13,26 @@ export type TasksUILabels = {
   stateAll: string;
   newTaskMenu: string;
   addList: string;
+  importTasks: string;
+  importTasksOffline: string;
+  importDialogTitle: string;
+  importDestinationLegend: string;
+  importNewList: string;
+  importSubmit: string;
+  importDone: string;
+  importFileInvalid: string;
+  importNoTasksInFile: string;
+  importFileTooLarge: string;
+  importFailed: string;
+  importOffline: string;
+  importedTasks: (count: number) => string;
+  importNoneImported: string;
+  importNotImportedHeading: (count: number) => string;
+  importNotesHeading: string;
+  importUntitledTask: string;
+  importErrorAlreadyExists: string;
+  importErrorTooComplex: string;
+  importEventsSkipped: (count: number) => string;
   editList: string;
   viewOnlyListBadge: string;
   shareListSectionTitle: string;
@@ -195,6 +215,29 @@ export const defaultTasksLabels: TasksUILabels = {
   stateAll: "All Tasks",
   newTaskMenu: workspaceLabels.list.moreCreateOptions,
   addList: "Create list",
+  importTasks: "Import tasks",
+  importTasksOffline: "Needs an internet connection",
+  importDialogTitle: "Import tasks",
+  importDestinationLegend: "Destination list",
+  importNewList: "New list",
+  importSubmit: "Import",
+  importDone: "Done",
+  importFileInvalid: "Choose an .ics file",
+  importNoTasksInFile: "This file has no tasks.",
+  importFileTooLarge: "This file is too large to import.",
+  importFailed: "Could not import tasks",
+  importOffline: "Importing tasks needs an internet connection",
+  importedTasks: (count) => (count === 1 ? "Imported 1 task" : `Imported ${count} tasks`),
+  importNoneImported: "No tasks imported",
+  importNotImportedHeading: (count) => `Not imported (${count})`,
+  importNotesHeading: "Good to know",
+  importUntitledTask: "Untitled task",
+  importErrorAlreadyExists: "Already in this list",
+  importErrorTooComplex: "Too many repeats or reminders",
+  importEventsSkipped: (count) =>
+    count === 1
+      ? "1 event was skipped. Import it in Calendar."
+      : `${count} events were skipped. Import them in Calendar.`,
   editList: "Edit list",
   viewOnlyListBadge: workspaceLabels.sharing.viewOnly,
   shareListSectionTitle: workspaceLabels.sharing.teamAccess,

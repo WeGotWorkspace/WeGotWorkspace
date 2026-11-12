@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Pencil, Printer, Users } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
@@ -16,10 +16,13 @@ import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-a
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { docsShareMenuHeaderAction } from "@/docs-core/src/docs-share-menu-action";
+import { useDocsDownload } from "@/docs-core/src/use-docs-download";
 import { DocsFooterTools } from "@/docs-core/src/docs-footer-tools";
 import { IconButton } from "@/button/src/button";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
+import type { TextEditorPageSetup } from "@/lib/page-format";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { DocsWorkspaceModals } from "@/docs-core/src/docs-workspace-modals";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -176,6 +179,7 @@ function DocsWorkspaceShell({
             mayShare={mayShare}
             shareDialog={shareDialog}
             guestView={guestView}
+            pageSetup={pageSetup.pageSetup}
           />
         </>
       }
@@ -191,17 +195,21 @@ function DocsWorkspaceShell({
             controller.hasFile ? (
               <DocsFooterTools
                 pageSetup={{ ...pageSetup, labels: controller.labels }}
-                source={{
-                  checked: viewSource,
-                  disabled: !editor,
-                  label: controller.labels.sourceSwitch,
-                  ariaLabel: viewSource
-                    ? controller.labels.hideSource
-                    : guestView
-                      ? controller.labels.viewSourceReadOnly
-                      : controller.labels.viewSource,
-                  onToggle: () => setViewSource((on) => !on),
-                }}
+                source={
+                  controller.editorFormat === "text"
+                    ? undefined
+                    : {
+                        checked: viewSource,
+                        disabled: !editor,
+                        label: controller.labels.sourceSwitch,
+                        ariaLabel: viewSource
+                          ? controller.labels.hideSource
+                          : guestView
+                            ? controller.labels.viewSourceReadOnly
+                            : controller.labels.viewSource,
+                        onToggle: () => setViewSource((on) => !on),
+                      }
+                }
               />
             ) : null
           }
@@ -259,6 +267,7 @@ function DocsMainHeader({
   mayShare,
   shareDialog,
   guestView,
+  pageSetup,
 }: {
   controller: DocsController;
   editor: Editor | null;
@@ -267,8 +276,17 @@ function DocsMainHeader({
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
   guestView: boolean;
+  /** Paper size for the Word download (the page setup control itself is in the footer). */
+  pageSetup: TextEditorPageSetup;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
+  const download = useDocsDownload(
+    editor,
+    title,
+    controller.editorFormat,
+    pageSetup,
+    controller.labels,
+  );
   const showShare = Boolean(apiPath.trim() && mayShare === true);
 
   return (
@@ -294,25 +312,15 @@ function DocsMainHeader({
         controller.hasFile ? (
           <DocsHeaderActions
             actions={[
-              {
-                id: "print",
-                label: controller.labels.print,
-                icon: <Printer />,
-                disabled: !editor || viewSource,
-                onClick: () => printTextEditorSheet(editor),
-              },
-              ...(showShare
-                ? [
-                    {
-                      id: "share",
-                      label: controller.labels.share,
-                      icon: <Users />,
-                      showLabel: true,
-                      className: "docs-workspace__share-button",
-                      onClick: () => shareDialog.openShareDialog(apiPath, title),
-                    },
-                  ]
-                : []),
+              docsShareMenuHeaderAction({
+                labels: controller.labels,
+                invite: showShare
+                  ? { onClick: () => shareDialog.openShareDialog(apiPath, title) }
+                  : undefined,
+                download,
+                onPrint: () => printTextEditorSheet(editor),
+                contentUnavailable: !editor || viewSource,
+              }),
             ]}
           />
         ) : null

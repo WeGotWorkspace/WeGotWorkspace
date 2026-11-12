@@ -13,7 +13,10 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
-import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  enqueueOutboxMutation,
+  listOutboxMutationsForDomain,
+} from "@/lib/offline/core/outbox-store";
 import {
   normalizeDocsAvailabilityPath,
   readDocsAvailability,
@@ -41,6 +44,7 @@ import {
   readDocsOfflineEntriesByPaths,
 } from "@/lib/offline/docs/docs-offline-entries";
 import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
   buildOfflineDocsSearchResult,
@@ -78,9 +82,37 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>
 async function flushDocsOutboxTask(username: string): Promise<OutboxFlushResult> {
   const result = await flushDocsOutbox(username);
   reportDocsSyncConflicts(result.stateMismatches);
-  // Open tabs re-read what the flush settled (an editor waiting on a queued create, a list).
-  if (result.flushed > 0) notifyDocsCachesChanged(username);
+  if (result.flushed > 0) {
+    // Open tabs re-read what the flush settled (an editor waiting on a queued create, a list).
+    notifyDocsCachesChanged(username);
+    // Lists read live (Trash, Starred, Drive) fetch again: the queued writes are on the server
+    // now, and this tab's next FileNode pull would take the change without telling them (#1563).
+    notifyDriveRemoteChange(username);
+  }
   return result;
+}
+
+/**
+ * The server's stars with this device's queued stars and unstars on top, in
+ * queue order (#1563). Another tab that reads the stars online would
+ * otherwise drop a star queued offline from the shared cache until it lands.
+ */
+async function withQueuedStars(username: string, serverPaths: string[]): Promise<string[]> {
+  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
+  const paths = new Set(serverPaths.map((path) => normalizeApiVirtualPath(path)));
+  for (const row of rows) {
+    let payload: DocsOutboxPayload | null = null;
+    try {
+      payload = JSON.parse(row.payload) as DocsOutboxPayload;
+    } catch {
+      continue;
+    }
+    if (payload?.op !== "star") continue;
+    const path = normalizeApiVirtualPath(payload.path);
+    if (payload.starred) paths.add(path);
+    else paths.delete(path);
+  }
+  return [...paths];
 }
 
 /** Permanent delete is not queued: it cannot be undone, so it waits for a connection. */
@@ -329,7 +361,7 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
     listStars: async (opts) => {
       if (readBrowserOnline()) {
         try {
-          const paths = await live.listStars(opts);
+          const paths = await withQueuedStars(username, await live.listStars(opts));
           await writeDocsStarredPaths(username, paths);
           return paths;
         } catch (error) {
@@ -344,6 +376,8 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
         try {
           await live.setStar({ path, starred: input.starred }, opts);
           await applyDocsStarToggle(username, path, input.starred);
+          // Every open Docs tab of this person reads its stars again (#1563).
+          notifyDocsCachesChanged(username);
           return;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -351,6 +385,7 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
       }
       await applyDocsStarToggle(username, path, input.starred);
       await queueDocsOutbox(username, { op: "star", path, starred: input.starred });
+      notifyDocsCachesChanged(username);
     },
   };
 }

@@ -22,7 +22,11 @@ import {
   alertsToWire,
   freeBusyStatusFromWire,
 } from "@/calendar-core/src/calendar-alerts";
-import { formRecurrenceRules, formToDraft } from "@/calendar-core/src/calendar-editor-model";
+import {
+  engineEventToForm,
+  formRecurrenceRules,
+  formToDraft,
+} from "@/calendar-core/src/calendar-editor-model";
 
 export { splitOccurrenceKey };
 
@@ -389,6 +393,20 @@ export function seriesRecurrenceRulesForSplit(
 }
 
 /**
+ * The rules a split cuts: the stored series' own, else the loaded master's (its true
+ * rule), else the `fallback` form's preset.
+ */
+export function splitSeriesRules(
+  original: Pick<JmapCalendarEvent, "recurrenceRules"> | undefined,
+  masterEngine: EngineCalendarEvent | undefined,
+  fallback?: CalendarEventFormValue,
+): JSCalendarRecurrenceRule[] | null {
+  if (original?.recurrenceRules?.length) return original.recurrenceRules;
+  const form = masterEngine ? engineEventToForm(masterEngine) : fallback;
+  return form ? formRecurrenceRules(form) : null;
+}
+
+/**
  * Shift form wall times to the edited occurrence while keeping duration.
  *
  * Surface `events` maps only hold masters (views expand), so opening an
@@ -618,53 +636,69 @@ export function occurrenceRecurrenceOverrides(
   const localRid = toLocalRecurrenceId(recurrenceId, allDay, original.start);
   const draft = formToDraft({ ...form, recurrencePreset: "none" });
   const patch: JSCalendarPatchObject = {};
+  // Compared with the date as it stands: the series with this date's earlier changes.
+  const existing = original.recurrenceOverrides ?? {};
+  const previous = existing[localRid] ?? {};
+  const occurrence = { ...original, ...previous } as JmapCalendarEvent;
 
-  if (form.title.trim() !== (original.title ?? "")) patch.title = draft.title;
+  if (form.title.trim() !== (occurrence.title ?? "")) patch.title = draft.title;
 
-  const defaultStart = allDay
-    ? `${localRid.includes("T") ? localRid.slice(0, 10) : localRid}T00:00:00`
-    : localRid;
+  const defaultStart =
+    typeof previous.start === "string"
+      ? previous.start
+      : allDay
+        ? `${localRid.includes("T") ? localRid.slice(0, 10) : localRid}T00:00:00`
+        : localRid;
   if (draft.start !== defaultStart) patch.start = draft.start;
 
-  const originalDuration = original.duration ?? (allDay ? "P1D" : "PT0S");
+  const originalDuration = occurrence.duration ?? (allDay ? "P1D" : "PT0S");
   if (draft.duration !== originalDuration) patch.duration = draft.duration;
 
-  if (form.allDay !== allDay) patch.showWithoutTime = form.allDay;
+  if (form.allDay !== Boolean(occurrence.showWithoutTime)) patch.showWithoutTime = form.allDay;
 
-  const originalLocation = primaryLocationName(original);
+  const originalLocation = primaryLocationName(occurrence);
   if (form.location.trim() !== originalLocation) {
     patch.locations = form.location.trim()
       ? { primary: { "@type": "Location", name: form.location.trim() } }
       : null;
   }
 
-  const originalDescription = typeof original.description === "string" ? original.description : "";
+  const originalDescription =
+    typeof occurrence.description === "string" ? occurrence.description : "";
   if (form.description.trim() !== originalDescription) {
     patch.description = form.description.trim();
   }
 
-  if (form.freeBusyStatus !== freeBusyStatusFromWire(original.freeBusyStatus)) {
+  if (form.freeBusyStatus !== freeBusyStatusFromWire(occurrence.freeBusyStatus)) {
     patch.freeBusyStatus = form.freeBusyStatus;
   }
 
   const nextAlerts = alertsToWire(form.alerts);
-  if (!alertMapsEqual(nextAlerts, original.alerts)) {
+  if (!alertMapsEqual(nextAlerts, occurrence.alerts)) {
     patch.alerts = nextAlerts;
   }
 
-  const originalMeetingUrl = meetingUrlFromLinks(original.links);
+  const originalMeetingUrl = meetingUrlFromLinks(occurrence.links);
   if ((form.meetingUrl ?? "").trim() !== originalMeetingUrl.trim()) {
     patch.links = linksFromMeetingUrl(form.meetingUrl) ?? null;
   }
 
   if (Object.keys(patch).length === 0) return null;
 
-  const existing = original.recurrenceOverrides ?? {};
-  const previous = existing[localRid] ?? {};
   return {
     ...existing,
     [localRid]: { ...previous, ...patch },
   };
+}
+
+/** `occurrenceRecurrenceOverrides` as an event patch, built on `base` (null without one). */
+export function occurrenceOverridesPatch(
+  form: CalendarEventFormValue,
+  base: JmapCalendarEvent | undefined,
+  recurrenceId: string,
+): CalendarEventPatch | null {
+  const overrides = base && occurrenceRecurrenceOverrides(form, base, recurrenceId);
+  return overrides ? { recurrenceOverrides: overrides } : null;
 }
 
 function primaryLocationName(event: JmapCalendarEvent): string {

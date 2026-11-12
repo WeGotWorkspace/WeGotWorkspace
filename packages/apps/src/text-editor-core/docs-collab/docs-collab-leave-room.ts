@@ -20,18 +20,24 @@ export type CollabRoomLeftUnsaved = { room: string; urls: DocsCollabUrls };
 export async function closeCollabRoomStore(
   persistence: IndexeddbPersistence,
   unsaved: CollabRoomLeftUnsaved | null,
-  { upload = true }: { upload?: boolean } = {},
+  {
+    upload = true,
+    afterClose,
+  }: {
+    upload?: boolean;
+    /** Runs once the store is closed, before any background save. */
+    afterClose?: () => void;
+  } = {},
 ): Promise<void> {
-  if (!unsaved) {
-    await persistence.destroy();
-    return;
-  }
   try {
-    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
-    setCollabRoomPendingServerSave(unsaved.room, true);
+    if (unsaved) {
+      await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+      setCollabRoomPendingServerSave(unsaved.room, true);
+    }
   } finally {
-    await persistence.destroy();
+    await persistence.destroy().finally(afterClose);
   }
+  if (!unsaved) return;
   // Offline, the mark keeps it for the reconnect sweep.
   if (!upload || !getConnectivitySnapshot()) return;
   const { room, urls } = unsaved;

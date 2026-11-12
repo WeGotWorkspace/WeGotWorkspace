@@ -1,7 +1,9 @@
 import type { Editor } from "@tiptap/react";
-import { MessageSquare, Printer, Users } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHeaderAction } from "@/docs-core/src/docs-header-actions";
+import { docsShareMenuHeaderAction } from "@/docs-core/src/docs-share-menu-action";
+import type { DocsDownloadState } from "@/docs-core/src/use-docs-download";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 
 const SOURCE_LOCKED_BY_COLLAB = "Source view is disabled while collaborating";
@@ -17,6 +19,8 @@ export type DocsCollabHeaderActionsInput = {
   reviewPanelOpen: boolean;
   /** Omitted when the shell does not offer sharing for this document. */
   share?: { label: string; onClick: () => void };
+  /** Omitted when the shell offers no downloads (for example a snapshot preview). */
+  download?: DocsDownloadState;
   /** The review panel toggle at the end, with the open thread and suggestion count. */
   review?: { itemCount: number; onToggle: () => void };
 };
@@ -36,27 +40,15 @@ function sourceToggleLabel(input: DocsCollabHeaderActionsInput): string {
 
 /** Docs header actions in display order, each carrying its own disabled reason. */
 export function docsCollabHeaderActions(input: DocsCollabHeaderActionsInput): DocsHeaderAction[] {
-  const { labels, editor, viewSource, share, review } = input;
+  const { labels, editor, viewSource, share, download, review } = input;
   return [
-    {
-      id: "print",
-      label: labels.print,
-      icon: <Printer />,
-      disabled: !editor || viewSource,
-      onClick: () => printTextEditorSheet(editor),
-    },
-    ...(share
-      ? [
-          {
-            id: "share",
-            label: share.label,
-            icon: <Users />,
-            showLabel: true,
-            className: "docs-workspace__share-button",
-            onClick: share.onClick,
-          },
-        ]
-      : []),
+    docsShareMenuHeaderAction({
+      labels,
+      invite: share,
+      download,
+      onPrint: () => printTextEditorSheet(editor),
+      contentUnavailable: !editor || viewSource,
+    }),
     ...(review
       ? [
           {

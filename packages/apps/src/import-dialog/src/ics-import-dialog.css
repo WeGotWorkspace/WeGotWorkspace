@@ -1,0 +1,6 @@
+@import "../../styles.css" reference;
+
+/* The ghost trigger is narrow: the list keeps room for long names. */
+.ics-import-dialog__destination-menu {
+  min-width: max(var(--radix-dropdown-menu-trigger-width), 13rem);
+}

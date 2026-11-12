@@ -205,6 +205,56 @@ jobs:
           APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
 
+  # Source, test and other line changes of a pull request (#1633), in the job
+  # summary and in one PR comment that each push updates. A signal, never a
+  # gate: the job fails only when the diff cannot be read, and a failed
+  # comment does not fail it. Not behind the review-loop gate, so the loop's
+  # agents see the numbers too. Fork and Dependabot runs get a read-only
+  # token, so they get the summary only.
+  pr-line-delta:
+    if: github.event_name == 'pull_request' && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The three-dot diff needs the merge base of base and head.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Line changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          node tools/github/pr-line-delta.mjs "$BASE_SHA" "$HEAD_SHA" > pr-line-delta.md
+          cat pr-line-delta.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update the pull request comment
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          IDS=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- pr-line-delta -->"))) | .id')
+          ID=${IDS%%$'\n'*}
+          if [[ -n "$ID" ]]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$ID" -F body=@pr-line-delta.md > /dev/null
+            echo "Updated comment $ID"
+          else
+            gh pr comment "$PR" --body-file pr-line-delta.md
+          fi
+
   # Mock-tier Playwright against a Storybook build. The Chromatic job also
   # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
   # skips merge_group. Building here keeps apps-e2e independent so it can be
@@ -463,8 +513,27 @@ jobs:
       - name: Build unsigned release ZIP
         run: node tools/build-wegotworkspace-release.mjs
 
+      # Same browser cache as apps-quality and apps-e2e (one Playwright version
+      # in the lockfile). The runner image already has Chromium's system
+      # libraries, so --with-deps (apt) runs only on a cache miss. On
+      # 2026-11-11 apt could not resolve *.ubuntu.com for over an hour, which
+      # failed this job in every merge-queue run.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
       - name: Install Playwright
-        run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/api-e2e exec playwright install chromium
+          fi
 
       - name: Fresh ZIP install (SQLite)
         env:
@@ -619,12 +688,25 @@ jobs:
           WGW_PHPUNIT_SHARD: ${{ matrix.shard }}/2
         run: composer --working-dir packages/api run test:mysql:parity:shard
 
-  api-coverage:
+  # One PHPUnit process for the whole suite outgrew the 45-minute limit. It
+  # took 26 minutes at 6952 tests (2026-11-04) and 34 to over 45 at 7366
+  # (2026-11-11): the time grew much faster than the test count. The suite
+  # now runs in round-robin file shards (scripts/phpunit-shard.php).
+  # Each shard writes --coverage-php; api-coverage merges them into one clover
+  # file with php-code-coverage's own merge, so coverage-ratchet reads the same
+  # report as before.
+  api-coverage-shard:
+    name: api-coverage (shard ${{ matrix.shard }}/4)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # The shard number keeps the four legs of one run from cancelling each other.
     concurrency:
-      group: api-coverage-${{ github.ref }}
+      group: api-coverage-${{ github.ref }}-${{ matrix.shard }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v7
@@ -658,12 +740,67 @@ jobs:
       - name: Install yjs for collab round-trip tests
         run: bash tools/install-api-test-yjs.sh
 
-      - name: PHPUnit clover
+      - name: PHPUnit coverage (shard ${{ matrix.shard }}/4)
         working-directory: packages/api
         run: |
           set -euo pipefail
-          mkdir -p build/logs
-          php vendor/bin/phpunit -c phpunit.xml --coverage-clover=build/logs/clover.xml
+          mkdir -p build/coverage
+          php scripts/phpunit-shard.php --config=phpunit.xml --shard=${{ matrix.shard }}/4 -- --coverage-php=build/coverage/shard-${{ matrix.shard }}.cov
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: phpunit-coverage-shard-${{ matrix.shard }}
+          path: packages/api/build/coverage/shard-${{ matrix.shard }}.cov
+          if-no-files-found: error
+          retention-days: 3
+
+  api-coverage:
+    needs: api-coverage-shard
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: api-coverage-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      # The clover report reads the sources under the same absolute paths the
+      # shards ran from, so this job checks out the same commit.
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      - name: Download coverage shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: phpunit-coverage-shard-*
+          path: packages/api/build/coverage
+          merge-multiple: true
+
+      - name: Merge shards into clover
+        working-directory: packages/api
+        run: |
+          set -euo pipefail
+          mapfile -t shards < <(find build/coverage -name 'shard-*.cov' | sort)
+          if [[ "${#shards[@]}" -ne 4 ]]; then
+            echo "expected 4 coverage shards, found ${#shards[@]}" >&2
+            exit 1
+          fi
+          php -d memory_limit=4G scripts/merge-coverage.php build/logs/clover.xml "${shards[@]}"
           php -r 'if (!preg_match("/<file\\b/", file_get_contents("build/logs/clover.xml"))) { fwrite(STDERR, "clover lists no files\n"); exit(1); }'
 
       - uses: actions/upload-artifact@v7
@@ -701,9 +838,10 @@ jobs:
 
       - name: Vitest unit blob
         working-directory: packages/apps
+        # `default` prints a failing test to this log; `blob` alone only exits 1.
         run: |
           rm -rf .vitest-reports .coverage-shards coverage
-          pnpm exec vitest run --project unit --coverage --reporter=blob --outputFile=.vitest-reports/blob-unit.json --coverage.reportsDirectory=.coverage-shards/unit
+          pnpm exec vitest run --project unit --coverage --reporter=default --reporter=blob --outputFile=.vitest-reports/blob-unit.json --coverage.reportsDirectory=.coverage-shards/unit
 
       - name: Vitest jsdom blobs
         working-directory: packages/apps

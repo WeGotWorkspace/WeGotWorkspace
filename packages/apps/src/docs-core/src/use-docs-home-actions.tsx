@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
@@ -116,23 +116,22 @@ export function useDocsHomeActions({
   const [moveState, setMoveState] = useState<DocsHomeMoveState | null>(null);
   const [deleteState, setDeleteState] = useState<DocsHomeDeleteState | null>(null);
 
+  const starsOperationsRef = useRef<typeof operations>(undefined);
   useEffect(() => {
-    if (!operations) {
-      setStarsReady(true);
-      return;
-    }
-    setStarsReady(false);
+    if (!operations) return void setStarsReady(true);
+    // A refresh (another tab starred something) keeps the Starred view filtered while it reads.
+    if (starsOperationsRef.current !== operations) setStarsReady(false);
+    starsOperationsRef.current = operations;
     const controller = new AbortController();
     void operations
       .listStars({ signal: controller.signal })
       .then((paths) => {
         if (controller.signal.aborted) return;
         setStarredPaths(new Set(paths.map((path) => normalizeApiVirtualPath(path))));
-        setStarsReady(true);
       })
-      .catch(() => {
-        if (controller.signal.aborted) return;
-        setStarsReady(true);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setStarsReady(true);
       });
     return () => controller.abort();
   }, [operations, starsRefreshKey]);

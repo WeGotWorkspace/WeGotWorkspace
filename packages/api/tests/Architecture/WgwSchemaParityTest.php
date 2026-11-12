@@ -57,6 +57,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'notification_deliveries',
             'notification_markers',
             'jmap_file_node_root_markers',
+            'jmap_file_node_departures',
             'push_subscriptions',
             'rtc_relay_events',
         ] as $table) {

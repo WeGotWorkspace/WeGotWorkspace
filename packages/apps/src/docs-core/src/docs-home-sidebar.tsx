@@ -3,6 +3,7 @@ import { useItemsWithAppSettingsRow } from "@/settings-core/src/workspace-app-se
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
@@ -14,6 +15,8 @@ export type DocsHomeSidebarProps = {
   onNewDocument: () => void;
   newDocumentLabel: string;
   newDocumentMenuLabel: string;
+  /** More ways to make a Doc, such as Import docx file(s) (#1619). */
+  newDocumentMenuItems?: readonly DropdownMenuItemProps[];
   session: WorkspaceSession;
   onLogout?: () => void;
   primaryItems: MenuItemProps[];
@@ -29,6 +32,7 @@ export function DocsHomeSidebar({
   onNewDocument,
   newDocumentLabel,
   newDocumentMenuLabel,
+  newDocumentMenuItems = [],
   session,
   onLogout,
   primaryItems,
@@ -50,6 +54,7 @@ export function DocsHomeSidebar({
             mainLabel={newDocumentLabel}
             menuLabel={newDocumentMenuLabel}
             onMainAction={onNewDocument}
+            items={newDocumentMenuItems}
           />
         ) : undefined
       }

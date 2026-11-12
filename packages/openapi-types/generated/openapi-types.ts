@@ -8596,6 +8596,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/items/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import tasks from an ICS file
+         * @description Import the VTODO UID groups of an ICS file into a writable task list. Each group's ICS is stored as-is (RELATED-TO, VALARM, RRULE and unknown properties are kept). Same whole-body cap as calendar import (MAX_ICS_IMPORT_BYTES, 512 KiB) → 413 payload_too_large. Each group is checked for the 64-component cap and the recurrence guard; a group whose UID already exists in the list is not overwritten (code already_exists). Failing groups appear in errors[] and siblings still import. 201 when at least one task was imported; when groups were found but none imported the response is 400 with the TaskImportResponse body. A file without VTODOs is 400 bad_request. skipped.events counts VEVENT UID groups that were not imported.
+         */
+        post: {
+            parameters: {
+                query: {
+                    taskListId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            responses: {
+                /** @description Imported tasks */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TaskImportResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11843,10 +11892,14 @@ export interface components {
             /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
             code?: string;
         };
-        /** @description REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. */
+        /** @description REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. skipped counts components the import left out. */
         CalendarEventImportResponse: {
             list: components["schemas"]["CalendarEvent"][];
             errors: components["schemas"]["CalendarEventImportError"][];
+            skipped: {
+                /** @description VTODOs in the file (one per UID) that were not imported. Import them in Tasks. */
+                tasks: number;
+            };
         };
         /** @description Meet room id. Calendar and ad-hoc Start use xxxx-xxxx-xxxx (createMeetRoomCode). */
         MeetRoomCode: string;
@@ -12595,6 +12648,26 @@ export interface components {
             accountId: string;
             list: components["schemas"]["CalendarAvailabilityPerson"][];
             notFound: string[];
+        };
+        TaskImportError: {
+            /** @description Position of the VTODO UID group in the file. */
+            index: number;
+            message: string;
+            /** @description Stable error code, e.g. already_exists, payload_too_complex, payload_too_large, bad_request. */
+            code?: string;
+            /** @description UID of the group that failed. */
+            uid?: string;
+            /** @description SUMMARY of the group's first VTODO, when it has one. */
+            title?: string;
+        };
+        /** @description REST response for POST /tasks/items/import. */
+        TaskImportResponse: {
+            list: components["schemas"]["Task"][];
+            errors: components["schemas"]["TaskImportError"][];
+            skipped: {
+                /** @description VEVENT UID groups in the file, not imported. */
+                events: number;
+            };
         };
     };
     responses: {

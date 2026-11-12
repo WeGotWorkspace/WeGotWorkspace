@@ -35,18 +35,18 @@ export type CalendarUILabels = {
   toastImportPartial: string;
   toastImportFailed: string;
   toastImportOffline: string;
+  /** Toast line when the file also had tasks (VTODOs), which Calendar leaves out. */
+  importTasksSkipped: (count: number) => string;
+  /** Dialog error when the file has tasks but no events. */
+  importFileHasOnlyTasks: string;
   myCalendarsSection: string;
   myCalendarsShowAll: string;
   myCalendarsHideAll: string;
-  myCalendarsCollapse: string;
-  myCalendarsExpand: string;
   sharedWithMeSection: string;
   /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
   tasksSectionShowAll: string;
   tasksSectionHideAll: string;
-  tasksSectionCollapse: string;
-  tasksSectionExpand: string;
   /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
@@ -93,6 +93,10 @@ export type CalendarUILabels = {
   publishCalendarHttpsLabel: string;
   publishCalendarBusyLabel: string;
   publishCalendarBusyHint: string;
+  publishCalendarTurnOn: string;
+  publishCalendarTurnOff: string;
+  publishCalendarBusyTurnOn: string;
+  publishCalendarBusyTurnOff: string;
   copyHttpsUrl: string;
   /** Tooltip / accessible name for the webcal:// subscribe link. */
   openInCalendar: string;
@@ -109,20 +113,35 @@ export type CalendarUILabels = {
   toastFeedPublished: string;
   toastFeedUnpublished: string;
   toastFeedCopied: string;
+  toastMeetLinkReplaced: string;
   toastFeedFailed: string;
   toastCalendarSaveFailed: string;
   viewsSection: string;
   untitledEvent: string;
+  /** Detail pane (list mode) with no event selected. */
+  selectEvent: string;
   allDay: string;
   noEventsInRange: string;
   searchPlaceholder: string;
   searchTitle: string;
   searchNoMatch: string;
   /** `{start}` / `{end}` are locale month+year of the searched window. */
-  searchScope: string;
   toastEventCreated: string;
   toastEventUpdated: string;
   toastEventSaveUndone: string;
+  deleteEventConfirmTitle: string;
+  deleteEventsConfirmTitle: (count: number) => string;
+  deleteEventsConfirmBody: (count: number) => string;
+  toastEventsDeleted: (count: number) => string;
+  toastEventsMoved: (count: number) => string;
+  selectionLabel: string;
+  selectionTitle: (count: number) => string;
+  selectionMoveToCalendar: string;
+  selectionMoveDescription: string;
+  selectionMoveField: string;
+  selectionMove: string;
+  selectionDone: string;
+  deleteEventConfirmBody: string;
   toastEventDeleted: string;
   toastEventDeleteUndone: string;
   toastEventSaveFailed: string;
@@ -140,6 +159,7 @@ export type CalendarUILabels = {
   editEventTitle: string;
   createEventTitle: string;
   eventTitleLabel: string;
+  eventTitlePlaceholder: string;
   eventCalendarLabel: string;
   eventStartLabel: string;
   eventEndLabel: string;
@@ -154,6 +174,8 @@ export type CalendarUILabels = {
   eventLocationPlaceholder: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
+  /** Row caption of the meeting link in the event form. */
+  eventMeetLinkLabel: string;
   /** Accessible name for the Meet actions menu trigger. */
   eventMeetAdd: string;
   /** Menu item: generate an ad-hoc meeting link. */
@@ -184,6 +206,7 @@ export type CalendarUILabels = {
   /** Persistent hint after keeping both. */
   eventMeetEmailGuestsNoAccessHint: string;
   eventNotesLabel: string;
+  eventNotesPlaceholder: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
   eventDetailsMoreInvitees: (count: number) => string;
@@ -192,7 +215,6 @@ export type CalendarUILabels = {
   eventShowAsBusy: string;
   eventShowAsFree: string;
   /** Under "Show as" while an all-day event is Free (#1927). */
-  eventShowAsAllDayFreeHint: string;
   eventAlarmsLabel: string;
   eventAlarmsNone: string;
   eventAlarmAdd: string;
@@ -255,8 +277,6 @@ export type CalendarUILabels = {
   eventAttendeesRsvpDeclined: string;
   eventAttendeesRsvpDelegated: string;
   eventAttendeesRsvpNeedsAction: string;
-  /** Busy invited teammate (#1614): appended to the participant tag's accessible name. */
-  eventAttendeesAvailabilityBusyStatus: string;
   /** Busy tooltip heading. */
   eventAttendeesAvailabilityBusyWith: string;
   /** Busy tooltip row for a period without a title (owner shares the time only). */
@@ -298,8 +318,6 @@ export type CalendarUILabels = {
   teamAvailabilityFilter: string;
   teamAvailabilityNoMatch: string;
   teamAvailabilityIncomplete: string;
-  teamAvailabilityCollapse: string;
-  teamAvailabilityExpand: string;
   teamAvailabilityShowAll: string;
   teamAvailabilityHideAll: string;
   calendarNoticeBarLabel: string;
@@ -345,17 +363,18 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportPartial: "Some events could not be imported",
   toastImportFailed: "Could not import events",
   toastImportOffline: "ICS import requires an internet connection",
+  importTasksSkipped: (count) =>
+    count === 1
+      ? "1 task was skipped. Import it in Tasks."
+      : `${count} tasks were skipped. Import them in Tasks.`,
+  importFileHasOnlyTasks: "This file has tasks, not events. Import it in Tasks.",
   myCalendarsSection: "My calendars",
   myCalendarsShowAll: "Show all my calendars",
   myCalendarsHideAll: "Hide all my calendars",
-  myCalendarsCollapse: "Collapse My calendars",
-  myCalendarsExpand: "Expand My calendars",
   sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
   tasksSection: "Reminders",
   tasksSectionShowAll: "Show all reminders",
   tasksSectionHideAll: "Hide all reminders",
-  tasksSectionCollapse: "Collapse Reminders",
-  tasksSectionExpand: "Expand Reminders",
   sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
@@ -404,6 +423,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarHttpsLabel: "Web address",
   publishCalendarBusyLabel: "Busy only",
   publishCalendarBusyHint: "Publish times only. Titles, people, and notes stay off the feed.",
+  publishCalendarTurnOn: "Publish this calendar",
+  publishCalendarTurnOff: "Stop publishing this calendar",
+  publishCalendarBusyTurnOn: "Publish busy times only",
+  publishCalendarBusyTurnOff: "Publish full event details",
   copyHttpsUrl: workspaceLabels.sharing.copyLink,
   openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",
@@ -420,19 +443,36 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastFeedPublished: "Calendar published",
   toastFeedUnpublished: "Feed unpublished",
   toastFeedCopied: "Link copied",
+  toastMeetLinkReplaced: "New meeting link created. The old link no longer works.",
   toastFeedFailed: "Could not update calendar feed",
   toastCalendarSaveFailed: "Could not save calendar",
   viewsSection: "Views",
   untitledEvent: "Untitled event",
+  selectEvent: "Select an event",
   allDay: "All day",
   noEventsInRange: CALENDAR_LIST_EMPTY_LABEL,
   searchPlaceholder: "Search events…",
   searchTitle: "Search",
   searchNoMatch: "No matching events in downloaded calendars",
-  searchScope: "{start} – {end}",
   toastEventCreated: "Event created",
   toastEventUpdated: "Event updated",
   toastEventSaveUndone: "Event change undone.",
+  deleteEventConfirmTitle: "Delete event?",
+  deleteEventsConfirmTitle: (count) => (count === 1 ? "Delete event?" : `Delete ${count} events?`),
+  deleteEventsConfirmBody: (count) =>
+    count === 1
+      ? "This event will be removed from your calendar."
+      : "These events will be removed from your calendar. Repeating events lose only the selected dates.",
+  toastEventsDeleted: (count) => (count === 1 ? "Event deleted" : `${count} events deleted`),
+  toastEventsMoved: (count) => (count === 1 ? "Event moved" : `${count} events moved`),
+  selectionLabel: "Multiple selection",
+  selectionTitle: (count) => (count === 1 ? "1 event selected" : `${count} events selected`),
+  selectionMoveToCalendar: "Move to calendar",
+  selectionMoveDescription: "Repeating events move with their whole series.",
+  selectionMoveField: "Calendar",
+  selectionMove: workspaceLabels.dialog.move,
+  selectionDone: workspaceLabels.dialog.done,
+  deleteEventConfirmBody: "This event will be removed from your calendar.",
   toastEventDeleted: "Event deleted",
   toastEventDeleteUndone: "Deletion undone.",
   toastEventSaveFailed: "Could not save event",
@@ -451,6 +491,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   editEventTitle: "Edit event",
   createEventTitle: "New event",
   eventTitleLabel: "Title",
+  eventTitlePlaceholder: "Add title",
   eventCalendarLabel: "Calendar",
   eventStartLabel: "Starts",
   eventEndLabel: "Ends",
@@ -461,6 +502,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventLocationLabel: "Location",
   eventLocationPlaceholder: "Add location",
   eventMeetSectionTitle: "Meet",
+  eventMeetLinkLabel: "Meeting link",
   eventMeetAdd: "Create Meet Room URL",
   eventMeetNewLink: "New meeting link",
   eventMeetPickChannel: "Attach a Meet channel link",
@@ -485,12 +527,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
   eventNotesLabel: "Description",
+  eventNotesPlaceholder: "Add description",
   eventDetailsEdit: workspaceLabels.dialog.edit,
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
-  eventShowAsAllDayFreeHint: "Set to Busy for time off, so teammates see you as away.",
   eventAlarmsLabel: "Alarms",
   eventAlarmsNone: "No alarms",
   eventAlarmAdd: "Add alert",
@@ -550,7 +592,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAttendeesRsvpDeclined: "Declined",
   eventAttendeesRsvpDelegated: "Delegated",
   eventAttendeesRsvpNeedsAction: "Needs response",
-  eventAttendeesAvailabilityBusyStatus: "busy at this time",
   eventAttendeesAvailabilityBusyWith: "Busy at this time",
   eventAttendeesAvailabilityBusyUntitled: "Busy",
   eventAttendeesAvailabilityAllDay: "All day",
@@ -590,8 +631,6 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityFilter: "Filter teammates",
   teamAvailabilityNoMatch: "No teammates match",
   teamAvailabilityIncomplete: "Some busy times could not be loaded.",
-  teamAvailabilityCollapse: "Collapse Team availability",
-  teamAvailabilityExpand: "Expand Team availability",
   teamAvailabilityShowAll: "Show all teammates' availability",
   teamAvailabilityHideAll: "Hide all teammates' availability",
   calendarNoticeBarLabel: "Calendar notices",

@@ -5,6 +5,7 @@ import type {
   CalendarSchedulingRespondOptions,
   CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
+import type { CalendarEventImportResult } from "@/lib/api/wgw/calendar";
 import type {
   JmapCalendarEvent,
   JSCalendarAlert,
@@ -173,7 +174,7 @@ export type CalendarAPIOperations = {
   importEvents?: (
     icsText: string,
     opts: { calendarId: string },
-  ) => Promise<{ list: JmapCalendarEvent[]; errors: Array<{ index: number; message: string }> }>;
+  ) => Promise<CalendarEventImportResult>;
   createCalendar?: (draft: CalendarDraft) => Promise<CalendarInfo>;
   patchCalendar?: (calendarId: string, patch: CalendarPatch) => Promise<CalendarInfo>;
   deleteCalendar?: (calendarId: string) => Promise<void>;

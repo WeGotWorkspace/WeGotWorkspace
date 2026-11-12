@@ -63,3 +63,22 @@ export const NoteOnly: Story = {
     onCreateNotebook: undefined,
   },
 };
+
+/** Markdown import (#1623) next to Create notebook. */
+export const WithImport: Story = {
+  tags: ["vitest-ci"],
+  args: { onImportMarkdown: fn() },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: defaultNotesLabels.newNoteMenu }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: defaultNotesLabels.importMarkdown }),
+    );
+    await expect(args.onImportMarkdown).toHaveBeenCalledOnce();
+  },
+};
+
+/** Offline: the import item stays, disabled, with the reason. */
+export const ImportOffline: Story = {
+  args: { onImportMarkdown: fn(), importOffline: true },
+};

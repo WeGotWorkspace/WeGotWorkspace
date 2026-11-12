@@ -15,6 +15,7 @@ import {
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ export function DriveWorkspace({
   view,
   onViewChange,
   onOpenDocsFile,
+  saveAsMarkdown,
   onOpenShare,
   onLogout,
   className,
@@ -156,10 +158,18 @@ export function DriveWorkspace({
   );
   useDriveUploadRetryAfterSignIn(uploadModel, operations, showError);
   const uploadPlaceholderActions = useDriveUploadPlaceholderActions(uploadModel);
+  // Same gate as New Doc: the new `.md` lands next to the Word file (#1983).
+  const saveAsMarkdownActionsFor =
+    controller.structureEnabled && controller.uploadEnabled ? saveAsMarkdown?.actionsFor : null;
   const fileExtraActions = useCallback(
     (file: DriveFile) =>
-      file.upload ? uploadPlaceholderActions(file) : offlineEnabled ? extraFileActions(file) : [],
-    [extraFileActions, offlineEnabled, uploadPlaceholderActions],
+      file.upload
+        ? uploadPlaceholderActions(file)
+        : [
+            ...(offlineEnabled ? extraFileActions(file) : []),
+            ...(saveAsMarkdownActionsFor?.(file) ?? []),
+          ],
+    [extraFileActions, offlineEnabled, saveAsMarkdownActionsFor, uploadPlaceholderActions],
   );
 
   const handleMakeOfflineAvailable = useCallback(
@@ -431,6 +441,7 @@ export function DriveWorkspace({
             shareOperations={shareOperations}
             shareDialog={shareDialog}
           />
+          {saveAsMarkdown?.dialogs}
           {controller.uploadEnabled ? (
             <input
               ref={controller.fileInputRef}
@@ -575,7 +586,7 @@ function DriveMainHeader({
         trail.length > 0 ? (
           <span className="drive-main-header__trail">
             <PathBreadcrumb
-              items={trail}
+              items={withDriveRootIcons(trail)}
               currentPath={view.type === "folder" ? view.path : undefined}
               onNavigate={(path) => selectView({ type: "folder", path })}
             />

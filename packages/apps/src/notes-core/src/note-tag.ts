@@ -1,14 +1,20 @@
 const NOTE_TAG_PATTERN = /^[a-z-]+$/;
+/** The server refuses longer tags (`categories.*` max:255). */
+export const NOTE_TAG_MAX_LENGTH = 255;
 
 /** Trim and lowercase. Comparing and removing use this; it does not reject characters. */
 export function normalizeTag(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** A tag being added may only be letters a-z and hyphen. */
+/** A tag being added may only be letters a-z and hyphen, at most 255 of them. */
 export function isValidNewTag(value: string): boolean {
   const normalized = normalizeTag(value);
-  return normalized !== "" && NOTE_TAG_PATTERN.test(normalized);
+  return (
+    normalized !== "" &&
+    normalized.length <= NOTE_TAG_MAX_LENGTH &&
+    NOTE_TAG_PATTERN.test(normalized)
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import { Bell, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
   alertsAfterOffsetChange,
   formatUnmatchedAlertOffset,
@@ -120,23 +121,22 @@ function AlarmOffsetRow({
         }}
         disabled={disabled}
       >
-        <SelectTrigger
-          size={controlSize}
+        <CollectionGhostSelectTrigger
           className="calendar-event-dialog__alarm-offset"
           aria-label={labels.eventAlarmOffset}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
+          label={<SelectValue />}
+        />
+        <SelectContent align="end">
           <AlarmOffsetMenuItems alert={alert} labels={labels} />
         </SelectContent>
       </Select>
       {onRemove ? (
         <IconButton
+          className="calendar-event-dialog__alarm-remove"
           label={labels.eventAlarmRemove}
           icon={<Trash2 className="size-3.5" aria-hidden />}
           size={controlSize}
-          variant="outline"
+          variant="ghost"
           disabled={disabled}
           onClick={onRemove}
         />
@@ -217,8 +217,8 @@ export function CalendarAlarmsRows({
 export function CalendarAlarmsCard(props: CalendarAlarmsCardProps) {
   return (
     <ShareAccessCard
+      icon={<Bell aria-hidden />}
       className="calendar-event-dialog__card calendar-alarms-card"
-      titleIcon={<Bell />}
       title={props.labels.eventAlarmsLabel}
     >
       <CalendarAlarmsRows {...props} />

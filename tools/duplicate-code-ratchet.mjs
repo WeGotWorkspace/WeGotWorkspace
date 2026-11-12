@@ -13,8 +13,15 @@
  * `update` only lowers totals. It never raises one. Raising a total, a
  * jscpd upgrade, or a threshold change is a hand edit of the baseline,
  * which needs code-owner review (.github/CODEOWNERS).
- * `report [--top N]` prints the totals and the largest duplicated blocks
- * with file:line ranges, so a developer can find what tripped `check`.
+ * `report [--top N]` prints the totals, the largest duplicated blocks
+ * with file:line ranges, and the per-package table, so a developer can find
+ * what tripped `check`.
+ *
+ * Per package (#1630), warn only: the same scan is split per package
+ * (tools/duplicate-code-packages.mjs). `check` writes the scope totals and a
+ * per-package table to $GITHUB_STEP_SUMMARY and emits a `::warning` for each
+ * package whose copied lines grew past the baseline's `packages` entry. The
+ * per-package numbers never fail the job; `update` lowers them too.
  *
  * Determinism: this script builds the file list itself (same exclusions as
  * the file-size ratchet, plus story, mock and test folders) and copies those
@@ -34,6 +41,7 @@
  */
 import { execFile } from "node:child_process";
 import {
+  appendFileSync,
   copyFileSync,
   mkdirSync,
   mkdtempSync,
@@ -50,7 +58,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
+import {
+  comparePackages,
+  copiedLinesPerFile,
+  measuredPackages,
+  nextPackages,
+  packageTotals,
+} from "./duplicate-code-packages.mjs";
 import { countLines, isExcluded } from "./file-size-ratchet.mjs";
+
+/**
+ * @typedef {import("./duplicate-code-packages.mjs").PackageEntry} PackageEntry
+ * @typedef {import("./duplicate-code-packages.mjs").PackageTotals} PackageTotals
+ * @typedef {{ jscpd: string, minTokens: number, minLines: number, scopes: Record<string, { clones: number, duplicatedLines: number }>, packages: Record<string, PackageEntry> }} Baseline
+ */
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -172,8 +193,11 @@ export function jscpdArgs(scope, { scanRoot, outDir, configPath, minTokens, minL
  * @param {string[]} files repo-relative
  * @param {string} baseDir
  * @param {string} mirrorRoot
+ * @returns {Map<string, number>} line count per listed file
  */
 export function mirrorFiles(files, baseDir, mirrorRoot) {
+  /** @type {Map<string, number>} */
+  const fileLines = new Map();
   for (const rel of files) {
     const source = path.join(baseDir, rel);
     const { size } = statSync(source);
@@ -187,7 +211,9 @@ export function mirrorFiles(files, baseDir, mirrorRoot) {
     const target = path.join(mirrorRoot, rel);
     mkdirSync(path.dirname(target), { recursive: true });
     copyFileSync(source, target);
+    fileLines.set(rel, lines);
   }
+  return fileLines;
 }
 
 function compareLocation(a, b) {
@@ -262,7 +288,7 @@ export function installedJscpdVersion() {
  * Run jscpd once per scope (in parallel) on a temp mirror of the listed
  * files, and summarize each report with repo-relative paths.
  * @param {{ baseDir?: string, minTokens: number, minLines: number }} options
- * @returns {Promise<Record<string, ReturnType<typeof summarizeReport>>>}
+ * @returns {Promise<Record<string, ReturnType<typeof summarizeReport> & { files: number, packages: ReturnType<typeof packageTotals> }>>}
  */
 export async function measureScopes({ baseDir = repoRoot, minTokens, minLines }) {
   const jscpd = path.join(jscpdPackageDir(), "bin/jscpd");
@@ -275,7 +301,7 @@ export async function measureScopes({ baseDir = repoRoot, minTokens, minLines })
       DUPLICATE_SCOPES.map(async (scope, index) => {
         const mirrorRoot = path.join(tempDir, `scope-${index}`);
         const files = listScopeFiles(scope, baseDir);
-        mirrorFiles(files, baseDir, mirrorRoot);
+        const fileLines = mirrorFiles(files, baseDir, mirrorRoot);
         const outDir = path.join(tempDir, `report-${index}`);
         const args = jscpdArgs(scope, {
           scanRoot: path.join(mirrorRoot, scope.root),
@@ -294,10 +320,9 @@ export async function measureScopes({ baseDir = repoRoot, minTokens, minLines })
         const report = statSync(reportPath, { throwIfNoEntry: false })
           ? JSON.parse(readFileSync(reportPath, "utf8"))
           : { statistics: { formats: {} }, duplicates: [] };
-        return [
-          scope.root,
-          { ...summarizeReport(report, mirrorRoot, scope.formats), files: files.length },
-        ];
+        const summary = summarizeReport(report, mirrorRoot, scope.formats);
+        const packages = packageTotals(fileLines, copiedLinesPerFile(summary.blocks));
+        return [scope.root, { ...summary, files: files.length, packages }];
       }),
     );
     return Object.fromEntries(entries);
@@ -312,7 +337,7 @@ function isCount(value) {
 
 /**
  * @param {string} text
- * @returns {{ jscpd: string, minTokens: number, minLines: number, scopes: Record<string, { clones: number, duplicatedLines: number }> }}
+ * @returns {Baseline}
  */
 export function parseBaseline(text) {
   const data = JSON.parse(text);
@@ -334,27 +359,41 @@ export function parseBaseline(text) {
       }
     }
   }
+  if (typeof data.packages !== "object" || data.packages === null) {
+    throw new Error("baseline: packages must be an object");
+  }
+  for (const [key, entry] of Object.entries(data.packages)) {
+    if (!isCount(entry?.duplicatedLines)) {
+      throw new Error(`baseline: ${key} duplicatedLines must be a non-negative integer`);
+    }
+    const pct = entry.cloneCoverage;
+    if (typeof pct !== "number" || !Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new Error(`baseline: ${key} cloneCoverage must be a percentage from 0 to 100`);
+    }
+  }
   return data;
 }
 
 /** Stable key order and a trailing newline, so `update` diffs stay minimal. */
 export function formatBaseline(baseline) {
-  const scopes = Object.fromEntries(
-    Object.keys(baseline.scopes)
-      .sort()
-      .map((root) => [
-        root,
-        {
-          clones: baseline.scopes[root].clones,
-          duplicatedLines: baseline.scopes[root].duplicatedLines,
-        },
-      ]),
-  );
+  const sortedMap = (record, pick) =>
+    Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, pick(record[key])]),
+    );
   const ordered = {
     jscpd: baseline.jscpd,
     minTokens: baseline.minTokens,
     minLines: baseline.minLines,
-    scopes,
+    scopes: sortedMap(baseline.scopes, ({ clones, duplicatedLines }) => ({
+      clones,
+      duplicatedLines,
+    })),
+    packages: sortedMap(baseline.packages, ({ cloneCoverage, duplicatedLines }) => ({
+      cloneCoverage,
+      duplicatedLines,
+    })),
   };
   return `${JSON.stringify(ordered, null, 2)}\n`;
 }
@@ -384,7 +423,7 @@ function scopeErrors(current, baseline) {
 /**
  * Pure check of measured totals against the baseline.
  * @param {Record<string, { clones: number, duplicatedLines: number }>} current
- * @param {ReturnType<typeof parseBaseline>} baseline
+ * @param {Baseline} baseline
  * @param {{ jscpdVersion: string }} settings
  * @returns {{ errors: string[], notices: string[] }}
  */
@@ -409,10 +448,10 @@ export function evaluate(current, baseline, { jscpdVersion }) {
 
 /**
  * Pure update: lowers totals that dropped and never raises one.
- * @param {Record<string, { clones: number, duplicatedLines: number }>} current
- * @param {ReturnType<typeof parseBaseline>} baseline
+ * @param {Record<string, { clones: number, duplicatedLines: number, packages?: Record<string, PackageTotals> }>} current
+ * @param {Baseline} baseline
  * @param {{ jscpdVersion: string }} settings
- * @returns {{ baseline: ReturnType<typeof parseBaseline> | null, errors: string[] }}
+ * @returns {{ baseline: Baseline | null, errors: string[] }}
  */
 export function nextBaseline(current, baseline, { jscpdVersion }) {
   const version = versionError(baseline, jscpdVersion);
@@ -434,7 +473,62 @@ export function nextBaseline(current, baseline, { jscpdVersion }) {
     }
   }
   if (errors.length > 0) return { baseline: null, errors };
-  return { baseline: { ...baseline, scopes }, errors };
+  const packages = nextPackages(measuredPackages(current), baseline.packages);
+  return { baseline: { ...baseline, scopes, packages }, errors };
+}
+
+/**
+ * Job-summary Markdown: scope totals (blocking) and the per-package table
+ * (warn only). Packages without copied lines and no change are counted, not
+ * listed, so the table stays short.
+ * @param {{ jscpdVersion: string, baseline: Baseline, current: Record<string, { clones: number, duplicatedLines: number }>, errors: string[], comparison: ReturnType<typeof comparePackages> }} input
+ */
+export function summaryMarkdown({ jscpdVersion, baseline, current, errors, comparison }) {
+  const lines = [
+    `## Copied code (jscpd ${jscpdVersion}, ${baseline.minTokens} tokens / ${baseline.minLines} lines)`,
+    "",
+    errors.length > 0
+      ? `**The scope check failed** (${errors.length}): ${errors.join("; ")}`
+      : "The scope check passed: no scope total grew.",
+    "",
+    "| Scope | Clones | Duplicated lines | Baseline |",
+    "| --- | ---: | ---: | --- |",
+  ];
+  for (const root of scopeRoots) {
+    const now = current[root];
+    const stored = baseline.scopes[root];
+    const base = stored ? `${stored.clones} / ${stored.duplicatedLines}` : "none";
+    lines.push(`| \`${root}\` | ${now?.clones ?? "-"} | ${now?.duplicatedLines ?? "-"} | ${base} |`);
+  }
+  const listed = comparison.rows
+    .filter((row) => (row.current?.duplicatedLines ?? 0) > 0 || row.change !== 0)
+    .sort(
+      (a, b) =>
+        Number(b.change > 0) - Number(a.change > 0) ||
+        (b.current?.cloneCoverage ?? 0) - (a.current?.cloneCoverage ?? 0) ||
+        (a.key < b.key ? -1 : 1),
+    );
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  lines.push(
+    "",
+    "### Per package (warn only)",
+    "",
+    "Clone coverage is the share of a package's scanned lines that sit inside a copied block. " +
+      `${count(comparison.warnings.length, "package", "packages")} grew, ${comparison.dropped} dropped; ` +
+      `${count(comparison.rows.length - listed.length, "package without copied lines is", "packages without copied lines are")} not listed.`,
+    "",
+    "| Package | Clone coverage | Copied lines | Scanned lines | Copied lines vs baseline |",
+    "| --- | ---: | ---: | ---: | --- |",
+  );
+  for (const row of listed) {
+    const now = row.current;
+    const change =
+      row.change > 0 ? `+${row.change} ⚠️` : row.change < 0 ? `${row.change}` : "=";
+    lines.push(
+      `| \`${row.key}\` | ${now ? `${now.cloneCoverage}%` : "gone"} | ${now?.duplicatedLines ?? 0} | ${now?.lines ?? 0} | ${change} |`,
+    );
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 function formatBlock(block) {
@@ -463,9 +557,23 @@ function totalsLine(root, totals, stored) {
   return `${root}: ${totals.clones} clones, ${totals.duplicatedLines} duplicated lines${scanned}${vs}`;
 }
 
+/** On GitHub Actions a warning becomes an annotation; locally it is a plain line. */
+function printWarning(text) {
+  if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=Copied code grew::${text}`);
+  else console.log(`Warning: ${text}`);
+}
+
 async function check() {
   const { baseline, current, seconds, jscpdVersion } = await measureAgainstBaseline();
   const { errors, notices } = evaluate(current, baseline, { jscpdVersion });
+  const comparison = comparePackages(measuredPackages(current), baseline.packages);
+  for (const warning of comparison.warnings) printWarning(warning);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      summaryMarkdown({ jscpdVersion, baseline, current, errors, comparison }),
+    );
+  }
   if (errors.length > 0) {
     console.error(`Duplicate-code ratchet failed (${errors.length}):\n`);
     for (const error of errors) console.error(`  - ${error}`);
@@ -474,7 +582,15 @@ async function check() {
   }
   for (const root of scopeRoots) console.log(totalsLine(root, current[root]));
   for (const notice of notices) console.log(`Notice: ${notice}`);
-  console.log(`Duplicate-code ratchet passed (jscpd ${jscpdVersion}, ${seconds}s).`);
+  if (comparison.dropped > 0) {
+    console.log(
+      `Notice: ${comparison.dropped} packages have fewer copied lines than the baseline; ${updateCommand} can lower it`,
+    );
+  }
+  console.log(
+    `Duplicate-code ratchet passed (jscpd ${jscpdVersion}, ${seconds}s; ` +
+      `${comparison.warnings.length} package warnings, which never fail the check).`,
+  );
 }
 
 async function update() {
@@ -504,6 +620,17 @@ async function report(args) {
     console.log(totalsLine(root, current[root], baseline.scopes[root]));
     for (const block of current[root].blocks.slice(0, top)) console.log(`  ${formatBlock(block)}`);
     console.log("");
+  }
+  const { rows } = comparePackages(measuredPackages(current), baseline.packages);
+  console.log("Clone coverage per package (copied lines / scanned lines, baseline copied lines):");
+  for (const row of rows
+    .filter((entry) => (entry.current?.duplicatedLines ?? 0) > 0)
+    .sort((a, b) => (b.current?.cloneCoverage ?? 0) - (a.current?.cloneCoverage ?? 0))) {
+    const now = /** @type {PackageTotals} */ (row.current);
+    const pct = `${now.cloneCoverage.toFixed(2)}%`.padStart(7);
+    console.log(
+      `  ${pct}  ${now.duplicatedLines}/${now.lines}  ${row.key} (baseline ${row.stored?.duplicatedLines ?? "none"})`,
+    );
   }
 }
 

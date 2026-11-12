@@ -57,9 +57,19 @@ import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-confli
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";
+import { WordFilePickerInput } from "@/docs-core/src/docx-import/word-file-picker-input";
+import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
+import {
+  isSaveAsMarkdownOnlyFile,
+  saveAsMarkdownSourceKindFromName,
+} from "@/docs-core/src/docx-import/save-as-markdown-source";
+import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
@@ -102,7 +112,7 @@ export function DocsHomeWorkspace({
 }: DocsHomeWorkspaceProps) {
   const labels = mergeDocsLabels(labelOverrides);
   const username = session.user.username ?? "";
-  const { showError } = useAppToast();
+  const { show, showError } = useAppToast();
   const offlineUsername = offlineUsernameProp;
 
   const driveOperations = useMemo(() => {
@@ -278,6 +288,19 @@ export function DocsHomeWorkspace({
     () => (offlineUsername ? subscribeDriveRemoteChanges(offlineUsername, reload) : undefined),
     [offlineUsername, reload],
   );
+  // A Docs cache change from any tab (a star, a landed queued write): read the stars and the
+  // Starred list again. Not the other lists: a browse load itself sends this notice (#1563).
+  const [docsCacheNoticeKey, setDocsCacheNoticeKey] = useState(0);
+  useEffect(
+    () =>
+      offlineUsername
+        ? subscribeDocsCachesChanged(offlineUsername, () => {
+            reloadStarred();
+            setDocsCacheNoticeKey((key) => key + 1);
+          })
+        : undefined,
+    [offlineUsername, reloadStarred],
+  );
 
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {
@@ -340,7 +363,7 @@ export function DocsHomeWorkspace({
     onAvailabilityChanged: refresh,
     reload,
     inTrashView: isTrashView,
-    starsRefreshKey: outboxNoticeKey,
+    starsRefreshKey: outboxNoticeKey + docsCacheNoticeKey,
   });
 
   const visibleFiles = useMemo(
@@ -371,15 +394,38 @@ export function DocsHomeWorkspace({
 
   const handleOpenFile = useCallback(
     (file: DriveFile) => {
+      // Word files and Google links are listed for Save as Markdown, not opened (#1983).
+      if (isSaveAsMarkdownOnlyFile(file)) {
+        show(
+          saveAsMarkdownSourceKindFromName(file.title) === "gdoc"
+            ? docxImportLabels.googleLinkDescription(file.title)
+            : docxImportLabels.openDocxInDocs,
+        );
+        return;
+      }
       if (!canOpenOffline(file)) return;
       if (file.apiPath) onOpenFile?.(file.apiPath, file.nodeId);
     },
-    [canOpenOffline, onOpenFile],
+    [canOpenOffline, onOpenFile, show],
   );
+
+  const saveAsMarkdown = useSaveAsMarkdownAction({
+    enabled: Boolean(onCreateDocument) && !isTrashView && !wgwIsGuestSession(),
+    onOpenDocsFile: onOpenFile,
+    username,
+    dialogSurfaceClassName: "docs-dialog-surface",
+  });
+
+  const importWordFile = useImportWordFile({
+    enabled: Boolean(onCreateDocument) && !wgwIsGuestSession(),
+    onOpenDocsFile: onOpenFile,
+    dialogSurfaceClassName: "docs-dialog-surface",
+  });
 
   const createDialog = useDocsHomeCreateDialog({
     username,
     onCreateDocument,
+    onImportWordFiles: importWordFile.importFiles,
     browsePathPrefix,
     listingOperations,
     files,
@@ -407,6 +453,7 @@ export function DocsHomeWorkspace({
             onNewDocument={handleNewDocument}
             newDocumentLabel={labels.homeNewDocument}
             newDocumentMenuLabel={labels.homeNewDocumentMenu}
+            newDocumentMenuItems={importWordFile.menuItems}
             session={session}
             onLogout={onLogout}
             primaryItems={primaryItems}
@@ -451,6 +498,7 @@ export function DocsHomeWorkspace({
             onUndoQueuedAction={actions.undoLatest}
             shareOperations={shareOperations}
             username={username}
+            extraFileActions={saveAsMarkdown.actionsFor}
           />
         }
       />
@@ -460,8 +508,14 @@ export function DocsHomeWorkspace({
         files={files}
         username={username}
         groupRoots={labeledGroupRoots}
-        operations={operations}
+        operations={listingOperations}
         createDialog={createDialog}
+      />
+      {saveAsMarkdown.dialogs}
+      {importWordFile.dialogs}
+      <WordFilePickerInput
+        inputRef={importWordFile.inputRef}
+        onPick={createDialog.handleImportWordFiles}
       />
     </TooltipProvider>
   );

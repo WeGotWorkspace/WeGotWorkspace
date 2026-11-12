@@ -1,8 +1,9 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { html, nothing, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { BaseElement } from "../BaseElement/BaseElement.js";
 import { getLocaleDirection } from "../utils/Locale.js";
-import { getHourlyTimeLabels } from "../utils/TimeFormatting.js";
+import { formatShortTime, getHourlyTimeLabels } from "../utils/TimeFormatting.js";
 import componentStyle from "./CalendarTimeSidebar.css?inline";
 
 @customElement("calendar-time-sidebar")
@@ -66,6 +67,9 @@ export class CalendarTimeSidebar extends BaseElement {
     const labels = [...hourlyLabels, endLabel];
     const hourSlots = Math.max(1, hours);
     const nowLabel = this.nowTimeLabel?.trim();
+    // The widest time the now badge can show ("12:00 PM", "23:00"): the gutter fits it, so the
+    // badge is never cut off when the hour labels are shorter ("1 PM").
+    const badgeSizer = formatShortTime(this.lang, Temporal.PlainTime.from({ hour: 12, minute: 0 }));
 
     return html`
       <div class="time-sidebar" dir=${direction}>
@@ -73,6 +77,7 @@ export class CalendarTimeSidebar extends BaseElement {
         <div class="all-day-slot" aria-hidden="true"></div>
         <div class="timed-slot">
           <div class="hour-labels" style=${`--_lc-time-sidebar-hours: ${hourSlots};`}>
+            <div class="now-badge-sizer" aria-hidden="true">${badgeSizer}</div>
             ${labels.map(
               (label) => html`
                 <div class="hour-label-row">

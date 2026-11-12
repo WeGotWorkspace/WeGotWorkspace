@@ -17,8 +17,8 @@ import {
   ingestRemoteCalendar,
   ingestRemoteCalendarDestroyed,
   ingestRemoteCalendarEvent,
-  ingestRemoteCalendarEventDestroyed,
 } from "@/lib/offline/calendars-jmap-inbound";
+import { syncCalendarEventChanges } from "@/lib/offline/calendars-inbound-sync";
 
 export type CalendarSurfaceStore = {
   /** Engine-model events for the lit views (working set + Dexie). */
@@ -70,22 +70,27 @@ export function useCalendarSurface(
       adapterRef.current = undefined;
       return;
     }
-    const adapter = new JmapEventsAdapter({
+    const adapter: JmapEventsAdapter = new JmapEventsAdapter({
       client,
       onSyncError: () => {
         // Transient; the next poll recovers.
       },
+      // Event changes go through the shared inbound engine (#1565).
+      syncEvents: async () => {
+        const username = usernameRef.current;
+        if (!username) return;
+        const result = await syncCalendarEventChanges(username, {
+          client,
+          accountId: adapter.accountId,
+          range: adapter.loadedRange,
+        });
+        if (result.changed) onInboundChangeRef.current?.();
+      },
+      // The window load (`loadRange`) still forwards each event here.
       onRemoteEvent: (event) => {
         const username = usernameRef.current;
         if (!username) return;
         void ingestRemoteCalendarEvent(username, event).then(() => {
-          onInboundChangeRef.current?.();
-        });
-      },
-      onRemoteEventDestroyed: (eventId) => {
-        const username = usernameRef.current;
-        if (!username) return;
-        void ingestRemoteCalendarEventDestroyed(username, eventId).then(() => {
           onInboundChangeRef.current?.();
         });
       },

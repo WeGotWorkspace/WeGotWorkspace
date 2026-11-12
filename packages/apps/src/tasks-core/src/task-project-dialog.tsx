@@ -29,7 +29,7 @@ import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";
-import "./task-project-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 export type TaskProjectDialogState =
   | null
@@ -243,12 +243,17 @@ export function TaskProjectDialog({
               onConfirm(confirmInput());
             }}
           >
-            <FieldLabelRow label={labels.nameLabel} htmlFor="task-project-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.nameLabel}
+              htmlFor="task-project-name"
+            >
               <NameColorRow>
                 <Input
                   id="task-project-name"
+                  {...NO_AUTOFILL}
                   className={NAME_COLOR_ROW_INPUT_CLASS}
-                  size="sm"
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
@@ -272,61 +277,58 @@ export function TaskProjectDialog({
             />
 
             {showShare && share && dialog?.mode === "edit" ? (
-              <div className="task-project-dialog__share">
-                <CollectionShareSection
-                  collectionId={dialog.listId}
-                  shareWith={dialog.shareWith}
-                  knownPrincipals={share.knownPrincipals}
-                  online={share.online}
-                  noTeam={share.noTeam}
-                  dialogClassName={contentClassName}
-                  copy={{
-                    title: labels.shareListSectionTitle,
-                    hint: labels.shareListSectionHint,
-                    placeholder: labels.shareListAddPlaceholder,
-                    empty: labels.shareListSearchEmpty,
-                    offline: labels.shareListOffline,
-                    removeTitle: labels.removeListShareTitle,
-                    removeConfirm: labels.removeListShareConfirm,
-                  }}
-                  onSearchPrincipals={share.onSearchPrincipals}
-                  onPatchShareWith={share.onPatchShareWith}
-                />
-              </div>
+              <CollectionShareSection
+                collectionId={dialog.listId}
+                shareWith={dialog.shareWith}
+                knownPrincipals={share.knownPrincipals}
+                online={share.online}
+                noTeam={share.noTeam}
+                dialogClassName={contentClassName}
+                copy={{
+                  title: labels.shareListSectionTitle,
+                  hint: labels.shareListSectionHint,
+                  placeholder: labels.shareListAddPlaceholder,
+                  empty: labels.shareListSearchEmpty,
+                  offline: labels.shareListOffline,
+                  removeTitle: labels.removeListShareTitle,
+                  removeConfirm: labels.removeListShareConfirm,
+                }}
+                onSearchPrincipals={share.onSearchPrincipals}
+                onPatchShareWith={share.onPatchShareWith}
+              />
             ) : null}
 
-            <DialogFooter className="task-project-dialog__footer">
-              {canDelete ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="task-project-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={labels.deleteList}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : canRemoveShared ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="task-project-dialog__remove"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={labels.removeSharedList}
-                  onClick={() => setConfirmRemoveOpen(true)}
-                />
-              ) : null}
-              <div className="task-project-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  {labels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {isCreate ? labels.createButton : labels.saveButton}
-                </Button>
-              </div>
+            <DialogFooter
+              start={
+                canDelete ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.deleteList}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : canRemoveShared ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.removeSharedList}
+                    onClick={() => setConfirmRemoveOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isCreate ? labels.createButton : labels.saveButton}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

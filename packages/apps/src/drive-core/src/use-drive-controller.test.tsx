@@ -42,8 +42,9 @@ function dispatchKeydown(init: KeyboardEventInit, options?: { target?: EventTarg
   window.dispatchEvent(event);
 }
 
-function dispatchEnter(options?: { target?: EventTarget | null }) {
-  dispatchKeydown({ key: "Enter" }, options);
+/** Suite list keymap: F2 renames (Enter opens). */
+function dispatchRenameKey(options?: { target?: EventTarget | null }) {
+  dispatchKeydown({ key: "F2" }, options);
 }
 
 function dispatchDetailPanelToggle(options?: {
@@ -61,7 +62,7 @@ function dispatchDetailPanelToggle(options?: {
   );
 }
 
-describe("useDriveController Enter rename shortcut", () => {
+describe("useDriveController F2 rename shortcut", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(window, "matchMedia", {
@@ -83,7 +84,7 @@ describe("useDriveController Enter rename shortcut", () => {
     cleanup();
   });
 
-  it("opens rename dialog for the active file on Enter", () => {
+  it("opens rename dialog for the active file on F2", () => {
     const bootstrap = createDriveAppBootstrap();
     const file = DRIVE_MOCK_FILES.find((entry) => entry.id === "f1")!;
     const { result } = renderHook(() =>
@@ -101,7 +102,7 @@ describe("useDriveController Enter rename shortcut", () => {
     });
 
     act(() => {
-      dispatchEnter();
+      dispatchRenameKey();
     });
 
     expect(result.current.renameDialog).toEqual({
@@ -111,7 +112,7 @@ describe("useDriveController Enter rename shortcut", () => {
     expect(result.current.renameName).toBe("Autumn Issue — Final Proofs");
   });
 
-  it("opens rename dialog for a single selected folder on Enter", () => {
+  it("opens rename dialog for a single selected folder on F2", () => {
     const bootstrap = createDriveAppBootstrap();
     const folder = DRIVE_MOCK_FILES.find((entry) => entry.kind === "folder")!;
     const { result } = renderHook(() =>
@@ -129,7 +130,7 @@ describe("useDriveController Enter rename shortcut", () => {
     });
 
     act(() => {
-      dispatchEnter();
+      dispatchRenameKey();
     });
 
     expect(result.current.renameDialog).toEqual({ id: folder.id, extension: "" });
@@ -155,7 +156,7 @@ describe("useDriveController Enter rename shortcut", () => {
     });
 
     act(() => {
-      dispatchEnter();
+      dispatchRenameKey();
     });
 
     expect(result.current.renameDialog).toBeNull();
@@ -181,7 +182,7 @@ describe("useDriveController Enter rename shortcut", () => {
     });
 
     act(() => {
-      dispatchEnter({ target: input });
+      dispatchRenameKey({ target: input });
     });
 
     expect(result.current.renameDialog).toBeNull();
