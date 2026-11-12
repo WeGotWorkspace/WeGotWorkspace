@@ -1,3 +1,4 @@
+import { WgwAppDisabledError } from "@/lib/api/wgw/app-disabled-error";
 import { ApiError } from "@/lib/api/api-error";
 import type {
   AddressBook,
@@ -371,7 +372,7 @@ export async function fetchContactsLiveBootstrap(options?: {
       apps?: { contacts?: boolean };
     };
     if (settings.apps?.contacts === false) {
-      throw new Error("CONTACTS_SETTINGS_MISSING");
+      throw new WgwAppDisabledError("CONTACTS_SETTINGS_MISSING");
     }
   }
 

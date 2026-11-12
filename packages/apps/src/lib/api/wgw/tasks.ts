@@ -1,3 +1,4 @@
+import { WgwAppDisabledError } from "@/lib/api/wgw/app-disabled-error";
 import { ApiError } from "@/lib/api/api-error";
 import type {
   Task,
@@ -294,7 +295,7 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
       groups?: { id: string; displayName: string }[];
     };
     if (settings.apps?.tasks === false) {
-      throw new Error("TASKS_SETTINGS_MISSING");
+      throw new WgwAppDisabledError("TASKS_SETTINGS_MISSING");
     }
     if (Array.isArray(settings.groups)) {
       groups = mapTaskProjectGroups(settings.groups);
