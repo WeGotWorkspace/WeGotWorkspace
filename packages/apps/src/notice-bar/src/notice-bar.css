@@ -24,8 +24,8 @@
 
 /*
  * Line up with the view header above: the icon sits centred under the header's
- * sidebar toggle and the text starts where the title
- * does (the header's gap-3 after the toggle).
+ * sidebar toggle and the text starts where the title does (the header's gap-3
+ * after the toggle).
  */
 .notice-bar .menu-item__main {
   column-gap: 0.75rem;
