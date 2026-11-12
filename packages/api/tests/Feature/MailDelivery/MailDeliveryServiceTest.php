@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\MailDelivery;
 
 use App\Models\AppSetting;
+use App\Services\Admin\AdminSettingsService;
 use App\Services\MailDelivery\DeliveryResult;
 use App\Services\MailDelivery\InvalidOutboundMessageException;
 use App\Services\MailDelivery\MailDeliveryConfig;
+use App\Services\MailDelivery\MailDeliverySecretService;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\OutboundMessage;
 use App\Services\Settings\SettingKeys;
@@ -98,6 +100,28 @@ final class MailDeliveryServiceTest extends WgwDatabaseTestCase
         $this->assertFalse($result->accepted);
         $this->assertSame(DeliveryResult::SMTP_AUTH_REQUIRED, $result->status);
         $this->assertSame('smtp', $result->transport);
+    }
+
+    public function test_the_environment_owns_all_mail_settings_and_admin_cannot_change_them(): void
+    {
+        Mail::fake();
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => 'admin@example.test',
+            SettingKeys::MAIL_DELIVERY_SMTP_HOST => 'stored.example.test',
+            SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD => app(MailDeliverySecretService::class)->encrypt('stored-secret'),
+        ]);
+        config(['wgw.mail.smtp_host' => 'smtp.example.test', 'wgw.mail.smtp_username' => 'relay', 'wgw.mail.from' => 'noreply@example.test']);
+
+        $config = $this->delivery()->adminState()['config'];
+        $this->assertSame(
+            ['', '', false, 'noreply@example.test', true],
+            [$config['smtpHost'], $config['smtpUsername'], $config['smtpPasswordSet'], $config['from'], $config['managedByEnvironment']],
+        );
+        $this->delivery()->send(new OutboundMessage(from: '', to: ['alice@example.test'], subject: 'Test', textBody: 'Body'));
+        $this->assertSame('smtp.example.test', config('mail.mailers.wgw.host'));
+
+        $this->expectExceptionMessage('set by the server environment');
+        app(AdminSettingsService::class)->save([SettingKeys::MAIL_DELIVERY_SMTP_HOST => 'admin.example.test']);
     }
 
     public function test_send_uses_runtime_wgw_mailer(): void
