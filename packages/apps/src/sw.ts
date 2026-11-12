@@ -2,6 +2,7 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
+import { isLazyAssetRequest } from "./lib/offline/precache-shell";
 import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
 import {
   notificationClickTarget,
@@ -29,6 +30,8 @@ type PushSubscriptionChangeEvent = ExtendableEvent & {
   readonly newSubscription?: PushSubscription | null;
 };
 
+const LAZY_ASSET_CACHE = "wgw-lazy-assets";
+
 // skipWaiting stays false in production: a new worker waits until existing tabs close.
 precacheAndRoute(self.__WB_MANIFEST);
 if (import.meta.env.PROD) {
@@ -36,6 +39,19 @@ if (import.meta.env.PROD) {
     new NavigationRoute(createHandlerBoundToURL("index.html"), {
       denylist: [...PWA_NAVIGATE_FALLBACK_DENYLIST],
     }),
+  );
+  // Lazy app chunks are not precached: keep one when its route first fetches it,
+  // so an app already opened reloads offline. Hashed names never change content.
+  registerRoute(
+    ({ url }) => isLazyAssetRequest(url, self.location.origin),
+    async ({ request }) => {
+      const cache = await caches.open(LAZY_ASSET_CACHE);
+      const hit = await cache.match(request);
+      if (hit) return hit;
+      const response = await fetch(request);
+      if (response.ok) await cache.put(request, response.clone());
+      return response;
+    },
   );
 } else {
   // Dev SW exists for Web Push; skip SPA fallback so Vite HMR is not intercepted.

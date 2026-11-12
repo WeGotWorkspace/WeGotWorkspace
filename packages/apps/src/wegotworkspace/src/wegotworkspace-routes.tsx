@@ -36,8 +36,9 @@ import { createWorkspacePwaHead } from "@/lib/workspace-pwa-head";
 /*
  * Each app loads as its own chunk when one of its routes opens (#1628). The
  * shell, home and sign-in stay in the entry chunk. The router preloads a
- * lazy route's chunk before it renders, and the service worker precaches
- * every chunk, so apps still open offline after one online visit.
+ * lazy route's chunk before it renders, and the service worker keeps a chunk
+ * when its route first fetches it, so an app opened once reloads offline.
+ * The precache holds only the shell.
  */
 const AdminApp = lazyRouteComponent(() => import("@/admin-core/src/admin-app"), "AdminApp");
 const CalendarApp = lazyRouteComponent(

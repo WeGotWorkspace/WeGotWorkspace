@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { VitePWA } from "vite-plugin-pwa";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { isShellPrecacheEntry, shellAssetUrls } from "./src/lib/offline/precache-shell";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
 
@@ -78,6 +80,19 @@ export default defineConfig(({ command, mode }) => {
           // so an unversioned precache entry would never match.
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+          // Precache the shell only (#1628): what index.html loads. Lazy app
+          // chunks are cached by src/sw.ts when their route first requests them.
+          manifestTransforms: [
+            (entries) => {
+              const indexPath = path.join(__dirname, "dist", "index.html");
+              if (!existsSync(indexPath)) return { manifest: entries, warnings: [] };
+              const shell = shellAssetUrls(readFileSync(indexPath, "utf8"));
+              return {
+                manifest: entries.filter((entry) => isShellPrecacheEntry(entry.url, shell)),
+                warnings: [],
+              };
+            },
+          ],
         },
         manifest: false,
       }),
