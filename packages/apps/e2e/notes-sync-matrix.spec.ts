@@ -60,13 +60,13 @@ async function editor(tab: Tab) {
   return body;
 }
 
-async function moveTo(tab: Tab, notebook: string) {
-  await tab.locator(".color-swatch-trigger").first().click();
-  await sleep(400);
-  await tab
-    .locator("[role='menuitem'], [role='option'], [role='menuitemradio']", { hasText: notebook })
-    .first()
-    .click();
+/**
+ * Moves the open note with its notebook dropdown above the title (#1945), which is
+ * named after the notebook the note is in now.
+ */
+async function moveTo(tab: Tab, from: string, notebook: string) {
+  await tab.getByRole("combobox", { name: from, exact: true }).click();
+  await tab.getByRole("option", { name: notebook, exact: true }).click();
   await sleep(500);
   const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
   if (await dialog.count())
@@ -159,11 +159,11 @@ const ACTIONS = {
   },
   async toShared(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, TEAM_NOTEBOOK_NAME);
+    await moveTo(tab, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
   },
   async toPrivate(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, PRIVATE_NOTEBOOK_NAME);
+    await moveTo(tab, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
   },
 } satisfies Record<string, (tab: Tab, c: Case) => Promise<void>>;
 type Action = keyof typeof ACTIONS;
