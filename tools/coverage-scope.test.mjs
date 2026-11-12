@@ -1,6 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { coverageScope, scopeForPaths } from "./coverage-scope.mjs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  coverageScope,
+  gitChangedPaths,
+  scopeForPaths,
+} from "./coverage-scope.mjs";
 
 const never = () => {
   throw new Error("no diff expected");
@@ -99,5 +107,38 @@ describe("coverageScope", () => {
       }),
       { api: true, apps: true },
     );
+  });
+});
+
+describe("gitChangedPaths", () => {
+  it("lists both sides of a cross-package rename", () => {
+    const dir = mkdtempSync(join(tmpdir(), "scope-"));
+    const git = (...args) =>
+      execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+    git("init", "-q");
+    mkdirSync(join(dir, "packages/apps/src/lib/api"), { recursive: true });
+    mkdirSync(join(dir, "packages/api/app/Services/Drive"), {
+      recursive: true,
+    });
+    const from = "packages/apps/src/lib/api/client.ts";
+    const to = "packages/api/app/Services/Drive/client.php";
+    writeFileSync(join(dir, from), "export const a = 1;\n".repeat(20));
+    git("add", "-A");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "a");
+    const base = git("rev-parse", "HEAD");
+    renameSync(join(dir, from), join(dir, to));
+    git("add", "-A");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "b");
+    const head = git("rev-parse", "HEAD");
+
+    const cwd = process.cwd();
+    process.chdir(dir);
+    let paths;
+    try {
+      paths = gitChangedPaths(base, head);
+    } finally {
+      process.chdir(cwd);
+    }
+    assert.deepEqual(scopeForPaths(paths), { api: true, apps: true });
   });
 });

@@ -49,15 +49,20 @@ export function coverageScope({ event, labels, changedPaths }) {
   return { api: changed.api, apps: changed.apps || appsLabel };
 }
 
-function gitChangedPaths(base, head) {
+export function gitChangedPaths(base, head) {
   if (!base || !head) {
     throw new Error("BASE_SHA and HEAD_SHA are required for a diff");
   }
-  // Two-dot: the tree difference. Both commits are fetched; their merge
+  // --no-renames lists a move as delete plus add, so the side that lost the
+  // file is selected. Two-dot: the tree difference. Both commits are fetched; their merge
   // base does not have to be.
-  const out = execFileSync("git", ["diff", "--name-only", base, head], {
-    encoding: "utf8",
-  });
+  const out = execFileSync(
+    "git",
+    ["diff", "--name-only", "--no-renames", base, head],
+    {
+      encoding: "utf8",
+    },
+  );
   return out.split("\n").filter(Boolean);
 }
 
