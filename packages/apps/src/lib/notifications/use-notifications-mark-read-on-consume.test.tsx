@@ -1,8 +1,8 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 
 const dmItem: NotificationInboxItem = {
   id: "n1",
