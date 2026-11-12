@@ -1,77 +1,77 @@
-import { patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarEventPatch } from "@/lib/models/calendar-types";
-import { pageIsExiting } from "@/lib/page-exit";
+
+/** What a write sent, and the event it was built from (for Undo). */
+export type CalendarSentPatch = { patch: CalendarEventPatch; base: JmapCalendarEvent | undefined };
+
+/** Builds a write's patch from the event as the server has it (none when nothing changed). */
+export type CalendarPatchBuilder = (
+  base: JmapCalendarEvent | undefined,
+) => CalendarEventPatch | null;
+type SendPatch = (patch: CalendarEventPatch) => Promise<JmapCalendarEvent>;
 
 export type CalendarAutosaveWrites = {
-  /** The event as the queued autosaves will leave it, else `loaded` (which may not have refetched). */
-  base: (eventId: string, loaded: JmapCalendarEvent | undefined) => JmapCalendarEvent | undefined;
   /**
-   * Runs an autosave after the ones before it, so they land in order. `build` makes the patch
-   * when its turn comes, against the last event that was written (else `loaded`), and returns
-   * null when nothing is left to send.
+   * Waits for the autosaves before it, then builds its patch from the event as the server
+   * returned it after the last one that went through (else `loaded`) and sends it.
+   * Resolves with what was sent, or null when nothing changed.
    */
-  run: <P extends CalendarEventPatch | object>(
+  run: (
     eventId: string,
     loaded: JmapCalendarEvent | undefined,
-    build: (base: JmapCalendarEvent | undefined) => P | null,
-    write: (patch: P) => Promise<unknown>,
-  ) => Promise<void>;
+    build: CalendarPatchBuilder,
+    send: SendPatch,
+  ) => Promise<CalendarSentPatch | null>;
   /** Another event opened: start over from the loaded events. */
   reset: () => void;
 };
 
+async function sendBuilt(
+  base: JmapCalendarEvent | undefined,
+  build: CalendarPatchBuilder,
+  send: SendPatch,
+): Promise<{ sent: CalendarSentPatch; stored: JmapCalendarEvent } | null> {
+  const patch = build(base);
+  if (!patch || Object.keys(patch).length === 0) return null;
+  return { sent: { patch, base }, stored: await send(patch) };
+}
+
 /**
- * The open event's autosaves, as Tasks does for a task: one write at a time, each diffed
- * against what the last one wrote. A write on page exit goes at once (nothing waits then).
+ * The open event's autosaves, as Tasks does for a task: one write at a time, each built
+ * when its turn comes against what the server has, so a slow write never wins over a
+ * later one and a field typed back to its old value is still sent.
  */
 export function createCalendarAutosaveWrites(): CalendarAutosaveWrites {
-  // What the server holds after the writes that succeeded.
-  const confirmed = new Map<string, JmapCalendarEvent>();
-  // What it will hold once the queued writes land: the base for deciding whether to save.
-  const queued = new Map<string, JmapCalendarEvent>();
-  let pending = 0;
+  const stored = new Map<string, JmapCalendarEvent>();
   let chain: Promise<unknown> = Promise.resolve();
-
-  const apply = (base: JmapCalendarEvent | undefined, patch: object) =>
-    base
-      ? ({ ...base, ...patchToJmapPartial(patch as CalendarEventPatch) } as JmapCalendarEvent)
-      : undefined;
-
   return {
-    base: (eventId, loaded) => queued.get(eventId) ?? confirmed.get(eventId) ?? loaded,
-    run: (eventId, loaded, build, write) => {
-      const step = async () => {
-        const base = confirmed.get(eventId) ?? loaded;
-        const patch = build(base);
-        if (!patch) return;
-        await write(patch);
-        const next = apply(base, patch);
-        if (next) confirmed.set(eventId, next);
-      };
-      // Note the patch as queued as soon as it is known, before its turn.
-      const queuedBase = queued.get(eventId) ?? confirmed.get(eventId) ?? loaded;
-      const early = build(queuedBase);
-      const queuedNext = early ? apply(queuedBase, early) : undefined;
-      if (queuedNext) queued.set(eventId, queuedNext);
-      pending += 1;
-      const run = (pageIsExiting() ? step() : chain.then(step)).then(
-        () => {
-          pending -= 1;
-        },
-        (error: unknown) => {
-          pending -= 1;
-          // Unknown what the server has now: diff the next write against what succeeded.
-          if (pending === 0) queued.delete(eventId);
+    run: (eventId, loaded, build, send) => {
+      const turn = chain.then(async () => {
+        try {
+          const result = await sendBuilt(stored.get(eventId) ?? loaded, build, send);
+          if (result) stored.set(eventId, result.stored);
+          return result?.sent ?? null;
+        } catch (error) {
+          // Unknown what the server has now: the next write builds on the loaded copy.
+          stored.delete(eventId);
           throw error;
-        },
-      );
-      chain = run.catch(() => undefined);
-      return run;
+        }
+      });
+      chain = turn.catch(() => undefined);
+      return turn;
     },
-    reset: () => {
-      confirmed.clear();
-      queued.clear();
-    },
+    reset: () => stored.clear(),
   };
+}
+
+/** One edit write: in turn with the autosaves when `writes` is given, else at once. */
+export async function sendCalendarPatch(
+  writes: CalendarAutosaveWrites | undefined,
+  eventId: string,
+  loaded: JmapCalendarEvent | undefined,
+  build: CalendarPatchBuilder,
+  send: SendPatch,
+): Promise<CalendarSentPatch | null> {
+  if (writes) return writes.run(eventId, loaded, build, send);
+  return (await sendBuilt(loaded, build, send))?.sent ?? null;
 }

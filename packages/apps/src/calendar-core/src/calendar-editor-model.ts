@@ -706,3 +706,15 @@ export function formToFullPatch(form: CalendarEventFormValue): CalendarEventPatc
     links: linksFromMeetingUrl(form.meetingUrl) ?? null,
   };
 }
+
+/** The edit as a patch on `base` (the whole form without one); a change of attendees
+ * names the organizer. */
+export function calendarEditPatch(
+  form: CalendarEventFormValue,
+  base: JmapCalendarEvent | undefined,
+  organizer?: { email: string; name?: string },
+): CalendarEventPatch {
+  const patch = base ? formToPatch(form, base) : formToFullPatch(form);
+  if (patch.attendees && organizer) patch.organizer = organizer;
+  return patch;
+}

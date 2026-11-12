@@ -1,11 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
-import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
+import type { CalendarAPIOperations, CalendarEventPatch } from "@/lib/models/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { groupOccurrenceKeys } from "@/calendar-core/src/use-calendar-event-deletes";
 import { createCalendarAutosaveWrites } from "@/calendar-core/src/calendar-autosave-writes";
 import { calendarEventToForm } from "@/calendar-core/src/calendar-editor-model";
+import { patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import type { CalendarEditorState } from "@/calendar-core/src/use-calendar-controller";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 
 const toastApi = {
   show: vi.fn(() => "toast-1"),
@@ -209,92 +212,95 @@ describe("useCalendarController batch writes (list mode multi-select)", () => {
   });
 });
 
+/** One event on a fake server: patches apply in arrival order; `hold` keeps the next back. */
+function fakeServer(event: JmapCalendarEvent) {
+  let stored = event;
+  const held: (() => void)[] = [];
+  let holdNext = false;
+  let failNext = false;
+  const patchEvent = vi.fn(async (_id: string, patch: CalendarEventPatch) => {
+    if (holdNext) {
+      holdNext = false;
+      await new Promise<void>((resolve) => held.push(resolve));
+    }
+    if (failNext) {
+      failNext = false;
+      throw new Error("offline");
+    }
+    stored = { ...stored, ...patchToJmapPartial(patch) };
+    return stored;
+  });
+  return {
+    patchEvent,
+    hold: () => (holdNext = true),
+    fail: () => (failNext = true),
+    release: () => held.shift()?.(),
+    stored: () => stored,
+  };
+}
+
 describe("useCalendarController list-mode autosave", () => {
-  it("writes one at a time, each against the last write, so the latest typing wins", async () => {
-    const operations = ops();
-    let releaseFirst = () => {};
-    vi.mocked(operations.patchEvent).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          releaseFirst = () => resolve({ id: "dentist" } as never);
-        }),
-    );
+  const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
+  const standup = bootstrap.data.events.find((event) => event.id === "standup")!;
+
+  function renderAutosave(server: ReturnType<typeof fakeServer>) {
+    const operations = { ...ops(), patchEvent: server.patchEvent } as EventOps;
     const { result } = renderController(operations);
-    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
-    const form = calendarEventToForm(dentist);
     const writes = createCalendarAutosaveWrites();
-    const autosave = (title: string) =>
-      result.current.saveEditor(undefined, {
-        keepOpen: true,
-        writes,
-        target: { mode: "edit", eventId: "dentist", form: { ...form, title } },
-      });
+    return (target: CalendarEditorState, scope?: Parameters<typeof result.current.saveEditor>[0]) =>
+      result.current.saveEditor(scope, { keepOpen: true, writes, target });
+  }
 
-    await act(async () => autosave("Meet"));
-    // Typed back to the loaded title while the first write is still out.
-    await act(async () => autosave(form.title));
-    expect(operations.patchEvent).toHaveBeenCalledTimes(1);
+  it("writes one at a time, so a field typed back while a write is out is still sent", async () => {
+    const server = fakeServer(dentist);
+    const autosave = renderAutosave(server);
+    const form = calendarEventToForm(dentist);
+    const edit = (change: Partial<typeof form>) =>
+      autosave({ mode: "edit", eventId: "dentist", form: { ...form, ...change } });
 
-    await act(async () => releaseFirst());
-    const titles = vi.mocked(operations.patchEvent).mock.calls.map(([, patch]) => patch.title);
-    expect(titles).toEqual(["Meet", form.title]);
+    server.hold();
+    await act(async () => edit({ title: "Meet", location: "Room 1" }));
+    await act(async () => edit({ title: form.title, location: "" }));
+    expect(server.patchEvent).toHaveBeenCalledTimes(1);
+
+    await act(async () => server.release());
+    expect(server.patchEvent).toHaveBeenCalledTimes(2);
+    const now = calendarEventToForm(server.stored());
+    expect([now.title, now.location]).toEqual([form.title, ""]);
   });
 
-  it("sends a location restored while the first write is out", async () => {
-    const operations = ops();
-    let releaseFirst = () => {};
-    vi.mocked(operations.patchEvent).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          releaseFirst = () => resolve({ id: "dentist" } as never);
-        }),
-    );
-    const { result } = renderController(operations);
-    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
-    const form = calendarEventToForm(dentist);
-    const writes = createCalendarAutosaveWrites();
-    const autosave = (location: string) =>
-      result.current.saveEditor(undefined, {
-        keepOpen: true,
-        writes,
-        target: { mode: "edit", eventId: "dentist", form: { ...form, location } },
-      });
+  it("a date of a series typed back to the series title while its first write is out", async () => {
+    const server = fakeServer(standup);
+    const autosave = renderAutosave(server);
+    const rid = "2033-01-11T09:30:00";
+    const form = calendarEventToForm(standup);
+    const edit = (title: string) =>
+      autosave(
+        { mode: "edit", eventId: "standup", recurrenceId: rid, form: { ...form, title } },
+        "thisInstance",
+      );
 
-    await act(async () => autosave("Elsewhere"));
-    await act(async () => autosave(form.location));
-    await act(async () => releaseFirst());
+    server.hold();
+    await act(async () => edit("Standup, moved room"));
+    await act(async () => edit(form.title));
+    await act(async () => server.release());
 
-    const calls = vi.mocked(operations.patchEvent).mock.calls;
-    expect(calls).toHaveLength(2);
-    expect(calls[1]![1].location).toBe(form.location);
+    expect(server.patchEvent).toHaveBeenCalledTimes(2);
+    expect(server.stored().recurrenceOverrides?.[rid]?.title).toBe(form.title);
   });
 
-  it("diffs a later write against the last one that succeeded when an earlier one failed", async () => {
-    const operations = ops();
-    let failFirst = () => {};
-    vi.mocked(operations.patchEvent).mockImplementationOnce(
-      () =>
-        new Promise((_resolve, reject) => {
-          failFirst = () => reject(new Error("offline"));
-        }),
+  it("after a failed write the next one sends that change again", async () => {
+    const server = fakeServer(dentist);
+    const autosave = renderAutosave(server);
+    const form = { ...calendarEventToForm(dentist), title: "Meet" };
+
+    server.fail();
+    await act(async () => autosave({ mode: "edit", eventId: "dentist", form }));
+    await act(async () =>
+      autosave({ mode: "edit", eventId: "dentist", form: { ...form, description: "Notes" } }),
     );
-    const { result } = renderController(operations);
-    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
-    const form = calendarEventToForm(dentist);
-    const writes = createCalendarAutosaveWrites();
-    const autosave = (values: Partial<typeof form>) =>
-      result.current.saveEditor(undefined, {
-        keepOpen: true,
-        writes,
-        target: { mode: "edit", eventId: "dentist", form: { ...form, ...values } },
-      });
 
-    await act(async () => autosave({ title: "Meet" }));
-    await act(async () => autosave({ title: "Meet", description: "Bring forms" }));
-    await act(async () => failFirst());
-
-    const calls = vi.mocked(operations.patchEvent).mock.calls;
-    expect(calls).toHaveLength(2);
-    expect(calls[1]![1]).toMatchObject({ title: "Meet", description: "Bring forms" });
+    expect(server.stored().title).toBe("Meet");
+    expect(server.stored().description).toBe("Notes");
   });
 });

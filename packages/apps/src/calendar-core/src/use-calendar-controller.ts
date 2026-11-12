@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
+import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type {
   CalendarAPIOperations,
   CalendarFeedInfo,
@@ -10,7 +11,6 @@ import type {
   CalendarUIData,
   CalendarViewId,
 } from "@/lib/models/calendar-types";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   isViewShowingToday,
   rangeToPlainDateTimeStrings,
@@ -33,8 +33,7 @@ import {
   engineEventToForm,
   formToCreateIntent,
   draftFromForm,
-  formToFullPatch,
-  formToPatch,
+  calendarEditPatch,
   sessionOrganizer,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
@@ -75,10 +74,10 @@ import {
   eventIsRecurringSeries,
   forkSeriesDraftWithSplitOverrides,
   occurrenceHasThisInstanceOverride,
-  occurrenceRecurrenceOverrides,
+  occurrenceOverridesPatch,
   resolveRecurrenceMasterRef,
   resolveSeriesRecurrenceOverrides,
-  seriesRecurrenceRulesForSplit,
+  splitSeriesRules,
   truncateMasterSeriesPatch,
   type RecurrenceEditScope,
   type RecurrenceScopeChoice,
@@ -98,7 +97,12 @@ import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
-import type { CalendarAutosaveWrites } from "@/calendar-core/src/calendar-autosave-writes";
+import {
+  sendCalendarPatch,
+  type CalendarAutosaveWrites,
+  type CalendarPatchBuilder,
+  type CalendarSentPatch,
+} from "@/calendar-core/src/calendar-autosave-writes";
 import { useCalendarEventDeletes } from "@/calendar-core/src/use-calendar-event-deletes";
 import { useCalendarEventMoves } from "@/calendar-core/src/use-calendar-event-moves";
 import {
@@ -581,25 +585,20 @@ export function useCalendarController({
       }
 
       void (async () => {
-        const loaded = data.events.find((entry) => entry.id === target.eventId);
-        const original = options.writes?.base(target.eventId, loaded) ?? loaded;
-        const patch = original ? formToPatch(target.form, original) : formToFullPatch(target.form);
-        if (patch.attendees && organizer) {
-          patch.organizer = organizer;
-        }
+        const original = data.events.find((entry) => entry.id === target.eventId);
+        const patchFrom = (base?: JmapCalendarEvent) =>
+          calendarEditPatch(target.form, base, organizer);
+        const patch = patchFrom(original);
         const isRecurring = original
           ? eventIsRecurringSeries(original)
           : Boolean(target.recurrenceId);
 
         const keepOpen = Boolean(options.keepOpen);
-        const writeInOrder = <P extends object>(
-          build: (base: JmapCalendarEvent | undefined) => P | null,
-          write: (written: P) => Promise<unknown>,
-        ): Promise<unknown> => {
-          if (options.writes) return options.writes.run(target.eventId, loaded, build, write);
-          const written = build(original);
-          return written ? write(written) : Promise.resolve();
-        };
+        // An autosave builds its patch when its turn comes, on what the server has then.
+        const send = (targetId: string, build: CalendarPatchBuilder) =>
+          sendCalendarPatch(options.writes, target.eventId, original, build, (next) =>
+            operations.patchEvent(targetId, next),
+          );
         const occurrenceKey = `${target.eventId}:${target.recurrenceId ?? ""}`;
         // An autosave asks once per occurrence, not on every pause in the typing.
         const rememberedScope =
@@ -632,42 +631,32 @@ export function useCalendarController({
             showError(L.toastEventSaveFailed);
             return;
           }
-          const overrides = occurrenceRecurrenceOverrides(
-            target.form,
-            original,
-            target.recurrenceId,
-          );
-          if (!overrides) {
+          const recurrenceId = target.recurrenceId;
+          const overridesFrom = (base?: JmapCalendarEvent) =>
+            occurrenceOverridesPatch(target.form, base, recurrenceId);
+          if (!options.writes && !overridesFrom(original)) {
             if (!keepOpen) setEditor(null);
             return;
           }
           ensureCalendarVisible(target.form.calendarId);
           let targetId = target.eventId;
+          let sent: CalendarSentPatch | null = null;
           runEditorMutation(
             {
-              key: `calendar:update-occurrence:${target.eventId}:${target.recurrenceId}`,
+              key: `calendar:update-occurrence:${target.eventId}:${recurrenceId}`,
               successToast: L.toastEventUpdated,
               mutation: async () => {
                 targetId = (await resolveEventId?.(target.eventId)) ?? target.eventId;
-                await writeInOrder(
-                  (base) => {
-                    const next = base
-                      ? occurrenceRecurrenceOverrides(
-                          target.form,
-                          base,
-                          target.recurrenceId as string,
-                        )
-                      : overrides;
-                    return next ? { recurrenceOverrides: next } : null;
-                  },
-                  (written) => operations.patchEvent(targetId, written),
-                );
+                sent = await send(targetId, overridesFrom);
               },
               revert: async () => {
-                await operations.patchEvent(
-                  targetId,
-                  occurrenceOverridesRevert(original, overrides),
-                );
+                const overrides = sent?.patch.recurrenceOverrides;
+                if (sent?.base && overrides) {
+                  await operations.patchEvent(
+                    targetId,
+                    occurrenceOverridesRevert(sent.base, overrides),
+                  );
+                }
               },
             },
             keepOpen,
@@ -678,13 +667,11 @@ export function useCalendarController({
         // This-and-future: truncate the master series, then create a forked series.
         if (recurrenceScope === "thisAndFuture" && target.recurrenceId) {
           ensureCalendarVisible(target.form.calendarId);
-          const masterEngine = surfaceEvents?.get(target.eventId);
-          // Prefer wire → surface master (true series rule) → occurrence form preset.
-          const seriesRules = original?.recurrenceRules?.length
-            ? original.recurrenceRules
-            : masterEngine
-              ? seriesRecurrenceRulesForSplit(undefined, engineEventToForm(masterEngine))
-              : seriesRecurrenceRulesForSplit(undefined, target.form);
+          const seriesRules = splitSeriesRules(
+            original,
+            surfaceEvents?.get(target.eventId),
+            target.form,
+          );
           let targetId = target.eventId;
           let forkedId: string | undefined;
           // Adapter rows are fresher than bootstrap after only-this — partition from those.
@@ -734,13 +721,14 @@ export function useCalendarController({
           return;
         }
 
-        if (Object.keys(patch).length === 0) {
+        if (!options.writes && Object.keys(patch).length === 0) {
           if (!keepOpen) setEditor(null);
           return;
         }
         ensureCalendarVisible(target.form.calendarId);
         let targetId = target.eventId;
         let movedToId: string | undefined;
+        let sent: CalendarSentPatch | null = null;
         runEditorMutation(
           {
             key: `calendar:update-event:${target.eventId}`,
@@ -757,15 +745,7 @@ export function useCalendarController({
                 markCompleted(MOVE_STEPS.delete);
                 return;
               }
-              await writeInOrder(
-                (base) => {
-                  if (!base) return patch;
-                  const next = formToPatch(target.form, base);
-                  if (next.attendees && organizer) next.organizer = organizer;
-                  return Object.keys(next).length > 0 ? next : null;
-                },
-                (written) => operations.patchEvent(targetId, written),
-              );
+              sent = await send(targetId, patchFrom);
             },
             revert: async (completed) => {
               if (patch.calendarId) {
@@ -773,8 +753,8 @@ export function useCalendarController({
                   ? draftFromForm(calendarEventToForm(original), organizer)
                   : undefined;
                 await revertEventMove(operations, completed, { movedToId, originalDraft });
-              } else if (original) {
-                await operations.patchEvent(targetId, editPatchRevert(patch, original));
+              } else if (sent?.base) {
+                await operations.patchEvent(targetId, editPatchRevert(sent.patch, sent.base));
               }
             },
             // A move to another calendar makes a new event: the editor closes.
@@ -1154,11 +1134,7 @@ export function useCalendarController({
         data.events,
         surfaceEvents,
       );
-      const seriesRules = original?.recurrenceRules?.length
-        ? original.recurrenceRules
-        : masterEngine
-          ? seriesRecurrenceRulesForSplit(undefined, engineEventToForm(masterEngine))
-          : null;
+      const seriesRules = splitSeriesRules(original, masterEngine);
       try {
         const targetId = (await resolveEventId?.(masterKey)) ?? masterKey;
         await operations.patchEvent(
@@ -1212,11 +1188,7 @@ export function useCalendarController({
       const startDate = args.start.toPlainDate().toString();
       const formEnd = allDay ? args.end.subtract({ days: 1 }) : args.end;
       const engineForm = masterEngine ? engineEventToForm(masterEngine) : null;
-      const seriesRules = original?.recurrenceRules?.length
-        ? original.recurrenceRules
-        : engineForm
-          ? seriesRecurrenceRulesForSplit(undefined, engineForm)
-          : null;
+      const seriesRules = splitSeriesRules(original, masterEngine);
       const form: CalendarEventFormValue = {
         title: args.summary?.trim() || original?.title || engineForm?.title || "",
         calendarId:
