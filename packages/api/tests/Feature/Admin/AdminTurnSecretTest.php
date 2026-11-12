@@ -51,6 +51,7 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
                 'maxVideoProfileRelay',
                 'debugLogging',
                 'forceRelay',
+                'managedByEnvironment',
             ],
             array_keys((array) $response->json('rtc')),
         );
@@ -119,6 +120,24 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
             ->assertJsonPath('rtc.turnStaticCredentialsPresent', false);
         $this->assertNull(AppSetting::getValue('rtc_turn_username'));
         $this->assertNull(AppSetting::getValue('rtc_turn_credential'));
+    }
+
+    public function test_the_environment_owns_stun_turn_and_the_secret_together(): void
+    {
+        $token = $this->adminBearerToken();
+        $this->saveSecret($token, self::SECRET);
+        config(['wgw.rtc.environment' => [SettingKeys::RTC_TURN_URL => 'turn:env.example.test:3478']]);
+
+        $this->withBearer($token)->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('rtc.managedByEnvironment', true)
+            ->assertJsonPath('rtc.turnUrls', 'turn:env.example.test:3478')
+            ->assertJsonPath('rtc.turnSecretSet', false);
+        $this->assertFalse(app(RtcSettingsService::class)->turnAvailable());
+
+        $this->withBearer($token)->putJson('/api/v1/admin/settings', [
+            'values' => [SettingKeys::RTC_TURN_URL => 'turn:admin.example.test:3478'],
+        ])->assertStatus(409);
     }
 
     private function saveSecret(string $token, string $secret): void
