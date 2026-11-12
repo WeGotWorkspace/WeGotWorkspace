@@ -63,10 +63,10 @@ export const PublicOff: Story = {
   render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicOff} />,
   play: async () => {
     const body = within(document.body);
-    const toggle = await body.findByRole("switch", { name: shareLabels.enablePublicAccess });
+    const toggle = await body.findByRole("switch", { name: shareLabels.publicSectionTitle });
     await userEvent.click(toggle);
     await waitFor(() =>
-      expect(body.getByRole("switch", { name: shareLabels.enablePublicAccess })).toHaveAttribute(
+      expect(body.getByRole("switch", { name: shareLabels.publicSectionTitle })).toHaveAttribute(
         "aria-checked",
         "true",
       ),

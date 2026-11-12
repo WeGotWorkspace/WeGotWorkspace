@@ -66,8 +66,11 @@ const meta: Meta<typeof ContactsEditGroupDialogHarness> = {
 export default meta;
 type Story = StoryObj<typeof ContactsEditGroupDialogHarness>;
 
+/** The ghost trigger is named by its book; the row's caption labels it (`htmlFor`). */
 function bookTrigger() {
-  return screen.getByRole("combobox", { name: defaultContactsLabels.createGroupAddressBookLabel });
+  return screen.getByLabelText(defaultContactsLabels.createGroupAddressBookLabel, {
+    selector: "[role=combobox]",
+  });
 }
 
 export const Default: Story = {

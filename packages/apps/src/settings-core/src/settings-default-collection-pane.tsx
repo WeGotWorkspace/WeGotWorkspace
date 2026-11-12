@@ -1,12 +1,10 @@
 import { useEffect } from "react";
-import {
-  CalendarEventCalendarPicker,
-  defaultPickerCalendarId,
-} from "@/lib/calendar-event-calendar-picker";
+import { defaultPickerCalendarId } from "@/lib/calendar-event-calendar-picker";
 import { useAppPickerCollections } from "@/lib/app-picker-collections";
 import { type DefaultCollectionApp } from "@/lib/default-collection-prefs";
 import { useSettingsDefaultCollectionForm } from "@/settings-core/src/use-settings-default-collection-form";
 import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
+import { SettingsCollectionSelect } from "@/settings-core/src/settings-collection-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormField } from "@/ui/form";
 
@@ -31,13 +29,12 @@ export function SettingsDefaultCollectionPane({ app }: { app: DefaultCollectionA
           control={form.control}
           name="collectionId"
           render={({ field }) => (
-            <FieldLabelRow label={fieldLabel}>
-              <CalendarEventCalendarPicker
-                calendars={collections}
-                calendarId={defaultPickerCalendarId(collections, field.value || undefined)}
+            <FieldLabelRow layout="inline" label={fieldLabel} description={meta.description}>
+              <SettingsCollectionSelect
+                collections={collections}
+                value={field.value}
                 label={fieldLabel}
-                showName
-                onCalendarIdChange={(collectionId) => field.onChange(collectionId)}
+                onValueChange={field.onChange}
               />
             </FieldLabelRow>
           )}

@@ -12,7 +12,7 @@ import {
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
@@ -21,7 +21,7 @@ import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 function NotesListNotebook({ name, color }: { name: string; color?: string }) {
   return (
     <span className="notes-list-panel__notebook">
-      <NotesNotebookColorDot color={notebookDotColor({ color })} />
+      <CollectionColorDot color={notebookDotColor({ color })} />
       <span className="notes-list-panel__notebook-name">{name}</span>
     </span>
   );

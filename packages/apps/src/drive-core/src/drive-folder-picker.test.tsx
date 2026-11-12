@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HardDrive } from "lucide-react";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/lib/files/drive-models";
@@ -38,7 +37,7 @@ describe("DriveFolderPicker", () => {
     expect(screen.queryByText("Archives")).toBeNull();
   });
 
-  it("applies Docs rootLabels and rootIcon on the Drives root listing", () => {
+  it("applies Docs rootLabels and drive icons on the Drives root listing", () => {
     render(
       <DriveFolderPicker
         labels={driveLabels}
@@ -52,7 +51,6 @@ describe("DriveFolderPicker", () => {
           "My Drive": driveLabels.sidebarMyDrive,
           "Groups/administrators": "Administrators",
         }}
-        rootIcon={<HardDrive data-testid="docs-drive-root-icon" />}
         onDestinationChange={vi.fn()}
       />,
     );
@@ -61,7 +59,10 @@ describe("DriveFolderPicker", () => {
     expect(screen.getByText("Administrators")).toBeTruthy();
     expect(screen.queryByText("My Drive")).toBeNull();
     expect(screen.queryByText("administrators")).toBeNull();
-    expect(screen.getAllByTestId("docs-drive-root-icon").length).toBeGreaterThan(0);
+    // Drive roots wear the drive icon on the Drive list (not a plain folder).
+    const personalRow = screen.getByText("Personal").closest("tr");
+    expect(personalRow?.querySelector(".lucide-hard-drive")).toBeTruthy();
+    expect(personalRow?.querySelector(".lucide-folder")).toBeNull();
   });
 
   it("keeps a chosen drive when moveIds is a new array and nothing is preselected", () => {
@@ -89,7 +90,7 @@ describe("DriveFolderPicker", () => {
     view.rerender(<DriveFolderPicker {...props} moveIds={[]} />);
 
     expect(screen.getByText("Personal").closest("tr")?.className).toContain(
-      "destination-list-row--selected",
+      "drive-list-row--selected",
     );
     expect(onDestinationChange).toHaveBeenLastCalledWith("My Drive");
   });
@@ -116,7 +117,7 @@ describe("DriveFolderPicker", () => {
 
     expect(onDestinationChange).toHaveBeenCalledWith("Groups/engineering");
     const row = screen.getByText("engineering").closest("tr");
-    expect(row?.className).toContain("destination-list-row--selected");
+    expect(row?.className).toContain("drive-list-row--selected");
   });
 
   it("sets Docs listing theme only when requested", () => {
@@ -175,7 +176,7 @@ describe("DriveFolderPicker", () => {
     );
 
     expect(document.querySelector(".drive-grid")).toBeTruthy();
-    expect(document.querySelector(".destination-list-row")).toBeNull();
+    expect(document.querySelector(".drive-list-table")).toBeNull();
     expect(screen.getByText("Studio Assets")).toBeTruthy();
     expect(screen.getByText("Cover-Photo-Granite.jpg")).toBeTruthy();
     expect(screen.queryByText("Autumn Issue — Final Proofs.pdf")).toBeNull();

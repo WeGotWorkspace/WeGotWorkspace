@@ -198,7 +198,7 @@ export const Default: Story = {
       (janeRow as HTMLElement).querySelector(".list-item__meta .contacts-list-panel__book"),
     ).toBeTruthy();
     await expect(
-      (janeRow as HTMLElement).querySelector(".list-item__meta .notes-notebook-color-dot"),
+      (janeRow as HTMLElement).querySelector(".list-item__meta .collection-color-dot"),
     ).toBeTruthy();
 
     await expect(joeRow).toBeTruthy();

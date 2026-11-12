@@ -9,7 +9,7 @@ import {
   type FolderDropZoneProps,
   type ItemDragHandlers,
 } from "@/drive-core/src/drive-browser-item-parts";
-import { useLongPress } from "@/drive-core/src/use-drive-long-press";
+import { useDriveTileTarget } from "@/drive-core/src/use-drive-tile-target";
 import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function DriveFolderTile({
   file,
   isSelected,
+  isFocusTarget = false,
   selectionMode,
   isStarred,
   isDragging,
@@ -44,6 +45,8 @@ export function DriveFolderTile({
 }: {
   file: DriveFile;
   isSelected: boolean;
+  /** The tile Tab reaches (roving focus). */
+  isFocusTarget?: boolean;
   selectionMode: boolean;
   isStarred: boolean;
   isDragging: boolean;
@@ -66,25 +69,21 @@ export function DriveFolderTile({
   extraActions?: ActionBarAction[];
   itemChrome?: "manage" | "picker";
 }) {
-  const lp = useLongPress(onLongPress);
   const pickerChrome = itemChrome === "picker";
-  // Tile root is non-interactive so the actions menu is not nested inside a
-  // button (axe nested-interactive); the overlay button is the click target.
+  const { rootProps, hit } = useDriveTileTarget({
+    file,
+    pickerChrome,
+    isTouch,
+    isFocusTarget,
+    selectionMode,
+    itemDragHandlers,
+    onSelect,
+    onOpen,
+    onLongPress,
+  });
   return (
     <div
-      onContextMenu={
-        pickerChrome
-          ? undefined
-          : (e) => {
-              if (!isTouch) {
-                e.preventDefault();
-                onLongPress();
-              }
-            }
-      }
-      draggable={!pickerChrome && !isTouch}
-      onDragStart={pickerChrome ? undefined : itemDragHandlers.onDragStart}
-      onDragEnd={pickerChrome ? undefined : itemDragHandlers.onDragEnd}
+      {...rootProps}
       {...(pickerChrome ? {} : folderDropZone)}
       className={cn(
         "group drive-folder-tile",
@@ -95,19 +94,7 @@ export function DriveFolderTile({
         !isSelected && !folderDropZone.isDropTarget && "drive-folder-tile--idle",
       )}
     >
-      <button
-        type="button"
-        aria-label={file.title}
-        className="drive-tile__hit"
-        onClick={(e) => {
-          if (lp.fired.current) return;
-          onSelect(e);
-        }}
-        onDoubleClick={selectionMode ? undefined : onOpen}
-        onTouchStart={pickerChrome ? undefined : lp.start}
-        onTouchEnd={pickerChrome ? undefined : lp.cancel}
-        onTouchMove={pickerChrome ? undefined : lp.cancel}
-      />
+      {hit}
       <DriveFileAvatar file={file} />
       <span className="drive-folder-tile__text">
         <span className="drive-folder-tile__title-row">

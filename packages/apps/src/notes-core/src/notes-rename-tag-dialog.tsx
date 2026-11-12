@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { Input } from "@/ui/input";
-import "@/notes-core/src/notes-rename-tag-dialog.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 const TAG_NAME_INPUT_ID = "notes-rename-tag-name";
 
@@ -35,67 +35,6 @@ export type NotesRenameTagDialogProps = {
   onRename: (next: string) => void;
 };
 
-function NotesRenameTagDialogForm({
-  tag,
-  existingTags,
-  labels,
-  onClose,
-  onRename,
-}: Omit<NotesRenameTagDialogProps, "open">): ReactElement {
-  const hintId = useId();
-  const [draft, setDraft] = useState(tag);
-  const normalizedDraft = normalizeTag(draft);
-  const unchanged = normalizedDraft === normalizeTag(tag);
-  const valid = isValidNewTag(draft);
-  const merges =
-    valid &&
-    !unchanged &&
-    existingTags.some((existing) => normalizeTag(existing) === normalizedDraft);
-  const describedBy = !valid || merges ? hintId : undefined;
-
-  return (
-    <>
-      <div className="notes-rename-tag-dialog__body">
-        <FieldLabelRow label={labels.renameTagNameLabel} htmlFor={TAG_NAME_INPUT_ID}>
-          <Input
-            id={TAG_NAME_INPUT_ID}
-            value={draft}
-            size="sm"
-            autoComplete="off"
-            aria-invalid={valid ? undefined : true}
-            aria-describedby={describedBy}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </FieldLabelRow>
-        {valid ? null : (
-          <p id={hintId} className="notes-rename-tag-dialog__hint" role="status">
-            {labels.tagCharsetHint}
-          </p>
-        )}
-        {merges ? (
-          <p id={hintId} className="notes-rename-tag-dialog__hint" role="status">
-            {labels.renameTagMergeHint(normalizedDraft)}
-          </p>
-        ) : null}
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
-        <Button
-          type="button"
-          variant="primary"
-          label={labels.renameTagConfirm}
-          disabled={unchanged || !valid}
-          onClick={() => {
-            if (unchanged || !valid) return;
-            onRename(draft);
-            onClose();
-          }}
-        />
-      </DialogFooter>
-    </>
-  );
-}
-
 export function NotesRenameTagDialog({
   open,
   tag,
@@ -104,23 +43,72 @@ export function NotesRenameTagDialog({
   onClose,
   onRename,
 }: NotesRenameTagDialogProps): ReactElement {
+  const hintId = useId();
+  // The draft starts over from the tag on each open.
+  const session = open ? tag : null;
+  const [draftSession, setDraftSession] = useState(session);
+  const [draft, setDraft] = useState(tag);
+  if (session !== draftSession) {
+    setDraftSession(session);
+    if (session !== null) setDraft(tag);
+  }
+
+  const normalizedDraft = normalizeTag(draft);
+  const unchanged = normalizedDraft === normalizeTag(tag);
+  const valid = isValidNewTag(draft);
+  const merges =
+    valid &&
+    !unchanged &&
+    existingTags.some((existing) => normalizeTag(existing) === normalizedDraft);
+  const hint = !valid
+    ? labels.tagCharsetHint
+    : merges
+      ? labels.renameTagMergeHint(normalizedDraft)
+      : null;
+
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="notes-dialog-surface notes-rename-tag-dialog">
+      <DialogContent className="notes-dialog-surface">
         <DialogHeader>
           <DialogTitle>{labels.renameTagTitle}</DialogTitle>
           <DialogDescription>{labels.renameTagDescription}</DialogDescription>
         </DialogHeader>
-        {open ? (
-          <NotesRenameTagDialogForm
-            key={tag}
-            tag={tag}
-            existingTags={existingTags}
-            labels={labels}
-            onClose={onClose}
-            onRename={onRename}
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label={labels.renameTagNameLabel}
+          htmlFor={TAG_NAME_INPUT_ID}
+          description={
+            hint ? (
+              <span id={hintId} role="status">
+                {hint}
+              </span>
+            ) : undefined
+          }
+        >
+          <Input
+            id={TAG_NAME_INPUT_ID}
+            value={draft}
+            {...NO_AUTOFILL}
+            aria-invalid={valid ? undefined : true}
+            aria-describedby={hint ? hintId : undefined}
+            onChange={(event) => setDraft(event.target.value)}
           />
-        ) : null}
+        </FieldLabelRow>
+        <DialogFooter>
+          <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
+          <Button
+            type="button"
+            variant="primary"
+            label={labels.renameTagConfirm}
+            disabled={unchanged || !valid}
+            onClick={() => {
+              if (unchanged || !valid) return;
+              onRename(draft);
+              onClose();
+            }}
+          />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

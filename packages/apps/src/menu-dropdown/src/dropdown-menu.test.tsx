@@ -82,4 +82,32 @@ describe("DropdownMenu submenu", () => {
     fireEvent.keyDown(screen.getByRole("button", { name: "More" }), { key: "Enter" });
     expect(row(/Print/)).toBeTruthy();
   });
+
+  it("reports the menu closed when it unmounts while open", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <DropdownMenu
+        trigger={<button type="button">More</button>}
+        items={[{ label: "Print", onClick: vi.fn() }]}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "More" }), { key: "Enter" });
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    unmount();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("reports nothing on unmount when the menu was closed", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <DropdownMenu
+        trigger={<button type="button">More</button>}
+        items={[{ label: "Print", onClick: vi.fn() }]}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    unmount();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
 });

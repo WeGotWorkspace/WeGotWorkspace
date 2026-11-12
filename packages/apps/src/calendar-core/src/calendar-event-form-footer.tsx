@@ -4,6 +4,7 @@ import { CalendarRsvpActions, CalendarRsvpSelect } from "@/calendar-core/src/cal
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { ControlSize } from "@/ui/control-size";
+import { DialogFooter } from "@/ui/dialog";
 
 export type CalendarEventFormFooterProps = {
   mode: "create" | "edit" | "invitation";
@@ -50,47 +51,51 @@ export function CalendarEventFormFooter({
   onDelete,
   onDismiss,
 }: CalendarEventFormFooterProps) {
+  const rsvpSelect = showInviteeRsvp ? (
+    <CalendarRsvpSelect
+      value={draftRsvp}
+      labels={labels}
+      busy={busy}
+      onChange={onDraftRsvpChange}
+    />
+  ) : null;
+  const deleteButton =
+    mode === "edit" && onDelete && !readOnly ? (
+      <IconButton
+        type="button"
+        variant="outline"
+        severity="danger"
+        size={controlSize}
+        icon={<Trash2 className="size-3.5" aria-hidden />}
+        label={labels.delete}
+        onClick={onDelete}
+        disabled={busy}
+      />
+    ) : null;
+  const start =
+    rsvpSelect || deleteButton ? (
+      <>
+        {rsvpSelect}
+        {deleteButton}
+      </>
+    ) : null;
+
   return (
-    <footer className="calendar-event-dialog__footer">
+    <DialogFooter start={start}>
       {showInvitationRsvp && onRsvp ? (
-        <div className="calendar-event-dialog__invitation-rsvp">
-          <CalendarRsvpActions
-            className="calendar-event-dialog__rsvp-actions"
-            currentStatus={inviteeRsvp ?? undefined}
-            labels={labels}
-            busy={busy}
-            size="sm"
-            showLabels
-            onRespond={(status) =>
-              onRsvp(status, status === "declined" ? undefined : draftCalendarId || undefined)
-            }
-          />
-        </div>
-      ) : null}
-      {showInviteeRsvp ? (
-        <CalendarRsvpSelect
-          className="calendar-event-dialog__rsvp"
-          value={draftRsvp}
+        <CalendarRsvpActions
+          currentStatus={inviteeRsvp ?? undefined}
           labels={labels}
           busy={busy}
-          onChange={onDraftRsvpChange}
-        />
-      ) : null}
-      {mode === "edit" && onDelete && !readOnly ? (
-        <IconButton
-          type="button"
-          variant="outline"
-          severity="danger"
-          size={controlSize}
-          className="calendar-event-dialog__delete"
-          icon={<Trash2 className="size-3.5" aria-hidden />}
-          label={labels.delete}
-          onClick={onDelete}
-          disabled={busy}
+          size="sm"
+          showLabels
+          onRespond={(status) =>
+            onRsvp(status, status === "declined" ? undefined : draftCalendarId || undefined)
+          }
         />
       ) : null}
       {showSaveCancel ? (
-        <div className="calendar-event-dialog__footer-end">
+        <>
           <Button
             type="button"
             variant="outline"
@@ -105,8 +110,8 @@ export function CalendarEventFormFooter({
             label={saveLabel}
             disabled={showInviteeRsvp ? !draftRsvp || busy : !valid || busy || canSubmit === false}
           />
-        </div>
+        </>
       ) : null}
-    </footer>
+    </DialogFooter>
   );
 }

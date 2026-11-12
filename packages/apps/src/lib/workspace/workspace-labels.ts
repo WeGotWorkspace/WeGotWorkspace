@@ -18,6 +18,12 @@ export type WorkspaceLabels = {
     move: string;
     done: string;
     retry: string;
+    /** Save state tag of an autosaving dialog: everything stored. */
+    saved: string;
+    /** Save state tag of an autosaving dialog: a change is on its way. */
+    saving: string;
+    /** Save state tag of an autosaving dialog: a change could not be stored. */
+    unsaved: string;
     /** Follows a permanent-delete description: "… This action cannot be undone." */
     deleteConfirmSuffix: string;
     /** Starts a permanent-delete description: "This will permanently delete …". */
@@ -71,6 +77,9 @@ export const workspaceLabels = {
     move: "Move",
     done: "Done",
     retry: "Retry",
+    saved: "Saved",
+    saving: "Saving",
+    unsaved: "Unsaved",
     deleteConfirmSuffix: "This action cannot be undone.",
     permanentDeleteLeadIn: "This will permanently delete ",
     nameField: "Name",

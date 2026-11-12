@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsEditGroupDialog,
   contactsEditGroupDialogLabelsFrom,
@@ -19,8 +18,11 @@ function render(ui: ReactNode) {
   return rtlRender(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
 
+/** The ghost trigger is named by its book; the row's caption labels it (`htmlFor`). */
 function bookTrigger() {
-  return screen.getByRole("combobox", { name: defaultContactsLabels.createGroupAddressBookLabel });
+  return screen.getByLabelText(defaultContactsLabels.createGroupAddressBookLabel, {
+    selector: "[role=combobox]",
+  });
 }
 
 function selectedBookLabel() {
@@ -80,11 +82,6 @@ describe("ContactsEditGroupDialog", () => {
 
     expect(onConfirm).toHaveBeenCalledWith("Close Friends");
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    const title = screen.getByText(defaultContactsLabels.renameGroup);
-    const icon = title.querySelector(".contacts-group-icon") as HTMLElement | null;
-    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe(
-      addressBookDotColor({ id: "default" }),
-    );
   });
 
   it("shows a disabled address-book dropdown bound to the group's book", () => {

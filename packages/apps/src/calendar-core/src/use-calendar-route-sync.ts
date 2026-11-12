@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useParams, useRouter } from "@tanstack/react-router";
-import {
-  persistCalendarRoutePrefs,
-  readCalendarViewPrefs,
-} from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 import {
   calendarNavigateTarget,
   calendarPathFromState,
@@ -47,7 +44,7 @@ export function useCalendarRouteSync() {
       calendarStateFromLocation(
         location.pathname,
         params,
-        readCalendarViewPrefs(),
+        calendarViewPrefs.read(),
         location.search as Record<string, unknown>,
       ),
     [location.pathname, location.search, params],
@@ -75,8 +72,8 @@ export function useCalendarRouteSync() {
   useEffect(() => {
     const live = liveCalendarLocation(router);
     if (!isCalendarPathname(live.pathname)) return;
-    persistCalendarRoutePrefs(routeState.view, routeState.presentation);
-    const prefs = readCalendarViewPrefs();
+    calendarViewPrefs.patch({ view: routeState.view, presentation: routeState.presentation });
+    const prefs = calendarViewPrefs.read();
     const next = calendarStateFromLocation(
       live.pathname,
       {},

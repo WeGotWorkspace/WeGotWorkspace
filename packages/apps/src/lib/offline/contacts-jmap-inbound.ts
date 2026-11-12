@@ -2,6 +2,7 @@ import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 import {
   listCachedCardsForAddressBook,
   listPendingContactCardIds,
+  readCachedContactCard,
   readContactsBootstrapFromCache,
   removeAddressBookFromCache,
   removeContactCardFromCache,
@@ -111,29 +112,26 @@ export async function reconcileContactsSnapshot(
 }
 
 /**
- * Reconcile one address book after a full card resync.
- * Missing from this book's list drops only that membership. A card that still
- * belongs to other books stays; a card left with no books is deleted.
- * Pending local writes are left untouched.
+ * A card the full list of one address book lacks: it left that book. A card
+ * that still belongs to another book stays with that membership; a card left
+ * with no book is deleted. A pending local write is left untouched. True when
+ * the cache changed.
  */
-export async function reconcileAddressBookResync(
+export async function ingestRemoteContactCardListedAway(
   username: string,
+  cardId: string,
   addressBookId: string,
-  remoteCards: ContactCard[],
-): Promise<void> {
+): Promise<boolean> {
   const pending = await pendingSet(username);
-  const remoteIds = new Set(remoteCards.map((card) => card.id).filter(Boolean));
-  const cached = await readContactsBootstrapFromCache(username);
-  for (const card of cached?.data.cards ?? []) {
-    if (!card.id || remoteIds.has(card.id) || pending.has(card.id)) continue;
-    const membership = { ...(card.addressBookIds ?? {}) };
-    if (membership[addressBookId] !== true) continue;
-    delete membership[addressBookId];
-    const stillInAnotherBook = Object.values(membership).some((included) => included === true);
-    if (!stillInAnotherBook) {
-      await removeContactCardFromCache(username, card.id);
-      continue;
-    }
+  if (pending.has(cardId)) return false;
+  const card = await readCachedContactCard(username, cardId);
+  const membership = { ...(card?.addressBookIds ?? {}) };
+  if (!card || membership[addressBookId] !== true) return false;
+  delete membership[addressBookId];
+  if (Object.values(membership).some((included) => included === true)) {
     await upsertContactCardInCache(username, { ...card, addressBookIds: membership });
+  } else {
+    await removeContactCardFromCache(username, cardId);
   }
+  return true;
 }

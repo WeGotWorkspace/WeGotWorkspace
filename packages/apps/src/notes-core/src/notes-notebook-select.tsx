@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import type { ControlSize } from "@/ui/control-size";
 import { COLLECTION_SELECT_CREATE_VALUE, CollectionSelect } from "@/ui/collection-select";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ export type NotesNotebookSelectProps = {
   notebooks: NotesNotebookSelectItem[];
   value: NotesNotebookSelectValue;
   labels: Pick<NotesUILabels, "addNotebook" | "toolbarMoveToNotebook">;
+  /** Trigger id, for a field label's `htmlFor`. */
+  id?: string;
   ariaLabel?: string;
   disabled?: boolean;
   className?: string;
@@ -115,6 +117,7 @@ export function NotesNotebookSelect({
   notebooks,
   value,
   labels,
+  id,
   ariaLabel,
   disabled = false,
   className,
@@ -125,10 +128,10 @@ export function NotesNotebookSelect({
   createSelected = false,
 }: NotesNotebookSelectProps): ReactElement {
   const items = notebooksWithCurrent(notebooks, value);
-  const selected =
-    createSelected && onCreateNotebook
-      ? NOTES_CREATE_NOTEBOOK_VALUE
-      : resolveNotebookSelectValue(items, value);
+  const creating = createSelected && !!onCreateNotebook;
+  const selected = creating
+    ? NOTES_CREATE_NOTEBOOK_VALUE
+    : resolveNotebookSelectValue(items, value);
   // Prefer the notebook name so swatch chrome stays labeled for AT / tooltip.
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
 
@@ -140,9 +143,9 @@ export function NotesNotebookSelect({
         color: notebookDotColor(notebook),
       }))}
       value={selected}
-      dot={<NotesNotebookColorDot />}
+      dot={<CollectionColorDot />}
       color={notebookDotColor(value)}
-      triggerLabel={value.name}
+      triggerLabel={creating ? labels.addNotebook : value.name}
       accessibleName={accessibleName}
       triggerVariant={triggerVariant}
       size={size}
@@ -152,6 +155,7 @@ export function NotesNotebookSelect({
         className,
       )}
       menuClassName="collection-ghost-select__menu"
+      id={id}
       disabled={disabled}
       create={
         onCreateNotebook ? { label: labels.addNotebook, onSelect: onCreateNotebook } : undefined

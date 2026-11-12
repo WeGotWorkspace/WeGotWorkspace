@@ -138,6 +138,13 @@ export type DestroyOutcome = "removed" | "skipped-pending";
 export type ScopedInboundApplier<Row> = {
   ingest(row: Row): Promise<IngestOutcome>;
   ingestDestroyed(id: string): Promise<DestroyOutcome>;
+  /**
+   * An item the full list of `scope` lacks, where an item can sit in more than
+   * one scope (a contact in two address books): it leaves that scope, which is
+   * not always a delete. Without it, the item is destroyed. True when the cache
+   * changed.
+   */
+  ingestListedAway?(id: string, scope: string): Promise<boolean>;
   /** Ids whose skipped change holds their scope's token (see `PendingWrite.blocksToken`). */
   blocksToken: ReadonlySet<string>;
 };
@@ -186,7 +193,8 @@ export async function runScopedInbound<
   let usedFullResync = false;
   const deltas: ScopeDelta[] = [];
   const listedRows = new Map<string, Row>();
-  const removed: string[] = [];
+  /** Cached items a full list lacked, with the scope that lacked them. */
+  const removed: { id: string; scope: string }[] = [];
   const cached = await binding.readCached();
 
   const fullList = async (scope: string) => {
@@ -195,7 +203,7 @@ export async function runScopedInbound<
     for (const row of rows) listedRows.set(binding.rowId(row), row);
     const listed = new Set(rows.map((row) => binding.rowId(row)));
     const inScope = cached.items.filter((item) => item.scope === scope);
-    removed.push(...listRemovedIds(inScope, listed, cached.keep));
+    for (const id of listRemovedIds(inScope, listed, cached.keep)) removed.push({ id, scope });
     deltas.push({
       scope,
       created: [...listed],
@@ -231,10 +239,13 @@ export async function runScopedInbound<
   for (const delta of deltas) for (const id of delta.updated) upserted.add(id);
   const destroyed = new Set<string>();
   for (const delta of deltas) for (const id of delta.destroyed) destroyed.add(id);
-  for (const id of removed) destroyed.add(id);
+  const applier = await binding.createApplier();
+  // A domain whose items sit in several scopes takes a full list's removals one
+  // scope at a time; a destroy named by `/changes` still wins.
+  const listedAway = applier.ingestListedAway?.bind(applier);
+  if (!listedAway) for (const { id } of removed) destroyed.add(id);
   const destroyIds = [...destroyed].filter((id) => !upserted.has(id));
 
-  const applier = await binding.createApplier();
   const skipped = new Set<string>();
   for (const id of upserted) {
     const row = listedRows.get(id) ?? (await binding.fetch(id));
@@ -246,6 +257,11 @@ export async function runScopedInbound<
     const result = await applier.ingestDestroyed(id);
     if (result === "skipped-pending" && applier.blocksToken.has(id)) skipped.add(id);
     if (result === "removed") changed = true;
+  }
+  // A full list's delta names no removals, so a skipped one holds no token.
+  for (const { id, scope } of listedAway ? removed : []) {
+    if (destroyed.has(id) || upserted.has(id)) continue;
+    if (await listedAway?.(id, scope)) changed = true;
   }
   for (const delta of deltas) {
     const held = [...delta.created, ...delta.updated, ...delta.destroyed].some((id) =>

@@ -12,6 +12,7 @@
  */
 export const liveTierSpecs = [
   "calendar-far-week-event",
+  "calendar-list-autosave-reload",
   "calendar-offline-week-event",
   "calendar-push",
   "calendar-team-availability-offline",
@@ -108,6 +109,20 @@ export const tasksSyncMatrixSpecPattern = /tasks-sync-matrix\.spec\.ts/;
  * the Notes matrix.
  */
 export const docsSyncMatrixSpecPattern = /docs-sync-matrix\.spec\.ts/;
+
+/**
+ * Contacts sync matrix (#1565): the inbound cases (changes token on reload and
+ * on reconnect, full-list fallback, queued-write conflict check). Its own
+ * nightly job, like the Notes matrix.
+ */
+export const contactsSyncMatrixSpecPattern = /contacts-sync-matrix\.spec\.ts/;
+
+/**
+ * Calendar sync matrix (#1565): the open tab's inbound cases (changes through
+ * CalendarEvent/changes, full-list fallback, queued-write conflict check). Its
+ * own nightly job, like the Contacts matrix.
+ */
+export const calendarSyncMatrixSpecPattern = /calendar-sync-matrix\.spec\.ts/;
 
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;

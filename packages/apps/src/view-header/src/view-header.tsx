@@ -2,6 +2,8 @@ import type { ReactNode, RefObject } from "react";
 import { WorkspaceSidebarToggle } from "@/workspace-shell/src/workspace-app-layout";
 import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, type DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
+import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
 
 import "./view-header.css";
@@ -38,6 +40,12 @@ type ViewHeaderProps = {
    * Stays with the title in stacked / narrow layouts.
    */
   titleSuffix?: ReactNode;
+  /**
+   * Makes the title a ghost dropdown with these entries (e.g. Calendar: the period
+   * views, then Today).
+   */
+  titleMenu?: DropdownMenuEntry[];
+  onTitleMenuOpenChange?: (open: boolean) => void;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
   sidebarOpen?: boolean;
@@ -61,6 +69,8 @@ export function ViewHeader({
   titleLeading,
   titleTrailing,
   titleSuffix,
+  titleMenu,
+  onTitleMenuOpenChange,
   hideSidebarToggle = false,
   sidebarOpen = false,
   onToggleSidebar,
@@ -79,6 +89,24 @@ export function ViewHeader({
     searchDebounceMs,
     searchMinLength,
   });
+
+  const searchField = searchPlaceholder ? (
+    <CollectionSearchInput
+      inputRef={searchInputRef}
+      value={query}
+      onChange={setQuery}
+      placeholder={searchPlaceholder}
+    />
+  ) : null;
+
+  const titleText = compactTitle ? (
+    <>
+      <span className="view-header__title-full">{title}</span>
+      <span className="view-header__title-compact">{compactTitle}</span>
+    </>
+  ) : (
+    title
+  );
 
   return (
     <>
@@ -104,14 +132,23 @@ export function ViewHeader({
                 {titlePrefix ? (
                   <div className="view-header__title-prefix">{titlePrefix}</div>
                 ) : null}
-                <h2 className="view-header__title" tabIndex={-1}>
-                  {compactTitle ? (
-                    <>
-                      <span className="view-header__title-full">{title}</span>
-                      <span className="view-header__title-compact">{compactTitle}</span>
-                    </>
+                <h2
+                  className={cn("view-header__title", titleMenu && "view-header__title--menu")}
+                  tabIndex={-1}
+                >
+                  {titleMenu ? (
+                    <DropdownMenu
+                      items={titleMenu}
+                      onOpenChange={onTitleMenuOpenChange}
+                      trigger={
+                        <CollectionGhostButton
+                          className="view-header__title-menu"
+                          label={titleText}
+                        />
+                      }
+                    />
                   ) : (
-                    title
+                    titleText
                   )}
                 </h2>
                 {titleSuffix ? (
@@ -128,18 +165,13 @@ export function ViewHeader({
           </div>
         </div>
       </div>
-      {searchPlaceholder ? (
+      {searchField ? (
         <div
           className="view-header__search-stack"
           data-hidden={searchHidden ? "true" : undefined}
           inert={searchHidden || undefined}
         >
-          <CollectionSearchInput
-            inputRef={searchInputRef}
-            value={query}
-            onChange={setQuery}
-            placeholder={searchPlaceholder}
-          />
+          {searchField}
         </div>
       ) : null}
     </>

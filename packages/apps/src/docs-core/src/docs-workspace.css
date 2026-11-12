@@ -292,11 +292,19 @@
   .text-editor-sheet__surface {
   display: block;
   flex: none;
-  width: min(100%, var(--docs-sheet-width));
-  max-width: var(--docs-sheet-width);
   /* height / min-height: shared `.paper-sheet` + `--paper-sheet-min-height`. */
   margin-inline: auto;
   margin-block: 0;
+}
+
+/* One sheet: the letter width. Pages set their own width (the paper size), so the
+ * column hugs them and the auto margins keep them centred when the size changes. */
+.docs-workspace__editor
+  .text-editor:not(.text-editor--view-source)
+  .text-editor-sheet--fill:not(.text-editor-sheet--paginated)
+  .text-editor-sheet__surface {
+  width: min(100%, var(--docs-sheet-width));
+  max-width: var(--docs-sheet-width);
 }
 
 .docs-workspace__editor

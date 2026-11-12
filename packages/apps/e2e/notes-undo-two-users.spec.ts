@@ -17,10 +17,12 @@ import {
   openNotesTab,
   openUser,
   OWNER,
+  pickNotebook,
   PRIVATE_NOTEBOOK_NAME,
   serverNote,
   sleep,
   TEAM_NOTEBOOK,
+  TEAM_NOTEBOOK_NAME,
   TEAMMATE,
   type ServerNote,
   type Tab,
@@ -231,14 +233,7 @@ test.describe("Notes Undo seen by the other person", () => {
       await actThenUndo("move", {
         setup,
         act: async () => {
-          await a.locator(".color-swatch-trigger").first().click();
-          await sleep(300);
-          await a
-            .locator("[role='menuitem'], [role='option'], [role='menuitemradio']", {
-              hasText: PRIVATE_NOTEBOOK_NAME,
-            })
-            .first()
-            .click();
+          await pickNotebook(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
           const dialog = a.getByRole("alertdialog").or(a.getByRole("dialog"));
           await dialog.first().getByRole("button", { name: /move/i }).first().click();
         },

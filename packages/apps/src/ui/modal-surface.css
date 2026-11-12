@@ -4,7 +4,8 @@
   --modal-inset: 1rem;
   --modal-close-size: var(--control-height-md, 2.25rem);
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
-  --modal-max-width: 32rem;
+  /* Wide enough for a field in the two-thirds column; a confirm stays narrow. */
+  --modal-max-width: 36rem;
   --modal-max-height: 100dvh;
   @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
 }
@@ -14,6 +15,10 @@
  * suppress the native :focus-visible ring (thick blue rounded outline). Button
  * / close / toggle rings stay on those primitives.
  */
+.ui-modal-surface[role="alertdialog"] {
+  --modal-max-width: 32rem;
+}
+
 .ui-modal-surface:focus,
 .ui-modal-surface:focus-visible {
   @apply outline-none;
@@ -31,7 +36,9 @@
  */
 .ui-modal-surface--center {
   --control-height-md: var(--control-height-sm, 2rem);
-  --input-height: var(--control-height-sm, 2rem);
+  --input-height: calc(var(--control-height-sm, 2rem) + var(--input-height-step, 0px));
+  /* Labels a touch quieter than the values they name (descriptions are quieter still). */
+  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 85%, transparent);
   @apply flex flex-col;
   /* Center with the individual `translate` property only — never also set
    * `transform: translate(...)`. Prod Lightning CSS drops `translate: none`
@@ -47,6 +54,9 @@
   max-height: min(var(--modal-max-height), 100dvh);
   overflow: hidden;
   gap: 1rem;
+  /* One step rounder than the controls inside; the sidebar edge hairline. */
+  border-radius: calc(var(--control-radius-button) + 0.25rem);
+  border-color: var(--workspace-divider-color);
 }
 
 /*
@@ -101,6 +111,25 @@
   padding-inline-end: var(--modal-header-end);
 }
 
+/* A dialog with a footer has no corner close (dialog-close-button.css): no room kept. */
+.ui-modal-surface:has(.ui-modal-footer) {
+  --modal-header-end: 0px;
+}
+
+/* `end`: a status (the autosave tag) at the end of the title row, centred on the title's first line. */
+.ui-modal-header--split {
+  @apply flex-row items-start justify-between gap-4;
+}
+
+.ui-modal-header__text {
+  @apply flex min-w-0 flex-1 flex-col gap-1.5;
+}
+
+.ui-modal-header__end {
+  @apply flex shrink-0 items-center;
+  min-height: var(--modal-title-line-height, 1.75rem);
+}
+
 /*
  * Body/form grow with content (flex-basis: auto). When the surface hits
  * max-height they shrink (min-height: 0) and the body scrolls — no empty
@@ -112,22 +141,62 @@
 }
 
 .ui-modal-form {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  /* Same gap as the surface: a footer inside the form sits as far from the body. */
+  @apply flex min-h-0 flex-col gap-4;
   flex: 1 1 auto;
 }
 
-/* Component that renders a <form> (e.g. CalendarEventForm) still pins its footer. */
+/*
+ * Component that renders a <form> (e.g. CalendarEventForm) still pins its footer.
+ * No clipping here: the form's own field list scrolls above it.
+ */
 .ui-modal-body:has(> form) {
-  @apply flex flex-col overflow-hidden;
+  @apply flex flex-col overflow-visible;
 }
 
 .ui-modal-body > form {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-col;
   flex: 1 1 auto;
 }
 
 .ui-modal-footer {
   @apply shrink-0;
-  padding-block-start: 0.5rem;
   background-color: var(--background, var(--workspace-surface));
+}
+
+/* Centered dialogs: no rule above the footer, the space where it was instead. */
+.ui-modal-surface--center .ui-modal-footer {
+  padding-top: var(--modal-inset);
+}
+
+/* `DialogFooter start`: a side action at the start, the answers at the end. */
+.ui-modal-footer--split {
+  @apply flex flex-row flex-wrap items-center gap-2;
+}
+
+.ui-modal-footer__start {
+  @apply flex items-center gap-2;
+}
+
+.ui-modal-footer__end {
+  @apply ms-auto flex flex-wrap items-center justify-end gap-2;
+}
+
+/* A text button at the start ("Open in Settings", "Delete the notes too") lines its text
+ * up with the content, like a link; a ghost one is muted. Icon buttons keep their box. */
+.ui-modal-footer__start > .button--variant-ghost:first-child:not([class*="icon-button--"]) {
+  margin-inline-start: -0.75rem;
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.ui-modal-footer__start
+  > .button--variant-outline:first-child:not([class*="icon-button--"], .button--severity-danger) {
+  margin-inline-start: calc(-0.75rem - 1px);
+}
+
+/* A destructive text button ("Discard note", "Delete the notes too") keeps a 10% wash at
+ * rest so its 14px text stays above 4.5:1; hover deepens to the canonical wash. */
+.ui-modal-footer__start
+  > .button--severity-danger:not([class*="icon-button--"]):not(:hover, :focus-visible) {
+  background-color: color-mix(in oklab, var(--button-severity-color) 10%, transparent);
 }

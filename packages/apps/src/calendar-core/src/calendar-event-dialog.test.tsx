@@ -15,6 +15,9 @@ import type { ContactCard } from "@/lib/models/contacts-types";
 
 const bootstrap = createCalendarAppBootstrap();
 
+/** A participant's remove button: "Remove participant: <name>". */
+const REMOVE_PARTICIPANT = new RegExp(`^${defaultCalendarLabels.eventAttendeesRemove}: `);
+
 function renderDialog(overrides: Partial<React.ComponentProps<typeof CalendarEventDialog>> = {}) {
   const onSave = vi.fn();
   const onClose = vi.fn();
@@ -151,7 +154,8 @@ describe("CalendarEventDialog", () => {
     const url = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     expect(url.value).toBe(form.meetingUrl);
     expect(url.readOnly).toBe(false);
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeTruthy();
+    // The link stays selectable in its field; Join lives in the Meet menu, no copy button.
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeNull();
   });
 
   it("hides time inputs for all-day events and shows locale date triggers", () => {
@@ -223,7 +227,7 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
-  it("lays out schedule fields with icon FieldLabelRows, Location+Meet group, and Invitees/Alarms/Notes band", () => {
+  it("lays out schedule fields as inline FieldLabelRows, Location+Meet group, and Invitees/Alarms/Notes band", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
@@ -231,7 +235,9 @@ describe("CalendarEventDialog", () => {
     };
     renderDialog({ form, locale: "en-US" });
     expect(document.querySelector(".calendar-event-dialog__fields")).not.toBeNull();
-    expect(document.querySelector(".field-label-row--icon")).not.toBeNull();
+    // The dialog norm: caption left, control right; icon-only labels are the popover's.
+    expect(document.querySelector(".field-label-row--inline")).not.toBeNull();
+    expect(document.querySelector(".field-label-row--icon")).toBeNull();
     expect(
       screen.getByRole("button", {
         name: new RegExp(`${defaultCalendarLabels.eventStartLabel}:`, "i"),
@@ -269,10 +275,19 @@ describe("CalendarEventDialog", () => {
     const whenGroup = document.querySelector(".calendar-event-dialog__field-group--when");
     const meet = document.querySelector(".calendar-event-dialog__field--meet");
     const invitees = document.querySelector(".calendar-event-dialog__field--invitees");
-    const whenMeta = document.querySelector(".calendar-event-dialog__when-meta");
     const startCol = document.querySelector(".calendar-event-dialog__secondary-start");
     expect(placeGroup?.contains(meet)).toBe(true);
-    expect(whenGroup?.contains(whenMeta)).toBe(true);
+    // All day and the time zone are rows of the When group (no separate meta band).
+    expect(
+      whenGroup?.contains(
+        screen.getByRole("switch", { name: defaultCalendarLabels.eventAllDayLabel }),
+      ),
+    ).toBe(true);
+    expect(
+      whenGroup?.contains(
+        screen.getByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
+      ),
+    ).toBe(true);
     expect(startCol?.contains(invitees)).toBe(true);
     expect(startCol?.contains(meet)).toBe(false);
     expect(document.querySelectorAll(".calendar-event-dialog__fields > .card").length).toBe(0);
@@ -311,7 +326,7 @@ describe("CalendarEventDialog", () => {
     const showAs = screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs });
     const showAsRow = showAs.closest(".field-label-row");
     const notesRow = screen
-      .getByPlaceholderText(defaultCalendarLabels.eventNotesLabel)
+      .getByRole("textbox", { name: defaultCalendarLabels.eventNotesLabel })
       .closest(".field-label-row");
     expect(showAsRow).not.toBeNull();
     expect(showAs.closest(".card")).toBeNull();
@@ -499,7 +514,7 @@ describe("CalendarEventDialog", () => {
     });
     expect(screen.getAllByText("Wouter")).toHaveLength(1);
     const removeButtons = screen.getAllByRole("button", {
-      name: defaultCalendarLabels.eventAttendeesRemove,
+      name: REMOVE_PARTICIPANT,
     });
     expect(removeButtons.filter((button) => !button.hasAttribute("disabled"))).toHaveLength(1);
   });
@@ -528,7 +543,7 @@ describe("CalendarEventDialog", () => {
     );
   });
 
-  it("shows participants as RSVP-washed UserChips with a remove control", () => {
+  it("shows participants as RSVP-washed suite tags with a remove control", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -543,23 +558,22 @@ describe("CalendarEventDialog", () => {
     };
     renderDialog({ form });
     const name = screen.getByText("Carol");
-    const chip = name.closest(".user-chip");
-    expect(chip).not.toBeNull();
-    expect(chip!.classList.contains("calendar-invitees-card__chip")).toBe(true);
-    expect(chip!.querySelector(".user-chip__mark")).toBeTruthy();
-    expect(chip!.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
+    const tag = name.closest(".tag");
+    expect(tag).not.toBeNull();
+    expect(tag!.closest(".calendar-invitees-card__tag")).not.toBeNull();
+    // The RSVP is the tag's dot and wash (pending here, not accepted).
+    expect(tag!.querySelector(".tag__dot")).toBeTruthy();
+    expect(tag!.classList.contains("calendar-invitees-status-mark--pending")).toBe(true);
+    expect(tag!.classList.contains("calendar-invitees-rsvp-tag--accepted")).toBe(false);
     expect(
       screen.getByLabelText(new RegExp(`${defaultCalendarLabels.eventAttendeesRsvpNeedsAction}`)),
     ).toBeTruthy();
-    expect(chip!.querySelector(".user-chip__mark svg")).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
-    expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: REMOVE_PARTICIPANT })).toBeTruthy();
     expect(name.closest(".calendar-invitees-card")).not.toBeNull();
   });
 
-  it("can remove a participant from a UserChip", () => {
+  it("can remove a participant from its tag", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -578,18 +592,16 @@ describe("CalendarEventDialog", () => {
     expect(
       screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpAccepted)),
     ).toBeTruthy();
-    expect(document.querySelector(".calendar-invitees-card .user-chip")).toBeTruthy();
+    expect(document.querySelector(".calendar-invitees-card .tag")).toBeTruthy();
     expect(
       document.querySelector(".calendar-invitees-card .calendar-invitees-rsvp-tag--accepted"),
     ).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
-    fireEvent.click(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: REMOVE_PARTICIPANT }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attendees: [] }));
   });
 
-  it("shows RSVP wash and icon on participant chips without the username meta", () => {
+  it("shows the RSVP wash and dot on participant tags without the username meta", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -626,9 +638,9 @@ describe("CalendarEventDialog", () => {
       screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)),
     ).toBeTruthy();
     expect(document.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
-    expect(
-      document.querySelectorAll(".calendar-invitees-card .user-chip").length,
-    ).toBeGreaterThanOrEqual(2);
+    expect(document.querySelectorAll(".calendar-invitees-card .tag").length).toBeGreaterThanOrEqual(
+      2,
+    );
   });
 
   it("lists the organizer without a remove control and guests with one", () => {
@@ -664,7 +676,7 @@ describe("CalendarEventDialog", () => {
       ),
     ).toBeNull();
     const removeButtons = screen.getAllByRole("button", {
-      name: defaultCalendarLabels.eventAttendeesRemove,
+      name: REMOVE_PARTICIPANT,
     });
     expect(removeButtons).toHaveLength(1);
     expect(removeButtons[0].hasAttribute("disabled")).toBe(false);
@@ -684,9 +696,7 @@ describe("CalendarEventDialog", () => {
     expect(
       screen.queryByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)),
     ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: REMOVE_PARTICIPANT })).toBeNull();
   });
 
   it("states that email delivery is unavailable when canSubmitEmail is false", () => {
@@ -756,9 +766,7 @@ describe("CalendarEventDialog", () => {
       ).toBe(true);
     }
     expect(screen.queryByLabelText(defaultCalendarLabels.eventAttendeesAdd)).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: REMOVE_PARTICIPANT })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.cancel })).toBeTruthy();
@@ -1018,7 +1026,7 @@ describe("CalendarEventDialog", () => {
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
     expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd)).toBeTruthy();
     const removeButtons = screen.getAllByRole("button", {
-      name: defaultCalendarLabels.eventAttendeesRemove,
+      name: REMOVE_PARTICIPANT,
     });
     expect(removeButtons).toHaveLength(1);
     expect(removeButtons[0].hasAttribute("disabled")).toBe(false);

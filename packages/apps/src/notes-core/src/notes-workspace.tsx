@@ -659,6 +659,7 @@ export function NotesWorkspace({
         value={notebookSelectValueForNotes(notes, moveDialog?.ids, selectNotebooks)}
         createdNotebook={createdMoveDraft}
         labels={L}
+        fieldLabel={L.importDestinationLegend}
         onClose={() => {
           setMoveDialog(null);
           setCreatedMoveDraft(null);

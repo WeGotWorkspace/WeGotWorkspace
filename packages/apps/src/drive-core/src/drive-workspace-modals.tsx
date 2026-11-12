@@ -1,13 +1,5 @@
-import { Button, buttonVariants } from "@/button/src/button";
-import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { buttonVariants } from "@/button/src/button";
+import { RenameFileDialog } from "@/dialogs/src/rename-file-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,8 +68,10 @@ export function DriveWorkspaceModals({
   } = controller;
 
   const renameTarget = renameDialog ? fileById(renameDialog.id) : null;
-  const renameExtension = renameDialog?.extension || undefined;
-  const canSubmitRename = renameName.trim().length > 0;
+  const closeRename = () => {
+    setRenameDialog(null);
+    setRenameName("");
+  };
   const trashIncludesForeign =
     confirmDelete != null &&
     !confirmDelete.permanent &&
@@ -110,48 +104,24 @@ export function DriveWorkspaceModals({
         onConfirm={submitCreateFolder}
       />
 
-      <Dialog
+      <RenameFileDialog
         open={!!renameDialog}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRenameDialog(null);
-            setRenameName("");
-          }
-        }}
-      >
-        <DialogContent className="drive-dialog-surface">
-          <DialogHeader>
-            <DialogTitle>{labels.renameDialogTitle}</DialogTitle>
-            <DialogDescription>
-              {renameTarget?.kind === "folder"
-                ? labels.renameDialogDescriptionFolder
-                : labels.renameDialogDescription}
-            </DialogDescription>
-          </DialogHeader>
-          <RenameFilenameField
-            autoFocus
-            placeholder="Name"
-            baseName={renameName}
-            extension={renameExtension}
-            onBaseNameChange={setRenameName}
-            onEnter={submitRenameItem}
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setRenameDialog(null);
-                setRenameName("");
-              }}
-            >
-              {labels.cancel}
-            </Button>
-            <Button variant="primary" onClick={submitRenameItem} disabled={!canSubmitRename}>
-              {labels.renameAction}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={labels.renameDialogTitle}
+        description={
+          renameTarget?.kind === "folder"
+            ? labels.renameDialogDescriptionFolder
+            : labels.renameDialogDescription
+        }
+        placeholder="Name"
+        cancelLabel={labels.cancel}
+        confirmLabel={labels.renameAction}
+        baseName={renameName}
+        extension={renameDialog?.extension}
+        surfaceClassName="drive-dialog-surface"
+        onBaseNameChange={setRenameName}
+        onClose={closeRename}
+        onSubmit={submitRenameItem}
+      />
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <AlertDialogContent>

@@ -1,6 +1,10 @@
 @import "../../styles.css" reference;
 
-/* Name field and the folder browser are siblings in the modal body. */
-.drive-create-markdown-dialog .ui-modal-body {
-  @apply flex flex-col gap-4;
+/* The Name row, the Location row with its list, and an error. Rows bring their own room. */
+.drive-create-markdown-dialog__fields {
+  @apply flex flex-col;
+}
+
+.drive-create-markdown-dialog__fields > [role="alert"] {
+  @apply mt-3;
 }

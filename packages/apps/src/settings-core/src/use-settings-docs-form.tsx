@@ -37,6 +37,6 @@ export function useSettingsDocsForm() {
     write: writeDocsPageSetupPrefs,
     subscribe: subscribeDocsPageSetup,
     saved: { panelId: "docs", sliceId: "docs-page-setup" },
-    messages: { success: labels.settingsSaved, error: labels.settingsSaveError },
+    saveError: labels.settingsSaveError,
   });
 }

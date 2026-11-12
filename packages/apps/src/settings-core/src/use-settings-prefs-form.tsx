@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
 import {
   useForm,
   type DefaultValues,
@@ -7,17 +6,17 @@ import {
   type Resolver,
   type UseFormReturn,
 } from "react-hook-form";
-import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
-import { useRegisterSettingsDialogSave } from "@/settings-core/src/settings-dialog-pane-actions";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { useFormAutosave } from "@/hooks/use-form-autosave";
 import {
   notifySettingsSliceSaved,
   type SettingsSliceSavedEvent,
 } from "@/settings-core/src/settings-slice-saved";
 
 /**
- * One place for a settings pane whose choices wait for Save: the form, the toast, the
- * saved event, and the Save in both the Settings app (pane button) and the app settings
- * dialog (footer, next to Cancel). A pane built on this cannot miss either Save.
+ * One place for a settings pane of preferences: the form, autosave, the error toast and
+ * the saved event. Preferences save as the user changes them (suite norm), in the
+ * Settings app and in the app settings dialog alike, so neither shows a Save button.
  */
 
 export type SettingsPrefsFormOptions<T extends FieldValues> = {
@@ -29,25 +28,25 @@ export type SettingsPrefsFormOptions<T extends FieldValues> = {
   /** Stored values changed elsewhere (another tab, another editor). Followed while clean. */
   subscribe?: (listener: () => void) => () => void;
   saved: SettingsSliceSavedEvent;
-  messages: { success: string; error: string };
+  /** Toast when storage rejects the values. */
+  saveError: string;
 };
 
 export type SettingsPrefsForm<T extends FieldValues> = {
   form: UseFormReturn<T>;
-  save: () => Promise<void>;
 };
 
 export function useSettingsPrefsForm<T extends FieldValues>(
   options: SettingsPrefsFormOptions<T>,
 ): SettingsPrefsForm<T> {
-  const runWithAppToast = useRunWithAppToast();
+  const { showError } = useAppToast();
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const [defaultValues] = useState(options.read);
   const form = useForm<T>({
     resolver: options.resolver,
     defaultValues: defaultValues as DefaultValues<T>,
-    mode: "onSubmit",
+    mode: "onChange",
   });
 
   const { isDirty } = form.formState;
@@ -61,23 +60,17 @@ export function useSettingsPrefsForm<T extends FieldValues>(
     });
   }, [form, subscribe]);
 
-  const save = form.handleSubmit(async (values) => {
-    const { write, read, saved, messages } = optionsRef.current;
-    await runWithAppToast(
-      async () => {
-        if (!write(values)) throw new Error(messages.error);
-        form.reset(read());
-        notifySettingsSliceSaved(saved);
-      },
-      {
-        success: messages.success,
-        successOptions: { icon: <Check className="size-4" /> },
-        mapError: (error) => (error instanceof Error ? error.message : messages.error),
-      },
-    );
+  const save = form.handleSubmit((values) => {
+    const { write, read, saved, saveError } = optionsRef.current;
+    if (!write(values)) {
+      showError(saveError);
+      return;
+    }
+    form.reset(read());
+    notifySettingsSliceSaved(saved);
   });
 
-  useRegisterSettingsDialogSave(save, !isDirty);
+  useFormAutosave(form, save);
 
-  return { form, save };
+  return { form };
 }

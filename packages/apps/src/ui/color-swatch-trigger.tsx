@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
 import "./input.css";
@@ -16,7 +16,10 @@ export type ColorSwatchTriggerProps = React.ComponentPropsWithoutRef<"button"> &
   size?: ControlSize;
 };
 
-/** Shared control-surface trigger: color dot + chevron (dialogs + pickers). */
+/**
+ * The color or collection dropdown: a dot + chevron, ghost like every dropdown in the
+ * suite (no fill or border, the ink wash on hover and while open).
+ */
 export const ColorSwatchTrigger = React.forwardRef<HTMLButtonElement, ColorSwatchTriggerProps>(
   function ColorSwatchTrigger(
     {
@@ -57,7 +60,7 @@ export const ColorSwatchTrigger = React.forwardRef<HTMLButtonElement, ColorSwatc
           />
         ) : null}
         {children ? <span className="color-swatch-trigger__caption">{children}</span> : null}
-        <ChevronsUpDown className="color-swatch-trigger__chevron" aria-hidden />
+        <ChevronDown className="color-swatch-trigger__chevron" aria-hidden />
       </button>
     );
   },

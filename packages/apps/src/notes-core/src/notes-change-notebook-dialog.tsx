@@ -1,13 +1,5 @@
-import { useState, type ReactElement } from "react";
-import { Button } from "@/button/src/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import type { ReactElement } from "react";
+import { CollectionMoveDialog } from "@/ui/collection-move-dialog";
 import { cn } from "@/lib/utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
@@ -34,6 +26,8 @@ export type NotesChangeNotebookDialogProps = {
     | "changeNotebookConfirm"
     | "dialogCancel"
   >;
+  /** Caption of the picker row. Without it the picker stands alone. */
+  fieldLabel?: string;
   description?: string;
   contentClassName?: string;
   onClose: () => void;
@@ -47,7 +41,7 @@ export type NotesChangeNotebookDialogProps = {
   requireChange?: boolean;
   /** Keeps confirm from firing again while the caller is still finishing. */
   confirmDisabled?: boolean;
-  /** Third, destructive footer action — e.g. "Delete the notes too". */
+  /** Destructive side action at the start of the footer — e.g. "Delete the notes too". */
   destructiveAction?: { label: string; onAction: () => void };
 };
 
@@ -55,78 +49,14 @@ function toSelectItem(value: NotesNotebookSelectValue): NotesNotebookSelectItem 
   return { id: value.id ?? value.name, name: value.name, color: value.color };
 }
 
-function NotesChangeNotebookDialogForm({
-  notebooks,
-  value,
-  createdNotebook,
-  labels,
-  onClose,
-  onNotebookChange,
-  onCreateNotebook,
-  confirmLabel,
-  requireChange = true,
-  confirmDisabled = false,
-  destructiveAction,
-}: Omit<
-  NotesChangeNotebookDialogProps,
-  "open" | "description" | "contentClassName" | "title"
->): ReactElement {
-  const [draft, setDraft] = useState<NotesNotebookSelectItem>(
-    createdNotebook ?? toSelectItem(value),
-  );
-  const dirty = requireChange === false || !notebookSelectionEquals(draft, value);
-  const hasDestination = draft.id.trim() !== "" && draft.name.trim() !== "";
-  const canConfirm = dirty && hasDestination;
-  const confirmText =
-    typeof confirmLabel === "function"
-      ? confirmLabel(draft.name)
-      : confirmLabel || labels.changeNotebookConfirm || "Change";
-
-  return (
-    <>
-      <div className="notes-change-notebook-dialog__picker">
-        <NotesNotebookSelect
-          notebooks={notebooks}
-          value={draft}
-          labels={labels}
-          size="sm"
-          onNotebookChange={setDraft}
-          onCreateNotebook={onCreateNotebook}
-        />
-      </div>
-      <DialogFooter>
-        {destructiveAction ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="notes-change-notebook-dialog__destructive"
-            label={destructiveAction.label}
-            onClick={destructiveAction.onAction}
-          />
-        ) : null}
-        <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
-        <Button
-          type="button"
-          variant="primary"
-          label={confirmText}
-          disabled={!canConfirm || confirmDisabled}
-          onClick={() => {
-            if (!canConfirm || confirmDisabled) return;
-            onNotebookChange(draft);
-            onClose();
-          }}
-        />
-      </DialogFooter>
-    </>
-  );
-}
-
+/** Move notes (or a task list's tasks) to a notebook: the shared move dialog with the notebook picker. */
 export function NotesChangeNotebookDialog({
   open,
   notebooks,
   value,
   createdNotebook,
   labels,
+  fieldLabel,
   description = DEFAULT_DESCRIPTION,
   contentClassName,
   onClose,
@@ -139,31 +69,45 @@ export function NotesChangeNotebookDialog({
   destructiveAction,
 }: NotesChangeNotebookDialogProps): ReactElement {
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        className={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
-      >
-        <DialogHeader>
-          <DialogTitle>{title ?? labels.selectionMoveToNotebook}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {open ? (
-          <NotesChangeNotebookDialogForm
-            key={createdNotebook?.id ?? "open"}
+    <CollectionMoveDialog
+      open={open}
+      value={toSelectItem(value)}
+      createdTarget={createdNotebook}
+      title={title ?? labels.selectionMoveToNotebook}
+      description={description}
+      fieldLabel={fieldLabel}
+      confirmLabel={confirmLabel || labels.changeNotebookConfirm || "Change"}
+      cancelLabel={labels.dialogCancel}
+      contentClassName={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
+      isSame={(draft) => notebookSelectionEquals(draft, value)}
+      requireChange={requireChange}
+      confirmDisabled={confirmDisabled}
+      destructiveAction={destructiveAction}
+      renderPicker={({ id, draft, setDraft }) =>
+        fieldLabel ? (
+          <NotesNotebookSelect
+            id={id}
             notebooks={notebooks}
-            value={value}
-            createdNotebook={createdNotebook}
+            value={draft}
             labels={labels}
-            onClose={onClose}
-            onNotebookChange={onNotebookChange}
+            triggerVariant="ghost"
+            onNotebookChange={setDraft}
             onCreateNotebook={onCreateNotebook}
-            confirmLabel={confirmLabel}
-            requireChange={requireChange}
-            confirmDisabled={confirmDisabled}
-            destructiveAction={destructiveAction}
           />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+        ) : (
+          <NotesNotebookSelect
+            className="notes-change-notebook-dialog__picker"
+            notebooks={notebooks}
+            value={draft}
+            labels={labels}
+            size="sm"
+            onNotebookChange={setDraft}
+            onCreateNotebook={onCreateNotebook}
+          />
+        )
+      }
+      onClose={onClose}
+      onConfirm={onNotebookChange}
+    />
   );
 }

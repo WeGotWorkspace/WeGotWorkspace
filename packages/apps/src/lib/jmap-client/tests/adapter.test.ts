@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { JmapEventsAdapter } from "../adapter/JmapEventsAdapter.js";
 import type { JmapCalendar, JmapCalendarEvent } from "../calendars/types.js";
 import { JmapClient } from "../core/JmapClient.js";
@@ -130,6 +130,32 @@ describe("JmapEventsAdapter sync", () => {
     expect(destroyed).toContain("cal-personal");
     expect(adapter.getCalendars().has("cal-personal")).toBe(false);
     expect(adapter.getCalendars().has(sharedId)).toBe(true);
+  });
+
+  it("leaves CalendarEvent changes to syncEvents when it is given", async () => {
+    const server = new MockJmapServer();
+    seedServer(server);
+    const client = new JmapClient({ sessionUrl: server.sessionUrl, fetch: server.fetch });
+    const forwarded: string[] = [];
+    const syncEvents = vi.fn(async () => {});
+    const adapter = new JmapEventsAdapter({
+      client,
+      syncEvents,
+      onRemoteEvent: (event) => {
+        if (event.id) forwarded.push(event.id);
+      },
+    });
+    await adapter.initialize(MARCH);
+    expect(adapter.loadedRange).toBe(MARCH);
+    forwarded.length = 0;
+    server.methodCalls.length = 0;
+    server.remoteUpdateEvent("ev-timed", { title: "Renamed remotely" });
+
+    await adapter.sync();
+
+    expect(syncEvents).toHaveBeenCalledTimes(1);
+    expect(forwarded).toEqual([]);
+    expect(server.methodCalls.map(([name]) => name)).toEqual(["Calendar/changes"]);
   });
 
   it("syncIfStale only calls /changes when a pushed state differs", async () => {

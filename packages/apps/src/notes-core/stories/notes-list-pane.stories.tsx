@@ -124,7 +124,7 @@ export const Default: Story = {
     await expect(canvas.queryByText("essay")).toBeNull();
     // Suite list norm: title + date top right, a two-line preview, the notebook with its dot.
     const row = canvasElement.querySelector(".list-item__button") as HTMLElement;
-    await expect(row.querySelector(".list-item__meta .notes-notebook-color-dot")).toBeTruthy();
+    await expect(row.querySelector(".list-item__meta .collection-color-dot")).toBeTruthy();
     await expect(row.querySelector(".list-item__title-row .list-item__date")).toBeTruthy();
     await expect(row.querySelector(".list-item__body--preview")).toBeTruthy();
     await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();

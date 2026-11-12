@@ -12,6 +12,7 @@ import {
   converge,
   ensureTeamNotebook,
   listTitles,
+  moveOpenNote,
   openNotesTab,
   openUser,
   OWNER,
@@ -58,20 +59,6 @@ async function editor(tab: Tab) {
   const body = tab.locator(".ProseMirror").first();
   await body.waitFor({ timeout: 15_000 });
   return body;
-}
-
-async function moveTo(tab: Tab, notebook: string) {
-  await tab.locator(".color-swatch-trigger").first().click();
-  await sleep(400);
-  await tab
-    .locator("[role='menuitem'], [role='option'], [role='menuitemradio']", { hasText: notebook })
-    .first()
-    .click();
-  await sleep(500);
-  const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
-  if (await dialog.count())
-    await dialog.first().getByRole("button", { name: /move/i }).first().click();
-  await sleep(800);
 }
 
 const ACTIONS = {
@@ -159,11 +146,11 @@ const ACTIONS = {
   },
   async toShared(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, TEAM_NOTEBOOK_NAME);
+    await moveOpenNote(tab, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
   },
   async toPrivate(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, PRIVATE_NOTEBOOK_NAME);
+    await moveOpenNote(tab, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
   },
 } satisfies Record<string, (tab: Tab, c: Case) => Promise<void>>;
 type Action = keyof typeof ACTIONS;

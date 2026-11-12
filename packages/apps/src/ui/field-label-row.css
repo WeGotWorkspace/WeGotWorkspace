@@ -42,28 +42,184 @@
 }
 
 /**
- * Icon-only label in front of the control (horizontal). Used by dense forms
- * such as the calendar event editor.
+ * Icon-labelled (`FieldLabelRowIconLabels`, a compact editor such as the event popover):
+ * the field's icon in front, the control right after it (a `fill` field across the
+ * row); one column. A description and a `below` list stack under the control.
  */
 .field-label-row--icon {
-  @apply mb-4 flex items-start gap-2 space-y-0 last:mb-0;
+  @apply mb-0 flex items-start gap-4 space-y-0;
 }
 
 .field-label-row__icon-label {
   @apply inline-flex shrink-0 cursor-default items-center justify-center;
-  /* Match default control height so the icon lines up with the first row.
-   * Parents (e.g. compact event form) may set `--field-label-icon-min-height`. */
+  /* Match the control height so the icon sits on the first line of the control.
+   * Parents (e.g. the compact event form) may set `--field-label-icon-min-height`. */
   min-height: var(
     --field-label-icon-min-height,
     var(--input-height, var(--control-height-md, 2.25rem))
   );
-  color: var(--field-label-color, var(--workspace-foreground));
+  /* A cue, not a caption: the quiet description tone. */
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 .field-label-row__icon-label > svg {
-  @apply size-3.5 shrink-0;
+  @apply size-4 shrink-0;
+}
+
+/* At least the icon's band, so a shorter control (a ghost dropdown, a switch) is centred
+ * on the icon too. */
+.field-label-row--icon > .field-label-row__control {
+  @apply flex flex-col items-start justify-center gap-2;
+  min-height: var(
+    --field-label-icon-min-height,
+    var(--input-height, var(--control-height-md, 2.25rem))
+  );
+}
+
+.field-label-row--icon.field-label-row--fill > .field-label-row__control {
+  @apply items-stretch;
+}
+
+/* The control column stacks vertically here: a `fill` field takes the width by stretching,
+ * so it keeps its own height (a growing text field) instead of the row's flex share. */
+.field-label-row--icon.field-label-row--fill > .field-label-row__control > * {
+  flex: none;
+}
+
+.field-label-row--icon .field-label-row__description {
+  max-width: none;
+}
+
+.field-label-row--icon .field-label-row__below {
+  @apply mt-0 w-full;
 }
 
 .field-label-row__control {
   @apply min-w-0 flex-1;
+}
+
+/**
+ * Inline (suite norm for dialogs and settings): caption and description start, control
+ * end, rows split by the suite hairline. The control lines up with the caption, not
+ * with caption + description: a two-row grid, the description alone on the second row.
+ * Columns of one third (caption) and two thirds (control), so fields get room; the
+ * description may reach half the row. Neither side reaches into the other (a long
+ * value truncates). Phones keep two
+ * columns; the text wraps.
+ */
+.field-label-row--inline {
+  @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.field-label-row--inline + .field-label-row--inline {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+/* A stacked row (a list, a long field) after inline rows keeps the hairline. */
+.field-label-row--inline + .field-label-row:not(.field-label-row--inline) {
+  @apply pt-4;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.field-label-row__text {
+  display: contents;
+}
+
+.field-label-row--inline .field-label-row__label {
+  /* Room between a leading mark (a color dot, a section icon) and the caption. */
+  @apply gap-2;
+  grid-column: 1;
+  grid-row: 1;
+  /* Same size as the controls (inputs, dropdowns). */
+  font-size: var(--input-font-size-md, 0.875rem);
+  line-height: 1.25rem;
+}
+
+/* A row that opens a section (Team access, a public link): the caption a step bigger,
+ * full ink, so the rows under it read as its content. */
+.field-label-row--section .field-label-row__label {
+  @apply font-semibold;
+  font-size: var(--input-font-size-lg, 1rem);
+  line-height: 1.5rem;
+  color: var(--workspace-foreground);
+}
+
+.field-label-row--section .field-label-row__label > svg {
+  @apply size-4;
+}
+
+/* Sections stand apart by a gap, not a hairline: room above one that follows other rows. */
+.field-label-row--inline + .field-label-row--section {
+  @apply mt-6;
+  border-top: 0;
+}
+
+/* One step below the label. The control sits on the label line only, so the
+ * description may run under it, up to half the row. */
+.field-label-row__description {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  max-width: 50%;
+  font-size: var(--input-font-size-xs, 0.75rem);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.field-label-row--inline .field-label-row__control {
+  @apply flex min-w-0 items-center justify-end;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* With a description the label line sets the rhythm: the control may reach into the
+ * row padding, so the description sits right under the label. */
+.field-label-row--inline:has(.field-label-row__description) .field-label-row__control {
+  margin-block: calc((1.25rem - var(--control-height-sm, 2rem)) / 2);
+}
+
+/* A multi-line field: the caption sits on the field's first line, not on its middle. */
+.field-label-row--inline:has(> .field-label-row__control textarea) {
+  align-items: baseline;
+}
+
+/* `fill`: a text field takes the whole end column. */
+.field-label-row--fill .field-label-row__control > * {
+  @apply min-w-0 flex-1;
+}
+
+/* Under a field that fills its column the description keeps to the label column. */
+.field-label-row--fill .field-label-row__description {
+  grid-column: 1;
+  max-width: none;
+}
+
+/* A row without a control of its own (a heading over a `below` list): caption and
+ * description take the full row. */
+.field-label-row--inline:has(> .field-label-row__control:empty) .field-label-row__label {
+  grid-column: 1 / -1;
+}
+
+.field-label-row--inline:has(> .field-label-row__control:empty) .field-label-row__description {
+  max-width: none;
+}
+
+.field-label-row--inline > .field-label-row__control:empty {
+  display: none;
+}
+
+/* `below`: a list under the row, across its full width. */
+.field-label-row__below {
+  @apply mt-3 flex min-w-0 flex-col gap-2;
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.field-label-row__below:empty {
+  display: none;
+}
+
+/* A ghost dropdown stays inside the column, hover wash included. */
+.field-label-row--inline .field-label-row__control > .collection-ghost-select,
+.field-label-row--icon .field-label-row__control > .collection-ghost-select {
+  margin-inline: 0;
 }

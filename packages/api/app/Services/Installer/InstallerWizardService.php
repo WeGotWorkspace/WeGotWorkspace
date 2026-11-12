@@ -28,6 +28,7 @@ final class InstallerWizardService
         private InstallerWindow $window,
         private InstallerDatabaseHostGuard $hosts,
         private DataDirInstallCoordinator $dataDirs,
+        private EnvFileRelocator $envRelocator,
     ) {}
 
     /**
@@ -413,6 +414,8 @@ final class InstallerWizardService
 
         $this->apiEnv->ensure($this->paths->installRoot(), $appUrl);
         @chmod($this->paths->lockFile(), 0600);
+        // Last step: the .env follows a data directory outside the tree (#1484).
+        $this->envRelocator->relocateAfterInstall();
 
         $this->saveWizardState([
             'step' => 'done',

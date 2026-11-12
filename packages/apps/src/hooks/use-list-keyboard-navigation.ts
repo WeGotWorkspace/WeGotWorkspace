@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { listItemFocusTarget, listItemIdOf } from "@/hooks/list-item-focus";
 
 type UseListKeyboardNavigationArgs = {
   visibleIds: string[];
@@ -42,6 +43,10 @@ export function useListKeyboardNavigation({
           (node) => node.getAttribute("data-list-item-id") === id,
         );
         target?.scrollIntoView({ block: "nearest" });
+        // Keyboard focus in the list follows the selection (a screen reader reads it).
+        if (target && listItemIdOf(document.activeElement)) {
+          listItemFocusTarget(target)?.focus({ preventScroll: true });
+        }
       });
     },
     [itemSelector],

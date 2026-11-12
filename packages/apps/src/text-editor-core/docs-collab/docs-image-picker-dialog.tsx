@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HardDrive } from "lucide-react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -65,7 +64,6 @@ export function DocsImagePickerDialog({
     }),
     [],
   );
-  const rootIcon = useMemo(() => <HardDrive />, []);
 
   useEffect(() => {
     if (open) setStep(initialStep);
@@ -125,7 +123,6 @@ export function DocsImagePickerDialog({
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
         rootLabels={rootLabels}
-        rootIcon={rootIcon}
         dialogSurfaceClassName="docs-dialog-surface"
         listingTheme="docs"
         onClose={onClose}

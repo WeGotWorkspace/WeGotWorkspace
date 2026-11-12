@@ -269,6 +269,16 @@ export function DocsHomePane({
     onRequestDeleteSelection: requestDeleteSelection,
     onNavigateList: navigateListByKeyboard,
     onUndoQueuedAction: onUndoQueuedAction ?? noopUndo,
+    onOpenActive: (focusedId) => {
+      const file = filesById.get(focusedId ?? activeId ?? "");
+      if (file && (focusedId || selectedIds.length <= 1)) openFile(file);
+    },
+    onRenameActive: onRename
+      ? (focusedId) => {
+          const file = filesById.get(focusedId ?? activeId ?? "");
+          if (file && (focusedId || selectedIds.length <= 1)) onRename(file);
+        }
+      : undefined,
   });
 
   const shareDialog = useDriveShareDialog({ shareOperations, username });
@@ -399,7 +409,7 @@ export function DocsHomePane({
           ) : (
             <>
               {viewMode === "grid" ? (
-                <DriveGridView {...gridBrowserProps} />
+                <DriveGridView {...gridBrowserProps} activeId={activeId} />
               ) : (
                 <DriveListView
                   {...sharedBrowserProps}
