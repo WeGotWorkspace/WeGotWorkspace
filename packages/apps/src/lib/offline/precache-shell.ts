@@ -5,8 +5,8 @@
  * opening one app does not download the others.
  */
 
-/** Written next to `index.html` by the build: the hashed chunks the precache leaves out. */
-export const LAZY_ASSETS_LIST = "lazy-assets.json";
+/** Written to `assets/` by the build, which the runtime sync copies whole: the chunks the precache leaves out. */
+export const LAZY_ASSETS_LIST = "assets/lazy-assets.json";
 
 const HASHED_ASSET = /^\/?assets\/.+\.(js|css)$/;
 

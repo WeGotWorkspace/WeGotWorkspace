@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  LAZY_ASSETS_LIST,
   isLazyAssetRequest,
   isShellPrecacheEntry,
   lazyAssetName,
@@ -37,6 +38,18 @@ describe("precache shell", () => {
     expect(isLazyAssetRequest(new URL("/assets/x.png", origin), origin)).toBe(false);
     expect(isLazyAssetRequest(new URL("/assets/x.js", "https://cdn.test"), origin)).toBe(false);
     expect(isLazyAssetRequest(new URL("/api/v1/x.js", origin), origin)).toBe(false);
+  });
+});
+
+describe("lazy asset list location", () => {
+  it("sits under assets/, the one directory the runtime sync and UiStaticServer carry", () => {
+    expect(LAZY_ASSETS_LIST).toMatch(/^assets\/[^/]+\.json$/);
+  });
+
+  it("stays out of the lazy chunk cache, which holds scripts and styles only", () => {
+    expect(
+      isLazyAssetRequest(new URL(`https://x.test/${LAZY_ASSETS_LIST}`), "https://x.test"),
+    ).toBe(false);
   });
 });
 
