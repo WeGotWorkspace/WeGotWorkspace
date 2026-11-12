@@ -51,7 +51,8 @@ import {
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
 import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-title";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
 import {
@@ -390,18 +391,18 @@ export function NotesWorkspace({
     [active, applyLocalBodyMarkdown, collabSessionActive, L.titlePlaceholder, noteBodyCollab],
   );
 
-  const handleRetrySync = useCallback(() => {
+  const handleRetrySync = useCallback(async () => {
     onClearSyncConflicts?.();
     if (!offlineUsername) return;
-    void getNotesSyncRunner(offlineUsername)
+    await getNotesSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
   }, [offlineUsername, onClearSyncConflicts, onRefreshList]);
 
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:notes",
     active: failedSyncCount > 0,
-    title: L.syncFailedTitle,
-    message: L.syncFailedMessage,
+    title: L.syncFailedNotice,
     retryLabel: L.retrySync,
     onRetry: handleRetrySync,
   });
@@ -514,8 +515,8 @@ export function NotesWorkspace({
             ) : null}
           </AppSidebar>
         )}
-        list={(c) =>
-          NotesListPanel({
+        list={(c) => ({
+          ...NotesListPanel({
             L,
             sidebarOpen: c.sidebarOpen,
             onToggleSidebar: c.toggleSidebar,
@@ -545,8 +546,9 @@ export function NotesWorkspace({
             onEditTag: selectedTag ? () => openRenameTagDialog(selectedTag) : undefined,
             pendingNoteIds,
             notebookCollections,
-          })
-        }
+          }),
+          listTop: <NoticeBar label={L.noticeBarLabel} notices={[syncNotice]} />,
+        })}
         detailWrapper={(children) => wrapDetailWithCollab(children)}
         actionBar={(c) =>
           showSingleNoteDetail ? (

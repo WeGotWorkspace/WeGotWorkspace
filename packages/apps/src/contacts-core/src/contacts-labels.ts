@@ -126,8 +126,10 @@ export type ContactsUILabels = {
   conflictFieldLocal: string;
   conflictFieldServer: string;
   conflictApplyMerge: string;
-  syncFailedTitle: string;
-  syncFailedMessage: string;
+  /** Accessible name of the notice bar above the list. */
+  noticeBarLabel: string;
+  /** The notice bar row while contacts fail to sync. */
+  syncFailedNotice: string;
   retrySync: string;
   downloadVCard: string;
   selectionDelete: string;
@@ -286,8 +288,8 @@ export const defaultContactsLabels: ContactsUILabels = {
   conflictFieldLocal: "Your edits",
   conflictFieldServer: "Server version",
   conflictApplyMerge: "Apply merged changes",
-  syncFailedTitle: "Some changes couldn’t sync",
-  syncFailedMessage: "We’ll keep your edits saved locally until they go through.",
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
   retrySync: workspaceLabels.dialog.retry,
   downloadVCard: "Download vCard",
   selectionDelete: workspaceLabels.dialog.delete,

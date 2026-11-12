@@ -7,7 +7,8 @@
  * scrolls away.
  */
 .notice-bar {
-  @apply min-w-0;
+  /* Never squeezed by a flex column (list top, main column, pane). */
+  @apply min-w-0 shrink-0;
 }
 
 .notice-bar .notice-bar__callout {
@@ -18,21 +19,32 @@
 
 .notice-bar__notice {
   @apply min-w-0;
-  border-bottom: 1px solid var(--notice-bar-border);
   background-color: var(--notice-bar-bg);
 }
 
+/*
+ * Line up with the view header above: the icon sits centred under the header's
+ * sidebar toggle and the text starts where the title does (the header's gap-3
+ * after the toggle).
+ */
+.notice-bar .menu-item__main {
+  column-gap: 0.75rem;
+}
+
+.notice-bar .menu-item__icon-slot {
+  @apply flex items-center justify-center;
+  /* Header buttons step up to the header control height (40px), see styles.css. */
+  inline-size: var(--workspace-header-control-height, 2.5rem);
+}
+
 .notice-bar__notice:has(.callout--warning) {
-  --notice-bar-border: color-mix(in oklab, var(--color-warning) 35%, transparent);
   --notice-bar-bg: color-mix(in oklab, var(--color-warning) 14%, var(--workspace-surface));
 }
 
 .notice-bar__notice:has(.callout--error) {
-  --notice-bar-border: color-mix(in oklab, var(--color-error) 35%, transparent);
   --notice-bar-bg: color-mix(in oklab, var(--color-error) 14%, var(--workspace-surface));
 }
 
 .notice-bar__notice:has(.callout--info) {
-  --notice-bar-border: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
   --notice-bar-bg: color-mix(in oklab, var(--workspace-foreground) 5%, var(--workspace-surface));
 }

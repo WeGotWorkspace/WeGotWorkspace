@@ -52,9 +52,13 @@ export type WorkspaceLabels = {
     pending: string;
     changesSynced: string;
     failedTitle: string;
+    /** The notice bar row while changes are stuck in the outbox (#1894, #1895). */
+    failedNotice: string;
     conflictTitle: string;
     keepMine: string;
   };
+  /** Accessible name of an app's `NoticeBar` region. */
+  noticeBarLabel: string;
   /** List and sidebar chrome. */
   list: {
     moreCreateOptions: string;
@@ -95,9 +99,11 @@ export const workspaceLabels = {
     pending: "Pending sync",
     changesSynced: "Changes synced",
     failedTitle: "Some changes could not sync",
+    failedNotice: "Some changes could not sync. They are saved on this device.",
     conflictTitle: "Sync conflict",
     keepMine: "Keep mine",
   },
+  noticeBarLabel: "Needs your attention",
   list: {
     moreCreateOptions: "More create options",
     listUpdated: "List updated",

@@ -55,7 +55,8 @@ import type { ContactsWorkspaceProps } from "@/contacts-core/src/contacts-worksp
 import { useContactsController } from "@/contacts-core/src/use-contacts-controller";
 import { useContactsAddressBookMutations } from "@/contacts-core/src/use-contacts-addressbook-mutations";
 import { useDocumentTitle } from "@/lib/document-title";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useContactsFailedSync } from "@/contacts-core/src/use-contacts-failed-sync";
 import { useContactsPendingSync } from "@/contacts-core/src/use-contacts-pending-sync";
 import { useContactsSidebarModel } from "@/contacts-core/src/use-contacts-sidebar-model";
@@ -187,17 +188,17 @@ export function ContactsWorkspace({
   const pendingCardIds = useContactsPendingSync(offlineUsername, data.cards.length);
   const failedSyncCount = useContactsFailedSync(offlineUsername, data.cards.length);
 
-  const handleRetrySync = useCallback(() => {
+  const handleRetrySync = useCallback(async () => {
     if (!offlineUsername) return;
-    void getContactsSyncRunner(offlineUsername)
+    await getContactsSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
   }, [offlineUsername, onRefreshList]);
 
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:contacts",
     active: failedSyncCount > 0,
-    title: L.syncFailedTitle,
-    message: L.syncFailedMessage,
+    title: L.syncFailedNotice,
     retryLabel: L.retrySync,
     onRetry: handleRetrySync,
   });
@@ -436,6 +437,7 @@ export function ContactsWorkspace({
 
           return {
             ...panel,
+            listTop: <NoticeBar label={L.noticeBarLabel} notices={[syncNotice]} />,
             dropZone: canImportVcf
               ? {
                   active: dropImportActive,

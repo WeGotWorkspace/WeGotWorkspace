@@ -105,7 +105,10 @@ export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   externalWriteDescription: (title: string) => string;
   externalWriteKeepMine: string;
   externalWriteUseOutside: string;
-  syncFailedTitle: string;
+  /** Accessible name of the notice bar above the list. */
+  noticeBarLabel: string;
+  /** The notice bar row while notes fail to sync. */
+  syncFailedNotice: string;
   syncFailedMessage: string;
   retrySync: string;
   /** Visible prefix before the last-edited date above the note title ("Edited 17:42"). */
@@ -231,7 +234,8 @@ export const defaultNotesLabels: NotesUILabels = {
     `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
   externalWriteKeepMine: "Keep my edits",
   externalWriteUseOutside: "Use the outside version",
-  syncFailedTitle: workspaceLabels.sync.failedTitle,
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: workspaceLabels.dialog.retry,
   editedLabel: "Edited",

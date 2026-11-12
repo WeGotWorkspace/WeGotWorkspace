@@ -1,10 +1,10 @@
-import { CloudOff } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { getTasksSyncRunner } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { listFailedTaskOutbox } from "@/lib/offline/tasks/tasks-offline-store";
 import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
 import type { ActionNotice } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 
 type UseTasksSyncNoticeArgs = {
@@ -26,44 +26,23 @@ export function useTasksSyncNotice({
   reloadFromCache,
 }: UseTasksSyncNoticeArgs): ActionNotice | null {
   const { count, refresh } = useFailedOutboxCount(username, listFailedTaskOutbox);
-  const [retrying, setRetrying] = useState(false);
 
-  const retry = useCallback(() => {
+  const retry = useCallback(async () => {
     if (!username) return;
-    setRetrying(true);
-    void getTasksSyncRunner(username)
-      .flush()
-      .catch(() => undefined)
-      .finally(async () => {
-        try {
-          await reloadFromCache().catch(() => undefined);
-          notifyTasksBootstrapUpdated(username);
-          await refresh();
-        } finally {
-          setRetrying(false);
-        }
-      });
+    try {
+      await getTasksSyncRunner(username).flush();
+    } finally {
+      await reloadFromCache().catch(() => undefined);
+      notifyTasksBootstrapUpdated(username);
+      await refresh();
+    }
   }, [refresh, reloadFromCache, username]);
 
-  return useMemo(
-    () => (count === 0 ? null : tasksSyncNotice(L, retry, retrying)),
-    [L, count, retry, retrying],
-  );
-}
-
-/** The Tasks stuck-sync row of the notice bar. */
-export function tasksSyncNotice(
-  L: TasksUILabels,
-  onRetry: () => void,
-  retrying = false,
-): ActionNotice {
-  return {
+  return useSyncRetryNotice({
     id: "sync:tasks",
-    tone: "error",
-    icon: <CloudOff className="callout__icon" aria-hidden />,
+    active: count > 0,
     title: L.syncFailedNotice,
-    actionLabel: L.retrySync,
-    onAction: onRetry,
-    actionDisabled: retrying,
-  };
+    retryLabel: L.retrySync,
+    onRetry: retry,
+  });
 }

@@ -79,6 +79,7 @@ export const liveTierSpecs = [
   "push-mesh-interval",
   "queued-write-reload",
   "settings-calendar-availability",
+  "sync-notice-bar",
   "tasks-ics-import",
   "tasks-inbound-sync",
   "tasks-push",

@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -214,17 +215,17 @@ export function DriveWorkspace({
     setConflictListener: setDriveSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
-  const retryFailedOutbox = useCallback(() => {
+  const retryFailedOutbox = useCallback(async () => {
     clearConflicts();
     if (!offlineUsername) return;
-    void getDriveSyncRunner(offlineUsername)
+    await getDriveSyncRunner(offlineUsername)
       .flush()
       .finally(() => setOutboxNoticeKey((key) => key + 1));
   }, [clearConflicts, offlineUsername]);
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:drive",
     active: offlineEnabled && outboxNoticeActive,
-    title: driveLabels.syncFailedTitle,
-    message: driveLabels.syncFailedMessage,
+    title: driveLabels.syncFailedNotice,
     retryLabel: driveLabels.retrySync,
     onRetry: retryFailedOutbox,
   });
@@ -396,6 +397,7 @@ export function DriveWorkspace({
               />
             }
             mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
+            mainNotice={<NoticeBar label={driveLabels.noticeBarLabel} notices={[syncNotice]} />}
             main={
               <DriveMainPane
                 controller={controller}

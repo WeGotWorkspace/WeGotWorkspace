@@ -320,7 +320,11 @@ export type CalendarUILabels = {
   teamAvailabilityIncomplete: string;
   teamAvailabilityShowAll: string;
   teamAvailabilityHideAll: string;
-  calendarNoticeBarLabel: string;
+  /** The notice bar's accessible name, the same in every app. */
+  noticeBarLabel: string;
+  /** The notice bar row while calendar changes fail to sync (#1895). */
+  syncFailedNotice: string;
+  retrySync: string;
   teamAvailabilityOfflineUpdated: (age: string) => string;
   teamAvailabilityOfflineUncached: string;
   teamAvailabilityOfflineNone: string;
@@ -633,7 +637,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityIncomplete: "Some busy times could not be loaded.",
   teamAvailabilityShowAll: "Show all teammates' availability",
   teamAvailabilityHideAll: "Hide all teammates' availability",
-  calendarNoticeBarLabel: "Calendar notices",
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
+  retrySync: workspaceLabels.dialog.retry,
   teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
   teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
   teamAvailabilityOfflineNone:

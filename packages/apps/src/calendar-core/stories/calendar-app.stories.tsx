@@ -563,7 +563,7 @@ export const TeamAvailabilityOffline: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const bar = canvas.getByRole("region", { name: defaultCalendarLabels.calendarNoticeBarLabel });
+    const bar = canvas.getByRole("region", { name: defaultCalendarLabels.noticeBarLabel });
     await expect(bar.textContent).toContain(
       "Offline · teammates' availability updated 2 hours ago.",
     );
