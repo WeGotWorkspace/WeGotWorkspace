@@ -19,6 +19,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `sim-oracles` | builder | testing, security | `tools/team-sim/src/oracles/` | `pnpm --dir tools/team-sim test -- oracles` (each oracle fails on a planted fault) |
 | `sim-report-replay` | builder | testing, document | `tools/team-sim/src/report/`, `tools/team-sim/src/replay/` | `pnpm --dir tools/team-sim test -- report replay`; `node tools/team-sim/bin/sim.mjs replay <date>` on the night's commit reproduces the action-list hash |
 | `sim-schedule-skill` | builder | dev-environment, document | `tools/team-sim/launchd/`, `tools/team-sim/src/schedule/`, `.agents/skills/testing/team-simulation.md` | `node tools/team-sim/bin/sim.mjs schedule install --dry-run`; `pnpm --dir tools/team-sim test -- schedule`; `pnpm run check:agent-docs` |
+| `sim-habits` | builder | testing, workspace | `tools/team-sim/world/habits.json`, `tools/team-sim/world/personas.json`, `tools/team-sim/src/planner/`, `tools/team-sim/src/actors/`, `tools/team-sim/src/report/voice.mjs`, `tools/team-sim/src/diary/` | `pnpm --dir tools/team-sim test -- planner friction diary`; `node tools/team-sim/bin/sim.mjs night --minutes 25 --habits all` |
 | `sim-verify` | verifier | testing | read-only | [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md); three consecutive unattended nights; phase 2 decision on #1981 |
 
 ## Notes

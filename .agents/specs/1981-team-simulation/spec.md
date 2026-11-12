@@ -13,7 +13,7 @@ A deterministic harness under `tools/team-sim/` plays a fictional 10-person crea
 - No product feature, no UI, no change to the API contract. If an oracle needs data the API does not expose, that is a finding, not a reason to add a test-only endpoint.
 - No LLM at run time. Content (messages, doc text, task titles) comes from committed Dutch/English corpora; the planner is plain code with a seeded PRNG. After the oracles, a post-night step may call a local model (`claude -p`, a cheaper model, no tools) to write persona diaries and the Sunday digest from the run files only. It never feeds the action list or replay, is capped per night ($0.60, 10 minutes), and is skipped with a note when the CLI is missing or logged out.
 - No GitHub Actions run in this issue. Planner, actors and oracles have no macOS-only code. Two parts are Mac-specific: the scheduler (launchd) and the snapshot step (APFS clonefile). Both sit behind one module each, so the engine can move to an always-on machine or a self-hosted runner later by swapping them (for example cron and a reflink or plain copy).
-- No simulation of outside tools (accounting, Figma, time tracking, password manager, spreadsheets). A persona that needs one logs a gap moment.
+- No simulation of outside tools (accounting, Figma, time tracking, password manager, spreadsheets). A persona that needs one logs a gap moment. Backgrounds do not simulate former tools either: a habit is what a persona tries inside the suite (see [Backgrounds and habits](#backgrounds-and-habits)).
 - No load test. Ten personas and one hour a night is realistic team volume, not stress volume.
 - No Mail app actions. Mail is IMAP-backed and has no JMAP capability, so it needs an IMAP server next to the instance; that is a follow-up once the harness runs.
 - No Web Push. The `notify` oracle reads the notification inbox; push subscriptions need an outside push service and are left out.
@@ -87,6 +87,37 @@ Project phases and the suite surfaces they exercise:
 
 Studio rhythm: Monday studio meeting, daily project stand-up, Friday deadlines, sick days and holidays from the seed, sales booking a kick-off while the team is full.
 
+### Backgrounds and habits
+
+Each persona has a background in `world/personas.json`: the tools they used before (`cameFrom`) and three to five habits they carried over. The default mix is an open decision in [plan.md](./plan.md#open-decisions):
+
+| Persona | Came from |
+|---|---|
+| Maarten, Priya, Sanne, Lotte, Bas, Fatima | Google Workspace (the studio ran on it) |
+| Eva, Daan | Google Workspace, plus Dropbox for large files |
+| Joost | Microsoft 365 at his previous agency (Outlook, Excel planning); now Apple Calendar and Contacts over CalDAV/CardDAV |
+| Tom | Microsoft 365 (Word with tracked changes, Microsoft Teams) |
+
+A habit is an action, not a line in a prompt. The planner draws habit actions from the seed like any other action: at most one per persona per night, four to six in all, and only on a layer the habit runs on (a browser habit only on that persona's browser night). The actor tries the habit the way the persona used to work. When it works, the outcome records `habit: ok`. When the suite has no way to do it, the actor writes a friction record with source `habit`, the habit id and `cameFrom`, and finishes the persona's goal with the workaround a person would choose.
+
+| Habit | From | The persona tries to | Workaround when it fails |
+|---|---|---|---|
+| `mention-assign` | Google Docs | @mention a colleague in a doc comment to hand over a to-do; the colleague is notified | post it in the project chat |
+| `suggest-edit` | Google Docs | propose a wording change as a suggestion the author accepts, instead of editing | a comment with the proposed text |
+| `team-share` | Google Drive | share a file with everyone in a Team at once | a link in the channel |
+| `docx-roundtrip` | Word | upload a .docx with comments, open it in Docs, export it back to .docx | keep the file in Drive and edit it locally (gap) |
+| `xlsx-preview` | Excel | open a planning .xlsx from Drive and read it in the browser | download it |
+| `colleague-calendar` | Outlook | open a colleague's calendar to find a free slot before inviting | ask in chat |
+| `folder-drop` | Dropbox | drop a folder with subfolders into Drive in one go | upload file by file |
+| `protected-link` | Dropbox | share with a client by a link with an expiry date and a password | a plain link and a note in chat |
+| `file-request` | Dropbox | give a client a link to upload files into a project folder | the client uses an outside transfer service (gap) |
+
+The catalog lives in `world/habits.json`; each persona lists its habits. Whether the suite supports a habit is never written down: the actor finds out each night, so a habit that starts working shows as `ok` the next night.
+
+The `Team voice` section adds a `Switchers` table: per habit, the origin, tries, how many worked, and the friction with its evidence. The weekly digest groups friction by origin as well as by goal. Diary facts carry the persona's `cameFrom` and, on a habit action, the habit. A diary may compare with a former tool only in a sentence that cites a habit action; validation counts a sentence that names a former tool (Google, Gmail, Microsoft, Office, Outlook, Word, Excel, Microsoft Teams, Dropbox) without such a citation as an invalid comparison.
+
+The client side of switching (a client who mails a .docx or an Outlook invite) needs the Mail app, which is a non-goal here; it comes with that follow-up.
+
 ## Oracles
 
 | Class | Invariant |
@@ -111,6 +142,7 @@ Studio rhythm: Monday studio meeting, daily project stand-up, Friday deadlines, 
 - Teams work (#1915) lands mid-simulation: the world reconciler applies the new model on the next night; friction it causes is logged as a friction record (`ctx.friction`).
 - Disk growth: Drive uploads of print files grow the data directory. Uploads use generated files of the target size; the world caps total Drive volume at 10 GB, and closing a project deletes its superseded print files. The report shows growth per night, measured as the volume's used space, because `du` counts cloned blocks once per snapshot.
 - Replay of a night older than the snapshot window: refused with a clear message.
+- The suite starts supporting a habit: the next night records it as `ok`, and the `Switchers` table shows the change against the 7-night history. A habit that stops working is friction again, never a failure.
 
 ## Phase 2: decided after three nights
 
