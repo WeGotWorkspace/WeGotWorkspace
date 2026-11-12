@@ -2173,6 +2173,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: notes 1`
     "Move notes to “Alpha” and delete notebook",
   ],
   "deleteNotebookUidCollision": "A note in this notebook uses the same id as another note. Pick a different notebook.",
+  "detailCreatingNote": "Creating note…",
   "dialogCancel": "Cancel",
   "dialogDelete": "Delete",
   "dialogDeleteConfirmSuffix": "This action cannot be undone.",

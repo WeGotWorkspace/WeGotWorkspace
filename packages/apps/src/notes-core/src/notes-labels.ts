@@ -59,6 +59,8 @@ export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   emptyList: string;
   /** Detail pane when no note is selected (CollectionState empty). */
   emptyDetail: string;
+  /** Detail pane while a new note waits for the notebooks to load (CollectionState loading). */
+  detailCreatingNote: string;
   newNote: string;
   /** Chevron menu on the sidebar segmented New control. */
   newNoteMenu: string;
@@ -190,6 +192,7 @@ export const defaultNotesLabels: NotesUILabels = {
   listItems: (count) => `${count} Items`,
   emptyList: "No items",
   emptyDetail: "Select a note",
+  detailCreatingNote: "Creating note…",
   newNote: "New note",
   newNoteMenu: workspaceLabels.list.moreCreateOptions,
   edit: workspaceLabels.dialog.edit,
