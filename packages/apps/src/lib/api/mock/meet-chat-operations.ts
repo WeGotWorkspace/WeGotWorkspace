@@ -1,5 +1,5 @@
-import { mapChatPreviews } from "@/meet-core/src/meet-chat-urls";
-import { applyMeetChannelPatch, buildMeetChannel } from "@/meet-core/src/meet-channel-write";
+import { mapChatPreviews } from "@/lib/meetings/meet-chat-urls";
+import { applyMeetChannelPatch, buildMeetChannel } from "@/lib/meetings/meet-channel-write";
 import type {
   ChatMessage,
   MeetChannel,

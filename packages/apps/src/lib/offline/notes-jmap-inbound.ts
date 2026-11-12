@@ -1,6 +1,6 @@
 import type { Note } from "@/lib/models/note";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
-import { noteTagsEqual } from "@/notes-core/src/notes-note-utils";
+import { noteTagsEqual } from "@/lib/models/note-list-model";
 import {
   getNoteFromCache,
   listOutboxNoteIds,

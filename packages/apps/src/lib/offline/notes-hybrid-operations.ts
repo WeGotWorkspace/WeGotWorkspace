@@ -7,7 +7,7 @@ import type {
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
-} from "@/notes-core/src/notes-note-utils";
+} from "@/lib/models/note-list-model";
 import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/notes-list-preview-enrich";
 import {
   archiveNoteItem,

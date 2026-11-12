@@ -6,7 +6,7 @@ import {
   meetMeshChatMessageToApp,
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import type { MeetChannel } from "@/lib/models/meet-types";
 import type { PresenceChannelMessage } from "@/presence-core/src/presence-types";
 
