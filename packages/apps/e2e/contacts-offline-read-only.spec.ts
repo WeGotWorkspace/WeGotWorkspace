@@ -21,6 +21,14 @@ const OFFLINE = `${OFFLINE_GIVEN} ${SURNAME}`;
 const CREATED = `${GIVEN}New`;
 
 /** The list is windowed over ~1000 seeded contacts: narrow it to this run's card. */
+/** The notice bar row for queued changes that fail to sync, under the list header. */
+function syncNotice(tab: Tab) {
+  return tab
+    .getByRole("region", { name: "Needs your attention" })
+    .locator(".notice-bar__notice")
+    .filter({ hasText: "Some changes could not sync. They are saved on this device." });
+}
+
 async function search(tab: Tab): Promise<void> {
   // The refresh button stays busy until the first download is finished.
   await expect(tab.getByRole("button", { name: "Refresh contacts" })).toBeEnabled({
@@ -142,8 +150,9 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       await shareBook(false);
       await setTabOffline(tab, false);
 
-      const notice = tab.getByText("Some changes couldn’t sync").first();
+      const notice = syncNotice(tab);
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(notice.getByRole("button", { name: "Retry" })).toBeEnabled();
       await expect(tab.getByText(OFFLINE, { exact: true }).first()).toBeVisible();
       await expect(tab.getByLabel(/conflict resolution/)).toHaveCount(0);
       expect(await serverName(), "the refused edit did not land").toBe(ORIGINAL);
@@ -155,6 +164,7 @@ test.describe("Contacts edit refused because the book became read-only", () => {
         timeout: 30_000,
       });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(notice.getByRole("button", { name: "Retry" })).toBeEnabled();
       expect(await serverName()).toBe(ORIGINAL);
     } finally {
       await context.close();
@@ -240,8 +250,9 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       createSets = 0;
       await setTabOffline(tab, false);
 
-      const notice = tab.getByText("Some changes couldn’t sync").first();
+      const notice = syncNotice(tab);
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(notice.getByRole("button", { name: "Retry" })).toBeEnabled();
       await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible();
       await expect(tab.getByLabel(/conflict resolution/)).toHaveCount(0);
       expect(await serverHasCreated(), "the refused create did not land").toBe(false);
@@ -259,6 +270,7 @@ test.describe("Contacts edit refused because the book became read-only", () => {
         timeout: 30_000,
       });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(notice.getByRole("button", { name: "Retry" })).toBeEnabled();
       expect(await serverHasCreated()).toBe(false);
     } finally {
       await context.close();
