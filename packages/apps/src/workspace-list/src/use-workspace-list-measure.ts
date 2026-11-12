@@ -67,7 +67,7 @@ type MeasureArgs = {
 };
 
 /**
- * Measures every mounted row after each commit and when one resizes. A row's size
+ * Measures each row when it mounts and when it resizes. A row's size
  * is its pitch: from its top to the next element's top, so the gap under it counts.
  * `offsetTop` ignores the FLIP transforms of a running reorder animation.
  */
@@ -119,24 +119,36 @@ export function useMeasureMountedRows({
     bump();
   }, [bump, listNode, measuredRef]);
 
+  // One observer per list. It reports each newly observed row once, after the
+  // browser's own layout and before paint, so measuring forces no extra layout in
+  // the commit (a note opening in the same frame stays as cheap as without a window).
+  const observerRef = useRef<{ observer: ResizeObserver; rows: Set<Element> } | null>(null);
   useLayoutEffect(() => {
-    if (enabled) measure();
-  });
+    if (!enabled || !listNode || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => measure());
+    observerRef.current = { observer, rows: new Set() };
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [enabled, listNode, measure]);
 
   const renderedKey = renderedIndexes.join(",");
   useLayoutEffect(() => {
-    if (!enabled || typeof ResizeObserver === "undefined") return;
+    const observed = observerRef.current;
     const container = listRowsContainer(listNode);
-    if (!container) return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    });
-    for (const child of Array.from(container.children)) observer.observe(child);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [enabled, listNode, measure, renderedKey]);
+    if (!observed || !container) return;
+    const rows = new Set(
+      Array.from(container.children).filter(
+        (child) => !child.hasAttribute(WORKSPACE_LIST_SPACER_ATTR),
+      ),
+    );
+    for (const row of observed.rows) {
+      if (!rows.has(row)) observed.observer.unobserve(row);
+    }
+    for (const row of rows) {
+      if (!observed.rows.has(row)) observed.observer.observe(row);
+    }
+    observed.rows = rows;
+  }, [listNode, renderedKey, enabled, measure]);
 }
