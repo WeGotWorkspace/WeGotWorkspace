@@ -76,6 +76,39 @@ function runReseed() {
   });
 }
 
+function runRatchet(args) {
+  try {
+    const stdout = execSync(`node tools/coverage-ratchet.mjs ${args}`, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, COVERAGE_RATCHET_ROOT: tempDir },
+    });
+    return { status: 0, stdout, stderr: "" };
+  } catch (err) {
+    return { status: err.status, stdout: err.stdout, stderr: err.stderr };
+  }
+}
+
+function removeReport(relative) {
+  const file = path.join(tempDir, relative);
+  if (existsSync(file)) unlinkSync(file);
+}
+
+const APPS_SUMMARY = "packages/apps/coverage/coverage-summary.json";
+const CLOVER = "packages/api/build/logs/clover.xml";
+
+function driveClover(covered) {
+  return `<?xml version="1.0"?>
+<coverage>
+  <project>
+    <file name="/workspace/packages/api/app/Services/Drive/FileService.php">
+      <metrics statements="100" coveredstatements="${covered}"/>
+    </file>
+  </project>
+</coverage>`;
+}
+
 function setBaseline(data) {
   writeFileSync(
     path.join(tempDir, "tools/coverage-baseline.json"),
@@ -421,6 +454,68 @@ describe("coverage-ratchet", () => {
     assert.equal(baseline["packages/apps/src/gone"], undefined);
   });
 
+  it("check --only=apps reads only the apps report and ignores API keys", () => {
+    setBaseline({
+      "packages/apps/src/button": 80.0,
+      "packages/api/app/Services/Drive": 90.0,
+    });
+    setAppsCoverage({
+      "packages/apps/src/button/src/button.tsx": {
+        lines: { covered: 160, total: 200 },
+      },
+    });
+    removeReport(CLOVER);
+
+    const result = runRatchet("check --only=apps");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /✅ Coverage ratchet check passed/);
+    assert.doesNotMatch(result.stdout, /Services\/Drive/);
+  });
+
+  it("check --only=api fails on an API drop without an apps report", () => {
+    setBaseline({
+      "packages/apps/src/button": 80.0,
+      "packages/api/app/Services/Drive": 90.0,
+    });
+    setApiCoverage(driveClover(70));
+    removeReport(APPS_SUMMARY);
+
+    const result = runRatchet("check --only=api --json");
+    assert.equal(result.status, 1);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.missing, []);
+    assert.match(
+      report.errors[0],
+      /Services\/Drive: coverage dropped from 90\.00% to 70\.00%/,
+    );
+  });
+
+  it("check --only=apps still exits 3 when the apps report is missing", () => {
+    setBaseline({ "packages/apps/src/button": 80.0 });
+    setApiCoverage(driveClover(90));
+    removeReport(APPS_SUMMARY);
+
+    const result = runRatchet("check --only=apps");
+    assert.equal(result.status, 3);
+    assert.match(result.stderr, /Apps coverage report is missing/);
+  });
+
+  it("check without --only still requires both reports", () => {
+    setBaseline({ "packages/api/app/Services/Drive": 90.0 });
+    setApiCoverage(driveClover(90));
+    removeReport(APPS_SUMMARY);
+
+    assert.equal(runRatchet("check").status, 3);
+  });
+
+  it("--only is refused on update and when both sides are named", () => {
+    for (const args of ["update --only=api", "check --only=api --only=apps"]) {
+      const result = runRatchet(args);
+      assert.equal(result.status, 3, args);
+      assert.match(result.stderr, /--only takes one side/);
+    }
+  });
+
   it("check --reseed exits 3", () => {
     let status = 0;
     let stderr = "";
@@ -494,6 +589,35 @@ describe("coverage-ratchet", () => {
     assert.match(job, /!cancelled\(\)/);
     const continued = job.match(/continue-on-error: true/g) ?? [];
     assert.equal(continued.length, 2);
+  });
+
+  it("a drop blocks build outside main and files an issue only on main (#1629)", () => {
+    const yml = readFileSync(
+      path.join(repoRoot, ".github/workflows/ci.yml"),
+      "utf8",
+    );
+    const build = yml.slice(
+      yml.indexOf("\n  build:"),
+      yml.indexOf("\n", yml.indexOf("    needs:", yml.indexOf("\n  build:"))),
+    );
+    assert.match(build, /coverage-ratchet/);
+    const job = yml.slice(yml.indexOf("\n  coverage-ratchet:"));
+    const stepIf = (name) => {
+      const at = job.indexOf(`- name: ${name}`);
+      assert.notEqual(at, -1, name);
+      return job.slice(at, job.indexOf("\n", job.indexOf("if:", at)));
+    };
+    assert.match(
+      stepIf("Fail on coverage drop"),
+      /github\.event_name != 'push'/,
+    );
+    for (const name of [
+      "Report coverage regression",
+      "Propose baseline increase",
+      "Upload baseline proposal",
+    ]) {
+      assert.match(stepIf(name), /github\.event_name == 'push'/, name);
+    }
   });
 
   it("aggregates lib/<sub> packages separately", () => {
