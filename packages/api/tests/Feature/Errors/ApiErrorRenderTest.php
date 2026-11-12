@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Errors;
 
 use App\Exceptions\ApiHttpException;
-use App\Services\Collab\CollabResponseException;
-use App\Services\Meet\MeetResponseException;
-use App\Services\Principal\PrincipalResponseException;
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Route;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -44,24 +41,10 @@ final class ApiErrorRenderTest extends TestCase
             ->assertExactJson(['error' => 'Bad thing.']);
     }
 
-    /**
-     * @return iterable<string, array{class-string<MeetResponseException|CollabResponseException|PrincipalResponseException>}>
-     */
-    public static function realtimeFamilies(): iterable
+    public function test_realtime_error_keeps_code_in_error_and_adds_the_same_code(): void
     {
-        yield 'meet' => [MeetResponseException::class];
-        yield 'collab' => [CollabResponseException::class];
-        yield 'principal' => [PrincipalResponseException::class];
-    }
-
-    /**
-     * @param  class-string<MeetResponseException|CollabResponseException|PrincipalResponseException>  $class
-     */
-    #[DataProvider('realtimeFamilies')]
-    public function test_realtime_error_keeps_code_in_error_and_adds_the_same_code(string $class): void
-    {
-        Route::get('/api/v1/error-probe/realtime', function () use ($class): void {
-            throw new $class(401, 'auth_required', 'Sign in first.');
+        Route::get('/api/v1/error-probe/realtime', function (): void {
+            throw new RealtimeApiException(401, 'auth_required', 'Sign in first.');
         });
 
         $this->getJson('/api/v1/error-probe/realtime')
@@ -73,14 +56,10 @@ final class ApiErrorRenderTest extends TestCase
             ]);
     }
 
-    /**
-     * @param  class-string<MeetResponseException|CollabResponseException|PrincipalResponseException>  $class
-     */
-    #[DataProvider('realtimeFamilies')]
-    public function test_realtime_error_without_sentence_omits_message(string $class): void
+    public function test_realtime_error_without_sentence_omits_message(): void
     {
-        Route::get('/api/v1/error-probe/realtime-bare', function () use ($class): void {
-            throw new $class(400, 'invalid_room');
+        Route::get('/api/v1/error-probe/realtime-bare', function (): void {
+            throw new RealtimeApiException(400, 'invalid_room');
         });
 
         $this->getJson('/api/v1/error-probe/realtime-bare')
@@ -91,7 +70,7 @@ final class ApiErrorRenderTest extends TestCase
     public function test_signaling_failure_rewraps_status_code_and_sentence(): void
     {
         Route::get('/api/v1/error-probe/signaling', function (): void {
-            throw MeetResponseException::fromSignaling(new RtcSignalingException(409, [
+            throw RealtimeApiException::fromSignaling(new RtcSignalingException(409, [
                 'error' => 'peer_id_taken',
                 'code' => 'peer_id_taken',
                 'message' => 'That peer id is in use — join again with a new one.',
@@ -111,7 +90,7 @@ final class ApiErrorRenderTest extends TestCase
     {
         Exceptions::fake();
         Route::get('/api/v1/error-probe/report-realtime', function (): void {
-            throw new CollabResponseException(403, 'forbidden');
+            throw new RealtimeApiException(403, 'forbidden');
         });
         Route::get('/api/v1/error-probe/report-http', function (): void {
             throw new ApiHttpException(403, 'Forbidden.', 'forbidden');
@@ -120,7 +99,7 @@ final class ApiErrorRenderTest extends TestCase
         $this->getJson('/api/v1/error-probe/report-realtime')->assertForbidden();
         $this->getJson('/api/v1/error-probe/report-http')->assertForbidden();
 
-        Exceptions::assertReported(CollabResponseException::class);
+        Exceptions::assertReported(RealtimeApiException::class);
         Exceptions::assertNotReported(ApiHttpException::class);
     }
 }

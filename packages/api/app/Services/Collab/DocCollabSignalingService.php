@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
@@ -237,7 +238,7 @@ final class DocCollabSignalingService
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             try {
                 $this->joinAuthorizer->assertMayJoin($room, $principal);
-            } catch (CollabResponseException $denied) {
+            } catch (RealtimeApiException $denied) {
                 // Leaving without access only ends the caller's own presence.
                 $this->store->leaveOwnPeerOr($roomKey, $peerId, $ownerMarker, $denied);
 
@@ -263,7 +264,7 @@ final class DocCollabSignalingService
     {
         try {
             $this->joinAuthorizer->assertMayJoin($room, $principal);
-        } catch (CollabResponseException $denied) {
+        } catch (RealtimeApiException $denied) {
             $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
             throw $denied;
         }
@@ -295,12 +296,12 @@ final class DocCollabSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw CollabResponseException::fromSignaling($exception);
+            throw RealtimeApiException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        throw new CollabResponseException($status, $error, $message);
+        throw new RealtimeApiException($status, $error, $message);
     }
 }
