@@ -40,16 +40,19 @@ function renderSidebar({
   return { toggleShown, setShown, toggleCollapsed };
 }
 
-/** The per-person checkboxes, without the heading's show/hide-all dot. */
+/** The per-person checkboxes, without the list's first "All" row. */
 function rowBoxes(): HTMLElement[] {
-  return within(screen.getByRole("list")).queryAllByRole("checkbox");
+  return within(screen.getByRole("list"))
+    .queryAllByRole("checkbox")
+    .filter((box) => !box.closest(".sidebar-section__all"));
 }
 
 describe("CalendarAvailabilitySidebar", () => {
   it("lists the own row first and every row hidden by default", () => {
     renderSidebar({ count: 3 });
     const section = screen.getByRole("region", { name: "Team availability" });
-    const boxes = within(within(section).getByRole("list")).getAllByRole("checkbox");
+    const boxes = rowBoxes();
+    expect(within(section).getByRole("list")).toBeTruthy();
     expect(boxes.map((box) => box.getAttribute("aria-label"))).toEqual([
       "Show your own availability",
       "Show Ada Lovelace's availability",
@@ -85,10 +88,9 @@ describe("CalendarAvailabilitySidebar", () => {
 
   it("folds the list", () => {
     const { toggleCollapsed } = renderSidebar({ count: 3, collapsed: true });
-    expect(screen.getAllByRole("checkbox", { hidden: true }).map((box) => box.className)).toEqual([
-      expect.stringContaining("sidebar-section__toggle-all"),
-    ]);
-    const expand = screen.getByRole("button", { name: "Expand Team availability" });
+    // Folded: no rows, not even the All row.
+    expect(screen.queryAllByRole("checkbox", { hidden: true })).toHaveLength(0);
+    const expand = screen.getByRole("button", { name: "Team availability" });
     expect(expand.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(expand);
     expect(toggleCollapsed).toHaveBeenCalledOnce();

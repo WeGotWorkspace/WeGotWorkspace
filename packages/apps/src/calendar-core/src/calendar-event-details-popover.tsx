@@ -17,8 +17,7 @@ import {
 } from "@/lib/models/calendar-attendees";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import {
-  detailsPopoverAnchorOrigin,
-  detailsPopoverShouldDock,
+  detailsPopoverPlacement,
   eventPreviewAlarmSummary,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
@@ -40,7 +39,7 @@ import {
   type CalendarEventFormProps,
 } from "@/calendar-core/src/calendar-event-form";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-event-details-popover.css";
@@ -206,21 +205,10 @@ export function CalendarEventDetailsPopover({
       />,
     );
   }
-  const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementOrigin =
-    origin && !docked ? detailsPopoverAnchorOrigin(origin, getLocaleDirection(locale)) : origin;
-  const fallbackLeft = Math.round(globalThis.innerWidth / 2);
-  const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
-  const anchorStyle = docked
-    ? { left: 0, top: 0, width: 0, height: 0 }
-    : placementOrigin
-      ? {
-          left: placementOrigin.left,
-          top: placementOrigin.top,
-          width: placementOrigin.width,
-          height: placementOrigin.height,
-        }
-      : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
+  const { docked, anchorStyle } = detailsPopoverPlacement(origin, {
+    isMobile,
+    dir: getLocaleDirection(locale),
+  });
 
   const dismiss = () => {
     if (editable && edit) {
@@ -239,6 +227,7 @@ export function CalendarEventDetailsPopover({
         busy={surfaceBusy}
         autoFocusTitle={editMode === "create"}
         controlSize="sm"
+        fieldLabels="icon"
         collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
         {...edit}
         availabilityEventId={editMode === "edit" ? preview.eventId : undefined}
@@ -269,45 +258,46 @@ export function CalendarEventDetailsPopover({
           ) : null}
         </div>
         {showFooter ? (
-          <footer className="calendar-event-details-popover__footer">
-            {showRsvp || showMeet ? (
-              <div className="calendar-event-details-popover__footer-primary">
-                {showMeet ? (
-                  <CalendarMeetJoin
-                    href={form.meetingUrl}
-                    labels={labels}
-                    workspaceOrigin={workspaceOrigin}
-                    meetOperations={meetOperations}
-                    onJoin={onJoinMeeting}
-                  />
-                ) : null}
-                {showRsvp && onRsvp ? (
-                  <CalendarRsvpActions
-                    currentStatus={rsvpStatus ?? undefined}
-                    labels={labels}
-                    busy={busy}
-                    size="sm"
-                    showLabels
-                    onRespond={onRsvp}
-                  />
-                ) : null}
-              </div>
-            ) : null}
+          <DialogFooter
+            start={
+              showRsvp || showMeet ? (
+                <>
+                  {showMeet ? (
+                    <CalendarMeetJoin
+                      href={form.meetingUrl}
+                      labels={labels}
+                      workspaceOrigin={workspaceOrigin}
+                      meetOperations={meetOperations}
+                      onJoin={onJoinMeeting}
+                    />
+                  ) : null}
+                  {showRsvp && onRsvp ? (
+                    <CalendarRsvpActions
+                      currentStatus={rsvpStatus ?? undefined}
+                      labels={labels}
+                      busy={busy}
+                      size="sm"
+                      showLabels
+                      onRespond={onRsvp}
+                    />
+                  ) : null}
+                </>
+              ) : null
+            }
+          >
             {showDelete && onDelete ? (
-              <div className="calendar-event-details-popover__footer-actions">
-                <IconButton
-                  type="button"
-                  size="md"
-                  variant="outline"
-                  severity="danger"
-                  label={labels.delete}
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  disabled={busy}
-                  onClick={onDelete}
-                />
-              </div>
+              <IconButton
+                type="button"
+                size="md"
+                variant="outline"
+                severity="danger"
+                label={labels.delete}
+                icon={<Trash2 className="size-3.5" aria-hidden />}
+                disabled={busy}
+                onClick={onDelete}
+              />
             ) : null}
-          </footer>
+          </DialogFooter>
         ) : null}
       </>
     );

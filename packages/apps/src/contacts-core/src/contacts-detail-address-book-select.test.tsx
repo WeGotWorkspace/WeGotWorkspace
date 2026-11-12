@@ -58,7 +58,7 @@ describe("ContactsDetailAddressBookSelect", () => {
     expect(trigger.className).toContain("collection-ghost-select");
     expect(trigger.className).toContain("contacts-address-book-select--ghost");
     expect(trigger.textContent).toBe(defaultContactsLabels.personalAddressBook);
-    expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
     expect(trigger.style.getPropertyValue("--collection-row-color")).toBeTruthy();
 
@@ -81,7 +81,8 @@ describe("ContactsDetailAddressBookSelect", () => {
     });
     const trigger = screen.getByRole("combobox", { name: "Engineering" });
     expect(trigger.hasAttribute("disabled")).toBe(true);
-    expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    // Disabled keeps the chevron: the value still reads as a choice, only dimmed.
+    expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
   });
 
   it("renders nothing for a card without an address book", () => {

@@ -45,7 +45,7 @@ final class WgwInstallConfig
 
     public function apiEnvPath(): string
     {
-        return $this->installRoot().'/packages/api/.env';
+        return WgwEnvLocation::envFile($this->installRoot().'/packages/api');
     }
 
     public function dataDir(): string

@@ -27,7 +27,7 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
         $this->setUpCalendarsFixtures();
     }
 
-    public function test_null_calendardata_is_skipped_with_a_warning(): void
+    public function test_null_calendardata_is_skipped_with_an_error(): void
     {
         $uri = 'null-data.ics';
         $this->seedEventViaPdo('bob', $uri, $this->sampleIcs('Null data'));
@@ -35,10 +35,10 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
         $objectId = (int) DB::connection('wgw')->table('calendarobjects')->where('uri', $uri)->value('id');
 
         Cache::forget('alerts:null-calendardata-warned');
-        $warnings = [];
-        Log::listen(function (MessageLogged $event) use (&$warnings): void {
-            if ($event->level === 'warning') {
-                $warnings[] = [
+        $errors = [];
+        Log::listen(function (MessageLogged $event) use (&$errors): void {
+            if ($event->level === 'error') {
+                $errors[] = [
                     'message' => $event->message,
                     'context' => $event->context,
                 ];
@@ -57,19 +57,19 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
                 ->where('source_key', 'bob|default|'.$uri)
                 ->count(),
         );
-        $indexerWarnings = array_values(array_filter(
-            $warnings,
-            static fn (array $warning): bool => $warning['message'] === 'Skipping calendar object with null calendardata.',
+        $indexerErrors = array_values(array_filter(
+            $errors,
+            static fn (array $error): bool => $error['message'] === 'Skipping calendar object with null calendardata.',
         ));
-        $this->assertCount(1, $indexerWarnings);
+        $this->assertCount(1, $indexerErrors);
 
-        $summaries = self::nullCalendarDataSummaries($warnings);
+        $summaries = self::nullCalendarDataSummaries($errors);
         $this->assertCount(1, $summaries);
         $this->assertSame('1 calendar objects with NULL calendardata skipped', $summaries[0]['message']);
         $this->assertSame(1, $summaries[0]['context']['count']);
         $this->assertSame([$objectId], $summaries[0]['context']['ids']);
 
-        $logged = count($warnings);
+        $logged = count($errors);
         $db = DB::connection('wgw');
         $db->flushQueryLog();
         $db->enableQueryLog();
@@ -81,18 +81,18 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
         ));
         $db->disableQueryLog();
         $this->assertSame([], $nullScans);
-        $this->assertSame([], self::nullCalendarDataSummaries(array_slice($warnings, $logged)));
+        $this->assertSame([], self::nullCalendarDataSummaries(array_slice($errors, $logged)));
     }
 
     /**
-     * @param  list<array{message: string, context: array<string, mixed>}>  $warnings
+     * @param  list<array{message: string, context: array<string, mixed>}>  $errors
      * @return list<array{message: string, context: array<string, mixed>}>
      */
-    private static function nullCalendarDataSummaries(array $warnings): array
+    private static function nullCalendarDataSummaries(array $errors): array
     {
         return array_values(array_filter(
-            $warnings,
-            static fn (array $warning): bool => str_contains($warning['message'], 'NULL calendardata skipped'),
+            $errors,
+            static fn (array $error): bool => str_contains($error['message'], 'NULL calendardata skipped'),
         ));
     }
 

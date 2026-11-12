@@ -1,9 +1,0 @@
-@import "../../styles.css" reference;
-
-.notes-import-dialog__form {
-  @apply flex min-w-0 max-w-full flex-col gap-4;
-}
-
-.notes-import-dialog .notes-notebook-select {
-  @apply w-full;
-}

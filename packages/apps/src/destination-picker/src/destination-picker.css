@@ -1,103 +1,67 @@
 @import "../../styles.css" reference;
 
 :is(.drive-dialog-surface, .docs-dialog-surface) {
-  --destination-picker-body-height: 16.5rem;
+  /* One height for every folder: the header and five rows (with the table's 2px row
+   * spacing), then it scrolls. */
+  --destination-picker-body-height: calc(var(--list-row-height, 3rem) * 6 + 1.125rem);
+}
+
+/* The list reaches past the content edge by the rows' padding (below). The dialog's
+ * scrolling body widens its scroll box by the same amount, so that reach is not a
+ * sideways scroll. */
+.ui-modal-body:has(.destination-picker) {
+  margin-inline: calc(-1 * var(--list-row-padding-x, 1rem));
+  padding-inline: var(--list-row-padding-x, 1rem);
 }
 
 .destination-picker {
   @apply flex min-h-0 flex-col;
-  /* Breadcrumbs bar px-3; path-breadcrumb--sm lead box 1.75rem; row icon size-4 = 1rem */
-  --destination-picker-bar-padding-x: 0.75rem;
-  --destination-picker-lead-size: 1.75rem;
-  --destination-picker-row-icon-size: 1rem;
 }
 
+/* The path sits on the dialog itself: no bar, no inset, no hairline. */
 .destination-picker__breadcrumbs {
-  @apply shrink-0 px-3;
-  padding-block: 0.5rem;
-  background-color: var(--button-outline-hover-background);
-  border-bottom: 1px solid var(--border);
+  @apply shrink-0;
   --path-breadcrumb-lead-color: var(--workspace-foreground);
-  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
+  --path-breadcrumb-lead-bg: transparent;
   --path-breadcrumb-link-color: var(--muted-foreground);
   --path-breadcrumb-current-color: var(--workspace-foreground);
   --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
-.destination-picker__body {
-  height: var(--destination-picker-body-height);
-  min-height: var(--destination-picker-body-height);
-  @apply flex min-h-0 w-full flex-col;
+/* No tile behind the lead icon, so no box around it either: just the icon. */
+.destination-picker__breadcrumbs .path-breadcrumb__lead {
+  width: auto;
+  height: auto;
 }
 
-.destination-picker__scroll {
-  @apply min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden outline-none;
-  border-radius: var(--control-radius);
+/* Path text at the dialog's label size (the "Name" row label), in both sizes. */
+.destination-picker__breadcrumbs :is(.path-breadcrumb__current, .path-breadcrumb__link) {
+  font-size: var(--input-font-size-md, 0.875rem);
+  line-height: 1.25rem;
 }
 
-.destination-picker__scroll:focus-visible {
-  @apply ring-2 ring-inset ring-ring;
+/* Right after another dialog row (the Name field) the Location row takes the hairline. */
+.field-label-row--inline + .destination-picker > .destination-picker__location {
+  border-top: 1px solid var(--workspace-divider-color);
 }
 
-.destination-picker__scroll .destination-list-table {
-  @apply w-full table-fixed text-sm;
-  border-collapse: separate;
-  border-spacing: 0 0.125rem;
-  color: var(--workspace-foreground);
-}
-
-.destination-picker__scroll .destination-list-col-name {
-  width: 100%;
-  /* Center-align row icons with the tinted HardDrive lead in the Drives header. */
-  padding-left: calc(
-    var(--destination-picker-bar-padding-x) +
-      (var(--destination-picker-lead-size) - var(--destination-picker-row-icon-size)) / 2
-  );
-  padding-right: 0.75rem;
-}
-
-/* Rounded like list and sidebar rows, no separators. */
-.destination-picker__scroll .destination-list-row {
-  @apply w-full cursor-pointer transition-colors;
-  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
-}
-
-.destination-picker__scroll
-  .destination-list-row:not(.destination-list-row--disabled):not(
-    .destination-list-row--selected
-  ):hover {
-  background-color: var(--button-outline-hover-background);
-}
-
-.destination-picker__scroll .destination-list-row--selected,
-.destination-picker__scroll .destination-list-row--selected:hover {
-  background: var(--workspace-selected-background);
-}
-
-.destination-picker__scroll .destination-list-row > td {
-  height: var(--list-row-height, 3rem);
-}
-
-.destination-picker__scroll .destination-list-row:not(:last-child) > td {
+/* The suite hairline between the Location row and the list, as between rows. */
+.destination-picker__location {
   border-bottom: 1px solid var(--workspace-divider-color);
 }
 
-.destination-picker__scroll .destination-list-destination-icon {
-  color: var(--workspace-foreground);
-}
-
-.destination-picker__scroll .destination-list-row--disabled {
-  @apply cursor-default;
-  color: color-mix(in oklab, var(--workspace-foreground) 42%, transparent);
-  pointer-events: none;
-}
-
-.destination-picker__scroll .destination-list-row--disabled .destination-list-destination-icon {
-  opacity: 0.45;
+.destination-picker__body {
+  @apply flex flex-col;
+  height: var(--destination-picker-body-height);
+  /* Out by the rows' own padding, so row text lines up with the rows above (labels
+   * start, fields end) while hover and selection keep their room. */
+  margin-inline: calc(-1 * var(--list-row-padding-x, 1rem));
+  /* The sticky header frosts the dialog paper the rows scroll under. */
+  --collection-list-pane-fill: var(--background, var(--workspace-surface));
 }
 
 .destination-picker__body .collection-state {
-  @apply flex h-full w-full flex-col items-center justify-center;
+  @apply flex w-full flex-1 flex-col items-center justify-center;
   padding: 2rem 1.5rem;
   box-sizing: border-box;
 }

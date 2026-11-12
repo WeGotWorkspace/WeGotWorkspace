@@ -68,7 +68,7 @@ async function renderCalendarApp(initialPath: string) {
   const router = createMockWeGotWorkspaceRouter(history);
   await router.load();
   render(<RouterProvider router={router} />);
-  await screen.findByRole("combobox", { name: "Calendar view" });
+  await screen.findByRole("button", { name: /^View mode:/ });
   return { history };
 }
 
@@ -97,7 +97,9 @@ describe("Calendar sidebar row click ≠ checkbox / no navigation", { timeout: 1
     );
 
     fireEvent.click(screen.getByRole("button", { name: "New event" }));
-    expect(await screen.findByRole("button", { name: "Calendar: Work" })).toBeTruthy();
+    // The new event's calendar dropdown starts on the row picked as the create target.
+    const picker = await screen.findByLabelText("Calendar");
+    expect(picker.textContent).toContain("Work");
   });
 
   it("toggles visibility from the checkbox without selecting the row or changing the URL", async () => {

@@ -104,8 +104,6 @@ type RemindersLabels = Pick<
   | "tasksSection"
   | "tasksSectionShowAll"
   | "tasksSectionHideAll"
-  | "tasksSectionCollapse"
-  | "tasksSectionExpand"
   | "sharedTaskListsSection"
   | "viewOnlyCalendarBadge"
 >;
@@ -142,8 +140,6 @@ export function CalendarRemindersSidebar({
           title={labels.tasksSection}
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
-          collapseLabel={labels.tasksSectionCollapse}
-          expandLabel={labels.tasksSectionExpand}
           toggleAll={taskListsToggleAll({
             lists,
             hiddenListIds,

@@ -96,7 +96,7 @@ export const Default: Story = {
   },
 };
 
-/** #1927: a new all-day event starts as "Show as: Free" with the time-off hint. */
+/** #1927: a new all-day event starts as "Show as: Free". */
 export const AllDayFree: Story = {
   tags: ["vitest-ci"],
   args: {
@@ -113,7 +113,6 @@ export const AllDayFree: Story = {
     const canvas = within(canvasElement.ownerDocument.body);
     const showAs = canvas.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs });
     await expect(showAs).toHaveTextContent(defaultCalendarLabels.eventShowAsFree);
-    await expect(canvas.getByText(defaultCalendarLabels.eventShowAsAllDayFreeHint)).toBeTruthy();
   },
 };
 
@@ -178,9 +177,10 @@ export const WithMeetLink: Story = {
     const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     await expect(url.value).toBe("https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n");
     await expect(url.readOnly).toBe(false);
+    // No copy button by the link; the meeting menu holds the actions.
     await expect(
-      canvas.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }),
-    ).toBeTruthy();
+      canvas.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }),
+    ).toBeNull();
   },
 };
 
@@ -367,7 +367,7 @@ function inviteeAvailabilitySource() {
 }
 
 /**
- * #1614: Wouter is busy, so his participant tag takes the warning wash and icon.
+ * #1614: Wouter is busy, so his participant tag takes the warning wash.
  * Carol (free), Dana (partial data) and guests keep plain tags.
  */
 export const WithInviteeAvailability: Story = {
@@ -402,21 +402,18 @@ export const WithInviteeAvailability: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = canvasElement.ownerDocument.body;
+    // A busy teammate's tag takes the warning wash; its tooltip lists the busy time.
     const busyNames = () =>
-      [...body.querySelectorAll(".calendar-invitees-card__chip--busy")].map((node) =>
-        node.getAttribute("aria-label"),
+      [...body.querySelectorAll(".calendar-invitees-card__tag--busy")].map((node) =>
+        node.closest(".calendar-invitees-card__tag")?.getAttribute("aria-label"),
       );
-    const busyStatus = defaultCalendarLabels.eventAttendeesAvailabilityBusyStatus;
     await waitFor(
       () => {
         const names = busyNames();
         expect(names).toHaveLength(1);
-        expect(names[0]).toMatch(new RegExp(`^Wouter, .*, ${busyStatus}$`));
+        expect(names[0]).toMatch(/^Wouter, /);
       },
       { timeout: 4000 },
     );
-    expect(
-      body.querySelector(".calendar-invitees-card__chip--busy .user-chip__adornment svg"),
-    ).not.toBeNull();
   },
 };

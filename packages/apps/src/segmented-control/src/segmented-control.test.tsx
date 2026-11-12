@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BooleanSegmentedControl,
   SegmentedControl,
@@ -32,6 +32,13 @@ const rsvpOptions = [
     severity: "danger" as const,
   },
 ];
+
+/** Two animation frames: the component reveals its thumb after the first paint. */
+function nextPaint(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
 
 function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
@@ -306,6 +313,120 @@ describe("SegmentedControl", () => {
       </TooltipProvider>,
     );
     expect(container.querySelector(".segmented-control__thumb--severity-success")).toBeTruthy();
+  });
+
+  it("animates later moves of the thumb once it has been revealed", async () => {
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    await act(async () => {
+      await nextPaint();
+    });
+    expect(root.hasAttribute("data-thumb-animate")).toBe(true);
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value="list" onChange={vi.fn()} options={[...options]} />
+      </TooltipProvider>,
+    );
+    // The layout pass already allows the slide; no wait for the next paint.
+    expect(root.hasAttribute("data-thumb-animate")).toBe(true);
+    expect(root.dataset.thumbEdge).toBe("last");
+  });
+
+  it("keeps the thumb hidden when the value matches no option", async () => {
+    const { container } = renderWithTooltip(
+      <SegmentedControl value={"other" as "grid"} onChange={vi.fn()} options={[...options]} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    await act(async () => {
+      await nextPaint();
+    });
+    expect(root.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
+  });
+
+  describe("with ResizeObserver", () => {
+    let observers: FakeResizeObserver[] = [];
+
+    class FakeResizeObserver {
+      readonly observed: Element[] = [];
+      disconnected = false;
+      constructor(readonly callback: ResizeObserverCallback) {
+        observers.push(this);
+      }
+      observe(target: Element) {
+        this.observed.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.disconnected = true;
+      }
+      resize() {
+        this.callback([], this as unknown as ResizeObserver);
+      }
+    }
+
+    beforeEach(() => {
+      observers = [];
+      vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("observes the track and every segment, and disconnects on unmount", () => {
+      const { container, unmount } = renderWithTooltip(
+        <SegmentedControl value="tentative" onChange={vi.fn()} options={rsvpOptions} />,
+      );
+      const root = container.querySelector(".segmented-control") as HTMLElement;
+      const observer = observers.at(-1)!;
+      expect(observer.observed).toEqual([root, ...container.querySelectorAll("button")]);
+
+      unmount();
+      expect(observer.disconnected).toBe(true);
+    });
+
+    it("re-measures on resize without revealing the thumb before the first paint", async () => {
+      const { container } = renderWithTooltip(
+        <SegmentedControl value="tentative" onChange={vi.fn()} options={rsvpOptions} />,
+      );
+      const root = container.querySelector(".segmented-control") as HTMLElement;
+      const observer = observers.at(-1)!;
+
+      root.style.removeProperty("--segmented-control-thumb-width");
+      observer.resize();
+      expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toMatch(/^\d+px$/);
+      expect(root.hasAttribute("data-thumb-ready")).toBe(false);
+
+      await act(async () => {
+        await nextPaint();
+      });
+      expect(root.hasAttribute("data-thumb-ready")).toBe(true);
+      root.style.removeProperty("--segmented-control-thumb-x");
+      observer.resize();
+      expect(root.style.getPropertyValue("--segmented-control-thumb-x")).toMatch(/^\d+px$/);
+      expect(root.hasAttribute("data-thumb-ready")).toBe(true);
+      expect(root.hasAttribute("data-thumb-animate")).toBe(true);
+    });
+
+    it("replaces its observer when the options change", () => {
+      const { rerender } = renderWithTooltip(
+        <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} />,
+      );
+      const first = observers.at(-1)!;
+
+      rerender(
+        <TooltipProvider delayDuration={0}>
+          <SegmentedControl value="tentative" onChange={vi.fn()} options={rsvpOptions} />
+        </TooltipProvider>,
+      );
+      expect(first.disconnected).toBe(true);
+      expect(observers.at(-1)!.observed).toHaveLength(4);
+    });
   });
 
   it("renders a compact switch for boolean on/off", () => {

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import { FieldLabelRow, FieldLabelRowIconLabels } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
@@ -46,6 +46,11 @@ export type CalendarEventFormLayout = {
   hideNotes?: boolean;
   /** Meeting URL is copy-only; no generate menu or channel picker. */
   meetCopyOnly?: boolean;
+  /**
+   * Participants right after the meeting link, and `afterMeetAccessory` after them
+   * (Meet's New meeting: who comes first, then when).
+   */
+  inviteesFirst?: boolean;
 };
 
 export type CalendarEventFormProps = {
@@ -58,7 +63,10 @@ export type CalendarEventFormProps = {
   locale?: string;
   busy?: boolean;
   submitLabel?: string;
-  /** Rendered after Meet in the Location+Meet group (e.g. Meet Schedule switch). */
+  /**
+   * Rendered after Meet in the Location+Meet group, or after the participants with
+   * `layout.inviteesFirst` (e.g. Meet's Schedule switch).
+   */
   afterMeetAccessory?: ReactNode;
   className?: string;
   layout?: CalendarEventFormLayout;
@@ -76,6 +84,8 @@ export type CalendarEventFormProps = {
   meetOperations?: CalendarMeetOperations;
   workspaceOrigin?: string;
   sessionUsername?: string;
+  /** The viewer's name, for their own participant row. */
+  sessionDisplayName?: string;
   onJoinMeeting?: (href: string) => void;
   invitees?: CalendarInvitee[];
   contactCards?: ContactCard[];
@@ -97,11 +107,22 @@ export type CalendarEventFormProps = {
    * Dialogs and the interactive details popover use `sm` (32px) at every breakpoint.
    */
   controlSize?: ControlSize;
+  /**
+   * `caption` (default): two-column rows with captions, the dialog norm.
+   * `icon`: an icon in front of each field and one column (the event popover).
+   */
+  fieldLabels?: "caption" | "icon";
+  /**
+   * The host saves each change as it is made (list mode's detail pane): no Save/Cancel,
+   * and an invitee's answer is sent at once.
+   */
+  autosave?: boolean;
+  /**
+   * The calendar dropdown above a large title, as in Tasks and Notes (the event dialog
+   * and list mode's detail pane). Off: a Title row (the popover, Meet).
+   */
+  heading?: boolean;
 };
-
-function fieldIcon(node: ReactNode): ReactNode {
-  return node;
-}
 
 /** Editable event fields + footer shared by the create dialog and interactive details popover. */
 export function CalendarEventForm({
@@ -134,12 +155,29 @@ export function CalendarEventForm({
   meetOperations,
   workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
   sessionUsername,
+  sessionDisplayName,
   onJoinMeeting,
   collisionContentClassName = "calendar-dialog-surface calendar-event-dialog",
   autoFocusTitle = true,
   controlSize = "sm",
+  fieldLabels = "caption",
+  autosave = false,
+  heading = false,
 }: CalendarEventFormProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
+  // The viewer as a teammate, so their own participant row reads like the others.
+  const self = useMemo<CalendarInvitee | undefined>(
+    () =>
+      sessionUsername
+        ? {
+            username: sessionUsername,
+            email: sessionEmail ?? "",
+            name: sessionDisplayName ?? "",
+          }
+        : undefined,
+    [sessionDisplayName, sessionEmail, sessionUsername],
+  );
+  const locationId = useId();
   const invitationMode = mode === "invitation";
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
   const isInvitee = isSessionEventInvitee(form.attendees, sessionEmail, invitees);
@@ -154,10 +192,16 @@ export function CalendarEventForm({
       isOrganizer,
     });
   const fieldsDisabled = busy || readOnly;
-  const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
-  const showInvitationRsvp = invitationMode && Boolean(onRsvp);
-  const showSaveCancel = !invitationMode && (!readOnly || showInviteeRsvp);
-  const calendarPickerInteractive = invitationMode || showInviteeRsvp;
+  const inviteeCanRespond = mode === "edit" && Boolean(onRsvp) && isInvitee;
+  // With autosave an invitee answers with the RSVP buttons, as on an invitation.
+  const showInviteeRsvp = inviteeCanRespond && !autosave;
+  /** Answers go out at once (an invitation, or an invitee in the autosaving pane). */
+  const answersAtOnce = invitationMode || (autosave && inviteeCanRespond);
+  const showInvitationRsvp = answersAtOnce && Boolean(onRsvp);
+  const showSaveCancel = !autosave && !invitationMode && (!readOnly || showInviteeRsvp);
+  const showFooter =
+    showSaveCancel || showInvitationRsvp || showInviteeRsvp || (Boolean(onDelete) && !readOnly);
+  const calendarPickerInteractive = invitationMode || inviteeCanRespond;
   const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
     incomingRsvp ?? "",
@@ -209,9 +253,152 @@ export function CalendarEventForm({
     commitForm(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
   };
 
+  const inviteesFirst = Boolean(layout?.inviteesFirst) && !layout?.hideInvitees;
+  const secondary = (parts: {
+    hideInvitees?: boolean;
+    hideAlarms?: boolean;
+    hideNotes?: boolean;
+  }) => (
+    <CalendarEventFormSecondary
+      form={form}
+      labels={labels}
+      invitees={invitees}
+      contactCards={contactCards}
+      onRefreshContactCards={onRefreshContactCards}
+      busy={busy}
+      readOnly={readOnly}
+      fieldsDisabled={fieldsDisabled}
+      canSubmitEmail={canSubmitEmail}
+      noTeam={noTeam}
+      sessionEmail={sessionEmail}
+      self={self}
+      controlSize={controlSize}
+      meetEmailGuestHint={showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined}
+      {...parts}
+      availabilityEventId={availabilityEventId}
+      onFieldChange={set}
+    />
+  );
+
   const saveLabel =
     submitLabel ??
     (showInviteeRsvp ? labels.save : mode === "edit" ? labels.saveChanges : labels.save);
+
+  const fields = (
+    <div className="calendar-event-dialog__fields">
+      <CalendarEventFormTitle
+        variant={heading ? "heading" : "row"}
+        form={form}
+        calendars={calendars}
+        labels={labels}
+        controlSize={controlSize}
+        busy={busy}
+        readOnly={readOnly}
+        fieldsDisabled={fieldsDisabled}
+        autoFocusTitle={autoFocusTitle}
+        hideCalendarPicker={layout?.hideCalendarPicker}
+        calendarPickerInteractive={calendarPickerInteractive}
+        showInviteeRsvp={showInviteeRsvp}
+        invitationMode={answersAtOnce}
+        draftCalendarId={draftCalendarId}
+        incomingRsvp={incomingRsvp}
+        onDraftCalendarIdChange={setDraftCalendarId}
+        onRsvp={onRsvp}
+        onFieldChange={set}
+      />
+
+      <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--place">
+        {layout?.hideLocation ? null : (
+          <FieldLabelRow
+            className="calendar-event-dialog__field calendar-event-dialog__field--location"
+            layout="inline"
+            fill
+            label={labels.eventLocationLabel}
+            labelIcon={<MapPin aria-hidden />}
+            htmlFor={locationId}
+          >
+            <Input
+              id={locationId}
+              size={controlSize}
+              value={form.location}
+              onChange={(event) => set("location", event.target.value)}
+              placeholder={labels.eventLocationPlaceholder}
+              disabled={fieldsDisabled}
+            />
+          </FieldLabelRow>
+        )}
+
+        <CalendarMeetCard
+          className="calendar-event-dialog__field calendar-event-dialog__field--meet"
+          presentation="field"
+          form={form}
+          labels={labels}
+          calendar={calendar}
+          username={sessionUsername}
+          workspaceOrigin={workspaceOrigin}
+          recurrenceId={recurrenceId}
+          recurrenceSaveScope={meetReserveScope}
+          thisInstanceLocked={thisInstanceLocked}
+          meetOperations={meetOperations}
+          disabled={fieldsDisabled}
+          readOnly={readOnly}
+          copyOnly={invitationMode || layout?.meetCopyOnly}
+          controlSize={controlSize}
+          emailGuestHint={showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined}
+          onChange={commitForm}
+          abandonStagedReserveRef={abandonStagedReserveRef}
+          onJoin={onJoinMeeting}
+        />
+
+        {inviteesFirst ? null : afterMeetAccessory}
+      </div>
+
+      {inviteesFirst ? (
+        <>
+          {secondary({ hideAlarms: true, hideNotes: true })}
+          {afterMeetAccessory}
+        </>
+      ) : null}
+
+      {layout?.hideWhen ? null : (
+        <CalendarEventFormWhen
+          form={form}
+          labels={labels}
+          locale={locale}
+          controlSize={controlSize}
+          disabled={fieldsDisabled}
+          onFieldChange={set}
+        />
+      )}
+
+      {layout?.hideRecurrence ? null : (
+        <CalendarEventFormRecurrence
+          form={form}
+          labels={labels}
+          locale={locale}
+          controlSize={controlSize}
+          disabled={fieldsDisabled}
+          onChange={onChange}
+          onFieldChange={set}
+        />
+      )}
+
+      {layout?.hideShowAs ? null : (
+        <CalendarEventFormShowAs
+          form={form}
+          labels={labels}
+          disabled={fieldsDisabled}
+          onFieldChange={set}
+        />
+      )}
+
+      {secondary({
+        hideInvitees: layout?.hideInvitees || inviteesFirst,
+        hideAlarms: layout?.hideAlarms,
+        hideNotes: layout?.hideNotes,
+      })}
+    </div>
+  );
 
   return (
     <>
@@ -219,6 +406,7 @@ export function CalendarEventForm({
         className={cn(
           "calendar-event-dialog__form",
           controlSize === "sm" && "calendar-event-dialog__form--compact",
+          fieldLabels === "icon" && "calendar-event-dialog__form--icons",
           className,
         )}
         lang={locale}
@@ -239,152 +427,34 @@ export function CalendarEventForm({
           trySave();
         }}
       >
-        <div className="calendar-event-dialog__fields">
-          <CalendarEventFormTitle
-            form={form}
-            calendars={calendars}
+        {fieldLabels === "icon" ? (
+          <FieldLabelRowIconLabels>{fields}</FieldLabelRowIconLabels>
+        ) : (
+          fields
+        )}
+
+        {showFooter ? (
+          <CalendarEventFormFooter
+            mode={mode}
             labels={labels}
-            controlSize={controlSize}
             busy={busy}
+            controlSize={controlSize}
             readOnly={readOnly}
-            fieldsDisabled={fieldsDisabled}
-            autoFocusTitle={autoFocusTitle}
-            hideCalendarPicker={layout?.hideCalendarPicker}
-            calendarPickerInteractive={calendarPickerInteractive}
+            valid={valid}
+            canSubmit={canSubmit}
+            saveLabel={saveLabel}
+            showInvitationRsvp={showInvitationRsvp}
             showInviteeRsvp={showInviteeRsvp}
-            invitationMode={invitationMode}
+            showSaveCancel={showSaveCancel}
+            inviteeRsvp={inviteeRsvp}
+            draftRsvp={draftRsvp}
             draftCalendarId={draftCalendarId}
-            incomingRsvp={incomingRsvp}
-            onDraftCalendarIdChange={setDraftCalendarId}
+            onDraftRsvpChange={setDraftRsvp}
             onRsvp={onRsvp}
-            onFieldChange={set}
+            onDelete={onDelete}
+            onDismiss={dismiss}
           />
-
-          <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--place">
-            {layout?.hideLocation ? null : (
-              <FieldLabelRow
-                className="calendar-event-dialog__field calendar-event-dialog__field--location"
-                label={labels.eventLocationLabel}
-                labelMode="icon"
-                icon={fieldIcon(<MapPin className="size-3.5" aria-hidden />)}
-              >
-                <Input
-                  size={controlSize}
-                  value={form.location}
-                  onChange={(event) => set("location", event.target.value)}
-                  placeholder={labels.eventLocationPlaceholder}
-                  aria-label={labels.eventLocationLabel}
-                  disabled={fieldsDisabled}
-                />
-              </FieldLabelRow>
-            )}
-
-            <CalendarMeetCard
-              className="calendar-event-dialog__field calendar-event-dialog__field--meet"
-              presentation="field"
-              form={form}
-              labels={labels}
-              calendar={calendar}
-              username={sessionUsername}
-              workspaceOrigin={workspaceOrigin}
-              recurrenceId={recurrenceId}
-              recurrenceSaveScope={meetReserveScope}
-              thisInstanceLocked={thisInstanceLocked}
-              meetOperations={meetOperations}
-              disabled={fieldsDisabled}
-              readOnly={readOnly}
-              copyOnly={invitationMode || layout?.meetCopyOnly}
-              controlSize={controlSize}
-              emailGuestHint={
-                showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-              }
-              fieldIcon={fieldIcon(<Link2 className="size-3.5" aria-hidden />)}
-              onChange={commitForm}
-              abandonStagedReserveRef={abandonStagedReserveRef}
-              onJoin={onJoinMeeting}
-            />
-
-            {afterMeetAccessory}
-          </div>
-
-          {layout?.hideWhen ? null : (
-            <CalendarEventFormWhen
-              form={form}
-              labels={labels}
-              locale={locale}
-              controlSize={controlSize}
-              disabled={fieldsDisabled}
-              onFieldChange={set}
-            />
-          )}
-
-          {layout?.hideRecurrence ? null : (
-            <CalendarEventFormRecurrence
-              form={form}
-              labels={labels}
-              locale={locale}
-              controlSize={controlSize}
-              disabled={fieldsDisabled}
-              onChange={onChange}
-              onFieldChange={set}
-            />
-          )}
-
-          {layout?.hideShowAs ? null : (
-            <CalendarEventFormShowAs
-              form={form}
-              labels={labels}
-              controlSize={controlSize}
-              disabled={fieldsDisabled}
-              readOnly={readOnly}
-              onFieldChange={set}
-            />
-          )}
-
-          <CalendarEventFormSecondary
-            form={form}
-            labels={labels}
-            invitees={invitees}
-            contactCards={contactCards}
-            onRefreshContactCards={onRefreshContactCards}
-            busy={busy}
-            readOnly={readOnly}
-            fieldsDisabled={fieldsDisabled}
-            canSubmitEmail={canSubmitEmail}
-            noTeam={noTeam}
-            sessionEmail={sessionEmail}
-            controlSize={controlSize}
-            meetEmailGuestHint={
-              showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-            }
-            hideInvitees={layout?.hideInvitees}
-            hideAlarms={layout?.hideAlarms}
-            hideNotes={layout?.hideNotes}
-            availabilityEventId={availabilityEventId}
-            onFieldChange={set}
-          />
-        </div>
-
-        <CalendarEventFormFooter
-          mode={mode}
-          labels={labels}
-          busy={busy}
-          controlSize={controlSize}
-          readOnly={readOnly}
-          valid={valid}
-          canSubmit={canSubmit}
-          saveLabel={saveLabel}
-          showInvitationRsvp={showInvitationRsvp}
-          showInviteeRsvp={showInviteeRsvp}
-          showSaveCancel={showSaveCancel}
-          inviteeRsvp={inviteeRsvp}
-          draftRsvp={draftRsvp}
-          draftCalendarId={draftCalendarId}
-          onDraftRsvpChange={setDraftRsvp}
-          onRsvp={onRsvp}
-          onDelete={onDelete}
-          onDismiss={dismiss}
-        />
+        ) : null}
       </form>
       <CalendarMeetChannelEmailDialog
         open={collisionOpen}

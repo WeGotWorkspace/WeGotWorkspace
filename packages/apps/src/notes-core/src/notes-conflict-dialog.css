@@ -1,6 +1,0 @@
-/* Button row for the outside-write prompt. */
-.notes-conflict-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}

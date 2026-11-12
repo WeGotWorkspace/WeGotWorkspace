@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { HardDrive } from "lucide-react";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels } from "@/drive-core/src/drive-labels";
@@ -44,7 +43,6 @@ function FileSelectHarness() {
       currentUsername="alice"
       groupRootNames={new Set(["Engineering"])}
       rootLabels={{ "My Drive": docsLabels.homeMyDrive, "Groups/Engineering": "Engineering" }}
-      rootIcon={<HardDrive />}
       dialogSurfaceClassName="docs-dialog-surface"
       onClose={() => setOpen(false)}
       onSelectFile={STORY_NOOP}

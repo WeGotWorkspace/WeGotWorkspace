@@ -43,7 +43,7 @@ final class DriveService
         try {
             $operation();
         } catch (\Throwable $e) {
-            Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
+            Log::error('file_node_index_sync_failed', ['error' => $e->getMessage()]);
         }
     }
 

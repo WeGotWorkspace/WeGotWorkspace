@@ -1,11 +1,11 @@
 import { CircleDot } from "lucide-react";
-import { Callout } from "@/callout/src/callout";
+import { useId } from "react";
 import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import type { ControlSize } from "@/ui/control-size";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 
 type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
   key: K,
@@ -15,58 +15,37 @@ type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
 export type CalendarEventFormShowAsProps = {
   form: CalendarEventFormValue;
   labels: CalendarUILabels;
-  controlSize: ControlSize;
   disabled: boolean;
-  /** Someone else's event: no time-off hint, the viewer cannot change it. */
-  readOnly?: boolean;
   onFieldChange: CalendarEventFormFieldChange;
 };
 
-/** Busy/free availability field for the shared event form. All-day Free gets a time-off hint. */
+/** Busy/free availability field for the shared event form. */
 export function CalendarEventFormShowAs({
   form,
   labels,
-  controlSize,
   disabled,
-  readOnly = false,
   onFieldChange,
 }: CalendarEventFormShowAsProps) {
-  const showTimeOffHint = !readOnly && form.allDay && form.freeBusyStatus === "free";
+  const showAsId = useId();
   return (
     <FieldLabelRow
       className="calendar-event-dialog__field calendar-event-dialog__field--availability"
+      layout="inline"
       label={labels.eventShowAs}
-      labelMode="icon"
-      icon={<CircleDot className="size-3.5" aria-hidden />}
+      labelIcon={<CircleDot aria-hidden />}
+      htmlFor={showAsId}
     >
-      <div className="calendar-event-dialog__show-as-field">
-        <Select
-          value={form.freeBusyStatus}
-          onValueChange={(value) =>
-            onFieldChange("freeBusyStatus", value as CalendarFreeBusyStatus)
-          }
-          disabled={disabled}
-        >
-          <SelectTrigger
-            size={controlSize}
-            className="calendar-event-dialog__show-as-trigger"
-            aria-label={labels.eventShowAs}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
-            <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
-          </SelectContent>
-        </Select>
-        {showTimeOffHint ? (
-          <Callout
-            severity="info"
-            className="calendar-event-dialog__show-as-hint"
-            title={labels.eventShowAsAllDayFreeHint}
-          />
-        ) : null}
-      </div>
+      <Select
+        value={form.freeBusyStatus}
+        onValueChange={(value) => onFieldChange("freeBusyStatus", value as CalendarFreeBusyStatus)}
+        disabled={disabled}
+      >
+        <CollectionGhostSelectTrigger id={showAsId} label={<SelectValue />} />
+        <SelectContent align="end">
+          <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
+          <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
+        </SelectContent>
+      </Select>
     </FieldLabelRow>
   );
 }

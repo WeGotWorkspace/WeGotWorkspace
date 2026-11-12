@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import "@/text-editor-core/docs-collab/docs-conflict-dialog.css";
 
 /** The four strings the dialog renders. Docs and Notes both supply them. */
 export type DocsConflictDialogLabels = {
@@ -42,12 +41,12 @@ export function DocsConflictDialog({
 }: DocsConflictDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="docs-dialog-surface docs-conflict-dialog">
+      <DialogContent className="docs-dialog-surface">
         <DialogHeader>
           <DialogTitle>{labels.conflictTitle}</DialogTitle>
           <DialogDescription>{labels.conflictDescription(documentTitle)}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="docs-conflict-dialog__actions">
+        <DialogFooter>
           <Button variant="outline" onClick={onUseServer} disabled={busy}>
             {labels.conflictUseServer}
           </Button>

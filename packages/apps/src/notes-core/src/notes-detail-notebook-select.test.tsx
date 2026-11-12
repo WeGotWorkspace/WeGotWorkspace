@@ -102,7 +102,8 @@ describe("NotesDetailNotebookSelect", () => {
     const move = screen.getByRole("combobox", { name: "TeamPad" });
     expect(move.textContent).not.toContain("bob");
     expect(move.hasAttribute("disabled")).toBe(true);
-    expect(move.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    // Locked keeps the chevron, dimmed: the notebook still reads as a choice.
+    expect(move.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
     fireEvent.click(move);
     expect(onMoveToNotebook).not.toHaveBeenCalled();
     expect(onCreateNotebook).not.toHaveBeenCalled();

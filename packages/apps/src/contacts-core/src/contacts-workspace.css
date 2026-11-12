@@ -35,14 +35,6 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
-/*
- * Detail header address-book switcher: ColorSwatchTrigger (Notes notebook switcher)
- * — cream surface; height/radius come from the shared primitive.
- */
-.contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--input-background);
-}
-
 .contacts-list-panel__loading {
   @apply flex min-h-48 items-center justify-center;
 }

@@ -233,6 +233,16 @@ export async function upsertContactCardInCache(
   await contactsCardsTable(db).put(contactCardRow(card, pendingSync));
 }
 
+/** One cached card, or null when the cache does not have it. */
+export async function readCachedContactCard(
+  username: string,
+  cardId: string,
+): Promise<ContactCard | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await contactsCardsTable(db).get(cardId);
+  return row ? (JSON.parse(row.data) as ContactCard) : null;
+}
+
 export async function removeContactCardFromCache(username: string, cardId: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await contactsCardsTable(db).delete(cardId);

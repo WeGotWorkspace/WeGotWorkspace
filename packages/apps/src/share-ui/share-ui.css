@@ -55,50 +55,9 @@
   min-height: var(--input-height);
 }
 
-/*
- * Boolean switches: compact track (~20px) inside a 32px touch row.
- * Visual track = segment (1rem) + track padding (0.125rem × 2) = 1.25rem.
- * Touch padding lives on the wrapper only — switch geometry stays default.
- */
-.share-dialog {
-  --share-switch-track-height: 1.5rem;
-  --share-switch-touch-pad: calc((var(--input-height) - var(--share-switch-track-height)) / 2);
-}
-
-.share-dialog__switch-touch {
-  @apply inline-flex shrink-0 items-center;
-  min-height: var(--input-height);
-  padding-block: var(--share-switch-touch-pad);
-}
-
-/* Invisible hit-area into wrapper padding; switch layout/visual unchanged. */
-.share-dialog__switch-touch .switch::before {
-  content: "";
-  position: absolute;
-  inset-inline: -0.125rem;
-  top: calc(-1 * var(--share-switch-touch-pad));
-  bottom: calc(-1 * var(--share-switch-touch-pad));
-}
-
-.share-dialog__content {
-  @apply max-h-[90vh] overflow-x-hidden overflow-y-auto p-0;
-}
-
-.share-dialog__header {
-  @apply pb-3;
-  padding-block-start: var(--modal-inset, 1.5rem);
-  padding-inline-start: var(--modal-inset, 1.5rem);
-  padding-inline-end: calc(var(--modal-inset, 1.5rem) + var(--modal-header-end, 2.5rem));
-}
-
+/* Flat rows; each section brings its own row spacing and hairlines. */
 .share-dialog__body {
-  @apply flex min-w-0 flex-col gap-6 overflow-x-hidden;
-  padding-inline: var(--modal-inset, 1.5rem);
-  padding-block-end: var(--modal-inset, 1.5rem);
-}
-
-.share-dialog__body > .card {
-  @apply mb-0;
+  @apply flex min-w-0 flex-col;
 }
 
 .share-dialog .card__row-title-line .tag {
@@ -107,7 +66,7 @@
   color: var(--share-dialog-tag-fg);
 }
 
-/* Radius only — wash/fg come from UserAvatar (soft color= tiles or outline-active). */
+/* Teams are rounded squares, people circles; the neutral tint comes from UserAvatar. */
 .share-dialog__principal-mark--group,
 .share-dialog__guest-mark {
   --user-avatar-radius: 0.5rem;
@@ -115,7 +74,7 @@
 
 .share-dialog__principal-mark--labeled {
   @apply min-w-0 flex-1;
-  /* Names read as text, like the Drive access panel; the hue stays on the mark. */
+  /* Names read as text, like the Drive access panel. */
   --user-avatar-label-color: var(--workspace-foreground);
 }
 
@@ -145,12 +104,10 @@
   @apply size-2.5;
 }
 
-.share-dialog__link-controls {
-  @apply flex min-w-0 flex-col gap-2;
-}
-
+/* A field with its buttons (copy, generate new) fills the control column; a switch
+ * alone (password off) keeps to the end. */
 .share-dialog__link-row {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-center justify-end gap-2;
 }
 
 .share-dialog__icon-link {
@@ -165,70 +122,18 @@
   @apply shrink-0;
 }
 
-.share-dialog__password-field {
-  @apply flex min-w-0 flex-1 items-center gap-1 sm:ml-auto sm:flex-none;
-}
-
-.share-dialog__password-field .share-dialog__input {
-  @apply sm:max-w-[11.25rem] sm:flex-none;
-}
-
-.share-dialog__password-field > :not(.share-dialog__input) {
-  @apply shrink-0;
-}
-
-.share-dialog__link-row > :not(.share-dialog__link-field) {
-  @apply shrink-0;
-}
-
-.share-dialog__link-field {
-  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg px-2.5 py-1.5;
-  background-color: var(--input-background);
-  border: 1px solid var(--control-border-color);
-}
-
-.share-dialog__link-field-icon {
-  @apply size-3.5 shrink-0;
-  color: var(--share-dialog-muted);
-}
-
-.share-dialog__link-url {
-  @apply min-w-0 truncate text-xs;
-  color: var(--share-dialog-muted);
-}
-
-.share-dialog__password-row {
-  @apply -mx-3 flex min-w-0 flex-wrap items-center gap-2 rounded-b-xl px-3 py-2.5;
-  background: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
-}
-
-.share-dialog__password-icon {
-  @apply size-3.5 shrink-0;
-  color: var(--share-dialog-muted);
-}
-
-.share-dialog__password-label {
-  @apply shrink-0 text-xs font-medium;
-}
-
 .share-dialog__guest-invite-row {
   @apply border-t pt-2.5;
   border-color: var(--share-dialog-panel-border);
-}
-
-.share-dialog__footer {
-  @apply flex items-center border-t px-6 py-3 text-xs;
-  border-color: var(--share-dialog-panel-border);
-  background: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
-  color: var(--share-dialog-muted);
 }
 
 .share-dialog__add-grant {
   @apply min-w-0;
 }
 
-.share-access-card__body {
-  @apply flex min-w-0 flex-col gap-2;
+/* The add field leads; a little more room before the member rows. */
+.share-dialog__add-grant:not(:last-child) {
+  @apply mb-2;
 }
 
 /* Flat rows — Card already provides the section surface; no nested panel chrome. */
@@ -306,7 +211,6 @@
 .share-dialog__loading,
 .share-dialog__error {
   @apply py-8 text-sm;
-  padding-inline: var(--modal-inset, 1.5rem);
   color: var(--share-dialog-muted);
 }
 

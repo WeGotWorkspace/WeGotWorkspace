@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
-import { Cloud, Folder } from "lucide-react";
-import { kindIcon } from "@/drive-core/src/drive-icons";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { Cloud } from "lucide-react";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import {
   buildDriveFolderPickerBreadcrumbs,
@@ -25,19 +24,25 @@ import {
   isDriveTrashFolderName,
 } from "@/lib/files/drive-path-utils";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
+import {
+  adjacentListItem,
+  listItemFocusTarget,
+  listItemIdOf,
+  refocusListAfterNavigation,
+} from "@/hooks/list-item-focus";
 import { useListSort } from "@/hooks/use-list-sort";
 import {
   DRIVE_LIST_DEFAULT_SORT,
   DRIVE_LIST_SORT_COLUMNS,
   sortDriveFiles,
 } from "@/drive-core/src/drive-list-sort";
-import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
+import { DriveViewIcon, withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import { cn } from "@/lib/utils";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DestinationPickerFrame } from "@/destination-picker/src/destination-picker-frame";
-import { DestinationPickerList } from "@/destination-picker/src/destination-picker-list";
 import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
 import "@/drive-core/src/drive-folder-picker.css";
 
@@ -205,7 +210,6 @@ export function DriveFolderPicker({
   currentUsername,
   groupRootNames,
   rootLabels,
-  rootIcon,
   listingTheme,
   mode = "folder-destination",
   onDestinationChange,
@@ -227,11 +231,9 @@ export function DriveFolderPicker({
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
   rootLabels?: Readonly<Record<string, string>>;
-  /** Optional icon for drive-root rows (Docs: HardDrive). Defaults to Folder. */
-  rootIcon?: ReactNode;
-  /** Docs image-insert: Docs blue chrome. Omit for Drive's own picker. */
+  /** Docs dialogs: Docs chrome on the Drive list. Omit for Drive's own picker. */
   listingTheme?: "docs";
-  /** `file-select` uses Drive grid/list (images); default keeps DestinationPickerList. */
+  /** `file-select` picks a file (grid or list); the default picks a folder (list). */
   mode?: DrivePickerMode;
   onDestinationChange?: (path: string | null) => void;
   onSelectedFileChange?: (file: DriveFile | null) => void;
@@ -323,13 +325,22 @@ export function DriveFolderPicker({
     columns: DRIVE_LIST_SORT_COLUMNS,
     defaultSort: DRIVE_LIST_DEFAULT_SORT,
   });
-  const fileSelectItems = useMemo(() => {
-    if (!fileSelect) return [];
-    if (browsePath === DRIVE_FOLDER_PICKER_ROOT || browsePath === GROUPS_ROOT) {
-      return rows.map((row) => row.file ?? createDrivePickerRootFile(row.path, row.title));
-    }
-    return sortDriveFiles(listingFiles, listSort);
-  }, [browsePath, fileSelect, listSort, listingFiles, rows]);
+  // The rows as Drive list items: drive roots in their given order, a folder's
+  // contents in the column sort (folders first).
+  const atPickerRoots = browsePath === DRIVE_FOLDER_PICKER_ROOT || browsePath === GROUPS_ROOT;
+  const listItems = useMemo(() => {
+    if (fileSelect && !atPickerRoots) return sortDriveFiles(listingFiles, listSort);
+    const items = rows.map((row) => row.file ?? createDrivePickerRootFile(row.path, row.title));
+    return atPickerRoots ? items : sortDriveFiles(items, listSort);
+  }, [atPickerRoots, fileSelect, listSort, listingFiles, rows]);
+  const fileSelectItems = fileSelect ? listItems : [];
+  const rowById = useMemo(
+    () =>
+      new Map(
+        rows.map((row) => [row.file?.id ?? createDrivePickerRootFile(row.path, row.title).id, row]),
+      ),
+    [rows],
+  );
 
   const { filePreviews } = useDriveGridPreviews({
     items: fileSelectItems,
@@ -349,7 +360,7 @@ export function DriveFolderPicker({
   }, [destinationPath, fileSelect, onDestinationChange, onSelectedFileChange, selectedFile]);
 
   const breadcrumbItems = useMemo(
-    () => buildDriveFolderPickerBreadcrumbs(browsePath, labels, rootLabels),
+    () => withDriveRootIcons(buildDriveFolderPickerBreadcrumbs(browsePath, labels, rootLabels)),
     [browsePath, labels, rootLabels],
   );
 
@@ -389,12 +400,78 @@ export function DriveFolderPicker({
     }
   };
 
+  const selectedDestinationIds = rows
+    .filter((row) => row.selectable && row.path === highlightedPath)
+    .map((row) => row.file?.id ?? createDrivePickerRootFile(row.path, row.title).id);
+
   const showEmpty = fileSelect
     ? !listingLoading && fileSelectItems.length === 0
     : !listingLoading && rows.length === 0 && browsePath !== DRIVE_FOLDER_PICKER_ROOT;
 
   const showListingLoading =
     listingLoading && browsePath !== DRIVE_FOLDER_PICKER_ROOT && browsePath !== GROUPS_ROOT;
+
+  // Same keymap as the Drive list (↑/↓ move, Enter opens, Alt+↑ goes up), inside the
+  // dialog where the Drive list's own keys stay off. After opening a folder by key the
+  // focus moves into its listing.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const refocusList = () => {
+    if (bodyRef.current) refocusListAfterNavigation(bodyRef.current);
+  };
+
+  const fileForId = (id: string) => listItems.find((file) => file.id === id);
+  const chooseByKey = (id: string) => {
+    if (fileSelect) {
+      const file = fileForId(id);
+      if (file && file.kind !== "folder") setSelectedFile(file);
+      return;
+    }
+    const row = rowById.get(id);
+    if (row?.selectable) setHighlightedPath(row.path);
+  };
+  const openByKey = (id: string) => {
+    refocusList();
+    if (fileSelect) {
+      const file = fileForId(id);
+      if (!file) return;
+      if (file.kind === "folder") handleFileSelectOpen(file);
+      else setSelectedFile(file);
+      return;
+    }
+    const row = rowById.get(id);
+    if (row && row.kind !== "file") openRow(row.path);
+  };
+  const handleListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const focusedId = listItemIdOf(event.target);
+    const plain = !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (event.key === "ArrowUp" && event.altKey) {
+      const parent = breadcrumbItems[breadcrumbItems.length - 2]?.path;
+      if (parent == null) return;
+      event.preventDefault();
+      refocusList();
+      openRow(parent);
+      return;
+    }
+    if (!focusedId || !plain) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const next = adjacentListItem(
+        event.currentTarget,
+        focusedId,
+        event.key === "ArrowDown" ? 1 : -1,
+      );
+      const nextId = next?.getAttribute("data-list-item-id");
+      if (!next || !nextId) return;
+      listItemFocusTarget(next)?.focus();
+      next.scrollIntoView({ block: "nearest" });
+      chooseByKey(nextId);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openByKey(focusedId);
+    }
+  };
 
   const breadcrumb = (
     <PathBreadcrumb
@@ -410,8 +487,11 @@ export function DriveFolderPicker({
 
   return (
     <DestinationPickerFrame
-      className={fileSelect ? "destination-picker--file-select drive-workspace" : undefined}
+      label={labels.pickerLocationLabel}
+      className={cn("drive-workspace", fileSelect && "destination-picker--file-select")}
       listingTheme={listingTheme}
+      bodyRef={bodyRef}
+      onBodyKeyDown={handleListKeyDown}
       breadcrumbs={
         fileSelect ? (
           <div className="destination-picker__breadcrumbs destination-picker__breadcrumbs--with-toggle">
@@ -486,29 +566,41 @@ export function DriveFolderPicker({
           />
         )
       ) : rows.length === 0 ? null : (
-        <DestinationPickerList
-          items={rows.map((row) => {
-            const navigable = row.kind === "folder" || row.kind === "root";
-            const icon =
-              row.kind === "root" ? (
-                (rootIcon ?? <Folder />)
-              ) : row.kind === "folder" ? (
-                <Folder />
-              ) : (
-                <span className="[&>svg]:size-4">{row.file ? kindIcon[row.file.kind] : null}</span>
-              );
-
-            return {
-              id: row.path,
-              title: row.title,
-              icon,
-              selectable: row.selectable,
-              navigable,
-            };
-          })}
-          selectedId={highlightedPath}
-          onSelect={setHighlightedPath}
-          onOpen={openRow}
+        <DriveListView
+          items={listItems}
+          sort={atPickerRoots ? undefined : listSort}
+          onSort={toggleListSort}
+          activeId={null}
+          selectedIds={selectedDestinationIds}
+          showKindColumn={false}
+          showSizeColumn={false}
+          starred={{}}
+          labels={labels}
+          inTrash={false}
+          selectionMode={false}
+          isTouch={false}
+          isItemDragging={pickerIsItemDragging}
+          itemDragHandlers={pickerItemDragHandlers}
+          folderDropZoneProps={pickerFolderDropZoneProps}
+          isItemDisabled={(file) => {
+            const row = rowById.get(file.id);
+            return !row || (!row.selectable && row.kind === "file");
+          }}
+          onSelect={(id) => {
+            const row = rowById.get(id);
+            if (row?.selectable) setHighlightedPath(row.path);
+          }}
+          onOpen={(file) => {
+            const row = rowById.get(file.id);
+            if (row && row.kind !== "file") openRow(row.path);
+          }}
+          onLongPress={PICKER_NOOP}
+          onStar={PICKER_NOOP}
+          onDownload={PICKER_NOOP}
+          onRename={PICKER_NOOP}
+          onMove={PICKER_NOOP}
+          onTrash={PICKER_NOOP}
+          itemChrome="picker"
         />
       )}
     </DestinationPickerFrame>

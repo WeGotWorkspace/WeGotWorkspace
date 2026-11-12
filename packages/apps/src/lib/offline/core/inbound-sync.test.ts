@@ -307,6 +307,46 @@ describe("runScopedInbound", () => {
     expect(domain.tokens.get("b")).toBe("b2");
   });
 
+  it("hands a full list's removals to the domain one scope at a time when it asks for them", async () => {
+    // One item in two scopes (a contact in two address books).
+    const domain = fakeDomain({
+      tokens: { a: "stale", b: "stale", c: "c1" },
+      server: [{ id: "kept", scope: "a", version: "1" }],
+      changes: {
+        a: new Error("cannotCalculateChanges"),
+        b: new Error("cannotCalculateChanges"),
+        c: { ...noChanges("c2"), destroyed: ["deleted"] },
+      },
+    });
+    const listedAway: string[] = [];
+    const binding: ScopedInboundBinding<Row, Cached> = {
+      ...domain.binding,
+      readCached: async () => ({
+        items: [
+          { id: "kept", scope: "a", createPending: false },
+          { id: "shared", scope: "a", createPending: false },
+          { id: "shared", scope: "b", createPending: false },
+          { id: "deleted", scope: "a", createPending: false },
+          { id: "queued", scope: "b", createPending: false },
+        ],
+        keep: (item) => item.id === "queued",
+      }),
+      createApplier: async () => ({
+        ...(await domain.binding.createApplier()),
+        ingestListedAway: async (id, scope) => {
+          listedAway.push(`${id}@${scope}`);
+          return true;
+        },
+      }),
+    };
+    const result = await runScopedInbound(["a", "b", "c"], binding);
+    expect(listedAway).toEqual(["shared@a", "shared@b"]);
+    // A destroy named by `/changes` is still a destroy.
+    expect(domain.destroyedCalls).toEqual(["deleted"]);
+    expect(result).toEqual({ changed: true, usedFullResync: true });
+    expect(Object.fromEntries(domain.tokens)).toEqual({ a: "a-now", b: "b-now", c: "c2" });
+  });
+
   it("writes nothing when a later scope's changes request fails", async () => {
     const domain = fakeDomain({
       tokens: { a: "a1", b: "b1" },

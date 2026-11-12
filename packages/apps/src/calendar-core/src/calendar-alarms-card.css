@@ -10,9 +10,5 @@
 }
 
 .calendar-alarms-card .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-1 items-center gap-2;
-}
-
-.calendar-alarms-card .calendar-event-dialog__alarm-offset {
-  @apply min-w-0 w-full;
+  @apply flex min-w-0 items-center gap-1;
 }

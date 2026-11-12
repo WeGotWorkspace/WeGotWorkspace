@@ -50,7 +50,7 @@ final class MinishlinkWebPushSender implements WebPushSender
     public function send(string $endpoint, string $p256dh, string $auth, string $payload, array $vapid): int
     {
         if (! class_exists(WebPush::class)) {
-            Log::warning('vapid_send_skipped', ['reason' => 'web-push library missing']);
+            Log::error('vapid_send_skipped', ['reason' => 'web-push library missing']);
 
             return 0;
         }
@@ -93,7 +93,7 @@ final class MinishlinkWebPushSender implements WebPushSender
             return [];
         }
         if (! class_exists(WebPush::class)) {
-            Log::warning('vapid_send_skipped', ['reason' => 'web-push library missing']);
+            Log::error('vapid_send_skipped', ['reason' => 'web-push library missing']);
 
             return $statuses;
         }

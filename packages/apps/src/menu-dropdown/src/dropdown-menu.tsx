@@ -51,6 +51,8 @@ export type DropdownMenuProps = {
    * keep it where an item put it (e.g. on a field the item just added).
    */
   onCloseAutoFocus?: (event: Event) => void;
+  /** The menu opened or closed (e.g. to keep clicks off what lies under it). */
+  onOpenChange?: (open: boolean) => void;
 };
 
 function isSeparator(item: DropdownMenuEntry): item is DropdownMenuSeparatorProps {
@@ -75,11 +77,23 @@ export function DropdownMenu({
   contentClassName,
   contentStyle,
   onCloseAutoFocus,
+  onOpenChange,
 }: DropdownMenuProps) {
   // A submenu opens in place of the list (drill-down): a side flyout does not fit on phones.
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
   // After "back", focus returns to the row that opened the submenu.
   const [returnFocusId, setReturnFocusId] = useState<string | null>(null);
+  // A menu that unmounts while open (its item swapped the view it sat in) still says it
+  // closed, so whatever the host blocked while it was open is released.
+  const openRef = useRef(false);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  useEffect(
+    () => () => {
+      if (openRef.current) onOpenChangeRef.current?.(false);
+    },
+    [],
+  );
   if (disabled) return <>{trigger}</>;
   const openSubmenu = items.find(
     (item): item is DropdownMenuSubmenuProps => isSubmenu(item) && item.id === openSubmenuId,
@@ -87,6 +101,8 @@ export function DropdownMenu({
   return (
     <RadixDropdownMenu
       onOpenChange={(open) => {
+        openRef.current = open;
+        onOpenChange?.(open);
         if (open) return;
         setOpenSubmenuId(null);
         setReturnFocusId(null);

@@ -299,8 +299,8 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $this->assertSame([
             ['level' => 'warning', 'context' => ['reason' => 'unknown_identifier']],
             ['level' => 'warning', 'context' => ['reason' => 'no_email']],
-            ['level' => 'warning', 'context' => ['reason' => 'cannot_submit']],
-            ['level' => 'warning', 'context' => ['reason' => 'no_public_url']],
+            ['level' => 'error', 'context' => ['reason' => 'cannot_submit']],
+            ['level' => 'error', 'context' => ['reason' => 'no_public_url']],
         ], $logged);
         $this->assertSame(0, $this->tokenCount());
         Mail::assertNothingSent();

@@ -2,7 +2,6 @@
 export const meetLowDataLabels = {
   mode: "Low data mode",
   hint: "Send a smaller picture. Show video from at most two people.",
-  settingsSaved: "Meet settings saved",
   settingsSaveError: "Could not save Meet settings",
 } as const;
 

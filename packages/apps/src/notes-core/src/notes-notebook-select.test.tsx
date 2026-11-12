@@ -149,8 +149,8 @@ describe("NotesNotebookSelect", () => {
       defaultNotesLabels.addNotebook,
     ]);
     expect(document.querySelector(".collection-select__separator")).toBeTruthy();
-    expect(container.querySelectorAll(".notes-notebook-color-dot")).toHaveLength(1);
-    expect(document.querySelectorAll('[role="listbox"] .notes-notebook-color-dot')).toHaveLength(3);
+    expect(container.querySelectorAll(".collection-color-dot")).toHaveLength(1);
+    expect(document.querySelectorAll('[role="listbox"] .collection-color-dot')).toHaveLength(3);
     expect(document.querySelector(".collection-sidebar-row__dot")).toBeNull();
     expect(screen.getByRole("option", { name: "Drafts" }).getAttribute("data-state")).toBe(
       "checked",
@@ -217,7 +217,7 @@ describe("NotesNotebookSelect", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("notes-notebook-select--swatch");
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
     expect(trigger.querySelector(".collection-select__name")).toBeNull();
     expect(container.querySelector(".select-trigger__icon")).toBeNull();

@@ -24,6 +24,24 @@ export function formatShortTimeRange(
   return `${startLabel} - ${endLabel}`;
 }
 
+/** Whether the locale writes times on a 12-hour clock (AM / PM). */
+function usesTwelveHourClock(locale: string): boolean {
+  const { hourCycle } = new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions();
+  return hourCycle === "h11" || hourCycle === "h12";
+}
+
+/**
+ * An hour label for the time gutter: "13:00" on a 24-hour clock, "1 PM" on a 12-hour one
+ * (the minutes are always :00, so they are left out).
+ */
+export function formatHourLabel(lang: string | null | undefined, hour: number): string {
+  const resolvedLocale = resolveLocale(lang);
+  const time = Temporal.PlainTime.from({ hour: hour % 24, minute: 0 });
+  return usesTwelveHourClock(resolvedLocale)
+    ? time.toLocaleString(resolvedLocale, { hour: "numeric" })
+    : time.toLocaleString(resolvedLocale, { timeStyle: "short" });
+}
+
 export function getHourlyTimeLabels(
   lang: string | null | undefined,
   hours = 24,
@@ -32,7 +50,5 @@ export function getHourlyTimeLabels(
   const clampedHours = Math.max(0, Math.floor(Number(hours) || 0));
   const base = Math.max(0, Math.floor(Number(startHour) || 0));
 
-  return Array.from({ length: clampedHours }, (_, index) =>
-    formatShortTime(lang, Temporal.PlainTime.from({ hour: (base + index) % 24, minute: 0 })),
-  );
+  return Array.from({ length: clampedHours }, (_, index) => formatHourLabel(lang, base + index));
 }

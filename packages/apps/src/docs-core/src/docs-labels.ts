@@ -149,7 +149,7 @@ export const docsLabels = {
   editMode: "Edit",
   suggestMode: "Suggest",
   suggestModeActive: "Suggesting",
-  sourceSwitch: "Markdown",
+  sourceSwitch: "Source",
   editingModeAria: "Editing mode",
   toastSwitchedToEditMode: "Switched to Edit mode",
   toastSwitchedToSuggestMode: "Switched to Suggest mode",

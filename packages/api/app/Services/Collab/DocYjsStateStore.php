@@ -170,7 +170,7 @@ final class DocYjsStateStore
         try {
             $this->move($fromKey, $toKey);
         } catch (\Throwable $e) {
-            Log::warning('doc_yjs_state_sync_failed', [
+            Log::error('doc_yjs_state_sync_failed', [
                 'op' => 'move',
                 'from' => $fromKey,
                 'to' => $toKey,
@@ -185,7 +185,7 @@ final class DocYjsStateStore
         try {
             $this->delete($key);
         } catch (\Throwable $e) {
-            Log::warning('doc_yjs_state_sync_failed', [
+            Log::error('doc_yjs_state_sync_failed', [
                 'op' => 'delete',
                 'key' => $key,
                 'error' => $e->getMessage(),

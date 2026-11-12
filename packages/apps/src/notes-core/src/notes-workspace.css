@@ -144,24 +144,12 @@
  * Portaled notes dialogs/alerts sit outside `.notes-workspace`; repeat accent tokens so
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */
-.notes-dialog-surface .field-label-row + .field-label-row {
-  @apply mt-3;
-}
-
 .notes-dialog-surface {
   --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
-}
-
-/*
- * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker).
- * Height/radius come from the shared primitive; fill is `--input-background`.
- */
-.notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--input-background);
 }
 
 /*
