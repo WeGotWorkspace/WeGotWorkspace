@@ -11,7 +11,7 @@ import { installerCopy } from "@/installer-core/src/installer-copy";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
 import { InstallerNotSecurePage } from "@/installer-core/src/installer-not-secure-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
-import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
+import type { InstallerServerCheck } from "@/lib/models/installer-types";
 import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
 import { InstallerWorkspace } from "@/installer-core/src/installer-workspace";
 

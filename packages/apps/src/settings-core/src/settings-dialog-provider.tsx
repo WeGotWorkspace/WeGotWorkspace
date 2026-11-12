@@ -15,7 +15,7 @@ import { SettingsPanelHost } from "@/settings-core/src/settings-panel-host";
 import { useSettingsReachability } from "@/settings-core/src/settings-reachability";
 import { getSettingsPanel, type SettingsPanel } from "@/settings-core/src/settings-registry";
 import { settingsNavigateTarget } from "@/settings-core/src/settings-section";
-import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
+import type { BuiltinPanelId } from "@/lib/models/settings-types";
 import { useSettingsAPI } from "@/settings-core/src/use-settings-api";
 import { useSettingsController } from "@/settings-core/src/use-settings-controller";
 import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";

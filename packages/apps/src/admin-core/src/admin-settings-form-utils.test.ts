@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
+import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
 import {
   adminSettingsFormToMap,
   buildAdminSettingsFormState,

@@ -2,13 +2,9 @@ import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwUnifiedSearchData, WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
-import {
-  fetchAllDocsHomeListingPages,
-  mapDocsHomeResults,
-  sortDocsHomeResults,
-  useDocsHomeList,
-  type DocsHomeFetcher,
-} from "@/docs-core/src/use-docs-home-list";
+import { mapDocsHomeResults, useDocsHomeList } from "@/docs-core/src/use-docs-home-list";
+import { fetchAllDocsHomeListingPages, type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
+import { sortDocsHomeResults } from "@/lib/files/docs-home-listing";
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,

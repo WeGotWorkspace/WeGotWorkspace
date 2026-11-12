@@ -3,7 +3,7 @@ import type {
   AdminMailDeliveryConfig,
   AdminMailDeliveryLastTestSend,
   AdminMailDeliveryState,
-} from "@/admin-core/src/admin-types";
+} from "@/lib/models/admin-types";
 
 /** Matches `MailDeliveryConfig::PLACEHOLDER_FROM` when Admin has not saved a From. */
 export const MAIL_DELIVERY_PLACEHOLDER_FROM = "noreply@localhost";

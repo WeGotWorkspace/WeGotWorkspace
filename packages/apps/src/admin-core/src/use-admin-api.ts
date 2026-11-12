@@ -5,8 +5,8 @@ import {
   createDefaultAdminApiSource,
   type AdminApiSource,
 } from "@/admin-core/src/admin-api-source";
-import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
-import type { AdminUIData } from "@/admin-core/src/admin-types";
+import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
+import type { AdminUIData } from "@/lib/models/admin-types";
 
 export function useAdminAPI(source?: AdminApiSource) {
   const resolvedSource = useMemo(() => source ?? createDefaultAdminApiSource(), [source]);

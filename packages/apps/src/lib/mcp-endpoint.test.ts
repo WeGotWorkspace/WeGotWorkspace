@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildMcpEndpointUrl,
-  MCP_ENDPOINT_PATH,
-  STORY_MCP_ENDPOINT_URL,
-} from "@/settings-core/src/mcp-endpoint";
+import { buildMcpEndpointUrl, MCP_ENDPOINT_PATH, STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 
 describe("buildMcpEndpointUrl", () => {
   it("joins origin and /mcp", () => {
