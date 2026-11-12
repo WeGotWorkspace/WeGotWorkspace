@@ -1,0 +1,16 @@
+{
+  "workday": { "start": "09:00", "end": "17:30" },
+  "studioMeeting": { "weekday": 1, "time": "09:30", "minutes": 45, "team": "studio" },
+  "standup": { "time": "09:15", "minutes": 15 },
+  "deadlineWeekday": 5,
+  "sickRatePerDay": 0.03,
+  "holidays": [
+    { "persona": "eva", "from": "2026-11-26", "to": "2026-11-27" },
+    { "persona": "daan", "from": "2026-12-21", "to": "2027-01-01" },
+    { "persona": "sanne", "from": "2026-12-24", "to": "2027-01-02" }
+  ],
+  "actionsPerPersona": { "weekday": [7, 12], "weekend": [0, 3] },
+  "weekendActivePersonas": 2,
+  "printFileBytes": { "min": 104857600, "max": 1073741824 },
+  "exportFileBytes": { "min": 200000, "max": 8000000 }
+}

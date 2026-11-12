@@ -1,0 +1,32 @@
+{
+  "titles": {
+    "nl": ["Voorstel", "Strategie", "Merkverhaal", "Briefing", "Contentplan", "Persbericht"],
+    "en": ["Proposal", "Strategy", "Brand story", "Brief", "Content plan", "Press release"]
+  },
+  "paragraphs": {
+    "nl": [
+      "Het merk staat voor vakmanschap, warmte en een knipoog naar de buurt.",
+      "We stellen voor om in drie fases te werken: onderzoek, concept en uitwerking.",
+      "De doelgroep bestaat uit jonge gezinnen en forenzen die 's ochtends weinig tijd hebben.",
+      "Toon: direct, menselijk, nooit belerend. Geen vakjargon.",
+      "Budgetindicatie: €18.500 excl. btw, inclusief twee feedbackrondes.",
+      "Planning: oplevering concept vóór de kerstvakantie, productie in januari.",
+      "Kernboodschap: 'Elke dag vers, sinds 1952' — met ruimte voor seizoensvariatie.",
+      "Risico: de drukker heeft beperkte capaciteit in december; tijdig reserveren."
+    ],
+    "en": [
+      "The brand stands for craft, warmth and a wink to the neighbourhood.",
+      "We propose three phases: research, concept and execution.",
+      "The audience is young families and commuters with little time in the morning.",
+      "Tone: direct, human, never preachy. No jargon.",
+      "Budget estimate: €18,500 excl. VAT, including two feedback rounds.",
+      "Timeline: concept before the Christmas break, production in January.",
+      "Key message: 'Fresh every day, since 1952' — with room for seasonal variation.",
+      "Risk: the printer has limited capacity in December; book early."
+    ]
+  },
+  "comments": {
+    "nl": ["Kunnen we dit concreter maken?", "Mooi geformuleerd!", "Klopt dit bedrag nog?", "Graag een bron bij dit cijfer."],
+    "en": ["Can we make this more concrete?", "Nicely put!", "Is this amount still right?", "Please add a source for this figure."]
+  }
+}

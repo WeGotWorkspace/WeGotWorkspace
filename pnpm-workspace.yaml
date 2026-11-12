@@ -3,6 +3,7 @@ packages:
   - "packages/openapi-types"
   - "tools/mcp-server"
   - "tools/api-e2e"
+  - "tools/team-sim"
 
 catalog:
   zod: ^4.6.6
