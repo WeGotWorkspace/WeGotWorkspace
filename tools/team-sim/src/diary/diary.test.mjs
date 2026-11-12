@@ -4,7 +4,7 @@ import { personaFacts, validateDiary, writeDiaries } from "./diary.mjs";
 import { rankThemes, rankWeekFriction, weeklyDigest } from "./digest.mjs";
 
 const people = { eva: { displayName: "Eva de Wit", title: "Designer" }, joost: { displayName: "Joost Bakker", title: "PM" } };
-const world = { persona: (id) => people[id], teamsOf: () => ["studio"], teams: [{ id: "studio", name: "Studio" }], zoneOf: () => "Europe/Amsterdam" };
+const world = { persona: (id) => { if (!people[id]) throw new Error(`unknown persona ${id}`); return people[id]; }, teamsOf: () => ["studio"], teams: [{ id: "studio", name: "Studio" }], zoneOf: () => "Europe/Amsterdam" };
 const run = {
   plan: {
     actions: [
@@ -107,12 +107,13 @@ test("digest without diary items still ranks friction", async () => {
 });
 
 test("facts leave out outcome notes and anything the harness may have caused", () => {
-  const plan = { actions: [...run.plan.actions, { n: 4, persona: "eva", layer: "ui", kind: "cal.event", minute: 80, params: { title: "Sync" } }, { n: 5, persona: "eva", layer: "api", kind: "cal.rsvp", minute: 90, params: {} }, { n: 6, persona: "eva", layer: "ui", kind: "note.edit", minute: 95, flags: { reload: true }, params: { append: "x" } }] };
+  const plan = { actions: [...run.plan.actions, { n: 4, persona: "eva", layer: "ui", kind: "cal.event", minute: 80, params: { title: "Sync" } }, { n: 5, persona: "eva", layer: "api", kind: "cal.rsvp", minute: 90, params: {} }, { n: 6, persona: "eva", layer: "ui", kind: "note.edit", minute: 95, flags: { reload: true }, params: { append: "x" } }, { n: 7, persona: "eva", layer: "ui", kind: "meet.call", minute: 100, params: { guest: "Remco Dijkstra" } }] };
   const outcomes = [
     ...run.outcomes.map((o) => (o.n === 1 ? { ...o, note: "16 parts" } : o)),
     { n: 4, status: "failed", ms: 3000, error: "expected one new event", suspect: "harness" },
     { n: 5, status: "skipped", reason: "dependency #4 failed" },
     { n: 6, status: "ok", ms: 2000, note: "reloaded mid-action" },
+    { n: 7, status: "ok", ms: 9000 },
   ];
   const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...run, plan, outcomes });
   const by = new Map(f.actions.map((a) => [a.n, a]));
@@ -121,4 +122,5 @@ test("facts leave out outcome notes and anything the harness may have caused", (
   assert.equal(by.get(4).problem, undefined);
   assert.match(by.get(5).result, /^unclear/, "a skip behind a doubted failure is unclear too");
   assert.equal(by.get(6).situation, "reloaded the page in the middle of it");
+  assert.equal(by.get(7).with, "Remco Dijkstra (guest)", "a guest is not looked up as a persona");
 });

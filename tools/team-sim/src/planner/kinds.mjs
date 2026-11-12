@@ -167,7 +167,7 @@ export const KINDS = {
     const attendees = rng.shuffle(members.filter((m) => m !== persona)).slice(0, rng.int(1, 4)).sort();
     const { start, minutes } = b.slot(persona, rng.int(1, 7));
     return b.add({ persona, kind: "meet.schedule", minute, type: "event", scope: scopeFor(project), project: project?.id, creates: b.key("event"),
-      params: { title: uniqueTitle(b, `${project ? project.name : "Studio"} — ${MEET_TOPICS[b.actions.filter((x) => x.kind === "meet.schedule" && x.project === project?.id).length % MEET_TOPICS.length]}`, start), start, minutes, attendees, meet: true,
+      params: { title: uniqueTitle(b, `${project ? project.name : "Studio"} — ${MEET_TOPICS[b.actions.filter((x) => x.kind === "meet.schedule" && x.params.channel === channelFor(project)).length % MEET_TOPICS.length]}`, start), start, minutes, attendees, meet: true,
         channel: channelFor(project), external: external ? [world.client(project.client).email] : [] } });
   },
 

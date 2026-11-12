@@ -73,7 +73,7 @@ export function personaFacts({ world, date, persona, plan, outcomes, interaction
       did: DOING[a.kind] ?? a.kind,
       via: VIA[a.layer] ?? a.layer,
       about: short(pr.title ?? pr.text ?? pr.name ?? pr.need ?? pr.append),
-      with: [pr.partner, pr.mention, pr.to, pr.assignee, pr.guest, ...(pr.attendees ?? [])].filter(Boolean).map((x) => world.persona(x)?.displayName ?? x).join(", ") || undefined,
+      with: [...[pr.partner, pr.mention, pr.to, pr.assignee, ...(pr.attendees ?? [])].filter(Boolean).map((x) => world.persona(x)?.displayName ?? x), ...(pr.guest ? [`${pr.guest} (guest)`] : [])].join(", ") || undefined,
       result: o.status,
       problem: short(o.error ?? o.reason, 160),
       // Outcome notes are for the morning report (upload parts, harness shortcuts); only what the person lived through goes in.
