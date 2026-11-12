@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { createContext, useContext, useEffect, useState } from "react";
+import { type ActionNotice, NoticeBar } from "@/notice-bar/src/notice-bar";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { teamAvailabilityOfflineNotice } from "@/calendar-core/src/calendar-availability-notice";
 import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availability";
@@ -8,8 +8,15 @@ import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availab
 const STAMP_REFRESH_MS = 60_000;
 
 /**
- * Calendar's shared notice bar, between the header and the grid. Today it
- * holds the offline Team availability notice; #1914 adds its clash notice.
+ * The stuck-sync row (`useCalendarSyncNotice`), provided by `CalendarApp`.
+ * A context keeps `calendar-workspace.tsx` (file-size baseline) unchanged.
+ */
+export const CalendarSyncNoticeContext = createContext<ActionNotice | null>(null);
+
+/**
+ * Calendar's shared notice bar, between the header and the grid: the
+ * stuck-sync row (#1895), then the offline Team availability notice; #1914
+ * adds its clash notice.
  */
 export function CalendarNoticeBar({
   availability,
@@ -22,6 +29,7 @@ export function CalendarNoticeBar({
   locale?: string;
   now?: () => number;
 }) {
+  const syncNotice = useContext(CalendarSyncNoticeContext);
   const { online } = availability;
   const [, redraw] = useState(0);
   useEffect(() => {
@@ -37,6 +45,7 @@ export function CalendarNoticeBar({
     <NoticeBar
       label={labels.calendarNoticeBarLabel}
       notices={[
+        syncNotice,
         teamAvailabilityOfflineNotice({
           online,
           shownCount,

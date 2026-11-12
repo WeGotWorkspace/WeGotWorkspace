@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
 import type { ContactCard } from "@/lib/models/contacts-types";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { contactsGroupViewKey } from "@/contacts-core/src/contacts-group-utils";
 import { useContactsPaneStoryController } from "./contacts-pane-stories.harness";
 import { ContactsStoryScope } from "./contacts-story-scope";
@@ -101,10 +102,10 @@ function ContactsListPaneHarness({
           : undefined,
   );
 
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:contacts",
     active: (failedSyncCount ?? 0) > 0,
-    title: controller.L.syncFailedTitle,
-    message: controller.L.syncFailedMessage,
+    title: controller.L.syncFailedNotice,
     retryLabel: controller.L.retrySync,
     onRetry: () => {},
   });
@@ -148,7 +149,10 @@ function ContactsListPaneHarness({
 
   return (
     <ContactsStoryScope variant="list-column">
-      <CollectionListWorkspace {...listProps} />
+      <CollectionListWorkspace
+        {...listProps}
+        listTop={<NoticeBar label={controller.L.noticeBarLabel} notices={[syncNotice]} />}
+      />
       {controller.confirmDialog}
     </ContactsStoryScope>
   );
@@ -226,12 +230,13 @@ export const PendingSync: Story = {
 export const RetrySync: Story = {
   tags: ["vitest-ci"],
   args: { preset: "default", failedSyncCount: 2 },
-  play: async () => {
-    await waitFor(() => {
-      expect(document.body.textContent).toContain("Some changes couldn’t sync");
-    });
-    const body = within(document.body);
-    await expect(body.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole("region", { name: "Needs your attention" });
+    await expect(bar).toHaveTextContent(
+      "Some changes could not sync. They are saved on this device.",
+    );
+    await expect(within(bar).getByRole("button", { name: "Retry" })).toBeEnabled();
   },
 };
 

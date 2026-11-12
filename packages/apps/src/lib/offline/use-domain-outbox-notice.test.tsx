@@ -1,13 +1,11 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
-import { act, render } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
-import type { AppToastShowOptions } from "@/hooks/use-app-toast";
 import { writeMeta } from "@/lib/offline/core/meta-store";
 import { enqueueOutboxMutation, markOutboxError } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -18,18 +16,13 @@ import {
 } from "@/lib/offline/docs/docs-sync-conflicts";
 import { KEPT_UNSAVED_DOCUMENTS_META_KEY } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import {
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
-
-const show = vi.fn<(title: string, options?: AppToastShowOptions) => string>(() => "toast-1");
-const dismiss = vi.fn();
-
-vi.mock("@/hooks/use-app-toast", () => ({
-  useAppToast: () => ({ show, dismiss }),
-}));
 
 const username = "alice";
 
@@ -42,14 +35,32 @@ function NoticeHarness({ onClear }: { onClear?: (clear: () => void) => void }) {
   useEffect(() => {
     onClear?.(notice.clearConflicts);
   }, [notice.clearConflicts, onClear]);
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:docs",
     active: notice.active,
-    title: docsLabels.syncFailedTitle,
-    message: docsLabels.syncFailedMessage,
+    title: docsLabels.syncFailedNotice,
     retryLabel: docsLabels.retrySync,
     onRetry: () => notice.clearConflicts(),
   });
-  return null;
+  return <NoticeBar label={docsLabels.noticeBarLabel} notices={[syncNotice]} />;
+}
+
+function noticeRow(): HTMLElement | null {
+  return screen.queryByRole("region", { name: docsLabels.noticeBarLabel });
+}
+
+async function expectNoticeShown(): Promise<void> {
+  await vi.waitFor(() => {
+    expect(noticeRow()?.textContent).toContain(docsLabels.syncFailedNotice);
+    const retry = screen.getByRole<HTMLButtonElement>("button", { name: docsLabels.retrySync });
+    expect(retry.disabled).toBe(false);
+  });
+}
+
+async function expectNoticeGone(): Promise<void> {
+  await vi.waitFor(() => {
+    expect(noticeRow()).toBeNull();
+  });
 }
 
 async function seedPendingSave(apiPath: string): Promise<void> {
@@ -79,8 +90,6 @@ async function enqueueFailed(id: string, lastError: string): Promise<void> {
 
 describe("useDomainOutboxNotice", () => {
   beforeEach(async () => {
-    show.mockClear();
-    dismiss.mockClear();
     setDocsSyncConflictListener(undefined);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
@@ -92,18 +101,7 @@ describe("useDomainOutboxNotice", () => {
 
     render(<NoticeHarness />);
 
-    await vi.waitFor(() => {
-      expect(show).toHaveBeenCalledWith(
-        docsLabels.syncFailedTitle,
-        expect.objectContaining({
-          description: docsLabels.syncFailedMessage,
-          severity: "error",
-          canRetry: true,
-          retryLabel: docsLabels.retrySync,
-          duration: Number.POSITIVE_INFINITY,
-        }),
-      );
-    });
+    await expectNoticeShown();
   });
 
   it("shows a transient outbox failure in the same sync notice", async () => {
@@ -111,12 +109,7 @@ describe("useDomainOutboxNotice", () => {
 
     render(<NoticeHarness />);
 
-    await vi.waitFor(() => {
-      expect(show).toHaveBeenCalledWith(
-        docsLabels.syncFailedTitle,
-        expect.objectContaining({ description: docsLabels.syncFailedMessage }),
-      );
-    });
+    await expectNoticeShown();
   });
 
   it("shows a notice for a document kept because it still has unsaved work", async () => {
@@ -129,12 +122,7 @@ describe("useDomainOutboxNotice", () => {
 
     render(<NoticeHarness />);
 
-    await vi.waitFor(() => {
-      expect(show).toHaveBeenCalledWith(
-        docsLabels.syncFailedTitle,
-        expect.objectContaining({ description: docsLabels.syncFailedMessage }),
-      );
-    });
+    await expectNoticeShown();
   });
 
   it("turns the notice off when conflicts are cleared", async () => {
@@ -144,17 +132,12 @@ describe("useDomainOutboxNotice", () => {
     await act(async () => {
       reportDocsSyncConflicts(["users/alice/a.md"]);
     });
-    await vi.waitFor(() => {
-      expect(show).toHaveBeenCalled();
-    });
+    await expectNoticeShown();
 
-    dismiss.mockClear();
     await act(async () => {
       clear();
     });
-    await vi.waitFor(() => {
-      expect(dismiss).toHaveBeenCalled();
-    });
+    await expectNoticeGone();
   });
 
   it("turns the notice off when the conflict channel reports an empty list", async () => {
@@ -163,16 +146,11 @@ describe("useDomainOutboxNotice", () => {
     await act(async () => {
       reportDocsSyncConflicts(["users/alice/a.md"]);
     });
-    await vi.waitFor(() => {
-      expect(show).toHaveBeenCalled();
-    });
+    await expectNoticeShown();
 
-    dismiss.mockClear();
     await act(async () => {
       reportDocsSyncConflicts([]);
     });
-    await vi.waitFor(() => {
-      expect(dismiss).toHaveBeenCalled();
-    });
+    await expectNoticeGone();
   });
 });

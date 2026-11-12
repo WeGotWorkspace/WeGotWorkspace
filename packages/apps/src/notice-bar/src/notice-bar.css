@@ -7,7 +7,8 @@
  * scrolls away.
  */
 .notice-bar {
-  @apply min-w-0;
+  /* Never squeezed by a flex column (list top, main column, pane). */
+  @apply min-w-0 shrink-0;
 }
 
 .notice-bar .notice-bar__callout {

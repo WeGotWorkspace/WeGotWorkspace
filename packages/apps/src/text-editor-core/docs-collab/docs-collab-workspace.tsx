@@ -22,7 +22,8 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { cn } from "@/lib/utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
   isSaveFailureDocStatus,
@@ -258,15 +259,12 @@ function DocsCollabWorkspaceInner({
     poll: liveThreads,
   });
 
-  const handleRetrySync = useCallback(() => {
-    void saveNow().catch(() => undefined);
-  }, [saveNow]);
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:docs-document",
     active: showFailedSync,
-    title: labels.syncFailedTitle,
-    message: labels.syncFailedMessage,
+    title: labels.syncFailedNotice,
     retryLabel: labels.retrySync,
-    onRetry: handleRetrySync,
+    onRetry: saveNow,
   });
   const awarenessPresencePeers = useDocsCollabAwarenessPresence(collabSession?.awareness);
   const presencePeers = useMemo(
@@ -631,6 +629,7 @@ function DocsCollabWorkspaceInner({
               />
             </AppSidebar>
           }
+          mainNotice={<NoticeBar label={labels.noticeBarLabel} notices={[syncNotice]} />}
           mainHeader={
             <ViewHeader
               title={resolvedDocumentTitle}

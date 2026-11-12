@@ -1,3 +1,5 @@
+import { CalendarSyncNoticeContext } from "@/calendar-core/src/calendar-notice-bar";
+import { useCalendarSyncNotice } from "@/calendar-core/src/use-calendar-sync-notice";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
@@ -119,6 +121,11 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
   });
 
   const pendingEventIds = useCalendarPendingSync(offlineUsername, bootstrapRevision);
+  const syncNotice = useCalendarSyncNotice({
+    username: offlineUsername,
+    labels: defaultCalendarLabels,
+    reloadFromCache,
+  });
   const eventsRef = useRef(data.events);
   eventsRef.current = data.events;
 
@@ -195,28 +202,30 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
         successVersion={successVersion}
         render={(key) => (
           <TeamAvailabilityProvider key={key} source={teamAvailability}>
-            <CalendarWorkspace
-              data={data}
-              session={session}
-              operations={operations}
-              surface={syncedSurface}
-              pendingEventIds={pendingEventIds}
-              initialView={initialView}
-              initialPresentation={initialPresentation}
-              initialAnchor={initialAnchor}
-              initialSearchQuery={initialSearchQuery}
-              onRouteStateChange={handleRouteStateChange}
-              onLogout={() => {
-                window.location.assign("/logout");
-              }}
-              meetOperations={meetOperations}
-              workspaceOrigin={workspaceOrigin}
-              onJoinMeeting={handleJoinMeeting}
-              onOpenTaskInTasks={(href) => {
-                window.location.assign(href);
-              }}
-              availabilitySource={availabilitySource}
-            />
+            <CalendarSyncNoticeContext.Provider value={syncNotice}>
+              <CalendarWorkspace
+                data={data}
+                session={session}
+                operations={operations}
+                surface={syncedSurface}
+                pendingEventIds={pendingEventIds}
+                initialView={initialView}
+                initialPresentation={initialPresentation}
+                initialAnchor={initialAnchor}
+                initialSearchQuery={initialSearchQuery}
+                onRouteStateChange={handleRouteStateChange}
+                onLogout={() => {
+                  window.location.assign("/logout");
+                }}
+                meetOperations={meetOperations}
+                workspaceOrigin={workspaceOrigin}
+                onJoinMeeting={handleJoinMeeting}
+                onOpenTaskInTasks={(href) => {
+                  window.location.assign(href);
+                }}
+                availabilitySource={availabilitySource}
+              />
+            </CalendarSyncNoticeContext.Provider>
           </TeamAvailabilityProvider>
         )}
       />

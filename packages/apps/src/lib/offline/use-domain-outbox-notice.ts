@@ -29,7 +29,7 @@ type UseDomainOutboxNoticeArgs = {
  * - a conflict-channel id (revision conflict, or a path this notice reported)
  * - a document kept because it still has unsaved collab work
  *
- * The toast copy has to name both outbox classes. `clearConflicts` drops the
+ * The notice copy has to name both outbox classes. `clearConflicts` drops the
  * channel state so Retry can turn the notice off once the other counts are zero.
  */
 export function useDomainOutboxNotice({
