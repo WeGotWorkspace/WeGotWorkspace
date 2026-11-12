@@ -4,7 +4,7 @@ import {
   contactCardToVCard,
   downloadMultipleContactsVCard,
   vcardFilename,
-} from "@/contacts-core/src/contacts-vcard-export";
+} from "@/lib/models/contacts-vcard-export";
 
 function makeCard(overrides: Partial<ContactCard> = {}): ContactCard {
   const base: ContactCard = {
