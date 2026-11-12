@@ -43,7 +43,11 @@ Handoff and PR verification: [developer/done-checklist.md](../developer/done-che
 
 Per-package line coverage can only go up. The baseline lives in `tools/coverage-baseline.json`.
 
-The `coverage-ratchet` job runs on push to `main` when the workflow is not cancelled, after `api-coverage` and `apps-coverage`. A failed coverage job does not skip it: a missing report exits 3 and fails the ratchet job, and does not open an issue. A drop opens or comments on a `coverage-regression` issue and fails that job. It does not run on pull requests and it is not a required PR check.
+The `coverage-ratchet` job runs after `api-coverage` and `apps-coverage` whenever `coverage-scope` (`tools/coverage-scope.mjs`) asked for at least one side. A failed coverage job does not skip it: a missing report exits 3 and fails the ratchet job.
+
+- **Push to `main`:** both sides. A drop opens or comments on a `coverage-regression` issue and fails the job; a rise uploads the `coverage-baseline-proposal` artifact.
+- **Merge queue:** the side whose files changed (anything outside `packages/api/` and `packages/apps/`, except `.agents/` and `docs/`, runs both). A drop fails the job and lists it in the job summary; nothing is filed or uploaded. `build`, a required check, needs `coverage-ratchet`, so the drop blocks the merge. The coverage jobs run beside `api-mysql`, so the queue takes about as long as before.
+- **Pull requests:** no coverage, unless labeled `run-full-ci` (the changed side, as in the queue) or `run-apps-coverage` (the apps side). The ratchet then checks only the side that ran (`check --only=api|apps`).
 
 API coverage counts only `packages/api/app/Services/<Domain>`, from clover paths under `app/Services/`. Controllers, models, and the rest of `packages/api` are outside the ratchet.
 

@@ -24,6 +24,11 @@ on:
 # starts and reports success without work: a job skipped by its `if` would
 # report under its unevaluated name and never satisfy the check.
 #
+# Coverage (#1629) follows the same tiers: the merge queue runs the coverage
+# jobs for the side that changed and build fails when coverage-ratchet finds a
+# drop, so a drop never reaches main. Pull requests skip coverage unless
+# labeled run-full-ci or run-apps-coverage (see coverage-scope).
+#
 # Any other label starts a run that does nothing. Its own group keeps it from
 # cancelling the PR's CI. The label names match review-loop-ci-gate.yml.
 concurrency:
@@ -297,7 +302,7 @@ jobs:
   # name, so the required check would wait forever instead of failing.
   build:
     name: build${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
-    needs: [gate, api-quality, apps-quality, api-mysql, upgrade-e2e, install-zip-sqlite]
+    needs: [gate, api-quality, apps-quality, api-mysql, upgrade-e2e, install-zip-sqlite, coverage-scope, coverage-ratchet]
     if: >-
       !cancelled() &&
       needs.gate.outputs.run == 'true' &&
@@ -308,10 +313,13 @@ jobs:
       - name: Jobs build needs passed
         env:
           NEEDS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          if echo "$NEEDS" | jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' > /dev/null; then
-            echo "::error::A job that build needs failed or was cancelled (see the list above). In the merge queue this includes api-mysql, upgrade-e2e and install-zip-sqlite."
+          # On main the coverage jobs report through coverage-ratchet's own
+          # issue, as before #1629; build blocks on them everywhere else.
+          if echo "$NEEDS" | jq -e --arg event "$EVENT" 'to_entries | any(.[]; ($event != "push" or (.key | startswith("coverage-") | not)) and (.value.result == "failure" or .value.result == "cancelled"))' > /dev/null; then
+            echo "::error::A job that build needs failed or was cancelled (see the list above). In the merge queue this includes api-mysql, upgrade-e2e, install-zip-sqlite and coverage-ratchet."
             exit 1
           fi
 
@@ -638,6 +646,38 @@ jobs:
           WGW_PHPUNIT_SHARD: ${{ matrix.shard }}/2
         run: composer --working-dir packages/api run test:mysql:parity:shard
 
+  # Which coverage jobs this run needs; tools/coverage-scope.mjs has the rules.
+  # Pushes to main run both, the merge queue the side that changed, pull
+  # requests only with run-full-ci or run-apps-coverage.
+  coverage-scope:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      api: ${{ steps.scope.outputs.api }}
+      apps: ${{ steps.scope.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Decide
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT" == merge_group ]] || [[ "$EVENT" == pull_request && "$LABELS" == *'"run-full-ci"'* ]]; then
+            git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          fi
+          node tools/coverage-scope.mjs | tee -a "$GITHUB_OUTPUT"
+
   # One PHPUnit process for the whole suite outgrew the 45-minute limit. It
   # took 26 minutes at 6952 tests (2026-11-04) and 34 to over 45 at 7366
   # (2026-11-11): the time grew much faster than the test count. The suite
@@ -647,7 +687,8 @@ jobs:
   # report as before.
   api-coverage-shard:
     name: api-coverage (shard ${{ matrix.shard }}/4)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: coverage-scope
+    if: needs.coverage-scope.outputs.api == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -705,8 +746,8 @@ jobs:
           retention-days: 3
 
   api-coverage:
-    needs: api-coverage-shard
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [coverage-scope, api-coverage-shard]
+    if: needs.coverage-scope.outputs.api == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -760,14 +801,10 @@ jobs:
           if-no-files-found: error
 
   apps-coverage:
-    # A pull request runs this job only while it carries run-apps-coverage,
-    # on its next CI run. Adding the label does not start one.
-    needs: gate
-    if: >-
-      needs.gate.outputs.run == 'true' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'pull_request' &&
-        contains(github.event.pull_request.labels.*.name, 'run-apps-coverage')))
+    # A pull request runs this job only while it carries run-apps-coverage or
+    # run-full-ci, on its next CI run. Adding the label does not start one.
+    needs: coverage-scope
+    if: needs.coverage-scope.outputs.apps == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -832,9 +869,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
+  # On main a drop opens or comments on the coverage-regression issue and a
+  # rise uploads a baseline proposal. In the merge queue and on pull requests
+  # a drop only fails this job (and so build); nothing is filed or uploaded.
   coverage-ratchet:
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: [api-coverage, apps-coverage]
+    if: >-
+      ${{ !cancelled() &&
+      (needs.coverage-scope.outputs.api == 'true' ||
+      needs.coverage-scope.outputs.apps == 'true') }}
+    needs: [coverage-scope, api-coverage, apps-coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -863,10 +906,17 @@ jobs:
 
       - name: Check coverage ratchet
         id: check
+        env:
+          API: ${{ needs.coverage-scope.outputs.api }}
+          APPS: ${{ needs.coverage-scope.outputs.apps }}
         run: |
           set +e
+          # A side coverage-scope skipped has no report; compare only the other.
+          ONLY=()
+          if [[ "$API" != true ]]; then ONLY=(--only=apps); fi
+          if [[ "$APPS" != true ]]; then ONLY=(--only=api); fi
           # One run. JSON on stdout, human text on stderr. tee waits before the step exits.
-          node tools/coverage-ratchet.mjs check --json > coverage-ratchet.json 2> >(tee coverage-ratchet.txt >&2)
+          node tools/coverage-ratchet.mjs check --json "${ONLY[@]}" > coverage-ratchet.json 2> >(tee coverage-ratchet.txt >&2)
           CODE=$?
           wait
           set -e
@@ -882,8 +932,21 @@ jobs:
             exit "$CODE"
           fi
 
+      - name: Fail on coverage drop
+        if: steps.check.outputs.exit_code == '1' && github.event_name != 'push'
+        run: |
+          set -euo pipefail
+          {
+            echo "## Coverage dropped"
+            echo ""
+            echo "Coverage per package can only go up. Add tests for the code this change touches, or split the change."
+            echo ""
+            jq -r '.errors[] | "- " + .' coverage-ratchet.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Report coverage regression
-        if: steps.check.outputs.exit_code == '1'
+        if: steps.check.outputs.exit_code == '1' && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -922,7 +985,7 @@ jobs:
           exit 1
 
       - name: Propose baseline increase
-        if: steps.check.outputs.exit_code == '2'
+        if: steps.check.outputs.exit_code == '2' && github.event_name == 'push'
         run: |
           set -euo pipefail
 
@@ -963,7 +1026,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload baseline proposal
-        if: steps.check.outputs.exit_code == '2'
+        if: steps.check.outputs.exit_code == '2' && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-baseline-proposal
