@@ -65,6 +65,7 @@ export const liveTierSpecs = [
   "notes-collab-steady-typing",
   "notes-create-lost-response",
   "notes-leave-within-save-delay",
+  "notes-list-windowed",
   "notes-markdown-import",
   "notes-new-before-notebooks-load",
   "notes-new-tab-unsaved-text",

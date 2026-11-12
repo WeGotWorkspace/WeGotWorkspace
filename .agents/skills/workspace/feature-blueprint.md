@@ -58,6 +58,12 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - **Main header**: **`ViewHeader`** with section label/description from shell model and **`sidebarOpen` / toggle** from controller.
 - **Main body**: Switch or conditional render **one pane per section**; avoid mounting all panes at once unless needed.
 
+## Item lists
+
+- Render a list pane through **`WorkspaceList`** ([`workspace-list/src/workspace-list.tsx`](../../../packages/apps/src/workspace-list/src/workspace-list.tsx)). Pass the items in display order (sorting and filtering stay in the controller, because keyboard ranges read the same order), `getKey`, `renderItem` and a row-height `estimateSize`. Above 80 items it mounts only the rows near the viewport, keeps the active, focused and dragged rows mounted, and runs the reorder animation. Reference: `NotesListRows` in `notes-list-panel.tsx`.
+- Memoize the row with **`memo(Row, workspaceListRowPropsEqual)`** and give it handlers that keep their identity. Do not write a per-app props comparison.
+- Measure list performance with `packages/apps/scripts/measure-list-frames.mjs` (add the app's scenarios there). Design and remaining bindings: [`.agents/specs/1641d-shared-list/`](../../specs/1641d-shared-list/spec.md).
+
 ## User-visible copy (`*-labels.ts`)
 
 - Keep the app's copy in one **`*-labels.ts`** with a typed defaults object. Take common strings (dialog verbs, sharing, sync state, list chrome) from **`workspaceLabels`** in [`lib/workspace/workspace-labels.ts`](../../../packages/apps/src/lib/workspace/workspace-labels.ts) instead of typing "Cancel" or "Remove access?" again. Only move a string to the base when it means the same everywhere.
