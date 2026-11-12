@@ -8,7 +8,7 @@ A local, unattended night job plays a fictional 10-person agency against a long-
 
 ## Budget
 
-Draws from hardening (Technical debt and Pioneer bug flow). Displaces nothing on a product milestone: no UI, no API change. Machine cost: one hour of the maintainer's Mac per night, Docker Desktop during that hour, and about 10 GB of Drive data plus the blocks that changed across 14 snapshots, and up to $0.60 of local model use and 10 minutes per night for the persona diaries. Backgrounds and habits (chunk I) add four to six actions a night and no machine cost. Phase 2 (fault injection, shrinking, coverage steering) is not in this budget; it is decided after three nights.
+Draws from hardening (Technical debt and Pioneer bug flow). Displaces nothing on a product milestone: no UI, no API change. Machine cost: one hour of the maintainer's Mac per night, Docker Desktop during that hour, and about 10 GB of Drive data plus the blocks that changed across 14 snapshots, and up to $0.60 of local model use and 10 minutes per night for the persona diaries. The Google background (chunk I) adds four to six habit actions a night, two to four migration imports on weekdays, and no machine cost. Phase 2 (fault injection, shrinking, coverage steering) is not in this budget; it is decided after three nights.
 
 ## Non-goals
 
@@ -56,7 +56,9 @@ Considered: GitHub Actions (free for this public repository) as the runner. Reje
 
 Considered: LLM-driven personas that decide each click. Rejected: costly per night, not replayable, and a failure cannot be told apart from a confused agent. The LLM stays outside the loop: corpora are written once and committed; triage of the morning report is done by a maintainer or an agent session. The one exception runs after the night: a cheaper local model writes persona diaries and the weekly digest from the run files, and never feeds the action list or replay.
 
-Considered: persona backgrounds only in the diary prompt ("Eva used Google before"). Rejected: the model would invent comparisons from general knowledge that may be wrong or out of date, and nothing would be measured. Habits are planned actions, and a diary may compare with a former tool only on them.
+Considered: the Google background only in the diary prompt ("they used Google before"). Rejected: the model would invent comparisons from general knowledge that may be wrong or out of date, and nothing would be measured. Habits and migration imports are planned actions, and a diary may mention Google only on them.
+
+Considered: a different former platform per persona (Google, Microsoft 365, Dropbox). Rejected by the product lead: a team that each came from somewhere else is not how a studio switches. The whole team moved from Google Workspace together, on purpose, for sovereignty.
 
 Considered: faking the server clock to run a month in one night. Rejected: the server, CalDAV clients, push and browser all read real time, and a faked clock tests a state no user reaches. Real time also makes the workspace age the way a customer's does.
 
@@ -88,13 +90,14 @@ Considered: one fresh world per night (seed, act, discard). Rejected: it removes
 4. `sim-oracles` after `sim-api-actors` and `sim-ui-actors` (oracles read through the API client and read the browser actors' console and request logs).
 5. `sim-report-replay` after `sim-oracles`.
 6. `sim-schedule-skill` after `sim-report-replay`.
-7. `sim-verify` last.
+7. `sim-habits` after `sim-report-replay` (it extends the report's `Team voice` section).
+8. `sim-verify` last.
 
 ## Open decisions
 
-For chunk I, decided by the product lead before it is built:
+None open. Decided by the product lead for chunk I:
 
-- **Origin mix.** Default in [spec.md](./spec.md#backgrounds-and-habits): mostly Google Workspace, Dropbox next to it for the designers, two personas from Microsoft 365, and the DAV-only persona on Apple's apps. If the target customers mostly come from Microsoft, the weighting flips.
+- **Origin** (2026-11-13): the whole team moved from Google Workspace together, for sovereignty. See [spec.md](./spec.md#moved-from-google-workspace).
 - **A freelancer** is decided (2026-11-12, product lead): a different target group, so a separate simulation with its own world (a freelancer's own business with several clients), not a persona in Studio Kade. Not in this plan; it gets its own issue when picked up.
 
 Everything else is decided. Choices made without a separate review: port `:9290` (replay `:9291`); Compose projects `wgw-sim` and `wgw-sim-replay`; Apache worker cap 5; data under `~/.wgw-sim/`; night slot 01:00–02:15 local time via launchd with a `pmset` wake one minute earlier (installed once by the maintainer, it needs `sudo`); a run that starts after 06:00 is skipped as missed; 14 snapshots kept as APFS clones; Drive volume cap 10 GB; convergence sample of 200 older objects per night; weekend nights run the light plan; coverage horizon 14 nights; rollback copy plus a snapshot after migrations and reconcile (not a pre-upgrade snapshot); every app through both actor layers each night, the Meet call itself browser-only; MailHog from `compose.dev.yml` as the SMTP sink, host ports `:2590`/`:2580` (replay `:2591`/`:2581`); dev Team `team` kept as dev seed. Phase 2 is decided by triage after three nights, not in this plan.
@@ -109,7 +112,7 @@ Everything else is decided. Choices made without a separate review: port `:9290`
 - The plan for a date is a pure function of world, seed and snapshot. A wrong change makes findings unreplayable. Proof: `path: tools/team-sim/src/planner/planner.test.mjs` assertions `same world, seed and snapshot give the same action-list hash`, `habit actions come from the seed, at most one per persona per night`.
 - Bootstrap is idempotent. A wrong change creates duplicate users, Teams or projects every night. Proof: `path: tools/team-sim/src/bootstrap/bootstrap.test.mjs` assertion `second run against the same state plans zero writes`.
 - Visibility findings and product pains never leave the machine through the harness. A wrong change files or prints a pre-beta security finding in a public place. Proof: `path: tools/team-sim/src/report/report.test.mjs` assertions `visibility failures render only in the private section`, `product pains render only in the product section`, `flaky failure moves to file-now on the third night`, `report module has no network client`.
-- Diaries say only what the run shows. A wrong change lets a diary claim what no action of that persona supports, or lets a logged-out CLI fail the night. Proof: `path: tools/team-sim/src/diary/diary.test.mjs` assertions `naming a former tool without citing a habit action is an invalid comparison`, `facts hold only the persona's own actions`, `validation drops items that cite someone else's actions and reports bad citations`, `diaries stop at the night's dollar cap`, `an unavailable or logged-out CLI skips the diaries and fails nothing`, `facts leave out outcome notes and anything the harness may have caused`.
+- Diaries say only what the run shows. A wrong change lets a diary claim what no action of that persona supports, or lets a logged-out CLI fail the night. Proof: `path: tools/team-sim/src/diary/diary.test.mjs` assertions `naming Google without citing a habit or migration action is an invalid comparison`, `facts hold only the persona's own actions`, `validation drops items that cite someone else's actions and reports bad citations`, `diaries stop at the night's dollar cap`, `an unavailable or logged-out CLI skips the diaries and fails nothing`, `facts leave out outcome notes and anything the harness may have caused`.
 - Each oracle can fail. A wrong change ships an oracle that is green whatever happens. Proof: `path: tools/team-sim/src/oracles/oracles.test.mjs` assertions `every oracle reports a planted fault`, `dev accounts admin and member are known, never personas`, `an admin persona listing every colleague is not a visibility failure`, `an admin persona's DM or share outside his Teams is a visibility failure`.
 - The convergence check does not grow with the workspace's age. A wrong change makes month-three nights run past the cap. Proof: `path: tools/team-sim/src/oracles/oracles.test.mjs` assertion `convergence checks touched objects plus a fixed-size sample`.
 - A missed night is visible. A wrong change lets the job stop without anyone noticing. Proof: `path: tools/team-sim/src/report/report.test.mjs` assertion `nights without a run are listed`; `path: tools/team-sim/src/schedule/status.test.mjs` assertions `status fails after two days without a night`, `a run after 06:00 is skipped as missed`.
@@ -190,13 +193,13 @@ Everything else is decided. Choices made without a separate review: port `:9290`
 - **Verify with:** `node tools/team-sim/bin/sim.mjs schedule install --dry-run`; `pnpm --dir tools/team-sim test -- schedule`; `pnpm run check:agent-docs`
 - **Parallel with:** none
 
-### Chunk I: Backgrounds and habits
+### Chunk I: Moved from Google Workspace
 
 - **id:** `sim-habits`
 - **Skill:** testing, workspace
-- **Inputs:** `sim-world-planner`, `sim-api-actors`, `sim-ui-actors`, and the friction and diary steps of the report; the open decisions above
-- **Done when:** `world/personas.json` has `cameFrom` and `habits` for every persona and `world/habits.json` holds the catalog in [spec.md](./spec.md#backgrounds-and-habits); the planner draws four to six habit actions a night from the seed (at most one per persona, on a layer the habit runs on) and the action-list hash stays a pure function of world, seed and snapshot; each habit has an API or browser flow that records `habit: ok` or a friction record with source `habit`, the habit id and `cameFrom`, then finishes the goal with the workaround; `sim night --habits all` plans every habit once for a check night; the `Team voice` section has a `Switchers` table (habit, origin, tries, worked, friction with evidence) and the weekly digest groups friction by origin; diary facts carry `cameFrom` and the habit, and a sentence that names a former tool without citing a habit action counts as an invalid comparison.
-- **Verify with:** `pnpm --dir tools/team-sim test -- planner friction diary`; `node tools/team-sim/bin/sim.mjs night --minutes 25 --habits all` runs every habit and the report's `Switchers` table lists each one.
+- **Inputs:** `sim-world-planner`, `sim-api-actors`, `sim-ui-actors`, and the friction and diary steps of the report
+- **Done when:** `world/habits.json` holds the Google habit catalog and `world/takeout/` the fixture export in [spec.md](./spec.md#moved-from-google-workspace); the planner draws four to six habit actions a night (at most one per persona, on a layer the habit runs on) and two to four `migrate.import` actions on weekdays from the seed, and the action-list hash stays a pure function of world, seed and snapshot; each habit has an API or browser flow that records `habit: ok` or a friction record with source `habit` and the habit id, then finishes the goal with the workaround; each import type goes through the suite's own import path and is checked field by field, lost content failing and a missing path recorded as friction with source `migration`; `sim night --habits all` plans every habit and import type once for a check night; the `Team voice` section has a `Since Google` table and the weekly digest groups friction by habit and import type; diary facts carry the move and a sentence that names Google, Gmail, Sheets or Takeout without citing a habit or migration action counts as an invalid comparison.
+- **Verify with:** `pnpm --dir tools/team-sim test -- planner friction diary`; `node tools/team-sim/bin/sim.mjs night --minutes 25 --habits all` runs every habit and import type, and the report's `Since Google` table lists each one.
 - **Parallel with:** none
 
 ### Chunk V: Cross-chunk verify
@@ -214,7 +217,7 @@ Designed in [spec.md](./spec.md#phase-2-decided-after-three-nights); each part c
 
 ## Test plan
 
-- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, data mount, snapshot clones with the stack stopped, upgrade rollback, replay on the recorded commit and env, bootstrap diff, oracle planted faults, convergence sample bound, coverage matching, report sections, missed-night status, friction chains, metrics and trend, diary validation and caps, digest ranking, habit drawing, habit outcomes and the comparison check.
+- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, data mount, snapshot clones with the stack stopped, upgrade rollback, replay on the recorded commit and env, bootstrap diff, oracle planted faults, convergence sample bound, coverage matching, report sections, missed-night status, friction chains, metrics and trend, diary validation and caps, digest ranking, habit and import drawing, habit outcomes, import field checks and the comparison check.
 - [ ] One manual light night on a scratch data directory, then a replay of it with a matching action-list hash after `main` has moved.
 - [ ] One forced failed migration on a scratch instance: the data dir and worktree are back on the previous night's state.
 - [ ] Three consecutive unattended nights on the maintainer's Mac before the issue closes; the morning reports are read and triaged, and the phase 2 decision is recorded.
