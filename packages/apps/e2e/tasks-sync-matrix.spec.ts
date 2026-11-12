@@ -294,7 +294,15 @@ async function editTask(tab: Tab, title: string, change: Edit) {
   if (change.description !== undefined) {
     await detail.getByRole("textbox", { name: "Notes" }).fill(change.description);
   }
-  if (change.list) await pick(tab, detail, "List", change.list);
+  if (change.list) {
+    await pick(tab, detail, "List", change.list);
+    // A list move from the open task waits for its confirm.
+    await tab
+      .getByRole("alertdialog", { name: "Move task?" })
+      .getByRole("button", { name: "Move", exact: true })
+      .click();
+    await sleep(200);
+  }
   if (change.status) await pick(tab, detail, "Status", change.status);
   if (change.priority) await pick(tab, detail, "Priority", change.priority);
   if (change.due) await setDue(tab, detail, change.due);
