@@ -4,6 +4,8 @@ import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { groupOccurrenceKeys } from "@/calendar-core/src/use-calendar-event-deletes";
+import { createCalendarAutosaveWrites } from "@/calendar-core/src/calendar-autosave-writes";
+import { calendarEventToForm } from "@/calendar-core/src/calendar-editor-model";
 
 const toastApi = {
   show: vi.fn(() => "toast-1"),
@@ -108,6 +110,36 @@ describe("useCalendarController batch writes (list mode multi-select)", () => {
     );
   });
 
+  it("excludes the dates from the series as it is when the write goes", async () => {
+    vi.useFakeTimers();
+    const operations = ops();
+    const { result, rerender } = renderHook(
+      ({ data }) => useCalendarController({ data, operations, sessionEmail: "me@example.com" }),
+      { initialProps: { data: bootstrap.data } },
+    );
+
+    act(() => {
+      result.current.deleteCalendarEvents([STANDUP_TUESDAY]);
+    });
+    // An edit of another date of the series is saved during the grace period.
+    const edited = { "2033-01-13T09:30:00": { title: "Standup (moved room)" } };
+    rerender({
+      data: {
+        ...bootstrap.data,
+        events: bootstrap.data.events.map((event) =>
+          event.id === "standup" ? { ...event, recurrenceOverrides: edited } : event,
+        ),
+      },
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const [, patch] = vi.mocked(operations.patchEvent).mock.calls[0]!;
+    expect(patch.recurrenceOverrides).toMatchObject(edited);
+    expect(Object.keys(patch.recurrenceOverrides ?? {})).toContain("2033-01-11T09:30:00");
+  });
+
   it("Undo inside the grace period sends nothing and shows the rows again", () => {
     vi.useFakeTimers();
     const operations = ops();
@@ -145,6 +177,25 @@ describe("useCalendarController batch writes (list mode multi-select)", () => {
     expect(operations.deleteEvent).toHaveBeenCalledWith("dentist");
   });
 
+  it("moves the open event as its form stands, edits not saved yet included", async () => {
+    const operations = ops();
+    const { result } = renderController(operations);
+    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
+    const form = { ...calendarEventToForm(dentist), title: "Dentist (moved)" };
+
+    await act(async () => {
+      result.current.moveCalendarEvents(["dentist"], "family", {
+        mode: "edit",
+        eventId: "dentist",
+        form,
+      });
+    });
+
+    const [draft] = vi.mocked(operations.createEvent).mock.calls[0]!;
+    expect(draft.title).toBe("Dentist (moved)");
+    expect(draft.calendarId).toBe("family");
+  });
+
   it("skips events already in the target calendar", async () => {
     const operations = ops();
     const { result } = renderController(operations);
@@ -155,5 +206,37 @@ describe("useCalendarController batch writes (list mode multi-select)", () => {
 
     expect(operations.createEvent).not.toHaveBeenCalled();
     expect(operations.deleteEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCalendarController list-mode autosave", () => {
+  it("writes one at a time, each against the last write, so the latest typing wins", async () => {
+    const operations = ops();
+    let releaseFirst = () => {};
+    vi.mocked(operations.patchEvent).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirst = () => resolve({ id: "dentist" } as never);
+        }),
+    );
+    const { result } = renderController(operations);
+    const dentist = bootstrap.data.events.find((event) => event.id === "dentist")!;
+    const form = calendarEventToForm(dentist);
+    const writes = createCalendarAutosaveWrites();
+    const autosave = (title: string) =>
+      result.current.saveEditor(undefined, {
+        keepOpen: true,
+        writes,
+        target: { mode: "edit", eventId: "dentist", form: { ...form, title } },
+      });
+
+    await act(async () => autosave("Meet"));
+    // Typed back to the loaded title while the first write is still out.
+    await act(async () => autosave(form.title));
+    expect(operations.patchEvent).toHaveBeenCalledTimes(1);
+
+    await act(async () => releaseFirst());
+    const titles = vi.mocked(operations.patchEvent).mock.calls.map(([, patch]) => patch.title);
+    expect(titles).toEqual(["Meet", form.title]);
   });
 });

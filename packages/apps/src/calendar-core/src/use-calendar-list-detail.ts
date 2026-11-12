@@ -99,6 +99,12 @@ export function useCalendarListDetail({
     leaveEventDetail,
     /** Back on phones: leave the open event. */
     goBack: () => leaveEventDetail(closeEventDetail),
+    /** Leaves the open event for a batch delete or move: its pending autosave is dropped
+     * (a move takes the open form along instead). */
+    leaveForBatchWrite: () => {
+      autosave.cancel();
+      leaveEventDetail(closeEventDetail);
+    },
     autosave,
     deleteEditedEvent,
     detailDelete,

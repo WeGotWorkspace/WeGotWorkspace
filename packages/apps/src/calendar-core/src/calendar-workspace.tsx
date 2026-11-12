@@ -688,8 +688,8 @@ export function CalendarWorkspace({
   const {
     workspaceRef: listWorkspaceRef,
     detailOverlay,
-    leaveEventDetail,
     goBack,
+    leaveForBatchWrite,
     autosave: editorAutosave,
     deleteEditedEvent,
     detailDelete,
@@ -737,9 +737,9 @@ export function CalendarWorkspace({
     calendars,
     openEvent: openEventPreview,
     requestConfirm,
-    leaveEvent: () => leaveEventDetail(closeEventDetail),
+    leaveEvent: leaveForBatchWrite,
     deleteEvents: deleteCalendarEvents,
-    moveEvents: moveCalendarEvents,
+    moveEvents: (keys, calendarId) => moveCalendarEvents(keys, calendarId, editor),
   });
   const multiSelected = listLayout && listSelection.multiSelected;
 
@@ -943,11 +943,7 @@ export function CalendarWorkspace({
             onChange: setEditorForm,
             onClose: closeInteractiveEditor,
             onSave: (scope) => {
-              if (variant === "pane") {
-                editorAutosave.cancel();
-                saveEditor(scope, { keepOpen: true });
-                return;
-              }
+              if (variant === "pane") return editorAutosave.saveNow(scope);
               saveEditor(scope);
               setEventPreview(null);
               setEventTimesDraft(null);

@@ -4,8 +4,8 @@ import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 
 /**
- * A user edit to a settings form field (the field's own change event). Autosave listens
- * for these only; `setValue` and `reset` do not save.
+ * A user edit to a settings form field (the field's own change event). Autosave saves
+ * these, and a `setValue` that dirties a field; `reset` does not save.
  */
 export async function editSettingsField<T extends FieldValues>(
   form: UseFormReturn<T>,

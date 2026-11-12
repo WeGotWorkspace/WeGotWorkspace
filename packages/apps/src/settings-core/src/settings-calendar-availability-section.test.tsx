@@ -190,6 +190,32 @@ describe("SettingsCalendarAvailabilitySection", () => {
     expect(window.localStorage.length).toBe(0);
   });
 
+  it("keeps and sends a change made while the previous save is still running", async () => {
+    const mock = createMockCalendarAvailabilitySettingsOperations();
+    let release!: () => void;
+    const firstSaveHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const save = vi.fn(async (update: Parameters<typeof mock.save>[0]) => {
+      if (save.mock.calls.length === 1) await firstSaveHeld;
+      return mock.save(update);
+    });
+    renderSection({ load: mock.load, save });
+    fireEvent.click(await screen.findByRole("switch", { name: labels.switch }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+
+    // The first PUT is still out when the user picks Do not add.
+    choose("Work", labels.exclude);
+    await act(async () => release());
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save).toHaveBeenLastCalledWith({
+      enabled: true,
+      calendars: [{ calendarId: "work", include: false }],
+    });
+    expect(screen.getByRole("combobox", { name: "Work" }).textContent).toContain(labels.exclude);
+  });
+
   it("shows an error toast and sends nothing when a change is made offline", async () => {
     const operations = spiedOperations(mockCalendarAvailabilitySettings());
     renderSection(operations);

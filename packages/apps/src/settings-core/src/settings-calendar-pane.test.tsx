@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readCalendarDisplayPrefs, writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
+import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
 
 const liveApi = vi.hoisted(() => ({ enabled: false }));
 const calendarGet = vi.hoisted(() => ({
@@ -99,6 +101,29 @@ describe("SettingsCalendarPane", () => {
     const trigger = await screen.findByRole("combobox", { name: "Default calendar" });
     expect(trigger.textContent).toContain("Work");
     expect(readCalendarDisplayPrefs().inviteCalendarId).toBe("work");
+  });
+
+  it("saves the replacement when the stored calendar no longer exists", async () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "deleted" });
+    calendarGet.current = Promise.resolve({
+      list: [
+        { id: "default", name: "Calendar", color: "#6366f1", isDefault: true },
+        { id: "work", name: "Work", color: "#0ea5e9", isDefault: false },
+      ],
+    });
+    liveApi.enabled = true;
+
+    render(
+      <AutosaveStatusProvider>
+        <AutosaveStatusTag />
+        <SettingsCalendarPane />
+      </AutosaveStatusProvider>,
+    );
+
+    await waitFor(() => expect(readCalendarDisplayPrefs().inviteCalendarId).toBe("default"));
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain(workspaceLabels.dialog.saved),
+    );
   });
 
   it("hides the calendar picker when the live list fails", async () => {

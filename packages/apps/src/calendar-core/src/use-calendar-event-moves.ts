@@ -3,6 +3,7 @@ import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { calendarEventToForm, draftFromForm } from "@/calendar-core/src/calendar-editor-model";
+import type { CalendarEditorState } from "@/calendar-core/src/use-calendar-controller";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarEventWrite,
@@ -24,7 +25,8 @@ type UseCalendarEventMovesArgs = {
 /**
  * Multi-select Move to calendar: each selected event (a repeating one as its whole
  * series) is recreated in the target calendar and its original deleted, as a single
- * move does. One write; Undo moves them back.
+ * move does. One write; Undo moves them back. The event open in the editor moves as its
+ * form stands (edits not saved yet included), unless it is one date of a series.
  */
 export function useCalendarEventMoves({
   L,
@@ -36,11 +38,15 @@ export function useCalendarEventMoves({
   onMutated,
 }: UseCalendarEventMovesArgs) {
   return useCallback(
-    (keys: readonly string[], calendarId: string) => {
+    (keys: readonly string[], calendarId: string, open?: CalendarEditorState | null) => {
       if (!operations) return;
       const moves = groupOccurrenceKeys(keys, events).flatMap(({ eventId, original }) => {
         if (!original || original.calendarIds?.[calendarId] === true) return [];
-        const form = calendarEventToForm(original);
+        const edited =
+          open?.mode === "edit" && open.eventId === eventId && !open.recurrenceId
+            ? open.form
+            : undefined;
+        const form = edited ?? calendarEventToForm(original);
         return [
           {
             eventId,

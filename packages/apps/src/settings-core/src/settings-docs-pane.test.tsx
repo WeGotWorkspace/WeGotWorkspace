@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   readDocsPageSetupOverrides,
@@ -102,7 +102,7 @@ describe("useSettingsDocsForm", () => {
     expect(result.current.form.getValues("format")).toBe("legal");
   });
 
-  it("keeps unsaved changes when the default changes elsewhere", () => {
+  it("keeps unsaved changes when the default changes elsewhere, then saves them", async () => {
     writeDocsPageSetupPrefs({ format: "a4" });
     const { result } = renderHook(() => useSettingsDocsForm());
     act(() => {
@@ -112,6 +112,7 @@ describe("useSettingsDocsForm", () => {
       writeDocsPageSetupPrefs({ format: "legal" });
     });
     expect(result.current.form.getValues("format")).toBe("a5");
+    await waitFor(() => expect(readDocsPageSetupPrefs().format).toBe("a5"));
   });
 
   it("does not report saved when storage rejects the write", async () => {

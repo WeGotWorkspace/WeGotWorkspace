@@ -9,7 +9,8 @@ export const FORM_AUTOSAVE_DELAY_MS = 400;
  * Preference forms save themselves (suite norm): each edit the user makes runs `save`
  * after a short pause, so typing is one save, not one per key. A pending save still
  * runs when the form goes away (Done, Escape, another pane). Saves run one after the
- * other, never side by side. Only user edits count: `reset` and `setValue` do not save.
+ * other, never side by side. User edits save, and so does a `setValue` that dirties a
+ * field (a pane replacing a stored id that no longer exists). `reset` does not save.
  *
  * Status for a surrounding dialog: saving from the first edit until the last save is
  * done; then saved, or unsaved when the form is still dirty (`save` resets the form
@@ -43,8 +44,10 @@ export function useFormAutosave<T extends FieldValues>(
   }, []);
 
   useEffect(() => {
-    const subscription = form.watch((_values, { type }) => {
-      if (type !== "change") return;
+    const subscription = form.watch((_values, { name, type }) => {
+      // `reset` has no name; a `setValue` has no type.
+      const dirtied = type === undefined && name !== undefined && form.getFieldState(name).isDirty;
+      if (type !== "change" && !dirtied) return;
       setBusy(true);
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(flush, delay);

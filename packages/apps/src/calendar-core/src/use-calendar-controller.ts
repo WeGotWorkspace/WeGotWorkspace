@@ -69,6 +69,7 @@ import {
 } from "@/calendar-core/src/calendar-subscription";
 import { copyShareText } from "@/share-ui/share-path-utils";
 import type { CalendarRecurrenceScopeDialogState } from "@/calendar-core/src/calendar-recurrence-scope-dialog";
+import { promptRecurrenceScope } from "@/calendar-core/src/calendar-recurrence-scope-prompt";
 import {
   eventIsRecurringSeries,
   forkSeriesDraftWithSplitOverrides,
@@ -96,6 +97,7 @@ import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
+import type { CalendarAutosaveWrites } from "@/calendar-core/src/calendar-autosave-writes";
 import { useCalendarEventDeletes } from "@/calendar-core/src/use-calendar-event-deletes";
 import { useCalendarEventMoves } from "@/calendar-core/src/use-calendar-event-moves";
 import {
@@ -118,6 +120,8 @@ export type CalendarCreateSource = "pointer" | "menu";
 export type CalendarEditorSaveOptions = {
   keepOpen?: boolean;
   target?: CalendarEditorState;
+  /** List mode's autosave: its writes go in order, each diffed against the last. */
+  writes?: CalendarAutosaveWrites;
 };
 
 export type CalendarEditorState =
@@ -501,37 +505,11 @@ export function useCalendarController({
     [calendars, defaultCalendarId, ensureCalendarVisible, timeZone],
   );
 
-  const askRecurrenceScope = useCallback((request: RecurrenceScopeRequest) => {
-    return new Promise<RecurrenceScopeChoice | null>((resolve) => {
-      // Replace any in-flight prompt so Lit drag and click never hang on an orphaned Promise.
-      const previous = pendingScopeResolveRef.current;
-      pendingScopeResolveRef.current = null;
-      previous?.(null);
-
-      let settled = false;
-      const settle = (scope: RecurrenceScopeChoice | null) => {
-        if (settled) return;
-        settled = true;
-        if (pendingScopeResolveRef.current === settle) {
-          pendingScopeResolveRef.current = null;
-        }
-        setRecurrenceScopeDialog(null);
-        resolve(scope);
-      };
-      pendingScopeResolveRef.current = settle;
-
-      // Defer open past the initiating pointer gesture so Radix does not treat it as dismiss.
-      window.setTimeout(() => {
-        if (settled) return;
-        setRecurrenceScopeDialog({
-          // Legacy "update" maps to edit chrome; RSVP keeps its own copy.
-          action: request.action === "update" ? "edit" : request.action,
-          ...(request.description ? { description: request.description } : {}),
-          resolve: settle,
-        });
-      }, 0);
-    });
-  }, []);
+  const askRecurrenceScope = useCallback(
+    (request: RecurrenceScopeRequest) =>
+      promptRecurrenceScope(request, pendingScopeResolveRef, setRecurrenceScopeDialog),
+    [],
+  );
 
   const openEditEventKey = useCallback(
     async (key: string) => {
@@ -602,7 +580,8 @@ export function useCalendarController({
       }
 
       void (async () => {
-        const original = data.events.find((entry) => entry.id === target.eventId);
+        const loaded = data.events.find((entry) => entry.id === target.eventId);
+        const original = options.writes?.base(target.eventId, loaded) ?? loaded;
         const patch = original ? formToPatch(target.form, original) : formToFullPatch(target.form);
         if (patch.attendees && organizer) {
           patch.organizer = organizer;
@@ -612,6 +591,8 @@ export function useCalendarController({
           : Boolean(target.recurrenceId);
 
         const keepOpen = Boolean(options.keepOpen);
+        const writeInOrder = (written: object, write: () => Promise<unknown>) =>
+          options.writes ? options.writes.run(target.eventId, original, written, write) : write();
         const occurrenceKey = `${target.eventId}:${target.recurrenceId ?? ""}`;
         // An autosave asks once per occurrence, not on every pause in the typing.
         const rememberedScope =
@@ -661,7 +642,9 @@ export function useCalendarController({
               successToast: L.toastEventUpdated,
               mutation: async () => {
                 targetId = (await resolveEventId?.(target.eventId)) ?? target.eventId;
-                await operations.patchEvent(targetId, { recurrenceOverrides: overrides });
+                await writeInOrder({ recurrenceOverrides: overrides }, () =>
+                  operations.patchEvent(targetId, { recurrenceOverrides: overrides }),
+                );
               },
               revert: async () => {
                 await operations.patchEvent(
@@ -757,7 +740,7 @@ export function useCalendarController({
                 markCompleted(MOVE_STEPS.delete);
                 return;
               }
-              await operations.patchEvent(targetId, patch);
+              await writeInOrder(patch, () => operations.patchEvent(targetId, patch));
             },
             revert: async (completed) => {
               if (patch.calendarId) {

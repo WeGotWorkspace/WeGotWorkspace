@@ -39,6 +39,13 @@ function isOffline(error: unknown): boolean {
   return error instanceof AvailabilitySettingsOfflineError || isFetchNetworkError(error);
 }
 
+function sameFormValues(
+  a: CalendarAvailabilityFormValues,
+  b: CalendarAvailabilityFormValues,
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 /**
  * Server-side Team availability settings (#1912): read fresh when the pane opens, saved with
  * PUT as the user changes them. No local copy: offline the pane says it needs a connection, and a
@@ -64,10 +71,14 @@ export function useSettingsCalendarAvailability(
   dirtyRef.current = isDirty;
   const requestRef = useRef(0);
 
+  /** `submitted`: the values a save sent. An edit made since then stays, for the next save. */
   const apply = useCallback(
-    (next: CalendarAvailabilitySettings) => {
+    (next: CalendarAvailabilitySettings, submitted?: CalendarAvailabilityFormValues) => {
+      settingsRef.current = next;
       setSettings(next);
-      form.reset(calendarAvailabilityToForm(next));
+      if (!submitted || sameFormValues(form.getValues(), submitted)) {
+        form.reset(calendarAvailabilityToForm(next));
+      }
       setPhase("ready");
     },
     [form],
@@ -136,7 +147,7 @@ export function useSettingsCalendarAvailability(
       const update = calendarAvailabilityUpdateFromForm(base, values);
       requestRef.current += 1;
       const saved = await operationsRef.current.save(update);
-      apply(saved);
+      apply(saved, values);
       // Sharing on or off is the one change people want confirmed; calendar choices stay quiet.
       if (saved.enabled !== base.enabled) {
         showSuccess(saved.enabled ? labels.sharingOn : labels.sharingOff);

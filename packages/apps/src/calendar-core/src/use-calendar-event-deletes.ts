@@ -1,4 +1,4 @@
-import { createElement, useCallback, type Dispatch, type SetStateAction } from "react";
+import { createElement, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { Trash2 } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { QueueMutation } from "@/hooks/use-queued-mutation";
@@ -80,6 +80,8 @@ export function useCalendarEventDeletes({
   setEditor,
   setEditorBusy,
 }: UseCalendarEventDeletesArgs) {
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
   const { show, showError } = useAppToast();
 
   const serverId = useCallback(
@@ -221,10 +223,13 @@ export function useCalendarEventDeletes({
             await operations.deleteEvent(targetId);
             continue;
           }
-          let overrides = group.original?.recurrenceOverrides ?? {};
+          // The series as it is now: an edit saved during the grace period stays.
+          const series =
+            eventsRef.current.find((event) => event.id === group.eventId) ?? group.original;
+          let overrides = series?.recurrenceOverrides ?? {};
           for (const rid of group.recurrenceIds) {
             overrides = exclusionRecurrenceOverrides(
-              group.original ? { ...group.original, recurrenceOverrides: overrides } : undefined,
+              series ? { ...series, recurrenceOverrides: overrides } : undefined,
               rid,
             );
           }
