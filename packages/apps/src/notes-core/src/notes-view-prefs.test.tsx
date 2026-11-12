@@ -1,44 +1,29 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   NOTES_VIEW_PREFS_STORAGE_KEY,
-  persistHiddenNotebookIds,
-  readNotesViewPrefs,
-  resolveHiddenNotebookIds,
+  notesHiddenNotebooks,
+  notesViewPrefs,
 } from "@/notes-core/src/notes-view-prefs";
 
-function clearStorage() {
-  if (typeof window !== "undefined" && window.localStorage) {
-    window.localStorage.removeItem(NOTES_VIEW_PREFS_STORAGE_KEY);
-  }
-}
+/** Written by the pre-#1636 `persistHiddenNotebookIds`. */
+const OLD_FORMAT = '{"hiddenNotebookIds":["work"],"knownNotebookIds":["drafts","work"]}';
 
-describe("resolveHiddenNotebookIds", () => {
-  const notebooks = [{ id: "drafts" }, { id: "work" }, { id: "hidden", isVisible: false }];
-
-  it("uses server visibility when nothing is persisted", () => {
-    expect(resolveHiddenNotebookIds(notebooks, undefined)).toEqual(["hidden"]);
-  });
-
-  it("keeps a user hide after the device has seen the notebook", () => {
-    expect(
-      resolveHiddenNotebookIds(notebooks, {
-        hiddenNotebookIds: ["work"],
-        knownNotebookIds: ["drafts", "work", "hidden"],
-      }),
-    ).toEqual(["work"]);
-  });
-});
-
-describe("persistHiddenNotebookIds", () => {
+describe("notesViewPrefs binding", () => {
   afterEach(() => {
-    clearStorage();
+    window.localStorage.removeItem(NOTES_VIEW_PREFS_STORAGE_KEY);
   });
 
-  it("writes hidden and known notebook ids to localStorage", () => {
-    persistHiddenNotebookIds(new Set(["work"]), ["drafts", "work"]);
-    expect(readNotesViewPrefs()).toEqual({
-      hiddenNotebookIds: ["work"],
-      knownNotebookIds: ["drafts", "work"],
+  it("reads hidden notebooks written by the old store", () => {
+    window.localStorage.setItem("wgw.ui.notes.viewPrefs", OLD_FORMAT);
+    expect(notesHiddenNotebooks.read()).toEqual({
+      hiddenIds: ["work"],
+      knownIds: ["drafts", "work"],
     });
+  });
+
+  it("writes the same JSON the old store wrote", () => {
+    notesHiddenNotebooks.write(new Set(["work"]), ["drafts", "work"]);
+    expect(window.localStorage.getItem("wgw.ui.notes.viewPrefs")).toBe(OLD_FORMAT);
+    expect(notesViewPrefs.read()).toEqual(JSON.parse(OLD_FORMAT));
   });
 });
