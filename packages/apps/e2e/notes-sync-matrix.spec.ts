@@ -12,6 +12,7 @@ import {
   converge,
   ensureTeamNotebook,
   listTitles,
+  moveTo,
   openNotesTab,
   openUser,
   OWNER,
@@ -58,20 +59,6 @@ async function editor(tab: Tab) {
   const body = tab.locator(".ProseMirror").first();
   await body.waitFor({ timeout: 15_000 });
   return body;
-}
-
-/**
- * Moves the open note with its notebook dropdown above the title (#1945), which is
- * named after the notebook the note is in now.
- */
-async function moveTo(tab: Tab, from: string, notebook: string) {
-  await tab.getByRole("combobox", { name: from, exact: true }).click();
-  await tab.getByRole("option", { name: notebook, exact: true }).click();
-  await sleep(500);
-  const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
-  if (await dialog.count())
-    await dialog.first().getByRole("button", { name: /move/i }).first().click();
-  await sleep(800);
 }
 
 const ACTIONS = {

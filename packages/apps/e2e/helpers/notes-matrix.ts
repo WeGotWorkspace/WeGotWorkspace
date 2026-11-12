@@ -236,6 +236,20 @@ export async function converge(
   return open;
 }
 
+/**
+ * Moves the open note with its notebook dropdown above the title (#1945), which is
+ * named after the notebook the note is in now. Confirms the move dialog.
+ */
+export async function moveTo(tab: Tab, from: string, notebook: string): Promise<void> {
+  await tab.getByRole("combobox", { name: from, exact: true }).click();
+  await tab.getByRole("option", { name: notebook, exact: true }).click();
+  await sleep(500);
+  const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
+  if (await dialog.count())
+    await dialog.first().getByRole("button", { name: /move/i }).first().click();
+  await sleep(800);
+}
+
 /** Titles in the tab's visible list. */
 export async function listTitles(tab: Tab): Promise<string[]> {
   return tab
