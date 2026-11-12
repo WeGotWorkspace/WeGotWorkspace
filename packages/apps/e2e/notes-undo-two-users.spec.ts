@@ -14,10 +14,10 @@ import {
   api,
   ensureTeamNotebook,
   listTitles,
-  moveTo,
   openNotesTab,
   openUser,
   OWNER,
+  pickNotebook,
   PRIVATE_NOTEBOOK_NAME,
   serverNote,
   sleep,
@@ -232,7 +232,11 @@ test.describe("Notes Undo seen by the other person", () => {
       await openRow(a, title);
       await actThenUndo("move", {
         setup,
-        act: () => moveTo(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME),
+        act: async () => {
+          await pickNotebook(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
+          const dialog = a.getByRole("alertdialog").or(a.getByRole("dialog"));
+          await dialog.first().getByRole("button", { name: /move/i }).first().click();
+        },
         landed: (note) => note?.notebook === "general",
         // The teammate cannot see the owner's private notebook: the note leaves their list.
         bShowsChange: async () => !(await listed(b, title)),

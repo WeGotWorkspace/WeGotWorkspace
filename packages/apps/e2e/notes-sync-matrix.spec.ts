@@ -12,7 +12,7 @@ import {
   converge,
   ensureTeamNotebook,
   listTitles,
-  moveTo,
+  moveOpenNote,
   openNotesTab,
   openUser,
   OWNER,
@@ -146,11 +146,11 @@ const ACTIONS = {
   },
   async toShared(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
+    await moveOpenNote(tab, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
   },
   async toPrivate(tab: Tab, c: Case) {
     await openRow(tab, c.title);
-    await moveTo(tab, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
+    await moveOpenNote(tab, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
   },
 } satisfies Record<string, (tab: Tab, c: Case) => Promise<void>>;
 type Action = keyof typeof ACTIONS;

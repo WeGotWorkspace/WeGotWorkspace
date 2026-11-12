@@ -14,7 +14,7 @@ import {
   converge,
   ensureTeamNotebook,
   listTitles,
-  moveTo,
+  moveOpenNote,
   notebookKey,
   openNotesTab,
   openUser,
@@ -222,13 +222,13 @@ test("update in flight: a move back while the first move is saved wins", async (
     );
     // Saved while offline, so it waits in the outbox; held once it is sent.
     await setTabOffline(a, true);
-    await moveTo(a, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
+    await moveOpenNote(a, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
     await sleep(MOVE_UNDO_MS + 1_000);
     await setTabOffline(a, false);
     await save.seen("the queued move to the team notebook");
 
     // Moved back while that save is held: this is where it must end up.
-    await moveTo(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
+    await moveOpenNote(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
     await sleep(MOVE_UNDO_MS + 1_000);
     save.release();
 
