@@ -8,7 +8,7 @@ A local, unattended night job plays a fictional 10-person agency against a long-
 
 ## Budget
 
-Draws from hardening (Technical debt and Pioneer bug flow). Displaces nothing on a product milestone: no UI, no API change. Machine cost: one hour of the maintainer's Mac per night, Docker Desktop during that hour, and about 10 GB of Drive data plus the blocks that changed across 14 snapshots, and up to $0.60 of local model use and 10 minutes per night for the persona diaries. The Google background (chunk I) adds four to six habit actions a night, two to four migration imports on weekdays, and no machine cost. Phase 2 (fault injection, shrinking, coverage steering) is not in this budget; it is decided after three nights.
+Draws from hardening (Technical debt and Pioneer bug flow). Displaces nothing on a product milestone: no UI, no API change. Machine cost: one hour of the maintainer's Mac per night, Docker Desktop during that hour, and about 10 GB of Drive data plus the blocks that changed across 14 snapshots, and up to $0.60 of local model use and 10 minutes per night for the persona diaries. The Google background (chunk I) adds four to six habit actions a night, two to four migration imports on weekdays, and no machine cost. Devices and native apps (chunk J) add no actions; they move some to phones and native clients. Phone contexts stay inside the three to four browser personas a night, so memory use does not grow; WebKit adds one browser download. Phase 2 (fault injection, shrinking, coverage steering) is not in this budget; it is decided after three nights.
 
 ## Non-goals
 
@@ -91,12 +91,14 @@ Considered: one fresh world per night (seed, act, discard). Rejected: it removes
 5. `sim-report-replay` after `sim-oracles`.
 6. `sim-schedule-skill` after `sim-report-replay`.
 7. `sim-habits` after `sim-report-replay` (it extends the report's `Team voice` section).
-8. `sim-verify` last.
+8. `sim-devices` after `sim-habits` (both change the persona profile and the report's `Team voice` section).
+9. `sim-verify` last.
 
 ## Open decisions
 
 None open. Decided by the product lead for chunk I:
 
+- **Devices** (2026-11-13): Macs on the desk, a mix of iPhone and Android, some people all-in on the web apps, others on their own CalDAV/CardDAV apps (Apple Calendar, Contacts, Reminders). The roster in [spec.md](./spec.md#devices-and-native-apps) is a default the product lead may change.
 - **Origin** (2026-11-13): the whole team moved from Google Workspace together, for sovereignty. See [spec.md](./spec.md#moved-from-google-workspace).
 - **A freelancer** is decided (2026-11-12, product lead): a different target group, so a separate simulation with its own world (a freelancer's own business with several clients), not a persona in Studio Kade. Not in this plan; it gets its own issue when picked up.
 
@@ -113,6 +115,7 @@ Everything else is decided. Choices made without a separate review: port `:9290`
 - Bootstrap is idempotent. A wrong change creates duplicate users, Teams or projects every night. Proof: `path: tools/team-sim/src/bootstrap/bootstrap.test.mjs` assertion `second run against the same state plans zero writes`.
 - Visibility findings and product pains never leave the machine through the harness. A wrong change files or prints a pre-beta security finding in a public place. Proof: `path: tools/team-sim/src/report/report.test.mjs` assertions `visibility failures render only in the private section`, `product pains render only in the product section`, `flaky failure moves to file-now on the third night`, `report module has no network client`.
 - Diaries say only what the run shows. A wrong change lets a diary claim what no action of that persona supports, or lets a logged-out CLI fail the night. Proof: `path: tools/team-sim/src/diary/diary.test.mjs` assertions `naming Google without citing a habit or migration action is an invalid comparison`, `facts hold only the persona's own actions`, `validation drops items that cite someone else's actions and reports bad citations`, `diaries stop at the night's dollar cap`, `an unavailable or logged-out CLI skips the diaries and fails nothing`, `facts leave out outcome notes and anything the harness may have caused`.
+- A native client's conflict is not a lost edit. A wrong change either fails every `412` a real client retries, or hides an edit the server dropped. Proof: `path: tools/team-sim/src/actors/api/dav.test.mjs` assertions `a 412 is refetched and retried like the real app`, `an edit lost after the retry fails dav-parity`.
 - Each oracle can fail. A wrong change ships an oracle that is green whatever happens. Proof: `path: tools/team-sim/src/oracles/oracles.test.mjs` assertions `every oracle reports a planted fault`, `dev accounts admin and member are known, never personas`, `an admin persona listing every colleague is not a visibility failure`, `an admin persona's DM or share outside his Teams is a visibility failure`.
 - The convergence check does not grow with the workspace's age. A wrong change makes month-three nights run past the cap. Proof: `path: tools/team-sim/src/oracles/oracles.test.mjs` assertion `convergence checks touched objects plus a fixed-size sample`.
 - A missed night is visible. A wrong change lets the job stop without anyone noticing. Proof: `path: tools/team-sim/src/report/report.test.mjs` assertion `nights without a run are listed`; `path: tools/team-sim/src/schedule/status.test.mjs` assertions `status fails after two days without a night`, `a run after 06:00 is skipped as missed`.
@@ -202,6 +205,15 @@ Everything else is decided. Choices made without a separate review: port `:9290`
 - **Verify with:** `pnpm --dir tools/team-sim test -- planner friction diary`; `node tools/team-sim/bin/sim.mjs night --minutes 25 --habits all` runs every habit and import type, and the report's `Since Google` table lists each one.
 - **Parallel with:** none
 
+### Chunk J: Devices and native apps
+
+- **id:** `sim-devices`
+- **Skill:** testing, workspace, client-transport
+- **Inputs:** `sim-api-actors` (the DAV executors), `sim-ui-actors`, `sim-oracles` (`dav-parity`), `sim-habits`
+- **Done when:** `world/personas.json` has a device profile per persona as in [spec.md](./spec.md#devices-and-native-apps); browser actions run on the desk or, for a seeded share, in WebKit with iPhone emulation or Chromium with Android emulation; each native app has a client actor that keeps a local copy, syncs with `sync-collection` or the collection tag, pushes with `If-Match`, retries a `412` like the real app and queues offline edits; `world/dav-dialects/` holds Apple fixtures recorded from the real apps (made fictional) and DAVx5 fixtures marked not recorded; `dav-parity` checks both directions and round trips for events, contacts and tasks; device friction is recorded with source `device`; the `Team voice` section has a table per device and app; diary facts carry the device.
+- **Verify with:** `pnpm --dir tools/team-sim test -- actors/api oracles planner`; one shortened night in which every native app and both phone types ran, with `dav-parity` passing or each failure traced to a request.
+- **Parallel with:** none
+
 ### Chunk V: Cross-chunk verify
 
 - **id:** `sim-verify`
@@ -217,7 +229,7 @@ Designed in [spec.md](./spec.md#phase-2-decided-after-three-nights); each part c
 
 ## Test plan
 
-- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, data mount, snapshot clones with the stack stopped, upgrade rollback, replay on the recorded commit and env, bootstrap diff, oracle planted faults, convergence sample bound, coverage matching, report sections, missed-night status, friction chains, metrics and trend, diary validation and caps, digest ranking, habit and import drawing, habit outcomes, import field checks and the comparison check.
+- [ ] Unit (node:test or Vitest in `tools/team-sim`): planner determinism, guard, data mount, snapshot clones with the stack stopped, upgrade rollback, replay on the recorded commit and env, bootstrap diff, oracle planted faults, convergence sample bound, coverage matching, report sections, missed-night status, friction chains, metrics and trend, diary validation and caps, digest ranking, habit and import drawing, habit outcomes, import field checks and the comparison check, native client sync (local copy, sync token, `412` retry, offline queue) against recorded dialects.
 - [ ] One manual light night on a scratch data directory, then a replay of it with a matching action-list hash after `main` has moved.
 - [ ] One forced failed migration on a scratch instance: the data dir and worktree are back on the previous night's state.
 - [ ] Three consecutive unattended nights on the maintainer's Mac before the issue closes; the morning reports are read and triaged, and the phase 2 decision is recorded.
