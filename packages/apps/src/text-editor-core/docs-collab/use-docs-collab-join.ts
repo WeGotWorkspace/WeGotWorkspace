@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import { useDocsCollabContentGate } from "./use-docs-collab-content-gate";
+import { expectsServerContent, useDocsCollabContentGate } from "./use-docs-collab-content-gate";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
   migrateDocsCollabPathDatabaseToIdentity,
@@ -574,7 +574,7 @@ export function useDocsCollabJoin({
     awareness.setLocalStateField("user", user);
 
     // Typing into an empty document before its content lands loses keys (#2056).
-    setAwaitingContent(online && allowServerRequests && isYDocEmpty(ydoc));
+    setAwaitingContent(online && expectsServerContent(urls) && isYDocEmpty(ydoc));
     setSession({ ydoc, awareness, user });
 
     ydoc.on("update", (update, origin) => {
@@ -693,7 +693,7 @@ export function useDocsCollabJoin({
     userName,
   ]);
 
-  useDocsCollabContentGate(session?.ydoc, awaitingContent, releaseContent);
+  useDocsCollabContentGate(session?.ydoc, awaitingContent, releaseContent, urls);
 
   return {
     session,

@@ -75,7 +75,7 @@ export function useDocsEditorPathFollow({
   username,
   filePath,
   onFollow,
-}: UseDocsEditorPathFollowArgs): { holdServerSave: boolean } {
+}: UseDocsEditorPathFollowArgs): { holdServerSave: boolean; holdUntilChecked: boolean } {
   const editorUsername = filePath ? username : undefined;
   const { online } = useConnectivity();
   const [inboundKey, setInboundKey] = useState(0);
@@ -125,9 +125,11 @@ export function useDocsEditorPathFollow({
 
   useEffect(() => setFollowPending(false), [filePath]);
 
+  const holdServerSave =
+    Boolean(editorUsername) && (ownedByQueuedWrite !== false || awaitingPathCheck || followPending);
   return {
-    holdServerSave:
-      Boolean(editorUsername) &&
-      (ownedByQueuedWrite !== false || awaitingPathCheck || followPending),
+    holdServerSave,
+    // Held while a check is out, not because a queued write owns the path.
+    holdUntilChecked: holdServerSave && ownedByQueuedWrite !== true,
   };
 }

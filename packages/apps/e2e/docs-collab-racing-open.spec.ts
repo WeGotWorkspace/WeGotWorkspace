@@ -6,7 +6,8 @@
 //
 // Each round: a fresh Team Doc, owner and teammate open it together, each types a
 // line at the end as soon as their editor takes input. Both lines must end up in
-// both editors and in the file.
+// both editors and in the file, and the document must stay in order: an editor
+// that took typing while still empty put the line before the title.
 import { expect, test, type BrowserContext, type Page } from "./helpers/live-test";
 import { openUser, OWNER, putDoc, readDoc, removeQuietly, TEAMMATE } from "./helpers/docs-matrix";
 import { docsUrlForFile } from "./helpers/docs-live";
@@ -43,6 +44,23 @@ async function editorText(page: Page): Promise<string> {
     type TextBetween = (from: number, to: number, blockSeparator: string) => string;
     const doc = root?.editor?.state.doc;
     return doc ? doc.textBetween(0, doc.content.size, "\n").replace(/\u00a0/g, " ") : "";
+  });
+}
+
+/** The document as "type:text" blocks, top to bottom. */
+async function editorBlocks(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    type Block = { type: { name: string }; textContent: string };
+    const root = document.querySelector(".ProseMirror") as
+      | (HTMLElement & {
+          editor?: { state: { doc: { forEach: (visit: (node: Block) => void) => void } } };
+        })
+      | null;
+    const blocks: string[] = [];
+    root?.editor?.state.doc.forEach((node) => {
+      blocks.push(`${node.type.name}:${node.textContent.replace(/\u00a0/g, " ")}`);
+    });
+    return blocks;
   });
 }
 
@@ -93,6 +111,21 @@ test.describe("Docs: two people open one document and type at once", () => {
             { timeout: 30_000, message: `round ${round}: the file holds both lines` },
           )
           .toEqual({ owner: true, teammate: true });
+
+        // In order on both screens: title first and whole, the intro untouched after it.
+        const title = `heading:Racing open ${round}`;
+        await expect
+          .poll(async () => (await editorBlocks(a)).slice(0, 2), {
+            timeout: 30_000,
+            message: `round ${round}: the title and intro stay on top`,
+          })
+          .toEqual([title, "paragraph:Shared intro."]);
+        await expect
+          .poll(async () => editorBlocks(b), {
+            timeout: 30_000,
+            message: `round ${round}: both screens show the same document`,
+          })
+          .toEqual(await editorBlocks(a));
 
         await Promise.all([a.close(), b.close()]);
       }

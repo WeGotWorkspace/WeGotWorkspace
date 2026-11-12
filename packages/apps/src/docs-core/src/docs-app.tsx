@@ -95,7 +95,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     },
     [fileNodeId, followPath, navigate],
   );
-  const { holdServerSave } = useDocsEditorPathFollow({
+  const { holdServerSave, holdUntilChecked } = useDocsEditorPathFollow({
     username: offlineUsername,
     filePath,
     onFollow: followMovedFile,
@@ -231,6 +231,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       authToken: collabAuthToken,
       // Held on this device while the server does not have this path yet, or may have moved it.
       roomNotPersistent: holdServerSave,
+      roomHeldUntilChecked: holdUntilChecked,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
@@ -242,6 +243,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     fileNodeId,
     filePath,
     holdServerSave,
+    holdUntilChecked,
     relocateRouteDocument,
     showCollab,
     showError,

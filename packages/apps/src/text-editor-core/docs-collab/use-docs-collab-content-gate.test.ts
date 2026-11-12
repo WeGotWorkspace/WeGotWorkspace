@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import {
   DOCS_COLLAB_CONTENT_WAIT_MS,
+  expectsServerContent,
   useDocsCollabContentGate,
 } from "./use-docs-collab-content-gate";
 
@@ -50,6 +51,24 @@ describe("useDocsCollabContentGate", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it("releases when a check answers that no content is expected after all", () => {
+    const ydoc = new Y.Doc();
+    const release = vi.fn();
+    const hook = renderHook(
+      ({ untilChecked }: { untilChecked: boolean }) =>
+        useDocsCollabContentGate(ydoc, true, release, {
+          roomNotPersistent: true,
+          roomHeldUntilChecked: untilChecked,
+        }),
+      { initialProps: { untilChecked: true } },
+    );
+    expect(release).not.toHaveBeenCalled();
+
+    hook.rerender({ untilChecked: false });
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing while nothing is awaited", () => {
     const ydoc = new Y.Doc();
     const release = vi.fn();
@@ -59,5 +78,21 @@ describe("useDocsCollabContentGate", () => {
     vi.advanceTimersByTime(DOCS_COLLAB_CONTENT_WAIT_MS);
 
     expect(release).not.toHaveBeenCalled();
+  });
+});
+
+describe("expectsServerContent", () => {
+  it("waits for a room on the server, and for one held only until a check answers", () => {
+    expect(expectsServerContent({})).toBe(true);
+    expect(expectsServerContent({ roomNotPersistent: true, roomHeldUntilChecked: true })).toBe(
+      true,
+    );
+  });
+
+  it("does not wait for a room whose server copy does not exist yet", () => {
+    expect(expectsServerContent({ roomNotPersistent: true })).toBe(false);
+    expect(expectsServerContent({ roomNotPersistent: true, roomHeldUntilChecked: false })).toBe(
+      false,
+    );
   });
 });
