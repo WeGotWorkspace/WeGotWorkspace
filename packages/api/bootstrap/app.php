@@ -34,6 +34,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
@@ -93,6 +94,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->trimStrings(except: [
             'payload.sdp',
         ]);
+        // public/index.php refuses an oversized body before Laravel starts, with the
+        // WebDAV PUT exception; this copy of the check would refuse that PUT again.
+        $middleware->remove(ValidatePostSize::class);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         // An older release's updater can swap the files and then fail to run
