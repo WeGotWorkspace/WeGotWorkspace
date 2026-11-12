@@ -62,3 +62,50 @@ test("Contacts reloads offline after one visit, and the precache holds no other 
     await context.setOffline(false);
   }
 });
+
+test("Contacts opened first on a cold load reloads offline from the window's own copy", async ({
+  page,
+  context,
+}) => {
+  // First navigation of a fresh context: no worker yet, so the lazy chunks
+  // load before it can see them and only `cacheLoadedLazyAssets` stores them.
+  await page.goto("/contacts/all");
+  await expect(page.getByPlaceholder("Search contacts...")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh contacts" })).toBeEnabled({
+    timeout: 60_000,
+  });
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, undefined, {
+    timeout: 60_000,
+  });
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (lazyName) => {
+          const origin = location.origin;
+          const lazy = await caches.open(lazyName);
+          const cached = new Set((await lazy.keys()).map((r) => new URL(r.url).pathname));
+          const precached = new Set<string>();
+          for (const name of await caches.keys()) {
+            if (!name.includes("precache")) continue;
+            for (const r of await (await caches.open(name)).keys()) {
+              precached.add(new URL(r.url).pathname);
+            }
+          }
+          return performance
+            .getEntriesByType("resource")
+            .map((entry) => new URL(entry.name, origin).pathname)
+            .filter((p) => /^\/assets\/.+\.js$/.test(p) && !precached.has(p) && !cached.has(p));
+        }, LAZY_ASSET_CACHE),
+      { timeout: 30_000 },
+    )
+    .toEqual([]);
+
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByPlaceholder("Search contacts...")).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});

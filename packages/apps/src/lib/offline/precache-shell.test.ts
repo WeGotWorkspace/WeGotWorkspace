@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isLazyAssetRequest, isShellPrecacheEntry, shellAssetUrls } from "./precache-shell";
+import {
+  isLazyAssetRequest,
+  isShellPrecacheEntry,
+  lazyAssetName,
+  planLazyAssetSync,
+  shellAssetUrls,
+} from "./precache-shell";
 
 const HTML = `<script type="module" crossorigin src="/assets/index-AAA.js"></script>
 <link rel="modulepreload" crossorigin href="/assets/vendor-BBB.js">
@@ -31,5 +37,35 @@ describe("precache shell", () => {
     expect(isLazyAssetRequest(new URL("/assets/x.png", origin), origin)).toBe(false);
     expect(isLazyAssetRequest(new URL("/assets/x.js", "https://cdn.test"), origin)).toBe(false);
     expect(isLazyAssetRequest(new URL("/api/v1/x.js", origin), origin)).toBe(false);
+  });
+});
+
+describe("lazy asset sync on deploy", () => {
+  it("strips the content hash from a file name", () => {
+    expect(lazyAssetName("/assets/contacts-a1B2c3D4.js")).toBe("/assets/contacts.js");
+    expect(lazyAssetName("/assets/app-x_-y1234.css")).toBe("/assets/app.css");
+    expect(lazyAssetName("/assets/plain.js")).toBe("/assets/plain.js");
+  });
+
+  it("keeps an unchanged chunk", () => {
+    const plan = planLazyAssetSync(
+      ["/assets/calendar-AAAAAAAA.js"],
+      ["/assets/calendar-AAAAAAAA.js"],
+    );
+    expect(plan).toEqual({ fetch: [], delete: [] });
+  });
+
+  it("replaces a changed chunk and fetches the new one of the same name", () => {
+    const plan = planLazyAssetSync(
+      ["/assets/contacts-AAAAAAAA.js", "/assets/calendar-BBBBBBBB.js"],
+      ["/assets/contacts-CCCCCCCC.js", "/assets/calendar-BBBBBBBB.js", "/assets/docs-DDDDDDDD.js"],
+    );
+    expect(plan.delete).toEqual(["/assets/contacts-AAAAAAAA.js"]);
+    expect(plan.fetch).toEqual(["/assets/contacts-CCCCCCCC.js"]);
+  });
+
+  it("deletes a removed chunk and fetches nothing for it", () => {
+    const plan = planLazyAssetSync(["/assets/old-AAAAAAAA.js"], ["/assets/other-BBBBBBBB.js"]);
+    expect(plan).toEqual({ fetch: [], delete: ["/assets/old-AAAAAAAA.js"] });
   });
 });

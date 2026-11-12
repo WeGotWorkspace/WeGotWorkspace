@@ -3,7 +3,11 @@ import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 import { LAZY_ASSET_CACHE } from "./lib/offline/cache-loaded-lazy-assets";
-import { isLazyAssetRequest } from "./lib/offline/precache-shell";
+import {
+  isLazyAssetRequest,
+  LAZY_ASSETS_LIST,
+  planLazyAssetSync,
+} from "./lib/offline/precache-shell";
 import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
 import {
   notificationClickTarget,
@@ -68,28 +72,72 @@ if (import.meta.env.PROD) {
 clientsClaim();
 
 if (import.meta.env.PROD) {
+  self.addEventListener("install", (event) => {
+    event.waitUntil(prepareLazyAssets());
+  });
   self.addEventListener("activate", (event) => {
     event.waitUntil(dropStaleLazyAssets());
   });
 }
 
-const LAZY_BUILD_MARKER = "/.wgw-lazy-build";
+const NEXT_LAZY_LIST_KEY = "/.wgw-lazy-next";
+
+function assetPath(url: string): string {
+  return new URL(url, self.location.origin).pathname;
+}
+
+async function cachedLazyPaths(cache: Cache): Promise<string[]> {
+  return (await cache.keys())
+    .map((request) => assetPath(request.url))
+    .filter((path) => path.startsWith("/assets/"));
+}
 
 /**
- * Lazy chunks have hashed names, so a deploy leaves the old ones behind. The
- * first activation keeps what windows already stored; an activation of a
- * different build empties the cache, and windows refill it as they load.
+ * Install: remember which lazy chunks this build requests, and download this
+ * build's version of every cached chunk that changed, so an app opened once
+ * still opens offline after the deploy. Best effort: install never fails on it.
  */
-async function dropStaleLazyAssets(): Promise<void> {
-  const build = precacheManifest.find((entry) => entry.url === "index.html")?.revision;
-  if (!build) return;
-  const cache = await caches.open(LAZY_ASSET_CACHE);
-  const marker = new Request(new URL(LAZY_BUILD_MARKER, self.location.origin).href);
-  const previous = await cache.match(marker);
-  if (previous && (await previous.text()) !== build) {
-    for (const request of await cache.keys()) await cache.delete(request);
+async function prepareLazyAssets(): Promise<void> {
+  try {
+    const listResponse = await fetch(new URL(`/${LAZY_ASSETS_LIST}`, self.location.origin).href, {
+      cache: "no-store",
+    });
+    if (!listResponse.ok) return;
+    const next = ((await listResponse.json()) as unknown[]).filter(
+      (path): path is string => typeof path === "string",
+    );
+    const cache = await caches.open(LAZY_ASSET_CACHE);
+    await cache.put(
+      new Request(new URL(NEXT_LAZY_LIST_KEY, self.location.origin).href),
+      new Response(JSON.stringify(next)),
+    );
+    const plan = planLazyAssetSync(await cachedLazyPaths(cache), next);
+    await Promise.all(
+      plan.fetch.map(async (path) => {
+        try {
+          const response = await fetch(path);
+          if (response.ok) await cache.put(path, response);
+        } catch {
+          // The route handler caches the chunk when it is first requested.
+        }
+      }),
+    );
+  } catch {
+    // Offline or storage error: activation then keeps the cache as it is.
   }
-  await cache.put(marker, new Response(build));
+}
+
+/** Activate: delete only the cached chunks the new build does not request. */
+async function dropStaleLazyAssets(): Promise<void> {
+  const cache = await caches.open(LAZY_ASSET_CACHE);
+  const stored = await cache.match(new URL(NEXT_LAZY_LIST_KEY, self.location.origin).href);
+  if (!stored) return;
+  const next = (await stored.json()) as string[];
+  const plan = planLazyAssetSync(await cachedLazyPaths(cache), next);
+  const stale = new Set(plan.delete);
+  for (const request of await cache.keys()) {
+    if (stale.has(assetPath(request.url))) await cache.delete(request);
+  }
 }
 
 self.addEventListener("push", (event) => {

@@ -3,9 +3,13 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { VitePWA } from "vite-plugin-pwa";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { isShellPrecacheEntry, shellAssetUrls } from "./src/lib/offline/precache-shell";
+import {
+  isShellPrecacheEntry,
+  LAZY_ASSETS_LIST,
+  shellAssetUrls,
+} from "./src/lib/offline/precache-shell";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
 
@@ -90,6 +94,12 @@ export default defineConfig(({ command, mode }) => {
                 throw new Error(`Shell precache needs ${indexPath}: build wrote no index.html.`);
               }
               const shell = shellAssetUrls(readFileSync(indexPath, "utf8"));
+              // The worker reads this list to keep unchanged lazy chunks across a deploy.
+              const lazy = entries.filter((entry) => !isShellPrecacheEntry(entry.url, shell));
+              writeFileSync(
+                path.join(__dirname, "dist", LAZY_ASSETS_LIST),
+                JSON.stringify(lazy.map((entry) => `/${entry.url.replace(/^\/+/, "")}`).sort()),
+              );
               return {
                 manifest: entries.filter((entry) => isShellPrecacheEntry(entry.url, shell)),
                 warnings: [],
