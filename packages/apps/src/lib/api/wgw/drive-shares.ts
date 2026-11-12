@@ -30,7 +30,7 @@ async function getShareJson<T>(path: string, opts?: { signal?: AbortSignal }): P
   const res = await wgwFetch(path, { signal: opts?.signal });
   if (!res.ok) {
     const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`GET ${path} failed (${res.status}): ${detail}`);
+    throw new WgwRequestError(`GET ${path} failed (${res.status}): ${detail}`, res.status);
   }
   return (await wgwReadJson(res)) as T;
 }
