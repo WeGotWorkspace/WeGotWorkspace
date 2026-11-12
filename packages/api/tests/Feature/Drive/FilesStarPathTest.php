@@ -264,7 +264,7 @@ final class FilesStarPathTest extends WgwDatabaseTestCase
 
         $starFailures = array_values(array_filter(
             $logged,
-            static fn (MessageLogged $event): bool => $event->level === 'warning'
+            static fn (MessageLogged $event): bool => $event->level === 'error'
                 && $event->message === 'drive_star_sync_failed',
         ));
         $this->assertSame(['rewrite', 'delete'], array_map(

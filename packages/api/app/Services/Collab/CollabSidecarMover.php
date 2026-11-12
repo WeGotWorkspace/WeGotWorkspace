@@ -32,7 +32,7 @@ final class CollabSidecarMover
         try {
             $this->move($fromKey, $toKey);
         } catch (\Throwable $e) {
-            Log::warning('collab_yjs_sidecar_failed', [
+            Log::error('collab_yjs_sidecar_failed', [
                 'op' => 'move',
                 'from' => $fromKey,
                 'to' => $toKey,
@@ -46,7 +46,7 @@ final class CollabSidecarMover
         try {
             $this->delete($documentKey);
         } catch (\Throwable $e) {
-            Log::warning('collab_yjs_sidecar_failed', [
+            Log::error('collab_yjs_sidecar_failed', [
                 'op' => 'delete',
                 'key' => $documentKey,
                 'error' => $e->getMessage(),

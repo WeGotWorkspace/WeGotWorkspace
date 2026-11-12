@@ -245,10 +245,10 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
         $this->storePng($doc['id']);
         $teamId = $this->fileNodeIdByName($this->fileNodeGetAll(), 'team');
 
-        $warnings = [];
-        Log::listen(function (MessageLogged $event) use (&$warnings): void {
-            if ($event->level === 'warning') {
-                $warnings[] = $event->message;
+        $errors = [];
+        Log::listen(function (MessageLogged $event) use (&$errors): void {
+            if ($event->level === 'error') {
+                $errors[] = $event->message;
             }
         });
 
@@ -262,7 +262,7 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
 
         $this->assertTrue(app(WgwStorage::class)->files()->fileExists('groups/team/keep.md'));
         $this->assertFalse(app(WgwStorage::class)->files()->fileExists('users/bob/keep.md'));
-        $this->assertContains('doc_attachments_sidecar_failed', $warnings);
+        $this->assertContains('doc_attachments_sidecar_failed', $errors);
     }
 
     public function test_dav_plugin_delete_gcs_file_and_collection_and_skips_attachments_and_yjs(): void

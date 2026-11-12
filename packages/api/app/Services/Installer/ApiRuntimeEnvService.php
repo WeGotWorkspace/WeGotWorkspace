@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Installer;
 
 use App\Support\WgwApiEnvFile;
+use App\Support\WgwEnvLocation;
 
 /**
  * Ensures packages/api runtime files exist on install and after in-place updates.
@@ -61,7 +62,7 @@ final class ApiRuntimeEnvService
         $this->ensureStorageDirectories($apiRoot);
 
         $createdEnv = $this->seedEnvFromExampleIfMissing($apiRoot);
-        $envPath = $apiRoot.'/.env';
+        $envPath = WgwEnvLocation::envFile($apiRoot);
         $sanitizedEnv = is_file($envPath) && $this->sanitizeInvalidEnvLines($envPath);
         $generatedKey = is_file($envPath) && $this->ensureAppKey($envPath);
         $patchedUrl = is_file($envPath) && $this->patchAppUrlIfUnset($envPath, $appUrl);
@@ -86,9 +87,16 @@ final class ApiRuntimeEnvService
         });
     }
 
+    /**
+     * Only the in-tree default is seeded. A relocated .env that went missing
+     * is restored by the admin: a seeded copy would carry a new APP_KEY.
+     */
     public function seedEnvFromExampleIfMissing(string $apiRoot): bool
     {
-        $env = $apiRoot.'/.env';
+        if (WgwEnvLocation::relocated($apiRoot) !== null) {
+            return false;
+        }
+        $env = WgwEnvLocation::defaultFile($apiRoot);
         if (is_file($env)) {
             return false;
         }

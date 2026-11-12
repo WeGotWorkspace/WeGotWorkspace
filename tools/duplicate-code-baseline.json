@@ -8,8 +8,8 @@
       "duplicatedLines": 2326
     },
     "packages/apps/src": {
-      "clones": 78,
-      "duplicatedLines": 1198
+      "clones": 77,
+      "duplicatedLines": 1186
     }
   },
   "packages": {
@@ -58,7 +58,7 @@
       "duplicatedLines": 39
     },
     "packages/api/app/Services/Installer": {
-      "cloneCoverage": 1.33,
+      "cloneCoverage": 1.28,
       "duplicatedLines": 76
     },
     "packages/api/app/Services/Jmap": {
@@ -102,7 +102,7 @@
       "duplicatedLines": 31
     },
     "packages/apps/src/contacts-core": {
-      "cloneCoverage": 1.73,
+      "cloneCoverage": 1.76,
       "duplicatedLines": 200
     },
     "packages/apps/src/docs-core": {
@@ -114,7 +114,7 @@
       "duplicatedLines": 135
     },
     "packages/apps/src/lib": {
-      "cloneCoverage": 1.03,
+      "cloneCoverage": 0.95,
       "duplicatedLines": 24
     },
     "packages/apps/src/lib/api": {
@@ -150,8 +150,8 @@
       "duplicatedLines": 108
     },
     "packages/apps/src/notes-core": {
-      "cloneCoverage": 0.88,
-      "duplicatedLines": 79
+      "cloneCoverage": 0.73,
+      "duplicatedLines": 66
     },
     "packages/apps/src/notifications-core": {
       "cloneCoverage": 0.79,
@@ -162,8 +162,8 @@
       "duplicatedLines": 53
     },
     "packages/apps/src/tasks-core": {
-      "cloneCoverage": 1.55,
-      "duplicatedLines": 113
+      "cloneCoverage": 1.39,
+      "duplicatedLines": 100
     },
     "packages/apps/src/text-editor-core": {
       "cloneCoverage": 1.69,

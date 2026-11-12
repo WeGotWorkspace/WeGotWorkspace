@@ -181,7 +181,7 @@ final class DocAttachmentsService
             try {
                 $this->relocateForDoc($docNodeId);
             } catch (\Throwable $e) {
-                Log::warning('doc_attachments_sidecar_failed', [
+                Log::error('doc_attachments_sidecar_failed', [
                     'op' => 'relocate',
                     'docNodeId' => $docNodeId,
                     'from' => $fromKey,
@@ -201,7 +201,7 @@ final class DocAttachmentsService
             try {
                 $this->destroyForDoc($docNodeId);
             } catch (\Throwable $e) {
-                Log::warning('doc_attachments_sidecar_failed', [
+                Log::error('doc_attachments_sidecar_failed', [
                     'op' => 'destroy',
                     'docNodeId' => $docNodeId,
                     'error' => $e->getMessage(),
@@ -215,7 +215,7 @@ final class DocAttachmentsService
         try {
             $this->relocateAfterMove($fromKey, $toKey);
         } catch (\Throwable $e) {
-            Log::warning('doc_attachments_sidecar_failed', [
+            Log::error('doc_attachments_sidecar_failed', [
                 'op' => 'relocate',
                 'from' => $fromKey,
                 'to' => $toKey,

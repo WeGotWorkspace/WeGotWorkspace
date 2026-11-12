@@ -221,7 +221,7 @@ final class SearchIndexerService
         }
 
         if (! is_string($row->calendardata)) {
-            Log::warning('Skipping calendar object with null calendardata.', [
+            Log::error('Skipping calendar object with null calendardata.', [
                 'principal' => $principal,
                 'calendarUri' => $calendarUri,
                 'objectUri' => $objectUri,

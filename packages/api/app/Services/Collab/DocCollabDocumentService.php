@@ -162,7 +162,7 @@ final class DocCollabDocumentService
                 try {
                     $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
                 } catch (\Throwable $e) {
-                    Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+                    Log::error('file_node_index_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
                 }
                 $this->eventDispatch->fireMutation(
                     (string) $username,
@@ -234,7 +234,7 @@ final class DocCollabDocumentService
                 $this->states->record($documentKey, $markdown, $sidecar);
             }
         } catch (\Throwable $e) {
-            Log::warning('doc_yjs_state_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+            Log::error('doc_yjs_state_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
         }
     }
 

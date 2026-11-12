@@ -15,6 +15,8 @@ Upload the deploy package contents to your website folder so these files are in 
 
 Configure runtime bootstrap in **`packages/api/.env`** (`WGW_DATA_DIR`, `WGW_DB_*`). The web installer writes these keys on success. Upgrades from older installs auto-migrate legacy `wgw-config.php` into `.env` (backup kept).
 
+When a fresh install puts the data directory outside the published folder, it moves this `.env` there too, as `api.env` inside the data directory, and leaves `packages/api/.env.path`, which holds only that path. Edit the file the pointer names. Where this guide says `packages/api/.env`, that file is meant. A server variable `WGW_ENV_FILE` (an absolute path) takes precedence over the pointer. See [Move `.env` out of the web root](#move-env-out-of-the-web-root) for an existing install.
+
 Your site document root must point to this folder.
 
 Upload with **SFTP** (binary-safe). After upload, confirm the installer UI is present:
@@ -153,3 +155,15 @@ Do these steps in this order:
 ### Docker
 
 New Docker installs mount content at `/var/wgw/content` (`WGW_DATA_DIR`) and Laravel storage at `/var/wgw/storage` (`WGW_STORAGE_PATH`). An existing stack keeps its current mounts until you change the compose file. Use the same five steps: maintenance mode, a writable target, copy and verify, then set both `WGW_DATA_DIR` and `WGW_DB_DATABASE` (and point the storage volume at `/var/wgw/storage`) before deleting the old directory. Do not expect the new image to move the volumes for you.
+
+## Move `.env` out of the web root
+
+`packages/api/.env` holds `APP_KEY` and the database password. A fresh install whose data directory is outside the published folder already keeps it there (see above). Older installs keep it in `packages/api/`, where only the web server's deny rules protect it. Nothing moves it automatically. Move the data directory first (previous section), then:
+
+1. Turn on maintenance mode.
+2. Copy `packages/api/.env` to `api.env` inside the data directory. Keep it readable by the web-server user and nobody else (for example `chmod 600`, owned by that user).
+3. Create `packages/api/.env.path` holding one line: the absolute path of that file, for example `/home/you/wgw-content/api.env`. Lines that start with `#` are ignored.
+4. Run `php artisan about --only=environment` from `packages/api` as the web-server user, and load the site. Both must show your normal settings. If the pointer names a file that is missing or unreadable, the site and `artisan` stop with an error that names the path. They do not fall back to the old file.
+5. Only then delete `packages/api/.env`.
+
+Updates keep `packages/api/.env.path`. To undo, copy the file back to `packages/api/.env` and delete the pointer. Docker installs keep `.env` on their config volume; skip this section.

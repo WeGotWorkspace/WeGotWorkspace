@@ -17,7 +17,7 @@ final class CollabSidecarMoverTest extends TestCase
     private CollabSidecarMover $mover;
 
     /** @var list<array{0: string, 1: array<string, mixed>}> */
-    private array $warnings = [];
+    private array $errors = [];
 
     protected function setUp(): void
     {
@@ -151,7 +151,7 @@ final class CollabSidecarMoverTest extends TestCase
     {
         $disk = Storage::disk('wgw_files');
         $disk->put('users/alice/.together.md.yjs', 'history');
-        $this->captureWarnings();
+        $this->captureErrors();
 
         $this->withReadOnlyDirectory('users/alice', function (): void {
             $this->mover->deleteWithDocument('users/alice/together.md');
@@ -166,7 +166,7 @@ final class CollabSidecarMoverTest extends TestCase
         $disk = Storage::disk('wgw_files');
         $disk->put('users/alice/.together.md.yjs', 'history');
         $disk->makeDirectory('groups/team');
-        $this->captureWarnings();
+        $this->captureErrors();
 
         $this->withReadOnlyDirectory('groups/team', function (): void {
             $this->mover->moveWithDocument('users/alice/together.md', 'groups/team/together.md');
@@ -182,7 +182,7 @@ final class CollabSidecarMoverTest extends TestCase
         $disk = Storage::disk('wgw_files');
         $disk->put('users/alice/.together.md.yjs', 'history');
         $disk->put('groups/team/.together.md.yjs', 'orphan');
-        $this->captureWarnings();
+        $this->captureErrors();
 
         $this->withReadOnlyDirectory('groups/team', function (): void {
             $this->mover->moveWithDocument('users/alice/together.md', 'groups/team/together.md');
@@ -208,19 +208,19 @@ final class CollabSidecarMoverTest extends TestCase
         }
     }
 
-    private function captureWarnings(): void
+    private function captureErrors(): void
     {
         Log::listen(function (MessageLogged $event): void {
-            if ($event->level === 'warning') {
-                $this->warnings[] = [$event->message, $event->context];
+            if ($event->level === 'error') {
+                $this->errors[] = [$event->message, $event->context];
             }
         });
     }
 
     private function assertSidecarFailureLogged(string $op): void
     {
-        $this->assertCount(1, $this->warnings);
-        $this->assertSame('collab_yjs_sidecar_failed', $this->warnings[0][0]);
-        $this->assertSame($op, $this->warnings[0][1]['op'] ?? null);
+        $this->assertCount(1, $this->errors);
+        $this->assertSame('collab_yjs_sidecar_failed', $this->errors[0][0]);
+        $this->assertSame($op, $this->errors[0][1]['op'] ?? null);
     }
 }

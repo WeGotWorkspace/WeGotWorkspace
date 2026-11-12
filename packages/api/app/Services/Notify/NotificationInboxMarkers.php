@@ -33,7 +33,7 @@ final class NotificationInboxMarkers
                 ['marker' => DB::raw('marker + 1')],
             );
         } catch (\Throwable $e) {
-            Log::warning('notification_marker_bump_failed', ['error' => $e->getMessage()]);
+            Log::error('notification_marker_bump_failed', ['error' => $e->getMessage()]);
         }
     }
 

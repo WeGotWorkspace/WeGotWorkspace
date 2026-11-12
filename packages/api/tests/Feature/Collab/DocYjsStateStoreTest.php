@@ -24,7 +24,7 @@ final class DocYjsStateStoreTest extends WgwDatabaseTestCase
     private bool $armed = false;
 
     /** @var list<array{0: string, 1: array<string, mixed>}> */
-    private array $warnings = [];
+    private array $errors = [];
 
     protected function setUp(): void
     {
@@ -40,8 +40,8 @@ final class DocYjsStateStoreTest extends WgwDatabaseTestCase
             }
         });
         Log::listen(function (MessageLogged $event): void {
-            if ($event->level === 'warning') {
-                $this->warnings[] = [$event->message, $event->context];
+            if ($event->level === 'error') {
+                $this->errors[] = [$event->message, $event->context];
             }
         });
     }
@@ -58,7 +58,7 @@ final class DocYjsStateStoreTest extends WgwDatabaseTestCase
         $this->store->moveWithDocument(self::KEY, self::KEY);
 
         $this->assertTrue($this->rowExists(self::KEY));
-        $this->assertSame([], $this->warnings);
+        $this->assertSame([], $this->errors);
     }
 
     public function test_a_failed_move_is_logged_and_keeps_the_row(): void
@@ -87,9 +87,9 @@ final class DocYjsStateStoreTest extends WgwDatabaseTestCase
 
     private function assertSyncFailureLogged(string $op): void
     {
-        $this->assertCount(1, $this->warnings);
-        $this->assertSame('doc_yjs_state_sync_failed', $this->warnings[0][0]);
-        $this->assertSame($op, $this->warnings[0][1]['op'] ?? null);
-        $this->assertSame('forced doc_yjs_state failure', $this->warnings[0][1]['error'] ?? null);
+        $this->assertCount(1, $this->errors);
+        $this->assertSame('doc_yjs_state_sync_failed', $this->errors[0][0]);
+        $this->assertSame($op, $this->errors[0][1]['op'] ?? null);
+        $this->assertSame('forced doc_yjs_state failure', $this->errors[0][1]['error'] ?? null);
     }
 }
