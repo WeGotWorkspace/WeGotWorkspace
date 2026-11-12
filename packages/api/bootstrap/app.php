@@ -94,7 +94,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'payload.sdp',
         ]);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
-        $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         // An older release's updater can swap the files and then fail to run
         // the new migrations in its own process (#1076). Finish them before
         // any route reads the schema.
