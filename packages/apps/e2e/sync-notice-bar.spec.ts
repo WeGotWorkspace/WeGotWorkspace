@@ -11,8 +11,7 @@
 // The Docs document view is different: its row follows the collab save, which
 // is in memory only. A save that fails while online shows the row; once the
 // save can land, Retry saves and the row goes away (same page load).
-import type { BrowserContext, Page } from "@playwright/test";
-import { expect, test } from "./helpers/live-test";
+import { expect, test, type BrowserContext, type Page } from "./helpers/live-test";
 import {
   countCalendarEventsByTitleViaApi,
   createOfflineWeekEvent,
