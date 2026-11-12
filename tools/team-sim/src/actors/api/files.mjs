@@ -28,12 +28,15 @@ async function davMust(res, what) {
 }
 
 /** Free name in a folder: "x.md", then "x 2.md", "x 3.md" … using If-None-Match on PUT. */
-async function putNew(c, origin, folder, name, body) {
+async function putNew(c, origin, folder, name, body, onTaken = () => {}) {
   const dot = name.lastIndexOf(".");
   for (let i = 1; i < 20; i += 1) {
     const candidate = i === 1 ? name : `${name.slice(0, dot)} ${i}${name.slice(dot)}`;
     const res = await davPut(c, origin, `${folder}/${candidate}`, body, { ifNoneMatch: true });
-    if (res.status === 412) continue;
+    if (res.status === 412) {
+      if (i === 1) onTaken();
+      continue;
+    }
     await davMust(res, `PUT ${folder}/${candidate}`);
     return `${folder}/${candidate}`;
   }
@@ -110,7 +113,7 @@ export const fileExecutors = {
     const c = ctx.client(a.persona);
     const folder = need(ctx, a.params.folder).ids.path;
     const body = `# ${a.params.title}\n\n${a.params.body}\n`;
-    const path = await putNew(c, ctx.origin, folder, `${a.params.title}.md`, body);
+    const path = await putNew(c, ctx.origin, folder, `${a.params.title}.md`, body, () => ctx.friction?.({ what: "A file with the same name already sits in the project folder", workaround: "saved it under a numbered name", source: "detected" }));
     return { ids: { path }, extra: { title: a.params.title } };
   },
 
@@ -147,7 +150,7 @@ export const fileExecutors = {
       const up = await chunkedUpload(c, { parentId, name: a.params.name, bytes: a.params.bytes });
       return { ids: { path: `${folder}/${a.params.name}`, nodeId: up.nodeId }, extra: { bytes: a.params.bytes, size: a.params.size }, note: `${up.parts} parts` };
     }
-    const path = await putNew(c, ctx.origin, folder, a.params.name, fileBytes(a.params.name, a.params.bytes));
+    const path = await putNew(c, ctx.origin, folder, a.params.name, fileBytes(a.params.name, a.params.bytes), () => ctx.friction?.({ what: "A file with the same name already sits in the project folder", workaround: "saved it under a numbered name", source: "detected" }));
     return { ids: { path }, extra: { bytes: a.params.bytes, size: a.params.size } };
   },
 

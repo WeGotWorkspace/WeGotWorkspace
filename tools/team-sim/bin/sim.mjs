@@ -4,10 +4,11 @@
 //   sim down                  stop wgw-sim
 //   sim bootstrap [--date D]  reconcile the world for date D (default today)
 //   sim plan [--date D] [--json] [--data DIR]   the night's action list from a data dir
-//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade]
+//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade] [--no-diary]
 //   sim replay <date> [--action N] [--minutes N] [--plan-only] [--keep]
 //   sim status                last completed night; exits 1 after two days without one
 //   sim report <date>         re-render the morning report from a finished run
+//   sim diary <date> [--no-llm]  friction, persona diaries and (Sunday) digest again; rewrites the report
 import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -74,6 +75,7 @@ async function main() {
         uiOnly: flag("ui-only"),
         apiOnly: flag("api-only"),
         skipUpgrade: flag("skip-upgrade"),
+        noDiary: flag("no-diary"),
         manual: true,
         log,
         repoRoot: repoRoot(),
@@ -99,6 +101,19 @@ async function main() {
       console.log(await rerenderReport({ date: argv[1] ?? today(), paths: layout() }));
       return;
     }
+    case "diary": {
+      const { writeFileSync } = await import("node:fs");
+      const { afterNight } = await import("../src/night/after.mjs");
+      const { rerenderReport } = await import("../src/report/cli.mjs");
+      const { loadWorld } = await import("../src/world/load.mjs");
+      const paths = layout();
+      const date = argv[1] ?? today();
+      await afterNight({ paths, world: loadWorld(), date, log, diaries: !flag("no-llm") });
+      const file = join(paths.reports, `${date}.md`);
+      writeFileSync(file, await rerenderReport({ date, paths }));
+      log(`report: ${file}`);
+      return;
+    }
     default:
       console.log(readUsage());
       process.exitCode = command ? 1 : 0;
@@ -106,7 +121,7 @@ async function main() {
 }
 
 function readUsage() {
-  return execFileSync("sed", ["-n", "2,11p", join(dirname(realpathSync(import.meta.filename)), "sim.mjs")], { encoding: "utf8" }).replace(/^\/\/ ?/gm, "");
+  return execFileSync("sed", ["-n", "2,12p", join(dirname(realpathSync(import.meta.filename)), "sim.mjs")], { encoding: "utf8" }).replace(/^\/\/ ?/gm, "");
 }
 
 main().catch((error) => {

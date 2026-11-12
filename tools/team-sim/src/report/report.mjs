@@ -2,6 +2,7 @@
 // returns markdown plus the next state. No network client lives in this
 // module or its imports; the report never leaves the machine through it.
 import { addDays, weekday } from "../planner/dates.mjs";
+import { voiceLines } from "./voice.mjs";
 
 const FILE_AT = 3;
 
@@ -31,7 +32,7 @@ export function missedNights(nightsLog, date) {
   return [...missed, ...(nightsLog ?? []).filter((n) => n.date < date && n.status === "missed").map((n) => n.date)].filter((d, i, a) => a.indexOf(d) === i).sort();
 }
 
-export function renderReport({ date, night, plan, outcomes = [], results = [], upgrade, flaky, known, nightsLog, disk, productHistory = [] }) {
+export function renderReport({ date, night, plan, outcomes = [], results = [], upgrade, flaky, known, nightsLog, disk, productHistory = [], voice = null }) {
   const all = results.flatMap((r) => r.failures);
   const publicFails = all.filter((f) => !f.private);
   const privateFails = all.filter((f) => f.private);
@@ -86,6 +87,7 @@ export function renderReport({ date, night, plan, outcomes = [], results = [], u
   if (!privateFails.length) L.push("None.", "");
   for (const f of privateFails) L.push(...failureLines(f, date, nightCount(nextFlaky, f.signature)));
   L.push("");
+  if (voice) L.push(...voiceLines({ date, ...voice }));
 
   L.push("## Product", "", "Gap moments, friction and feature requests. For the product lead; triage never files these.", "");
   if (!product.length) L.push("None tonight.", "");

@@ -19,14 +19,15 @@ node tools/team-sim/bin/sim.mjs night --date 2026-11-12 --minutes 25
 node tools/team-sim/bin/sim.mjs replay 2026-11-12 --plan-only
 node tools/team-sim/bin/sim.mjs replay 2026-11-12 --action 41
 node tools/team-sim/bin/sim.mjs report 2026-11-12  # re-render from the run files
+node tools/team-sim/bin/sim.mjs diary 2026-11-12   # friction, diaries (and Sunday digest) again
 node tools/team-sim/bin/sim.mjs status
 node tools/team-sim/bin/sim.mjs down
-pnpm --dir tools/team-sim test [-- planner|instance|actors/api|oracles|report|replay|schedule]
+pnpm --dir tools/team-sim test [-- planner|instance|actors/api|oracles|report|replay|schedule|friction|diary]
 ```
 
 `night` takes `--minutes N` (default 55 minutes of actions; less squeezes the
 same action list into a shorter window and says so in the report),
-`--skip-upgrade`, `--ui-only` and `--api-only`. Scheduling (launchd, wake) is
+`--skip-upgrade`, `--ui-only`, `--api-only` and `--no-diary`. Scheduling (launchd, wake) is
 not part of this phase.
 
 ## A night
@@ -44,10 +45,37 @@ not part of this phase.
 5. Settle, then the oracles: `upgrade`, `errors`, `convergence`, `notify`,
    `visibility` (private), `dav-parity`, `timing` (flags only), `coverage`,
    `gap`.
-6. Report to `~/.wgw-sim/reports/<date>.md`; the stack is stopped.
+6. The stack is stopped. Friction is measured from the run files, and each
+   persona who worked writes a diary (Sunday: also the weekly digest).
+7. Report to `~/.wgw-sim/reports/<date>.md`.
 
 Findings stay in that local report. Visibility findings are never filed or
 posted anywhere.
+
+## Team voice
+
+The report's private "Team voice" section is for the product lead; triage
+never files it.
+
+- **Friction** (deterministic). Actions are grouped into persona goals
+  (`src/friction/measure.mjs`: an action joins the chain of the action it
+  depends on). Per goal: steps, requests (background polling left out),
+  retries, time, time spent waiting, clicks and keystrokes for browser
+  personas, failures, and the trend against the 7-night median
+  (`.team-sim/friction.json` in the data dir). Actor code reports every
+  workaround it needs through `ctx.friction({ what, workaround, source })`;
+  `Unsupported` carries one too. Browser flows record time to interactive per
+  screen and a screenshot per action under `runs/<date>/shots/`.
+- **Diaries** (after the night, never during it). `src/diary/` runs the local
+  `claude -p` headless with the `haiku` model, no tools, no MCP servers and
+  no saved session, on the facts of one persona's own actions plus up to two
+  screenshots. Every claim cites action numbers, which are checked against
+  that persona's actions. Caps: $0.08 per diary, $0.60 and 10 minutes per
+  night. A missing or logged-out CLI skips the diaries with a note and fails
+  nothing. The action list and replay never read a diary.
+- **Weekly digest** (Sunday). The model only groups the week's diary items
+  into themes; frequency (distinct persona-days) and cost (goal time behind the
+  cited actions) are counted in code, with evidence as `date #n`.
 
 ## Layout
 
@@ -61,3 +89,4 @@ posted anywhere.
 | `src/night/` | Real-time engine and the night runner |
 | `src/oracles/` | Checks after the night |
 | `src/report/`, `src/replay/`, `src/schedule/` | Morning report, replay, status |
+| `src/friction/`, `src/diary/` | Goal cost and workarounds; persona diaries and the weekly digest |

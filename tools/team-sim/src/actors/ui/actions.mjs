@@ -7,10 +7,10 @@ const T = 30000;
 const settle = (page, ms = 2500) => page.waitForTimeout(ms);
 const online = (page) => page.locator('[data-connectivity="online"]').first().waitFor({ timeout: T }).catch(() => {});
 
-/** Types at the end of a ProseMirror editor. */
 /** Emoji render as images in chat, so match on the text before the first one. */
 const plainPrefix = (text) => text.split(/\p{Extended_Pictographic}/u)[0].trim().slice(0, 60);
 
+/** Types at the end of a ProseMirror editor. */
 async function typeAtEnd(page, editor, text) {
   await editor.click({ timeout: T });
   // Ctrl/Cmd+End is not "end of document" on every platform: put the caret there directly.
@@ -66,15 +66,17 @@ export const uiActions = {
   async "chat.post"(b, a, ctx) {
     const ch = need(ctx, a.params.channel);
     const { page } = b;
-    await page.goto(`/meet/channels/${encodeURIComponent(ch.ids.channelId)}`);
-    await online(page);
+    await b.open(`/meet/channels/${encodeURIComponent(ch.ids.channelId)}`, async () => {
+      await online(page);
+      await chatComposer(page);
+    });
     const note = await withFlags(b, a, async () => {
       const composer = await chatComposer(page);
       await composer.click();
       await page.keyboard.insertText(a.params.text);
       await page.keyboard.press("Enter");
     });
-    await page.locator(".chat-message__body", { hasText: plainPrefix(a.params.text) }).first().waitFor({ timeout: T });
+    await b.wait("message shown", () => page.locator(".chat-message__body", { hasText: plainPrefix(a.params.text) }).first().waitFor({ timeout: T }));
     if (b.second) {
       await b.second.locator(".chat-message__body", { hasText: plainPrefix(a.params.text) }).first().waitFor({ timeout: T });
       await b.second.close();
@@ -88,9 +90,9 @@ export const uiActions = {
 
   async "note.create"(b, a, ctx) {
     const { page } = b;
-    await page.goto("/notes");
     // A note started before the notebooks have loaded lands in a local "Drafts" that never syncs; wait for them.
-    await page.getByRole("region", { name: "My notebooks" }).getByRole("button", { name: "General", exact: true }).waitFor({ timeout: T });
+    await b.open("/notes", () => page.getByRole("region", { name: "My notebooks" }).getByRole("button", { name: "General", exact: true }).waitFor({ timeout: T }));
+    ctx.friction?.({ what: "A note started before the notebook list has loaded is never saved", workaround: "wait for the notebook list before clicking New note", source: "actor-workaround" });
     await page.getByRole("button", { name: "New note" }).click({ timeout: T });
     const title = page.getByRole("textbox", { name: "Title" });
     await title.waitFor({ timeout: T });
@@ -108,9 +110,8 @@ export const uiActions = {
   async "note.edit"(b, a, ctx) {
     const n = need(ctx, a.params.note);
     const { page } = b;
-    await page.goto(`/notes/all/${encodeURIComponent(n.ids.noteId)}`);
     const editor = page.locator(".ProseMirror").first();
-    await editor.waitFor({ timeout: T });
+    await b.open(`/notes/all/${encodeURIComponent(n.ids.noteId)}`, () => editor.waitFor({ timeout: T }));
     await online(page);
     const note = await withFlags(b, a, () => typeAtEnd(page, editor, a.params.append));
     await settle(page, 4000);
@@ -122,14 +123,14 @@ export const uiActions = {
   async "task.create"(b, a, ctx) {
     const list = need(ctx, a.params.list);
     const { page } = b;
-    await page.goto(`/tasks/lists/${encodeURIComponent(list.ids.listId)}`);
     const box = page.getByRole("textbox", { name: "Quick add task" });
-    await box.waitFor({ timeout: T });
+    await b.open(`/tasks/lists/${encodeURIComponent(list.ids.listId)}`, () => box.waitFor({ timeout: T }));
     const note = await withFlags(b, a, async () => {
       await box.fill(a.params.title);
       await box.press("Enter");
-      await page.locator(".tasks-list-row .list-item__title", { hasText: a.params.title }).first().waitFor({ timeout: T });
+      await b.wait("task shown", () => page.locator(".tasks-list-row .list-item__title", { hasText: a.params.title }).first().waitFor({ timeout: T }));
     });
+    if (a.params.assignee) ctx.friction?.({ what: "The Tasks screen has no way to assign a task to a colleague", workaround: "the task stays unassigned; the persona says it in chat", source: "actor-workaround" });
     await settle(page, 2000);
     const { list: items } = await ctx.client(a.persona).get(`/api/v1/tasks/items?taskListId=${encodeURIComponent(list.ids.listId)}`);
     const task = items.filter((t) => t.title === a.params.title).sort((x, y) => String(y.created ?? "").localeCompare(String(x.created ?? "")))[0];
@@ -140,10 +141,10 @@ export const uiActions = {
   async "doc.edit"(b, a, ctx) {
     const doc = need(ctx, a.params.doc);
     const { page } = b;
-    await openDoc(page, doc.ids.path);
+    await openDoc(b, doc.ids.path);
     const editor = page.locator(".ProseMirror").first();
     const note = await withFlags(b, a, () => typeAtEnd(page, editor, a.params.append));
-    await waitSaved(page);
+    await waitSaved(b, page);
     await expectDocContains(ctx, a.persona, doc.ids.path, a.params.append);
     return { note };
   },
@@ -152,16 +153,17 @@ export const uiActions = {
     const doc = need(ctx, a.params.doc);
     const partner = await ctx.extraBrowser(a.params.partner);
     try {
-      await Promise.all([openDoc(b.page, doc.ids.path), openDoc(partner.page, doc.ids.path)]);
+      await Promise.all([openDoc(b, doc.ids.path), openDoc(partner, doc.ids.path)]);
       // Both join the shared session first: typing in the first seconds after opening can be dropped (a separate scenario).
-      await settle(b.page, 5000);
+      await b.wait("wait until the co-writer has joined", () => settle(b.page, 5000));
+      ctx.friction?.({ what: "Text typed in the first seconds after opening a shared doc can be lost", workaround: "wait until the co-writer has joined before typing", source: "actor-workaround" });
       const mine = `${ctx.world.persona(a.persona).displayName.split(" ")[0]}: ${a.params.text}`;
       const theirs = `${ctx.world.persona(a.params.partner).displayName.split(" ")[0]}: ${a.params.text.split(" ").reverse().join(" ")}`;
       await Promise.all([
         typeAtEnd(b.page, b.page.locator(".ProseMirror").first(), mine),
         typeAtEnd(partner.page, partner.page.locator(".ProseMirror").first(), theirs),
       ]);
-      await Promise.all([waitSaved(b.page), waitSaved(partner.page)]);
+      await Promise.all([waitSaved(b, b.page), waitSaved(partner, partner.page)]);
       await settle(b.page, 3000);
       for (const p of [b.page, partner.page]) {
         const text = await p.locator(".ProseMirror").first().innerText();
@@ -180,14 +182,13 @@ export const uiActions = {
     const c = ctx.client(a.persona);
     const before = new Set((await jmap1(c, USING.calendars, "CalendarEvent/query", { accountId: a.persona })).ids ?? []);
     const day = a.params.start.slice(0, 10);
-    await page.goto(`/calendar/week/${day}`);
-    await page.locator(".calendar-workspace").waitFor({ timeout: T });
+    await b.open(`/calendar/week/${day}`, () => page.locator(".calendar-workspace").waitFor({ timeout: T }));
     await page.getByRole("button", { name: "New event" }).click({ timeout: T });
     const dialog = page.getByRole("dialog", { name: "New event" });
     await dialog.waitFor({ timeout: T });
     await dialog.getByLabel("Title").fill(a.params.title);
     await dialog.getByRole("button", { name: "Save" }).click();
-    await dialog.waitFor({ state: "hidden", timeout: T });
+    await b.wait("event saved", () => dialog.waitFor({ state: "hidden", timeout: T }));
     await settle(page, 2000);
     // The new event is the one that was not there before: an invite with the same title may already be in this calendar.
     const q = await jmap1(c, USING.calendars, "CalendarEvent/query", { accountId: a.persona });
@@ -207,8 +208,9 @@ export const uiActions = {
 
   async "contact.create"(b, a, ctx) {
     const { page } = b;
-    await page.goto("/contacts/all");
-    await page.getByRole("button", { name: "New contact", exact: true }).click({ timeout: T });
+    const add = page.getByRole("button", { name: "New contact", exact: true });
+    await b.open("/contacts/all", () => add.waitFor({ timeout: T }));
+    await add.click({ timeout: T });
     const [first, ...rest] = a.params.name.split(" ");
     await page.getByLabel("First name").fill(first);
     await page.getByLabel("Last name").fill(rest.join(" "));
@@ -226,8 +228,7 @@ export const uiActions = {
     const folder = need(ctx, a.params.folder).ids.path;
     const { page } = b;
     const segments = folder.split("/").filter(Boolean).slice(1);
-    await page.goto("/drive");
-    await online(page);
+    await b.open("/drive", () => online(page));
     for (const name of segments) {
       const team = ctx.world.teams.find((t) => t.id === name);
       const row = page.getByRole("button", { name: team?.name ?? name, exact: true }).or(page.getByRole("button", { name, exact: true }));
@@ -238,8 +239,11 @@ export const uiActions = {
     await page.locator('input[type="file"][aria-label="Upload files"]').setInputFiles({ name: a.params.name, mimeType: "application/octet-stream", buffer: fileBytes(a.params.name, bytes) });
     // Files over the offline limit ask whether to keep a copy on this device first.
     const keep = page.getByRole("dialog", { name: "Keep this file on this device?" });
-    if (await keep.waitFor({ timeout: 5000 }).then(() => true, () => false)) await keep.getByRole("button", { name: "Upload", exact: true }).click();
-    await waitForServerFile(ctx, a.persona, `${folder}/${a.params.name}`, bytes);
+    if (await keep.waitFor({ timeout: 5000 }).then(() => true, () => false)) {
+      ctx.friction?.({ what: "Every upload over 8 MB first asks whether to keep the file on this device", workaround: "answer the dialog before the upload starts", source: "detected" });
+      await keep.getByRole("button", { name: "Upload", exact: true }).click();
+    }
+    await b.wait("upload finished", () => waitForServerFile(ctx, a.persona, `${folder}/${a.params.name}`, bytes));
     return { ids: { path: `${folder}/${a.params.name}` }, extra: { bytes, size: a.params.size }, note: bytes < a.params.bytes ? `browser upload capped at ${bytes} bytes` : null };
   },
 
@@ -259,8 +263,10 @@ export const uiActions = {
       await guest.page.goto(`/meet/meetings/${room}`);
       await guest.page.getByLabel("Your name").fill(a.params.guest);
       await guest.page.getByRole("button", { name: "Knock to join" }).click({ timeout: T });
-      await page.getByRole("region", { name: /waiting in the lobby/ }).getByRole("button", { name: /^Admit / }).first().click({ timeout: T });
-      await exit(guest.page).waitFor({ timeout: T });
+      await b.wait("guest admitted", async () => {
+        await page.getByRole("region", { name: /waiting in the lobby/ }).getByRole("button", { name: /^Admit / }).first().click({ timeout: T });
+        await exit(guest.page).waitFor({ timeout: T });
+      });
       await settle(page, 15000);
       await exit(guest.page).click();
     } finally {
@@ -271,17 +277,20 @@ export const uiActions = {
   },
 };
 
-async function openDoc(page, path) {
-  await page.goto(`/docs?file=${encodeURIComponent(path.replace(/^\//, ""))}`);
-  await page.locator(".ProseMirror").first().waitFor({ timeout: T });
-  await online(page);
+async function openDoc(b, path) {
+  await b.open(`/docs?file=${encodeURIComponent(path.replace(/^\//, ""))}`, async () => {
+    await b.page.locator(".ProseMirror").first().waitFor({ timeout: T });
+    await online(b.page);
+  });
 }
 
-async function waitSaved(page) {
+async function waitSaved(b, page) {
   await settle(page, 1500);
-  await page.getByRole("status", { name: "Unsaved changes" }).waitFor({ state: "hidden", timeout: 45000 }).catch(() => {
-    throw new Error("Docs still shows 'Unsaved changes' after 45 s");
-  });
+  await b.wait("doc saved", () =>
+    page.getByRole("status", { name: "Unsaved changes" }).waitFor({ state: "hidden", timeout: 45000 }).catch(() => {
+      throw new Error("Docs still shows 'Unsaved changes' after 45 s");
+    }),
+  );
 }
 
 async function expectDocContains(ctx, persona, path, text) {

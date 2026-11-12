@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setPriority } from "node:os";
 import { executeApi, recordResult } from "../actors/api/index.mjs";
@@ -14,21 +14,20 @@ import { createShell } from "../instance/sh.mjs";
 import { pruneSnapshots, takeSnapshot } from "../instance/snapshot.mjs";
 import { mailHog, runOracles } from "../oracles/index.mjs";
 import { loadTemplates } from "../oracles/routes.mjs";
+import { goalOf } from "../friction/measure.mjs";
 import { planNight } from "../planner/planner.mjs";
 import { renderReport } from "../report/report.mjs";
 import { LATEST_START_HOUR, recordMissed, startedTooLate } from "../schedule/status.mjs";
 import { openRegistry, snapshotSummary } from "../state/registry.mjs";
 import { loadWorld } from "../world/load.mjs";
 import { runActions } from "./engine.mjs";
+import { afterNight } from "./after.mjs";
+import { readJson, writeJson } from "./runfiles.mjs";
 
 const PROJECT = "wgw-sim";
 const SPEC_MINUTES = { total: 75, actions: 55, settle: 5, oracles: 15 };
 
-export const readJson = (file, fallback) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : fallback);
-export const writeJson = (file, value) => {
-  mkdirSync(join(file, ".."), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(value, null, 1)}\n`);
-};
+export { readJson, writeJson };
 
 /**
  * How the night's minutes split. The spec's night is 55 min of actions,
@@ -53,7 +52,7 @@ export function timeBudget(minutes) {
  * stack is stopped at the end. Returns `{ ok, reportFile }`; ok means the
  * night completed, not that every oracle passed.
  */
-export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = false, skipUpgrade = false, manual = false, log = console.log, repoRoot, headless = true }) {
+export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = false, skipUpgrade = false, noDiary = false, manual = false, log = console.log, repoRoot, headless = true }) {
   try {
     setPriority(10);
   } catch {
@@ -145,19 +144,22 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
     guestClient: () => client("guest", "guest"),
   };
   const useUi = !apiOnly && plan.actions.some((a) => a.layer === "ui");
-  const ui = useUi ? await (await import("../actors/ui/index.mjs")).createUiLayer({ origin, runDir, requestLog, headless }) : null;
-  const unsupported = [];
+  const interactions = createRequestLog(join(runDir, "interactions.jsonl"));
+  const frictionLog = createRequestLog(join(runDir, "friction.jsonl"));
+  const ui = useUi ? await (await import("../actors/ui/index.mjs")).createUiLayer({ origin, runDir, requestLog, interactions, headless }) : null;
   const execute = async (action) => {
     if (action.kind === "gap") return { note: "gap moment (nothing to do in the suite)" };
+    const friction = (f) => frictionLog.add({ n: action.n, persona: action.persona, kind: action.kind, goal: goalOf(action.kind), source: "actor-workaround", ...f });
+    const actx = { ...ctx, friction };
     try {
-      const result = action.layer === "ui" && ui ? await ui.execute(action, ctx) : await executeApi(action.layer === "ui" ? { ...action, layer: "api" } : action, ctx);
+      const result = action.layer === "ui" && ui ? await ui.execute(action, actx) : await executeApi(action.layer === "ui" ? { ...action, layer: "api" } : action, actx);
       recordResult(registry, action, result, date);
       registry.save();
       return result;
     } catch (error) {
       if (error instanceof Unsupported) {
-        unsupported.push({ n: action.n, persona: action.persona, kind: action.kind, why: error.message });
-        return { note: `unsupported: ${error.message}` };
+        friction(error.friction);
+        return { note: `unsupported: ${error.message}${error.friction.workaround ? ` (${error.friction.workaround})` : ""}` };
       }
       throw error;
     }
@@ -222,19 +224,17 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
   await mail.clear().catch(() => {});
   writeJson(join(sd, "timing.json"), oracle.nextHistory);
   writeJson(join(sd, "coverage.json"), oracle.nextCoverage);
-  if (unsupported.length) {
-    oracle.results.push({
-      name: "unsupported",
-      status: "flag",
-      failures: [],
-      flagged: [],
-      product: unsupported.map((u) => ({ kind: "unsupported", persona: u.persona, action: u.n, need: u.kind, workaround: u.why })),
-      notes: [],
-      metrics: {},
-    });
+  instance.down();
+
+  // 6. Friction, diaries and (Sunday) the digest, from the run files; the stack is already down.
+  let voice = null;
+  try {
+    voice = await afterNight({ paths, world, date, log, diaries: !noDiary });
+  } catch (error) {
+    log(`friction/diary step failed: ${error.message}`);
   }
 
-  // 6. Report and cross-night state.
+  // 7. Report and cross-night state.
   night.endedAt = new Date().toISOString();
   const disk = measureDisk(paths, readJson(paths.lastNight, null));
   disk.driveBytes = snapshotSummary(paths.data).driveBytes;
@@ -242,16 +242,15 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
   const known = readJson(paths.knownIssues, []);
   const productFile = join(paths.home, "product.json");
   const productHistory = readJson(productFile, []);
-  const { markdown, nextFlaky } = renderReport({ date, night, plan, outcomes, results: oracle.results, upgrade, flaky, known, nightsLog, disk, productHistory });
+  const { markdown, nextFlaky } = renderReport({ date, night, plan, outcomes, results: oracle.results, upgrade, flaky, known, nightsLog, disk, productHistory, voice });
   const reportFile = join(paths.reports, `${date}.md`);
   mkdirSync(paths.reports, { recursive: true });
   writeFileSync(reportFile, markdown);
-  writeJson(join(runDir, "results.json"), { night, upgrade, results: oracle.results, disk, unsupported });
+  writeJson(join(runDir, "results.json"), { night, upgrade, results: oracle.results, disk });
   writeJson(paths.flaky, nextFlaky);
   writeJson(productFile, [...productHistory.filter((p) => p.date !== date), ...oracle.results.flatMap((r) => (r.product ?? []).map((p) => ({ ...p, date })))]);
   writeJson(paths.nightsLog, [...nightsLog.filter((n) => n.date !== date), { date, status: "done", manual, startedAt: night.startedAt, endedAt: night.endedAt }]);
   writeJson(paths.lastNight, { date, endedAt: night.endedAt, sha: night.sha, report: reportFile, usedBytes: disk.usedBytes });
-  instance.down();
   log(`report: ${reportFile}`);
   return { ok: true, reportFile, results: oracle.results, outcomes };
 }

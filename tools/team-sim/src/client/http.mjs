@@ -31,7 +31,7 @@ export function createClient({ origin, username, password, persona = username, l
   let token = null;
   let action = null;
 
-  async function raw(method, path, { json, body, headers = {}, auth = "bearer", tag, timeoutMs = 120000, countBytes = false } = {}) {
+  async function raw(method, path, { json, body, headers = {}, auth = "bearer", tag, timeoutMs = 120000, countBytes = false, retry } = {}) {
     const url = path.startsWith("http") ? path : `${origin}${path}`;
     const h = { accept: "application/json", ...headers };
     if (json !== undefined) h["content-type"] = "application/json";
@@ -63,7 +63,7 @@ export function createClient({ origin, username, password, persona = username, l
         data = null;
       }
     }
-    requestLog?.add({ persona, layer, method, path: new URL(url).pathname, status, ms, action, tag, error: error?.message, body: status >= 500 ? text.slice(0, 400) : undefined });
+    requestLog?.add({ persona, layer, method, path: new URL(url).pathname, status, ms, action, tag, retry, error: error?.message, body: status >= 500 ? text.slice(0, 400) : undefined });
     return { status, ok: status >= 200 && status < 300, json: data, text, bytes, ms, headers: res?.headers, error };
   }
 
@@ -80,12 +80,12 @@ export function createClient({ origin, username, password, persona = username, l
     let res = await raw(method, path, opts);
     if (res.status === 401 && opts.auth !== "basic" && opts.auth !== "none") {
       await login();
-      res = await raw(method, path, opts);
+      res = await raw(method, path, { ...opts, retry: "401" });
     }
     for (let attempt = 0; res.status === 429 && attempt < 4; attempt += 1) {
       await onBudget?.(username);
       await sleep(1000 * (attempt + 1));
-      res = await raw(method, path, opts);
+      res = await raw(method, path, { ...opts, retry: "429" });
     }
     return res;
   }

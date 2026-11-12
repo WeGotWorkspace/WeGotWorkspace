@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readVoice } from "../night/after.mjs";
 import { renderReport } from "./report.mjs";
 
 const readJson = (file, fallback) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : fallback);
@@ -25,5 +26,6 @@ export async function rerenderReport({ date, paths }) {
     nightsLog: readJson(paths.nightsLog, []).filter((n) => n.date !== date),
     disk: saved.disk,
     productHistory: readJson(join(paths.home, "product.json"), []),
+    voice: readVoice(runDir),
   }).markdown;
 }

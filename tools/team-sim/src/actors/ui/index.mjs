@@ -8,7 +8,7 @@ import { uiActions } from "./actions.mjs";
  * microphone for Meet. Kinds without a browser flow run through the API and
  * say so in the outcome note.
  */
-export async function createUiLayer({ origin, runDir, requestLog, headless = true }) {
+export async function createUiLayer({ origin, runDir, requestLog, interactions = null, headless = true }) {
   const { chromium } = await import("playwright");
   const browser = await chromium.launch({ headless, args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"] });
   const events = [];
@@ -17,7 +17,7 @@ export async function createUiLayer({ origin, runDir, requestLog, headless = tru
 
   async function forPersona(persona) {
     if (!personas.has(persona)) {
-      const b = await openPersonaBrowser({ browser, persona, origin, runDir, requestLog, events, screens });
+      const b = await openPersonaBrowser({ browser, persona, origin, runDir, requestLog, events, screens, interactions });
       await b.login();
       personas.set(persona, b);
     }

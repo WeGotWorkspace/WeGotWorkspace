@@ -5,10 +5,17 @@ import { ulid, uuid } from "../../client/ids.mjs";
  * `{ ids, extra }` for the object it created, or `{ patch: { key, ... } }`
  * for a status change; the dispatcher writes the registry.
  */
+/**
+ * The product cannot do what the persona tries. `what` is the missing thing
+ * in the persona's words, `workaround` what they do instead; `source` is
+ * "detected" when the server refused at run time, "actor-workaround" when the
+ * gap was known when the actor was written.
+ */
 export class Unsupported extends Error {
-  constructor(message) {
-    super(message);
+  constructor(what, { workaround = null, source = "actor-workaround" } = {}) {
+    super(what);
     this.unsupported = true;
+    this.friction = { what, workaround, source };
   }
 }
 
@@ -56,7 +63,7 @@ export const collabExecutors = {
     const res = await ctx.client(a.persona).request("DELETE", `/api/v1/chat/channels/${encodeURIComponent(ch.ids.channelId)}`);
     if (res.ok) return { note: "left" };
     if (res.status >= 500) throw new Error(`leave channel → HTTP ${res.status}`);
-    throw new Unsupported(`cannot leave a Team project channel without leaving the Team (HTTP ${res.status})`);
+    throw new Unsupported("A project channel cannot be left without leaving the whole Team", { workaround: `muted it instead (server answered HTTP ${res.status})`, source: "detected" });
   },
 
   async "task.create"(a, ctx) {
@@ -79,7 +86,7 @@ export const collabExecutors = {
   },
 
   async "task.comment"() {
-    throw new Unsupported("Tasks have no comments; the persona would use chat instead");
+    throw new Unsupported("Tasks have no comments", { workaround: "the discussion moves to the project chat" });
   },
 
   async "task.complete"(a, ctx) {
@@ -91,7 +98,8 @@ export const collabExecutors = {
   async "task.archive"(a, ctx) {
     const t = need(ctx, a.params.task);
     await patchTask(ctx.client(a.persona), t.ids.taskId, { workflowStatus: "cancelled" });
-    return { patch: { key: a.params.task, status: "archived" }, note: "Tasks have no archive; marked cancelled" , friction: "Tasks have no archive; closing a project leaves every done task in the list" };
+    ctx.friction?.({ what: "Tasks have no archive: closing a project leaves every done task in the list", workaround: "marked cancelled instead", source: "actor-workaround" });
+    return { patch: { key: a.params.task, status: "archived" }, note: "Tasks have no archive; marked cancelled" };
   },
 
   async "note.create"(a, ctx) {
