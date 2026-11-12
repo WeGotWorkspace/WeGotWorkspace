@@ -105,3 +105,20 @@ test("digest without diary items still ranks friction", async () => {
   assert.match(d.skipped, /no diary items/);
   assert.equal(d.friction[0].what, "Uploads stall");
 });
+
+test("facts leave out outcome notes and anything the harness may have caused", () => {
+  const plan = { actions: [...run.plan.actions, { n: 4, persona: "eva", layer: "ui", kind: "cal.event", minute: 80, params: { title: "Sync" } }, { n: 5, persona: "eva", layer: "api", kind: "cal.rsvp", minute: 90, params: {} }, { n: 6, persona: "eva", layer: "ui", kind: "note.edit", minute: 95, flags: { reload: true }, params: { append: "x" } }] };
+  const outcomes = [
+    ...run.outcomes.map((o) => (o.n === 1 ? { ...o, note: "16 parts" } : o)),
+    { n: 4, status: "failed", ms: 3000, error: "expected one new event", suspect: "harness" },
+    { n: 5, status: "skipped", reason: "dependency #4 failed" },
+    { n: 6, status: "ok", ms: 2000, note: "reloaded mid-action" },
+  ];
+  const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...run, plan, outcomes });
+  const by = new Map(f.actions.map((a) => [a.n, a]));
+  assert.ok(!JSON.stringify(f).includes("16 parts"), "outcome notes stay in the morning report");
+  assert.match(by.get(4).result, /^unclear/);
+  assert.equal(by.get(4).problem, undefined);
+  assert.match(by.get(5).result, /^unclear/, "a skip behind a doubted failure is unclear too");
+  assert.equal(by.get(6).situation, "reloaded the page in the middle of it");
+});

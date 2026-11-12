@@ -98,3 +98,10 @@ test("team voice flags a jump against the 7-night median and cites evidence", ()
   assert.match(md, /evidence: #1, #5/);
   assert.match(md, /Diaries skipped: no CLI/);
 });
+
+test("a failure the harness may have caused is not the persona's trouble", () => {
+  const doubted = outcomes.map((o) => (o.n === 3 ? { ...o, suspect: "harness" } : o));
+  const upload = measureNight({ plan, outcomes: doubted, requests, interactions, friction }).chains.find((c) => c.root === 1);
+  assert.equal(upload.failures, 0);
+  assert.equal(upload.doubts, 1);
+});

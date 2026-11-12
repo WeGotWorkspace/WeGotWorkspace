@@ -46,6 +46,9 @@ const DOING = {
 };
 const VIA = { ui: "in the browser", api: "in the apps (no screen detail recorded)", dav: "from their own calendar/contacts app (CalDAV/CardDAV)", none: "outside the suite" };
 
+const SITUATION = [["offline", "went offline in the middle of it, then back online"], ["reload", "reloaded the page in the middle of it"], ["secondTab", "had the same screen open in a second tab"]];
+const UNCLEAR = "unclear: the simulation could not check this, so it is not something the person noticed";
+
 const clock = (minute) => `${String(9 + Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 const short = (s, n = 90) => (s == null ? undefined : String(s).replace(/\s+/g, " ").slice(0, n));
 const secs = (ms) => Math.round(ms / 100) / 10;
@@ -56,20 +59,25 @@ export function personaFacts({ world, date, persona, plan, outcomes, interaction
   const out = new Map(outcomes.map((o) => [o.n, o]));
   const ix = new Map(interactions.map((i) => [i.n, i]));
   const mine = plan.actions.filter((a) => a.persona === persona && out.get(a.n) && out.get(a.n).reason !== "filtered");
+  const doubted = new Set(outcomes.filter((o) => o.suspect).map((o) => o.n));
   const actions = mine.map((a) => {
     const o = out.get(a.n);
     const i = ix.get(a.n);
     const pr = a.params ?? {};
+    // The harness may have caused this failure (or the failure this skip waits on): nothing the person noticed.
+    const dep = /^dependency #(\d+)/.exec(o.reason ?? "");
+    if (doubted.has(a.n) || (dep && doubted.has(Number(dep[1])))) return { n: a.n, time: clock(a.minute), did: DOING[a.kind] ?? a.kind, via: VIA[a.layer] ?? a.layer, about: short(pr.title ?? pr.text ?? pr.name), result: UNCLEAR };
     return {
       n: a.n,
       time: clock(a.minute),
       did: DOING[a.kind] ?? a.kind,
       via: VIA[a.layer] ?? a.layer,
       about: short(pr.title ?? pr.text ?? pr.name ?? pr.need ?? pr.append),
-      with: [pr.partner, pr.mention, pr.to, pr.assignee, ...(pr.attendees ?? [])].filter(Boolean).map((x) => world.persona(x)?.displayName ?? x).join(", ") || undefined,
+      with: [pr.partner, pr.mention, pr.to, pr.assignee, pr.guest, ...(pr.attendees ?? [])].filter(Boolean).map((x) => world.persona(x)?.displayName ?? x).join(", ") || undefined,
       result: o.status,
       problem: short(o.error ?? o.reason, 160),
-      note: short(o.note, 120),
+      // Outcome notes are for the morning report (upload parts, harness shortcuts); only what the person lived through goes in.
+      situation: SITUATION.find(([flag]) => a.flags?.[flag])?.[1],
       waited: i?.waits.filter((w) => w.ms >= 1000).map((w) => `${w.label} ${secs(w.ms)} s`),
       screensOpened: i?.screens.map((s) => `${s.screen} ready in ${secs(s.ms)} s`),
       input: i ? `${i.clicks} clicks, ${i.keys} keystrokes` : undefined,
@@ -103,6 +111,9 @@ export const DIARY_SYSTEM = [
   "Use only the facts you are given. Cite the action numbers behind every statement as (#n); every sentence about something that happened cites at least one number from the facts.",
   "Do not invent colleagues, clients, events, numbers or feelings that the facts do not support. Failures, waits, workarounds and missing features are the main signals; things that simply worked can be mentioned briefly.",
   "A wish is allowed when an action prompted it, and cites that action.",
+  'Leave out actions whose result starts with "unclear"; they say nothing about this person\'s day. Do not read meaning into technical details such as byte counts, upload parts or how long a step took unless the facts list it as a wait.',
+  "Different meetings have different titles; never describe them as one meeting booked several times.",
+  "Text the person wrote in chat, notes or docs is their work, not a sign of their mood.",
   'Write in English, 90 to 160 words, plain and concrete, in this person\'s voice. Return only JSON, no prose around it: {"diary": string, "items": [{"type": "frustration" | "slow" | "went-well" | "wish", "text": string of at most 20 words, "actions": [numbers]}]} with 2 to 6 items.',
 ].join("\n");
 

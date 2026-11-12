@@ -14,6 +14,17 @@ const channelFor = (project) => (!project ? "channel:team:studio" : intake(proje
 const folderFor = (project) => (intake(project) ? "folder:team:business" : `folder:project:${project.id}`);
 const scopeFor = (project) => (!project ? "studio" : intake(project) ? "business" : project.team);
 
+const MEET_TOPICS = ["check-in", "review call", "planning call", "catch-up", "walkthrough"];
+const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Amsterdam" });
+const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" });
+/** Meeting titles are unique within a night, so nobody reads three meetings as one booked three times. */
+function uniqueTitle(b, base, start) {
+  const taken = new Set(b.actions.map((a) => a.params?.title).filter(Boolean));
+  if (!taken.has(base)) return base;
+  const day = `${base} (${DAY.format(new Date(start))})`;
+  return taken.has(day) ? `${base} (${DAY.format(new Date(start))} ${HOUR.format(new Date(start))})` : day;
+}
+
 export const KINDS = {
   "chat.post": ({ b }, persona, project, minute) =>
     b.add({ persona, kind: "chat.post", minute, type: "message", scope: scopeFor(project), project: project?.id,
@@ -119,7 +130,7 @@ export const KINDS = {
     const client = project ? world.client(project.client) : null;
     const { start, minutes } = b.slot(persona, rng.int(1, 10));
     return b.add({ persona, kind: "cal.event", minute, type: "event", scope: scopeFor(project), project: project?.id, creates: b.key("event"),
-      params: { title: title ?? `${project ? project.name : "Studio"} — ${rng.pick(["overleg", "review", "sync", "workshop"])}`,
+      params: { title: uniqueTitle(b, title ?? `${project ? project.name : "Studio"} — ${rng.pick(["overleg", "review", "sync", "workshop"])}`, start),
         start, minutes, attendees, external: external && client ? [client.email] : [] } });
   },
 
@@ -156,7 +167,7 @@ export const KINDS = {
     const attendees = rng.shuffle(members.filter((m) => m !== persona)).slice(0, rng.int(1, 4)).sort();
     const { start, minutes } = b.slot(persona, rng.int(1, 7));
     return b.add({ persona, kind: "meet.schedule", minute, type: "event", scope: scopeFor(project), project: project?.id, creates: b.key("event"),
-      params: { title: `${project ? project.name : "Studio"} — Meet`, start, minutes, attendees, meet: true,
+      params: { title: uniqueTitle(b, `${project ? project.name : "Studio"} — ${MEET_TOPICS[b.actions.filter((x) => x.kind === "meet.schedule" && x.project === project?.id).length % MEET_TOPICS.length]}`, start), start, minutes, attendees, meet: true,
         channel: channelFor(project), external: external ? [world.client(project.client).email] : [] } });
   },
 

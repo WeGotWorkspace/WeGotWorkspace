@@ -65,7 +65,7 @@ export async function runActions({ plan, windowMs, execute, deadline, outcomesFi
         finish(action, { status: "ok", ms: now() - t0, ...(result?.note ? { note: result.note } : {}) });
       } catch (error) {
         log(`#${action.n} ${action.persona} ${action.kind} failed: ${error.message.split("\n")[0]}`);
-        finish(action, { status: "failed", ms: now() - t0, error: error.message, trace: error.trace });
+        finish(action, { status: "failed", ms: now() - t0, error: error.message, trace: error.trace, ...(error.suspect ? { suspect: error.suspect } : {}) });
       }
     }
   }

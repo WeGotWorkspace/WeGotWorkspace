@@ -121,3 +121,10 @@ test("uploads stop at the Drive cap and closing a project deletes print files", 
     .flatMap((p) => p.actions.filter((a) => a.kind === "drive.delete"));
   assert.ok(deletes.some((a) => a.params.file === "file:2027-01-05:1"));
 });
+
+test("meeting titles are unique within a night", () => {
+  for (const date of ["2026-11-12", "2026-11-13", "2026-11-16", "2026-11-17"]) {
+    const titles = planNight({ world, date, snapshot }).actions.filter((a) => ["cal.event", "meet.schedule"].includes(a.kind)).map((a) => a.params.title);
+    assert.equal(new Set(titles).size, titles.length, `${date}: ${titles.join(" | ")}`);
+  }
+});

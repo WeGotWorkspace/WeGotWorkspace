@@ -1,6 +1,7 @@
 import { USING, jmap1, setOk } from "../../client/jmap.mjs";
 import { roomCode } from "../../client/ids.mjs";
 import { need } from "../api/collab.mjs";
+import { HarnessDoubt } from "../doubt.mjs";
 import { fileBytes } from "../api/files.mjs";
 
 const T = 30000;
@@ -192,8 +193,17 @@ export const uiActions = {
     await settle(page, 2000);
     // The new event is the one that was not there before: an invite with the same title may already be in this calendar.
     const q = await jmap1(c, USING.calendars, "CalendarEvent/query", { accountId: a.persona });
-    const fresh = (q.ids ?? []).filter((x) => !before.has(x));
-    if (fresh.length !== 1) throw new Error(`expected one new event after saving in the browser, found ${fresh.length}`);
+    let fresh = (q.ids ?? []).filter((x) => !before.has(x));
+    if (!fresh.length) throw new Error("the event saved in the browser is not on the server");
+    // Another persona's invite can land in this calendar while the dialog is open; keep the one with our title
+    // (titles are unique within a night, so two with our title is a real duplicate).
+    if (fresh.length > 1) {
+      const got = await jmap1(c, USING.calendars, "CalendarEvent/get", { accountId: a.persona, ids: fresh, properties: ["title"] });
+      const ours = (got.list ?? []).filter((e) => e.title === a.params.title).map((e) => e.id);
+      if (ours.length > 1) throw new Error(`saving once in the browser created ${ours.length} events titled "${a.params.title}"`);
+      if (!ours.length) throw new HarnessDoubt(`${fresh.length} new events after saving in the browser, none titled "${a.params.title}"`);
+      fresh = ours;
+    }
     const [id] = fresh;
     // Guests are added from the event's attendee field in real use; the harness adds them over JMAP.
     const participants = { org: { "@type": "Participant", email: ctx.world.email(a.persona), name: ctx.world.persona(a.persona).displayName, roles: { owner: true, attendee: true }, participationStatus: "accepted" } };

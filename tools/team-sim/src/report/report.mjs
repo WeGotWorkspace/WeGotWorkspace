@@ -78,7 +78,7 @@ export function renderReport({ date, night, plan, outcomes = [], results = [], u
   L.push(...actionLines(plan, outcomes), "");
   if (failedActions.length) {
     L.push("### Failed actions", "");
-    for (const o of failedActions.slice(0, 60)) L.push(`- #${o.n} ${o.persona} ${o.kind} (${o.layer}): ${oneLine(o.error)}${o.trace ? ` — trace \`${o.trace}\`` : ""}`);
+    for (const o of failedActions.slice(0, 60)) L.push(`- #${o.n} ${o.persona} ${o.kind} (${o.layer}): ${o.suspect === "harness" ? "(suspected harness fault) " : ""}${oneLine(o.error)}${o.trace ? ` — trace \`${o.trace}\`` : ""}`);
     if (failedActions.length > 60) L.push(`- … ${failedActions.length - 60} more in the run's outcomes.jsonl`);
     L.push("");
   }

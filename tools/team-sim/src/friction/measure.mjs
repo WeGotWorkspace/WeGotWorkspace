@@ -75,7 +75,9 @@ export function measureNight({ plan, outcomes = [], requests = [], interactions 
     const reqs = ran.flatMap((n) => reqBy.get(n) ?? []);
     const ix = ran.map((n) => ixBy.get(n)).filter(Boolean);
     const fr = ran.flatMap((n) => frBy.get(n) ?? []);
-    const failures = ran.filter((n) => out.get(n).status === "failed").length;
+    // A failure the harness may have caused is not the persona's trouble; it is counted apart.
+    const failures = ran.filter((n) => out.get(n).status === "failed" && !out.get(n).suspect).length;
+    const doubts = ran.filter((n) => out.get(n).suspect).length;
     const skipped = ran.filter((n) => out.get(n).status === "skipped").length;
     const retries = reqs.filter((r) => r.retry).length;
     return {
@@ -89,6 +91,7 @@ export function measureNight({ plan, outcomes = [], requests = [], interactions 
       waitMs: ix.reduce((s, i) => s + i.waits.reduce((t, w) => t + w.ms, 0), 0),
       input: ix.length ? ix.reduce((s, i) => s + i.clicks + i.keys, 0) : null,
       failures,
+      doubts,
       skipped,
       friction: fr.length,
       trouble: failures > 0 || skipped > 0 || retries > 0 || fr.length > 0,
