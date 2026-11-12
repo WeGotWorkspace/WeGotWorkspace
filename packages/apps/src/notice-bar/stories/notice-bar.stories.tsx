@@ -4,12 +4,12 @@ import { expect, userEvent, within } from "storybook/test";
 import { createSharedTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { ParkedTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { syncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { rescueNotice } from "@/rescue-ui/rescue-notice";
 import { defaultTasksLabels as L } from "@/tasks-core/src/tasks-labels";
 import { TasksRescueDialog } from "@/tasks-core/src/tasks-rescue-dialog";
 import { tasksRescueView } from "@/tasks-core/src/tasks-rescue-view";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
-import { tasksSyncNotice } from "@/tasks-core/src/use-tasks-sync-notice";
 import { tasksStoryOperations } from "@/tasks-core/stories/tasks-story-shared";
 
 const bootstrap = createSharedTasksAppBootstrap();
@@ -58,7 +58,14 @@ function Frame({ writes: initial, syncStuck: initialStuck = false }: FrameProps)
           <NoticeBar
             label={L.noticeBarLabel}
             notices={[
-              syncStuck ? tasksSyncNotice(L, () => setSyncStuck(false)) : null,
+              syncStuck
+                ? syncRetryNotice({
+                    id: "sync:tasks",
+                    title: L.syncFailedNotice,
+                    retryLabel: L.retrySync,
+                    onRetry: () => setSyncStuck(false),
+                  })
+                : null,
               rescueNotice("tasks", tasksRescueView(L), writes, () => setOpen(true)),
             ]}
           />

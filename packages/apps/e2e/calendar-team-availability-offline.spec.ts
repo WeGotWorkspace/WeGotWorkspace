@@ -99,7 +99,7 @@ test.describe("Calendar team availability offline (live app)", () => {
     try {
       const name = await teammateName();
       const busyBlocks = page.locator('event-card[data-overlay="availability"]');
-      const notices = page.getByRole("region", { name: "Calendar notices" });
+      const notices = page.getByRole("region", { name: "Needs your attention" });
 
       await openCalendarWeek(page, WEEK);
       await expect(page.getByRole("heading", { name: "Team availability" })).toBeVisible();

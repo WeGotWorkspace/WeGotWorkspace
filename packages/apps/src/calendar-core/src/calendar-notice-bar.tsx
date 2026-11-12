@@ -43,7 +43,7 @@ export function CalendarNoticeBar({
   ).length;
   return (
     <NoticeBar
-      label={labels.calendarNoticeBarLabel}
+      label={labels.noticeBarLabel}
       notices={[
         syncNotice,
         teamAvailabilityOfflineNotice({
