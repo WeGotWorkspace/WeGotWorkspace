@@ -148,3 +148,8 @@ test("convergence checks touched objects plus a fixed-size sample", () => {
   // Deterministic.
   assert.deepEqual(pickChecked(objects, date, 3).sample.map((o) => o.key), pickChecked(objects, date, 3).sample.map((o) => o.key));
 });
+
+test("console noise from the harness's own offline window is not an error", () => {
+  const r = errorsOracle({ requests: [], browserEvents: [{ type: "console", level: "error", persona: "maarten", text: "Failed to load resource: net::ERR_INTERNET_DISCONNECTED" }], requestKind: kind });
+  assert.equal(r.status, "pass");
+});

@@ -25,6 +25,8 @@ export function errorsOracle({ requests, browserEvents = [], requestKind }) {
       resourceErrors[status] = (resourceErrors[status] ?? 0) + 1;
       continue;
     }
+    // The harness takes a browser offline on purpose (offline flag); the browser logs each failed load.
+    if (e.type === "console" && /ERR_INTERNET_DISCONNECTED/.test(e.text ?? "")) continue;
     if (e.type === "pageerror" || (e.type === "console" && e.level === "error")) {
       failures.push({
         signature: `errors:console:${(e.text ?? "").replace(/\d+/g, "N").slice(0, 80)}`,

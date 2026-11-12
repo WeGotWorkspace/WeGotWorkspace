@@ -8,6 +8,9 @@ const settle = (page, ms = 2500) => page.waitForTimeout(ms);
 const online = (page) => page.locator('[data-connectivity="online"]').first().waitFor({ timeout: T }).catch(() => {});
 
 /** Types at the end of a ProseMirror editor. */
+/** Emoji render as images in chat, so match on the text before the first one. */
+const plainPrefix = (text) => text.split(/\p{Extended_Pictographic}/u)[0].trim().slice(0, 60);
+
 async function typeAtEnd(page, editor, text) {
   await editor.click({ timeout: T });
   // Ctrl/Cmd+End is not "end of document" on every platform: put the caret there directly.
@@ -71,9 +74,9 @@ export const uiActions = {
       await page.keyboard.insertText(a.params.text);
       await page.keyboard.press("Enter");
     });
-    await page.locator(".chat-message__body", { hasText: a.params.text }).first().waitFor({ timeout: T });
+    await page.locator(".chat-message__body", { hasText: plainPrefix(a.params.text) }).first().waitFor({ timeout: T });
     if (b.second) {
-      await b.second.locator(".chat-message__body", { hasText: a.params.text }).first().waitFor({ timeout: T });
+      await b.second.locator(".chat-message__body", { hasText: plainPrefix(a.params.text) }).first().waitFor({ timeout: T });
       await b.second.close();
       b.second = null;
     }
