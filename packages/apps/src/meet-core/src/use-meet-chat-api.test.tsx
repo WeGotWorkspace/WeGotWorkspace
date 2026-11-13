@@ -39,17 +39,17 @@ vi.mock("@/lib/offline/offline-session", () => ({
   resolveMeetChatOfflineUsername: (username: string | undefined) => username ?? null,
 }));
 
-vi.mock("@/lib/offline/meet-chat-hybrid-operations", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-hybrid-operations", () => ({
   getMeetChatSyncRunner: () => ({ flush: mockFlush }),
   meetChatBootstrapFromCached: vi.fn(),
 }));
 
-vi.mock("@/lib/offline/meet-chat-offline-store", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-offline-store", () => ({
   readMeetChatBootstrapFromCache: vi.fn(async () => null),
   isChatChannelBackfilled: vi.fn(async () => true),
 }));
 
-vi.mock("@/lib/offline/meet-chat-inbound-sync", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-inbound-sync", () => ({
   syncMeetChatInboundFromRest: vi.fn(async () => undefined),
   backfillChatChannelHistory: vi.fn(async () => undefined),
 }));

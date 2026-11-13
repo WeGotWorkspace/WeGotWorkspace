@@ -16,8 +16,8 @@ import {
   listMeetChatOutbox,
   listPendingChatMessageIds,
   upsertChatMessageInCache,
-} from "@/lib/offline/meet-chat-offline-store";
-import { flushMeetChatOutbox } from "@/lib/offline/meet-chat-outbox-flush";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
+import { flushMeetChatOutbox } from "@/lib/offline/meet-chat/meet-chat-outbox-flush";
 
 vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/meet-chat")>();

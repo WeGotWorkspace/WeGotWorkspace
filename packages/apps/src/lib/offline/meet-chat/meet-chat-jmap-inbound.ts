@@ -14,7 +14,7 @@ import {
   removeChatMessageFromCache,
   upsertChatChannelInCache,
   upsertChatMessageInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 /**
  * Pending writes per message id, read through the shared engine: Dexie rows

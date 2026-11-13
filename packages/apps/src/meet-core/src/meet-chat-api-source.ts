@@ -5,7 +5,7 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
   createHybridMeetChatOperations,
   loadMeetChatBootstrapHybrid,
-} from "@/lib/offline/meet-chat-hybrid-operations";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
 import { resolveMeetChatOfflineUsername } from "@/lib/offline/offline-session";
 import type { MeetAppBootstrap, MeetChatOperations } from "@/lib/models/meet-types";
 
