@@ -100,6 +100,12 @@ export async function listMeetChatOutbox(username: string): Promise<OfflineOutbo
   return listOutboxMutationsForDomain(username, MEET_CHAT_DOMAIN);
 }
 
+/** True while the message's send is queued: the server has never seen it. */
+export async function hasQueuedChatSend(username: string, messageId: string): Promise<boolean> {
+  const rows = await listMeetChatOutbox(username);
+  return rows.some((row) => row.op === "send" && meetChatOutboxMessageId(row) === messageId);
+}
+
 /** Queued writes that change what a message says, so its author sees them as not sent yet. */
 const MESSAGE_CONTENT_OPS = new Set(["send", "edit", "delete"]);
 

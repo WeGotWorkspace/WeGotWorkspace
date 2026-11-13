@@ -52,6 +52,7 @@ import {
   enqueueChatSend,
   findCachedDmChannelByPeer,
   getCachedChatMessage,
+  hasQueuedChatSend,
   readMeetChatBootstrapFromCache,
   removeChatChannelFromCache,
   removeChatMessageFromCache,
@@ -240,6 +241,14 @@ export function createHybridMeetChatOperations(
   };
 
   /**
+   * True when a write to this message has to queue: offline, or its send is
+   * still queued, so the server does not have the message yet (an edit merges
+   * into that send, a delete cancels it, a reaction goes after it).
+   */
+  const mustQueue = async (messageId: string): Promise<boolean> =>
+    !readBrowserOnline() || (await hasQueuedChatSend(username, messageId));
+
+  /**
    * An edit or reaction online: cache the server's answer, or queue the write
    * when the network or the server fails for now. A message gone on the
    * server leaves the cache.
@@ -249,7 +258,7 @@ export function createHybridMeetChatOperations(
     request: () => Promise<WgwChatMessage>,
     queue: () => Promise<ChatMessage>,
   ): Promise<ChatMessage> => {
-    if (!readBrowserOnline()) return queue();
+    if (await mustQueue(messageId)) return queue();
     try {
       const saved = await uiChatMessageForCache(username, chatMessageFromWire(await request()));
       await upsertChatMessageInCache(username, saved, false);
@@ -307,7 +316,7 @@ export function createHybridMeetChatOperations(
         if (tombstone) await upsertChatMessageInCache(username, tombstone, true);
         notifyMeetChatCacheChanged(username);
       };
-      if (!readBrowserOnline()) return queueDelete();
+      if (await mustQueue(messageId)) return queueDelete();
       try {
         await deleteChatMessage(messageId);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
