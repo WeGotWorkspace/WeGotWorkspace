@@ -20,13 +20,47 @@
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-dark);
+  /* Settings rows are label | control: they read better wider than the 42rem default. */
+  --workspace-main-content-max-width: 56rem;
 }
 
 /* Descendant classes — only use inside `SettingsWorkspace` (`.settings-workspace`). */
 /* Display rows: `FieldLabelRow` + `Input readOnly` — disabled fill from `@/ui/input`. */
 
-/* Catalog panes sit on Card chrome. The dialog is already a surface — strip it. */
-.ui-modal-surface.settings-workspace .settings-pane-card {
+/* Header path: a "Settings" link before the group title (Account / Apps). */
+.settings-workspace .view-header__title-prefix:has(.settings-main-header__trail) {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.settings-workspace .settings-main-header__trail {
+  @apply flex min-w-0 items-center gap-2;
+  --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+  --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
+}
+
+.settings-workspace .settings-main-header__trail-separator {
+  @apply size-4 shrink-0;
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
+}
+
+/* Page title above the pane (Settings app only; the dialog has its own title). */
+.settings-workspace .settings-page-header {
+  @apply mb-10 flex flex-col gap-2;
+}
+
+.settings-workspace .settings-page-header__title {
+  @apply m-0 font-serif text-4xl font-normal leading-tight md:text-5xl;
+  color: var(--workspace-foreground);
+}
+
+.settings-workspace .settings-page-header__description {
+  @apply m-0 text-base;
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+}
+
+/* Panes sit straight on the page and in the dialog: no card chrome, only the section title. */
+.settings-workspace .settings-pane-card {
   border: none;
   background-color: transparent;
   padding: 0;
@@ -159,7 +193,11 @@
   background-color: var(--workspace-root-bg, var(--workspace-surface));
 }
 
-/* A second section in the dialog (Calendar → Availability) starts after a pause. */
+/* A second section (Calendar → Availability) starts after a pause. */
+.settings-workspace .settings-pane-card + .settings-pane-card {
+  margin-top: 3rem;
+}
+
 .ui-modal-surface.settings-workspace .settings-pane-card + .settings-pane-card {
   margin-top: 1.5rem;
 }

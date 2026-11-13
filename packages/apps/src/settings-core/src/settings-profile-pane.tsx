@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Input } from "@/ui/input";
-import { Card } from "@/card/src/card";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
 import type { SettingsControllerState } from "@/settings-core/src/use-settings-controller";
 import { buttonVariants } from "@/button/src/button";
@@ -40,7 +40,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
 
   return (
     <Form {...form}>
-      <Card title="Identity">
+      <SettingsPaneCard title="Identity">
         <FieldLabelRow label="Username" readOnly htmlFor={usernameId}>
           <Input id={usernameId} value={username} readOnly />
         </FieldLabelRow>
@@ -65,9 +65,9 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           />
         ) : null}
         <FormSaveActionRow label="Save changes" disabled={identityDisabled} onSave={saveProfile} />
-      </Card>
+      </SettingsPaneCard>
 
-      <Card title="Password">
+      <SettingsPaneCard title="Password">
         <FormTextField
           {...settingsWorkspacePaneClasses.formTextField}
           name="newPassword"
@@ -82,7 +82,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           variant="password"
         />
         <FormSaveActionRow label="Set password" disabled={passwordDisabled} onSave={saveProfile} />
-      </Card>
+      </SettingsPaneCard>
       <AlertDialog
         open={unsyncedDiscard !== null}
         onOpenChange={(open) => {

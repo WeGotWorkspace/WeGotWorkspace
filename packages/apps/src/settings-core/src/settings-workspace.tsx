@@ -6,7 +6,10 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import { ChevronRight } from "lucide-react";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { SETTINGS_DEFAULT_SECTION } from "@/settings-core/src/settings-section";
 import {
   useSettingsController,
   type SettingsControllerState,
@@ -85,27 +88,57 @@ function Sidebar({
   );
 }
 
+const GROUP_LABELS = { account: "Account", apps: "Apps" } as const;
+
+/**
+ * Settings › Apps: the group is the header title. The pane's own name is the page title
+ * below, so the header does not repeat it.
+ */
 function MainHeader({ controller }: { controller: SettingsControllerState }) {
+  const panel = controller.currentSection;
   return (
     <ViewHeader
-      title={controller.currentSection.label}
+      title={GROUP_LABELS[panel.group]}
+      titlePrefix={
+        <span className="settings-main-header__trail">
+          <PathBreadcrumb
+            items={[{ label: "Settings", path: SETTINGS_DEFAULT_SECTION }]}
+            currentPath={panel.id}
+            alwaysNavigablePaths={[SETTINGS_DEFAULT_SECTION]}
+            onNavigate={() => controller.selectSection(SETTINGS_DEFAULT_SECTION)}
+          />
+          <ChevronRight className="settings-main-header__trail-separator" aria-hidden />
+        </span>
+      }
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((value) => !value)}
     />
   );
 }
 
+/** "Calendar settings" for an app; account panes keep their own name ("Profile"). */
+function pageTitle(panel: SettingsControllerState["currentSection"]): string {
+  return panel.group === "apps" ? `${panel.label} settings` : panel.label;
+}
+
 function MainContent({ controller }: { controller: SettingsControllerState }) {
+  const panel = controller.currentSection;
   return (
-    <SettingsPanelHost
-      panelId={controller.section}
-      ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
-      slices={{
-        profile: controller.profile,
-        assistants: controller.assistants,
-        memberships: controller.memberships,
-      }}
-    />
+    <>
+      <header className="settings-page-header">
+        <h1 className="settings-page-header__title">{pageTitle(panel)}</h1>
+        <p className="settings-page-header__description">{panel.description}</p>
+      </header>
+      <SettingsPanelHost
+        panelId={controller.section}
+        ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
+        slices={{
+          profile: controller.profile,
+          assistants: controller.assistants,
+          memberships: controller.memberships,
+        }}
+      />
+    </>
   );
 }
 

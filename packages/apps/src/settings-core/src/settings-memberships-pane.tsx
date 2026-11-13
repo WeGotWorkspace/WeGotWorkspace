@@ -1,4 +1,4 @@
-import { Card } from "@/card/src/card";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { SettingsGroup } from "@/lib/models/settings-types";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
@@ -9,7 +9,7 @@ export type SettingsMembershipsPaneProps = {
 
 export function SettingsMembershipsPane({ groups }: SettingsMembershipsPaneProps) {
   return (
-    <Card title="Your teams">
+    <SettingsPaneCard title="Your teams">
       {groups.length === 0 ? (
         <p className="settings-memberships-pane__empty">{noTeamYetCopy}</p>
       ) : (
@@ -26,6 +26,6 @@ export function SettingsMembershipsPane({ groups }: SettingsMembershipsPaneProps
           ))}
         </ul>
       )}
-    </Card>
+    </SettingsPaneCard>
   );
 }

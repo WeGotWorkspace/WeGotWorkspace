@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { Card } from "@/card/src/card";
 
-/** Catalog chrome for Settings-app panes. Dialog CSS strips the card. */
+/**
+ * Section wrapper for Settings panes. `settings-workspace.css` strips the card chrome on the
+ * page and in the dialog; only the section title and icon stay.
+ */
 export function SettingsPaneCard({
   title,
   icon,
