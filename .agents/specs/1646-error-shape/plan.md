@@ -58,7 +58,7 @@ Client-side trace (issue proposal 4): declined for now, nothing built. A self-ho
 ## Decisions for Wouter
 
 - Client error reporting: build an opt-in client error log the admin can read, or keep declining.
-- Toast vs inline vs `onError`: the issue's proposal 3 is a UI rule. It needs a product pass before it is written into `apps-ui`.
+- Toast vs inline vs `onError`: written into `apps-ui` ("Showing an error") as a description of current practice, with no UI change. Wouter reviews the rule; changing any surface is a separate product change.
 - User-facing text that today shows a raw server code (the Meet REST client shows `payload.error`, which on realtime routes is a code such as `forbidden`). Changing that is a copy change.
 
 ## Invariants

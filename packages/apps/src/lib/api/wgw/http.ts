@@ -1,3 +1,5 @@
+import { WgwGuestSessionMissingError } from "@/lib/api/wgw/guest-session-missing-error";
+import { ApiError, UnexpectedApiResponseError } from "@/lib/api/api-error";
 import { type WorkspaceSession, workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
@@ -76,12 +78,9 @@ const RETRY_CAP_MARGIN_SEC = 0;
 export type WgwSessionClearReason =
   "user_initiated" | "401_online" | "refresh_expired" | "retry_cap_exceeded";
 
-class AuthHttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
+class AuthHttpError extends ApiError {
+  constructor(status: number, message: string) {
+    super(message, status);
     this.name = "AuthHttpError";
   }
 }
@@ -233,7 +232,7 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
   try {
     j = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error(`Auth response was not JSON (${res.status})`);
+    throw new UnexpectedApiResponseError(`Auth response was not JSON (${res.status})`);
   }
   if (!res.ok) {
     const err =
@@ -243,7 +242,7 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
   const o = j as Record<string, unknown>;
   const at = o.access_token;
   if (typeof at !== "string") {
-    throw new Error("Auth response missing access_token");
+    throw new UnexpectedApiResponseError("Auth response missing access_token");
   }
   const expiresIn = Number(o.expires_in);
   const refreshExpiresIn = Number(o.refresh_expires_in);
@@ -611,7 +610,7 @@ export async function wgwEnsureSession(): Promise<void> {
   if (wgwIsGuestSession()) {
     if (accessToken && !isAccessTokenExpired()) return;
     clearWgwSession("refresh_expired");
-    throw new Error("Share session expired. Open the link again.");
+    throw new WgwGuestSessionMissingError("Share session expired. Open the link again.");
   }
 
   if (sessionKind === "member") {
@@ -841,7 +840,7 @@ export async function wgwReadJson(res: Response): Promise<unknown> {
   } catch {
     const extracted = parseApiErrorJson(text);
     if (extracted) return extracted;
-    throw new Error(wgwReadJsonFailureMessage(text, res.status));
+    throw new UnexpectedApiResponseError(wgwReadJsonFailureMessage(text, res.status));
   }
 }
 
@@ -863,7 +862,7 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   readTokensFromStorage();
   if (wgwIsGuestSession()) {
     if (!accessToken) {
-      throw new Error("Share session expired. Open the link again.");
+      throw new WgwGuestSessionMissingError("Share session expired. Open the link again.");
     }
     return wgwGuestPrincipalFromAccessToken(accessToken);
   }
