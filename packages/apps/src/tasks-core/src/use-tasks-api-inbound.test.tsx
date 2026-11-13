@@ -46,8 +46,8 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => ({
   wgwAwaitSessionRefreshForReconnect: async () => undefined,
 }));
 
-vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   readOfflineTasksUsername: () => "ada",
   resolveTasksOfflineUsername: () => "ada",
 }));

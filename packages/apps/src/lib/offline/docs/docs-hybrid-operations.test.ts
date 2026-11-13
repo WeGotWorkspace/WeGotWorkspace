@@ -29,7 +29,7 @@ import { docsAvailabilityTable, docsListingRowsTable } from "@/lib/offline/docs/
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 
 vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {

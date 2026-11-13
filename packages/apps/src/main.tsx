@@ -2,7 +2,7 @@
 import "@/lib/random-uuid-polyfill";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";
+import { shouldRegisterServiceWorker } from "@/lib/offline/core/should-register-service-worker";
 import { rememberLaunchPath } from "@/lib/notifications/push-scope";
 import { syncDocumentTheme } from "@/lib/theme-preference";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";

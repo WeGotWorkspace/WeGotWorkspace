@@ -16,7 +16,7 @@ import {
   writeCalendarSchedulingInbox,
 } from "@/lib/offline/calendars/calendars-scheduling-offline-store";
 import { setCalendarsSchedulingConflictListener } from "@/lib/offline/calendars/calendars-sync-conflicts";
-import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveCalendarsOfflineUsername } from "@/lib/offline/core/offline-session";
 
 export type UseCalendarInvitationsOptions = {
   username?: string;

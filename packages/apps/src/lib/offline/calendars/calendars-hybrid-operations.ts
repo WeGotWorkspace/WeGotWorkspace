@@ -65,7 +65,7 @@ import {
   reportCalendarsSchedulingConflicts,
   reportCalendarsSyncConflicts,
 } from "@/lib/offline/calendars/calendars-sync-conflicts";
-import { readOfflineCalendarsUsername } from "@/lib/offline/offline-session";
+import { readOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 function rethrowUnlessOfflineQueue(error: unknown): void {

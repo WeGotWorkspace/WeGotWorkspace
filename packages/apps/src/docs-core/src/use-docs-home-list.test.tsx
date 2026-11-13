@@ -11,10 +11,11 @@ import {
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 
-vi.mock("@/lib/offline/docs-listing-offline-store", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/offline/docs-listing-offline-store")>();
+vi.mock("@/lib/offline/docs/docs-listing-offline-store", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/offline/docs/docs-listing-offline-store")>();
   return {
     ...actual,
     readDocsListingFromCache: vi.fn(actual.readDocsListingFromCache),

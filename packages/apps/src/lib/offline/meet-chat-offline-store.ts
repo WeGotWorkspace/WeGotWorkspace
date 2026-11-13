@@ -28,7 +28,7 @@ import {
   meetChatChannelsTable,
   meetChatMessagesTable,
 } from "@/lib/offline/meet-chat/meet-chat-schema";
-import { rememberOfflineMeetChatUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineMeetChatUsername } from "@/lib/offline/core/offline-session";
 
 export {
   enqueueOutboxMutation,

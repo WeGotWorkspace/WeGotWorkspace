@@ -8,7 +8,7 @@ import {
   renameDocsListingResult,
   upsertDocsListingResult,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import {
   DOCS_HOME_LIST_CATEGORIES,
   DOCS_HOME_LIST_EXTENSIONS,

@@ -5,7 +5,7 @@ import {
   createHybridNotesOperations,
   loadNotesBootstrapHybrid,
 } from "@/lib/offline/notes-hybrid-operations";
-import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveNotesOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { createWgwNotesMarkdownImport } from "@/notes-core/src/notes-markdown-import-wgw";
 

@@ -2,7 +2,7 @@ import { announceNoteDropped } from "@/lib/offline/notes/notes-dropped-events";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
-import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import type { EntityTable } from "dexie";
 import {
   offlineAccountKeyFromUsername,

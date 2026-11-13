@@ -1,5 +1,5 @@
 import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
-import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
+import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 
 /**
  * Count of outbox rows that failed to sync for a transient (non-conflict)
