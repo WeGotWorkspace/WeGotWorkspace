@@ -3,6 +3,12 @@ import { rememberOfflineContactsUsername } from "@/lib/offline/offline-session";
 import type { AddressBook, ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
+  parseMirrorRows,
+  readMirrorSession,
+  replaceMirrorRows,
+  writeMirrorSession,
+} from "@/lib/offline/core/mirror-cache";
+import {
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
@@ -48,20 +54,19 @@ export async function readContactsBootstrapFromCache(
   username: string,
 ): Promise<ContactsAppBootstrap | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const sessionRow = await db.meta.get(META_SESSION);
-  if (!sessionRow?.value) return null;
+  const session = await readMirrorSession<ContactsAppBootstrap["session"]>(db, META_SESSION);
+  if (!session) return null;
 
   const books = await contactsBooksTable(db).toArray();
   const cards = await contactsCardsTable(db).toArray();
   if (books.length === 0 && cards.length === 0) return null;
 
-  const session = JSON.parse(sessionRow.value) as ContactsAppBootstrap["session"];
-  const addressBooks = books.map((row) => JSON.parse(row.data) as AddressBook);
-  const contactCards = cards.map((row) => JSON.parse(row.data) as ContactCard);
-
   return {
     session,
-    data: { addressBooks, cards: contactCards },
+    data: {
+      addressBooks: parseMirrorRows<AddressBook>(books),
+      cards: parseMirrorRows<ContactCard>(cards),
+    },
   };
 }
 
@@ -79,20 +84,18 @@ export async function writeContactsBootstrapToCache(
   const books = contactsBooksTable(db);
   rememberOfflineContactsUsername(username);
   await db.transaction("rw", cards, books, db.meta, async () => {
-    const pendingRows = await cards.filter((row) => row.pendingSync).toArray();
-    await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
-    await books.clear();
-    await books.bulkPut(
+    await writeMirrorSession(db, META_SESSION, bootstrap.session);
+    await replaceMirrorRows(
+      books,
       bootstrap.data.addressBooks.map((book) => ({
         id: book.id ?? "default",
         data: JSON.stringify(book),
       })),
     );
-    await cards.clear();
-    await cards.bulkPut(bootstrap.data.cards.map((card) => contactCardRow(card, false)));
-    if (pendingRows.length > 0) {
-      await cards.bulkPut(pendingRows);
-    }
+    await replaceMirrorRows(
+      cards,
+      bootstrap.data.cards.map((card) => contactCardRow(card, false)),
+    );
   });
 }
 

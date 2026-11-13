@@ -1,4 +1,5 @@
 import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
+import { replaceMirrorRows } from "@/lib/offline/core/mirror-cache";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 import { meetChatMessagesTable } from "@/lib/offline/meet-chat/meet-chat-schema";
@@ -38,10 +39,9 @@ async function writeMeetChatBootstrapToCache(
   }
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const messages = meetChatMessagesTable(db);
-  await db.transaction("rw", messages, async () => {
-    const pendingRows = await messages.filter((row) => row.pendingSync).toArray();
-    await messages.clear();
-    await messages.bulkPut(
+  await db.transaction("rw", messages, () =>
+    replaceMirrorRows(
+      messages,
       bootstrap.messages.map((message) => ({
         id: message.id,
         channelId: message.channelId,
@@ -49,9 +49,8 @@ async function writeMeetChatBootstrapToCache(
         pendingSync: false,
         createdAt: message.createdAt,
       })),
-    );
-    if (pendingRows.length > 0) await messages.bulkPut(pendingRows);
-  });
+    ),
+  );
 }
 
 /**
