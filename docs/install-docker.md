@@ -47,7 +47,8 @@ When using the default MySQL stack (`COMPOSE_PROFILES=mysql`), use these in the 
 | --- | --- |
 | Host | `db` |
 | Port | `3306` |
-| Database / user / password | `wgw` (match `MARIADB_*` in `wegotworkspace/.env`) |
+| Database / user | `wgw` (match `MARIADB_*` in `wegotworkspace/.env`) |
+| Password | `MARIADB_PASSWORD` in `wegotworkspace/.env` |
 
 ## Lifecycle commands
 
@@ -168,7 +169,7 @@ bash tools/setup-docker-install.sh --local
 | `MARIADB_USER` | `wgw` | Application database user |
 | `MARIADB_PASSWORD` | `wgw` | Application database password |
 
-Change default passwords before exposing the stack to a network.
+A fresh `setup.sh` install writes random values for the three passwords. With a `.env` copied by hand, change them before exposing the stack to a network.
 
 ## Installer environment (`WGW_INSTALL_*`)
 
