@@ -18,7 +18,7 @@ import { getTrackChangeIdFromTarget } from "@/text-editor-core/src/text-editor-t
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { TextEditorFrame } from "@/text-editor-core/src/text-editor-frame";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
-import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import type { DocsCollabCommentControlLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 import type { TextEditorPageSetup } from "@/lib/page-format";
 import {
@@ -66,13 +66,7 @@ export type DocsCollabEditorProps = {
   canAddCommentFromSelection?: boolean;
   commentsDisabled?: boolean;
   commentsDisabledTitle?: string;
-  commentControlLabels?: Pick<
-    DocsUILabels,
-    | "commentsAddFromSelection"
-    | "commentsAddFromSelectionDisabledNoSelection"
-    | "commentsAddFromSelectionDisabledViewSource"
-    | "commentsAddFromSelectionDisabledReadOnly"
-  >;
+  commentControlLabels?: DocsCollabCommentControlLabels;
   commentsOverlay?: ReactNode;
   suggestionsOverlay?: ReactNode;
   /** Opens the Docs Drive image picker from slash + toolbar. */
