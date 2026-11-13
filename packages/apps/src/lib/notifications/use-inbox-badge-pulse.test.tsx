@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { useInboxBadgePulseAttr } from "./use-inbox-badge-pulse";
+import { useInboxBadgePulseAttr } from "@/lib/notifications/use-inbox-badge-pulse";
 
 function Probe({ nonce }: { nonce: number }) {
   const attr = useInboxBadgePulseAttr(nonce);
