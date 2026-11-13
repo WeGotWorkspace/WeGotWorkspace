@@ -16,6 +16,7 @@ import {
   ingestRemoteChatMessageDestroyed,
   reconcileMeetChatSnapshot,
 } from "@/lib/offline/meet-chat-jmap-inbound";
+import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { isChatChannelBackfilled } from "@/lib/offline/meet-chat-offline-store";
 
 /** Inbound `/changes` poll while push is down: chat cadence (Notes polls every 10 s). */
@@ -72,7 +73,12 @@ export function useMeetChatLiveInbound({
     if (!username || !enabled) return;
     if (typeof window === "undefined" || !wgwLiveApiEnabled()) return;
 
-    const ingested = (work: Promise<unknown>) => void work.then(() => latestPatch.current());
+    // This tab repaints; the others re-read the shared cache when told.
+    const ingested = (work: Promise<unknown>) =>
+      void work.then(() => {
+        notifyMeetChatCacheChanged(username);
+        return latestPatch.current();
+      });
     const next = new JmapChatAdapter({
       client: createMeetChatJmapClient(),
       onRemoteMessage: (message) =>
