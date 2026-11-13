@@ -8,7 +8,6 @@
     "calendar-core -> tasks-core": 2,
     "chat-ui -> docs-core": 1,
     "chat-ui -> text-editor-core": 2,
-    "drive-core -> docs-core": 2,
     "file-preview -> docs-core": 1,
     "lib -> collection-state": 1,
     "lib -> hooks": 4,
@@ -31,7 +30,6 @@
   },
   "twoWayPairs": [
     "calendar-core <-> tasks-core",
-    "docs-core <-> drive-core",
     "docs-core <-> file-preview",
     "docs-core <-> text-editor-core",
     "drive-core <-> text-editor-core",
