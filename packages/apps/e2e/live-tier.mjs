@@ -75,6 +75,7 @@ export const liveTierSpecs = [
   "notes-save-in-flight",
   "notes-sharee-star",
   "notes-undo-two-users",
+  "notifications-hidden-call",
   "notifications-inbox-push",
   "notifications-toast",
   "presence-offline-start",
