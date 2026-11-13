@@ -7,8 +7,8 @@ import {
   notificationInboxDomainLabel,
 } from "@/notifications-core/src/notification-inbox-row-meta";
 import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
-import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
+import { useInboxBadgePulseAttr } from "@/lib/notifications/use-inbox-badge-pulse";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "@/notifications-core/src/notification-inbox-tray.css";
