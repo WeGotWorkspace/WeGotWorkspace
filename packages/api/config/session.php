@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\HttpsDetection;
 use Illuminate\Support\Str;
 
 $sessionAppName = env('APP_NAME', 'laravel');
@@ -171,7 +172,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', HttpsDetection::isSecure()),
 
     /*
     |--------------------------------------------------------------------------
