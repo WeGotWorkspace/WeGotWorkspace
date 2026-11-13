@@ -14,7 +14,7 @@ import {
   listPendingNoteIds,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 

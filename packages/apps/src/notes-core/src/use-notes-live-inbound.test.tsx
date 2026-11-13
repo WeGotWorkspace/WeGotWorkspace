@@ -64,7 +64,7 @@ vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
   },
 }));
 
-vi.mock("@/lib/offline/notes-jmap-inbound", () => ({
+vi.mock("@/lib/offline/notes/notes-jmap-inbound", () => ({
   ingestRemoteNote: mocks.ingestRemoteNote,
   ingestRemoteNoteDestroyed: vi.fn(async () => "removed"),
   ingestRemoteNotebook: vi.fn(async () => undefined),
@@ -72,7 +72,7 @@ vi.mock("@/lib/offline/notes-jmap-inbound", () => ({
   reconcileNotesSnapshot: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   getNoteFromCache: mocks.getNoteFromCache,
   listNoteIdsBlockingSyncToken: vi.fn(async () => new Set()),
 }));

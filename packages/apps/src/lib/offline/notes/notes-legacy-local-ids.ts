@@ -4,7 +4,7 @@ import {
   enqueueCoalescedNoteUpdate,
   noteFromRow,
   noteRow,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { migrateNoteCollabRoom } from "@/lib/offline/notes/notes-collab-rooms";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 

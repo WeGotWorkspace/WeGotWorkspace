@@ -11,8 +11,11 @@ import {
   ingestRemoteNotebook,
   ingestRemoteNotebookDestroyed,
   reconcileNotesSnapshot,
-} from "@/lib/offline/notes-jmap-inbound";
-import { getNoteFromCache, listNoteIdsBlockingSyncToken } from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-jmap-inbound";
+import {
+  getNoteFromCache,
+  listNoteIdsBlockingSyncToken,
+} from "@/lib/offline/notes/notes-offline-store";
 import { noteBodyInRoom } from "@/notes-core/src/note-body-rooms";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 

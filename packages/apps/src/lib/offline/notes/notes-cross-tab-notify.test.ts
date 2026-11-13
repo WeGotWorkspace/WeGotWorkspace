@@ -3,11 +3,11 @@ import type { Note } from "@/lib/models/note";
 import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { notifyOtherTabsOnStructuralChanges } from "./notes-cross-tab-notify";
 
-vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
+vi.mock("@/lib/offline/notes/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
 }));
 
-import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes-bootstrap-sync";
+import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes/notes-bootstrap-sync";
 
 const saved = { id: "n1" } as Note;
 

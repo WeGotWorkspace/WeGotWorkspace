@@ -9,8 +9,8 @@ import {
   patchNote as patchVjournalNote,
 } from "@/lib/api/wgw/notes-vjournal";
 import { uploadNoteAttachmentImage } from "@/text-editor-core/docs-collab/docs-image-upload";
-import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
-import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes-bootstrap-sync";
+import { upsertNoteInCache } from "@/lib/offline/notes/notes-offline-store";
+import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes/notes-bootstrap-sync";
 
 /**
  * The note is saved on the server by now. A failed cache write must not count
