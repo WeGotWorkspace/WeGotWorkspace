@@ -201,6 +201,35 @@ describe("flushMeetChatOutbox", () => {
     expect(await listPendingChatMessageIds(username)).toEqual([]);
   });
 
+  it("records a refused send with its status and an unreadable row, and still sends the rows after them", async () => {
+    await enqueueChatSend(username, {
+      messageId: ULID_A,
+      channelId: "chat-general",
+      body: "refused",
+      parentId: null,
+    });
+    await enqueueChatEdit(username, { messageId: ULID_B, body: "unreadable" });
+    await enqueueChatReadMarker(username, {
+      channelId: "chat-general",
+      lastReadTs: "2026-01-01T00:00:00.000Z",
+      lastReadUid: ULID_B,
+    });
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const [, edit] = await listMeetChatOutbox(username);
+    await db.outbox.update(edit!.id, { payload: "{not json" });
+    vi.mocked(sendChatMessage).mockRejectedValue(new MeetChatRequestError("read-only", 403));
+
+    const result = await flushMeetChatOutbox(username);
+
+    expect(result).toEqual({ flushed: 1, failed: 2 });
+    expect(putChatReadMarker).toHaveBeenCalledTimes(1);
+    const queued = await listMeetChatOutbox(username);
+    expect(queued.map((row) => [row.op, row.lastStatus, row.retries])).toEqual([
+      ["send", 403, 1],
+      ["edit", undefined, 1],
+    ]);
+  });
+
   it("treats delete 404 as success (tombstone already gone)", async () => {
     await enqueueChatDelete(username, { messageId: ULID_A });
     vi.mocked(deleteChatMessage).mockRejectedValue(new MeetChatRequestError("gone", 404));
