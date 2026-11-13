@@ -8,11 +8,11 @@ import {
   readNotesBootstrapFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
-import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { flushNotesOutbox } from "@/lib/offline/notes/notes-outbox-flush";
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 
 const username = "bob";

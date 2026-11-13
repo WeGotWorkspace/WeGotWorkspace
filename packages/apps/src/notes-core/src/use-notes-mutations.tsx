@@ -35,7 +35,10 @@ import type { NoteMetadataField } from "@/lib/models/notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
-import { upsertNoteBodyPreviewInCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import {
+  upsertNoteBodyPreviewInCache,
+  upsertNoteInCache,
+} from "@/lib/offline/notes/notes-offline-store";
 import {
   completedRows,
   inverseTagDelta,

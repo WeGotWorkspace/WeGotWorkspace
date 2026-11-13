@@ -5,8 +5,8 @@ import { noteFromVjournal, type NotesVjournalNote } from "@/lib/api/wgw/notes-vj
 import {
   readNotesBootstrapFromCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
-import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
+} from "@/lib/offline/notes/notes-offline-store";
+import { syncNotesInboundFromRest } from "@/lib/offline/notes/notes-inbound-sync";
 
 vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/notes-vjournal")>();

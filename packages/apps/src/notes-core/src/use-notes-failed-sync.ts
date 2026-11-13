@@ -1,4 +1,4 @@
-import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
+import { listFailedNotesOutbox } from "@/lib/offline/notes/notes-offline-store";
 import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
 
 /**

@@ -3,7 +3,7 @@ import { Tag } from "lucide-react";
 import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
-import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { upsertNoteInCache } from "@/lib/offline/notes/notes-offline-store";
 import { normalizeTag } from "@/lib/models/note-tag";
 import { persistBestEffort } from "@/notes-core/src/notes-note-utils";
 import { completedRows, inverseTagDelta, sendTagDelta } from "@/notes-core/src/notes-undo-writes";

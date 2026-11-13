@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   reportNotesSyncConflicts,
   setNotesSyncConflictListener,
-} from "@/lib/offline/notes-sync-conflicts";
+} from "@/lib/offline/notes/notes-sync-conflicts";
 
 describe("notes sync conflicts", () => {
   it("reports note ids to the active listener", () => {

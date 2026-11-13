@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import type { Note } from "@/lib/models/note";
-import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { upsertNoteInCache } from "@/lib/offline/notes/notes-offline-store";
 import { uploadPendingNoteBodies } from "./notes-pending-bodies";
 
 const uploaded = vi.hoisted(() => vi.fn(async (_rooms: unknown[]) => undefined));

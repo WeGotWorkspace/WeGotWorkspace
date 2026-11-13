@@ -6,10 +6,10 @@ import {
   getNoteFromCache,
   listOutboxMutations,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
-import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
+import { createHybridNotesOperations } from "@/lib/offline/notes/notes-hybrid-operations";
 
 // #1711: an online edit made while the flush still sends this note's queued
 // save is merged into that save, not sent beside it.

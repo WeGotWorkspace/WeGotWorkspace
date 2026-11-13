@@ -26,21 +26,21 @@ vi.mock("@/lib/offline/offline-session", () => ({
   resolveNotesOfflineUsername: (sessionUsername?: string) => sessionUsername ?? USERNAME,
 }));
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   readNotesBootstrapFromCache: () => mockReadCache(),
   listNoteIdsBlockingSyncToken: async () => new Set<string>(),
 }));
 
-vi.mock("@/lib/offline/notes-hybrid-operations", () => ({
+vi.mock("@/lib/offline/notes/notes-hybrid-operations", () => ({
   createHybridNotesOperations: vi.fn(),
   getNotesSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/notes-inbound-sync", () => ({
+vi.mock("@/lib/offline/notes/notes-inbound-sync", () => ({
   syncNotesInboundFromRest: async () => ({ changed: false, usedFullResync: false }),
 }));
 
-vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
+vi.mock("@/lib/offline/notes/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
   subscribeNotesBootstrapUpdated: vi.fn(() => () => undefined),
 }));

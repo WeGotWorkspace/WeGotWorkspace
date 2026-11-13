@@ -42,7 +42,7 @@ import {
   type NotesUpsertPayload,
   upsertNoteInCache,
   upsertNotebookInCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {

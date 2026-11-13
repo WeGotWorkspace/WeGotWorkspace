@@ -8,7 +8,7 @@ import {
   isNotesNotebookHasContents,
 } from "@/lib/api/wgw/notes-vjournal";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import { readNotesBootstrapFromCache } from "@/lib/offline/notes/notes-offline-store";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { noteAfterNotebookMove } from "@/lib/models/note-list-model";

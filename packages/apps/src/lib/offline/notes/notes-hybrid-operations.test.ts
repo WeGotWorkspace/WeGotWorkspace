@@ -7,14 +7,14 @@ import {
   listOutboxMutations,
   readNotesBootstrapFromCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable, notesNotebooksTable } from "@/lib/offline/notes/notes-schema";
 import {
   createHybridNotesOperations,
   fetchNotesHybridBootstrap,
   NOTES_NOTEBOOK_OFFLINE_MESSAGE,
-} from "@/lib/offline/notes-hybrid-operations";
+} from "@/lib/offline/notes/notes-hybrid-operations";
 
 const username = "alice";
 
@@ -85,7 +85,7 @@ import {
   updateNoteItem,
 } from "@/lib/api/wgw/notes";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { getNoteFromCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { getNoteFromCache, upsertNoteInCache } from "@/lib/offline/notes/notes-offline-store";
 
 describe("createHybridNotesOperations", () => {
   beforeEach(async () => {

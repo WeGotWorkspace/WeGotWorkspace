@@ -8,18 +8,18 @@ import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridNotesOperations,
   getNotesSyncRunner,
-} from "@/lib/offline/notes-hybrid-operations";
+} from "@/lib/offline/notes/notes-hybrid-operations";
 import {
   notifyNotesBootstrapUpdated,
   subscribeNotesBootstrapUpdated,
-} from "@/lib/offline/notes-bootstrap-sync";
-import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
-import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-bootstrap-sync";
+import { syncNotesInboundFromRest } from "@/lib/offline/notes/notes-inbound-sync";
+import { readNotesBootstrapFromCache } from "@/lib/offline/notes/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
 } from "@/lib/offline/offline-session";
-import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts";
+import { setNotesSyncConflictListener } from "@/lib/offline/notes/notes-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
