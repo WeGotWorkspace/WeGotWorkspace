@@ -61,6 +61,7 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
 import {
   MeetChatRequestError,
   deleteChatChannel,
+  deleteChatMessage,
   openChatDm,
   patchChatChannel,
   patchChatMessage,
@@ -228,6 +229,45 @@ describe("createHybridMeetChatOperations", () => {
 
     expect(await listMeetChatOutbox(username)).toHaveLength(0);
     expect(await getCachedChatMessage(username, optimistic.id)).toBeUndefined();
+  });
+
+  describe("a message whose send is still queued, once back online", () => {
+    async function queuedSend() {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+      const operations = createHybridMeetChatOperations(username, author);
+      const optimistic = await operations.sendMessage!("chat-general", "not sent yet");
+      vi.mocked(readBrowserOnline).mockReturnValue(true);
+      return { operations, id: optimistic.id };
+    }
+
+    it("deletes it locally: the server never had it, and the queued send is dropped", async () => {
+      const { operations, id } = await queuedSend();
+      await operations.deleteMessage!(id);
+
+      expect(deleteChatMessage).not.toHaveBeenCalled();
+      expect(await listMeetChatOutbox(username)).toHaveLength(0);
+      expect(await getCachedChatMessage(username, id)).toBeUndefined();
+    });
+
+    it("merges an edit into the queued send instead of patching a message the server lacks", async () => {
+      const { operations, id } = await queuedSend();
+      const edited = await operations.editMessage!(id, "fixed typo");
+
+      expect(patchChatMessage).not.toHaveBeenCalled();
+      expect(edited.syncState).toBe("pending");
+      const outbox = await listMeetChatOutbox(username);
+      expect(outbox.map((row) => row.op)).toEqual(["send"]);
+      expect((JSON.parse(outbox[0]!.payload) as MeetChatSendOutboxPayload).body).toBe("fixed typo");
+    });
+
+    it("queues a reaction behind the send instead of dropping the message", async () => {
+      const { operations, id } = await queuedSend();
+      await operations.react!(id, "👍");
+
+      expect(toggleChatReaction).not.toHaveBeenCalled();
+      expect((await listMeetChatOutbox(username)).map((row) => row.op)).toEqual(["send", "react"]);
+      expect(await getCachedChatMessage(username, id)).toBeDefined();
+    });
   });
 
   it("tombstones a synced message offline and queues the delete", async () => {
