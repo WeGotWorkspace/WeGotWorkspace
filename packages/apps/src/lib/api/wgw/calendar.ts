@@ -113,23 +113,24 @@ export async function fetchCalendarBootstrapForClient(
   session: CalendarAppBootstrap["session"] | Promise<CalendarAppBootstrap["session"]>,
   window: CalendarUtcRange = calendarBootstrapWindow(),
 ): Promise<CalendarAppBootstrap> {
-  const [resolvedSession, [calendarGet, events], groups] = await Promise.all([
-    session,
-    connectedCalendars(client).then(({ calendars, accountId }) =>
-      Promise.all([
-        calendars.getCalendars(accountId),
-        calendars.getCalendarEventsInRange(accountId, window),
-      ]),
-    ),
-    loadCalendarDirectoryGroups(),
-  ]);
+  const calendarsAndEvents = connectedCalendars(client).then(({ calendars, accountId }) =>
+    Promise.all([
+      calendars.getCalendars(accountId),
+      calendars.getCalendarEventsInRange(accountId, window),
+    ]),
+  );
+  const groups = loadCalendarDirectoryGroups();
+  // Awaited after the session, so a failing session still surfaces as the error.
+  calendarsAndEvents.catch(() => undefined);
+  const resolvedSession = await session;
+  const [calendarGet, events] = await calendarsAndEvents;
 
   return {
     session: resolvedSession,
     data: {
       calendars: calendarGet.list.map(toCalendarInfo),
       events: events.list,
-      groups,
+      groups: await groups,
     },
   };
 }
