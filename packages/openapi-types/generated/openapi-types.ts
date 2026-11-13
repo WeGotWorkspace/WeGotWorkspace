@@ -9242,9 +9242,13 @@ export interface components {
             displayName: string;
             email: string;
         };
+        /** @description A Team the caller belongs to. */
         SettingsUserGroup: {
+            /** @description Group principal uri (principals/groups/…). */
             id: string;
             displayName: string;
+            /** @description How many members the Team has, the caller included. */
+            memberCount: number;
         };
         SettingsUserGroupList: components["schemas"]["SettingsUserGroup"][];
         SettingsStateResponse: {

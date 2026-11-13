@@ -1344,17 +1344,25 @@
             },
             "SettingsUserGroup": {
                 "type": "object",
+                "description": "A Team the caller belongs to.",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Group principal uri (principals/groups/…)."
                     },
                     "displayName": {
                         "type": "string"
+                    },
+                    "memberCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "How many members the Team has, the caller included."
                     }
                 },
                 "required": [
                     "id",
-                    "displayName"
+                    "displayName",
+                    "memberCount"
                 ]
             },
             "SettingsUserGroupList": {
