@@ -11,6 +11,8 @@ import {
   type DocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
 import { collabChannelParts } from "@/text-editor-core/docs-collab/docs-collab-channel";
+import { DocsCollabReuseLiveness } from "@/text-editor-core/docs-collab/docs-collab-reuse-liveness";
+import { DocsCollabReuseRosterWait } from "@/text-editor-core/docs-collab/docs-collab-reuse-roster-wait";
 import {
   collabRoomKey,
   verifyCollabTicket,
@@ -23,11 +25,6 @@ import type {
 
 /** Wait for an `ack` before falling back to a fresh collab ICE handshake. */
 export const COLLAB_REUSE_ACK_TIMEOUT_MS = 1500;
-
-/** Hold a signed ticket this long while the roster poll catches up. Stays under the ack timeout. */
-export const COLLAB_REUSE_ROSTER_WAIT_MS = 1_000;
-
-const MAX_ROSTER_WAITERS = 8;
 
 /** Defer fresh ICE while a principal is connecting, then open collab after this deadline. */
 export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS = 400;
@@ -85,6 +82,8 @@ export type DocsCollabPrincipalReusePorts = {
   /** Clock for ticket expiry. Tests pin it; production uses the wall clock. */
   nowSeconds?: () => number;
   ackTimeoutMs?: number;
+  /** Silence after attach that replaces a reused link with fresh ICE. */
+  silentLinkMs?: number;
   principalConnectDeferMs?: number;
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
@@ -124,7 +123,9 @@ export class DocsCollabPrincipalReuse {
   /** Stale collab peer ids superseded by principal reuse for the same username. */
   private readonly supersededCollabPeerIds = new Set<string>();
 
-  private readonly rosterWaiters = new Map<string, Array<(ok: boolean) => void>>();
+  private readonly rosterWait: DocsCollabReuseRosterWait;
+
+  private readonly liveness: DocsCollabReuseLiveness;
 
   private disposed = false;
 
@@ -145,6 +146,17 @@ export class DocsCollabPrincipalReuse {
     this.scheduleTimeout = ports.setTimeoutFn ?? setTimeout.bind(globalThis);
     this.cancelTimeout = ports.clearTimeoutFn ?? clearTimeout.bind(globalThis);
     this.resolveTicketKey = ports.resolveTicketKey ?? (async () => null);
+    const timers = { setTimeoutFn: this.scheduleTimeout, clearTimeoutFn: this.cancelTimeout };
+    this.rosterWait = new DocsCollabReuseRosterWait({
+      ...timers,
+      isRostered: (id) => this.trust.isRosteredPeerId(id),
+      requestRosterRefresh: ports.requestRosterRefresh,
+    });
+    this.liveness = new DocsCollabReuseLiveness({
+      ...timers,
+      timeoutMs: ports.silentLinkMs,
+      onSilent: (id) => this.replaceSilentLink(id),
+    });
     this.unsubscribe = this.registry.subscribe((username, principalPeerId, envelope) => {
       if (envelope.room !== this.room) return;
       return this.onEnvelope(username, principalPeerId, envelope);
@@ -170,7 +182,7 @@ export class DocsCollabPrincipalReuse {
   considerRoster(peers: RtcPeerDescriptor[], myId: string | null): void {
     this.lastRosterPeers = peers;
     this.trust.remember(peers, myId);
-    this.flushRosterWaiters();
+    this.rosterWait.flush();
     this.dropUnrosteredPeers();
     this.dropDeadPrincipalLinks();
     this.dropReuseForMultiPeerUsers();
@@ -210,25 +222,22 @@ export class DocsCollabPrincipalReuse {
     if (nowMs - (this.reopenSentAt.get(fromPeerId) ?? 0) < COLLAB_REUSE_REOPEN_GAP_MS) return;
     this.reopenSentAt.set(fromPeerId, nowMs);
     this.log("reuse-reopen", { remoteId: fromPeerId, username: entry.username });
-    this.registry.sendToPrincipalPeer(entry.principalPeerId, this.handshakeEnvelope("open", myId));
+    this.sendOnLink(entry.principalPeerId, entry.username, this.handshakeEnvelope("open", myId));
   }
 
   sendTo(collabPeerId: string, msg: unknown): boolean {
     const entry = this.reused.get(collabPeerId);
     if (!entry) return false;
     const wire = collabChannelParts(msg);
-    return this.registry.sendToPrincipalPeer(
-      entry.principalPeerId,
-      this.dataEnvelope(wire.header),
-      wire.bytes,
-    );
+    const envelope = this.dataEnvelope(wire.header);
+    return this.sendOnLink(entry.principalPeerId, entry.username, envelope, wire.bytes);
   }
 
   broadcast(msg: unknown): void {
     const wire = collabChannelParts(msg);
     const envelope = this.dataEnvelope(wire.header);
     for (const entry of this.reused.values()) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope, wire.bytes);
+      this.sendOnLink(entry.principalPeerId, entry.username, envelope, wire.bytes);
     }
   }
 
@@ -259,23 +268,21 @@ export class DocsCollabPrincipalReuse {
     const entry = this.reused.get(collabPeerId);
     if (!entry) return;
     this.reused.delete(collabPeerId);
-    if (sendClose) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, this.closeEnvelope());
-    }
+    if (sendClose) this.sendOnLink(entry.principalPeerId, entry.username, this.closeEnvelope());
     this.ports.onReuseFallback?.(collabPeerId);
     this.ports.onLinkChange();
   }
 
   dispose(): void {
     this.disposed = true;
-    for (const list of this.rosterWaiters.values()) for (const finish of list) finish(false);
-    this.rosterWaiters.clear();
+    this.rosterWait.dispose();
+    this.liveness.dispose();
     for (const pending of this.pending.values()) this.cancelTimeout(pending.timer);
     this.pending.clear();
     for (const deferred of this.deferredFreshIce.values()) this.cancelTimeout(deferred.timer);
     this.deferredFreshIce.clear();
     for (const entry of [...this.reused.values()]) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, this.closeEnvelope());
+      this.sendOnLink(entry.principalPeerId, entry.username, this.closeEnvelope());
     }
     this.reused.clear();
     this.unsubscribe();
@@ -360,7 +367,7 @@ export class DocsCollabPrincipalReuse {
       this.logMiss(collabPeerId, "ticket-rejected", fromUsername);
       return null;
     }
-    if (!(await this.waitForRosteredPeer(collabPeerId))) {
+    if (!(await this.rosterWait.wait(collabPeerId))) {
       this.logMiss(collabPeerId, "ticket-peer-not-rostered", fromUsername);
       return null;
     }
@@ -501,7 +508,7 @@ export class DocsCollabPrincipalReuse {
       if (!this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open")) return;
       const myId = this.ports.getMyCollabPeerId();
       if (!myId) return;
-      this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
+      this.sendOnLink(fromPrincipalPeerId, fromUsername, this.handshakeEnvelope("ack", myId));
       return;
     }
     if (envelope.op === "ack") {
@@ -535,7 +542,7 @@ export class DocsCollabPrincipalReuse {
       if (!this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open")) return;
       const myId = this.ports.getMyCollabPeerId();
       if (!myId) return;
-      this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
+      this.sendOnLink(fromPrincipalPeerId, fromUsername, this.handshakeEnvelope("ack", myId));
       return;
     }
     if (envelope.op === "ack") {
@@ -578,6 +585,7 @@ export class DocsCollabPrincipalReuse {
     fromUsername: string,
     access: DocsCollabAccess,
   ): void {
+    this.liveness.heard(from);
     this.ports.onMessage({
       ...(payload as DocsCollabMeshMessage),
       from,
@@ -616,11 +624,40 @@ export class DocsCollabPrincipalReuse {
     });
     if (wasNew) {
       this.log("dc-open", { remoteId: collabPeerId, username: fromUsername, reused: true, via });
+      this.liveness.arm(collabPeerId);
       this.ports.onDcOpen(collabPeerId);
     }
     this.ports.onReuseAttached?.(collabPeerId);
     this.ports.onLinkChange();
     return true;
+  }
+
+  /**
+   * Send on the link the peer used. When this tab does not hold that link (the
+   * two sides picked different Team rooms), any link to that user carries it:
+   * the receiver matches reuse by username, not by link (#2061).
+   */
+  private sendOnLink(
+    principalPeerId: string,
+    username: string,
+    envelope: CollabReuseEnvelope,
+    bytes?: Uint8Array,
+  ): boolean {
+    if (this.registry.sendToPrincipalPeer(principalPeerId, envelope, bytes)) return true;
+    return this.registry.sendToUsername(username, envelope, bytes) > 0;
+  }
+
+  /** Nothing arrived since attach: leave reuse for this peer and dial fresh ICE (#2061). */
+  private replaceSilentLink(collabPeerId: string): void {
+    const entry = this.reused.get(collabPeerId);
+    if (!entry || this.disposed) return;
+    this.log("reuse-miss", {
+      remoteId: collabPeerId,
+      username: entry.username,
+      reason: "silent-link",
+    });
+    this.failedUsernames.add(entry.username);
+    this.dropPeer(collabPeerId, true);
   }
 
   private dataEnvelope(payload: unknown): CollabReuseEnvelope {
@@ -679,44 +716,6 @@ export class DocsCollabPrincipalReuse {
     if (!deferred) return;
     this.cancelTimeout(deferred.timer);
     this.deferredFreshIce.delete(username);
-  }
-
-  private waitForRosteredPeer(collabPeerId: string): Promise<boolean> {
-    if (this.disposed) return Promise.resolve(false);
-    if (this.trust.isRosteredPeerId(collabPeerId)) return Promise.resolve(true);
-    if (!this.rosterWaiters.has(collabPeerId) && this.rosterWaiters.size >= MAX_ROSTER_WAITERS) {
-      return Promise.resolve(false);
-    }
-    this.ports.requestRosterRefresh?.();
-    return new Promise<boolean>((resolve) => {
-      let settled = false;
-      const finish = (ok: boolean) => {
-        if (settled) return;
-        settled = true;
-        this.cancelTimeout(timer);
-        resolve(ok);
-      };
-      const timer = this.scheduleTimeout(() => {
-        const list = this.rosterWaiters.get(collabPeerId);
-        if (list) {
-          const rest = list.filter((fn) => fn !== finish);
-          if (rest.length > 0) this.rosterWaiters.set(collabPeerId, rest);
-          else this.rosterWaiters.delete(collabPeerId);
-        }
-        finish(false);
-      }, COLLAB_REUSE_ROSTER_WAIT_MS);
-      const list = this.rosterWaiters.get(collabPeerId) ?? [];
-      list.push(finish);
-      this.rosterWaiters.set(collabPeerId, list);
-    });
-  }
-
-  private flushRosterWaiters(): void {
-    for (const [id, list] of [...this.rosterWaiters]) {
-      if (!this.trust.isRosteredPeerId(id)) continue;
-      this.rosterWaiters.delete(id);
-      for (const finish of list) finish(true);
-    }
   }
 
   /** A username with two collab peers cannot share one principal link. */
