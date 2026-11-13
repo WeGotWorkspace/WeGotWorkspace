@@ -1,5 +1,5 @@
-import { sanitizeNotificationNavigate } from "@/notifications-core/src/notification-click-navigate";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import { sanitizeNotificationNavigate } from "@/lib/notifications/notification-click-navigate";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /**
  * Normalize an inbox / consume navigate path for equality: strip trailing slash,

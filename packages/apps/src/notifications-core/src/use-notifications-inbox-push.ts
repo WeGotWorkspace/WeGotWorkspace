@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import { defaultInboxFanOut, isOlderInboxState } from "@/notifications-core/src/inbox-fan-out";
-import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxList } from "@/lib/models/notifications-types";
 
 const PUSH_TYPES = ["Notification"] as const;
 const NO_TYPES: readonly string[] = [];

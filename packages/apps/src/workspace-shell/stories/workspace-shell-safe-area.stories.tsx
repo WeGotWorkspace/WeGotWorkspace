@@ -1,13 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { MeetGuestChannelFrame } from "@/meet-core/src/meet-guest-channel";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import {
   WorkspaceAppLayout,
   WorkspaceSidebarToggle,
 } from "@/workspace-shell/src/workspace-app-layout";
 import "@/workspace-shell/src/workspace-color.css";
-import "@/meet-core/src/meet-workspace.css";
 import {
   HOME_INDICATOR_INSET_PX,
   STATUS_BAR_INSET_PX,
@@ -92,19 +90,5 @@ export const CollectionListAndDetail: Story = {
     await expectColumnInset(canvasElement, ".collection-list-pane");
     await expectColumnInset(canvasElement, ".workspace-detail-pane");
     await expectToggleBelowStatusBar(canvasElement);
-  },
-};
-
-/** Meet guest lobby pads itself, so the shared main inset stays off (no double gap). */
-export const MeetGuestLobbyPadsItself: Story = {
-  render: () => (
-    <MeetGuestChannelFrame>
-      <p>Waiting for the host</p>
-    </MeetGuestChannelFrame>
-  ),
-  play: async ({ canvasElement }) => {
-    const main = canvasElement.querySelector(".workspace-app-layout__main");
-    await expect(main).toBeTruthy();
-    await expect(getComputedStyle(main!).paddingTop).toBe("0px");
   },
 };

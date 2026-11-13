@@ -1,5 +1,5 @@
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
-import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxList } from "@/lib/models/notifications-types";
 import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 
 export async function listNotifications(opts?: {

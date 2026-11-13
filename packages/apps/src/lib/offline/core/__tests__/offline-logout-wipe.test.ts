@@ -19,7 +19,7 @@ import {
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
-import { readPushScopes, rememberPushScope } from "@/notifications-core/src/push-scope";
+import { readPushScopes, rememberPushScope } from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
