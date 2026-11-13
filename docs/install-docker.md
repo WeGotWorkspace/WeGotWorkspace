@@ -37,7 +37,7 @@ Then open:
 http://localhost:8080/install/
 ```
 
-Default host port is **8080** (`WGW_HTTP_PORT`).
+Default host port is **8080** (`WGW_HTTP_PORT`). It listens on `127.0.0.1` only, so the installer and plain http are not reachable from the network: put the [TLS proxy](#tls-https) in front, or set `WGW_HTTP_BIND=0.0.0.0` in `.env` to publish the port on every interface on purpose. Docker's published ports go around host firewalls such as ufw.
 
 ### MySQL first-run defaults
 
@@ -157,6 +157,7 @@ bash tools/setup-docker-install.sh --local
 | `COMPOSE_PROFILES` | `mysql` | `mysql` = web + MariaDB; `sqlite` = web only |
 | `WGW_IMAGE` | pinned at install time | GHCR image tag |
 | `WGW_HTTP_PORT` | `8080` | Host port mapped to container HTTP :80 |
+| `WGW_HTTP_BIND` | `127.0.0.1` | Host address that port listens on; `0.0.0.0` for every interface |
 | `WGW_WAIT_FOR_DB` | `1` | Entrypoint/migrator wait for MySQL before proceeding |
 | `WGW_DB_HOST` | `db` | MySQL hostname (Compose service name) |
 | `WGW_DB_PORT` | `3306` | MySQL port |
