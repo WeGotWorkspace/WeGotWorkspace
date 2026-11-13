@@ -1,9 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import {
-  CONTACT_CHANNEL_DEFAULT_CONTEXT,
-  newContactMapId,
-  type ContactEditDraft,
-} from "@/contacts-core/src/contacts-edit-utils";
+import { CONTACT_CHANNEL_DEFAULT_CONTEXT } from "@/contacts-core/src/contacts-edit-utils";
+import { newContactMapId, type ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 
 type RowList = "phones" | "emails" | "urls" | "addresses";
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/lib/models/contacts-types";
-import { rebaseContactDraft } from "./contacts-draft-rows";
-import { contactCardToEditDraft, editDraftToPatch } from "./contacts-edit-utils";
+import { rebaseContactDraft } from "@/contacts-core/src/contacts-draft-rows";
+import { contactCardToEditDraft, editDraftToPatch } from "@/lib/models/contacts-edit-draft";
 
 function cardWith(fields: Record<string, unknown>): ContactCard {
   return {

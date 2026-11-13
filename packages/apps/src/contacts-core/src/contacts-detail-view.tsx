@@ -44,15 +44,15 @@ import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
 import type { ContactCard } from "@/lib/models/contacts-types";
+import { emptyContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
 import {
   contactCardToEditDraft,
-  emptyContactEditDraft,
   type ContactAddressDraft,
   type ContactChannelContext,
   type ContactEditDraft,
   type ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+} from "@/lib/models/contacts-edit-draft";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";

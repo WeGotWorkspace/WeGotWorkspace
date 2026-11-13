@@ -12,10 +12,10 @@ import {
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { afterViewTransition } from "@/lib/view-transition";
 import {
-  contactDisplayName,
   filterCardsBySearch,
   sortContactCardsForList,
 } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   canWriteContactGroup,
@@ -41,17 +41,19 @@ import {
 import {
   CONTACTS_CREATE_ID,
   canCreateContactInView,
-  contactCardToEditDraft,
   contactEditDraftHasContent,
   editDraftToCreateBody,
   emptyContactEditDraft,
-  newContactMapId,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
+} from "@/contacts-core/src/contacts-edit-utils";
+import {
+  contactCardToEditDraft,
+  newContactMapId,
   type ContactChannelContext,
   type ContactPhoneType,
   type ContactEditDraft,
-} from "@/contacts-core/src/contacts-edit-utils";
+} from "@/lib/models/contacts-edit-draft";
 import type {
   ContactCard,
   ContactCardCreate,
@@ -79,7 +81,7 @@ import {
   downloadContactVCard,
   downloadMultipleContactsVCard,
   vcardFilename,
-} from "@/contacts-core/src/contacts-vcard-export";
+} from "@/lib/models/contacts-vcard-export";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
 import {
   cardCreateWrite,
