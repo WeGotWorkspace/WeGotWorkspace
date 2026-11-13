@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthenticationPage } from "@/authentication-page/src/authentication-page";
 import { Button } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";

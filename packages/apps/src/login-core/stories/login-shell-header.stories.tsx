@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WorkspaceShellHeader } from "@/workspace-shell/src/workspace-shell-header";
-import "@/login-core/src/login-screen.css";
+import "@/authentication-page/src/login-screen.css";
 
 /** The shared shell header on the login screen (moved from the Shell Header stories, #1638). */
 const meta = {
