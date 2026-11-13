@@ -5,7 +5,7 @@ import { registerMeshCheckNowPort } from "@/lib/jmap-client/push/mesh-check-now"
 import {
   upsertCalendarEventInCache,
   upsertCalendarInCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import {
   cachedCollectionAudience,
   cachedItemAudience,

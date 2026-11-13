@@ -1,6 +1,6 @@
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
-import { createHybridContactsOperations } from "@/lib/offline/contacts-hybrid-operations";
+import { createHybridContactsOperations } from "@/lib/offline/contacts/contacts-hybrid-operations";
 import {
   readContactsBootstrapFromCache,
   readSyncToken,
@@ -8,7 +8,7 @@ import {
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
   writeSyncToken,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 
 /**

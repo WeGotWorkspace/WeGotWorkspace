@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listCards } from "@/lib/api/wgw/contacts";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts-offline-store";
+import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarContactInviteesState = {

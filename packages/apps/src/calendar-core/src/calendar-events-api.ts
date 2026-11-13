@@ -10,7 +10,7 @@ import {
   type EventOperation,
 } from "@/lib/calendar-engine";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
-import { createTempCalendarEventId } from "@/lib/offline/calendars-offline-store";
+import { createTempCalendarEventId } from "@/lib/offline/calendars/calendars-offline-store";
 import {
   engineEventToForm,
   formToDraft,

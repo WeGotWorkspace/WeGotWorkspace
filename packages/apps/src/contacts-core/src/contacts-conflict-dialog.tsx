@@ -3,7 +3,7 @@ import {
   type SyncConflictDialogProps,
 } from "@/dialogs/src/sync-conflict-dialog";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactConflictFieldKey } from "@/lib/offline/contacts-conflict-merge";
+import type { ContactConflictFieldKey } from "@/lib/offline/contacts/contacts-conflict-merge";
 
 export type ContactsConflictDialogProps = Omit<
   SyncConflictDialogProps<ContactConflictFieldKey>,

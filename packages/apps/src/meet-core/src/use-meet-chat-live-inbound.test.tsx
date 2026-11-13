@@ -79,7 +79,7 @@ vi.mock("@/lib/api/wgw/jmap-push", () => ({
   },
 }));
 
-vi.mock("@/lib/offline/meet-chat-jmap-inbound", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-jmap-inbound", () => ({
   ingestRemoteChatMessage: mocks.ingestRemoteChatMessage,
   ingestRemoteChatMessageDestroyed: mocks.ingestRemoteChatMessageDestroyed,
   ingestRemoteChatChannel: vi.fn(async () => undefined),
@@ -87,11 +87,11 @@ vi.mock("@/lib/offline/meet-chat-jmap-inbound", () => ({
   reconcileMeetChatSnapshot: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/lib/offline/meet-chat-offline-store", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-offline-store", () => ({
   isChatChannelBackfilled: vi.fn(async () => true),
 }));
 
-vi.mock("@/lib/offline/meet-chat-inbound-sync", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-inbound-sync", () => ({
   backfillChatChannelHistory: vi.fn(async () => undefined),
 }));
 

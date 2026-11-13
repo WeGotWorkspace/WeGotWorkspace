@@ -9,11 +9,11 @@
  * dropped. Every successful write also sends the channel's members a
  * content-free `check-now`, so their push hub asks the server at once (#1662).
  */
-import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat-jmap-inbound";
+import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import {
   getCachedChatMessage,
   upsertChatMessageInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import {
   acceptMeetMeshSender,
   applyMeetMeshChatMessage,

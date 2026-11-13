@@ -60,6 +60,7 @@ export const liveTierSpecs = [
   "meet-guest-video-mirror",
   "meet-mesh-channel-roster",
   "meet-opus-dtx",
+  "meet-video-mirror",
   "mesh-check-now",
   "notes-collab-access-lost",
   "notes-collab-missed-tail",
