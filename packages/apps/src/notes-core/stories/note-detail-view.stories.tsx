@@ -4,7 +4,7 @@ import { Star } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DocsCollabPresenceChrome } from "@/text-editor-core/docs-collab/docs-collab-presence-chrome";
 import { TooltipProvider } from "@/ui/tooltip";
-import { NoteDetailView } from "../src/note-detail-view";
+import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotesDetailLastEdited } from "@/notes-core/src/notes-detail-last-edited";
 
 import "@/notes-core/src/notes-workspace.css";

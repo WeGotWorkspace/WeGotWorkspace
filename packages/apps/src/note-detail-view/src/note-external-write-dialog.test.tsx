@@ -1,15 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { defaultNotesLabels } from "./notes-labels";
-import { NotesExternalWriteDialog } from "./notes-external-write-dialog";
+import { defaultNoteBodyLabels } from "./note-body-labels";
+import { NoteExternalWriteDialog } from "./note-external-write-dialog";
 
-describe("NotesExternalWriteDialog", () => {
+describe("NoteExternalWriteDialog", () => {
   it("tells the person the note changed outside the app", () => {
     render(
-      <NotesExternalWriteDialog
+      <NoteExternalWriteDialog
         open
         noteTitle="Shopping"
-        labels={defaultNotesLabels}
+        labels={defaultNoteBodyLabels}
         onKeepLocal={() => undefined}
         onUseOutside={() => undefined}
       />,
