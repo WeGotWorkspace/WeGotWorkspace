@@ -7,6 +7,44 @@ import {
 
 /** Marks the spacer elements among the rows, so measuring can skip them. */
 export const WORKSPACE_LIST_SPACER_ATTR = "data-workspace-list-spacer";
+/** Marks a section wrapper (`renderSection`): its children are rows, its first one the header. */
+export const WORKSPACE_LIST_SECTION_ATTR = "data-workspace-list-section";
+
+function isSection(element: Element): boolean {
+  return element.hasAttribute(WORKSPACE_LIST_SECTION_ATTR);
+}
+
+/** Rows and spacers in item order, looking inside section wrappers. */
+export function listRowElements(container: HTMLElement): HTMLElement[] {
+  const elements: HTMLElement[] = [];
+  for (const child of Array.from(container.children)) {
+    if (!(child instanceof HTMLElement)) continue;
+    if (!isSection(child)) {
+      elements.push(child);
+      continue;
+    }
+    for (const row of Array.from(child.children)) {
+      if (row instanceof HTMLElement) elements.push(row);
+    }
+  }
+  return elements;
+}
+
+function isSpacer(element: Element): boolean {
+  return element.hasAttribute(WORKSPACE_LIST_SPACER_ATTR);
+}
+
+/**
+ * Where an element sits without sticky offsets or transforms. A section's header
+ * is sticky, and a stuck element reports where it is stuck: its natural top is
+ * its section's top.
+ */
+function naturalTop(element: HTMLElement): number {
+  const parent = element.parentElement;
+  if (!parent || !isSection(parent)) return element.offsetTop;
+  if (element === parent.firstElementChild) return parent.offsetTop;
+  return element.offsetParent === parent ? parent.offsetTop + element.offsetTop : element.offsetTop;
+}
 
 /**
  * Rounding in `offsetTop` moves a row's pitch by a pixel when the rows above it
@@ -89,20 +127,21 @@ export function useMeasureMountedRows({
     const container = listRowsContainer(listNode);
     if (!container) return;
     const { renderedIndexes, keys, estimates, offsets, scroller } = latest.current;
-    const rows = Array.from(container.children).filter(
-      (child): child is HTMLElement =>
-        child instanceof HTMLElement && !child.hasAttribute(WORKSPACE_LIST_SPACER_ATTR),
-    );
+    const elements = listRowElements(container);
+    const rows = elements.filter((element) => !isSpacer(element));
     // A binding that renders more than one root element per row cannot be measured.
     if (rows.length !== renderedIndexes.length) return;
     const viewTop = scroller ? readListScrollPosition(scroller, container).top : 0;
     let changed = false;
     let shiftAbove = 0;
-    rows.forEach((row, position) => {
+    let position = 0;
+    elements.forEach((row, at) => {
+      if (isSpacer(row)) return;
       const index = renderedIndexes[position]!;
+      position += 1;
       const key = keys[index]!;
-      const next = row.nextElementSibling as HTMLElement | null;
-      const size = next ? next.offsetTop - row.offsetTop : row.offsetHeight;
+      const next = elements[at + 1];
+      const size = next ? naturalTop(next) - naturalTop(row) : row.offsetHeight;
       if (size <= 0) return;
       const known = measuredRef.current.get(key);
       const current = offsets[index + 1]! - offsets[index]!;
@@ -138,10 +177,8 @@ export function useMeasureMountedRows({
     const observed = observerRef.current;
     const container = listRowsContainer(listNode);
     if (!observed || !container) return;
-    const rows = new Set(
-      Array.from(container.children).filter(
-        (child) => !child.hasAttribute(WORKSPACE_LIST_SPACER_ATTR),
-      ),
+    const rows = new Set<Element>(
+      listRowElements(container).filter((element) => !isSpacer(element)),
     );
     for (const row of observed.rows) {
       if (!rows.has(row)) observed.observer.unobserve(row);

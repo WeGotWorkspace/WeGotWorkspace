@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { ListItem } from "@/list-item/src/list-item";
 import { WorkspaceList } from "./workspace-list";
 import { workspaceListRowPropsEqual } from "./workspace-list-row-props";
+import { installListLayoutStubs } from "./workspace-list-test-layout";
 
 type Item = { id: string; title: string };
 
@@ -53,35 +54,10 @@ function mountedIds(container: HTMLElement): string[] {
   );
 }
 
-let scrollTops = new WeakMap<Element, number>();
-
 beforeEach(() => {
   renders.length = 0;
-  scrollTops = new WeakMap();
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
-  // jsdom has no layout: the scroller reports a viewport, and keeps its scrollTop.
-  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (
-    this: HTMLElement,
-  ) {
-    return this.hasAttribute("data-test-viewport") ? VIEWPORT_PX : 0;
-  });
-  vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(function (this: Element) {
-    return scrollTops.get(this) ?? 0;
-  });
-  vi.spyOn(Element.prototype, "scrollTop", "set").mockImplementation(function (
-    this: Element,
-    value: number,
-  ) {
-    scrollTops.set(this, value);
-  });
-  // An element's top moves up by how far its scrolling ancestors have scrolled.
-  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-    let top = 0;
-    for (let node = this.parentElement; node; node = node.parentElement) {
-      top -= scrollTops.get(node) ?? 0;
-    }
-    return { top, bottom: top, left: 0, right: 0, width: 0, height: 0, x: 0, y: top } as DOMRect;
-  });
+  installListLayoutStubs(VIEWPORT_PX);
 });
 
 afterEach(() => {
@@ -257,5 +233,88 @@ describe("WorkspaceList", () => {
     next[5] = { id: "i-5", title: "Edited" };
     rerender(view(next));
     expect(renders).toEqual(["i-5"]);
+  });
+});
+
+describe("WorkspaceList sections", () => {
+  /** 300 rows with a header every 20: `h-0`, `i-1` … `i-19`, `h-20`, … */
+  const items = makeItems(300).map((item, index) =>
+    index % 20 === 0 ? { id: `h-${index}`, title: `Header ${index}` } : item,
+  );
+  const isHeader = (item: Item) => item.id.startsWith("h-");
+  const renderRow = (item: Item) =>
+    isHeader(item) ? <h3 id={item.id}>{item.title}</h3> : <Row item={item} />;
+  const renderSection = (header: Item, content: ReactNode[]) => (
+    <section aria-labelledby={header.id}>{content}</section>
+  );
+
+  beforeEach(() => {
+    if (typeof Element.prototype.scrollIntoView !== "function") {
+      Element.prototype.scrollIntoView = () => undefined;
+    }
+  });
+
+  function view(activeId: string) {
+    return (
+      <Scroller>
+        <WorkspaceList
+          items={items}
+          getKey={getKey}
+          renderItem={renderRow}
+          estimateSize={estimateSize}
+          isHeader={isHeader}
+          renderSection={renderSection}
+          revealActive
+          activeId={activeId}
+          isTouch={false}
+        />
+      </Scroller>
+    );
+  }
+
+  function scrollTo(scroller: HTMLElement, top: number) {
+    act(() => {
+      scroller.scrollTop = top;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+  }
+
+  it("wraps each section's mounted rows in its own section, header first", () => {
+    const { getByTestId } = render(view("i-250"));
+    const scroller = getByTestId("scroller");
+    scrollTo(scroller, ROW_PX * 110);
+
+    const sections = Array.from(scroller.querySelectorAll("section"));
+    // Rows 105–120: the window starts mid-section (its header stays), then the open row's.
+    expect(sections.map((section) => section.getAttribute("aria-labelledby"))).toEqual([
+      "h-100",
+      "h-120",
+      "h-240",
+    ]);
+    for (const section of sections) {
+      expect(section.firstElementChild?.id).toBe(section.getAttribute("aria-labelledby"));
+    }
+    // Every mounted row sits in the section of its own header.
+    for (const row of scroller.querySelectorAll("[data-list-item-id]")) {
+      const index = Number(row.getAttribute("data-list-item-id")!.slice(2));
+      const header = `h-${index - (index % 20)}`;
+      expect(row.closest("section")?.getAttribute("aria-labelledby")).toBe(header);
+    }
+  });
+
+  it("scrolls a newly active row into view once, not again when the list scrolls", () => {
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    const { getByTestId, rerender } = render(view(""));
+    const scroller = getByTestId("scroller");
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(view("i-250"));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    const target = scrollIntoView.mock.contexts[0] as Element;
+    expect(target.closest("[data-list-item-id]")?.getAttribute("data-list-item-id")).toBe("i-250");
+
+    scrollTo(scroller, 0);
+    rerender(view("i-250"));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

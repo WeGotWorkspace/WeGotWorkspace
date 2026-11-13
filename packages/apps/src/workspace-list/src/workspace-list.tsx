@@ -5,7 +5,11 @@ import {
   type WorkspaceSwipeListProps,
 } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import { useWorkspaceListWindow } from "@/workspace-list/src/use-workspace-list-window";
-import { WORKSPACE_LIST_SPACER_ATTR } from "@/workspace-list/src/use-workspace-list-measure";
+import {
+  WORKSPACE_LIST_SECTION_ATTR,
+  WORKSPACE_LIST_SPACER_ATTR,
+} from "@/workspace-list/src/use-workspace-list-measure";
+import { useWorkspaceListReveal } from "@/workspace-list/src/use-workspace-list-reveal";
 import "./workspace-list.css";
 
 export type WorkspaceListProps<T> = Omit<WorkspaceSwipeListProps, "children"> & {
@@ -22,6 +26,14 @@ export type WorkspaceListProps<T> = Omit<WorkspaceSwipeListProps, "children"> & 
   estimateSize: (item: T) => number;
   /** Sticky section headers: kept mounted while rows of their section are. */
   isHeader?: (item: T) => boolean;
+  /**
+   * Wraps a section: its header row, then the mounted rows (and spacers) up to the
+   * next header. Return one DOM element (a `<section>`), so a sticky header sticks
+   * for exactly its section. Needs `isHeader`.
+   */
+  renderSection?: (header: T, content: ReactNode[]) => ReactElement;
+  /** Scroll a newly active row into view once (Contacts). Keyboard moves scroll anyway. */
+  revealActive?: boolean;
   /** Extra ids to keep mounted out of view (the active row always is). */
   pinnedKeys?: readonly string[];
   className?: string;
@@ -48,6 +60,40 @@ function keyedRow(element: ReactElement, key: string): ReactNode {
   return cloneElement(element, { key });
 }
 
+type ListEntry<T> = { node: ReactNode; header: T | null; key: string };
+
+/** Puts each run that starts at a header into that header's section element. */
+function groupSections<T>(
+  entries: readonly ListEntry<T>[],
+  renderSection: (header: T, content: ReactNode[]) => ReactElement,
+): ReactNode[] {
+  const out: ReactNode[] = [];
+  let open: { header: T; key: string; content: ReactNode[] } | null = null;
+  const close = () => {
+    if (!open) return;
+    const section = renderSection(open.header, open.content);
+    out.push(
+      cloneElement(section, {
+        key: `section-${open.key}`,
+        [WORKSPACE_LIST_SECTION_ATTR]: "",
+      } as Record<string, unknown>),
+    );
+    open = null;
+  };
+  for (const entry of entries) {
+    if (entry.header !== null) {
+      close();
+      open = { header: entry.header, key: entry.key, content: [entry.node] };
+    } else if (open) {
+      open.content.push(entry.node);
+    } else {
+      out.push(entry.node);
+    }
+  }
+  close();
+  return out;
+}
+
 /**
  * The suite's one list (#1641 step d). An app binds to it with its items in
  * display order and its row; the list memoizes nothing itself but mounts only the
@@ -61,6 +107,8 @@ export function WorkspaceList<T>({
   renderItem,
   estimateSize,
   isHeader,
+  renderSection,
+  revealActive = false,
   pinnedKeys,
   className,
   activeId = "",
@@ -79,23 +127,40 @@ export function WorkspaceList<T>({
     pinnedKeys: pinned,
   });
   // The full key list: a moving window changes which rows are mounted, and
-  // feeding only those would look like a reorder.
-  useListReorderAnimation(listRef, keys);
+  // feeding only those would look like a reorder. Section headers do not animate.
+  const rowKeys = useMemo(
+    () => (isHeader ? keys.filter((_, index) => !isHeader(items[index]!)) : keys),
+    [isHeader, items, keys],
+  );
+  useListReorderAnimation(listRef, rowKeys);
+  useWorkspaceListReveal(listRef, activeId, keys, revealActive);
 
-  const rows: ReactNode[] = [];
+  const entries: ListEntry<T>[] = [];
+  const pushRow = (index: number) => {
+    const item = items[index]!;
+    const key = keys[index]!;
+    const header = renderSection && isHeader?.(item) ? item : null;
+    entries.push({ node: keyedRow(renderItem(item), key), header, key });
+  };
   if (!enabled) {
-    items.forEach((item, index) => rows.push(keyedRow(renderItem(item), keys[index]!)));
+    items.forEach((_, index) => pushRow(index));
   } else {
     segments.forEach((segment, position) => {
       if (segment.kind === "gap") {
-        rows.push(<WorkspaceListSpacer key={`gap-${position}`} size={segment.size} />);
+        const key = `gap-${position}`;
+        entries.push({
+          node: <WorkspaceListSpacer key={key} size={segment.size} />,
+          header: null,
+          key,
+        });
         return;
       }
-      for (let index = segment.start; index < segment.end; index += 1) {
-        rows.push(keyedRow(renderItem(items[index]!), keys[index]!));
-      }
+      for (let index = segment.start; index < segment.end; index += 1) pushRow(index);
     });
   }
+  const rows = renderSection
+    ? groupSections(entries, renderSection)
+    : entries.map((entry) => entry.node);
 
   return (
     <div

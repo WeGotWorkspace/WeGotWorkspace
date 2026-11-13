@@ -62,17 +62,22 @@ export function useWorkspaceListWindow<T>({
   isHeaderRef.current = isHeader;
   const segments = useMemo(() => {
     if (!enabled) return NO_SEGMENTS;
-    const pinned: number[] = [];
-    for (const key of [...pinnedKeys, focusedKey, draggingKey]) {
-      const index = key ? keyIndex.get(key) : undefined;
-      if (index !== undefined) pinned.push(index);
-    }
     const headerAt = isHeaderRef.current
       ? (index: number) => isHeaderRef.current!(items[index]!)
       : undefined;
-    // A sticky section header stays mounted while rows of its section are.
-    const header = sectionHeaderIndex(range.start, headerAt);
-    if (header >= 0) pinned.push(header);
+    // A sticky section header stays mounted while rows of its section are: the
+    // first mounted section's, and the section of every pinned row.
+    const pinned: number[] = [];
+    const pin = (index: number) => {
+      pinned.push(index);
+      const header = sectionHeaderIndex(index, headerAt);
+      if (header >= 0 && header !== index) pinned.push(header);
+    };
+    for (const key of [...pinnedKeys, focusedKey, draggingKey]) {
+      const index = key ? keyIndex.get(key) : undefined;
+      if (index !== undefined) pin(index);
+    }
+    if (range.end > range.start) pin(range.start);
     return listWindowSegments(offsets, range, pinned);
   }, [draggingKey, enabled, focusedKey, items, keyIndex, offsets, pinnedKeys, range]);
 
