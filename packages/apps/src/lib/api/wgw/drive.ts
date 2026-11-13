@@ -75,21 +75,24 @@ async function listAllDriveFiles(
   input: { offset: number; limit: number },
   opts?: { signal?: AbortSignal },
 ): Promise<{ entries: WgwDriveDirectoryEntry[]; nextOffset: number; hasMore: boolean }> {
-  const [page, user] = await Promise.all([
-    fetchWgwUnifiedSearch({
-      sources: ["file"],
-      offset: input.offset,
-      limit: input.limit,
-      signal: opts?.signal,
-    }),
-    fetchDriveUser(opts),
-  ]);
+  // Asked next to the search, but a failed search still surfaces first.
+  const userRequest = fetchDriveUser(opts);
+  userRequest.catch(() => undefined);
+  const page = await fetchWgwUnifiedSearch({
+    sources: ["file"],
+    offset: input.offset,
+    limit: input.limit,
+    signal: opts?.signal,
+  });
   const paths = page.results
     .filter((result) => result.category !== "folder" && !isHiddenStorageKey(result.sourceKey))
     .map((result) => `/${result.sourceKey.replace(/^\/+/, "")}`);
   const entries =
     paths.length > 0
-      ? await listFileNodeEntriesByPaths(paths, { signal: opts?.signal, username: user.username })
+      ? await listFileNodeEntriesByPaths(paths, {
+          signal: opts?.signal,
+          username: (await userRequest).username,
+        })
       : [];
   return {
     entries: entries.filter((entry) => entry.type !== "dir" && isVisibleDriveEntry(entry)),

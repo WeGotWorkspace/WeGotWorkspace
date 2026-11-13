@@ -120,6 +120,21 @@ describe("createHybridDriveOperations readCachedDirectory", () => {
     expect(cached?.directory.files.map((file) => file.name)).toEqual(["plan.md"]);
   });
 
+  it("keeps the cached rows when the live folder listing fails", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    await upsertDriveEntry(username, entry("/users/alice/Projects/plan.md", "plan.md"));
+    const ops = createHybridDriveOperations(username, bootstrap());
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      changeDir: ReturnType<typeof vi.fn>;
+    };
+    live.changeDir.mockRejectedValueOnce(new Error("FileNode/query failed (500)"));
+
+    await expect(ops.changeDir("/users/alice/Projects")).rejects.toThrow(/failed \(500\)/);
+
+    const cached = await ops.readCachedDirectory?.("/users/alice/Projects");
+    expect(cached?.directory.files.map((file) => file.name)).toEqual(["plan.md"]);
+  });
+
   it("returns null for a folder with no cached rows", async () => {
     await writeDriveBootstrapToCache(username, bootstrap());
     const ops = createHybridDriveOperations(username, bootstrap());
