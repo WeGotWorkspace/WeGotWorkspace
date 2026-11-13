@@ -31,7 +31,9 @@ class ImipMailboxSettings
      * Store the connection fields. A null password keeps the stored one. A
      * new host, login or folder starts reading from the moment of the
      * connection test (cursor from `$test`, trusted server reset); an
-     * existing cursor is kept, so a re-test never skips unread mail.
+     * existing cursor is kept, so a re-test never skips unread mail, unless it
+     * learns the trusted server id for the first time: then the cursor moves
+     * past the mail that taught it.
      *
      * @param  array{host: string, port: int, security: string, login: string, folder: string}  $fields
      * @param  array{trustedServerId: string, uidValidity: int, highestUid: int}  $test

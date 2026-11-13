@@ -9,6 +9,7 @@ use App\Models\CalendarReplyMailbox;
 use App\Services\Calendars\HostIpResolver;
 use App\Services\Calendars\Imip\ImapEndpoint;
 use App\Services\Calendars\Imip\ImapException;
+use App\Services\Calendars\Imip\ImapSocketTransport;
 use App\Services\Calendars\Imip\ImapTransport;
 use App\Services\Calendars\Imip\ImipEndpointResolver;
 use App\Services\Calendars\Imip\ImipMailboxPoller;
@@ -284,7 +285,7 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $listener = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
         $this->assertNotFalse($listener);
         $port = (int) substr((string) strrchr((string) stream_socket_get_name($listener, false), ':'), 1);
-        $transport = new \App\Services\Calendars\Imip\ImapSocketTransport(0.3);
+        $transport = new ImapSocketTransport(0.3);
         $transport->open(new ImapEndpoint('127.0.0.1', '127.0.0.1', $port, ImapEndpoint::SECURITY_STARTTLS));
         $peer = stream_socket_accept($listener, 2);
         $this->assertNotFalse($peer);
