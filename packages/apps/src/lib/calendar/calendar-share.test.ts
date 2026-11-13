@@ -9,9 +9,8 @@ import {
   calendarShareRightsForPermission,
   displayNameForSharePrincipal,
   filterCalendarSharePrincipals,
-  isSharedWithMeCalendar,
   mergeCalendarShareWith,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 
 describe("calendar share helpers", () => {
   it("treats mayWrite and mayWriteAll as write, and omitted rights as writable", () => {
@@ -33,16 +32,6 @@ describe("calendar share helpers", () => {
     });
     expect(calendarSharePermissionFromRights({ mayWrite: false })).toBe("view");
     expect(calendarSharePermissionFromRights({ mayWriteAll: true })).toBe("edit");
-  });
-
-  it("marks personal sharees and not group or owned collections", () => {
-    expect(isSharedWithMeCalendar({ mayShare: false })).toBe(true);
-    expect(isSharedWithMeCalendar({ mayShare: true })).toBe(false);
-    expect(isSharedWithMeCalendar({ scope: "group", groupSlug: "eng", mayShare: false })).toBe(
-      false,
-    );
-    expect(isSharedWithMeCalendar({ mayShare: undefined })).toBe(false);
-    expect(isSharedWithMeCalendar({ mayShare: false, subscriptionId: "sub-1" })).toBe(false);
   });
 
   it("merges shareWith add, change, and null revoke", () => {

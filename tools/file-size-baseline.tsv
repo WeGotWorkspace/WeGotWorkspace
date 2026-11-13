@@ -4,7 +4,7 @@ packages/apps/src/calendar-core/src/use-calendar-controller.ts	1383	grandfathere
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1441	grandfathered; rebaseline 2026-11-12 #1638 helpers moved to src/lib split one import into two
 packages/apps/src/lib/api/wgw/http.ts	943	grandfathered
 packages/apps/src/lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts	2362	docs/architecture/calendar-react-lit.md
-packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	833	docs/architecture/calendar-react-lit.md
+packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	835	docs/architecture/calendar-react-lit.md; rebaseline 2026-11-13 #1638 prettier wraps the merged lib/calendar import (two imports became one)
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/TimeLine/TimeLine.ts	2318	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/controllers/TimedEventInteractionController.ts	1145	docs/architecture/calendar-react-lit.md

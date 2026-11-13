@@ -1,5 +1,5 @@
 import { normalizeParticipationStatus } from "@/lib/models/calendar-attendees";
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import { formatInvitationWhen } from "@/calendar-core/src/calendar-invitation-when";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";

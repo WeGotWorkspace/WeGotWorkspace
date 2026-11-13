@@ -19,11 +19,11 @@ import {
   calendarInfoFromJmap,
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
+  mapCalendarDirectoryGroups,
   type CalendarSharePrincipal,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
-import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
-import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import { draftToJmapEvent, patchToJmapPartial } from "@/lib/calendar/calendar-wire";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 import {
   cachedCollectionAudience,

@@ -6,7 +6,7 @@ import {
   calendarRangeZoomDirection,
   restartCalendarRangeTransition,
   runCalendarRangeViewTransition,
-} from "@/calendar-core/src/calendar-range-transition";
+} from "@/lib/calendar/calendar-range-transition";
 
 describe("calendarRangeZoomDirection", () => {
   it("zooms out when the time span widens", () => {

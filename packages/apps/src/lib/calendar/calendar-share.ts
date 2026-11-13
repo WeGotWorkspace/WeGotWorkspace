@@ -19,7 +19,6 @@ import {
   shareRightsForPermission,
 } from "@/lib/sharing/collection-share";
 
-export { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 export type {
   CalendarSharePrincipal,
   CalendarShareRights,
@@ -97,4 +96,17 @@ export function calendarInfoFromJmap(calendar: JmapCalendar): CalendarInfo {
       : {}),
     ...(shareWith !== undefined ? { shareWith } : {}),
   };
+}
+
+export function mapCalendarDirectoryGroups(
+  groups: { id: string; displayName: string }[],
+): CalendarDirectoryGroup[] {
+  return groups.map((group) => {
+    const prefix = "principals/groups/";
+    const slug = group.id.startsWith(prefix) ? group.id.slice(prefix.length) : group.id;
+    return {
+      slug,
+      displayName: group.displayName?.trim() || slug,
+    };
+  });
 }
