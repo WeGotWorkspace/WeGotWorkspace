@@ -34,13 +34,13 @@ import {
   meetSelectionFromRouteParams,
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 import {
   meetChannelIdsEqual,
   meetCollectionIdFromPublic,
   meetPublicChannelId,
 } from "@/lib/meetings/meet-public-id";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";

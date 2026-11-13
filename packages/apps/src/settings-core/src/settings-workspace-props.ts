@@ -3,7 +3,7 @@ import type {
   SettingsAPIOperations,
   SettingsSection,
   SettingsUIData,
-} from "@/settings-core/src/settings-types";
+} from "@/lib/models/settings-types";
 
 export type SettingsWorkspaceProps = {
   data: SettingsUIData;

@@ -3,10 +3,9 @@ import { createDriveFileKeepingBoth } from "@/lib/api/wgw/drive-create-keep-both
 import { ensureTrashFolder } from "@/lib/files/drive-entry-names";
 import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { parentAndName } from "@/lib/files/api-path";
-import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { parseOutboxPayload, runOutboxFlush } from "@/lib/offline/core/outbox-flush";
 import {
   listOutboxMutationsForDomain,
-  markOutboxError,
   putOutboxMutation,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
@@ -16,6 +15,7 @@ import {
   applyDriveSidecarPathMigration,
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   moveKeptBothDocsCreate,
@@ -36,12 +36,7 @@ export type OutboxFlushResult = {
 };
 
 function parsePayload(row: OfflineOutboxRow): DocsOutboxPayload | null {
-  if (row.domain !== DOCS_DOMAIN) return null;
-  try {
-    return JSON.parse(row.payload) as DocsOutboxPayload;
-  } catch {
-    return null;
-  }
+  return parseOutboxPayload<DocsOutboxPayload>(row, DOCS_DOMAIN);
 }
 
 async function applyRenameSideEffects(
@@ -56,24 +51,19 @@ async function applyRenameSideEffects(
 
 export async function flushDocsOutbox(username: string): Promise<OutboxFlushResult> {
   const drive = createWgwDriveOperations("/");
-  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
-  let flushed = 0;
-  let failed = 0;
   const stateMismatches: string[] = [];
-
   const keptBoth: DocsKeptBoth[] = [];
 
-  for (const queued of rows) {
+  const counts = await runOutboxFlush<DocsOutboxPayload>(username, {
+    domain: DOCS_DOMAIN,
     // A later write on a kept-both create's path follows it to the name it got.
-    const row = retargetQueuedRow(queued, keptBoth);
-    const payload = parsePayload(row);
-    if (!payload) {
-      await removeOutboxMutation(username, row.id);
-      continue;
-    }
-    if (row !== queued) await putOutboxMutation(username, row);
-
-    try {
+    prepare: async (queued) => {
+      const row = retargetQueuedRow(queued, keptBoth);
+      if (row !== queued) await putOutboxMutation(username, row);
+      return row;
+    },
+    parse: parsePayload,
+    send: async (payload, row) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -101,21 +91,15 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
       }
-      await removeOutboxMutation(username, row.id);
-      flushed += 1;
-    } catch (error) {
-      failed += 1;
-      const status = httpStatusFromFlushError(error);
-      const message = error instanceof Error ? error.message : String(error);
-      if (status === 409 || status === 412) {
-        const path = docsOutboxApiPath(row);
-        if (path) stateMismatches.push(path);
-      }
-      await markOutboxError(username, row.id, message, status);
-    }
-  }
+    },
+    onFailure: (failure) => {
+      if (!isDriveOutboxStateMismatch(failure)) return;
+      const path = docsOutboxApiPath(failure.row);
+      if (path) stateMismatches.push(path);
+    },
+  });
 
-  return { flushed, failed, stateMismatches };
+  return { ...counts, stateMismatches };
 }
 
 function docsCreateFile(payload: Extract<DocsOutboxPayload, { op: "create" }>): File {

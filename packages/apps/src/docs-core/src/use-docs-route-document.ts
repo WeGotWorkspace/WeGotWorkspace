@@ -5,7 +5,7 @@ import {
   docsSearchFromApiPath,
   docsSearchFromNodeId,
   type DocsRouteSearch,
-} from "@/docs-core/src/docs-route-search";
+} from "@/lib/files/docs-route-search";
 import {
   createDocsLocatorDeps,
   fallbackForMissingDocsId,

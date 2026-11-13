@@ -1,9 +1,8 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/lib/files/drive-entry-names";
-import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { parseOutboxPayload, runOutboxFlush } from "@/lib/offline/core/outbox-flush";
 import {
   listOutboxMutationsForDomain,
-  markOutboxError,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
@@ -13,6 +12,7 @@ import {
   applyDriveSidecarPathMigration,
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
 import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   legacyDriveOutboxUploadPath,
@@ -37,12 +37,7 @@ export type DriveOutboxFlushResult = {
 };
 
 function parsePayload(row: OfflineOutboxRow): DriveOutboxPayload | null {
-  if (row.domain !== DRIVE_DOMAIN) return null;
-  try {
-    return JSON.parse(row.payload) as DriveOutboxPayload;
-  } catch {
-    return null;
-  }
+  return parseOutboxPayload<DriveOutboxPayload>(row, DRIVE_DOMAIN);
 }
 
 export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlushResult> {
@@ -52,21 +47,14 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
   } catch (error) {
     console.warn("[drive-outbox] moving old uploads into the queue failed", error);
   }
-  const rows = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
-  let flushed = 0;
-  let failed = 0;
   const stateMismatches: string[] = [];
 
-  for (const row of rows) {
+  const counts = await runOutboxFlush<DriveOutboxPayload>(username, {
+    domain: DRIVE_DOMAIN,
     // An old upload whose folder is not known yet: it stays until it moves to the queue.
-    if (readLegacyDriveOutboxUpload(row)) continue;
-    const payload = parsePayload(row);
-    if (!payload) {
-      await removeOutboxMutation(username, row.id);
-      continue;
-    }
-
-    try {
+    prepare: async (row) => (readLegacyDriveOutboxUpload(row) ? null : row),
+    parse: parsePayload,
+    send: async (payload) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -89,21 +77,15 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         const paths = await drive.listStars();
         await writeDocsStarredPaths(username, paths);
       }
-      await removeOutboxMutation(username, row.id);
-      flushed += 1;
-    } catch (error) {
-      failed += 1;
-      const status = httpStatusFromFlushError(error);
-      const message = error instanceof Error ? error.message : String(error);
-      if (status === 409 || status === 412) {
-        const path = driveOutboxApiPath(row);
-        if (path) stateMismatches.push(path);
-      }
-      await markOutboxError(username, row.id, message, status);
-    }
-  }
+    },
+    onFailure: (failure) => {
+      if (!isDriveOutboxStateMismatch(failure)) return;
+      const path = driveOutboxApiPath(failure.row);
+      if (path) stateMismatches.push(path);
+    },
+  });
 
-  return { flushed, failed, stateMismatches };
+  return { ...counts, stateMismatches };
 }
 
 export function pathsForDriveOutboxPayload(payload: DriveOutboxPayload): string[] {

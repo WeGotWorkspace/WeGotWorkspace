@@ -5,7 +5,7 @@ import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccur
 import type { CalendarViewGroup } from "../CalendarViewGroup/CalendarViewGroup.js";
 import { eventsAPIContext, type EventsAPIContextValue } from "../context/EventsAPIContext.js";
 import "../CalendarViewGroup/CalendarViewGroup.js";
-import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/calendar-task-due-overlay";
+import { filterVisibleCalendarEventsKeepingOverlay } from "@/lib/calendar/calendar-render-overlay";
 
 /**
  * WGW-owned host for the vendored lit-calendar views (this file is ours, not

@@ -10,7 +10,7 @@ import {
   filterCalendarSharePrincipals,
   mergeCalendarShareWith,
   type CalendarShareWith,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { TooltipProvider } from "@/ui/tooltip";

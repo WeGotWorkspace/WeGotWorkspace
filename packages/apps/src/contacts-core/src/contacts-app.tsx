@@ -18,7 +18,7 @@ import { contactsOutboxCardId } from "@/lib/offline/contacts-offline-store";
 import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
 import type { ContactsApiSource } from "@/contacts-core/src/contacts-api-source";
 import { ContactsConflictDialog } from "@/contacts-core/src/contacts-conflict-dialog";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";

@@ -124,6 +124,8 @@ function fakeDomain(options: {
   queued?: string[];
   blocking?: string[];
   pending?: string[];
+  /** Ids the fetch answers as gone (deleted after the changes call). */
+  goneOnFetch?: string[];
 }) {
   const tokens = new Map(Object.entries(options.tokens ?? {}));
   const server = new Map((options.server ?? []).map((row) => [row.id, row]));
@@ -150,6 +152,7 @@ function fakeDomain(options: {
     rowId: (row) => row.id,
     fetch: async (id) => {
       fetched.push(id);
+      if (options.goneOnFetch?.includes(id)) return null;
       const row = server.get(id);
       if (!row) throw new Error(`fetch ${id} failed`);
       return row;
@@ -204,6 +207,34 @@ describe("runScopedInbound", () => {
     expect(result).toEqual({ changed: true, usedFullResync: false });
     expect(domain.fetched).toEqual(["n1"]);
     expect(Object.fromEntries(domain.tokens)).toEqual({ a: "a2", b: "b2" });
+  });
+
+  it("destroys a changed id that is gone by the time it is fetched", async () => {
+    const domain = fakeDomain({
+      tokens: { a: "a1" },
+      cache: [{ id: "n1", scope: "a", createPending: false }],
+      changes: { a: { ...noChanges("a2"), updated: ["n1"] } },
+      goneOnFetch: ["n1"],
+    });
+    const result = await runScopedInbound(["a"], domain.binding);
+    expect(result.changed).toBe(true);
+    expect(domain.ingested).toEqual([]);
+    expect(domain.destroyedCalls).toEqual(["n1"]);
+    expect(domain.cache.has("n1")).toBe(false);
+    expect(domain.tokens.get("a")).toBe("a2");
+  });
+
+  it("holds the token when a gone id is skipped for a queued write", async () => {
+    const domain = fakeDomain({
+      tokens: { a: "a1" },
+      changes: { a: { ...noChanges("a2"), created: ["n1"] } },
+      goneOnFetch: ["n1"],
+      pending: ["n1"],
+      blocking: ["n1"],
+    });
+    await runScopedInbound(["a"], domain.binding);
+    expect(domain.destroyedCalls).toEqual(["n1"]);
+    expect(domain.tokens.get("a")).toBe("a1");
   });
 
   it("lists a scope with no token once, removes what it lacks and keeps queued items", async () => {

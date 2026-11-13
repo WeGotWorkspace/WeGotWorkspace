@@ -8,6 +8,10 @@ import {
   meetChatBootstrapFromCached,
 } from "@/lib/offline/meet-chat-hybrid-operations";
 import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat-inbound-sync";
+import {
+  notifyMeetChatCacheChanged,
+  subscribeMeetChatCacheChanged,
+} from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { readMeetChatBootstrapFromCache } from "@/lib/offline/meet-chat-offline-store";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import {
@@ -106,16 +110,31 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
 
   const applyInboundRefresh = useCallback(async () => {
     if (!offlineUsername) return;
-    await syncMeetChatInboundFromRest(offlineUsername);
-    await patchFromCache();
+    try {
+      const { changed } = await syncMeetChatInboundFromRest(offlineUsername);
+      if (changed) notifyMeetChatCacheChanged(offlineUsername);
+    } finally {
+      // A failed pull still applied the channels before it: show them.
+      await patchFromCache();
+    }
+  }, [offlineUsername, patchFromCache]);
+
+  // Another tab wrote, flushed or pulled into the shared chat cache.
+  useEffect(() => {
+    if (!offlineUsername) return;
+    return subscribeMeetChatCacheChanged(offlineUsername, () => {
+      void patchFromCache().catch(() => undefined);
+    });
   }, [offlineUsername, patchFromCache]);
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
     setListRefreshing(true);
-    void applyInboundRefresh().finally(() => {
-      setListRefreshing(false);
-    });
+    void applyInboundRefresh()
+      .catch(() => undefined)
+      .finally(() => {
+        setListRefreshing(false);
+      });
   }, [applyInboundRefresh, listRefreshing]);
 
   const reconnectSyncing = useOfflineReconnectFlush({
@@ -123,7 +142,8 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
     flush: async () => {
       if (!offlineUsername) return;
       await getMeetChatSyncRunner(offlineUsername).flush();
-      await applyInboundRefresh();
+      // A failed pull keeps what it applied; the live poll tries again.
+      await applyInboundRefresh().catch(() => undefined);
     },
   });
 

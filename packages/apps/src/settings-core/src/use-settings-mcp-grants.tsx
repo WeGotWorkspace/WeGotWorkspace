@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { SettingsAPIOperations, SettingsMcpGrant } from "@/settings-core/src/settings-types";
+import type { SettingsAPIOperations, SettingsMcpGrant } from "@/lib/models/settings-types";
 
 export function useSettingsMcpGrants(operations?: SettingsAPIOperations, enabled = true) {
   const [grants, setGrants] = useState<SettingsMcpGrant[]>([]);

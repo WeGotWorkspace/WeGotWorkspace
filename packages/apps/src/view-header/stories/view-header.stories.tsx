@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
-import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
+import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
 import { expect } from "storybook/test";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";

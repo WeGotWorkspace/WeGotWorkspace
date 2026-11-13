@@ -99,7 +99,16 @@ export type ChatMessage = {
   threadId?: string | null;
   replyCount?: number;
   parentId?: string | null;
+  /**
+   * A queued send, edit or delete of this message the server has not taken
+   * yet: `pending` while it waits, `failed` once sending it failed (it stays
+   * queued until it is sent or dropped). Absent when the server has it.
+   * Derived from the outbox when the cache is read; never stored.
+   */
+  syncState?: ChatMessageSyncState;
 };
+
+export type ChatMessageSyncState = "pending" | "failed";
 
 export type MeetDirectoryGroup = {
   slug: string;

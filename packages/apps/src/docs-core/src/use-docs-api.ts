@@ -7,7 +7,7 @@ import { subscribeOfflineDeviceContentSettings } from "@/lib/offline/core/offlin
 import { syncDocsBodiesFromHomeListing } from "@/lib/offline/docs/docs-body-sync";
 import { getDocsSyncRunner } from "@/lib/offline/docs/docs-hybrid-operations";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
-import type { DocsAppBootstrap, DocsUIData } from "@/docs-core/src/docs-types";
+import type { DocsAppBootstrap, DocsUIData } from "@/lib/models/docs-types";
 import { createDefaultDocsApiSource, type DocsApiSource } from "@/docs-core/src/docs-api-source";
 import { uploadPendingDocBodies } from "@/docs-core/src/docs-pending-bodies";
 

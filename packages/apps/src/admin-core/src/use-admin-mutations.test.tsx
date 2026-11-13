@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { useAdminMutations } from "@/admin-core/src/use-admin-mutations";
 import { useAdminShell } from "@/admin-core/src/use-admin-shell";
-import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations } from "@/lib/models/admin-types";
 
 const toast = vi.hoisted(() => ({
   showSuccess: vi.fn(),

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCachedChatMessage } from "@/lib/offline/meet-chat-offline-store";
-import { isMeetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
+import { isMeetDirectMessageChannelId } from "@/lib/meetings/meet-direct-messages";
 import { useMeetMeshCallReplay } from "@/meet-core/src/meet-mesh-call-replay";
 import {
   applyMeetMeshCallEvent,

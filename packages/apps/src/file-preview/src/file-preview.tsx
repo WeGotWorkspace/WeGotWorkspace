@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FileKind } from "@/lib/files/drive-models";
 import { canBrowserPreviewImage } from "@/lib/files/file-name-utils";
-import { kindIconLg } from "@/drive-core/src/drive-icons";
+import { kindIconLg } from "@/lib/files/file-kind-icons";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { stripPreviewText } from "@/lib/file-preview/file-preview-utils";

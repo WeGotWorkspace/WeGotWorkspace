@@ -1,7 +1,7 @@
 import { announceNoteDropped } from "@/lib/offline/notes/notes-dropped-events";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
-import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
+import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
 import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
 import type { EntityTable } from "dexie";
 import {
@@ -17,6 +17,7 @@ import {
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import { readPendingWrites, type PendingWrite } from "@/lib/offline/core/inbound-sync";
+import { outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   NOTES_DOMAIN,
@@ -35,7 +36,7 @@ import {
   enrichNote,
   noteHasListableBody,
   notesWithRenamedNotebook,
-} from "@/notes-core/src/notes-note-utils";
+} from "@/lib/models/note-list-model";
 
 export {
   enqueueOutboxMutation,
@@ -645,15 +646,7 @@ function notePendingFieldsOfRow(row: OfflineOutboxRow): NotePendingField[] {
 }
 
 /** Note id targeted by an outbox row. */
-export function notesOutboxNoteId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== NOTES_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as { noteId?: string };
-    return payload.noteId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const notesOutboxNoteId = outboxEntityIdReader(NOTES_DOMAIN, ["noteId"]);
 
 /** Drop pending outbox rows for a note so a delete is not undone by a later upsert flush. */
 export async function removeOutboxMutationsForNote(

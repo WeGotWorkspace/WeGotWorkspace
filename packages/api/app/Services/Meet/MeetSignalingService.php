@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Meet;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
@@ -630,12 +631,12 @@ final class MeetSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw MeetResponseException::fromSignaling($exception);
+            throw RealtimeApiException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        throw new MeetResponseException($status, $error, $message);
+        throw new RealtimeApiException($status, $error, $message);
     }
 }

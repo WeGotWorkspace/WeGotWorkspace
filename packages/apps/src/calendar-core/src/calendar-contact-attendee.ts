@@ -8,11 +8,8 @@ import {
   type CalendarAttendee,
   type CalendarInvitee,
 } from "@/lib/models/calendar-attendees";
-import {
-  contactDisplayName,
-  filterCardsBySearch,
-  mapEntriesSorted,
-} from "@/contacts-core/src/contacts-display-utils";
+import { filterCardsBySearch } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName, mapEntriesSorted } from "@/lib/models/contacts-display";
 import { isContactGroupCard } from "@/contacts-core/src/contacts-group-utils";
 import type { ContactCard } from "@/lib/models/contacts-types";
 

@@ -23,7 +23,7 @@ import {
   ContactsAddressBookDialog,
   contactsAddressBookDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-addressbook-dialog";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsCreateGroupDialog,
