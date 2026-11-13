@@ -40,6 +40,8 @@ location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny a
 location ~ ^/wgw-config\.php\.bak(?:\.|$) { deny all; }
 ```
 
+If your install is in a subfolder, put that subfolder after the leading `^/` in all three lines, for example `^/office/(wgw-content|wgw-plugins|packages)(/|$)`. As written they only match at the site root, so a subfolder install stays exposed.
+
 ## 2) First request bootstrap
 
 On the first HTTP request, the install bootstrap automatically:
