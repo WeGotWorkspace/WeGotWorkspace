@@ -42,6 +42,24 @@ describe("runOutboxFlush", () => {
     expect((await listOutboxMutations(username)).map((row) => row.id)).toEqual(["other"]);
   });
 
+  it("sends the rows in the order the binding puts them", async () => {
+    await queue("a", '{"n":1}');
+    await queue("b", '{"n":2}');
+    await queue("c", '{"n":3}');
+    const sent: number[] = [];
+
+    await runOutboxFlush<Payload>(username, {
+      domain: "demo",
+      order: (rows) => [...rows].reverse(),
+      parse,
+      send: async (payload) => {
+        sent.push(payload.n);
+      },
+    });
+
+    expect(sent).toEqual([3, 2, 1]);
+  });
+
   it("records a failed send on its row, tells the binding, and goes on", async () => {
     await queue("a", '{"n":1}');
     await queue("b", '{"n":2}');
