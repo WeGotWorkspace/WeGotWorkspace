@@ -31,7 +31,9 @@ class ImipMailboxSettings
      * Store the connection fields. A null password keeps the stored one. A
      * new host, login or folder starts reading from the moment of the
      * connection test (cursor from `$test`, trusted server reset); an
-     * existing cursor is kept, so a re-test never skips unread mail.
+     * existing cursor is kept, so a re-test never skips unread mail, unless it
+     * learns the trusted server id for the first time: then the cursor moves
+     * past the mail that taught it.
      *
      * @param  array{host: string, port: int, security: string, login: string, folder: string}  $fields
      * @param  array{trustedServerId: string, uidValidity: int, highestUid: int}  $test
@@ -47,11 +49,13 @@ class ImipMailboxSettings
         if ($password !== null) {
             $mailbox->password_enc = $this->secrets->encrypt($password, self::SECRET_LABEL);
         }
-        if ($moved || $mailbox->uidvalidity === null || $mailbox->last_uid === null) {
+        $trustedServerId = $test['trustedServerId'];
+        $learnsNow = $trustedServerId !== '' && (string) $mailbox->trusted_server_id === '';
+        // The mail that taught the id is never applied: the cursor moves past it.
+        if ($moved || $learnsNow || $mailbox->uidvalidity === null || $mailbox->last_uid === null) {
             $mailbox->uidvalidity = $test['uidValidity'];
             $mailbox->last_uid = $test['highestUid'];
         }
-        $trustedServerId = $test['trustedServerId'];
         if ($trustedServerId !== '') {
             $mailbox->trusted_server_id = $trustedServerId;
         } elseif ($moved) {

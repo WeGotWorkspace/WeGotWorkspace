@@ -135,11 +135,9 @@ class ImipMailboxPoller
             $mailbox->last_uid = $highest;
         }
         if ((string) $mailbox->trusted_server_id === '') {
-            $learned = $this->learnTrustedServerId($client, $highest);
-            if ($learned === '') {
-                return self::UNTRUSTED_SERVER_UNKNOWN;
-            }
-            $mailbox->trusted_server_id = $learned;
+            // Only the connection test learns the id: a poll that learned it
+            // from the mail it is about to apply could be taught by a forgery.
+            return self::UNTRUSTED_SERVER_UNKNOWN;
         }
 
         $uids = array_slice($client->uidsAfter((int) $mailbox->last_uid), 0, self::BATCH_SIZE);
@@ -198,8 +196,9 @@ class ImipMailboxPoller
     }
 
     /**
-     * The authserv-id of the topmost Authentication-Results header, when the
-     * newest messages that carry one all agree on it.
+     * The authserv-id of the topmost Authentication-Results header, when every
+     * sampled message carries one and they all agree. A message without one
+     * shows that the server does not stamp mail, so nothing can be trusted.
      */
     private function learnTrustedServerId(ImapClient $client, int $highest): string
     {
@@ -211,9 +210,10 @@ class ImipMailboxPoller
         foreach ($client->summaries($uids) as $summary) {
             $top = $summary->headers->first('authentication-results');
             $parsed = $top !== null ? AuthenticationResults::parse($top) : null;
-            if ($parsed !== null) {
-                $ids[$parsed->serverId] = true;
+            if ($parsed === null) {
+                return '';
             }
+            $ids[$parsed->serverId] = true;
         }
 
         return count($ids) === 1 ? (string) array_key_first($ids) : '';

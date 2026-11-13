@@ -99,6 +99,18 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
         $this->putMailbox(['folder' => 'INBOX'])->assertOk()->assertJsonPath('mailbox.passwordSet', true);
     }
 
+    public function test_changing_the_host_needs_a_new_password(): void
+    {
+        $this->allowAnyHost();
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk();
+        $opens = $this->server->opens;
+
+        $this->putMailbox(['host' => 'imap.attacker.example'])->assertStatus(400);
+        $this->putMailbox(['port' => 1993])->assertStatus(400);
+
+        $this->assertSame($opens, $this->server->opens);
+    }
+
     public function test_private_hosts_are_refused_by_default(): void
     {
         config(['wgw.imip_allow_private_hosts' => false]);

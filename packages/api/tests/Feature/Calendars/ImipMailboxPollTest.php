@@ -9,6 +9,7 @@ use App\Models\CalendarReplyMailbox;
 use App\Services\Calendars\HostIpResolver;
 use App\Services\Calendars\Imip\ImapEndpoint;
 use App\Services\Calendars\Imip\ImapException;
+use App\Services\Calendars\Imip\ImapSocketTransport;
 use App\Services\Calendars\Imip\ImapTransport;
 use App\Services\Calendars\Imip\ImipEndpointResolver;
 use App\Services\Calendars\Imip\ImipMailboxPoller;
@@ -212,8 +213,95 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
 
         $fresh = $mailbox->fresh();
         $this->assertNotNull($fresh);
-        $this->assertSame(self::TRUSTED, $fresh->trusted_server_id);
-        $this->assertSame('ACCEPTED', $this->guestStatus());
+        $this->assertSame('', (string) $fresh->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_a_forged_header_cannot_teach_the_trusted_server_when_mail_is_not_stamped(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage(authResults: false)];
+        $mailbox = $this->connect(trusted: '');
+        $this->server->messages[2] = $this->replyMessage(serverId: 'evil.id');
+
+        $this->poller()->poll($mailbox);
+
+        $fresh = $mailbox->fresh();
+        $this->assertSame('', (string) $fresh?->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_a_forged_reply_in_a_folder_that_was_empty_cannot_teach_the_trusted_server(): void
+    {
+        $mailbox = $this->connect(trusted: '');
+        $this->server->messages[1] = $this->replyMessage(serverId: 'evil.id');
+
+        $this->poller()->poll($mailbox);
+
+        $this->assertSame('', (string) $mailbox->fresh()?->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_twenty_forged_replies_cannot_teach_the_trusted_server(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage(authResults: false)];
+        $mailbox = $this->connect(trusted: '');
+        for ($uid = 2; $uid <= 21; $uid++) {
+            $this->server->messages[$uid] = $this->replyMessage(serverId: 'evil.id');
+        }
+
+        $this->poller()->poll($mailbox);
+
+        $this->assertSame('', (string) $mailbox->fresh()?->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_a_retest_that_learns_the_id_moves_the_cursor_past_the_mail_that_taught_it(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage(authResults: false)];
+        $mailbox = $this->connect(trusted: '');
+        $this->server->messages[2] = $this->replyMessage(serverId: 'evil.id');
+
+        $this->app->make(ImipMailboxSettings::class)->save('bob', [
+            'host' => 'imap.example.test',
+            'port' => 993,
+            'security' => 'ssl',
+            'login' => 'bob@example.test',
+            'folder' => 'INBOX',
+        ], null, [
+            'trustedServerId' => 'evil.id',
+            'uidValidity' => $this->server->uidValidity,
+            'highestUid' => 2,
+        ]);
+        $this->poller()->poll($mailbox->refresh());
+
+        $fresh = $mailbox->fresh();
+        $this->assertSame('evil.id', (string) $fresh?->trusted_server_id);
+        $this->assertSame(2, $fresh?->last_uid);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_a_command_that_never_finishes_is_a_connect_failure(): void
+    {
+        $listener = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+        $this->assertNotFalse($listener);
+        $port = (int) substr((string) strrchr((string) stream_socket_get_name($listener, false), ':'), 1);
+        $transport = new ImapSocketTransport(0.3);
+        $transport->open(new ImapEndpoint('127.0.0.1', '127.0.0.1', $port, ImapEndpoint::SECURITY_STARTTLS));
+        $peer = stream_socket_accept($listener, 2);
+        $this->assertNotFalse($peer);
+        $transport->write("a1 NOOP\r\n");
+
+        $started = microtime(true);
+        try {
+            while (true) {
+                fwrite($peer, "* OK x\r\n");
+                $transport->readLine(1000);
+                usleep(100_000);
+            }
+        } catch (ImapException $exception) {
+            $this->assertSame(ImapException::CONNECT_FAILED, $exception->errorCode);
+        }
+        $this->assertLessThan(3.0, microtime(true) - $started);
     }
 
     public function test_unknown_receiving_server_is_reported(): void
@@ -276,7 +364,7 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
      *
      * @return array{size: int, headers: string, structure: string, sections: array<string, string>}
      */
-    private function replyMessage(): array
+    private function replyMessage(string $serverId = self::TRUSTED): array
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Google Inc//Google Calendar 70.9054//EN\r\nMETHOD:REPLY\r\n"
             ."BEGIN:VEVENT\r\nDTSTART:20300201T100000Z\r\nDTEND:20300201T103000Z\r\nDTSTAMP:20300101T120000Z\r\n"
@@ -287,7 +375,7 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
 
         return [
             'size' => 4000,
-            'headers' => $this->headerBlock(true),
+            'headers' => $this->headerBlock(true, $serverId),
             'structure' => '((("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "7BIT" 40 2 NIL NIL NIL NIL)'
                 .'("TEXT" "CALENDAR" ("CHARSET" "UTF-8" "METHOD" "REPLY") NIL NIL "BASE64" '.strlen($encoded).' 8 NIL NIL NIL NIL)'
                 .' "ALTERNATIVE" ("BOUNDARY" "b2") NIL NIL NIL)'
@@ -309,10 +397,10 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         ];
     }
 
-    private function headerBlock(bool $authResults): string
+    private function headerBlock(bool $authResults, string $serverId = self::TRUSTED): string
     {
         $block = $authResults
-            ? 'Authentication-Results: '.self::TRUSTED.";\r\n       dkim=pass header.i=@elsewhere.test;\r\n       spf=pass smtp.mailfrom=guest@elsewhere.test;\r\n       dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=elsewhere.test\r\n"
+            ? 'Authentication-Results: '.$serverId.";\r\n       dkim=pass header.i=@elsewhere.test;\r\n       spf=pass smtp.mailfrom=guest@elsewhere.test;\r\n       dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=elsewhere.test\r\n"
             : '';
 
         return $block."From: Guest Person <guest@elsewhere.test>\r\nMessage-ID: <reply-1@elsewhere.test>\r\n\r\n";

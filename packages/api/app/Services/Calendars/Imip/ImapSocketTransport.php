@@ -13,7 +13,12 @@ final class ImapSocketTransport implements ImapTransport
 {
     public const CONNECT_TIMEOUT_SECONDS = 10;
 
+    /** Wall-clock budget from sending a command until its reply is read. */
     public const READ_TIMEOUT_SECONDS = 20;
+
+    private float $deadline = 0.0;
+
+    public function __construct(private readonly float $commandSeconds = self::READ_TIMEOUT_SECONDS) {}
 
     /** @var resource|null */
     private $stream = null;
@@ -37,8 +42,8 @@ final class ImapSocketTransport implements ImapTransport
         if (! is_resource($stream)) {
             throw new ImapException(ImapException::CONNECT_FAILED, 'Could not connect to the mail server.');
         }
-        stream_set_timeout($stream, self::READ_TIMEOUT_SECONDS);
         $this->stream = $stream;
+        $this->deadline = microtime(true) + $this->commandSeconds;
         if ($endpoint->security === ImapEndpoint::SECURITY_SSL) {
             $this->startTls();
         }
@@ -62,6 +67,7 @@ final class ImapSocketTransport implements ImapTransport
     public function write(string $bytes): void
     {
         $stream = $this->requireStream();
+        $this->deadline = microtime(true) + $this->commandSeconds;
         $length = strlen($bytes);
         $written = 0;
         while ($written < $length) {
@@ -75,7 +81,7 @@ final class ImapSocketTransport implements ImapTransport
 
     public function readLine(int $maxBytes): string
     {
-        $stream = $this->requireStream();
+        $stream = $this->armTimeout();
         $line = @fgets($stream, max(1, $maxBytes) + 1);
         if ($line === false) {
             $this->failRead('The mail server closed the connection.');
@@ -92,9 +98,9 @@ final class ImapSocketTransport implements ImapTransport
 
     public function read(int $length): string
     {
-        $stream = $this->requireStream();
         $buffer = '';
         while (strlen($buffer) < $length) {
+            $stream = $this->armTimeout();
             $chunk = @fread($stream, max(1, min(65536, $length - strlen($buffer))));
             if ($chunk === false || $chunk === '') {
                 $this->failRead('The mail server closed the connection.');
@@ -133,6 +139,27 @@ final class ImapSocketTransport implements ImapTransport
         }
 
         return $this->stream;
+    }
+
+    /**
+     * Limit the next read to what is left of the command's deadline, so a
+     * server that trickles lines cannot keep one command running.
+     *
+     * @return resource
+     */
+    private function armTimeout()
+    {
+        $stream = $this->requireStream();
+        $remaining = $this->deadline - microtime(true);
+        if ($remaining <= 0) {
+            $this->close();
+
+            throw new ImapException(ImapException::CONNECT_FAILED, 'The mail server did not answer in time.');
+        }
+        $seconds = (int) $remaining;
+        stream_set_timeout($stream, $seconds, (int) (($remaining - $seconds) * 1_000_000));
+
+        return $stream;
     }
 
     private function failRead(string $message): never
