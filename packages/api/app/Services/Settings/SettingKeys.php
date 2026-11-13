@@ -59,12 +59,6 @@ final class SettingKeys
     /** Admin switch: every peer connection uses the TURN relay only. */
     public const RTC_FORCE_RELAY = 'rtc_force_relay';
 
-    public const MAIL_IMAP_HOST = 'mail_imap_host';
-
-    public const MAIL_IMAP_PORT = 'mail_imap_port';
-
-    public const MAIL_IMAP_SECURITY = 'mail_imap_security';
-
     public const MAIL_SMTP_HOST = 'mail_smtp_host';
 
     public const MAIL_SMTP_PORT = 'mail_smtp_port';
@@ -120,9 +114,6 @@ final class SettingKeys
             self::MEET_MAX_VIDEO_PROFILE_RELAY,
             self::RTC_DEBUG_LOGGING,
             self::RTC_FORCE_RELAY,
-            self::MAIL_IMAP_HOST,
-            self::MAIL_IMAP_PORT,
-            self::MAIL_IMAP_SECURITY,
             self::MAIL_SMTP_HOST,
             self::MAIL_SMTP_PORT,
             self::MAIL_SMTP_SECURITY,

@@ -8,6 +8,8 @@ use App\Auth\SabreUserProvider;
 use App\Dav\Server\CalDavDeliveryRecipients;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Calendars\Imip\ImapSocketTransport;
+use App\Services\Calendars\Imip\ImapTransport;
 use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
 use App\Services\Installer\InstallerIpv4Resolver;
@@ -42,6 +44,7 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+        $this->app->bind(ImapTransport::class, ImapSocketTransport::class);
         $this->app->scoped(JmapRequestContext::class);
         $this->app->scoped(FileNodeContentHasher::class);
         $this->app->singleton(FreeSpaceSource::class, DiskFreeSpaceSource::class);

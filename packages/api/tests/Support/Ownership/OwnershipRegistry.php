@@ -128,6 +128,10 @@ final class OwnershipRegistry
             'GET /jmap/session' => 'Returns the caller JMAP session.',
             'GET /calendars/availability' => "Returns the caller's own Team availability settings.",
             'PUT /calendars/availability' => "Writes only the caller's own settings rows; a calendarId outside the caller's own personal or Team event calendars is 422 (CalendarAvailabilitySettingsTest).",
+            'GET /calendars/reply-mailbox' => "Returns the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
+            'PUT /calendars/reply-mailbox' => "Writes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
+            'DELETE /calendars/reply-mailbox' => "Deletes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
+            'POST /calendars/reply-mailbox/test' => "Tests only the caller's own stored mailbox (CalendarReplyMailboxApiTest).",
         ];
         foreach ($selfOnly as $operation => $why) {
             $exempt[$operation] = ['reason' => ExemptionReason::SelfOnly, 'why' => $why];

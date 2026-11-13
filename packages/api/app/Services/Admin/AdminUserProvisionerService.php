@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Dav\Server\WgwCardBackend;
+use App\Models\CalendarReplyMailbox;
 use App\Models\GroupMember;
-use App\Models\MailUserCredential;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\UserSessionRevoker;
@@ -179,9 +179,7 @@ final class AdminUserProvisionerService
 
         $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();
-        if (Schema::connection('wgw')->hasTable('mail_user_credentials')) {
-            MailUserCredential::query()->where('username', $username)->delete();
-        }
+        CalendarReplyMailbox::query()->where('username', $username)->delete();
 
         $userFiles = rtrim($this->paths->dataDir(), '/').'/files/users/'.$username;
         if (is_dir($userFiles)) {
