@@ -65,6 +65,31 @@
 
 .drive-workspace .drive-grid-layout {
   @apply space-y-6 sm:space-y-8;
+  /* The same gap, for the windowed grid below. */
+  --drive-grid-section-gap: 1.5rem;
+}
+
+@media (min-width: 40rem) {
+  .drive-workspace .drive-grid-layout {
+    --drive-grid-section-gap: 2rem;
+  }
+}
+
+/*
+ * Above 80 tiles the grid is one grid per tile row, and only the rows near the
+ * viewport mount (#1641 step d). Gaps live inside the rows and sections, where
+ * measuring sees them: a margin outside would count twice next to a spacer.
+ */
+.drive-workspace .drive-grid-layout--windowed > * {
+  margin-block: 0;
+}
+
+.drive-workspace .drive-grid-section--after {
+  padding-top: var(--drive-grid-section-gap);
+}
+
+.drive-workspace .drive-grid.drive-grid--row-gap {
+  padding-bottom: var(--drive-grid-gap);
 }
 
 /* Landscape cards: one column on a phone, auto-fill wider tracks beyond (Docs + Drive SST). */
@@ -297,8 +322,10 @@
 .drive-workspace .drive-list-table {
   @apply w-full min-w-0 table-fixed text-sm;
   border-collapse: separate;
-  /* A hair of air so adjacent rounded selections stay apart. */
-  border-spacing: 0 0.125rem;
+  /* A hair of air so adjacent rounded selections stay apart. The list's spacer
+     row subtracts it (drive-list-spacer.tsx). */
+  --drive-list-row-gap: 0.125rem;
+  border-spacing: 0 var(--drive-list-row-gap);
   /* Titles in the same ink as sidebar items. */
   color: var(--workspace-item-color, var(--workspace-foreground));
 }
@@ -381,6 +408,20 @@
 /* A row reached by keyboard (Tab, ↑/↓): the suite focus ring, inside the clip. */
 .drive-workspace .drive-list-row {
   outline: none;
+}
+
+/* Stands in for unmounted rows (#1641 step d): no padding, no hairline. The
+   browser must not anchor the scroll position on it (as `.workspace-list__spacer`):
+   a spacer above the viewport grows as the window moves down, and anchoring on the
+   one below would push the scroll position down with it, again and again. */
+.drive-workspace .drive-list-table .drive-list-spacer {
+  overflow-anchor: none;
+  pointer-events: none;
+}
+
+.drive-workspace .drive-list-table .drive-list-spacer > td {
+  padding: 0;
+  border: 0;
 }
 
 .drive-workspace .drive-list-row:focus-visible {

@@ -55,6 +55,8 @@ function firstRowStartingAfter(offsets: Float64Array, bottom: number): number {
 /**
  * Rows to mount for a scroll position. `scrollTop` is measured from the top of the
  * rows (not the scroller), so content above the list does not shift the window.
+ * Whether to window at all is the caller's (`windowAfter`): a grid windows 41 rows
+ * of tiles, a list only above 80 rows.
  */
 export function listWindowRange(
   offsets: Float64Array,
@@ -63,7 +65,6 @@ export function listWindowRange(
   overscanPx: number = WORKSPACE_LIST_OVERSCAN_PX,
 ): ListWindowRange {
   const count = offsets.length - 1;
-  if (count <= WORKSPACE_LIST_WINDOW_AFTER) return { start: 0, end: count };
   if (viewportHeight <= 0) return { start: 0, end: Math.min(count, WORKSPACE_LIST_UNSIZED_ROWS) };
   const start = Math.min(count, firstRowEndingAfter(offsets, Math.max(0, scrollTop - overscanPx)));
   const end = Math.max(

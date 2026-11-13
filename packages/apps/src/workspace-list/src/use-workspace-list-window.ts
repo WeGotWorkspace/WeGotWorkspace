@@ -19,6 +19,14 @@ export type UseWorkspaceListWindowArgs<T> = {
   isHeader?: (item: T) => boolean;
   /** Ids to keep mounted out of view: the active row, and any the app adds. */
   pinnedKeys: readonly string[];
+  /** Window only above this many items (default 80). */
+  windowAfter?: number;
+  /**
+   * The row key of an item id read from the DOM (`data-list-item-id` of the focused
+   * or dragged item). A row that holds several items (a grid's tile row) maps each
+   * tile to its row; by default the id is the key.
+   */
+  keyOfItemId?: (id: string) => string | undefined;
 };
 
 const NO_SEGMENTS: ListWindowSegment[] = [];
@@ -33,11 +41,13 @@ export function useWorkspaceListWindow<T>({
   estimateSize,
   isHeader,
   pinnedKeys,
+  windowAfter = WORKSPACE_LIST_WINDOW_AFTER,
+  keyOfItemId,
 }: UseWorkspaceListWindowArgs<T>) {
-  const enabled = items.length > WORKSPACE_LIST_WINDOW_AFTER;
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [listNode, setListNode] = useState<HTMLDivElement | null>(null);
-  const attachList = useCallback((node: HTMLDivElement | null) => {
+  const enabled = items.length > windowAfter;
+  const listRef = useRef<HTMLElement | null>(null);
+  const [listNode, setListNode] = useState<HTMLElement | null>(null);
+  const attachList = useCallback((node: HTMLElement | null) => {
     listRef.current = node;
     setListNode(node);
   }, []);
@@ -60,6 +70,8 @@ export function useWorkspaceListWindow<T>({
 
   const isHeaderRef = useRef(isHeader);
   isHeaderRef.current = isHeader;
+  const keyOfItemIdRef = useRef(keyOfItemId);
+  keyOfItemIdRef.current = keyOfItemId;
   const segments = useMemo(() => {
     if (!enabled) return NO_SEGMENTS;
     const headerAt = isHeaderRef.current
@@ -73,9 +85,27 @@ export function useWorkspaceListWindow<T>({
       const header = sectionHeaderIndex(index, headerAt);
       if (header >= 0 && header !== index) pinned.push(header);
     };
-    for (const key of [...pinnedKeys, focusedKey, draggingKey]) {
-      const index = key ? keyIndex.get(key) : undefined;
+    const indexOf = (key: string | null | undefined) => (key ? keyIndex.get(key) : undefined);
+    const indexOfItem = (id: string | null) =>
+      id ? indexOf(keyOfItemIdRef.current ? keyOfItemIdRef.current(id) : id) : undefined;
+    for (const key of pinnedKeys) {
+      const index = indexOf(key);
       if (index !== undefined) pin(index);
+    }
+    const dragging = indexOfItem(draggingKey);
+    if (dragging !== undefined) pin(dragging);
+    // The focused row and its neighbours: keys that step to the next row in the
+    // DOM (a picker) find the right one even after the list scrolled away.
+    const focused = indexOfItem(focusedKey);
+    if (focused !== undefined) {
+      // Section headings are not items, so step past them to the nearest item row.
+      let before = focused - 1;
+      while (before >= 0 && headerAt?.(before)) before -= 1;
+      if (before >= 0) pin(before);
+      pin(focused);
+      let after = focused + 1;
+      while (after < items.length && headerAt?.(after)) after += 1;
+      if (after < items.length) pin(after);
     }
     if (range.end > range.start) pin(range.start);
     return listWindowSegments(offsets, range, pinned);

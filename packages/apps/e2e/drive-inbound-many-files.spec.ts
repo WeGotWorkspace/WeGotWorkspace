@@ -136,6 +136,9 @@ test.describe("Drive inbound sync with more than 500 files", () => {
     await expect(page.getByText(RENAME_TO, { exact: true }).first()).toBeVisible({
       timeout: 30_000,
     });
+    // The list mounts only the items near the viewport (#1641 step d). The renamed
+    // and deleted names sort to the top, next to this one: mounted if they existed.
+    await expect(page.getByText(FILES[2]!, { exact: true }).first()).toBeVisible();
     await expect(page.getByText(RENAME_FROM, { exact: true })).toHaveCount(0);
     await expect(page.getByText(DELETED, { exact: true })).toHaveCount(0);
 

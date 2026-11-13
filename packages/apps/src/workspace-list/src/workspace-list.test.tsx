@@ -185,6 +185,30 @@ describe("WorkspaceList", () => {
     expect(document.activeElement).toBe(row);
   });
 
+  it("keeps the focused row's neighbours mounted, so the next row in the DOM is the next item", () => {
+    const { container, getByTestId } = render(
+      <Scroller>
+        <WorkspaceList
+          items={makeItems(1000)}
+          getKey={getKey}
+          renderItem={renderItem}
+          estimateSize={estimateSize}
+          isTouch={false}
+        />
+      </Scroller>,
+    );
+    const row = container.querySelector<HTMLElement>('[data-list-item-id="i-5"]')!;
+    act(() => row.focus());
+    const scroller = getByTestId("scroller");
+    act(() => {
+      scroller.scrollTop = 60_000;
+      fireEvent.scroll(scroller);
+    });
+    const ids = mountedIds(container);
+    expect(ids.slice(0, 3)).toEqual(["i-4", "i-5", "i-6"]);
+    expect(ids).not.toContain("i-7");
+  });
+
   it("keeps a dragged row mounted until its drag ends", () => {
     const { container, getByTestId } = render(
       <Scroller>
