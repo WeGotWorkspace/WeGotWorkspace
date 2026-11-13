@@ -10,7 +10,8 @@ import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint"
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
-import { useDocsHomeList, type DocsHomeFetcher } from "@/docs-core/src/use-docs-home-list";
+import { useDocsHomeList } from "@/docs-core/src/use-docs-home-list";
+import { type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 import { useDocsHomeSharedList } from "@/docs-core/src/use-docs-home-shared-list";
 import { useDocsHomeStarredList } from "@/docs-core/src/use-docs-home-starred-list";
 import { useDocsHomeTrashList } from "@/docs-core/src/use-docs-home-trash-list";

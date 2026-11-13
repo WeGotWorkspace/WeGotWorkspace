@@ -2,7 +2,7 @@ import { useState } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppToastApi } from "@/hooks/use-app-toast";
-import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations } from "@/lib/models/admin-types";
 import { useAdminUserMutations } from "@/admin-core/src/use-admin-user-mutations";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 

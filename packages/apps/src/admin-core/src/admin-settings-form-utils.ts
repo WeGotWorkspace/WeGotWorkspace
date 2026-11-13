@@ -1,4 +1,4 @@
-import type { AdminUpdateState } from "@/admin-core/src/admin-types";
+import type { AdminUpdateState } from "@/lib/models/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 
 /** Matches CalendarImipService::HOURLY_LIMIT_DEFAULT. The server applies the same fallback. */

@@ -8,7 +8,7 @@ import {
 } from "@/admin-core/src/admin-update-progress";
 import { mutationErrorMessage } from "@/admin-core/src/admin-mutation-feedback";
 import type { AdminMutationSliceArgs } from "@/admin-core/src/admin-mutation-slice";
-import type { AdminUpdateChannel } from "@/admin-core/src/admin-types";
+import type { AdminUpdateChannel } from "@/lib/models/admin-types";
 
 type UpdateShell = AdminMutationSliceArgs<
   "updates" | "setUpdates" | "updateLogLines" | "setUpdateLogLines" | "applyRequestPendingRef"

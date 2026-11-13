@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useLocation, useRouter } from "@tanstack/react-router";
-import type { AdminSection } from "@/admin-core/src/admin-types";
+import type { AdminSection } from "@/lib/models/admin-types";
 import {
   adminNavigateTarget,
   adminPathFor,

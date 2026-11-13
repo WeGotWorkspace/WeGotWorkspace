@@ -1,5 +1,5 @@
-import { DOCS_DEMO_MARKDOWN, DOCS_DEMO_TEXT } from "@/docs-core/src/docs-demo-content";
-import type { DocsAppBootstrap } from "@/docs-core/src/docs-types";
+import { DOCS_DEMO_MARKDOWN, DOCS_DEMO_TEXT } from "@/lib/api/mock/docs-demo-content";
+import type { DocsAppBootstrap } from "@/lib/models/docs-types";
 import { mockWorkspaceSession } from "./workspace-session-mock";
 
 export function createDocsAppBootstrap(overrides?: Partial<DocsAppBootstrap>): DocsAppBootstrap {

@@ -3,14 +3,35 @@ import { resolveLocale } from "./Locale.js";
 
 type TimeLike = Temporal.PlainTime | Temporal.PlainDateTime;
 
+const dateTimeFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * One `Intl.DateTimeFormat` per locale and options. Building one is costly, and a long
+ * agenda formats every row's times on each render.
+ */
+export function cachedDateTimeFormat(
+  locale: string,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let format = dateTimeFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, options);
+    dateTimeFormats.set(key, format);
+  }
+  return format;
+}
+
 export function formatShortTime(
   lang: string | null | undefined,
   value: TimeLike | null | undefined,
 ): string {
   if (!value) return "";
-  const resolvedLocale = resolveLocale(lang);
-  const plainTime = value instanceof Temporal.PlainDateTime ? value.toPlainTime() : value;
-  return plainTime.toLocaleString(resolvedLocale, { timeStyle: "short" });
+  const { hour, minute, second } = value;
+  // A wall-clock time read as UTC, so the formatter's own zone cannot shift it.
+  return cachedDateTimeFormat(resolveLocale(lang), { timeStyle: "short", timeZone: "UTC" }).format(
+    Date.UTC(1970, 0, 1, hour, minute, second),
+  );
 }
 
 export function formatShortTimeRange(

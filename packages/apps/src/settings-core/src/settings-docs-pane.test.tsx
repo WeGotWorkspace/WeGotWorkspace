@@ -12,7 +12,7 @@ import {
   editSettingsField,
   waitForSettingsAutosave,
 } from "@/settings-core/src/test-utils/settings-autosave";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 import { useSettingsDocsForm } from "@/settings-core/src/use-settings-docs-form";
 
 vi.mock("@/hooks/use-run-with-app-toast", () => ({
@@ -25,9 +25,9 @@ vi.mock("@/hooks/use-run-with-app-toast", () => ({
   },
 }));
 
-vi.mock("@/settings-core/src/settings-slice-saved", async () => {
-  const actual = await vi.importActual<typeof import("@/settings-core/src/settings-slice-saved")>(
-    "@/settings-core/src/settings-slice-saved",
+vi.mock("@/lib/settings-slice-saved", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/settings-slice-saved")>(
+    "@/lib/settings-slice-saved",
   );
   return { ...actual, notifySettingsSliceSaved: vi.fn() };
 });

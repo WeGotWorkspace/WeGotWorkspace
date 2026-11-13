@@ -45,7 +45,7 @@ import {
   canWriteCalendarCollection,
   pickDefaultCalendarId,
 } from "@/calendar-core/src/calendar-collection-write";
-import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
+import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending-create";
 import { alertsFromWire, freeBusyStatusFromWire } from "@/calendar-core/src/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
@@ -59,7 +59,7 @@ import type {
   CalendarCalendarDialogConfirmInput,
   CalendarCalendarDialogState,
 } from "@/calendar-core/src/calendar-calendar-dialog";
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import { useCalendarIcsImport } from "@/calendar-core/src/use-calendar-ics-import";
 import { sortCalendarsForSidebar } from "@/calendar-core/src/calendar-sidebar-order";
 import {

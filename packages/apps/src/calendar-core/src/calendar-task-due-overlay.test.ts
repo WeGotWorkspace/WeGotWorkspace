@@ -4,19 +4,21 @@ import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,
+  mapTaskToDueOverlayMarker,
+  TASK_DUE_OVERLAY_ALL_DAY_DURATION,
+  TASK_DUE_OVERLAY_TIMED_DURATION,
+  tasksListTaskHref,
+} from "@/calendar-core/src/calendar-task-due-overlay";
+import {
   filterVisibleCalendarEventsKeepingOverlay,
   isTaskDueOverlayEvent,
   isTaskDueOverlayKey,
-  mapTaskToDueOverlayMarker,
   mergeRenderOnlyOverlayEvents,
   omitRenderOnlyOverlayEvents,
   parseTaskDueOverlayKey,
   preserveRenderOnlyOverlayEvents,
-  TASK_DUE_OVERLAY_ALL_DAY_DURATION,
-  TASK_DUE_OVERLAY_TIMED_DURATION,
   taskDueOverlayKey,
-  tasksListTaskHref,
-} from "@/calendar-core/src/calendar-task-due-overlay";
+} from "@/lib/calendar/calendar-render-overlay";
 
 const fullRights: TaskList["myRights"] = {
   mayReadItems: true,

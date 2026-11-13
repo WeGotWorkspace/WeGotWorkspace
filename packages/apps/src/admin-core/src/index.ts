@@ -23,4 +23,4 @@ export type {
   AdminRtcSettings,
   AdminWebdavSettings,
   AdminMcpSettings,
-} from "./admin-types";
+} from "@/lib/models/admin-types";

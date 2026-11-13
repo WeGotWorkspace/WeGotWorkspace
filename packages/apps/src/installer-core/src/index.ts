@@ -6,7 +6,7 @@ export {
 } from "./installer-api-source";
 export type { InstallerApiSource } from "./installer-api-source";
 export { useInstallerAPI } from "./use-installer-api";
-export type { InstallerAPIOperations, InstallerUIData } from "./installer-types";
+export type { InstallerAPIOperations, InstallerUIData } from "@/lib/models/installer-types";
 export { InstallerWelcomePage } from "./installer-welcome-page";
 export type { InstallerWelcomePageProps } from "./installer-welcome-page";
 export { InstallerDatabasePage } from "./installer-database-page";

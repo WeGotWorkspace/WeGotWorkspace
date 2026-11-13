@@ -8,6 +8,9 @@ import {
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { getOutboxMutation, rebaseQueuedEntityRows } from "@/lib/offline/core/outbox-store";
+import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
+import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   listMeetChatOutbox,
@@ -27,9 +30,36 @@ import {
 export type MeetChatOutboxFlushResult = {
   /** Rows replayed and removed. */
   flushed: number;
-  /** Message ids whose rows errored and stay queued for the next flush. */
-  failedMessageIds: string[];
+  /**
+   * Rows that errored and stay queued. Which messages failed is read from the
+   * outbox rows themselves (`readMeetChatBootstrapFromCache` sets each
+   * message's `syncState`), so every tab sees it, also after a reload.
+   */
+  failed: number;
 };
+
+/**
+ * A send the server answered with another id: the edits, deletes and
+ * reactions queued behind it name the old id, so they follow the new one
+ * instead of getting a 404 and being dropped.
+ */
+async function followReKeyedSend(
+  username: string,
+  sentRowId: string,
+  localId: string,
+  serverId: string,
+): Promise<void> {
+  await rebaseQueuedEntityRows(username, {
+    domain: MEET_CHAT_DOMAIN,
+    entityId: localId,
+    sentRowId,
+    entityIdFromRow: meetChatOutboxMessageId,
+    rebase: (queued) => ({
+      ...queued,
+      payload: JSON.stringify({ ...JSON.parse(queued.payload), messageId: serverId }),
+    }),
+  });
+}
 
 /**
  * Replay queued chat mutations oldest-first. Replay is idempotent by contract:
@@ -45,9 +75,12 @@ export type MeetChatOutboxFlushResult = {
 export async function flushMeetChatOutbox(username: string): Promise<MeetChatOutboxFlushResult> {
   const rows = await listMeetChatOutbox(username);
   let flushed = 0;
-  const failedMessageIds: string[] = [];
+  let failed = 0;
 
-  for (const row of rows) {
+  for (const listed of rows) {
+    // Re-read: a send the server re-keyed rebases the rows queued behind it.
+    const row = await getOutboxMutation(username, listed.id);
+    if (!row) continue;
     try {
       if (row.op === "send") {
         const payload = JSON.parse(row.payload) as MeetChatSendOutboxPayload;
@@ -60,6 +93,12 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
             body: payload.body,
             ...(payload.parentId ? { parentId: payload.parentId } : {}),
           });
+          // The server keeps the client ULID unless an object out of this
+          // person's reach already has it; then the answer carries a fresh id.
+          if (saved.id !== payload.messageId) {
+            await removeChatMessageFromCache(username, payload.messageId);
+            await followReKeyedSend(username, row.id, payload.messageId, saved.id);
+          }
           await upsertChatMessageInCache(
             username,
             await uiChatMessageForCache(username, chatMessageFromWire(saved)),
@@ -113,8 +152,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
-      const messageId = meetChatOutboxMessageId(row);
-      if (messageId) failedMessageIds.push(messageId);
+      failed += 1;
       await markOutboxError(
         username,
         row.id,
@@ -124,5 +162,6 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
     }
   }
 
-  return { flushed, failedMessageIds };
+  if (rows.length > 0) notifyMeetChatCacheChanged(username);
+  return { flushed, failed };
 }

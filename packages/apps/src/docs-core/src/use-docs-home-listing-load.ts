@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  WgwUnifiedSearchData,
-  WgwUnifiedSearchParams,
-  WgwUnifiedSearchResult,
-} from "@/lib/api/wgw/search";
+import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
+import {
+  fetchAllDocsHomeListingPages,
+  type DocsHomeBrowseParams,
+  type DocsHomeFetcher,
+} from "@/lib/files/docs-home-listing";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";
 import { syncDocsBodiesFromListingResults } from "@/lib/offline/docs/docs-body-sync";
@@ -26,48 +27,6 @@ import {
   useDocsListingReconnectRefresh,
 } from "@/docs-core/src/use-docs-listing-cache-refresh";
 import { retryFailedListing } from "@/docs-core/src/docs-listing-retry";
-
-export type DocsHomeFetcher = (
-  params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
-) => Promise<WgwUnifiedSearchData>;
-
-export type DocsHomeBrowseParams = Omit<WgwUnifiedSearchParams, "signal" | "q" | "offset"> & {
-  limit: number;
-};
-
-/** Fetch every browse page so offline cache and UI match the full server listing. */
-export async function fetchAllDocsHomeListingPages(
-  fetcher: DocsHomeFetcher,
-  baseParams: DocsHomeBrowseParams,
-  query: string,
-  signal: AbortSignal,
-): Promise<{ results: WgwUnifiedSearchResult[]; hasMore: boolean }> {
-  const merged: WgwUnifiedSearchResult[] = [];
-  let offset = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const data = await fetcher({
-      ...baseParams,
-      q: query || undefined,
-      offset,
-      signal,
-    });
-    if (signal.aborted) {
-      return { results: merged, hasMore: merged.length > 0 ? hasMore : false };
-    }
-    const page = data.results ?? [];
-    merged.push(...page);
-    hasMore = Boolean(data.hasMore);
-    offset = merged.length;
-    if (page.length === 0) {
-      hasMore = false;
-      break;
-    }
-  }
-
-  return { results: merged, hasMore: false };
-}
 
 /** Keep rows a queued write still owns: the server has not seen that write yet. */
 async function mergeWithQueuedWrites(
