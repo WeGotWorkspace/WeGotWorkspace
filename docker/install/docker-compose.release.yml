@@ -24,6 +24,10 @@ x-wgw-web-environment: &wgw-web-environment
   WGW_DB_PASSWORD: ${WGW_DB_PASSWORD:-wgw}
   # Shown in Admin > Updates. setup.sh reads it from .env to pick the release feed.
   WGW_UPDATE_CHANNEL: ${WGW_UPDATE_CHANNEL:-stable}
+  # No value: unset when .env has none, so the same keys in api.env still apply.
+  WGW_INSTALL_BASE_URI:
+  WGW_INSTALL_ADMIN_USERNAME:
+  WGW_INSTALL_ADMIN_EMAIL:
 
 services:
   migrator:
@@ -31,7 +35,10 @@ services:
     restart: "no"
     security_opt:
       - no-new-privileges:true
-    environment: *wgw-web-environment
+    environment:
+      <<: *wgw-web-environment
+      WGW_INSTALL_HEADLESS:
+      WGW_INSTALL_ADMIN_PASSWORD:
     volumes:
       - wgw-content:/var/wgw/content
       - wgw-api-storage:/var/wgw/storage
