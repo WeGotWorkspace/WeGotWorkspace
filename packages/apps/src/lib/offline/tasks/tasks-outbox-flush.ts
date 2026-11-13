@@ -16,11 +16,14 @@ import {
   putTask,
   TasksRequestError,
 } from "@/lib/api/wgw/tasks";
-import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import {
+  runOutboxFlush,
+  type OutboxFlushContext,
+  type OutboxSendOutcome,
+} from "@/lib/offline/core/outbox-flush";
 import {
   getOutboxMutation,
   rebaseQueuedEntityRows,
-  sendChangedRowAgain,
   settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
@@ -31,10 +34,8 @@ import {
 } from "@/lib/offline/tasks/tasks-refused-write";
 import {
   getTaskFromCache,
-  listOutboxMutations,
   markOutboxError,
   readTasksBootstrapFromCache,
-  removeOutboxMutation,
   removeTaskFromCache,
   removeTaskListFromCache,
   tasksOutboxTaskId,
@@ -97,117 +98,132 @@ async function followLandedTaskWrite(
   }
 }
 
+/** The row's `taskId`, or "" when it has none or cannot be read. */
+function taskIdFromRow(row: OfflineOutboxRow): string {
+  try {
+    return String((JSON.parse(row.payload) as { taskId?: unknown }).taskId ?? "");
+  } catch {
+    return "";
+  }
+}
+
+/** Sends one Tasks row; resolving plainly lets the runner remove it. */
+async function sendTasksRow(
+  username: string,
+  cached: TasksAppBootstrap,
+  payload: Record<string, unknown>,
+  row: OfflineOutboxRow,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  if (row.op === "create") {
+    const body = payload.body as TaskCreate;
+    const tempId = String(payload.tempTaskId ?? "");
+    const task = await createTask(body);
+    await followLandedTaskWrite(username, row.id, tempId || task.id, task);
+  } else if (row.op === "update") {
+    const taskId = String(payload.taskId ?? "");
+    const patch = payload.patch as TaskPatch;
+    const task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
+    // A patch merged in while this one was sent is owed on top of `task`.
+    return settleLandedTaskRow(username, row, taskId, task, context);
+  } else if (row.op === "move") {
+    const taskId = String(payload.taskId ?? "");
+    const taskListId = String(payload.taskListId ?? "");
+    const localTask = await getTaskFromCache(username, taskId);
+    if (!localTask) {
+      throw new Error(`Task ${taskId} missing from cache for move flush`);
+    }
+    const task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
+      ifMatch: row.ifInState,
+    });
+    // Undo may have pointed the row back while it was sent: then send it again.
+    return settleLandedTaskRow(username, row, taskId, task, context);
+  } else if (row.op === "delete") {
+    const taskId = String(payload.taskId ?? "");
+    await deleteTask(taskId, { ifMatch: row.ifInState });
+    await removeTaskFromCache(username, taskId);
+  } else if (row.op === "listCreate") {
+    const body = payload.body as TaskListCreate;
+    const tempId = String(payload.tempListId ?? "");
+    const list = await createTaskList(body);
+    if (tempId) await removeTaskListFromCache(username, tempId);
+    await upsertTaskListInCache(username, list);
+  } else if (row.op === "listUpdate") {
+    const taskListId = String(payload.taskListId ?? "");
+    const patch = payload.patch as TaskListPatch;
+    const list = await patchTaskList(taskListId, patch);
+    await upsertTaskListInCache(username, list);
+  } else if (row.op === "listDelete") {
+    const taskListId = String(payload.taskListId ?? "");
+    const onDestroyRemoveContents = payload.onDestroyRemoveContents === true;
+    await deleteTaskList(taskListId, { onDestroyRemoveContents });
+    await removeTaskListFromCache(username, taskListId);
+    if (onDestroyRemoveContents) {
+      const dbTasks = cached.data.tasks.filter((task) => task.taskListId === taskListId);
+      for (const task of dbTasks) {
+        await removeTaskFromCache(username, task.id);
+      }
+    }
+  }
+}
+
+/** Settles an update or move the server took, and resends a row changed meanwhile. */
+async function settleLandedTaskRow(
+  username: string,
+  row: OfflineOutboxRow,
+  taskId: string,
+  task: Task,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  const settlement = await settleSentOutboxMutation(username, row, {
+    rebase: (current) => rowFollowingTask(current, task),
+    cacheTables: (db) => [tasksItemsTable(db)],
+    onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
+    onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
+  });
+  context.resend(settlement);
+  return "handled";
+}
+
 export async function flushTasksOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readTasksBootstrapFromCache(username);
   if (!cached) {
     return { etagMismatches: [], bootstrap: null };
   }
 
-  const rows = await listOutboxMutations(username);
   const etagMismatches: string[] = [];
-  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
-  const resends = new Map<string, number>();
-
   // Tasks with a write that failed in this flush: their later writes wait, so
   // they are not sent from a version or to an id that write never produced.
   const held = new Set<string>();
 
-  for (const listed of rows) {
-    if (listed.domain !== TASKS_DOMAIN) continue;
-    // Re-read: an earlier row of the same task may have rebased this one.
-    const row = await getOutboxMutation(username, listed.id);
-    if (!row) continue;
-    const entityId = tasksOutboxTaskId(row);
-    if (entityId && held.has(entityId)) continue;
-    try {
-      const payload = JSON.parse(row.payload) as Record<string, unknown>;
-      if (row.op === "create") {
-        const body = payload.body as TaskCreate;
-        const tempId = String(payload.tempTaskId ?? "");
-        const task = await createTask(body);
-        await followLandedTaskWrite(username, row.id, tempId || task.id, task);
-      } else if (row.op === "update") {
-        const taskId = String(payload.taskId ?? "");
-        const patch = payload.patch as TaskPatch;
-        const task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
-        // A patch merged in while this one was sent is owed on top of `task`.
-        const settlement = await settleSentOutboxMutation(username, row, {
-          rebase: (current) => rowFollowingTask(current, task),
-          cacheTables: (db) => [tasksItemsTable(db)],
-          onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
-          onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
-        });
-        sendChangedRowAgain(rows, resends, settlement);
-        continue;
-      } else if (row.op === "move") {
-        const taskId = String(payload.taskId ?? "");
-        const taskListId = String(payload.taskListId ?? "");
-        const localTask = await getTaskFromCache(username, taskId);
-        if (!localTask) {
-          throw new Error(`Task ${taskId} missing from cache for move flush`);
-        }
-        const task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
-          ifMatch: row.ifInState,
-        });
-        // Undo may have pointed the row back while it was sent: then send it again.
-        const settlement = await settleSentOutboxMutation(username, row, {
-          rebase: (current) => rowFollowingTask(current, task),
-          cacheTables: (db) => [tasksItemsTable(db)],
-          onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
-          onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
-        });
-        sendChangedRowAgain(rows, resends, settlement);
-        continue;
-      } else if (row.op === "delete") {
-        const taskId = String(payload.taskId ?? "");
-        await deleteTask(taskId, { ifMatch: row.ifInState });
-        await removeTaskFromCache(username, taskId);
-      } else if (row.op === "listCreate") {
-        const body = payload.body as TaskListCreate;
-        const tempId = String(payload.tempListId ?? "");
-        const list = await createTaskList(body);
-        if (tempId) await removeTaskListFromCache(username, tempId);
-        await upsertTaskListInCache(username, list);
-      } else if (row.op === "listUpdate") {
-        const taskListId = String(payload.taskListId ?? "");
-        const patch = payload.patch as TaskListPatch;
-        const list = await patchTaskList(taskListId, patch);
-        await upsertTaskListInCache(username, list);
-      } else if (row.op === "listDelete") {
-        const taskListId = String(payload.taskListId ?? "");
-        const onDestroyRemoveContents = payload.onDestroyRemoveContents === true;
-        await deleteTaskList(taskListId, { onDestroyRemoveContents });
-        await removeTaskListFromCache(username, taskListId);
-        if (onDestroyRemoveContents) {
-          const dbTasks = cached.data.tasks.filter((task) => task.taskListId === taskListId);
-          for (const task of dbTasks) {
-            await removeTaskFromCache(username, task.id);
-          }
-        }
-      }
-      await removeOutboxMutation(username, row.id);
-    } catch (error) {
+  await runOutboxFlush<Record<string, unknown>>(username, {
+    domain: TASKS_DOMAIN,
+    prepare: async (listed) => {
+      // Re-read: an earlier row of the same task may have rebased this one.
+      const row = await getOutboxMutation(username, listed.id);
+      if (!row) return null;
+      const entityId = tasksOutboxTaskId(row);
+      return entityId && held.has(entityId) ? null : row;
+    },
+    parse: (row) => JSON.parse(row.payload) as Record<string, unknown>,
+    send: (payload, row, context) => sendTasksRow(username, cached, payload, row, context),
+    onFailure: async ({ row, error }) => {
+      const entityId = tasksOutboxTaskId(row);
       if (entityId) held.add(entityId);
       // Refused for good: the task's queued rows are dropped, so the re-read skips them.
       // A failed read of the server copy keeps the row for the next flush.
       if (isRefusedTaskWrite(row, error)) {
-        if (await settleRefusedTaskWrite(username, row, error).catch(() => null)) continue;
+        if (await settleRefusedTaskWrite(username, row, error).catch(() => null)) return true;
       }
       if (isEtagMismatch(error)) {
-        const taskId = String(JSON.parse(row.payload).taskId ?? "");
+        const taskId = taskIdFromRow(row);
         if (taskId) etagMismatches.push(taskId);
         await markOutboxError(username, row.id, "etagMismatch");
-        continue;
+        return true;
       }
-      const status = httpStatusFromFlushError(error);
-      await markOutboxError(
-        username,
-        row.id,
-        error instanceof Error ? error.message : String(error),
-        status,
-      );
-    }
-  }
+      return false;
+    },
+  });
 
   const nextBootstrap = await readTasksBootstrapFromCache(username);
   if (nextBootstrap) {
