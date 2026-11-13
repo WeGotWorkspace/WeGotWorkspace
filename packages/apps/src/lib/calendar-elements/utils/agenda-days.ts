@@ -2,7 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEvent } from "@/lib/calendar-engine";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
 import { eventOccurrenceInDisplayZone } from "./event-display-time.js";
-import { formatShortTime } from "./TimeFormatting.js";
+import { cachedDateTimeFormat, formatShortTime } from "./TimeFormatting.js";
 
 /** One occurrence on one day of an agenda (a multi-day event is listed on each day). */
 export type AgendaItem = {
@@ -118,7 +118,7 @@ function utcDate(value: Temporal.PlainDate | Temporal.PlainDateTime): Date {
 }
 
 function formatDate(locale: string, date: Temporal.PlainDate): string {
-  return new Intl.DateTimeFormat(locale, {
+  return cachedDateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
@@ -126,7 +126,7 @@ function formatDate(locale: string, date: Temporal.PlainDate): string {
 }
 
 function formatDateTime(locale: string, dateTime: Temporal.PlainDateTime): string {
-  return new Intl.DateTimeFormat(locale, {
+  return cachedDateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -137,9 +137,7 @@ function formatDateTime(locale: string, dateTime: Temporal.PlainDateTime): strin
 
 /** The day heading's lead: "Wednesday". */
 export function formatAgendaWeekday(locale: string, date: Temporal.PlainDate): string {
-  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(
-    utcDate(date),
-  );
+  return cachedDateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(utcDate(date));
 }
 
 /** The day heading's rest: "11 Nov" (with the year for search results). */
@@ -148,7 +146,7 @@ export function formatAgendaDayLabel(
   date: Temporal.PlainDate,
   withYear = false,
 ): string {
-  return new Intl.DateTimeFormat(locale, {
+  return cachedDateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     ...(withYear ? { year: "numeric" as const } : {}),
@@ -158,9 +156,7 @@ export function formatAgendaDayLabel(
 
 /** The day heading's accessible name: "Wednesday, 11 November 2026". */
 export function formatAgendaLongDate(locale: string, date: Temporal.PlainDate): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(
-    utcDate(date),
-  );
+  return cachedDateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(utcDate(date));
 }
 
 /**

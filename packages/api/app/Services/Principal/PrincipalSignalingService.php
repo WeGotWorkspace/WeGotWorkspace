@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Principal;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
@@ -180,7 +181,7 @@ final class PrincipalSignalingService
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             try {
                 $this->rooms->assertMayJoin($room, $username);
-            } catch (PrincipalResponseException $denied) {
+            } catch (RealtimeApiException $denied) {
                 // Leaving without access only ends the caller's own presence.
                 $this->store->leaveOwnPeerOr($room, $peerId, $ownerMarker, $denied);
 
@@ -204,7 +205,7 @@ final class PrincipalSignalingService
     {
         try {
             $this->rooms->assertMayJoin($room, $username);
-        } catch (PrincipalResponseException $denied) {
+        } catch (RealtimeApiException $denied) {
             $this->store->leaveOwnedPeers($room, $ownerMarker);
             throw $denied;
         }
@@ -236,12 +237,12 @@ final class PrincipalSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw PrincipalResponseException::fromSignaling($exception);
+            throw RealtimeApiException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        throw new PrincipalResponseException($status, $error, $message);
+        throw new RealtimeApiException($status, $error, $message);
     }
 }

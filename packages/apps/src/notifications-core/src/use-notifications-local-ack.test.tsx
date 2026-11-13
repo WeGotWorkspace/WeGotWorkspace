@@ -7,7 +7,7 @@ vi.mock("@/lib/api/wgw/notifications", () => ({ ackLocalNotifications: vi.fn() }
 
 import { ackLocalNotifications } from "@/lib/api/wgw/notifications";
 import { browserLocalAckedStore } from "@/notifications-core/src/local-acked-store";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 import {
   type LocalAckDeps,
   useNotificationsLocalAck,

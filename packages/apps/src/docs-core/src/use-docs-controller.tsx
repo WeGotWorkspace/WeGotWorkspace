@@ -4,7 +4,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { parentAndName } from "@/lib/files/api-path";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
-import type { DocsAPIOperations, DocsDocument } from "@/docs-core/src/docs-types";
+import type { DocsAPIOperations, DocsDocument } from "@/lib/models/docs-types";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";

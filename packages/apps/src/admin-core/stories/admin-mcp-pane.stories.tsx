@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
+import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";

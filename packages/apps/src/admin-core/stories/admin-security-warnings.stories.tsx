@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
+import type { AdminSecurityWarning } from "@/lib/models/admin-types";
 import { AdminSecurityWarnings } from "@/admin-core/src/admin-workspace";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 

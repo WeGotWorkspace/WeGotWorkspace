@@ -16,9 +16,9 @@ import { buttonVariants } from "@/button/src/button";
 import { cn } from "@/lib/utils";
 import { displayOriginHost } from "@/settings-core/src/display-origin-host";
 import { McpConsentPermissionsCard } from "@/settings-core/src/mcp-consent-permissions-card";
-import { buildMcpEndpointUrl } from "@/settings-core/src/mcp-endpoint";
+import { buildMcpEndpointUrl } from "@/lib/mcp-endpoint";
 import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
-import type { SettingsMcpGrant, SettingsMcpShareCall } from "@/settings-core/src/settings-types";
+import type { SettingsMcpGrant, SettingsMcpShareCall } from "@/lib/models/settings-types";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import {
   mcpConsentCatalogScopeIds,

@@ -19,7 +19,10 @@ import {
   type MeetChatSendOutboxPayload,
 } from "@/lib/offline/meet-chat-offline-store";
 import { MEET_CHAT_CAUGHT_UP_READ_UID } from "@/lib/offline/meet-chat/meet-chat-read-marker";
-import { createHybridMeetChatOperations } from "@/lib/offline/meet-chat-hybrid-operations";
+import {
+  createHybridMeetChatOperations,
+  getMeetChatSyncRunner,
+} from "@/lib/offline/meet-chat-hybrid-operations";
 
 const username = "alice";
 const author = { id: "alice", displayName: "Alice" };
@@ -61,6 +64,7 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
 import {
   MeetChatRequestError,
   deleteChatChannel,
+  deleteChatMessage,
   openChatDm,
   patchChatChannel,
   patchChatMessage,
@@ -228,6 +232,108 @@ describe("createHybridMeetChatOperations", () => {
 
     expect(await listMeetChatOutbox(username)).toHaveLength(0);
     expect(await getCachedChatMessage(username, optimistic.id)).toBeUndefined();
+  });
+
+  describe("a message whose send is still queued, once back online", () => {
+    async function queuedSend() {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+      const operations = createHybridMeetChatOperations(username, author);
+      const optimistic = await operations.sendMessage!("chat-general", "not sent yet");
+      vi.mocked(readBrowserOnline).mockReturnValue(true);
+      return { operations, id: optimistic.id };
+    }
+
+    it("deletes it locally: the server never had it, and the queued send is dropped", async () => {
+      const { operations, id } = await queuedSend();
+      await operations.deleteMessage!(id);
+
+      expect(deleteChatMessage).not.toHaveBeenCalled();
+      expect(await listMeetChatOutbox(username)).toHaveLength(0);
+      expect(await getCachedChatMessage(username, id)).toBeUndefined();
+    });
+
+    it("merges an edit into the queued send instead of patching a message the server lacks", async () => {
+      const { operations, id } = await queuedSend();
+      const edited = await operations.editMessage!(id, "fixed typo");
+
+      expect(patchChatMessage).not.toHaveBeenCalled();
+      expect(edited.syncState).toBe("pending");
+      const outbox = await listMeetChatOutbox(username);
+      expect(outbox.map((row) => row.op)).toEqual(["send"]);
+      expect((JSON.parse(outbox[0]!.payload) as MeetChatSendOutboxPayload).body).toBe("fixed typo");
+    });
+
+    it("queues a reaction behind the send instead of dropping the message", async () => {
+      const { operations, id } = await queuedSend();
+      await operations.react!(id, "👍");
+
+      expect(toggleChatReaction).not.toHaveBeenCalled();
+      expect((await listMeetChatOutbox(username)).map((row) => row.op)).toEqual(["send", "react"]);
+      expect(await getCachedChatMessage(username, id)).toBeDefined();
+    });
+
+    describe("while a flush is sending it", () => {
+      // A Web Locks stand-in: one holder at a time, the rest wait in line.
+      beforeEach(() => {
+        let tail: Promise<unknown> = Promise.resolve();
+        vi.stubGlobal("navigator", {
+          locks: {
+            request: (_name: string, _options: unknown, task: () => Promise<unknown>) => {
+              const run = tail.then(() => task());
+              tail = run.catch(() => undefined);
+              return run;
+            },
+          },
+        });
+      });
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      async function flushingSend() {
+        const { operations, id } = await queuedSend();
+        let finishSend: () => void = () => undefined;
+        vi.mocked(sendChatMessage).mockImplementation(
+          (_channelId, body) =>
+            new Promise<WgwChatMessage>((resolve) => {
+              finishSend = () => resolve(wireMessage({ id: body.id, body: "not sent yet" }));
+            }),
+        );
+        const flush = getMeetChatSyncRunner(username).flush();
+        await vi.waitFor(() => expect(sendChatMessage).toHaveBeenCalled());
+        return { operations, id, flush, finishSend: () => finishSend() };
+      }
+
+      it("holds an edit until the send is done, then patches the server's message", async () => {
+        const { operations, id, flush, finishSend } = await flushingSend();
+        vi.mocked(patchChatMessage).mockResolvedValue(wireMessage({ id, body: "fixed typo" }));
+
+        const edit = operations.editMessage!(id, "fixed typo");
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(patchChatMessage).not.toHaveBeenCalled();
+
+        finishSend();
+        await flush;
+        await edit;
+        expect(patchChatMessage).toHaveBeenCalledWith(id, { body: "fixed typo" });
+        expect(await listMeetChatOutbox(username)).toHaveLength(0);
+      });
+
+      it("holds a delete until the send is done, then deletes the server's message", async () => {
+        const { operations, id, flush, finishSend } = await flushingSend();
+        vi.mocked(deleteChatMessage).mockResolvedValue(undefined);
+
+        const removal = operations.deleteMessage!(id);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(deleteChatMessage).not.toHaveBeenCalled();
+
+        finishSend();
+        await flush;
+        await removal;
+        expect(deleteChatMessage).toHaveBeenCalledWith(id);
+        expect(await listMeetChatOutbox(username)).toHaveLength(0);
+      });
+    });
   });
 
   it("tombstones a synced message offline and queues the delete", async () => {

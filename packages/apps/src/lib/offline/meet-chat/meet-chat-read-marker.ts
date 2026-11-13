@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@/lib/models/meet-types";
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import {
   findCachedDmChannelByPeer,
   listCachedChatChannels,

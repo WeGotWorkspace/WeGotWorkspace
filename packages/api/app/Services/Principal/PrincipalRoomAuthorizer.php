@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Principal;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Teams\TeamColleagues;
 
 /**
@@ -24,7 +25,7 @@ final class PrincipalRoomAuthorizer
     public function cleanRoom(mixed $room): string
     {
         if (! is_string($room) || preg_match('/^[A-Za-z0-9._-]{1,150}$/', $room) !== 1) {
-            throw new PrincipalResponseException(400, 'invalid_room');
+            throw new RealtimeApiException(400, 'invalid_room');
         }
 
         return $room;
@@ -39,6 +40,6 @@ final class PrincipalRoomAuthorizer
             }
         }
 
-        throw new PrincipalResponseException(403, 'forbidden', 'You do not have access to this presence room.');
+        throw new RealtimeApiException(403, 'forbidden', 'You do not have access to this presence room.');
     }
 }
