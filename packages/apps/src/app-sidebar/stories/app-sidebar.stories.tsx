@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { Folder } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
+import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";

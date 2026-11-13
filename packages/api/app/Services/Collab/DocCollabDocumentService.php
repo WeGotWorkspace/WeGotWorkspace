@@ -9,9 +9,11 @@ use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
-use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
+use Illuminate\Contracts\Cache\Lock;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -27,6 +29,10 @@ final class DocCollabDocumentService
     private const MAX_MARKDOWN_BYTES = 2_097_152;
 
     private const MAX_YJS_BYTES = 5_242_880;
+
+    private const DOCUMENT_LOCK_TTL_SECONDS = 120;
+
+    private const DOCUMENT_LOCK_WAIT_SECONDS = 10;
 
     public function __construct(
         private CollabActorResolver $actors,
@@ -135,7 +141,7 @@ final class DocCollabDocumentService
         $sidecarKey = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
         $documentKey = $this->paths->virtualToStorageKey($virtual);
         $username = $markdown !== null ? $this->actors->requirePrincipal($request)['username'] : null;
-        // Check and write share one flock so two first opens cannot both pass
+        // Check and write share one lock so two first opens cannot both pass
         // `If-None-Match: *`. The sidecar lands first; a failed markdown write
         // puts the previous sidecar back.
         $lock = $this->acquireDocumentLock($sidecarKey);
@@ -174,7 +180,7 @@ final class DocCollabDocumentService
                 $this->recordSidecarLink($documentKey, null, $yjsBytes);
             }
         } finally {
-            $this->releaseDocumentLock($lock);
+            $lock->release();
         }
 
         return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
@@ -239,31 +245,24 @@ final class DocCollabDocumentService
     }
 
     /**
-     * Shared-hosting lock under the framework lock directory, not beside the
-     * user's document. The path is the sha1 of the sidecar key.
-     *
-     * @return resource
+     * Through the cache store, so app servers sharing the database share the lock.
+     * The TTL frees a lock left by a dead request; the wait turns a stuck writer into a 503.
      */
-    private function acquireDocumentLock(string $sidecarKey)
+    private function acquireDocumentLock(string $sidecarKey): Lock
     {
+        $lock = Cache::lock(self::documentLockKey($sidecarKey), self::DOCUMENT_LOCK_TTL_SECONDS);
         try {
-            return ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
-        } catch (\RuntimeException) {
+            $lock->block(self::DOCUMENT_LOCK_WAIT_SECONDS);
+        } catch (LockTimeoutException) {
             $this->fail('lock_unavailable', 503);
         }
+
+        return $lock;
     }
 
-    public static function documentLockPath(string $sidecarKey): string
+    public static function documentLockKey(string $sidecarKey): string
     {
-        return storage_path('framework/locks/'.sha1($sidecarKey));
-    }
-
-    /**
-     * @param  resource  $handle
-     */
-    private function releaseDocumentLock($handle): void
-    {
-        ExclusiveFileLock::release($handle);
+        return 'collab-doc:'.sha1($sidecarKey);
     }
 
     private function readSidecarBytes(string $sidecarKey): ?string

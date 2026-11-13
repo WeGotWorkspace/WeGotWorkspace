@@ -9,7 +9,7 @@ import {
   sanitizeNotificationNavigate,
   WEB_PUSH_DECLARATIVE_VERSION,
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
-} from "./notification-click-navigate";
+} from "@/lib/notifications/notification-click-navigate";
 
 describe("sanitizeNotificationNavigate", () => {
   it("keeps relative suite paths and extracts paths from absolute URLs", () => {

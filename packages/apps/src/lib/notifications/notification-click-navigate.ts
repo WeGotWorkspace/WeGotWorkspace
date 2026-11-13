@@ -5,7 +5,7 @@ import {
   normalizePushPath,
   ROOT_PUSH_SCOPE,
   type PushScope,
-} from "./push-scope";
+} from "@/lib/notifications/push-scope";
 
 export const WGW_NOTIFICATION_NAVIGATE_MESSAGE = "wgw-notification-navigate";
 
