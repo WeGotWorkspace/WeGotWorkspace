@@ -15,7 +15,7 @@ import {
   calendarAvailabilitySavedTopic,
   defaultCalendarAvailabilitySettingsOperations,
 } from "@/settings-core/src/settings-calendar-availability-source";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 import type { CalendarAvailabilitySettings } from "@wgw/openapi-types/calendars-types";
 
 export const CALENDAR_AVAILABILITY_SLICE = {

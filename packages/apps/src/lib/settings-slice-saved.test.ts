@@ -4,7 +4,7 @@ import {
   notifySettingsSliceSaved,
   resetSettingsSliceSavedForTests,
   subscribeSettingsSliceSaved,
-} from "@/settings-core/src/settings-slice-saved";
+} from "@/lib/settings-slice-saved";
 
 describe("settings-slice-saved", () => {
   it("notifies subscribers and unsubscribes", () => {

@@ -9,12 +9,8 @@ export { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 export type { DocsWorkspaceProps } from "@/docs-core/src/docs-workspace-props";
 export { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 export type { DocsHomeWorkspaceProps } from "@/docs-core/src/docs-home-workspace";
-export {
-  useDocsHomeList,
-  mapDocsHomeResults,
-  sortDocsHomeResults,
-  type DocsHomeFetcher,
-} from "@/docs-core/src/use-docs-home-list";
+export { useDocsHomeList, mapDocsHomeResults } from "@/docs-core/src/use-docs-home-list";
+export { sortDocsHomeResults, type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 export {
   applyDocsHomeGroupDisplayNames,
   buildDocsFolderPickerRootLabels,

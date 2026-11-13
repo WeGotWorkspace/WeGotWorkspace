@@ -8,10 +8,7 @@ import {
 } from "react-hook-form";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useFormAutosave } from "@/hooks/use-form-autosave";
-import {
-  notifySettingsSliceSaved,
-  type SettingsSliceSavedEvent,
-} from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved, type SettingsSliceSavedEvent } from "@/lib/settings-slice-saved";
 
 /**
  * One place for a settings pane of preferences: the form, autosave, the error toast and

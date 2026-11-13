@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { SettingsPanel } from "@/settings-core/src/settings-registry";
-import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
+import type { BuiltinPanelId } from "@/lib/models/settings-types";
 
 export type SettingsDialogApi = {
   openPanel: (id: BuiltinPanelId) => void;

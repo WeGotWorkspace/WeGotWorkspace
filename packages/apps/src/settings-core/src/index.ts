@@ -17,12 +17,12 @@ export type {
   SettingsSection,
   SettingsUIData,
   SettingsUser,
-} from "./settings-types";
-export { BUILTIN_PANEL_IDS } from "./settings-types";
+} from "@/lib/models/settings-types";
+export { BUILTIN_PANEL_IDS } from "@/lib/models/settings-types";
 export { registerBuiltinSettings } from "./register-builtin-settings";
 export { useWorkspaceAppSettingsEntry } from "./use-workspace-app-settings-entry";
 export { useWorkspaceAppSettingsMenuItem } from "@/app-sidebar/src/app-sidebar-primary";
-export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "./settings-slice-saved";
+export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "@/lib/settings-slice-saved";
 export {
   settingsProfileFormSchema,
   type SettingsProfileFormValues,

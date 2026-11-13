@@ -18,7 +18,7 @@ import {
   MCP_CONSENT_PERMISSIONS_HINT,
   MCP_CONSENT_PERMISSIONS_TITLE,
 } from "@/settings-core/src/mcp-consent-permissions-card";
-import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
+import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import { shareLabels } from "@/share-ui/share-labels";
 
