@@ -4,7 +4,7 @@ import { sortNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
-import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistGone } from "@/lib/offline/notes/notes-persist-access";
 import { normalizeTag } from "@/lib/models/note-tag";
 import {
   applyNoteBodyMarkdown,
