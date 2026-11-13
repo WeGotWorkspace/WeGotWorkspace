@@ -98,9 +98,14 @@ export function useWorkspaceListWindow<T>({
     // DOM (a picker) find the right one even after the list scrolled away.
     const focused = indexOfItem(focusedKey);
     if (focused !== undefined) {
-      if (focused > 0) pin(focused - 1);
+      // Section headings are not items, so step past them to the nearest item row.
+      let before = focused - 1;
+      while (before >= 0 && headerAt?.(before)) before -= 1;
+      if (before >= 0) pin(before);
       pin(focused);
-      if (focused + 1 < items.length) pin(focused + 1);
+      let after = focused + 1;
+      while (after < items.length && headerAt?.(after)) after += 1;
+      if (after < items.length) pin(after);
     }
     if (range.end > range.start) pin(range.start);
     return listWindowSegments(offsets, range, pinned);
