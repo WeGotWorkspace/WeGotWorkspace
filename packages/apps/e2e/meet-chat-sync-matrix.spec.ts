@@ -92,7 +92,12 @@ async function deleteMessage(id: string): Promise<void> {
   await ok(await api(OWNER, "DELETE", `/chat/messages/${encodeURIComponent(id)}`), "delete");
 }
 
-type ServerMessage = { id: string; body: string; deletedAt?: string | null };
+type ServerMessage = {
+  id: string;
+  body: string;
+  deletedAt?: string | null;
+  reactions?: { emoji: string; authors: string[] }[];
+};
 
 async function serverMessages(channelId: string): Promise<ServerMessage[]> {
   const res = (await ok(
@@ -234,6 +239,36 @@ async function send(tab: Tab, body: string): Promise<void> {
 }
 
 const shown = (tab: Tab, body: string) => tab.getByText(body, { exact: true }).first();
+
+/** The message row showing `body`, with its hover actions. */
+async function messageRow(tab: Tab, body: string) {
+  const row = tab.locator("article.chat-message").filter({ hasText: body }).first();
+  await row.hover();
+  return row;
+}
+
+/** Message actions → Edit, new text, Enter to save. */
+async function editShown(tab: Tab, body: string, next: string): Promise<void> {
+  const row = await messageRow(tab, body);
+  await row.getByRole("button", { name: "Edit", exact: true }).click();
+  // The row no longer shows `body` once the text is replaced: pin the editor.
+  const box = tab.locator("article.chat-message[data-editing='true']").getByRole("textbox");
+  await box.fill(next);
+  await box.press("Enter");
+}
+
+/** Message actions → Delete. */
+async function deleteShown(tab: Tab, body: string): Promise<void> {
+  const row = await messageRow(tab, body);
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
+}
+
+/** Message actions → Add reaction → the emoji. */
+async function reactShown(tab: Tab, body: string, emoji: string): Promise<void> {
+  const row = await messageRow(tab, body);
+  await row.getByRole("button", { name: "Add reaction", exact: true }).click();
+  await tab.getByRole("button", { name: emoji, exact: true }).click();
+}
 
 /**
  * The service worker has the app shell: a first visit has to finish installing
@@ -424,6 +459,90 @@ test.describe("meet chat offline", () => {
       await deleteChannel(channelId);
     }
   });
+
+  test("refused · an edit and a delete while online change the queued send, not the server", async ({
+    browser,
+  }) => {
+    const id = run();
+    const channelId = await createChannel(`${id} refused edit`, "write");
+    const context = await openUser(browser, TEAMMATE);
+    try {
+      const tab = await openChannel(context, TEAMMATE, channelId);
+      await setTabOffline(tab, true);
+      await send(tab, `${id} X`);
+      await pollCache(tab, channelId, (c) => c.outbox.map((row) => row.op), "queued").toEqual([
+        "send",
+      ]);
+      await shareWithTeammate(channelId, false);
+      await setTabOffline(tab, false);
+      await pollCache(
+        tab,
+        channelId,
+        (c) => c.outbox.map((row) => `${row.op} ${row.lastStatus} ${row.retries > 0}`),
+        "the refusal is recorded on the queued row",
+      ).toEqual(["send 403 true"]);
+
+      // Edit while online: it merges into the queued send.
+      await editShown(tab, `${id} X`, `${id} X edited`);
+      await expect(shown(tab, `${id} X edited`)).toBeVisible();
+      const edited = await tabCache(tab, channelId);
+      expect(edited.messages.map((m) => [m.body, m.pending])).toEqual([[`${id} X edited`, true]]);
+      expect(edited.outbox.map((row) => row.op)).toEqual(["send"]);
+      expect(await serverBodies(channelId)).toEqual([]);
+      await tab.reload();
+      await expect(shown(tab, `${id} X edited`)).toBeVisible({ timeout: 30_000 });
+
+      // Delete while online: the way to discard a failed send.
+      await deleteShown(tab, `${id} X edited`);
+      await expect(tab.getByText(`${id} X edited`, { exact: true })).toHaveCount(0);
+      await pollCache(tab, channelId, (c) => c.messages.length, "gone from the cache").toBe(0);
+      expect((await tabCache(tab, channelId)).outbox).toEqual([]);
+      await tab.reload();
+      await expect(composer(tab)).toBeVisible({ timeout: 30_000 });
+      await expect(tab.getByText(`${id} X edited`, { exact: true })).toHaveCount(0);
+      expect((await serverMessages(channelId)).length).toBe(0);
+    } finally {
+      await context.close();
+      await deleteChannel(channelId);
+    }
+  });
+
+  for (const change of ["edit", "delete", "react"] as const) {
+    test(`queued send · ${change} offline reaches the server once back online`, async ({
+      browser,
+    }) => {
+      const id = run();
+      const channelId = await createChannel(`${id} queued ${change}`);
+      const context = await openUser(browser, OWNER);
+      try {
+        const tab = await openChannel(context, OWNER, channelId);
+        await setTabOffline(tab, true);
+        await send(tab, `${id} first`);
+        await expect(shown(tab, `${id} first`)).toBeVisible();
+        expect(await serverMessages(channelId)).toEqual([]);
+
+        if (change === "edit") await editShown(tab, `${id} first`, `${id} second`);
+        if (change === "delete") await deleteShown(tab, `${id} first`);
+        if (change === "react") await reactShown(tab, `${id} first`, "👍");
+        await setTabOffline(tab, false);
+
+        await pollCache(tab, channelId, (c) => c.outbox.length, "the queue drains").toBe(0);
+        const server = (await serverMessages(channelId)).filter((row) => !row.deletedAt);
+        if (change === "edit") {
+          expect(server.map((row) => row.body)).toEqual([`${id} second`]);
+        } else if (change === "delete") {
+          expect(server).toEqual([]);
+          await expect(tab.getByText(`${id} first`, { exact: true })).toHaveCount(0);
+        } else {
+          expect(server.map((row) => row.body)).toEqual([`${id} first`]);
+          expect(server[0]?.reactions?.map((row) => row.emoji)).toEqual(["👍"]);
+        }
+      } finally {
+        await context.close();
+        await deleteChannel(channelId);
+      }
+    });
+  }
 
   test("inbound · a message posted and one deleted elsewhere arrive through the token · reload", async ({
     browser,

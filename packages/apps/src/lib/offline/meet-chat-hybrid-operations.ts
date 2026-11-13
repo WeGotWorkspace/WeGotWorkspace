@@ -32,6 +32,7 @@ import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
+  withOutboxLock,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { createChatMessageUlid, isChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
@@ -249,6 +250,22 @@ export function createHybridMeetChatOperations(
     !readBrowserOnline() || (await hasQueuedChatSend(username, messageId));
 
   /**
+   * Run `queue` when the write has to queue, deciding under the outbox lock.
+   * A flush holds that lock while it replays the send, then drops the row it
+   * read: an edit merged or a delete cancelled meanwhile would be lost. Waiting
+   * for the lock means the send row is either still there (merge, cancel) or
+   * gone (the server has the message). Returns undefined when it need not queue;
+   * the caller then writes to the server, outside the lock.
+   */
+  const queueUnderLock = <T>(
+    messageId: string,
+    queue: () => Promise<T>,
+  ): Promise<{ value: T } | undefined> =>
+    withOutboxLock(MEET_CHAT_DOMAIN, username, async () =>
+      (await mustQueue(messageId)) ? { value: await queue() } : undefined,
+    );
+
+  /**
    * An edit or reaction online: cache the server's answer, or queue the write
    * when the network or the server fails for now. A message gone on the
    * server leaves the cache.
@@ -258,7 +275,8 @@ export function createHybridMeetChatOperations(
     request: () => Promise<WgwChatMessage>,
     queue: () => Promise<ChatMessage>,
   ): Promise<ChatMessage> => {
-    if (await mustQueue(messageId)) return queue();
+    const queued = await queueUnderLock(messageId, queue);
+    if (queued) return queued.value;
     try {
       const saved = await uiChatMessageForCache(username, chatMessageFromWire(await request()));
       await upsertChatMessageInCache(username, saved, false);
@@ -316,7 +334,7 @@ export function createHybridMeetChatOperations(
         if (tombstone) await upsertChatMessageInCache(username, tombstone, true);
         notifyMeetChatCacheChanged(username);
       };
-      if (await mustQueue(messageId)) return queueDelete();
+      if (await queueUnderLock(messageId, queueDelete)) return;
       try {
         await deleteChatMessage(messageId);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
