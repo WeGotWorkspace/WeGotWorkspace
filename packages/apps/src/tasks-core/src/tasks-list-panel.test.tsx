@@ -288,6 +288,7 @@ describe("TasksListPanel window", () => {
     ...bootstrap.data.tasks[0]!,
     id: `task-${index}`,
     title: `Task ${String(index).padStart(3, "0")}`,
+    description: "",
   }));
 
   beforeEach(() => {
@@ -333,7 +334,7 @@ describe("TasksListPanel window", () => {
     expect(list?.getAttribute("data-workspace-list-rows")).toBe("120");
     expect(mountedIds(scroller).length).toBeLessThan(40);
 
-    scrollTo(scroller, 4000);
+    scrollTo(scroller, 3850);
     const ids = mountedIds(scroller);
     expect(ids).not.toContain("task-0");
     expect(ids).toContain("task-50");
