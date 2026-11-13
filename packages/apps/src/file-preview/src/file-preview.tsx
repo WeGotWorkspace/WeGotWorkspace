@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { FileKind } from "@/lib/files/drive-models";
 import { canBrowserPreviewImage } from "@/lib/files/file-name-utils";
 import { kindIconLg } from "@/lib/files/file-kind-icons";
+import { useFilePreviewMarkdownRenderer } from "@/lib/file-preview/file-preview-markdown-renderer";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { stripPreviewText } from "@/lib/file-preview/file-preview-utils";
 import {
   FilePreviewTextPane,
   type FilePreviewTextPaneMode,
 } from "@/file-preview/src/file-preview-text-pane";
-import { useFilePreviewMarkdownRenderer } from "@/lib/file-preview/file-preview-markdown-renderer";
 import { cn } from "@/lib/utils";
 import "@/file-preview/src/file-preview.css";
 
