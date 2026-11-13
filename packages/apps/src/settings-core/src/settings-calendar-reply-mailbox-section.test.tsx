@@ -161,6 +161,29 @@ describe("SettingsCalendarReplyMailboxSection", () => {
     expect(screen.getByRole("status").textContent).toContain(expected);
   });
 
+  it("resumes a paused mailbox with Check now", async () => {
+    renderSection(
+      spiedOperations(mockCalendarReplyMailbox({ active: false, lastError: "auth_failed" })),
+    );
+    const check = await screen.findByRole("button", { name: labels.check });
+    expect(screen.getByRole("status").textContent).toContain("Check now");
+    expect((check as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(check);
+
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain(labels.statusReading),
+    );
+  });
+
+  it("explains the Gmail app password step before connecting", async () => {
+    renderSection();
+    await screen.findByLabelText(labels.host);
+    expect(screen.getByText(labels.passwordHint)).toBeTruthy();
+    expect(labels.passwordHint).toContain("app password");
+    expect(labels.passwordHint).toContain("2-Step Verification");
+  });
+
   it("says it needs a connection while offline", async () => {
     setOnline(false);
     renderSection();
