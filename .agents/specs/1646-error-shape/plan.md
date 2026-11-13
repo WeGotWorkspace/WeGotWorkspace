@@ -32,7 +32,7 @@ See [spec.md](./spec.md#non-goals).
 - Replace the three domain classes with `ApiHttpException` plus a named constructor — rejected. `ApiHttpException` puts the sentence in `error`; the realtime clients read the machine code from `error`. One class with two body layouts behind a flag hides the difference instead of naming it.
 - Rewrite realtime bodies to `{ error: <sentence>, code }` — rejected. Every realtime client reads `error` first and matches codes such as `unknown_peer` and `relay_unavailable` on it; that is a breaking wire change.
 - An abstract base class that `ApiHttpException` also extends — rejected. `ApiHttpException` must stay an `HttpException` (Laravel does not report it; the catch-all hook reads its status and headers) and the realtime classes are `RuntimeException`s that Laravel reports today. An interface lets both meet in one hook without changing either parent.
-- Keep the three domain classes vs. merge them into one — kept. Their names are what callers catch (`FilesController` catches `CollabResponseException`) and what a reader greps for. Their bodies are now empty; the shared parent holds the logic.
+- Keep the three domain classes vs. merge them into one — first kept (#1991), then merged into one `RealtimeApiException` (issue Done when: the three classes are gone). After #1991 the three were empty subclasses; the only behaviour their names carried was the five `catch` blocks around a domain's own join check (`FilesController::resolveRoom`, `DocCollabSignalingService` and `PrincipalSignalingService` leave/still-may-join). Each wraps calls that only throw that domain's refusals, so catching the one class catches the same exceptions.
 
 ## Affected packages
 
@@ -75,7 +75,7 @@ Client-side trace (issue proposal 4): declined for now, nothing built. A self-ho
 - **id:** `chunk-a-api-error-shape`
 - **Skill:** api
 - **Inputs:** `path: packages/api/bootstrap/app.php:109`
-- **Done when:** one render hook typed on `RendersApiError`; `ApiHttpException` and `DomainResponseException` implement it; the three domain classes extend `DomainResponseException` with a typed constructor; `rest-design.md` and the OpenAPI `Error` schema match; feature tests cover each affected endpoint group.
+- **Done when:** one render hook typed on `RendersApiError`; `ApiHttpException` and `RealtimeApiException` implement it; the three domain classes are replaced by `RealtimeApiException` with a typed constructor; `rest-design.md` and the OpenAPI `Error` schema match; feature tests cover each affected endpoint group.
 - **Verify with:** `composer --working-dir packages/api done-gate`
 - **Parallel with:** `chunk-b-client-api-error`
 
