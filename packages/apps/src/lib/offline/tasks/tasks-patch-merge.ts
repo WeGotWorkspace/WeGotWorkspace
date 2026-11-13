@@ -1,5 +1,5 @@
 import type { Task, TaskCreate, TaskPatch } from "@/lib/models/tasks-types";
-import { applyTaskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
+import { applyTaskAlertsPatch } from "@/lib/models/task-alerts";
 
 export function taskEtag(task: Task): string | undefined {
   return (task as Task & { etag?: string }).etag;

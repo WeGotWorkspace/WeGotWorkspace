@@ -1,12 +1,12 @@
 import type { FrontTab } from "@/lib/jmap-client/push/front-tab";
-import { sanitizeNotificationNavigate } from "@/notifications-core/src/notification-click-navigate";
-import { normalizeNotificationNavigate } from "@/notifications-core/src/notification-consume-match";
+import { sanitizeNotificationNavigate } from "@/lib/notifications/notification-click-navigate";
+import { normalizeNotificationNavigate } from "@/lib/notifications/notification-consume-match";
 import {
   browserStorage,
   createIdListStore,
   type IdListStore,
 } from "@/notifications-core/src/id-list-store";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Rows whose toast this browser already decided on: shown, or skipped because no tab was visible. */
 export const TOAST_DECIDED_STORAGE_KEY = "wgw.offline.notifications.toastDecided";

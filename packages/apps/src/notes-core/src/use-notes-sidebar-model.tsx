@@ -5,7 +5,7 @@ import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection, NotesSharedNotebook } from "@/lib/models/notes-types";
-import { normalizeTag } from "@/notes-core/src/note-tag";
+import { normalizeTag } from "@/lib/models/note-tag";
 
 export type NotesSidebarTagEntry = {
   tag: string;

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  canChangeMeetChannelOwner,
-  canDeleteMeetChannel,
-} from "@/meet-core/src/meet-channel-write";
+import { canChangeMeetChannelOwner, canDeleteMeetChannel } from "@/lib/meetings/meet-channel-write";
 
 describe("canChangeMeetChannelOwner", () => {
   it("allows owners and locks sharees", () => {

@@ -12,7 +12,7 @@ import {
 import "../src/styles.css";
 // Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
 import "./chromatic-reduced-motion.css";
-import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
+import { NotificationsInboxValueProvider } from "../src/lib/notifications/notifications-inbox-context";
 import { registerBuiltinSettings } from "../src/settings-core/src/register-builtin-settings";
 import { SettingsDialogProvider } from "../src/settings-core/src/settings-dialog-provider";
 import {

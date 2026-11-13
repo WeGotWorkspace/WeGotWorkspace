@@ -24,11 +24,11 @@ import {
   noteAllowsTagAssignment,
   noteTagToggle,
   noteTagDelta,
-  noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
   persistBestEffort,
 } from "./notes-note-utils";
+import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
 import { resolveNotesCreateTarget } from "./notes-create-target";
 import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
 import type { NoteMetadataField } from "@/lib/models/notes-types";

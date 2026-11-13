@@ -6,7 +6,7 @@ import {
   meetDirectMessageChannelId,
   meetDirectMessagePeople,
   meetDirectMessagePrincipalId,
-} from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/meetings/meet-direct-messages";
 
 const directory: CollectionSharePrincipal[] = [
   { id: "ada.lovelace", displayName: "Ada Lovelace", principalType: "user" },

@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/button/src/button";
@@ -20,21 +12,15 @@ import { useSettingsAPI } from "@/settings-core/src/use-settings-api";
 import { useSettingsController } from "@/settings-core/src/use-settings-controller";
 import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { SettingsDialogContext } from "@/settings-core/src/settings-dialog-context";
+import { useWorkspaceAppSettingsEntry } from "@/settings-core/src/use-workspace-app-settings-entry";
+import { AppSettingsEntryContext } from "@/lib/settings/app-settings-entry";
 import "@/settings-core/src/settings-workspace.css";
 
-export type SettingsDialogApi = {
-  openPanel: (id: BuiltinPanelId) => void;
-  openRegisteredPanel: (panel: SettingsPanel) => void;
-};
-
-const SettingsDialogContext = createContext<SettingsDialogApi>({
-  openPanel: () => undefined,
-  openRegisteredPanel: () => undefined,
-});
-
-export function useSettingsDialog(): SettingsDialogApi {
-  return useContext(SettingsDialogContext);
-}
+export {
+  useSettingsDialog,
+  type SettingsDialogApi,
+} from "@/settings-core/src/settings-dialog-context";
 
 /**
  * Where focus goes back to when the dialog closes: the element that opened it, or,
@@ -104,7 +90,9 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
 
   return (
     <SettingsDialogContext.Provider value={api}>
-      {children}
+      <AppSettingsEntryContext.Provider value={useWorkspaceAppSettingsEntry}>
+        {children}
+      </AppSettingsEntryContext.Provider>
       <Dialog
         open={panel !== null}
         onOpenChange={(open) => {
