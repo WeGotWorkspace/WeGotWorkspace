@@ -1,3 +1,4 @@
+import { useCallback, useMemo, useState } from "react";
 import { Star } from "lucide-react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,20 @@ import {
 } from "@/drive-core/src/drive-list-sort";
 import { listSortAria } from "@/lib/list-sort";
 import { SortableColumnHeader } from "@/ui/sortable-column-header";
+import { useWorkspaceListRows } from "@/workspace-list/src/use-workspace-list-rows";
+import { DriveListSpacer } from "@/drive-core/src/drive-list-spacer";
+import { driveFileKey, driveListRowEstimate } from "@/drive-core/src/drive-list-rows";
+import {
+  DRIVE_GRID_WINDOW_AFTER_TILES,
+  driveGridRowEstimate,
+  driveGridRowKey,
+  driveGridRowKeyByFileId,
+  driveGridRows,
+  isDriveGridHeader,
+  type DriveGridRowItem,
+  type DriveGridSection,
+} from "@/drive-core/src/drive-grid-rows";
+import { useDriveGridColumns } from "@/drive-core/src/use-drive-grid-columns";
 import "@/ui/list-head-bar.css";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
@@ -174,91 +189,153 @@ export function DriveGridView({
    */
   itemChrome?: "manage" | "picker";
 }) {
-  const folders = items.filter((i) => i.kind === "folder");
-  const files = items.filter((i) => i.kind !== "folder");
+  const { folders, files } = useMemo(
+    () => ({
+      folders: items.filter((i) => i.kind === "folder"),
+      files: items.filter((i) => i.kind !== "folder"),
+    }),
+    [items],
+  );
   const focusId = listFocusId([...folders, ...files], activeId, selectedIds);
+
+  const renderFolderTile = (f: DriveFile) => (
+    <DriveFolderTile
+      key={f.id}
+      file={f}
+      isSelected={selectedIds.includes(f.id)}
+      isFocusTarget={f.id === focusId}
+      selectionMode={selectionMode}
+      isStarred={!!starred[f.id]}
+      isDragging={isItemDragging(f.id)}
+      isTouch={isTouch}
+      folderDropZone={folderDropZoneProps(driveFolderUiPath(f))}
+      itemDragHandlers={itemDragHandlers(f.id)}
+      onSelect={(e) => onSelect(f.id, e)}
+      onOpen={() => onOpen(f)}
+      onLongPress={() => onLongPress(f.id)}
+      labels={labels}
+      inTrash={inTrash}
+      onStar={() => onStar(f.id)}
+      onDownload={onDownload}
+      onRename={() => onRename(f)}
+      onMove={() => onMove(f)}
+      onTrash={() => onTrash(f)}
+      canShare={fileCanShare?.(f)}
+      canManageStructure={fileCanManageStructure?.(f)}
+      onShare={onShare ? () => onShare(f) : undefined}
+      extraActions={extraFileActions?.(f)}
+      itemChrome={itemChrome}
+    />
+  );
+  const renderFileTile = (f: DriveFile) => (
+    <FileTile
+      key={f.id}
+      file={f}
+      preview={filePreviews[f.id]}
+      isSelected={selectedIds.includes(f.id)}
+      isFocusTarget={f.id === focusId}
+      selectionMode={selectionMode}
+      isStarred={!!starred[f.id]}
+      isDragging={isItemDragging(f.id)}
+      isTouch={isTouch}
+      isOfflineAvailable={offlineAvailableIds?.has(f.id) ?? false}
+      isOfflinePendingSync={offlinePendingSyncIds?.has(f.id) ?? false}
+      offlineEnabled={offlineEnabled}
+      canPinOffline={canPinOffline}
+      onMakeOfflineAvailable={onMakeOfflineAvailable}
+      extraActions={extraFileActions?.(f)}
+      actionsDisabled={pinLoadingId === f.apiPath}
+      itemDragHandlers={itemDragHandlers(f.id)}
+      onSelect={(e) => onSelect(f.id, e)}
+      onOpen={() => onOpen(f)}
+      onLongPress={() => onLongPress(f.id)}
+      labels={labels}
+      inTrash={inTrash}
+      onStar={() => onStar(f.id)}
+      onDownload={onDownload}
+      onRename={() => onRename(f)}
+      onMove={() => onMove(f)}
+      onTrash={() => onTrash(f)}
+      canShare={fileCanShare?.(f)}
+      canManageStructure={fileCanManageStructure?.(f)}
+      onShare={onShare ? () => onShare(f) : undefined}
+      itemChrome={itemChrome}
+    />
+  );
+
+  // Above 80 tiles the grid becomes rows of tiles, and only the rows near the
+  // viewport mount (#1641 step d). Smaller grids stay one grid per section.
+  const windowed = items.length > DRIVE_GRID_WINDOW_AFTER_TILES;
+  const [layout, setLayout] = useState<HTMLElement | null>(null);
+  const columns = useDriveGridColumns(layout, windowed);
+  const gridRows = useMemo(
+    () => (windowed ? driveGridRows(folders, files, columns) : []),
+    [columns, files, folders, windowed],
+  );
+  const rowKeyByFileId = useMemo(() => driveGridRowKeyByFileId(gridRows), [gridRows]);
+  const keyOfItemId = useCallback((id: string) => rowKeyByFileId.get(id), [rowKeyByFileId]);
+  const focusRowKey = focusId ? rowKeyByFileId.get(focusId) : undefined;
+  const pinnedKeys = useMemo(() => (focusRowKey ? [focusRowKey] : undefined), [focusRowKey]);
+  const sectionTitle = (section: DriveGridSection) =>
+    section === "folders" ? labels.gridSectionFolders : labels.gridSectionFiles;
+  const { attachList, rows, dataAttributes } = useWorkspaceListRows({
+    items: gridRows,
+    getKey: driveGridRowKey,
+    renderItem: (row: DriveGridRowItem) =>
+      row.kind === "header" ? (
+        <h3 className="list-head-bar drive-browser-section-title">{sectionTitle(row.section)}</h3>
+      ) : (
+        <div className={cn("drive-grid", !row.last && "drive-grid--row-gap")}>
+          {row.files.map(row.section === "folders" ? renderFolderTile : renderFileTile)}
+        </div>
+      ),
+    estimateSize: driveGridRowEstimate,
+    isHeader: isDriveGridHeader,
+    renderSection: (header, content) => (
+      <section
+        aria-label={sectionTitle(header.section)}
+        className={cn(header.kind === "header" && header.after && "drive-grid-section--after")}
+      >
+        {content}
+      </section>
+    ),
+    activeId: (activeId && rowKeyByFileId.get(activeId)) || "",
+    pinnedKeys,
+    keyOfItemId,
+    windowAfter: 0,
+    animateReorder: false,
+  });
+  const attachLayout = useCallback(
+    (node: HTMLElement | null) => {
+      attachList(node);
+      setLayout(node);
+    },
+    [attachList],
+  );
 
   return (
     <div
-      className="drive-grid-layout"
+      ref={attachLayout}
+      className={cn("drive-grid-layout", windowed && "drive-grid-layout--windowed")}
       data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
+      {...(windowed ? dataAttributes : {})}
     >
-      {folders.length > 0 && (
-        <Section title={labels.gridSectionFolders}>
-          <div className="drive-grid">
-            {folders.map((f) => (
-              <DriveFolderTile
-                key={f.id}
-                file={f}
-                isSelected={selectedIds.includes(f.id)}
-                isFocusTarget={f.id === focusId}
-                selectionMode={selectionMode}
-                isStarred={!!starred[f.id]}
-                isDragging={isItemDragging(f.id)}
-                isTouch={isTouch}
-                folderDropZone={folderDropZoneProps(driveFolderUiPath(f))}
-                itemDragHandlers={itemDragHandlers(f.id)}
-                onSelect={(e) => onSelect(f.id, e)}
-                onOpen={() => onOpen(f)}
-                onLongPress={() => onLongPress(f.id)}
-                labels={labels}
-                inTrash={inTrash}
-                onStar={() => onStar(f.id)}
-                onDownload={onDownload}
-                onRename={() => onRename(f)}
-                onMove={() => onMove(f)}
-                onTrash={() => onTrash(f)}
-                canShare={fileCanShare?.(f)}
-                canManageStructure={fileCanManageStructure?.(f)}
-                onShare={onShare ? () => onShare(f) : undefined}
-                extraActions={extraFileActions?.(f)}
-                itemChrome={itemChrome}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
+      {windowed ? (
+        rows
+      ) : (
+        <>
+          {folders.length > 0 && (
+            <Section title={labels.gridSectionFolders}>
+              <div className="drive-grid">{folders.map(renderFolderTile)}</div>
+            </Section>
+          )}
 
-      {files.length > 0 && (
-        <Section title={labels.gridSectionFiles}>
-          <div className="drive-grid">
-            {files.map((f) => (
-              <FileTile
-                key={f.id}
-                file={f}
-                preview={filePreviews[f.id]}
-                isSelected={selectedIds.includes(f.id)}
-                isFocusTarget={f.id === focusId}
-                selectionMode={selectionMode}
-                isStarred={!!starred[f.id]}
-                isDragging={isItemDragging(f.id)}
-                isTouch={isTouch}
-                isOfflineAvailable={offlineAvailableIds?.has(f.id) ?? false}
-                isOfflinePendingSync={offlinePendingSyncIds?.has(f.id) ?? false}
-                offlineEnabled={offlineEnabled}
-                canPinOffline={canPinOffline}
-                onMakeOfflineAvailable={onMakeOfflineAvailable}
-                extraActions={extraFileActions?.(f)}
-                actionsDisabled={pinLoadingId === f.apiPath}
-                itemDragHandlers={itemDragHandlers(f.id)}
-                onSelect={(e) => onSelect(f.id, e)}
-                onOpen={() => onOpen(f)}
-                onLongPress={() => onLongPress(f.id)}
-                labels={labels}
-                inTrash={inTrash}
-                onStar={() => onStar(f.id)}
-                onDownload={onDownload}
-                onRename={() => onRename(f)}
-                onMove={() => onMove(f)}
-                onTrash={() => onTrash(f)}
-                canShare={fileCanShare?.(f)}
-                canManageStructure={fileCanManageStructure?.(f)}
-                onShare={onShare ? () => onShare(f) : undefined}
-                itemChrome={itemChrome}
-              />
-            ))}
-          </div>
-        </Section>
+          {files.length > 0 && (
+            <Section title={labels.gridSectionFiles}>
+              <div className="drive-grid">{files.map(renderFileTile)}</div>
+            </Section>
+          )}
+        </>
       )}
     </div>
   );
@@ -533,6 +610,179 @@ export function DriveListView({
     : "actions";
   const endAlign = (key: "modified" | "kind") => (endColumn === key ? "end" : "start");
   const focusId = listFocusId(items, activeId, selectedIds);
+  const renderRow = (f: DriveFile) => {
+    const isFolder = f.kind === "folder";
+    const folderPath = isFolder ? driveFolderUiPath(f) : "";
+    const isSelected = selectedIds.includes(f.id);
+    const isActive = f.id === activeId;
+    const isDisabled = isItemDisabled?.(f) ?? false;
+    const isOfflineAvailable = offlineAvailableIds?.has(f.id) ?? false;
+    const isOfflinePendingSync = offlinePendingSyncIds?.has(f.id) ?? false;
+    const isPinning = pinLoadingId === f.apiPath;
+    const dropZone = isFolder ? folderDropZoneProps(folderPath) : ({} as FolderDropZoneProps);
+    const dragHandlers = itemDragHandlers(f.id);
+    const lp = {
+      start: undefined as undefined | (() => void),
+      cancel: undefined as undefined | (() => void),
+    };
+    let pressTimer: ReturnType<typeof setTimeout> | null = null;
+    const longPressStart = () => {
+      pressTimer = setTimeout(() => onLongPress(f.id), 450);
+    };
+    const longPressCancel = () => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = null;
+    };
+    lp.start = longPressStart;
+    lp.cancel = longPressCancel;
+
+    return (
+      <tr
+        key={f.id}
+        data-list-item-id={f.id}
+        data-list-item-focus=""
+        tabIndex={f.id === focusId ? 0 : -1}
+        aria-selected={isSelected}
+        data-selection-mode={selectionMode ? "true" : "false"}
+        aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? undefined : (e) => onSelect(f.id, e)}
+        onDoubleClick={selectionMode ? undefined : () => onOpen(f)}
+        onTouchStart={pickerChrome ? undefined : lp.start}
+        onTouchEnd={pickerChrome ? undefined : lp.cancel}
+        onTouchMove={pickerChrome ? undefined : lp.cancel}
+        onContextMenu={
+          pickerChrome
+            ? undefined
+            : (e) => {
+                if (!isTouch) {
+                  e.preventDefault();
+                  onLongPress(f.id);
+                }
+              }
+        }
+        draggable={!pickerChrome && !isTouch}
+        onDragStart={pickerChrome ? undefined : dragHandlers.onDragStart}
+        onDragEnd={pickerChrome ? undefined : dragHandlers.onDragEnd}
+        className={cn(
+          "drive-list-row group cursor-default transition-colors",
+          isItemDragging(f.id) && "drive-list-row--dragging",
+          isFolder && dropZone.isDropTarget && "drive-list-row--drop-target",
+          isSelected && "drive-list-row--selected",
+          isActive && !isSelected && "drive-list-row--active",
+          isDisabled && "drive-list-row--disabled",
+        )}
+      >
+        <td
+          className="drive-list-col-name py-2 min-w-0"
+          {...(isFolder && !pickerChrome ? dropZone : {})}
+        >
+          <div className="drive-list-row__name flex items-center gap-2.5 min-w-0">
+            <DriveFileAvatar file={f} size="sm" />
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="min-w-0 truncate font-medium">{f.title}</span>
+              <DriveShareIndicators file={f} labels={labels} />
+              <DriveUploadStatus file={f} />
+              {starred[f.id] ? (
+                <Star className="size-3 shrink-0 drive-list-folder-icon" fill="currentColor" />
+              ) : null}
+              {!offlineEnabled ? (
+                <DriveOfflineBadge
+                  pinned={offlinePinnedIds?.has(f.id) ?? false}
+                  pending={isOfflinePendingSync}
+                  labels={offlineBadgeLabels}
+                />
+              ) : null}
+            </div>
+          </div>
+        </td>
+        {slotColumn ? (
+          <td className="drive-list-col-offline py-2" onClick={(event) => event.stopPropagation()}>
+            <DriveFileOfflinePinCell
+              file={f}
+              labels={labels}
+              offlineEnabled={offlineEnabled}
+              isOfflineAvailable={isOfflineAvailable}
+              isOfflinePendingSync={isOfflinePendingSync}
+              isPinning={isPinning}
+              canPinOffline={canPinOffline}
+              onMakeOfflineAvailable={onMakeOfflineAvailable}
+            />
+          </td>
+        ) : null}
+        {showLocationColumn ? (
+          <td className="drive-list-col-location py-2 hidden sm:table-cell drive-list-muted min-w-0">
+            <DriveLocationLabel file={f} />
+          </td>
+        ) : null}
+        <td
+          className={cn(
+            "drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap",
+            endColumn === "modified" && "text-right",
+          )}
+        >
+          {formatDriveModified(f)}
+        </td>
+        {showKindColumn ? (
+          <td
+            className={cn(
+              "drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted",
+              endColumn === "kind" && "text-right",
+            )}
+          >
+            {DRIVE_KIND_LABEL[f.kind]}
+          </td>
+        ) : null}
+        {showSizeColumn ? (
+          <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
+            {f.size}
+          </td>
+        ) : null}
+        {pickerChrome ? null : (
+          <td className="drive-list-col-actions py-2" onClick={(event) => event.stopPropagation()}>
+            <div className="flex justify-end">
+              <DriveFileItemActions
+                labels={labels}
+                file={f}
+                isStarred={!!starred[f.id]}
+                inTrash={inTrash}
+                canOpen={!selectionMode}
+                onOpen={() => onOpen(f)}
+                onDownload={onDownload}
+                onStar={() => onStar(f.id)}
+                onRename={() => onRename(f)}
+                onMove={() => onMove(f)}
+                onDelete={() => onTrash(f)}
+                canShare={fileCanShare?.(f)}
+                canManageStructure={fileCanManageStructure?.(f)}
+                onShare={onShare ? () => onShare(f) : undefined}
+                extraActions={extraFileActions?.(f)}
+                disabled={isPinning}
+              />
+            </div>
+          </td>
+        )}
+      </tr>
+    );
+  };
+  // Name and Last modified, then the optional columns.
+  const columnCount =
+    2 +
+    Number(slotColumn) +
+    Number(showLocationColumn) +
+    Number(showKindColumn) +
+    Number(showSizeColumn) +
+    Number(!pickerChrome);
+  const pinnedKeys = useMemo(() => (focusId ? [focusId] : undefined), [focusId]);
+  const { attachList, rows, dataAttributes } = useWorkspaceListRows({
+    items,
+    getKey: driveFileKey,
+    renderItem: renderRow,
+    estimateSize: driveListRowEstimate,
+    activeId: activeId ?? "",
+    pinnedKeys,
+    renderSpacer: (size, key) => <DriveListSpacer key={key} size={size} columns={columnCount} />,
+    animateReorder: false,
+  });
   return (
     <div
       className="drive-list-view"
@@ -596,172 +846,8 @@ export function DriveListView({
             )}
           </tr>
         </thead>
-        <tbody>
-          {items.map((f) => {
-            const isFolder = f.kind === "folder";
-            const folderPath = isFolder ? driveFolderUiPath(f) : "";
-            const isSelected = selectedIds.includes(f.id);
-            const isActive = f.id === activeId;
-            const isDisabled = isItemDisabled?.(f) ?? false;
-            const isOfflineAvailable = offlineAvailableIds?.has(f.id) ?? false;
-            const isOfflinePendingSync = offlinePendingSyncIds?.has(f.id) ?? false;
-            const isPinning = pinLoadingId === f.apiPath;
-            const dropZone = isFolder
-              ? folderDropZoneProps(folderPath)
-              : ({} as FolderDropZoneProps);
-            const dragHandlers = itemDragHandlers(f.id);
-            const lp = {
-              start: undefined as undefined | (() => void),
-              cancel: undefined as undefined | (() => void),
-            };
-            let pressTimer: ReturnType<typeof setTimeout> | null = null;
-            const longPressStart = () => {
-              pressTimer = setTimeout(() => onLongPress(f.id), 450);
-            };
-            const longPressCancel = () => {
-              if (pressTimer) clearTimeout(pressTimer);
-              pressTimer = null;
-            };
-            lp.start = longPressStart;
-            lp.cancel = longPressCancel;
-
-            return (
-              <tr
-                key={f.id}
-                data-list-item-id={f.id}
-                data-list-item-focus=""
-                tabIndex={f.id === focusId ? 0 : -1}
-                aria-selected={isSelected}
-                data-selection-mode={selectionMode ? "true" : "false"}
-                aria-disabled={isDisabled || undefined}
-                onClick={isDisabled ? undefined : (e) => onSelect(f.id, e)}
-                onDoubleClick={selectionMode ? undefined : () => onOpen(f)}
-                onTouchStart={pickerChrome ? undefined : lp.start}
-                onTouchEnd={pickerChrome ? undefined : lp.cancel}
-                onTouchMove={pickerChrome ? undefined : lp.cancel}
-                onContextMenu={
-                  pickerChrome
-                    ? undefined
-                    : (e) => {
-                        if (!isTouch) {
-                          e.preventDefault();
-                          onLongPress(f.id);
-                        }
-                      }
-                }
-                draggable={!pickerChrome && !isTouch}
-                onDragStart={pickerChrome ? undefined : dragHandlers.onDragStart}
-                onDragEnd={pickerChrome ? undefined : dragHandlers.onDragEnd}
-                className={cn(
-                  "drive-list-row group cursor-default transition-colors",
-                  isItemDragging(f.id) && "drive-list-row--dragging",
-                  isFolder && dropZone.isDropTarget && "drive-list-row--drop-target",
-                  isSelected && "drive-list-row--selected",
-                  isActive && !isSelected && "drive-list-row--active",
-                  isDisabled && "drive-list-row--disabled",
-                )}
-              >
-                <td
-                  className="drive-list-col-name py-2 min-w-0"
-                  {...(isFolder && !pickerChrome ? dropZone : {})}
-                >
-                  <div className="drive-list-row__name flex items-center gap-2.5 min-w-0">
-                    <DriveFileAvatar file={f} size="sm" />
-                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                      <span className="min-w-0 truncate font-medium">{f.title}</span>
-                      <DriveShareIndicators file={f} labels={labels} />
-                      <DriveUploadStatus file={f} />
-                      {starred[f.id] ? (
-                        <Star
-                          className="size-3 shrink-0 drive-list-folder-icon"
-                          fill="currentColor"
-                        />
-                      ) : null}
-                      {!offlineEnabled ? (
-                        <DriveOfflineBadge
-                          pinned={offlinePinnedIds?.has(f.id) ?? false}
-                          pending={isOfflinePendingSync}
-                          labels={offlineBadgeLabels}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </td>
-                {slotColumn ? (
-                  <td
-                    className="drive-list-col-offline py-2"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <DriveFileOfflinePinCell
-                      file={f}
-                      labels={labels}
-                      offlineEnabled={offlineEnabled}
-                      isOfflineAvailable={isOfflineAvailable}
-                      isOfflinePendingSync={isOfflinePendingSync}
-                      isPinning={isPinning}
-                      canPinOffline={canPinOffline}
-                      onMakeOfflineAvailable={onMakeOfflineAvailable}
-                    />
-                  </td>
-                ) : null}
-                {showLocationColumn ? (
-                  <td className="drive-list-col-location py-2 hidden sm:table-cell drive-list-muted min-w-0">
-                    <DriveLocationLabel file={f} />
-                  </td>
-                ) : null}
-                <td
-                  className={cn(
-                    "drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap",
-                    endColumn === "modified" && "text-right",
-                  )}
-                >
-                  {formatDriveModified(f)}
-                </td>
-                {showKindColumn ? (
-                  <td
-                    className={cn(
-                      "drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted",
-                      endColumn === "kind" && "text-right",
-                    )}
-                  >
-                    {DRIVE_KIND_LABEL[f.kind]}
-                  </td>
-                ) : null}
-                {showSizeColumn ? (
-                  <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
-                    {f.size}
-                  </td>
-                ) : null}
-                {pickerChrome ? null : (
-                  <td
-                    className="drive-list-col-actions py-2"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div className="flex justify-end">
-                      <DriveFileItemActions
-                        labels={labels}
-                        file={f}
-                        isStarred={!!starred[f.id]}
-                        inTrash={inTrash}
-                        canOpen={!selectionMode}
-                        onOpen={() => onOpen(f)}
-                        onDownload={onDownload}
-                        onStar={() => onStar(f.id)}
-                        onRename={() => onRename(f)}
-                        onMove={() => onMove(f)}
-                        onDelete={() => onTrash(f)}
-                        canShare={fileCanShare?.(f)}
-                        canManageStructure={fileCanManageStructure?.(f)}
-                        onShare={onShare ? () => onShare(f) : undefined}
-                        extraActions={extraFileActions?.(f)}
-                        disabled={isPinning}
-                      />
-                    </div>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
+        <tbody ref={attachList} {...dataAttributes}>
+          {rows}
         </tbody>
       </table>
     </div>

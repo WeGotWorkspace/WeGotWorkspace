@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
 import { createDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/lib/files/drive-models";
+import {
+  TEST_VIEWPORT_ATTR,
+  installListLayoutStubs,
+} from "@/workspace-list/src/workspace-list-test-layout";
 import "@/drive-core/src/drive-browser.css";
 
 const noop = () => {};
@@ -324,5 +328,148 @@ describe("upload placeholders", () => {
       </div>,
     );
     expect(screen.getByRole("progressbar", { name: "Upload of waiting.txt" })).toBeTruthy();
+  });
+});
+
+describe("DriveListView with more than 80 items", () => {
+  const files: DriveFile[] = Array.from({ length: 300 }, (_, index) => ({
+    ...FILE,
+    id: `f${index}`,
+    title: `File ${index}.md`,
+    apiPath: `/users/alice/File ${index}.md`,
+  }));
+
+  beforeEach(() => {
+    installListLayoutStubs(400);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function renderWindowed(overrides: Partial<Parameters<typeof DriveListView>[0]> = {}) {
+    return render(
+      <div
+        className="drive-workspace"
+        style={{ overflowY: "auto" }}
+        {...{ [TEST_VIEWPORT_ATTR]: "" }}
+      >
+        <DriveListView {...baseBrowserProps({ items: files, ...overrides })} />
+      </div>,
+    );
+  }
+
+  const rowIds = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("tbody [data-list-item-id]"), (row) =>
+      row.getAttribute("data-list-item-id"),
+    );
+
+  it("mounts only the rows near the viewport, with a spacer row spanning every column", () => {
+    const { container } = renderWindowed();
+    const ids = rowIds(container);
+    expect(ids[0]).toBe("f0");
+    expect(ids.length).toBeGreaterThan(5);
+    expect(ids.length).toBeLessThan(40);
+    const body = container.querySelector("tbody")!;
+    expect(body.getAttribute("data-workspace-list-rows")).toBe("300");
+    const spacer = body.querySelector<HTMLTableCellElement>(".drive-list-spacer > td")!;
+    expect(spacer.colSpan).toBe(container.querySelectorAll("thead th").length);
+  });
+
+  it("keeps the open item mounted far down the list, and it holds the Tab stop", () => {
+    const { container } = renderWindowed({ activeId: "f250" });
+    const ids = rowIds(container);
+    expect(ids).toContain("f250");
+    expect(ids).not.toContain("f200");
+    const active = container.querySelector<HTMLElement>('[data-list-item-id="f250"]')!;
+    expect(active.tabIndex).toBe(0);
+  });
+
+  it("keeps a selected item mounted when it holds the Tab stop", () => {
+    const { container } = renderWindowed({ selectedIds: ["f180"] });
+    expect(rowIds(container)).toContain("f180");
+  });
+});
+
+describe("DriveGridView with more than 80 items", () => {
+  const folders: DriveFile[] = Array.from({ length: 5 }, (_, index) => ({
+    ...FILE,
+    id: `d${index}`,
+    kind: "folder",
+    title: `Folder ${index}`,
+    apiPath: `/users/alice/Folder ${index}/`,
+  }));
+  const files: DriveFile[] = Array.from({ length: 300 }, (_, index) => ({
+    ...FILE,
+    id: `f${index}`,
+    title: `File ${index}.md`,
+    apiPath: `/users/alice/File ${index}.md`,
+  }));
+
+  beforeEach(() => {
+    installListLayoutStubs(400);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function renderGrid(overrides: Partial<Parameters<typeof DriveGridView>[0]> = {}) {
+    return render(
+      <div
+        className="drive-workspace"
+        style={{ overflowY: "auto" }}
+        {...{ [TEST_VIEWPORT_ATTR]: "" }}
+      >
+        <DriveGridView {...baseBrowserProps({ items: [...folders, ...files], ...overrides })} />
+      </div>,
+    );
+  }
+
+  const tileIds = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("[data-list-item-id]"), (tile) =>
+      tile.getAttribute("data-list-item-id"),
+    );
+
+  it("mounts only the tile rows near the viewport, under the Folders heading", () => {
+    const { container } = renderGrid();
+    const ids = tileIds(container);
+    expect(ids[0]).toBe("d0");
+    expect(ids.length).toBeGreaterThan(5);
+    expect(ids.length).toBeLessThan(40);
+    const layout = container.querySelector(".drive-grid-layout")!;
+    expect(layout.classList.contains("drive-grid-layout--windowed")).toBe(true);
+    expect(container.querySelector("section h3")?.textContent).toBe(driveLabels.gridSectionFolders);
+  });
+
+  it("keeps the open file mounted far down, in the Files section", () => {
+    const { container } = renderGrid({ activeId: "f250" });
+    const tile = container.querySelector('[data-list-item-id="f250"]')!;
+    expect(tile).toBeTruthy();
+    expect(tile.closest("section")?.getAttribute("aria-label")).toBe(driveLabels.gridSectionFiles);
+    expect(tileIds(container)).not.toContain("f200");
+  });
+
+  it("windows 120 tiles in three columns: 41 rows, under the list's 80", () => {
+    const realStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+      const style = realStyle(element, pseudo);
+      if (!(element as Element).classList?.contains("drive-grid")) return style;
+      return new Proxy(style, {
+        get: (target, key) =>
+          key === "gridTemplateColumns" ? "280px 280px 280px" : Reflect.get(target, key),
+      });
+    });
+    const { container } = renderGrid({ items: files.slice(0, 120) });
+    const layout = container.querySelector(".drive-grid-layout")!;
+    expect(layout.getAttribute("data-workspace-list-rows")).toBe("41");
+    expect(container.querySelector(".drive-grid")!.children).toHaveLength(3);
+    expect(tileIds(container).length).toBeLessThan(120);
+  });
+
+  it("stays one grid per section at 80 tiles or fewer", () => {
+    const { container } = renderGrid({ items: [...folders, ...files.slice(0, 20)] });
+    expect(container.querySelectorAll(".drive-grid")).toHaveLength(2);
+    expect(tileIds(container)).toHaveLength(25);
   });
 });
