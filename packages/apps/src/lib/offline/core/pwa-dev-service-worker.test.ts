@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const viteConfig = readFileSync(join(here, "../../../vite.config.ts"), "utf8");
-const main = readFileSync(join(here, "../../main.tsx"), "utf8");
-const sw = readFileSync(join(here, "../../sw.ts"), "utf8");
+const viteConfig = readFileSync(join(here, "../../../../vite.config.ts"), "utf8");
+const main = readFileSync(join(here, "../../../main.tsx"), "utf8");
+const sw = readFileSync(join(here, "../../../sw.ts"), "utf8");
 
 describe("PWA service worker in Vite dev", () => {
   it("enables the injectManifest worker as an ES module during pnpm dev", () => {

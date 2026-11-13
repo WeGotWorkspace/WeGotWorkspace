@@ -52,15 +52,15 @@ import {
   getDocsSyncRunner,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
-import { useOfflineBodySyncRunning } from "@/lib/offline/use-offline-body-sync-running";
+import { useOfflineBodySyncRunning } from "@/lib/offline/core/use-offline-body-sync-running";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
-import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
-import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
+import { useOfflineSyncToast } from "@/lib/offline/core/use-offline-sync-toast";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";

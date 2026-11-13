@@ -59,7 +59,7 @@ import {
   type OutboxFlushResult,
 } from "@/lib/offline/contacts/contacts-outbox-flush";
 import { reportContactsSyncConflicts } from "@/lib/offline/contacts/contacts-sync-conflicts";
-import { readOfflineContactsUsername } from "@/lib/offline/offline-session";
+import { readOfflineContactsUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,

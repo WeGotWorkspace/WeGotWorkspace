@@ -12,9 +12,9 @@ import { setCalendarsSyncConflictListener } from "@/lib/offline/calendars-sync-c
 import {
   readOfflineCalendarsUsername,
   resolveCalendarsOfflineUsername,
-} from "@/lib/offline/offline-session";
-import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+} from "@/lib/offline/core/offline-session";
+import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import type { CalendarUIData } from "@/lib/models/calendar-types";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import {

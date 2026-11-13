@@ -15,7 +15,7 @@ import {
 } from "@/lib/offline/contacts/contacts-conflict-merge";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
 import { contactsOutboxCardId } from "@/lib/offline/contacts/contacts-offline-store";
-import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveContactsOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { ContactsApiSource } from "@/contacts-core/src/contacts-api-source";
 import { ContactsConflictDialog } from "@/contacts-core/src/contacts-conflict-dialog";
 import { contactDisplayName } from "@/lib/models/contacts-display";

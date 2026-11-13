@@ -21,7 +21,7 @@ const mockLoadBootstrap = vi.fn<() => Promise<NotesAppBootstrap>>();
 const mockFlush = vi.fn();
 const mockOnReconnect = vi.fn();
 
-vi.mock("@/lib/offline/offline-session", () => ({
+vi.mock("@/lib/offline/core/offline-session", () => ({
   readOfflineNotesUsername: () => USERNAME,
   resolveNotesOfflineUsername: (sessionUsername?: string) => sessionUsername ?? USERNAME,
 }));

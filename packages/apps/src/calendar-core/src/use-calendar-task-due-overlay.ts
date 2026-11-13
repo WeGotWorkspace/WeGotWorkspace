@@ -3,8 +3,8 @@ import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks/tasks-offline-store";
-import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { readOfflineTasksUsername } from "@/lib/offline/core/offline-session";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import type { Task, TaskList, TasksUIData } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,

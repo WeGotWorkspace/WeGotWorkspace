@@ -39,8 +39,8 @@ const { order, mockFlush, mockSyncBodies, mockOnline } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   resolveDocsOfflineUsername: (username?: string) => username,
 }));
 vi.mock("@/lib/offline/docs/docs-hybrid-operations", () => ({

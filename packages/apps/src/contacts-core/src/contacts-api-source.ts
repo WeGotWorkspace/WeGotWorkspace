@@ -9,7 +9,7 @@ import {
   createHybridContactsOperations,
   loadContactsBootstrapHybrid,
 } from "@/lib/offline/contacts/contacts-hybrid-operations";
-import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveContactsOfflineUsername } from "@/lib/offline/core/offline-session";
 
 export type ContactsApiSource = {
   loadBootstrap: () => Promise<ContactsAppBootstrap>;
