@@ -9,7 +9,9 @@ const online = vi.hoisted(() => ({ value: true }));
 
 vi.mock("./docs-collab-pending-upload", () => ({ uploadPendingCollabRooms }));
 vi.mock("./docs-collab-pending-registry", () => ({ setCollabRoomPendingServerSave }));
-vi.mock("@/lib/offline/browser-online", () => ({ getConnectivitySnapshot: () => online.value }));
+vi.mock("@/lib/offline/core/browser-online", () => ({
+  getConnectivitySnapshot: () => online.value,
+}));
 
 import { closeCollabRoomStore } from "./docs-collab-leave-room";
 

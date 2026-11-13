@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useFormAutosave } from "@/hooks/use-form-autosave";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
-import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import {
   calendarAvailabilityToForm,
   calendarAvailabilityUpdateFromForm,

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { resetConnectivityHubForTests } from "@/lib/offline/browser-online";
+import { resetConnectivityHubForTests } from "@/lib/offline/core/browser-online";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";

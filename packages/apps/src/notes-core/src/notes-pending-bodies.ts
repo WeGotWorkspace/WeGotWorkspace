@@ -1,5 +1,5 @@
 import { noteFromRow } from "@/lib/offline/notes-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { settleNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";

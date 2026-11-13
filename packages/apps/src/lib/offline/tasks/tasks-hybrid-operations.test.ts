@@ -7,7 +7,7 @@ import {
   readTasksBootstrapFromCache,
   writeTasksBootstrapToCache,
 } from "@/lib/offline/tasks/tasks-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import { createHybridTasksOperations } from "@/lib/offline/tasks/tasks-hybrid-operations";
 

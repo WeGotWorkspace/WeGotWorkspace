@@ -9,7 +9,7 @@ import { CollabHttpError } from "./docs-collab-utils";
 
 const persistCollabSave = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/offline/browser-online", () => ({
+vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => true,
 }));
 

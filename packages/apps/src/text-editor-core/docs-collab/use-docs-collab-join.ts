@@ -3,7 +3,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { expectsServerContent, useDocsCollabContentGate } from "./use-docs-collab-content-gate";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
