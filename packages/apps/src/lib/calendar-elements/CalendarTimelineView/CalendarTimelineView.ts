@@ -3,7 +3,7 @@ import { html, nothing, type TemplateResult, unsafeCSS } from "lit";
 import { customElement } from "lit/decorators.js";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { styleMap } from "lit/directives/style-map.js";
-import { CALENDAR_RANGE_TRANSITION_END_EVENT } from "@/calendar-core/src/calendar-range-transition";
+import { CALENDAR_RANGE_TRANSITION_END_EVENT } from "@/lib/calendar/calendar-range-transition";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
 import "../EventCard/EventCard.js";
@@ -12,7 +12,7 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
-import { isRenderOnlyOverlayEvent } from "@/calendar-core/src/calendar-render-overlay";
+import { isRenderOnlyOverlayEvent } from "@/lib/calendar/calendar-render-overlay";
 import {
   eventSelectionOriginFromElement,
   type EventCreateRequestDetail,

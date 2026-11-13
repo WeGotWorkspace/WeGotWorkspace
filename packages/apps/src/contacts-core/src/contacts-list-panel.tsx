@@ -21,11 +21,8 @@ import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import type { ContactCard } from "@/lib/models/contacts-types";
-import {
-  contactDisplayName,
-  contactListDetail,
-  contactListSubtitle,
-} from "@/contacts-core/src/contacts-display-utils";
+import { contactListDetail, contactListSubtitle } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import {
   contactListRowOffset,
   contactsListWindowRange,

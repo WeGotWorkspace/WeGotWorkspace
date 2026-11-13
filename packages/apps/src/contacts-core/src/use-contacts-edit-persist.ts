@@ -6,13 +6,13 @@ import {
   type SetStateAction,
 } from "react";
 import { withBlankRowsFrom } from "@/contacts-core/src/contacts-draft-rows";
+import { contactEditDraftHasChanges } from "@/contacts-core/src/contacts-edit-utils";
 import {
   contactCardToEditDraft,
-  contactEditDraftHasChanges,
   editDraftToPatch,
   type ContactEditDraft,
-} from "@/contacts-core/src/contacts-edit-utils";
-import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
+} from "@/lib/models/contacts-edit-draft";
+import { mergeContactFromPatch } from "@/lib/models/contacts-patch-merge";
 import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { contactMutationOpts } from "@/contacts-core/src/contacts-undo-writes";
 

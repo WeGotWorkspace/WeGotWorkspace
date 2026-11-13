@@ -14,20 +14,35 @@ paths:
 
 An error that leaves the transport layer carries an HTTP status. A bare `Error` whose text the caller must interpret is not that contract.
 
-- A real HTTP failure is an `ApiError` (`lib/api/api-error.ts`): `status: number` and, when the client parsed the `{ error, code? }` body, `code`. Throw `WgwRequestError(message, res.status)` for a plain WeGotWorkspace request, or a domain subclass (`ContactsRequestError`, `TasksRequestError`, `NotesRequestError`, `NotesVjournalRequestError`, `MeetChatRequestError`, `DriveTransportError`, `ShareSessionError`, `CalendarImportError`, `CollabHttpError`, `HttpSignalingError`) when callers need to tell them apart. Check with `isApiError(error)` or `instanceof` on the subclass. `ApiError` sets no `name`; a subclass that had a name keeps it.
+- A real HTTP failure is an `ApiError` (`lib/api/api-error.ts`): `status: number` and, when the client parsed the `{ error, code? }` body, `code`. Throw `WgwRequestError(message, res.status)` for a plain WeGotWorkspace request, or a domain subclass (`ContactsRequestError`, `TasksRequestError`, `NotesRequestError`, `NotesVjournalRequestError`, `MeetChatRequestError`, `DriveTransportError`, `DriveUploadPartRejectedError`, `ShareSessionError`, `CalendarImportError`, `CollabHttpError`, `HttpSignalingError`, `WgwSessionRenewalError`, and the module-private `AuthHttpError` in `http.ts`) when callers need to tell them apart. Check with `isApiError(error)` or `instanceof` on the subclass. `ApiError` sets no `name`; a subclass that had a name keeps it.
 - A new error class for an HTTP failure extends `ApiError`. Do not re-declare `status` or `code` on the subclass: the build defines class fields, so a re-declared field resets the value `super()` set.
 - `JmapRequestError` (`lib/jmap-client`) is the exception: a JMAP request can fail before any status exists, so its `status` is optional and it does not extend `ApiError`.
-- Not yet on `ApiError`, each with its own numeric `status`: `AuthHttpError` (`lib/api/wgw/http.ts`, auth token calls), `DriveUploadPartRejectedError` (`drive-upload-errors.ts`, read by the chunked uploader) and `WgwSessionRenewalError` (`session-renewal-error.ts`, fixed `503`). `isApiError` is `false` for them; check `status` directly until they move.
 - A JMAP `/set` rejection has no HTTP status. `httpStatusFromFlushError` (`lib/offline/core/outbox-error-status.ts`) translates it. When a new `setError.type` is permanent, add it to that mapping. Do not add a regex at the caller.
 - A condition that locally means "does not exist" or "no access", such as a failed path resolution, is also a status (`404` or `403`). Throw a typed error.
 
+## Failures without an HTTP status
+
+Not every failure has a status. These stay out of `ApiError` on purpose, so the outbox keeps them in the transient bucket. Each sets no `name`, so `String(error)` reads as it did when it was a bare `Error`:
+
+- `UnexpectedApiResponseError` (`lib/api/api-error.ts`): the server answered, but the client cannot use the answer. A body that is not JSON (`wgwReadJson`, the auth token response), a missing field the contract promises (created id, `blobId`, new state, `access_token`, download ticket URL, the FileNode capability), or a record that cannot be read back right after a write.
+- `WgwGuestSessionMissingError` (`wgw/guest-session-missing-error.ts`): a guest request with no usable share session in this tab. No request was sent.
+- `WgwAppDisabledError` (`wgw/app-disabled-error.ts`): the app is turned off in settings, so its bootstrap stops.
+- `ContactSetRejectedError` (`wgw/contacts-set.ts`): a `Contact/set` SetError other than `stateMismatch`, with `setErrorType`.
+- `JmapSetItemError`, `JmapMethodError` (`lib/jmap-client`) for JMAP method-level failures; see the `/set` rule above.
+
+Pick one of these, or a domain class next to the call, for a new failure with no status. Do not throw a bare `Error` for it.
+
 ## Bare `Error` in `lib/api`
 
-A bare `throw new Error(` is left only where no status exists or where adding one would change what a caller does:
+A bare `throw new Error(` is left only for a programmer or input assertion: a guard that fails before any request is sent, or an unreachable fallback. Each was reviewed (#1646):
 
-- Programmer and input assertions (missing argument, guest operation that is not offered, missing config).
-- Failures with no HTTP status: unexpected JSON shape (including `http.ts` `readTokenResponse` when the auth response is not JSON; its HTTP failure already throws `AuthHttpError`), a JMAP `SetError`, a missing blob id, an app turned off in settings.
-- Six HTTP failures whose callers classify on status, where a new status would change behaviour the user sees: `drive.ts` star writes and `/files/starred` (the Drive and Docs outbox flush would treat a 409/412 as a state mismatch), guest `/files/children` (the folder listing would start auto-retrying 5xx), `drive-shares.ts` `getShareJson` (same two effects), and `calendar-scheduling.ts` `throwUnlessSchedulingOk` (a 403 RSVP would become a permanent outbox failure). Converting them is a behaviour change: decide it per site with the outbox and listing owners.
+- `drive.ts`: `GUEST_STRUCTURE_UNAVAILABLE` (4) and `GUEST_UPLOAD_UNAVAILABLE` (2), a guest operation the UI does not offer.
+- `http.ts`: sign-in and password-reset argument guards (empty username or password, empty identifier, empty reset token, password shorter than 10 characters). The forms validate first; these keep the module safe when called directly.
+- `admin.ts` `fetchAdminLiveBootstrap`: the line after the retry loop, which the loop never reaches (its last attempt rethrows).
+- `drive-create-keep-both.ts`: the keep-both loop ran out of attempts. Each attempt picks a name that the fresh sibling list says is free, so only a server that keeps answering `alreadyExists` gets here.
+- `auth-token.ts`: missing credentials in the authenticated Storybook parity story.
+
+Still bare, and not assertions: six HTTP failures whose callers classify on status, where a status changes behaviour the user can notice. `drive.ts` star writes (`DELETE` and `POST /files/star` through `postJson`) and `GET /files/starred` (the Drive and Docs outbox flush would treat a 409/412 as a state mismatch), guest `GET /files/children` (the folder listing would start auto-retrying 5xx), `drive-shares.ts` `getShareJson` (same two effects), and `calendar-scheduling.ts` `throwUnlessSchedulingOk` (a 403 RSVP would become a permanent outbox failure). They move in their own PR with the behaviour change written down.
 
 ## Do not classify on the message
 

@@ -1,4 +1,4 @@
-import type { InstallerAPIOperations, InstallerUIData } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations, InstallerUIData } from "@/lib/models/installer-types";
 
 export type InstallerWorkspaceProps = {
   data: InstallerUIData;

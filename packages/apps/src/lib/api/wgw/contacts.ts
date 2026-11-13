@@ -1,3 +1,4 @@
+import { WgwAppDisabledError } from "@/lib/api/wgw/app-disabled-error";
 import { ApiError } from "@/lib/api/api-error";
 import type {
   AddressBook,
@@ -5,7 +6,7 @@ import type {
   ContactCardImportResponse,
 } from "@wgw/openapi-types/contacts-types";
 import type { AddressBookMutationPatch } from "@/lib/models/contacts-types";
-import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
+import { contactCardToVCard } from "@/lib/models/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   parseApiErrorJson,
@@ -371,7 +372,7 @@ export async function fetchContactsLiveBootstrap(options?: {
       apps?: { contacts?: boolean };
     };
     if (settings.apps?.contacts === false) {
-      throw new Error("CONTACTS_SETTINGS_MISSING");
+      throw new WgwAppDisabledError("CONTACTS_SETTINGS_MISSING");
     }
   }
 

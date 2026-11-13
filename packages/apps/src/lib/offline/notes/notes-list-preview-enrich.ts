@@ -4,7 +4,7 @@ import {
   applyNoteBodyMarkdown,
   enrichNote,
   noteHasListableBody,
-} from "@/notes-core/src/notes-note-utils";
+} from "@/lib/models/note-list-model";
 
 const ENRICH_CONCURRENCY = 4;
 

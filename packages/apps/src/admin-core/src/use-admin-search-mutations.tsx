@@ -1,5 +1,5 @@
 import type { AppToastApi } from "@/hooks/use-app-toast";
-import type { AdminSearchReindexState } from "@/admin-core/src/admin-types";
+import type { AdminSearchReindexState } from "@/lib/models/admin-types";
 import { mutationErrorMessage } from "@/admin-core/src/admin-mutation-feedback";
 import type { AdminMutationSliceArgs } from "@/admin-core/src/admin-mutation-slice";
 

@@ -2,9 +2,9 @@ import { Temporal } from "@js-temporal/polyfill";
 import {
   availabilityColorToken,
   availabilityPeriodTiming,
-  parseAvailabilityOverlayKey,
   type AvailabilityColors,
 } from "@/calendar-core/src/calendar-availability-overlay";
+import { parseAvailabilityOverlayKey } from "@/lib/calendar/calendar-render-overlay";
 import { wallClockInTimeZone } from "@/lib/calendar-elements/utils/event-display-time";
 import type { JmapBusyPeriod, JmapTeamMember } from "@/lib/jmap-client/availability/types";
 import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";

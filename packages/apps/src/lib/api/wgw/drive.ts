@@ -1,3 +1,4 @@
+import { WgwGuestSessionMissingError } from "@/lib/api/wgw/guest-session-missing-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import {
   downloadFileNodeWithTicket,
@@ -214,7 +215,9 @@ export async function fetchDriveLiveBootstrap(): Promise<DriveAppBootstrap> {
   if (wgwIsGuestSession()) {
     const sharePath = wgwGuestSharePath();
     if (!sharePath) {
-      throw new Error("Share session is missing path context. Open the link again.");
+      throw new WgwGuestSessionMissingError(
+        "Share session is missing path context. Open the link again.",
+      );
     }
     const driveState = await fetchGuestDriveState(sharePath);
     return { session, data: driveState };

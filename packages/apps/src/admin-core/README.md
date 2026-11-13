@@ -13,7 +13,7 @@ Public (`src/admin-core/src/index.ts`):
 - `AdminApp` (`src/admin-core/src/admin-app.tsx`)
 - `AdminWorkspace` (`src/admin-core/src/admin-workspace.tsx`)
 - `useAdminAPI`, `createDefaultAdminApiSource` (`src/admin-core/src/use-admin-api.ts`, `admin-api-source.ts`)
-- `AdminAPIOperations`, `AdminUIData`, `AdminSection`, and domain settings types (`src/admin-core/src/admin-types.ts`)
+- `AdminAPIOperations`, `AdminUIData`, `AdminSection`, and domain settings types (`src/lib/models/admin-types.ts`)
 - `AdminControllerState`, `useAdminShell`, `useAdminMutations` (`src/admin-core/src/use-admin-controller.tsx`, `use-admin-shell.tsx`, `use-admin-mutations.tsx`)
 
 Pane components (import from `@/admin-core/src/…`):

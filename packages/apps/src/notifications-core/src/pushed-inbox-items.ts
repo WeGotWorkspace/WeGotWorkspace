@@ -1,4 +1,7 @@
-import type { NotificationInboxItem, NotificationInboxList } from "./notifications-types";
+import type {
+  NotificationInboxItem,
+  NotificationInboxList,
+} from "@/lib/models/notifications-types";
 
 /**
  * How long a row posted by the service worker stays in the bell while the

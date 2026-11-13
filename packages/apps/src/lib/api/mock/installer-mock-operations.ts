@@ -7,7 +7,7 @@ import type {
   InstallerBackendStep,
   WgwInstallerActionResponse,
   WgwInstallerRuntimeState,
-} from "@/installer-core/src/installer-types";
+} from "@/lib/models/installer-types";
 
 function cloneState(state: WgwInstallerRuntimeState): WgwInstallerRuntimeState {
   return structuredClone(state);

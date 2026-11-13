@@ -96,6 +96,40 @@ describe("CalendarEventFormRecurrence", () => {
     expect(screen.queryByRole("combobox", { name: labels.eventRecurrenceEndsLabel })).toBeNull();
   });
 
+  it("keeps a custom rule when the open event switches from a preset to it", () => {
+    const weekly = {
+      ...emptyCalendarEventForm("default", "2033-01-12", "10:00"),
+      recurrencePreset: "weekly" as const,
+    };
+    const custom = {
+      ...emptyCalendarEventForm("default", "2033-01-13", "16:00"),
+      recurrencePreset: "custom" as const,
+    };
+    const onChange = vi.fn();
+    const props = {
+      labels,
+      locale: "en-US",
+      controlSize: "sm" as const,
+      disabled: false,
+      onChange,
+      onFieldChange: vi.fn(),
+    };
+    // In a form, Radix keeps a hidden native select whose `change` reports the value.
+    const { rerender } = render(
+      <form>
+        <CalendarEventFormRecurrence form={weekly} {...props} />
+      </form>,
+    );
+    rerender(
+      <form>
+        <CalendarEventFormRecurrence form={custom} {...props} />
+      </form>,
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    const repeat = screen.getByRole("combobox", { name: labels.eventRepeatLabel });
+    expect(repeat.textContent).toMatch(/Custom/i);
+  });
+
   it("reports the series-end mode through the field callback", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12", "10:00"),

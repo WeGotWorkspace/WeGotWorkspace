@@ -55,7 +55,7 @@ import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   findMeetDirectMessagePerson,
   meetDirectMessagePeople,
-} from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/meetings/meet-direct-messages";
 import type { ChatMessage, MeetChannel } from "@/lib/models/meet-types";
 import {
   meetInitialCallLayoutForChannel,

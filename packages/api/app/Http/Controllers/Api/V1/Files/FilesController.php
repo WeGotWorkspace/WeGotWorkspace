@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Files;
 
 use App\Exceptions\ApiHttpException;
+use App\Exceptions\RealtimeApiException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\CollabExternalWrite;
 use App\Services\Collab\CollabJoinAuthorizer;
-use App\Services\Collab\CollabResponseException;
 use App\Services\Collab\CollabRoomPolicy;
 use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\FramedPayload;
@@ -300,7 +300,7 @@ final class FilesController
         $path = $this->requirePath($request);
         try {
             $this->collabJoins->assertMayJoin($this->collabRooms->cleanRoom($path), $this->principal($request));
-        } catch (CollabResponseException) {
+        } catch (RealtimeApiException) {
             throw new ApiHttpException(404, 'File not found.', 'not_found');
         }
 
