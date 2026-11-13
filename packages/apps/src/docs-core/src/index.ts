@@ -39,5 +39,5 @@ export {
   parseDocsRouteSearch,
   validateDocsRouteSearch,
   type DocsRouteSearch,
-} from "@/docs-core/src/docs-route-search";
+} from "@/lib/files/docs-route-search";
 export { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";

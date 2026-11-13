@@ -6,7 +6,7 @@ import {
   WorkspaceShellHeader,
   type WorkspaceShellHeaderProps,
 } from "@/workspace-shell/src/workspace-shell-header";
-import "@/login-core/src/login-screen.css";
+import "@/authentication-page/src/login-screen.css";
 import "@/meet-core/src/meet-workspace.css";
 
 const { session: signedInSession } = createMeetAppBootstrap();

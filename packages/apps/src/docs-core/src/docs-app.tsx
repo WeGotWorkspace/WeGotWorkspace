@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
 import { docsSessionKnown } from "@/docs-core/src/docs-session-known";

@@ -7,7 +7,7 @@ import {
   docsSearchFromApiPath,
   docsSearchFromNodeId,
   parseDocsRouteSearch,
-} from "@/docs-core/src/docs-route-search";
+} from "@/lib/files/docs-route-search";
 
 describe("docs-route-search helpers", () => {
   it("docsHrefFromApiPath builds a /docs?file= query from an api path", () => {
