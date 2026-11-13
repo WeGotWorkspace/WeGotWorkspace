@@ -60,14 +60,14 @@ export function registerBuiltinSettings(): void {
     label: "Offline",
     description: "Offline content sync on this device",
     icon: <HardDrive className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "appearance",
     label: "Appearance",
     description: "Light or dark theme on this device",
     icon: <Palette className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "assistants",

@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { Input } from "@/ui/input";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
-import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
 import type { SettingsControllerState } from "@/settings-core/src/use-settings-controller";
 import { buttonVariants } from "@/button/src/button";
 import { Form } from "@/ui/form";
@@ -41,25 +40,29 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
   return (
     <Form {...form}>
       <SettingsPaneCard title="Identity">
-        <FieldLabelRow label="Username" readOnly htmlFor={usernameId}>
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="Username"
+          description="Your sign-in name. It cannot be changed."
+          readOnly
+          htmlFor={usernameId}
+        >
           <Input id={usernameId} value={username} readOnly />
         </FieldLabelRow>
         <FormTextField
-          {...settingsWorkspacePaneClasses.formTextField}
+          layout="inline"
           name="displayName"
           label="Display name"
+          description="How others see you"
         />
-        <FormTextField
-          {...settingsWorkspacePaneClasses.formTextField}
-          name="email"
-          label="Email"
-          type="email"
-        />
+        <FormTextField layout="inline" name="email" label="Email" type="email" />
         {showCurrentPassword ? (
           <FormTextField
-            {...settingsWorkspacePaneClasses.formTextField}
+            layout="inline"
             name="currentPassword"
             label="Current password"
+            description="Needed to change your email or password"
             variant="password"
             autoComplete="current-password"
           />
@@ -69,14 +72,14 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
 
       <SettingsPaneCard title="Password">
         <FormTextField
-          {...settingsWorkspacePaneClasses.formTextField}
+          layout="inline"
           name="newPassword"
           label="New password"
           variant="password"
           placeholder="At least 8 characters"
         />
         <FormTextField
-          {...settingsWorkspacePaneClasses.formTextField}
+          layout="inline"
           name="confirmPassword"
           label="Confirm password"
           variant="password"

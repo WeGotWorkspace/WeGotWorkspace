@@ -57,7 +57,7 @@ export function SettingsOfflinePane() {
       >
         <Input
           id="offline-max-size"
-          className="w-20"
+          className="settings-offline-pane__size"
           type="number"
           min={1}
           max={100}

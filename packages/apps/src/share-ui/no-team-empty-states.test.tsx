@@ -143,7 +143,7 @@ describe("Settings Teams pane", () => {
   it("lists memberships otherwise", () => {
     render(
       <SettingsMembershipsPane
-        groups={[{ id: "principals/groups/t1", displayName: "Editorial" }]}
+        groups={[{ id: "principals/groups/t1", displayName: "Editorial", memberCount: 2 }]}
       />,
     );
     expect(screen.getByText("Editorial")).toBeTruthy();

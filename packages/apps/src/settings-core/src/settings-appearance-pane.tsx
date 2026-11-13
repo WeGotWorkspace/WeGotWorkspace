@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
   readThemePreference,
   subscribeThemePreference,
@@ -31,27 +32,27 @@ export function SettingsAppearancePane() {
 
   return (
     <SettingsPaneCard>
-      <div className="settings-appearance-pane max-w-lg space-y-4">
-        <FieldLabelRow label="Theme">
-          <Select
-            value={preference}
-            onValueChange={(value) => {
-              if (isThemePreference(value)) writeThemePreference(value);
-            }}
-          >
-            <SelectTrigger aria-label="Theme">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {THEME_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FieldLabelRow>
-      </div>
+      <FieldLabelRow
+        layout="inline"
+        label="Theme"
+        description="Light, dark, or follow your system. Saved on this device."
+      >
+        <Select
+          value={preference}
+          onValueChange={(value) => {
+            if (isThemePreference(value)) writeThemePreference(value);
+          }}
+        >
+          <CollectionGhostSelectTrigger aria-label="Theme" label={<SelectValue />} />
+          <SelectContent align="end">
+            {THEME_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldLabelRow>
     </SettingsPaneCard>
   );
 }

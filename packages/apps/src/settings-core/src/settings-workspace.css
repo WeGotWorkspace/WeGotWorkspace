@@ -1,8 +1,6 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
 @import "../../workspace-shell/src/workspace-color.css";
 
-/* Pane class fragments: `settings-workspace.styles.ts` (must stay in sync). */
-
 /**
  * Settings product shell: paper main pane + soft sidebar.
  * `--workspace-accent` is We Got Dark (`#003311` — same hex as
@@ -44,9 +42,19 @@
   color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
+/* Same side padding on every width: small screens keep the desktop gutter. */
+.settings-workspace .workspace-app-layout__main-content {
+  padding-inline: 2rem;
+}
+
 /* Page title above the pane (Settings app only; the dialog has its own title). */
 .settings-workspace .settings-page-header {
   @apply mb-10 flex flex-col gap-2;
+}
+
+/* Title start, save tag end (as in the dialog header). */
+.settings-workspace .settings-page-header__title-row {
+  @apply flex items-center justify-between gap-4;
 }
 
 .settings-workspace .settings-page-header__title {
@@ -68,35 +76,38 @@
   border-radius: 0;
 }
 
-.settings-workspace .settings-form-field {
-  @apply space-y-1.5 mb-4 last:mb-0;
+/* Teams: a row per Team (icon tile, name, member count), hairlines as the settings rows. */
+.settings-workspace .settings-team-list {
+  @apply m-0 list-none p-0;
 }
 
-.settings-workspace .settings-group-list {
-  @apply space-y-0;
+.settings-workspace .settings-team-row {
+  @apply flex items-center gap-3 py-3;
 }
 
-.settings-workspace .settings-group-list > li + li {
-  border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
+.settings-workspace .settings-team-row + .settings-team-row {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.settings-workspace .settings-team-row__icon {
+  @apply flex size-9 shrink-0 items-center justify-center;
+  border-radius: var(--control-radius);
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
+}
+
+.settings-workspace .settings-team-row__icon svg {
+  @apply size-4;
+}
+
+.settings-workspace .settings-team-row__name {
+  @apply min-w-0 flex-1 truncate font-medium;
+  font-size: var(--input-font-size-md, 0.875rem);
+  color: var(--workspace-foreground);
 }
 
 .settings-workspace .settings-memberships-pane__empty {
   @apply text-sm text-muted-foreground;
-}
-
-.settings-workspace .settings-group-row {
-  @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
-}
-
-.settings-workspace .settings-group-avatar {
-  --user-avatar-bg: var(--workspace-accent);
-  --user-avatar-fg: var(--workspace-accent-foreground);
-  --user-avatar-label-color: var(--workspace-foreground);
-  --user-avatar-subtitle-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 80%,
-    var(--workspace-surface)
-  );
 }
 
 .settings-workspace .settings-connected-assistants-pane,
@@ -200,4 +211,9 @@
 
 .ui-modal-surface.settings-workspace .settings-pane-card + .settings-pane-card {
   margin-top: 1.5rem;
+}
+
+/* Offline → max file size: a short number, not a full-width field. */
+.settings-workspace .settings-offline-pane__size {
+  width: 5rem;
 }

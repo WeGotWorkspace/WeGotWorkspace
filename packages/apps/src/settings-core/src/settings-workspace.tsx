@@ -19,7 +19,11 @@ import { reachabilityFromSettingsData } from "@/settings-core/src/settings-reach
 import { SettingsPanelHost } from "@/settings-core/src/settings-panel-host";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
 import { cn } from "@/lib/utils";
+import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
 import "@/settings-core/src/settings-workspace.css";
+
+/** Sidebar section titles; also the header title (Settings › Device). */
+const GROUP_LABELS = { account: "Account", device: "Device", apps: "Apps" } as const;
 
 export function SettingsWorkspace(props: SettingsWorkspaceProps) {
   const {
@@ -42,13 +46,16 @@ export function SettingsWorkspace(props: SettingsWorkspaceProps) {
 
   useDocumentTitle(controller.currentSection.label);
 
+  // Panes autosave, as in the Settings dialog: the page title row shows the same Saving / Saved tag.
   return (
-    <WorkspaceAppLayout
-      className={cn("settings-workspace", className)}
-      sidebar={<Sidebar controller={controller} session={session} onLogout={onLogout} />}
-      mainHeader={<MainHeader controller={controller} />}
-      main={<MainContent controller={controller} />}
-    />
+    <AutosaveStatusProvider>
+      <WorkspaceAppLayout
+        className={cn("settings-workspace", className)}
+        sidebar={<Sidebar controller={controller} session={session} onLogout={onLogout} />}
+        mainHeader={<MainHeader controller={controller} />}
+        main={<MainContent controller={controller} />}
+      />
+    </AutosaveStatusProvider>
   );
 }
 
@@ -74,6 +81,7 @@ function Sidebar({
   onLogout?: () => void;
 }) {
   const accountItems = navItems(controller, controller.sidebarGroups.account);
+  const deviceItems = navItems(controller, controller.sidebarGroups.device);
   const appsItems = navItems(controller, controller.sidebarGroups.apps);
 
   return (
@@ -82,13 +90,16 @@ function Sidebar({
       open={controller.sidebarOpen}
       onCloseMobile={() => controller.setSidebarOpen(false)}
     >
-      {accountItems.length > 0 ? <SidebarSection title="Account" items={accountItems} /> : null}
-      {appsItems.length > 0 ? <SidebarSection title="Apps" items={appsItems} /> : null}
+      {accountItems.length > 0 ? (
+        <SidebarSection title={GROUP_LABELS.account} items={accountItems} />
+      ) : null}
+      {deviceItems.length > 0 ? (
+        <SidebarSection title={GROUP_LABELS.device} items={deviceItems} />
+      ) : null}
+      {appsItems.length > 0 ? <SidebarSection title={GROUP_LABELS.apps} items={appsItems} /> : null}
     </AppSidebar>
   );
 }
-
-const GROUP_LABELS = { account: "Account", apps: "Apps" } as const;
 
 /**
  * Settings › Apps: the group is the header title. The pane's own name is the page title
@@ -126,7 +137,11 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
   return (
     <>
       <header className="settings-page-header">
-        <h1 className="settings-page-header__title">{pageTitle(panel)}</h1>
+        <div className="settings-page-header__title-row">
+          <h1 className="settings-page-header__title">{pageTitle(panel)}</h1>
+          {/* Keyed by pane: a Saved from the previous pane does not show on the next one. */}
+          <AutosaveStatusTag key={panel.id} />
+        </div>
         <p className="settings-page-header__description">{panel.description}</p>
       </header>
       <SettingsPanelHost

@@ -23,7 +23,8 @@ export type SettingsPanelId = string;
 /** Route-owned Settings section; same as {@link SettingsPanelId}. */
 export type SettingsSection = SettingsPanelId;
 
-export type SettingsPanelGroup = "account" | "apps";
+/** Sidebar sections: the account, this device (stored in this browser), the apps. */
+export type SettingsPanelGroup = "account" | "device" | "apps";
 
 export type SettingsSectionDescriptor = {
   id: SettingsSection;
@@ -40,6 +41,8 @@ export type SettingsUser = {
 export type SettingsGroup = {
   id: string;
   displayName: string;
+  /** Members of the Team, the user included. */
+  memberCount: number;
 };
 
 export type SettingsMcpShareCall = {
