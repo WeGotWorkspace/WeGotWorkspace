@@ -433,6 +433,14 @@ write_env_from_example() {
   elif ! grep -q '^WGW_IMAGE=' "$path"; then
     printf '\nWGW_IMAGE=ghcr.io/wegotworkspace/wegotworkspace:%s\n' "$WGW_VERSION" >>"$path"
   fi
+  # MariaDB only takes the password when it creates its volume, so a kept volume keeps the old one.
+  if ! docker volume inspect "${COMPOSE_PROJECT_NAME:-wegotworkspace}_wgw-db" >/dev/null 2>&1; then
+    db_password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+    root_password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+    sed_inplace "s/^WGW_DB_PASSWORD=wgw\$/WGW_DB_PASSWORD=${db_password}/; s/^MARIADB_PASSWORD=wgw\$/MARIADB_PASSWORD=${db_password}/; s/^MARIADB_ROOT_PASSWORD=wgw-root\$/MARIADB_ROOT_PASSWORD=${root_password}/" "$path"
+  elif [ -n "${kept_db_passwords:-}" ]; then
+    printf '%s\n' "$kept_db_passwords" >>"$path"
+  fi
 }
 
 apply_sqlite_profile() {
@@ -513,7 +521,7 @@ print_success() {
   printf '\nWeGotWorkspace is running.\n'
   printf 'Open http://localhost:%s/install/ to finish setup.\n' "$port"
   if [ "$profiles" = "mysql" ]; then
-    printf 'MySQL wizard defaults: host db, database/user/password wgw (see %s/%s)\n' "$WGW_INSTALL_DIR" "$ENV_FILE"
+    printf 'MySQL wizard defaults: host db, database and user wgw, password MARIADB_PASSWORD in %s/%s\n' "$WGW_INSTALL_DIR" "$ENV_FILE"
   else
     printf 'SQLite mode: choose SQLite in the installer wizard.\n'
   fi
@@ -545,6 +553,7 @@ cmd_install() {
       die "Install directory already exists: ${WGW_INSTALL_DIR}. Use --force to overwrite or run upgrade."
     fi
     log "Removing existing ${WGW_INSTALL_DIR} (--force)"
+    kept_db_passwords=$(grep -E '^(WGW_DB_PASSWORD|MARIADB_PASSWORD|MARIADB_ROOT_PASSWORD)=' "${WGW_INSTALL_DIR}/${ENV_FILE}" 2>/dev/null || true)
     rm -rf "$WGW_INSTALL_DIR"
   fi
 
