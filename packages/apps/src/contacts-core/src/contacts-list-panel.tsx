@@ -1,6 +1,7 @@
 import {
   useCallback,
   useMemo,
+  useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
@@ -210,7 +211,9 @@ function ContactsListRows({
   | "addressBooks"
 >) {
   const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
-  const rootFontSizePx = readContactsListRootFontSizePx();
+  // Read once: a style read on every render forces a style recalc while the book
+  // downloads page by page. A later font change is corrected by measured rows.
+  const [rootFontSizePx] = useState(readContactsListRootFontSizePx);
   const estimateSize = useCallback(
     (row: ContactsListRowItem) => contactListRowHeight(row, rootFontSizePx),
     [rootFontSizePx],

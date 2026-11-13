@@ -30,19 +30,25 @@ function card(index: number) {
   };
 }
 
-/** The open (selected) row's id and whether it sits fully inside the scrollport. */
-async function selectedRow(page: Page) {
-  return page.evaluate((rowSelector) => {
-    const row = document.querySelector<HTMLElement>(`${rowSelector}[data-selected="true"]`);
-    const scroller = row?.closest<HTMLElement>(".overflow-y-auto");
-    if (!row || !scroller) return { id: null, inView: false };
-    const box = row.getBoundingClientRect();
-    const port = scroller.getBoundingClientRect();
-    return {
-      id: row.getAttribute("data-list-item-id"),
-      inView: box.top >= port.top - 1 && box.bottom <= port.bottom + 1,
-    };
-  }, ROW);
+/**
+ * The selected row's id and whether it sits fully inside the scrollport. A
+ * contact opened from its link is the active row (`data-active`) instead.
+ */
+async function selectedRow(page: Page, state: "selected" | "active" = "selected") {
+  return page.evaluate(
+    ({ rowSelector, state }) => {
+      const row = document.querySelector<HTMLElement>(`${rowSelector}[data-${state}="true"]`);
+      const scroller = row?.closest<HTMLElement>(".overflow-y-auto");
+      if (!row || !scroller) return { id: null, inView: false };
+      const box = row.getBoundingClientRect();
+      const port = scroller.getBoundingClientRect();
+      return {
+        id: row.getAttribute("data-list-item-id"),
+        inView: box.top >= port.top - 1 && box.bottom <= port.bottom + 1,
+      };
+    },
+    { rowSelector: ROW, state },
+  );
 }
 
 async function focusedRowId(page: Page): Promise<string | null> {
@@ -117,7 +123,7 @@ test.describe("Contacts list with more than 80 contacts", () => {
     await page.goto(`/contacts/all/${target}`);
     await expect(page.locator(ROW).first()).toBeVisible({ timeout: 60_000 });
     await expect
-      .poll(async () => selectedRow(page), { timeout: 30_000 })
+      .poll(async () => selectedRow(page, "active"), { timeout: 30_000 })
       .toEqual({
         id: target,
         inView: true,
