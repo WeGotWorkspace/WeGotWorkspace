@@ -8,6 +8,7 @@ import type {
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { isWireDmChannel, meetChannelFromWire, type WgwChatChannel } from "@/lib/api/wgw/meet-chat";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import {
   enqueueOutboxMutation,
   isSyncNoticeOutboxRow,
@@ -86,15 +87,7 @@ export type MeetChatReadMarkerOutboxPayload = {
 };
 
 /** Message id targeted by a meet-chat outbox row, or null for non-message ops. */
-export function meetChatOutboxMessageId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== MEET_CHAT_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as { messageId?: string };
-    return payload.messageId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const meetChatOutboxMessageId = outboxEntityIdReader(MEET_CHAT_DOMAIN, ["messageId"]);
 
 export async function listMeetChatOutbox(username: string): Promise<OfflineOutboxRow[]> {
   return listOutboxMutationsForDomain(username, MEET_CHAT_DOMAIN);
