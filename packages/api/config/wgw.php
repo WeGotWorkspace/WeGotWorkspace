@@ -58,6 +58,13 @@ return [
     'trusted_hosts' => env('WGW_TRUSTED_HOSTS'),
 
     /**
+     * Calendar reply mailboxes (#1589): allow an IMAP host on a private or
+     * loopback address, and a certificate the system CA store does not trust.
+     * For a mail server on the same network as the install, and for local e2e.
+     */
+    'imip_allow_private_hosts' => (bool) env('WGW_IMIP_ALLOW_PRIVATE_HOSTS', false),
+
+    /**
      * Installer autofill / headless env (read via {@see WgwInstallEnv}).
      * Set in packages/api/.env or Docker api.env on the wgw-install-config volume.
      *

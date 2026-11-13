@@ -62,6 +62,20 @@ Measured on 2026-10-18 without the rewrite, Meet DM call with camera on, direct 
 - Safari (member) ↔ Chrome (admin): Safari offered, Chrome answered. Video in both directions.
 - Firefox (member) ↔ Chrome (admin): Firefox offered, Chrome answered. Video in both directions.
 
+## Opus DTX and FEC (2026-11-13)
+
+Removing the sanitizer also removed its inbound `usedtx=1`, so Meet sent full-rate Opus in silence. Meet now adds only `useinbandfec=1;usedtx=1` to the Opus `a=fmtp` line of an inbound description (`meet-opus-fmtp.ts`, [#1626](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1626)). Every other line passes through as received.
+
+Measured on one Mac, four clients in one Team call (Playwright Chromium ×2, Firefox, WebKit, fake media), three of them with the mic off, 30 s window:
+
+| Muted client | Without DTX | With DTX |
+|---|---|---|
+| Chromium | 152 packets/s, 30 kbps | 14 packets/s, 1 kbps |
+| Firefox | 152 packets/s, 42 kbps | 14 packets/s, 1 kbps |
+| WebKit | 154 packets/s, 29 kbps | 15 packets/s, 1 kbps |
+
+The unmuted client sent 150 packets/s in both runs, and every client kept receiving its audio. All four engines connected with audio and video in both runs.
+
 <a id="manual-runs-2026-10-07-08"></a>
 
 ## Manual runs — 2026-10-07/08

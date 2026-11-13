@@ -10371,6 +10371,184 @@
         "x-wgw-access": "user"
       }
     },
+    "/calendars/reply-mailbox": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Read my reply mailbox",
+        "description": "The IMAP mailbox invitation replies from external calendar apps are read from, with its last check. `mailbox` is null when none is connected.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's reply mailbox",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarReplyMailboxState"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "put": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Connect or change my reply mailbox",
+        "description": "Logs in to the mailbox and opens the folder before anything is stored, and learns the receiving server id from the newest messages. Changing the host, username or folder starts reading new mail only. Ten logins per user per ten minutes across save and test, then 429.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarReplyMailboxUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The caller's reply mailbox",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarReplyMailboxState"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "422": {
+            "description": "The mailbox could not be opened; `code` is `auth_failed`, `connect_failed`, `tls_failed`, `folder_missing`, `host_not_allowed` or `protocol_error`, and nothing is stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many logins in the window; `Retry-After` says when to try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Disconnect my reply mailbox",
+        "description": "Removes the mailbox and its stored password. Replies are no longer read.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected (also when none was connected)"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/calendars/reply-mailbox/test": {
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Test my reply mailbox",
+        "description": "Logs in again with the stored settings, refreshes the receiving server id, and turns reading back on after a pause.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's reply mailbox",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarReplyMailboxState"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "description": "No reply mailbox is connected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The mailbox could not be opened; `code` as for PUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many logins in the window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/calendars/{calendarId}/feed": {
       "get": {
         "tags": [

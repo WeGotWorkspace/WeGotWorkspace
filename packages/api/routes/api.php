@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Auth\TokenController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarAvailabilityController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarEventImportController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
+use App\Http\Controllers\Api\V1\Calendars\CalendarReplyMailboxController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
@@ -251,6 +252,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
             ->where('id', '[A-Za-z0-9-]+');
         Route::get('calendars/availability', [CalendarAvailabilityController::class, 'show']);
         Route::put('calendars/availability', [CalendarAvailabilityController::class, 'update']);
+        Route::get('calendars/reply-mailbox', [CalendarReplyMailboxController::class, 'show']);
+        Route::put('calendars/reply-mailbox', [CalendarReplyMailboxController::class, 'update']);
+        Route::post('calendars/reply-mailbox/test', [CalendarReplyMailboxController::class, 'test']);
+        Route::delete('calendars/reply-mailbox', [CalendarReplyMailboxController::class, 'destroy']);
         Route::get('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'show'])
             ->where('calendarId', '[A-Za-z0-9_-]+');
         Route::post('calendars/{calendarId}/feed', [CalendarFeedsController::class, 'store'])
