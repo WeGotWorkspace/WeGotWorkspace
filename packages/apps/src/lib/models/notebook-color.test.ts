@@ -4,7 +4,7 @@ import {
   notebookDisplayColor,
   notebookDotColor,
   notesDetailTintStyle,
-} from "@/notes-core/src/notes-notebook-color";
+} from "@/lib/models/notebook-color";
 
 describe("notebookDotColor", () => {
   it("uses the notebook calendarcolor when set", () => {

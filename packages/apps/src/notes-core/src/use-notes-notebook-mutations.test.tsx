@@ -5,7 +5,7 @@ import { act, renderHook } from "@testing-library/react";
 import { useNotesNotebookMutations } from "@/notes-core/src/use-notes-notebook-mutations";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 import { defaultNotesLabels, notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
-import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
+import { ProjectDialog } from "@/project-dialog/src/project-dialog";
 import { TooltipProvider } from "@/ui/tooltip";
 
 function render(ui: ReactNode) {
@@ -153,7 +153,7 @@ describe("useNotesNotebookMutations", () => {
     });
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={result.current.notebookDialog}
         groups={[{ slug: "administrators", displayName: "Administrators" }]}
         personalOwnerLabel="Ada"
@@ -193,7 +193,7 @@ describe("useNotesNotebookMutations", () => {
     expect(result.current.notebookDialog).toMatchObject({ mayDelete: true, canChangeOwner: true });
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={result.current.notebookDialog}
         groups={[{ slug: "team", displayName: "Team" }]}
         personalOwnerLabel="Ada"
@@ -491,7 +491,7 @@ describe("useNotesNotebookMutations", () => {
     });
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={result.current.notebookDialog}
         groups={[{ slug: "team", displayName: "Team" }]}
         personalOwnerLabel="Ada"
@@ -554,7 +554,7 @@ describe("useNotesNotebookMutations", () => {
     });
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={result.current.notebookDialog}
         groups={[{ slug: "team", displayName: "Team" }]}
         personalOwnerLabel="Ada"

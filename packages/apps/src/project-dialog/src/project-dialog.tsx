@@ -23,15 +23,14 @@ import {
 } from "@/ui/owner-scope-field";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
-import { TaskProjectColorPicker } from "@/tasks-core/src/task-project-color-picker";
+import { ProjectColorPicker } from "@/project-dialog/src/project-color-picker";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/lib/models/task-lists";
 import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
-import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import "@/share-ui/share-ui.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
-export type TaskProjectDialogState =
+export type ProjectDialogState =
   | null
   | { mode: "create" }
   | {
@@ -50,13 +49,13 @@ export type TaskProjectDialogState =
       mayDelete?: boolean;
     };
 
-export type TaskProjectDialogConfirmInput = {
+export type ProjectDialogConfirmInput = {
   name: string;
   color: string | null;
   groupSlug?: string | null;
 };
 
-export type TaskProjectDialogShare = {
+export type ProjectDialogShare = {
   knownPrincipals?: readonly CollectionSharePrincipal[];
   online?: boolean;
   /** The viewer is in no Team (#1924). */
@@ -65,7 +64,7 @@ export type TaskProjectDialogShare = {
   onPatchShareWith: (listId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
 
-export type TaskProjectDialogLabels = {
+export type ProjectDialogLabels = {
   createTitle: string;
   editTitle: string;
   nameLabel: string;
@@ -97,15 +96,15 @@ export type TaskProjectDialogLabels = {
   delete: string;
 };
 
-type TaskProjectDialogProps = {
-  dialog: TaskProjectDialogState;
+type ProjectDialogProps = {
+  dialog: ProjectDialogState;
   groups: TaskProjectGroupOption[];
   personalOwnerLabel: string;
   onClose: () => void;
-  onConfirm: (input: TaskProjectDialogConfirmInput) => void;
-  labels: TaskProjectDialogLabels;
+  onConfirm: (input: ProjectDialogConfirmInput) => void;
+  labels: ProjectDialogLabels;
   contentClassName?: string;
-  share?: TaskProjectDialogShare;
+  share?: ProjectDialogShare;
   onRemoveShared?: () => void;
   onDelete?: () => void;
 };
@@ -114,41 +113,7 @@ function editDialogDisplayColor(listId: string, color: string | null): string {
   return taskListDotColor({ id: listId, color });
 }
 
-export function taskProjectDialogLabelsFrom(labels: TasksUILabels): TaskProjectDialogLabels {
-  return {
-    createTitle: labels.newProject,
-    editTitle: labels.editList,
-    nameLabel: labels.projectNameLabel,
-    colorLabel: labels.projectColorLabel,
-    scopeLabel: labels.projectScopeLabel,
-    scopePersonal: labels.projectScopePersonal,
-    scopeGroup: labels.projectScopeGroup,
-    scopeReadOnlyLabel: labels.projectScopeReadOnlyLabel,
-    changeOwnerConfirmTitle: labels.changeListOwnerConfirmTitle,
-    changeOwnerConfirmToGroup: labels.changeListOwnerConfirmToGroup,
-    changeOwnerConfirmToPersonal: labels.changeListOwnerConfirmToPersonal,
-    changeOwnerConfirm: labels.changeListOwnerConfirm,
-    createButton: labels.createProjectButton,
-    saveButton: labels.saveProjectButton,
-    cancel: labels.cancel,
-    shareListSectionTitle: labels.shareListSectionTitle,
-    shareListSectionHint: labels.shareListSectionHint,
-    shareListAddPlaceholder: labels.shareListAddPlaceholder,
-    shareListSearchEmpty: labels.shareListSearchEmpty,
-    shareListOffline: labels.shareListOffline,
-    removeListShareTitle: labels.removeListShareTitle,
-    removeListShareConfirm: labels.removeListShareConfirm,
-    removeSharedList: labels.removeSharedList,
-    removeSharedListConfirmTitle: labels.removeSharedListConfirmTitle,
-    removeSharedListConfirmDescription: labels.removeSharedListConfirmDescription,
-    deleteList: labels.deleteList,
-    deleteListConfirmTitle: labels.deleteListConfirmTitle,
-    deleteListConfirmDescription: labels.deleteListConfirmDescription,
-    delete: labels.delete,
-  };
-}
-
-export function TaskProjectDialog({
+export function ProjectDialog({
   dialog,
   groups,
   personalOwnerLabel,
@@ -159,7 +124,7 @@ export function TaskProjectDialog({
   share,
   onRemoveShared,
   onDelete,
-}: TaskProjectDialogProps) {
+}: ProjectDialogProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_TASK_LIST_COLOR);
   const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
@@ -213,7 +178,7 @@ export function TaskProjectDialog({
       )
     : labels.changeOwnerConfirmToPersonal;
 
-  const confirmInput = (): TaskProjectDialogConfirmInput => ({
+  const confirmInput = (): ProjectDialogConfirmInput => ({
     name: trimmedName,
     color: selectedColor,
     ...(isCreate || canChangeOwner ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) } : {}),
@@ -258,7 +223,7 @@ export function TaskProjectDialog({
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
-                <TaskProjectColorPicker
+                <ProjectColorPicker
                   value={selectedColor}
                   onChange={setColor}
                   colorLabel={labels.colorLabel}

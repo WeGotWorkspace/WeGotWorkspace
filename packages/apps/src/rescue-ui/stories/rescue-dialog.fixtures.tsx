@@ -1,6 +1,6 @@
 import { FilePlus } from "lucide-react";
 import type { ParkedWrite } from "@/lib/offline/core/parked-writes";
-import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { notebookDotColor } from "@/lib/models/notebook-color";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
 import type { RescueLabels, RescueView } from "@/rescue-ui/rescue-adapter";
 

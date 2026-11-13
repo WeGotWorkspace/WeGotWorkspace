@@ -3,7 +3,7 @@ import { Bell, CalendarDays, CircleCheck, Flag, MoreHorizontal, Trash2, Sun } fr
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { NotesNotebookSelect } from "@/notes-core/src/notes-notebook-select";
+import { NotebookSelect } from "@/project-dialog/src/notebook-select";
 import { Checkbox } from "@/ui/checkbox";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -151,7 +151,7 @@ export function TasksDetailView({
       showTags={false}
       tags={[]}
       eyebrow={
-        <NotesNotebookSelect
+        <NotebookSelect
           notebooks={listItems}
           value={{
             id: form.listId,

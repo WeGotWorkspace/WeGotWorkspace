@@ -1,37 +1,37 @@
 import type { ReactElement } from "react";
 import { CollectionMoveDialog } from "@/ui/collection-move-dialog";
 import { cn } from "@/lib/utils";
-import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import {
-  NotesNotebookSelect,
+  NotebookSelect,
   notebookSelectionEquals,
-  type NotesNotebookSelectItem,
-  type NotesNotebookSelectValue,
-} from "@/notes-core/src/notes-notebook-select";
-import "@/notes-core/src/notes-change-notebook-dialog.css";
+  type NotebookSelectItem,
+  type NotebookSelectValue,
+} from "@/project-dialog/src/notebook-select";
+import "@/project-dialog/src/change-notebook-dialog.css";
 
 const DEFAULT_DESCRIPTION = "Choose or create a notebook for the selected notes.";
 
-export type NotesChangeNotebookDialogProps = {
+export type ChangeNotebookDialogLabels = {
+  addNotebook: string;
+  toolbarMoveToNotebook: string;
+  selectionMoveToNotebook: string;
+  changeNotebookConfirm: string;
+  dialogCancel: string;
+};
+
+export type ChangeNotebookDialogProps = {
   open: boolean;
-  notebooks: NotesNotebookSelectItem[];
-  value: NotesNotebookSelectValue;
+  notebooks: NotebookSelectItem[];
+  value: NotebookSelectValue;
   /** Newly created notebook to land as the draft (still requires Change). */
-  createdNotebook?: NotesNotebookSelectItem | null;
-  labels: Pick<
-    NotesUILabels,
-    | "addNotebook"
-    | "toolbarMoveToNotebook"
-    | "selectionMoveToNotebook"
-    | "changeNotebookConfirm"
-    | "dialogCancel"
-  >;
+  createdNotebook?: NotebookSelectItem | null;
+  labels: ChangeNotebookDialogLabels;
   /** Caption of the picker row. Without it the picker stands alone. */
   fieldLabel?: string;
   description?: string;
   contentClassName?: string;
   onClose: () => void;
-  onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
+  onNotebookChange: (notebook: NotebookSelectItem) => void;
   onCreateNotebook?: () => void;
   /** Overrides the default title (`labels.selectionMoveToNotebook`). */
   title?: string;
@@ -45,12 +45,12 @@ export type NotesChangeNotebookDialogProps = {
   destructiveAction?: { label: string; onAction: () => void };
 };
 
-function toSelectItem(value: NotesNotebookSelectValue): NotesNotebookSelectItem {
+function toSelectItem(value: NotebookSelectValue): NotebookSelectItem {
   return { id: value.id ?? value.name, name: value.name, color: value.color };
 }
 
 /** Move notes (or a task list's tasks) to a notebook: the shared move dialog with the notebook picker. */
-export function NotesChangeNotebookDialog({
+export function ChangeNotebookDialog({
   open,
   notebooks,
   value,
@@ -67,7 +67,7 @@ export function NotesChangeNotebookDialog({
   requireChange,
   confirmDisabled,
   destructiveAction,
-}: NotesChangeNotebookDialogProps): ReactElement {
+}: ChangeNotebookDialogProps): ReactElement {
   return (
     <CollectionMoveDialog
       open={open}
@@ -85,7 +85,7 @@ export function NotesChangeNotebookDialog({
       destructiveAction={destructiveAction}
       renderPicker={({ id, draft, setDraft }) =>
         fieldLabel ? (
-          <NotesNotebookSelect
+          <NotebookSelect
             id={id}
             notebooks={notebooks}
             value={draft}
@@ -95,7 +95,7 @@ export function NotesChangeNotebookDialog({
             onCreateNotebook={onCreateNotebook}
           />
         ) : (
-          <NotesNotebookSelect
+          <NotebookSelect
             className="notes-change-notebook-dialog__picker"
             notebooks={notebooks}
             value={draft}

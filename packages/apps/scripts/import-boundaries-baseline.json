@@ -17,13 +17,10 @@
     "lib -> text-editor-core": 14,
     "lib -> ui": 1,
     "meet-core -> calendar-core": 6,
-    "meet-core -> tasks-core": 1,
     "note-detail-view -> notes-core": 5,
     "note-detail-view -> text-editor-core": 7,
-    "notes-core -> tasks-core": 4,
     "notifications-core -> meet-core": 1,
-    "rescue-ui -> notes-core": 2,
-    "tasks-core -> notes-core": 2,
+    "rescue-ui -> notes-core": 1,
     "text-editor-core -> docs-core": 35,
     "text-editor-core -> drive-core": 2
   },
@@ -32,7 +29,6 @@
     "docs-core <-> file-preview",
     "docs-core <-> text-editor-core",
     "drive-core <-> text-editor-core",
-    "note-detail-view <-> notes-core",
-    "notes-core <-> tasks-core"
+    "note-detail-view <-> notes-core"
   ]
 }

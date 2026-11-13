@@ -2,17 +2,13 @@ import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { TASK_LIST_DOT_COLORS } from "@/lib/models/task-lists";
 
-type TaskProjectColorPickerProps = {
+type ProjectColorPickerProps = {
   value: string;
   onChange: (color: string) => void;
   colorLabel: string;
 };
 
-export function TaskProjectColorPicker({
-  value,
-  onChange,
-  colorLabel,
-}: TaskProjectColorPickerProps) {
+export function ProjectColorPicker({ value, onChange, colorLabel }: ProjectColorPickerProps) {
   return (
     <SwatchColorPicker
       value={value}

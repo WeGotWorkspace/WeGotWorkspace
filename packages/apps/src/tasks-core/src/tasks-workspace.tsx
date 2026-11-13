@@ -10,7 +10,7 @@ import {
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
@@ -25,14 +25,10 @@ import {
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import type { TasksWorkspaceProps } from "@/tasks-core/src/tasks-workspace-props";
-import {
-  personalOwnerLabel,
-  taskProjectGroupsFromBootstrap,
-} from "@/tasks-core/src/tasks-workspace-props";
-import {
-  TaskProjectDialog,
-  taskProjectDialogLabelsFrom,
-} from "@/tasks-core/src/task-project-dialog";
+import { taskProjectGroupsFromBootstrap } from "@/tasks-core/src/tasks-workspace-props";
+import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
+import { ProjectDialog } from "@/project-dialog/src/project-dialog";
+import { taskProjectDialogLabelsFrom } from "@/tasks-core/src/tasks-project-dialog-labels";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 import { isViewOnlyTaskList, useTasksSidebarModel } from "@/tasks-core/src/use-tasks-sidebar-model";
 import { type TaskListSidebarEntry } from "@/lib/models/task-lists";
@@ -423,7 +419,7 @@ export function TasksWorkspace({
         }
       />
       {confirmDialog}
-      <NotesChangeNotebookDialog
+      <ChangeNotebookDialog
         open={!!moveDialog}
         notebooks={moveTargets}
         value={moveValue}
@@ -444,7 +440,7 @@ export function TasksWorkspace({
           if (moveDialog) moveToList(moveDialog.ids, target.id);
         }}
       />
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={projectDialog}
         groups={projectGroups}
         personalOwnerLabel={ownerLabel}

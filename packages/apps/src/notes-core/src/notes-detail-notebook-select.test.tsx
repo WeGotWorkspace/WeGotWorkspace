@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import type { Note } from "@/lib/models/note";
 import { NotesDetailNotebookSelect } from "@/notes-core/src/notes-detail-notebook-select";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookSelectItem } from "@/notes-core/src/notes-notebook-select";
+import type { NotebookSelectItem } from "@/project-dialog/src/notebook-select";
 
 afterEach(() => {
   cleanup();
@@ -27,7 +27,7 @@ function stubSelectEnv() {
   });
 }
 
-const notebooks: NotesNotebookSelectItem[] = [
+const notebooks: NotebookSelectItem[] = [
   { id: "Drafts", name: "Drafts", color: "#f59e0b" },
   { id: "The Journal", name: "The Journal", color: "#14b8a6" },
 ];

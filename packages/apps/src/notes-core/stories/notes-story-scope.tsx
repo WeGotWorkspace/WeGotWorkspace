@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { notesDetailTintStyle } from "@/notes-core/src/notes-notebook-color";
+import { notesDetailTintStyle } from "@/lib/models/notebook-color";
 import "@/notes-core/src/notes-workspace.css";
 
 export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";

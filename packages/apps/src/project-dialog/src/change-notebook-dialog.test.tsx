@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -29,13 +29,13 @@ function stubSelectEnv() {
   });
 }
 
-function renderDialog(overrides: Partial<ComponentProps<typeof NotesChangeNotebookDialog>> = {}) {
+function renderDialog(overrides: Partial<ComponentProps<typeof ChangeNotebookDialog>> = {}) {
   const onNotebookChange = vi.fn();
   const onCreateNotebook = vi.fn();
   const onClose = vi.fn();
   const view = render(
     <TooltipProvider delayDuration={0}>
-      <NotesChangeNotebookDialog
+      <ChangeNotebookDialog
         open
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
@@ -50,7 +50,7 @@ function renderDialog(overrides: Partial<ComponentProps<typeof NotesChangeNotebo
   return { onNotebookChange, onCreateNotebook, onClose, ...view };
 }
 
-describe("NotesChangeNotebookDialog", () => {
+describe("ChangeNotebookDialog", () => {
   beforeEach(stubSelectEnv);
   afterEach(() => {
     cleanup();
@@ -134,7 +134,7 @@ describe("NotesChangeNotebookDialog", () => {
 
     rerender(
       <TooltipProvider delayDuration={0}>
-        <NotesChangeNotebookDialog
+        <ChangeNotebookDialog
           open
           notebooks={[...notebooks, createdNotebook]}
           value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}

@@ -1,30 +1,34 @@
 import type { ReactElement } from "react";
-import { notebookDotColor } from "@/notes-core/src/notes-notebook-color";
-import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { notebookDotColor } from "@/lib/models/notebook-color";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
 import type { ControlSize } from "@/ui/control-size";
 import { COLLECTION_SELECT_CREATE_VALUE, CollectionSelect } from "@/ui/collection-select";
 import { cn } from "@/lib/utils";
 
 /** Sentinel so Create stays out of the selected notebook value (Calendar Select pattern). */
-export const NOTES_CREATE_NOTEBOOK_VALUE = COLLECTION_SELECT_CREATE_VALUE;
+export const CREATE_NOTEBOOK_VALUE = COLLECTION_SELECT_CREATE_VALUE;
 
-export type NotesNotebookSelectItem = {
+export type NotebookSelectLabels = {
+  addNotebook: string;
+  toolbarMoveToNotebook: string;
+};
+
+export type NotebookSelectItem = {
   id: string;
   name: string;
   color?: string | null;
 };
 
-export type NotesNotebookSelectValue = {
+export type NotebookSelectValue = {
   id?: string;
   name: string;
   color?: string | null;
 };
 
-export type NotesNotebookSelectProps = {
-  notebooks: NotesNotebookSelectItem[];
-  value: NotesNotebookSelectValue;
-  labels: Pick<NotesUILabels, "addNotebook" | "toolbarMoveToNotebook">;
+export type NotebookSelectProps = {
+  notebooks: NotebookSelectItem[];
+  value: NotebookSelectValue;
+  labels: NotebookSelectLabels;
   /** Trigger id, for a field label's `htmlFor`. */
   id?: string;
   ariaLabel?: string;
@@ -39,7 +43,7 @@ export type NotesNotebookSelectProps = {
   triggerVariant?: "labeled" | "swatch" | "ghost";
   /** Dialog fields use `sm` (32px). Toolbar / action bar keep default `md`. */
   size?: ControlSize;
-  onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
+  onNotebookChange: (notebook: NotebookSelectItem) => void;
   onCreateNotebook?: () => void;
   /** Show *Create notebook* as the chosen value (import dialog create mode). */
   createSelected?: boolean;
@@ -48,8 +52,8 @@ export type NotesNotebookSelectProps = {
 export function notebookSelectValueForNotes(
   notes: ReadonlyArray<{ id: string; notebook: string; notebookId?: string }>,
   ids: readonly string[] | undefined,
-  notebooks: readonly NotesNotebookSelectItem[],
-): NotesNotebookSelectValue {
+  notebooks: readonly NotebookSelectItem[],
+): NotebookSelectValue {
   const sample = ids?.length ? notes.find((note) => note.id === ids[0]) : undefined;
   if (!sample) return { name: "" };
   const match = notebooks.find(
@@ -66,9 +70,9 @@ export function notebookSelectValueForNotes(
 }
 
 export function notebooksWithCurrent(
-  notebooks: NotesNotebookSelectItem[],
-  current: NotesNotebookSelectValue,
-): NotesNotebookSelectItem[] {
+  notebooks: NotebookSelectItem[],
+  current: NotebookSelectValue,
+): NotebookSelectItem[] {
   if (!current.name.trim()) return notebooks;
   if (
     notebooks.some(
@@ -95,7 +99,7 @@ export function notebookSelectionEquals(
 }
 
 export function resolveNotebookSelectValue(
-  notebooks: NotesNotebookSelectItem[],
+  notebooks: NotebookSelectItem[],
   current: { id?: string; name: string },
 ): string {
   const match = notebooks.find(
@@ -113,7 +117,7 @@ export function pendingMoveAfterNotebookCreate(
   return { ids: pendingNoteIds, notebook: created.name };
 }
 
-export function NotesNotebookSelect({
+export function NotebookSelect({
   notebooks,
   value,
   labels,
@@ -126,12 +130,10 @@ export function NotesNotebookSelect({
   onNotebookChange,
   onCreateNotebook,
   createSelected = false,
-}: NotesNotebookSelectProps): ReactElement {
+}: NotebookSelectProps): ReactElement {
   const items = notebooksWithCurrent(notebooks, value);
   const creating = createSelected && !!onCreateNotebook;
-  const selected = creating
-    ? NOTES_CREATE_NOTEBOOK_VALUE
-    : resolveNotebookSelectValue(items, value);
+  const selected = creating ? CREATE_NOTEBOOK_VALUE : resolveNotebookSelectValue(items, value);
   // Prefer the notebook name so swatch chrome stays labeled for AT / tooltip.
   const accessibleName = ariaLabel ?? (value.name.trim() || labels.toolbarMoveToNotebook);
 

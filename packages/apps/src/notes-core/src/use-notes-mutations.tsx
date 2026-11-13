@@ -44,7 +44,7 @@ import {
   sendTagDelta,
 } from "./notes-undo-writes";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
-import { notebookSelectionEquals } from "./notes-notebook-select";
+import { notebookSelectionEquals } from "@/project-dialog/src/notebook-select";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 

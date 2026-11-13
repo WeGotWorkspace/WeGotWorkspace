@@ -2,28 +2,28 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent } from "storybook/test";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import type { NotesNotebookSelectItem } from "@/notes-core/src/notes-notebook-select";
+import type { NotebookSelectItem } from "@/project-dialog/src/notebook-select";
 import "@/notes-core/src/notes-workspace.css";
 
-const seedNotebooks: NotesNotebookSelectItem[] =
+const seedNotebooks: NotebookSelectItem[] =
   createNotesAppBootstrap().data.notebookCollections ?? [];
 
-function NotesChangeNotebookDialogHarness({
+function ChangeNotebookDialogHarness({
   onNotebookChange,
   onCreateNotebook,
 }: {
-  onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
+  onNotebookChange: (notebook: NotebookSelectItem) => void;
   onCreateNotebook?: () => void;
 }) {
   const [open, setOpen] = useState(true);
-  const [current, setCurrent] = useState<NotesNotebookSelectItem>(
+  const [current, setCurrent] = useState<NotebookSelectItem>(
     seedNotebooks[2] ?? seedNotebooks[0] ?? { id: "Drafts", name: "Drafts" },
   );
 
   return (
-    <NotesChangeNotebookDialog
+    <ChangeNotebookDialog
       open={open}
       notebooks={seedNotebooks}
       value={current}
@@ -39,9 +39,9 @@ function NotesChangeNotebookDialogHarness({
   );
 }
 
-const meta: Meta<typeof NotesChangeNotebookDialogHarness> = {
-  title: "Features/Notes/Components/NotesChangeNotebookDialog",
-  component: NotesChangeNotebookDialogHarness,
+const meta: Meta<typeof ChangeNotebookDialogHarness> = {
+  title: "Features/Notes/Components/ChangeNotebookDialog",
+  component: ChangeNotebookDialogHarness,
   tags: ["autodocs"],
   args: {
     onNotebookChange: fn(),
@@ -50,7 +50,7 @@ const meta: Meta<typeof NotesChangeNotebookDialogHarness> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof NotesChangeNotebookDialogHarness>;
+type Story = StoryObj<typeof ChangeNotebookDialogHarness>;
 
 export const Default: Story = {
   tags: ["vitest-ci"],
@@ -100,7 +100,7 @@ const onDeleteNotes = fn();
 export const DeleteNotebookChoice: Story = {
   tags: ["vitest-ci"],
   render: (args) => (
-    <NotesChangeNotebookDialog
+    <ChangeNotebookDialog
       open
       notebooks={seedNotebooks}
       value={seedNotebooks[0] ?? { id: "journal", name: "The Journal" }}
