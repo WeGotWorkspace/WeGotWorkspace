@@ -7,10 +7,7 @@ import {
   USER_AVATAR_COLORS,
   avatarColorForUserId,
 } from "../src/user-avatar";
-import "@/meet-core/src/meet-workspace.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
-import "@/docs-core/src/docs-workspace.css";
-import "@/text-editor-core/docs-collab/docs-collab-presence.css";
 
 const meta: Meta<typeof UserAvatar> = {
   title: "UI/Primitives/User Avatar",
@@ -142,18 +139,6 @@ export const SizeMatrix: Story = {
   ),
 };
 
-/** Meet lobby / peer tile: compact chip on dark workspace tokens. */
-export const MeetLobbyPreview: Story = {
-  render: () => (
-    <div
-      className="meet-workspace flex min-h-48 items-center justify-center p-8"
-      style={{ background: "var(--meet-surface)" }}
-    >
-      <UserAvatar displayName="Demo User" compact size="2xl" />
-    </div>
-  ),
-};
-
 /** Bright hashed tiles — one stable hue per user id. */
 export const HashedColors: Story = {
   render: () => {
@@ -220,56 +205,6 @@ export const PresenceStandalone: Story = {
         <UserPresenceDot presence="pending" standalone />
         Pending sync
       </span>
-    </div>
-  ),
-};
-
-/** Meet knock row / compact peer tile sizes. */
-export const MeetCompactSizes: Story = {
-  render: () => (
-    <div
-      className="meet-workspace flex items-center gap-4 p-8"
-      style={{ background: "var(--meet-surface)" }}
-    >
-      <UserAvatar displayName="Alex Morgan" compact size="sm" />
-      <UserAvatar displayName="Jamie Lee" compact size="md" />
-      <UserAvatar displayName="Demo User" compact size="lg" />
-    </div>
-  ),
-};
-
-/** Docs/notes collab peer stack (overlapping xs marks). */
-export const CollabPeerStack: Story = {
-  render: () => (
-    <div className="docs-workspace p-4">
-      <div className="docs-collab-presence" aria-label="Connected editors">
-        <span className="docs-collab-presence__chip">
-          <UserAvatar
-            displayName="Alex Example"
-            compact
-            size="xs"
-            className="docs-collab-presence__avatar docs-collab-presence__avatar--self"
-          />
-        </span>
-        <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
-          <UserAvatar
-            displayName="Sam Lee"
-            compact
-            size="xs"
-            color={avatarColorForUserId("peer-1")}
-            className="docs-collab-presence__avatar"
-          />
-        </span>
-        <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
-          <UserAvatar
-            displayName="Jordan Kim"
-            compact
-            size="xs"
-            color={avatarColorForUserId("peer-2")}
-            className="docs-collab-presence__avatar"
-          />
-        </span>
-      </div>
     </div>
   ),
 };
