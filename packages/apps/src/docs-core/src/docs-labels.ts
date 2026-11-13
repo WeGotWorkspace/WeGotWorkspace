@@ -2,6 +2,7 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { driveInboundLabels } from "@/lib/offline/drive/drive-inbound-labels";
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
+import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const docsLabels = {
@@ -158,10 +159,6 @@ export const docsLabels = {
   commentsFilterOpen: "Open",
   commentsFilterResolved: "Resolved",
   commentsEmpty: "No comments yet. Select text and click Comment in the toolbar.",
-  commentsAddFromSelection: "Comment",
-  commentsAddFromSelectionDisabledNoSelection: "Select text to comment",
-  commentsAddFromSelectionDisabledViewSource: "Comments are disabled in source view",
-  commentsAddFromSelectionDisabledReadOnly: "View-only access cannot add comments",
   commentsCountOne: "1 open",
   commentsCountMany: (count: number) => `${count} open`,
   commentsComposePlaceholder: "Add a comment…",
@@ -193,18 +190,11 @@ export const docsLabels = {
   statusOffline: "Offline – changes are kept on this device",
   /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
   statusChangesSyncWhenSaved: "Changes sync when saved",
-  /** Transient phases, only ever shown after a 1.5 s hold. */
-  statusConnecting: "Connecting…",
+  /** Transient phases, only ever shown after a 1.5 s hold (`statusConnecting` is in `docsCollabLabels`). */
   statusReconnecting: "Reconnecting…",
   statusRejoining: "Rejoining…",
-  /** Presence chrome, in people terms rather than connection terms. */
-  presenceConnectingOne: "Connecting to 1 person",
-  presenceConnectingMany: (count: number) => `Connecting to ${count} people`,
-  presenceWithNames: (summary: string, names: string) => `${summary}: ${names}`,
-  presenceConnectingAvatar: "Connecting",
-  presenceUnreachableOne: "Could not reach 1 person",
-  presenceUnreachableMany: (count: number) => `Could not reach ${count} people`,
-  presenceUnreachableAvatar: "Connection warning",
+  /** The collaborative editor's own strings (comment button, connecting, presence). */
+  ...docsCollabLabels,
 } as const;
 
 export type DocsUILabels = typeof docsLabels;
