@@ -13,7 +13,8 @@ export const calendarReplyMailboxLabels = {
   username: "Username",
   usernameHint: "Usually your email address",
   password: "Password",
-  passwordHint: "An app password works too",
+  passwordHint:
+    "Gmail does not accept your account password here: create an app password (needs 2-Step Verification) and enter it. Google Workspace and Microsoft 365 cannot connect yet.",
   passwordKeep: "Leave empty to keep the saved password",
   folder: "Folder",
   folderHint: "Where replies arrive",
@@ -28,7 +29,7 @@ export const calendarReplyMailboxLabels = {
   statusReading: "Reading replies.",
   statusWaiting:
     "Connected. Replies are read once the first new message has arrived in this mailbox.",
-  statusPaused: "Paused after repeated failed sign-ins. Save the settings again to resume.",
+  statusPaused: "Paused after repeated failed sign-ins. Check now or save new settings to resume.",
   lastChecked: (when: string) => `Last checked ${when}.`,
   errors: {
     auth_failed: "The mail server did not accept this username and password.",
