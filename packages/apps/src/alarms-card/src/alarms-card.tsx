@@ -9,12 +9,11 @@ import {
   matchAlertOffsetPreset,
   type CalendarAlertOffsetSelectValue,
   type CalendarEventAlertFormValue,
-} from "@/calendar-core/src/calendar-alerts";
-import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+} from "@/lib/calendar/calendar-alerts";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import type { ControlSize } from "@/ui/control-size";
 import "@/share-ui/share-ui.css";
-import "@/calendar-core/src/calendar-alarms-card.css";
+import "@/alarms-card/src/alarms-card.css";
 
 const EMPTY_SLOT_ID = null;
 
@@ -50,13 +49,13 @@ const ALARM_OFFSET_PRESETS = [
   ["1h", "eventAlarm1Hour"],
   ["1d", "eventAlarm1Day"],
 ] as const satisfies ReadonlyArray<
-  readonly [CalendarAlertOffsetSelectValue, keyof CalendarAlarmsCardLabels]
+  readonly [CalendarAlertOffsetSelectValue, keyof AlarmsCardLabels]
 >;
 
 /** What one alarm row shows: a preset name, a foreign offset or time, or None. */
 export function alarmOffsetLabel(
   alert: CalendarEventAlertFormValue | null,
-  labels: CalendarAlarmsCardLabels,
+  labels: AlarmsCardLabels,
 ): string {
   const value = alarmOffsetSelectValue(alert);
   const preset = ALARM_OFFSET_PRESETS.find(([presetValue]) => presetValue === value);
@@ -72,7 +71,7 @@ export function AlarmOffsetMenuItems({
   itemClassName,
 }: {
   alert: CalendarEventAlertFormValue | null;
-  labels: CalendarAlarmsCardLabels;
+  labels: AlarmsCardLabels;
   itemClassName?: string;
 }) {
   const foreignValue = alert ? foreignSelectValue(alert) : null;
@@ -104,7 +103,7 @@ function AlarmOffsetRow({
   onRemove,
 }: {
   alert: CalendarEventAlertFormValue | null;
-  labels: CalendarAlarmsCardLabels;
+  labels: AlarmsCardLabels;
   disabled: boolean;
   controlSize?: ControlSize;
   onSelect: (value: CalendarAlertOffsetSelectValue) => void;
@@ -145,24 +144,39 @@ function AlarmOffsetRow({
   );
 }
 
-export type CalendarAlarmsCardLabels = Pick<
-  CalendarUILabels,
-  | "eventAlarmsLabel"
-  | "eventAlarmRemove"
-  | "eventAlarmOffset"
-  | "eventAlarmNone"
-  | "eventAlarmAtStart"
-  | "eventAlarm5Min"
-  | "eventAlarm10Min"
-  | "eventAlarm15Min"
-  | "eventAlarm30Min"
-  | "eventAlarm1Hour"
-  | "eventAlarm1Day"
->;
+/** The alarm rows' labels. Calendar's labels carry the same keys. */
+export type AlarmsCardLabels = {
+  eventAlarmsLabel: string;
+  eventAlarmRemove: string;
+  eventAlarmOffset: string;
+  eventAlarmNone: string;
+  eventAlarmAtStart: string;
+  eventAlarm5Min: string;
+  eventAlarm10Min: string;
+  eventAlarm15Min: string;
+  eventAlarm30Min: string;
+  eventAlarm1Hour: string;
+  eventAlarm1Day: string;
+};
 
-export type CalendarAlarmsCardProps = {
+/** Default alarm copy, shared by Calendar events and Tasks reminders (#2116). */
+export const defaultAlarmsCardLabels: AlarmsCardLabels = {
+  eventAlarmsLabel: "Alarms",
+  eventAlarmRemove: "Remove alert",
+  eventAlarmOffset: "Alert time",
+  eventAlarmNone: "None",
+  eventAlarmAtStart: "At time of event",
+  eventAlarm5Min: "5 minutes before",
+  eventAlarm10Min: "10 minutes before",
+  eventAlarm15Min: "15 minutes before",
+  eventAlarm30Min: "30 minutes before",
+  eventAlarm1Hour: "1 hour before",
+  eventAlarm1Day: "1 day before",
+};
+
+export type AlarmsCardProps = {
   alerts: CalendarEventAlertFormValue[];
-  labels: CalendarAlarmsCardLabels;
+  labels: AlarmsCardLabels;
   disabled?: boolean;
   readOnly?: boolean;
   /** Tasks persist due-relative offsets; calendar leaves this unset (event start). */
@@ -172,7 +186,7 @@ export type CalendarAlarmsCardProps = {
   onChange: (alerts: CalendarEventAlertFormValue[]) => void;
 };
 
-export function CalendarAlarmsRows({
+export function AlarmsRows({
   alerts,
   labels,
   disabled = false,
@@ -180,7 +194,7 @@ export function CalendarAlarmsRows({
   defaultRelatedTo,
   controlSize = "sm",
   onChange,
-}: CalendarAlarmsCardProps) {
+}: AlarmsCardProps) {
   const showTrailingNone = !readOnly;
   const commitOffset = (rowId: string | null, value: CalendarAlertOffsetSelectValue) => {
     onChange(alertsAfterOffsetChange({ alerts, rowId, value, defaultRelatedTo }));
@@ -214,14 +228,14 @@ export function CalendarAlarmsRows({
   );
 }
 
-export function CalendarAlarmsCard(props: CalendarAlarmsCardProps) {
+export function AlarmsCard(props: AlarmsCardProps) {
   return (
     <ShareAccessCard
       icon={<Bell aria-hidden />}
       className="calendar-event-dialog__card calendar-alarms-card"
       title={props.labels.eventAlarmsLabel}
     >
-      <CalendarAlarmsRows {...props} />
+      <AlarmsRows {...props} />
     </ShareAccessCard>
   );
 }

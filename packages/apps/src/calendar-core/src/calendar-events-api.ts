@@ -16,7 +16,7 @@ import {
   formToDraft,
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
-import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
+import { newEventFreeBusyStatus } from "@/lib/calendar/calendar-alerts";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {

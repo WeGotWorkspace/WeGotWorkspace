@@ -5,7 +5,6 @@
     "app-switch-button -> wegotworkspace": 1,
     "apps-home-screen -> wegotworkspace": 1,
     "calendar-core -> contacts-core": 1,
-    "calendar-core -> tasks-core": 2,
     "chat-ui -> docs-core": 1,
     "chat-ui -> text-editor-core": 2,
     "drive-core -> docs-core": 2,
@@ -24,13 +23,11 @@
     "notes-core -> tasks-core": 4,
     "notifications-core -> meet-core": 1,
     "rescue-ui -> notes-core": 2,
-    "tasks-core -> calendar-core": 2,
     "tasks-core -> notes-core": 2,
     "text-editor-core -> docs-core": 35,
     "text-editor-core -> drive-core": 2
   },
   "twoWayPairs": [
-    "calendar-core <-> tasks-core",
     "docs-core <-> drive-core",
     "docs-core <-> file-preview",
     "docs-core <-> text-editor-core",

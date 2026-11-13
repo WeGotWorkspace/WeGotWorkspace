@@ -34,11 +34,8 @@ import {
   taskProjectDialogLabelsFrom,
 } from "@/tasks-core/src/task-project-dialog";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
-import {
-  isViewOnlyTaskList,
-  useTasksSidebarModel,
-  type TaskListSidebarEntry,
-} from "@/tasks-core/src/use-tasks-sidebar-model";
+import { isViewOnlyTaskList, useTasksSidebarModel } from "@/tasks-core/src/use-tasks-sidebar-model";
+import { type TaskListSidebarEntry } from "@/lib/models/task-lists";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
 import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
@@ -46,11 +43,8 @@ import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
 import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
-import {
-  canWriteTaskList,
-  composerDefaultDueForView,
-  taskListDotColor,
-} from "@/tasks-core/src/tasks-task-utils";
+import { composerDefaultDueForView } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList, taskListDotColor } from "@/lib/models/task-lists";
 import "./tasks-workspace.css";
 
 function TasksSidebarRows({

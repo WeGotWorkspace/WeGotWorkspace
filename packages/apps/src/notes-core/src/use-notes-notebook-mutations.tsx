@@ -4,7 +4,7 @@ import type {
   TaskProjectDialogConfirmInput,
   TaskProjectDialogState,
 } from "@/tasks-core/src/task-project-dialog";
-import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
 import { notesWithRenamedNotebook } from "@/lib/models/note-list-model";

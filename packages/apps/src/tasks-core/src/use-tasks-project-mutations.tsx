@@ -9,8 +9,8 @@ import {
   canDeleteTaskList,
   canShareTaskList,
   isProtectedTaskList,
-  taskListDotColor,
 } from "@/tasks-core/src/tasks-task-utils";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import type { TaskListPatch } from "@/lib/models/tasks-types";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 

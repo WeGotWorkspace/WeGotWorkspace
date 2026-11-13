@@ -10,11 +10,8 @@ import {
   withIds,
   type SidebarSectionToggleAll,
 } from "@/sidebar-section/src/section-toggle-all";
-import {
-  sortSidebarTaskLists,
-  type TaskListSidebarEntry,
-} from "@/tasks-core/src/use-tasks-sidebar-model";
-import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { sortSidebarTaskLists, type TaskListSidebarEntry } from "@/lib/models/task-lists";
+import { canWriteTaskList, taskListDotColor } from "@/lib/models/task-lists";
 import type { TaskList } from "@/lib/models/tasks-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";

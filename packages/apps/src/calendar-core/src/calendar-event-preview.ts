@@ -16,10 +16,7 @@ import {
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import {
-  formatUnmatchedAlertOffset,
-  matchAlertOffsetPreset,
-} from "@/calendar-core/src/calendar-alerts";
+import { formatUnmatchedAlertOffset, matchAlertOffsetPreset } from "@/lib/calendar/calendar-alerts";
 import {
   formAnchoredToOccurrence,
   splitOccurrenceKey,

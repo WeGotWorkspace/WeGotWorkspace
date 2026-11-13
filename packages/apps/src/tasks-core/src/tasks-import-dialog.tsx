@@ -4,13 +4,13 @@ import type { IcsImportDestination } from "@/lib/ics-import/ics-file";
 import { tasksImportErrorReason, tasksImportErrorTitle } from "@/tasks-core/src/tasks-ics-import";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
+import { defaultTaskListId } from "@/tasks-core/src/tasks-task-utils";
 import {
   canWriteTaskList,
   DEFAULT_TASK_LIST_COLOR,
-  defaultTaskListId,
   TASK_LIST_DOT_COLORS,
   taskListDotColor,
-} from "@/tasks-core/src/tasks-task-utils";
+} from "@/lib/models/task-lists";
 import type { TaskImportResponse, TaskList } from "@/lib/models/tasks-types";
 
 export type TasksImportDialogProps = {

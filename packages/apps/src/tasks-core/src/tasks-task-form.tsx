@@ -5,10 +5,10 @@ import type { Task } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   TASK_WORKFLOW_STATUSES,
-  taskDueIsDateOnly,
   type TaskDueFields,
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
+import { taskDueIsDateOnly } from "@/lib/models/task-fields";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
 import {
   COMPOSER_PRIORITY_VALUES,

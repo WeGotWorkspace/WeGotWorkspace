@@ -1,6 +1,6 @@
 import { Bell, StickyNote } from "lucide-react";
 import { useId } from "react";
-import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
+import { AlarmsRows } from "@/alarms-card/src/alarms-card";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
@@ -106,7 +106,7 @@ export function CalendarEventFormSecondary({
             labelIcon={<Bell aria-hidden />}
           >
             <div className="calendar-event-dialog__alarms-field">
-              <CalendarAlarmsRows
+              <AlarmsRows
                 alerts={form.alerts}
                 labels={labels}
                 disabled={fieldsDisabled}

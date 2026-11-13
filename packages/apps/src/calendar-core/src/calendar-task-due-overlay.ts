@@ -6,9 +6,9 @@ import {
   isTaskCompleted,
   parseDueDateValue,
   taskDueIsDateOnly,
-  taskListDotColor,
   taskListTitle,
-} from "@/tasks-core/src/tasks-task-utils";
+} from "@/lib/models/task-fields";
+import { taskListDotColor } from "@/lib/models/task-lists";
 
 export const TASK_DUE_OVERLAY_TIMED_DURATION = Temporal.Duration.from({ minutes: 30 });
 export const TASK_DUE_OVERLAY_ALL_DAY_DURATION = Temporal.Duration.from({ days: 1 });

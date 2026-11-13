@@ -11,26 +11,18 @@ import {
 } from "lucide-react";
 import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
+import { defaultTaskListId } from "@/tasks-core/src/tasks-task-utils";
 import {
   canWriteTaskList,
-  defaultTaskListId,
   isInboxTaskList,
-} from "@/tasks-core/src/tasks-task-utils";
+  sortSidebarTaskLists,
+  type TaskListSidebarEntry,
+} from "@/lib/models/task-lists";
 import {
   PRIORITY_FILTER_SLUGS,
   priorityFilterIcon,
   priorityFilterLabel,
 } from "@/tasks-core/src/tasks-priority";
-
-export type TaskListSidebarEntry = {
-  id: string;
-  name: string;
-  role?: string | null;
-  color?: string | null;
-  isSharee?: boolean;
-  isDefault?: boolean;
-  myRights?: { mayWriteAll?: boolean; mayShare?: boolean } | null;
-};
 
 type UseTasksSidebarModelArgs = {
   labels: TasksUILabels;
@@ -142,21 +134,4 @@ export function isViewOnlyTaskList(list: TaskListSidebarEntry): boolean {
 
 export function isOwnedInboxSidebarList(list: TaskListSidebarEntry): boolean {
   return isInboxTaskList(list);
-}
-
-function isPinnedSidebarInbox(list: TaskListSidebarEntry): boolean {
-  if (list.role === "inbox") return true;
-  if (isInboxTaskList(list)) return true;
-  if (list.isSharee) return false;
-  return list.isDefault === true;
-}
-
-/** Inbox first, then locale-aware A–Z. Shared and owned sections both use this. */
-export function sortSidebarTaskLists<T extends TaskListSidebarEntry>(lists: readonly T[]): T[] {
-  return [...lists].sort((left, right) => {
-    const leftInbox = isPinnedSidebarInbox(left);
-    const rightInbox = isPinnedSidebarInbox(right);
-    if (leftInbox !== rightInbox) return leftInbox ? -1 : 1;
-    return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
-  });
 }

@@ -6,7 +6,7 @@ import {
   taskProjectDialogLabelsFrom,
 } from "@/tasks-core/src/task-project-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/lib/models/task-lists";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const dialogLabels = taskProjectDialogLabelsFrom(defaultTasksLabels);

@@ -9,18 +9,15 @@ import {
   dueDateToApiValue,
   filterTasksByHiddenLists,
   filterTasksByView,
-  INBOX_TASK_LIST_ID,
-  parseDueDateValue,
-  taskDueIsDateOnly,
   taskDueSeverity,
-  isInboxTaskList,
   isProtectedTaskList,
   mergeCreatedTask,
   offsetReminderAlert,
   taskAlertsEqual,
   taskAlertsFromList,
-  taskListDotColor,
 } from "./tasks-task-utils";
+import { INBOX_TASK_LIST_ID } from "@/lib/models/task-lists";
+import { parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
 import type { Task } from "@/lib/models/tasks-types";
 
 const sampleTasks: Task[] = [
@@ -60,16 +57,6 @@ const sampleTasks: Task[] = [
 ];
 
 describe("tasks-task-utils", () => {
-  it("isInboxTaskList uses owned role or uri, never display name", () => {
-    expect(isInboxTaskList({ id: "inbox", role: "inbox" })).toBe(true);
-    expect(isInboxTaskList({ id: "tl-inbox-uuid", role: "inbox" })).toBe(true);
-    expect(isInboxTaskList({ id: "tasks-inbox" })).toBe(true);
-    expect(isInboxTaskList({ id: "custom", role: null })).toBe(false);
-    expect(isInboxTaskList({ id: "custom" })).toBe(false);
-    expect(isInboxTaskList({ id: "shared-inbox", role: "inbox", isSharee: true })).toBe(false);
-    expect(isInboxTaskList({ id: "shared-inbox", isSharee: true })).toBe(false);
-  });
-
   it("isProtectedTaskList guards only owned inbox lists", () => {
     expect(isProtectedTaskList({ id: "inbox", role: "inbox" })).toBe(true);
     expect(isProtectedTaskList({ id: "tl-inbox-uuid", role: "inbox" })).toBe(true);
@@ -123,16 +110,6 @@ describe("tasks-task-utils", () => {
     expect(defaultTaskListId([{ id: "work", isDefault: false, isSharee: true }], "work")).toBe(
       INBOX_TASK_LIST_ID,
     );
-  });
-
-  it("taskListDotColor prefers explicit list color over hash fallback", () => {
-    expect(taskListDotColor({ id: "work", color: "#ff0000" })).toBe("#ff0000");
-    expect(taskListDotColor({ id: "work", color: "  #22c55e  " })).toBe("#22c55e");
-  });
-
-  it("taskListDotColor falls back to deterministic hash from list id", () => {
-    expect(taskListDotColor("work")).toBe(taskListDotColor({ id: "work", color: null }));
-    expect(taskListDotColor({ id: "work" })).toBe(taskListDotColor("work"));
   });
 
   it("filterTasksByHiddenLists drops hidden lists except on a list view", () => {

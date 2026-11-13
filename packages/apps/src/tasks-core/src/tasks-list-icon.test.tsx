@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
-import { INBOX_TASK_LIST_ID, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { INBOX_TASK_LIST_ID, taskListDotColor } from "@/lib/models/task-lists";
 
 describe("TaskListIcon", () => {
   afterEach(() => {

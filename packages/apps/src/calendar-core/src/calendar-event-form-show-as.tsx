@@ -1,6 +1,6 @@
 import { CircleDot } from "lucide-react";
 import { useId } from "react";
-import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
+import { type CalendarFreeBusyStatus } from "@/lib/calendar/calendar-alerts";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
