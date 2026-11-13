@@ -16,6 +16,7 @@ import {
   defaultCalendarAvailabilitySettingsOperations,
 } from "@/settings-core/src/settings-calendar-availability-source";
 import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { loadServerSettings } from "@/settings-core/src/settings-server-load";
 import type { CalendarAvailabilitySettings } from "@wgw/openapi-types/calendars-types";
 
 export const CALENDAR_AVAILABILITY_SLICE = {
@@ -86,22 +87,16 @@ export function useSettingsCalendarAvailability(
 
   /** `quiet`: refresh a ready pane in place; never shows loading or errors, never drops edits. */
   const load = useCallback(
-    async (quiet: boolean) => {
-      const request = ++requestRef.current;
-      if (!getConnectivitySnapshot()) {
-        if (!quiet) setPhase("offline");
-        return;
-      }
-      if (!quiet) setPhase("loading");
-      try {
-        const next = await operationsRef.current.load();
-        if (request !== requestRef.current || (quiet && dirtyRef.current)) return;
-        apply(next);
-      } catch (error) {
-        if (request !== requestRef.current || quiet) return;
-        setPhase(isOffline(error) ? "offline" : "error");
-      }
-    },
+    (quiet: boolean) =>
+      loadServerSettings({
+        quiet,
+        requestRef,
+        read: () => operationsRef.current.load(),
+        isDirty: () => dirtyRef.current,
+        isOffline: isOffline,
+        setPhase,
+        apply: apply,
+      }),
     [apply],
   );
 

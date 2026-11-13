@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { isApiError } from "@/lib/api/api-error";
 import type { CalendarReplyMailboxOperations } from "@/lib/api/wgw/calendar-reply-mailbox";
-import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
+import { isFetchNetworkError } from "@/lib/offline/browser-online";
 import { calendarReplyMailboxLabels as labels } from "@/settings-core/src/settings-calendar-reply-mailbox-labels";
 import {
   defaultCalendarReplyMailboxOperations,
@@ -12,6 +12,7 @@ import {
   replyMailboxUpdateFromForm,
   type CalendarReplyMailboxFormValues,
 } from "@/settings-core/src/settings-calendar-reply-mailbox-source";
+import { loadServerSettings } from "@/settings-core/src/settings-server-load";
 import type { CalendarReplyMailbox } from "@wgw/openapi-types/calendars-types";
 
 export type CalendarReplyMailboxPhase = "loading" | "offline" | "error" | "ready";
@@ -68,22 +69,16 @@ export function useSettingsCalendarReplyMailbox(
   );
 
   const load = useCallback(
-    async (quiet: boolean) => {
-      const request = ++requestRef.current;
-      if (!getConnectivitySnapshot()) {
-        if (!quiet) setPhase("offline");
-        return;
-      }
-      if (!quiet) setPhase("loading");
-      try {
-        const next = await operationsRef.current.load();
-        if (request !== requestRef.current || (quiet && form.formState.isDirty)) return;
-        apply(next.mailbox);
-      } catch (error) {
-        if (request !== requestRef.current || quiet) return;
-        setPhase(isFetchNetworkError(error) ? "offline" : "error");
-      }
-    },
+    (quiet: boolean) =>
+      loadServerSettings({
+        quiet,
+        requestRef,
+        read: () => operationsRef.current.load(),
+        isDirty: () => form.formState.isDirty,
+        isOffline: isFetchNetworkError,
+        setPhase,
+        apply: (next) => apply(next.mailbox),
+      }),
     [apply, form],
   );
 
