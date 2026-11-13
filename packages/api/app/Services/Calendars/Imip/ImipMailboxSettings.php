@@ -47,11 +47,13 @@ class ImipMailboxSettings
         if ($password !== null) {
             $mailbox->password_enc = $this->secrets->encrypt($password, self::SECRET_LABEL);
         }
-        if ($moved || $mailbox->uidvalidity === null || $mailbox->last_uid === null) {
+        $trustedServerId = $test['trustedServerId'];
+        $learnsNow = $trustedServerId !== '' && (string) $mailbox->trusted_server_id === '';
+        // The mail that taught the id is never applied: the cursor moves past it.
+        if ($moved || $learnsNow || $mailbox->uidvalidity === null || $mailbox->last_uid === null) {
             $mailbox->uidvalidity = $test['uidValidity'];
             $mailbox->last_uid = $test['highestUid'];
         }
-        $trustedServerId = $test['trustedServerId'];
         if ($trustedServerId !== '') {
             $mailbox->trusted_server_id = $trustedServerId;
         } elseif ($moved) {

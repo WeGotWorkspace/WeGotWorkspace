@@ -135,11 +135,9 @@ class ImipMailboxPoller
             $mailbox->last_uid = $highest;
         }
         if ((string) $mailbox->trusted_server_id === '') {
-            $learned = $this->learnTrustedServerId($client, $highest);
-            if ($learned === '') {
-                return self::UNTRUSTED_SERVER_UNKNOWN;
-            }
-            $mailbox->trusted_server_id = $learned;
+            // Only the connection test learns the id: a poll that learned it
+            // from the mail it is about to apply could be taught by a forgery.
+            return self::UNTRUSTED_SERVER_UNKNOWN;
         }
 
         $uids = array_slice($client->uidsAfter((int) $mailbox->last_uid), 0, self::BATCH_SIZE);

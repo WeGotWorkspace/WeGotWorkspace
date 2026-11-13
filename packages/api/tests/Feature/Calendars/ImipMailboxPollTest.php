@@ -229,6 +229,56 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $this->assertSame('NEEDS-ACTION', $this->guestStatus());
     }
 
+    public function test_a_forged_reply_in_a_folder_that_was_empty_cannot_teach_the_trusted_server(): void
+    {
+        $mailbox = $this->connect(trusted: '');
+        $this->server->messages[1] = $this->replyMessage(serverId: 'evil.id');
+
+        $this->poller()->poll($mailbox);
+
+        $this->assertSame('', (string) $mailbox->fresh()?->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_twenty_forged_replies_cannot_teach_the_trusted_server(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage(authResults: false)];
+        $mailbox = $this->connect(trusted: '');
+        for ($uid = 2; $uid <= 21; $uid++) {
+            $this->server->messages[$uid] = $this->replyMessage(serverId: 'evil.id');
+        }
+
+        $this->poller()->poll($mailbox);
+
+        $this->assertSame('', (string) $mailbox->fresh()?->trusted_server_id);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
+    public function test_a_retest_that_learns_the_id_moves_the_cursor_past_the_mail_that_taught_it(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage(authResults: false)];
+        $mailbox = $this->connect(trusted: '');
+        $this->server->messages[2] = $this->replyMessage(serverId: 'evil.id');
+
+        $this->app->make(ImipMailboxSettings::class)->save('bob', [
+            'host' => 'imap.example.test',
+            'port' => 993,
+            'security' => 'ssl',
+            'login' => 'bob@example.test',
+            'folder' => 'INBOX',
+        ], null, [
+            'trustedServerId' => 'evil.id',
+            'uidValidity' => $this->server->uidValidity,
+            'highestUid' => 2,
+        ]);
+        $this->poller()->poll($mailbox->refresh());
+
+        $fresh = $mailbox->fresh();
+        $this->assertSame('evil.id', (string) $fresh?->trusted_server_id);
+        $this->assertSame(2, $fresh?->last_uid);
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+    }
+
     public function test_a_command_that_never_finishes_is_a_connect_failure(): void
     {
         $listener = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
