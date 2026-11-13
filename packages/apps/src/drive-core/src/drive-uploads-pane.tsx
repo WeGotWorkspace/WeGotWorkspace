@@ -3,7 +3,7 @@ import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 import { Button, buttonVariants } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { CollectionState } from "@/collection-state/src/collection-state";
-import { kindIcon } from "@/drive-core/src/drive-icons";
+import { kindIcon } from "@/lib/files/file-kind-icons";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/lib/files/drive-models";
 import {
