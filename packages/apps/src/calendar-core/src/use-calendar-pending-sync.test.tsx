@@ -3,11 +3,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarEvent } from "@/lib/calendar-engine";
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   listPendingCalendarEventIds: vi.fn(),
 }));
 
-import { listPendingCalendarEventIds } from "@/lib/offline/calendars-offline-store";
+import { listPendingCalendarEventIds } from "@/lib/offline/calendars/calendars-offline-store";
 import {
   applyPendingSyncToEngineEvents,
   useCalendarPendingSync,

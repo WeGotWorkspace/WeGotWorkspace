@@ -4,7 +4,7 @@ import {
   reportCalendarsSyncConflicts,
   setCalendarsSchedulingConflictListener,
   setCalendarsSyncConflictListener,
-} from "@/lib/offline/calendars-sync-conflicts";
+} from "@/lib/offline/calendars/calendars-sync-conflicts";
 
 describe("calendars sync conflicts", () => {
   it("reports event ids to the active listener", () => {

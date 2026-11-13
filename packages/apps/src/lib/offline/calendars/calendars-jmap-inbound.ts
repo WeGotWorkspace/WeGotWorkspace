@@ -7,8 +7,8 @@ import {
   removeCalendarFromCache,
   upsertCalendarEventInCache,
   upsertCalendarInCache,
-} from "@/lib/offline/calendars-offline-store";
-import { reportCalendarsSyncConflicts } from "@/lib/offline/calendars-sync-conflicts";
+} from "@/lib/offline/calendars/calendars-offline-store";
+import { reportCalendarsSyncConflicts } from "@/lib/offline/calendars/calendars-sync-conflicts";
 
 async function pendingSet(username: string): Promise<Set<string>> {
   return new Set(await listPendingCalendarEventIds(username));

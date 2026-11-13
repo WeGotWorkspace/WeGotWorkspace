@@ -6,7 +6,7 @@ import {
   readCalendarSchedulingInbox,
   writeCalendarInviteesDirectory,
   writeCalendarSchedulingInbox,
-} from "@/lib/offline/calendars-scheduling-offline-store";
+} from "@/lib/offline/calendars/calendars-scheduling-offline-store";
 
 const username = "alice";
 

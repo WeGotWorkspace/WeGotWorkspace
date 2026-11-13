@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls: string[] = [];
 const flush = vi.fn();
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   listFailedCalendarOutbox: vi.fn(),
 }));
-vi.mock("@/lib/offline/calendars-hybrid-operations", () => ({
+vi.mock("@/lib/offline/calendars/calendars-hybrid-operations", () => ({
   getCalendarsSyncRunner: () => ({ flush }),
 }));
 
 import { defaultCalendarLabels as L } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSyncNotice } from "@/calendar-core/src/use-calendar-sync-notice";
-import { listFailedCalendarOutbox } from "@/lib/offline/calendars-offline-store";
+import { listFailedCalendarOutbox } from "@/lib/offline/calendars/calendars-offline-store";
 
 const failedRow = {
   id: "a",

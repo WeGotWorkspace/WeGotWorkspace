@@ -19,7 +19,7 @@ import {
   createHybridCalendarOperations,
   loadCalendarBootstrapHybrid,
   loadCalendarRangeHybrid,
-} from "@/lib/offline/calendars-hybrid-operations";
+} from "@/lib/offline/calendars/calendars-hybrid-operations";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import { resolveCalendarsOfflineUsername } from "@/lib/offline/core/offline-session";
 import {
