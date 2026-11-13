@@ -10,9 +10,9 @@ import {
   encodeTitleSelection,
   type RemoteTitleCaret,
 } from "@/text-editor-core/docs-collab/docs-collab-title-selection";
-import { NoteDetailView } from "../src/note-detail-view";
-import { NoteTitleCarets, NoteTitleCaretsLayer } from "../src/note-title-carets";
-import { NoteCollabYDocProvider } from "../src/use-note-title-field";
+import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
+import { NoteTitleCarets, NoteTitleCaretsLayer } from "@/note-detail-view/src/note-title-carets";
+import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 
 import "@/notes-core/src/notes-workspace.css";
 import "@/note-detail-view/src/note-detail-view.css";
