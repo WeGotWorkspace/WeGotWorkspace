@@ -52,15 +52,7 @@ Password reset delivery runs after the HTTP response via Laravel `defer()`. That
 
 ### Database-backed Laravel drivers (optional)
 
-To use `SESSION_DRIVER=database` or `CACHE_STORE=database`, create the framework DB and migrate:
-
-```bash
-mkdir -p packages/api/database
-touch packages/api/database/database.sqlite
-php artisan migrate --working-dir packages/api
-```
-
-That database is separate from `wgw-content/db.sqlite`.
+To use `SESSION_DRIVER=database` or `CACHE_STORE=database`, also set `SESSION_CONNECTION=wgw` and `DB_CACHE_CONNECTION=wgw`. The WGW database has those tables, so app servers sharing it share sessions, cache and locks.
 
 ### Scheduler (reminders and Web Push)
 
