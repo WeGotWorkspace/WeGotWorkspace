@@ -121,7 +121,9 @@ export function useSettingsCalendarReplyMailbox(
     return run("save", async () => {
       const next = await operationsRef.current.save(update);
       apply(next.mailbox);
-      showSuccess(connected ? labels.saved : labels.connected);
+      if (connected) showSuccess(labels.saved);
+      // Only the connection test learns the receiving server; without it no reply is read yet.
+      else showSuccess(next.mailbox?.trustedServer ? labels.connected : labels.connectedWaiting);
     });
   });
 

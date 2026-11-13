@@ -23,12 +23,13 @@ export const calendarReplyMailboxLabels = {
   check: "Check now",
   disconnect: "Disconnect",
   connected: "Mailbox connected. Replies that arrive from now on update your events.",
+  connectedWaiting: "Mailbox connected. Press Check now once a message has arrived in it.",
   saved: "Mailbox settings saved",
   checked: "Mailbox checked",
   disconnected: "Mailbox disconnected",
   statusReading: "Reading replies.",
   statusWaiting:
-    "Connected. Replies are read once the first new message has arrived in this mailbox.",
+    "Connected, not reading replies yet. When a message has arrived in this mailbox, press Check now.",
   statusPaused: "Paused after repeated failed sign-ins. Check now or save new settings to resume.",
   lastChecked: (when: string) => `Last checked ${when}.`,
   errors: {
@@ -40,7 +41,7 @@ export const calendarReplyMailboxLabels = {
     host_not_allowed: "This mail server address is not allowed.",
     protocol_error: "The mail server gave an answer that could not be read.",
     untrusted_server_unknown:
-      "Connected. Replies are read once the first new message has arrived in this mailbox.",
+      "Connected, not reading replies yet. When a message has arrived in this mailbox, press Check now.",
   } as Record<string, string>,
   required: "Fill in the mail server, username and password.",
   invalid: "Check the mail server, port and username.",

@@ -81,6 +81,26 @@ describe("SettingsCalendarReplyMailboxSection", () => {
     expect(screen.getByText(labels.passwordKeep)).toBeTruthy();
   });
 
+  it("asks for Check now when connecting could not learn the receiving server yet", async () => {
+    const operations = spiedOperations();
+    const save = operations.save;
+    vi.mocked(save).mockImplementation(async (update) => {
+      await createMockCalendarReplyMailboxOperations().save(update);
+      return {
+        mailbox: mockCalendarReplyMailbox({ host: update.host, trustedServer: null }),
+      };
+    });
+    renderSection(operations);
+    await screen.findByLabelText(labels.host);
+
+    fillNewMailbox("app-password");
+    fireEvent.click(screen.getByRole("button", { name: labels.connect }));
+
+    await screen.findByRole("button", { name: labels.disconnect });
+    expect(toast.success).toHaveBeenCalledWith(labels.connectedWaiting);
+    expect(screen.getByRole("status").textContent).toContain(labels.statusWaiting);
+  });
+
   it("keeps the form as typed and says why when the login fails", async () => {
     const operations = renderSection();
     await screen.findByLabelText(labels.host);
