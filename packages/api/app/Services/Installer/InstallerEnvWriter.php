@@ -184,7 +184,9 @@ final class InstallerEnvWriter
     private function applyPairsToRuntime(array $pairs): void
     {
         foreach ($pairs as $key => $value) {
-            putenv($key.'='.$value);
+            if (function_exists('putenv')) {
+                putenv($key.'='.$value);
+            }
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
         }

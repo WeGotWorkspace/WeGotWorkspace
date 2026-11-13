@@ -193,7 +193,7 @@ final class UpdateRunnerFilesystem
 
     private function readFilesystemFreeBytes(string $path): ?int
     {
-        $freeBytesRaw = @disk_free_space($path);
+        $freeBytesRaw = function_exists('disk_free_space') ? @disk_free_space($path) : false;
         if (! is_float($freeBytesRaw)) {
             return null;
         }

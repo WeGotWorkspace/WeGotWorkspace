@@ -36,7 +36,9 @@ final class WgwAppBootstrap
             return;
         }
 
-        putenv('WGW_APP_ROOT='.$appRoot);
+        if (function_exists('putenv')) {
+            putenv('WGW_APP_ROOT='.$appRoot);
+        }
         $_ENV['WGW_APP_ROOT'] = $appRoot;
     }
 

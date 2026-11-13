@@ -104,6 +104,9 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
      */
     public function getQuotaInfo(): array
     {
+        if (! function_exists('disk_total_space') || ! function_exists('disk_free_space')) {
+            return [0, 0];
+        }
         $root = $this->filesystem->path($this->key === '' ? '.' : $this->key);
         $total = disk_total_space($root);
         $free = disk_free_space($root);

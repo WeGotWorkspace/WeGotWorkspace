@@ -112,7 +112,9 @@ final class PendingSchemaMigrations
             return;
         }
 
-        @set_time_limit(0);
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
         ignore_user_abort(true);
         // Written first so a process killed mid-run still backs off the
         // next request. Success overwrites it.
