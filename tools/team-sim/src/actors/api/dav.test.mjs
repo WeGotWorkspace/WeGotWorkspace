@@ -71,3 +71,20 @@ test("each app writes its own dialect", () => {
   assert.match(davx5, /VERSION:4\.0/);
   assert.doesNotMatch(davx5, /X-ABLabel/);
 });
+
+test("a card made in the web app (JMAP id only) is found by its UID before the app edits it", async () => {
+  resetNativeClients();
+  const server = fakeServer({ conflictOnce: false });
+  const asked = [];
+  server.client.post = async (_path, { methodCalls }) => {
+    asked.push(methodCalls[0][0]);
+    return { methodResponses: [["ContactCard/get", { list: [{ id: "c9", uid: "CARD-1" }] }, "c0"]] };
+  };
+  const ctx = { ...ctxFor(server), registry: { get: (k) => (k === "contact:1" ? { ids: { cardId: "c9" }, name: "Anouk Vos" } : null) } };
+  await davExecutors["contact.edit"]({ n: 11, persona: "joost", client: "apple", device: "desk", params: { contact: "contact:1", note: "Via de web app gemaakt" } }, ctx);
+  assert.deepEqual(asked, ["ContactCard/get"]);
+  const query = server.calls.find(([m, url]) => m === "REPORT" && url === "/addressbooks/joost/default/");
+  assert.ok(query, "asked the address book for the UID");
+  assert.ok(server.calls.some(([m, url]) => m === "PUT" && url === href), "wrote to the href the server named, not undefined.vcf");
+  assert.match(server.body(), /NOTE:Via de web app gemaakt/);
+});

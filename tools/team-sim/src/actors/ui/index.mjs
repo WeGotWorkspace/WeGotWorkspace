@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { executeApi } from "../api/index.mjs";
+import { HarnessDoubt } from "../doubt.mjs";
 import { openPersonaBrowser } from "./browser.mjs";
 import { uiActions } from "./actions.mjs";
 import { uiGoogle } from "./google.mjs";
@@ -24,6 +25,9 @@ const CAMERA_KINDS = new Set(["meet.call"]);
  * through the login page on first use. Kinds without a browser flow run
  * through the API and say so in the outcome note.
  */
+/** Playwright's words for a page or browser process that died under it. */
+export const CRASHED = /Page crashed|Target crashed|Browser has been closed|Target page, context or browser has been closed|browser has disconnected/i;
+
 export async function createUiLayer({ origin, runDir, requestLog, interactions = null, headless = true }) {
   const playwright = await import("playwright");
   const engines = new Map();
@@ -87,7 +91,20 @@ export async function createUiLayer({ origin, runDir, requestLog, interactions =
     const browserName = CAMERA_KINDS.has(action.kind) && BROWSERS[wanted]?.engine !== "chromium" ? "chrome" : wanted;
     const b = await forPersona(action.persona, browserName);
     ctx.client(action.persona).setAction(action.n);
-    const r = await b.traced(action.n, () => fn(b, action, { ...ctx, extraBrowser, guestBrowser }));
+    let r;
+    try {
+      r = await b.traced(action.n, () => fn(b, action, { ...ctx, extraBrowser, guestBrowser }));
+    } catch (error) {
+      if (!CRASHED.test(error.message)) throw error;
+      // The page or browser process died on the test machine (seen with WebKit under memory pressure). A
+      // person would not see the app do this, so it counts as a harness doubt, and the next action gets a
+      // fresh browser instead of the dead page.
+      personas.delete(`${action.persona}/${browserName}`);
+      await b.close().catch(() => {});
+      const doubt = new HarnessDoubt(`the test machine's ${browserName} browser crashed: ${error.message.split("\n")[0]}`);
+      doubt.trace = error.trace;
+      throw doubt;
+    }
     const where = `${BROWSERS[browserName].device === "phone" ? `${browserName === "iphone" ? "iPhone" : "Android"} phone` : browserName === "safari" ? "Safari" : "Chrome"}${browserName !== wanted ? ` (Meet needs Chromium's fake camera, not ${wanted})` : ""}`;
     return { ...r, note: [r?.note, browserName !== "chrome" || wanted !== "chrome" ? where : null].filter(Boolean).join("; ") };
   }

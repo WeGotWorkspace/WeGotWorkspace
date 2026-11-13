@@ -1,4 +1,5 @@
 import { uuid } from "../../client/ids.mjs";
+import { USING, jmap1 } from "../../client/jmap.mjs";
 import { need } from "./collab.mjs";
 
 /**
@@ -77,6 +78,36 @@ function store(persona, client) {
   return stores.get(k);
 }
 export const resetNativeClients = () => stores.clear();
+
+const xmlEscape = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * Where an item lives in the persona's collection. A synced native app already
+ * knows every href; the harness only knows what made the item. Items made in
+ * the web app or over JMAP carry a JMAP id, not an href or UID, so look the UID
+ * up there first and then ask the collection for the matching UID.
+ */
+async function locate(ctx, a, collection, item, kind) {
+  if (item.ids.href) return item.ids.href;
+  let uid = item.ids.uid;
+  if (!uid) {
+    const j = ctx.client(a.persona);
+    const [using, method, id] = kind === "card" ? [USING.contacts, "ContactCard/get", item.ids.cardId] : [USING.calendars, "CalendarEvent/get", item.ids.eventId];
+    if (!id) throw new Error(`${kind} has neither an href, a UID nor a JMAP id`);
+    const got = await jmap1(j, using, method, { accountId: a.persona, ids: [id], properties: ["id", "uid"] });
+    uid = got.list?.[0]?.uid;
+    if (!uid) throw new Error(`${method} ${id} has no UID for ${a.persona}`);
+  }
+  const c = ctx.client(a.persona, "dav");
+  const body = kind === "card"
+    ? `<?xml version="1.0"?><r:addressbook-query xmlns:d="DAV:" xmlns:r="urn:ietf:params:xml:ns:carddav"><d:prop><d:getetag/></d:prop><r:filter><r:prop-filter name="UID"><r:text-match collation="i;octet" match-type="equals">${xmlEscape(uid)}</r:text-match></r:prop-filter></r:filter></r:addressbook-query>`
+    : `<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:prop-filter name="UID"><c:text-match collation="i;octet">${xmlEscape(uid)}</c:text-match></c:prop-filter></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
+  const res = await c.raw("REPORT", `${ctx.origin}${collection}`, { auth: "basic", body, headers: { "content-type": "application/xml", depth: "1" } });
+  if (res.status !== 207) throw new Error(`${kind === "card" ? "addressbook" : "calendar"}-query ${collection} → HTTP ${res.status}`);
+  const href = [...res.text.matchAll(/<d:href>([^<]+)<\/d:href>/gi)].map((m) => m[1]).find((h) => h !== collection);
+  if (!href) throw new Error(`${kind} ${uid} is not in ${collection} over ${kind === "card" ? "CardDAV" : "CalDAV"}`);
+  return href;
+}
 
 /** Incremental sync (RFC 6578): first a full listing, then only changes since the token. */
 async function sync(c, origin, url, st, { force = false } = {}) {
@@ -164,7 +195,7 @@ export const davExecutors = {
       const seq = Number(/SEQUENCE:(\d+)/.exec(text)?.[1] ?? 0) + 1;
       return text.replace(/DTSTART[^\r\n]*/, `DTSTART;TZID=${ZONE}:${local(start)}`).replace(/DTEND[^\r\n]*/, `DTEND;TZID=${ZONE}:${local(end)}`).replace(/SEQUENCE:\d+/, `SEQUENCE:${seq}`);
     };
-    const href = ev.ids.href ?? `/calendars/${a.persona}/default/${ev.ids.uid}.ics`;
+    const href = await locate(ctx, a, `/calendars/${a.persona}/default/`, ev, "event");
     const { conflict } = await write(c, ctx.origin, store(a.persona, a.client), `/calendars/${a.persona}/default/`, href, { edit });
     return { patch: { key: a.params.event, start }, note: `${appName(a, "calendar")}${conflict ? "; 412 resolved" : ""}` };
   },
@@ -201,7 +232,7 @@ export const davExecutors = {
   async "contact.edit"(a, ctx) {
     const card = need(ctx, a.params.contact);
     const c = ctx.client(a.persona, "dav");
-    const href = card.ids.href ?? `/addressbooks/${a.persona}/default/${card.ids.uid}.vcf`;
+    const href = await locate(ctx, a, `/addressbooks/${a.persona}/default/`, card, "card");
     const edit = (text) => text.replace(/NOTE:[^\r\n]*\r?\n/, "").replace(/END:VCARD/, `NOTE:${a.params.note}\r\nEND:VCARD`);
     const { conflict } = await write(c, ctx.origin, store(a.persona, a.client), `/addressbooks/${a.persona}/default/`, href, { edit });
     return { patch: { key: a.params.contact, note: a.params.note }, note: `${appName(a, "contacts")}${conflict ? "; 412 resolved" : ""}` };
