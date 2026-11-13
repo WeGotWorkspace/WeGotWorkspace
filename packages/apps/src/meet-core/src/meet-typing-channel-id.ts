@@ -2,7 +2,7 @@ import {
   MEET_DM_CHANNEL_PREFIX,
   isMeetDirectMessageChannelId,
   meetDirectMessageChannelId,
-} from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/meetings/meet-direct-messages";
 
 /**
  * Shared typing-map key for a conversation.

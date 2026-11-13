@@ -138,7 +138,7 @@ Artisan::command('wgw:install', function (ProductionInstallBootstrap $bootstrap)
     return match ($result) {
         'installed' => tap(Command::SUCCESS, fn () => $this->info('Headless install complete.')),
         'skipped' => tap(Command::SUCCESS, fn () => $this->info('Already installed — skipped.')),
-        'incomplete' => tap(Command::SUCCESS, fn () => $this->comment('Install env incomplete or headless disabled — wizard will run.')),
+        'incomplete' => tap(Command::FAILURE, fn () => $this->comment('Install env incomplete or headless disabled — wizard will run.')),
     };
 })->purpose('Production headless install when WGW_INSTALL_HEADLESS=1 and required WGW_INSTALL_* vars are set');
 

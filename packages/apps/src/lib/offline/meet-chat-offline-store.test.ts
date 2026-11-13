@@ -8,9 +8,16 @@ import {
   meetChatChannelsTable,
   meetChatMessagesTable,
 } from "@/lib/offline/meet-chat/meet-chat-schema";
+import { markOutboxError } from "@/lib/offline/core/outbox-store";
+import type { ChatMessage } from "@/lib/models/meet-types";
 import {
+  enqueueChatEdit,
+  enqueueChatReactionToggle,
+  enqueueChatSend,
+  getCachedChatMessage,
   readMeetChatBootstrapFromCache,
   upsertChatChannelInCache,
+  upsertChatMessageInCache,
   writeMeetChatBootstrapMetaToCache,
   writeMeetChatDirectoryToCache,
 } from "@/lib/offline/meet-chat-offline-store";
@@ -75,5 +82,67 @@ describe("meet chat directory cache", () => {
     const cached = await readMeetChatBootstrapFromCache(username);
     expect(cached?.directory).toBeUndefined();
     expect(cached?.groups).toBeUndefined();
+  });
+});
+
+describe("meet chat message sync state", () => {
+  beforeEach(async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await db.meta.clear();
+    await meetChatChannelsTable(db).clear();
+    await meetChatMessagesTable(db).clear();
+    await writeMeetChatBootstrapMetaToCache(username, session, DEFAULT_RTC_SETTINGS);
+    await upsertChatChannelInCache(username, channel);
+  });
+
+  const message = (id: string, body: string): ChatMessage => ({
+    id,
+    channelId: "chat-general",
+    authorId: "alice",
+    authorName: "Alice",
+    body,
+    createdAt: Date.now(),
+    reactions: [],
+    mentions: [],
+    previews: [],
+  });
+
+  async function stateOf(id: string) {
+    const cached = await readMeetChatBootstrapFromCache(username);
+    return cached?.messages.find((row) => row.id === id)?.syncState;
+  }
+
+  it("is pending while a send is queued, failed once it failed, and absent once sent", async () => {
+    await upsertChatMessageInCache(username, message("m1", "queued"), true);
+    await enqueueChatSend(username, {
+      messageId: "m1",
+      channelId: "chat-general",
+      body: "queued",
+      parentId: null,
+    });
+    expect(await stateOf("m1")).toBe("pending");
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const [row] = await db.outbox.toArray();
+    await markOutboxError(username, row!.id, "forbidden", 403);
+    expect(await stateOf("m1")).toBe("failed");
+
+    await db.outbox.clear();
+    await upsertChatMessageInCache(username, message("m1", "queued"), false);
+    expect(await stateOf("m1")).toBeUndefined();
+  });
+
+  it("leaves a queued reaction out: it is not the message's content", async () => {
+    await upsertChatMessageInCache(username, message("m2", "theirs"), false);
+    await enqueueChatReactionToggle(username, { messageId: "m2", emoji: "👍" });
+    expect(await stateOf("m2")).toBeUndefined();
+    await enqueueChatEdit(username, { messageId: "m2", body: "edited" });
+    expect(await stateOf("m2")).toBe("pending");
+  });
+
+  it("never stores the derived state", async () => {
+    await upsertChatMessageInCache(username, { ...message("m3", "x"), syncState: "failed" });
+    expect((await getCachedChatMessage(username, "m3"))?.syncState).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@ import {
   createDefaultSettingsApiSource,
   type SettingsApiSource,
 } from "@/settings-core/src/settings-api-source";
-import type { SettingsAPIOperations, SettingsUIData } from "@/settings-core/src/settings-types";
+import type { SettingsAPIOperations, SettingsUIData } from "@/lib/models/settings-types";
 
 export function useSettingsAPI(source?: SettingsApiSource) {
   const resolvedSource = useMemo(() => source ?? createDefaultSettingsApiSource(), [source]);

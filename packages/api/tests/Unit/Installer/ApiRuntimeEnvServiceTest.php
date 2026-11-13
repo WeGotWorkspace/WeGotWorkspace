@@ -99,10 +99,12 @@ final class ApiRuntimeEnvServiceTest extends TestCase
     public function test_ensure_does_not_replace_existing_app_key(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n");
+        chmod($this->apiRoot.'/.env', 0600);
 
         $service = new ApiRuntimeEnvService;
         $result = $service->ensure($this->installRoot, 'https://other.test');
 
+        $this->assertFileDoesNotExist($this->apiRoot.'/.env.lock');
         $this->assertFalse($result['createdEnv']);
         $this->assertFalse($result['generatedKey']);
         $this->assertFalse($result['patchedUrl']);

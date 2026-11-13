@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { docsLabels } from "@/docs-core/src/docs-labels";
+import { driveInboundLabels } from "@/lib/offline/drive/drive-inbound-labels";
 
 const syncDriveInboundFromFileNodes = vi.hoisted(() => vi.fn());
 const show = vi.hoisted(() => vi.fn());
@@ -42,7 +42,7 @@ describe("useDriveFileNodeInbound", () => {
   it("shows the unsaved document that a remote delete left in place", async () => {
     renderHook(() => useDriveFileNodeInbound("ada", 0));
     await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
-    expect(show).toHaveBeenCalledWith(docsLabels.keptUnsavedDocumentTitle, {
+    expect(show).toHaveBeenCalledWith(driveInboundLabels.keptUnsavedDocumentTitle, {
       description: "Your unsaved copy of /users/ada/unsaved.md is still here.",
     });
     expect(syncDriveInboundFromFileNodes).toHaveBeenCalledWith("ada");

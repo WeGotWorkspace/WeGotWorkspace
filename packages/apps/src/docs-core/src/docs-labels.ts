@@ -1,4 +1,5 @@
 import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveInboundLabels } from "@/lib/offline/drive/drive-inbound-labels";
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
 import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
@@ -51,12 +52,8 @@ export const docsLabels = {
   accessLostTitle: "Access lost",
   accessLostMessage:
     "You no longer have access to this document. Your local copy is still on this device.",
-  keptUnsavedDocumentTitle: "A document was removed on the server",
-  /** `shownPaths` is the comma-separated list; `count` picks singular or plural. */
-  keptUnsavedDocumentMessage: (shownPaths: string, count: number) =>
-    count === 1
-      ? `Your unsaved copy of ${shownPaths} is still here.`
-      : `Your unsaved copies are still here: ${shownPaths}.`,
+  keptUnsavedDocumentTitle: driveInboundLabels.keptUnsavedDocumentTitle,
+  keptUnsavedDocumentMessage: driveInboundLabels.keptUnsavedDocumentMessage,
   /** The conflict dialog's labels when the file changed outside the app (#1349). */
   externalWriteDialog: {
     conflictTitle: "Changed outside the app",

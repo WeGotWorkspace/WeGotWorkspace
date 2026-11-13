@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Meetings;
 
 use App\Exceptions\ApiHttpException;
+use App\Exceptions\RealtimeApiException;
 use App\Http\Requests\Api\V1\MeetPatchRoomRequest;
 use App\Http\Requests\Api\V1\MeetReserveRoomRequest;
 use App\Http\Resources\Api\V1\MeetRoomResource;
@@ -12,7 +13,6 @@ use App\Models\MeetReservation;
 use App\Services\Meet\MeetActorResolver;
 use App\Services\Meet\MeetChannelJoinPolicy;
 use App\Services\Meet\MeetReservationService;
-use App\Services\Meet\MeetResponseException;
 use App\Services\Meet\MeetSignalingService;
 use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
@@ -37,7 +37,7 @@ final class MeetingsController
         $roomId = (string) $validated['room'];
         $ownerPrincipal = (string) $validated['ownerPrincipal'];
         if (! $this->reservations->canClaimOwnerPrincipal($username, $ownerPrincipal)) {
-            throw new MeetResponseException(403, 'forbidden', 'You can only reserve a room for your own principal or a team calendar you can write.');
+            throw new RealtimeApiException(403, 'forbidden', 'You can only reserve a room for your own principal or a team calendar you can write.');
         }
         $existing = $this->reservations->find($roomId);
         $actor = $this->reservations->actorPrincipal($username);
@@ -46,7 +46,7 @@ final class MeetingsController
         // Same gate as PATCH: a group room needs membership of that group, so
         // a write share on its calendar is not enough to change its clock.
         if ($existing instanceof MeetReservation && ! $this->reservations->canManage($username, $existing)) {
-            throw new MeetResponseException(403, 'forbidden', 'This room code is already reserved by someone else.');
+            throw new RealtimeApiException(403, 'forbidden', 'This room code is already reserved by someone else.');
         }
         $expiresAt = array_key_exists('expiresAt', $request->json()->all())
             ? $this->futureExpiresAt($validated['expiresAt'] ?? null)
@@ -67,7 +67,7 @@ final class MeetingsController
         // meeting is not reported missing. Members still see `active` on
         // closed rooms.
         if (($username === null || $username === '') && $this->channels->isGuestClosedRoom($roomId)) {
-            throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
+            throw new RealtimeApiException(404, 'not_found', 'Meeting room is not reserved.');
         }
 
         $row = $this->reservations->find($roomId);
@@ -77,7 +77,7 @@ final class MeetingsController
 
         $signalingRoom = $this->channels->resolveMeetingInviteRoom($roomId);
         if ($signalingRoom === null) {
-            throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
+            throw new RealtimeApiException(404, 'not_found', 'Meeting room is not reserved.');
         }
         $linked = $this->reservations->find($signalingRoom);
         if ($linked instanceof MeetReservation) {
@@ -95,7 +95,7 @@ final class MeetingsController
         $this->reservations->sweepExpiredNeverActivated();
         $row = $this->reservations->require($roomId);
         if (! $this->reservations->canManage($username, $row)) {
-            throw new MeetResponseException(403, 'forbidden', 'Only the reservation creator or an owner-principal member can update expiry.');
+            throw new RealtimeApiException(403, 'forbidden', 'Only the reservation creator or an owner-principal member can update expiry.');
         }
 
         // A past clock is accepted on purpose: PATCH is holder-only and ending a reservation is what it is for.
@@ -114,7 +114,7 @@ final class MeetingsController
     {
         $username = $this->actors->tryAuthenticatedUsername($request);
         if ($username === null || $username === '') {
-            throw new MeetResponseException(401, 'auth_required', 'Sign in to reserve a meeting room.');
+            throw new RealtimeApiException(401, 'auth_required', 'Sign in to reserve a meeting room.');
         }
 
         return $username;

@@ -4,7 +4,7 @@ import type {
   InstallerSitePayload,
   InstallerServerCheck,
   WgwInstallerRuntimeState,
-} from "@/installer-core/src/installer-types";
+} from "@/lib/models/installer-types";
 import { toInstallerServerChecks } from "@/installer-core/src/installer-models";
 import type { WgwInstallerErrorCode } from "@/lib/api/wgw";
 import { DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";

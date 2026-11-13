@@ -1,10 +1,10 @@
+import { CONTACT_CHANNEL_DEFAULT_CONTEXT } from "@/contacts-core/src/contacts-edit-utils";
 import {
-  CONTACT_CHANNEL_DEFAULT_CONTEXT,
   type ContactAddressDraft,
   type ContactChannelContext,
   type ContactEditDraft,
   type ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
+} from "@/lib/models/contacts-edit-draft";
 
 type PhoneDraft = ContactEditDraft["phones"][number];
 type EmailDraft = ContactEditDraft["emails"][number];

@@ -12,7 +12,7 @@ import {
 import {
   DOCS_HOME_LIST_CATEGORIES,
   DOCS_HOME_LIST_EXTENSIONS,
-} from "@/docs-core/src/docs-home-constants";
+} from "@/lib/files/docs-home-listing";
 
 const username = "alice";
 

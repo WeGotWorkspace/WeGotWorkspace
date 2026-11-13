@@ -1,10 +1,16 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { ChatMessage, MeetDirectoryGroup, MeetRtcSettings } from "@/lib/models/meet-types";
+import type {
+  ChatMessage,
+  ChatMessageSyncState,
+  MeetDirectoryGroup,
+  MeetRtcSettings,
+} from "@/lib/models/meet-types";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { isWireDmChannel, meetChannelFromWire, type WgwChatChannel } from "@/lib/api/wgw/meet-chat";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   enqueueOutboxMutation,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
@@ -92,6 +98,45 @@ export function meetChatOutboxMessageId(row: OfflineOutboxRow): string | null {
 
 export async function listMeetChatOutbox(username: string): Promise<OfflineOutboxRow[]> {
   return listOutboxMutationsForDomain(username, MEET_CHAT_DOMAIN);
+}
+
+/** True while the message's send is queued: the server has never seen it. */
+export async function hasQueuedChatSend(username: string, messageId: string): Promise<boolean> {
+  const rows = await listMeetChatOutbox(username);
+  return rows.some((row) => row.op === "send" && meetChatOutboxMessageId(row) === messageId);
+}
+
+/** Queued writes that change what a message says, so its author sees them as not sent yet. */
+const MESSAGE_CONTENT_OPS = new Set(["send", "edit", "delete"]);
+
+/**
+ * Each message's sync state from the queued rows (`ChatMessage.syncState`):
+ * `failed` when one of its rows failed to sync (`isSyncNoticeOutboxRow`, the
+ * same rows the sync notice counts), else `pending`. Reactions and read
+ * markers are left out: they are not the message's content.
+ */
+export function chatMessageSyncStates(
+  rows: readonly OfflineOutboxRow[],
+): Map<string, ChatMessageSyncState> {
+  const states = new Map<string, ChatMessageSyncState>();
+  for (const row of rows) {
+    if (!MESSAGE_CONTENT_OPS.has(row.op)) continue;
+    const id = meetChatOutboxMessageId(row);
+    if (!id || states.get(id) === "failed") continue;
+    states.set(id, isSyncNoticeOutboxRow(row) ? "failed" : "pending");
+  }
+  return states;
+}
+
+function withSyncStates(
+  messages: ChatMessage[],
+  states: ReadonlyMap<string, ChatMessageSyncState>,
+): ChatMessage[] {
+  return messages.map((message) => {
+    const state = states.get(message.id);
+    if (!state) return message;
+    return { ...message, syncState: state };
+  });
 }
 
 /**
@@ -303,10 +348,12 @@ export async function upsertChatMessageInCache(
   pendingSync = false,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  // Derived from the outbox on every read: a stored copy would go stale.
+  const { syncState: _syncState, ...stored } = message;
   await meetChatMessagesTable(db).put({
     id: message.id,
     channelId: message.channelId,
-    data: JSON.stringify(message),
+    data: JSON.stringify(stored),
     pendingSync,
     createdAt: message.createdAt,
   });
@@ -352,6 +399,15 @@ export async function listCachedChatMessages(username: string): Promise<ChatMess
     }
   }
   return messages.sort(compareMessages);
+}
+
+/** Ids of the messages cached under one UI channel id (`dm:{peer}` for a DM). */
+export async function listCachedChatMessageIdsForChannel(
+  username: string,
+  uiChannelId: string,
+): Promise<string[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return meetChatMessagesTable(db).where("channelId").equals(uiChannelId).primaryKeys();
 }
 
 export async function listPendingChatMessageIds(username: string): Promise<string[]> {
@@ -490,7 +546,10 @@ export async function readMeetChatBootstrapFromCache(
     session: JSON.parse(sessionRow.value) as WorkspaceSession,
     rtc: JSON.parse(rtcRow.value) as MeetRtcSettings,
     channels: wireChannels.filter((row) => !isWireDmChannel(row)).map(meetChannelFromWire),
-    messages: await listCachedChatMessages(username),
+    messages: withSyncStates(
+      await listCachedChatMessages(username),
+      chatMessageSyncStates(await listMeetChatOutbox(username)),
+    ),
     dmUnread: dmUnreadFromWireChannels(wireChannels),
     ...(directory !== undefined ? { directory } : {}),
     ...(groups !== undefined ? { groups } : {}),

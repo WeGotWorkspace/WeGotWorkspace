@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
-import type { AdminSection } from "@/admin-core/src/admin-types";
+import type { AdminSection } from "@/lib/models/admin-types";
 import { useAdminShell } from "@/admin-core/src/use-admin-shell";
 
 function mockMatchMedia(matches = false) {

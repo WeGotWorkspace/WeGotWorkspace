@@ -2,7 +2,7 @@ import type {
   NotificationCopy,
   NotificationFacts,
   NotificationInboxItem,
-} from "@/notifications-core/src/notifications-types";
+} from "@/lib/models/notifications-types";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS = [

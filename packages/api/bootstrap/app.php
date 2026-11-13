@@ -121,8 +121,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // The one render hook for API errors (#1646): ApiHttpException and the
-        // realtime DomainResponseException family. Contract: .agents/skills/api/rest-design.md.
+        // The one render hook for API errors (#1646): ApiHttpException and
+        // RealtimeApiException. Contract: .agents/skills/api/rest-design.md.
         $exceptions->render(function (RendersApiError $e) {
             return response()->json($e->apiErrorBody(), $e->apiErrorStatus(), $e->apiErrorHeaders());
         });

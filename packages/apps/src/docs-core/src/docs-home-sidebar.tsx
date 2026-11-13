@@ -1,5 +1,5 @@
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
-import { useItemsWithAppSettingsRow } from "@/settings-core/src/workspace-app-settings-sidebar";
+import { useItemsWithAppSettingsRow } from "@/app-sidebar/src/app-sidebar-primary";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";

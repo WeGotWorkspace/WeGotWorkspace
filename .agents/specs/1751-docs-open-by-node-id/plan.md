@@ -21,7 +21,7 @@ See [spec.md](./spec.md#non-goals).
 - path → node: `FileNodeIndexService::liveByKey`. `path: packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php:139`
 - No REST endpoint returns the path for an id; JMAP `FileNode/get` returns only `id`, `parentId`, `name`. `path: packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php:48`
 - Product trash test: `DriveSharePathScope::isInProductTrash`. `path: packages/api/app/Services/Drive/DriveSharePathScope.php:35`
-- Docs route is `{ file?: string }`. `path: packages/apps/src/docs-core/src/docs-route-search.ts:1`
+- Docs route is `{ file?: string }`. `path: packages/apps/src/lib/files/docs-route-search.ts:1`
 - DocsApp derives `filePath` from `file` and passes it to collab URLs, rights and threads. `path: packages/apps/src/docs-core/src/docs-app.tsx:57`
 - Rename inside Docs pushes `?file=<newPath>`. `path: packages/apps/src/docs-core/src/docs-app.tsx:83`
 - Offline Drive cache maps path → nodeId (`readCachedDriveNodeId`) and indexes `nodeId`. `path: packages/apps/src/lib/offline/drive/drive-directory-offline-store.ts:65`
@@ -73,7 +73,7 @@ Considered: putting `nodeId` on `DriveFile` and changing every `onOpenFile(apiPa
 
 - **id:** `apps-docs-route-id`
 - **Skill:** workspace, client-transport
-- **Inputs:** route search `path: packages/apps/src/docs-core/src/docs-route-search.ts:1`; DocsApp `path: packages/apps/src/docs-core/src/docs-app.tsx:57`; Dexie cache `path: packages/apps/src/lib/offline/drive/drive-directory-offline-store.ts:65`
+- **Inputs:** route search `path: packages/apps/src/lib/files/docs-route-search.ts:1`; DocsApp `path: packages/apps/src/docs-core/src/docs-app.tsx:57`; Dexie cache `path: packages/apps/src/lib/offline/drive/drive-directory-offline-store.ts:65`
 - **Done when:** route accepts `id`; `useDocsRouteDocument` resolves id → path (network, then cache) and path → id (network, then cache) and replaces `?file=` with `?id=`; an id the server no longer finds opens the file that took its last known path, or that path itself (the editor's gone flow keeps the local copy); not-found state only for an id this device never located; rename inside Docs navigates by id with `replace`; guests and mock mode skip resolution.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/docs-core`; apps done gate
 - **Parallel with:** none

@@ -9,14 +9,15 @@ import {
 import { isInstantOrOffset, localToPlainDateTime } from "@/lib/jmap-client/mapping/datetime";
 import type { JmapBusyPeriod } from "@/lib/jmap-client/availability/types";
 import {
+  AVAILABILITY_OVERLAY_KIND,
+  availabilityCalendarId,
+  availabilityOverlayKey,
+} from "@/lib/calendar/calendar-render-overlay";
+import {
   avatarColorForUserId,
   USER_AVATAR_COLORS,
   type UserAvatarColor,
 } from "@/user-avatar/src/user-avatar-color";
-
-/** Prefix of a teammate's virtual, read-only calendar and of its grid keys. */
-export const AVAILABILITY_CALENDAR_PREFIX = "availability:";
-export const AVAILABILITY_OVERLAY_KIND = "availability" as const;
 
 /** Same hex as `--user-avatar-*`, so a teammate's blocks match their avatar. */
 const AVATAR_HEX: Record<UserAvatarColor, string> = {
@@ -29,41 +30,6 @@ const AVATAR_HEX: Record<UserAvatarColor, string> = {
   teal: "#14b8a6",
   sky: "#0ea5e9",
 };
-
-/** `availability:{username}`. Never stored as a calendar, never a default or invite target. */
-export function availabilityCalendarId(username: string): string {
-  return `${AVAILABILITY_CALENDAR_PREFIX}${username}`;
-}
-
-export function isAvailabilityCalendarId(id: string | undefined | null): boolean {
-  return Boolean(id?.startsWith(AVAILABILITY_CALENDAR_PREFIX));
-}
-
-/** Grid key of one busy period: `availability:{username}#{index}`. */
-export function availabilityOverlayKey(username: string, index: number): string {
-  return `${availabilityCalendarId(username)}#${index}`;
-}
-
-export function parseAvailabilityOverlayKey(
-  key: string | undefined | null,
-): { username: string; index: number } | null {
-  if (!key?.startsWith(AVAILABILITY_CALENDAR_PREFIX)) return null;
-  const rest = key.slice(AVAILABILITY_CALENDAR_PREFIX.length);
-  const hash = rest.lastIndexOf("#");
-  if (hash <= 0) return null;
-  const index = Number(rest.slice(hash + 1));
-  if (!Number.isInteger(index) || index < 0) return null;
-  return { username: rest.slice(0, hash), index };
-}
-
-export function isAvailabilityOverlayEvent(
-  event: Pick<CalendarEvent, "overlayKind" | "calendarId"> | undefined | null,
-): boolean {
-  if (!event) return false;
-  return (
-    event.overlayKind === AVAILABILITY_OVERLAY_KIND || isAvailabilityCalendarId(event.calendarId)
-  );
-}
 
 /** Each teammate's colour in Team availability, resolved over the whole list. */
 export type AvailabilityColors = ReadonlyMap<string, UserAvatarColor>;

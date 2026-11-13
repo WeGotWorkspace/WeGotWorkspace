@@ -5,12 +5,10 @@ import {
   DOCS_HOME_EXTENSIONS,
   DOCS_HOME_PAGE_SIZE,
   DOCS_HOME_SOURCES,
-} from "@/docs-core/src/docs-home-constants";
-import {
   fetchAllDocsHomeListingPages,
   sortDocsHomeResults,
   type DocsHomeFetcher,
-} from "@/docs-core/src/use-docs-home-list";
+} from "@/lib/files/docs-home-listing";
 import { backgroundSyncPacer } from "@/lib/offline/core/background-sync-pacer";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {

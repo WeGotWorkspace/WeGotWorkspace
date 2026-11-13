@@ -2,7 +2,7 @@ import {
   DOCS_HOME_LIST_CATEGORIES,
   DOCS_HOME_LIST_EXTENSIONS,
   DOCS_HOME_SOURCES,
-} from "@/docs-core/src/docs-home-constants";
+} from "@/lib/files/docs-home-listing";
 
 export type DocsListingBrowseFilters = {
   pathPrefix?: string;
