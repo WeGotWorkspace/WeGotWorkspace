@@ -12,6 +12,8 @@ import {
   isRetryableOutboxRow,
   markOutboxError,
 } from "@/lib/offline/core/outbox-store";
+import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat-offline-store";
+import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
 import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { listFailedTaskOutbox } from "@/lib/offline/tasks/tasks-offline-store";
@@ -51,6 +53,7 @@ describe("domain failed outbox notices", () => {
     );
     await failRow("notes-book", NOTES_DOMAIN, "Notebook not found", 404);
     await failRow("tasks-item", TASKS_DOMAIN, "GET /tasks/items/missing failed (404)", 404);
+    await failRow("chat-send", MEET_CHAT_DOMAIN, "This channel is read-only", 403);
 
     expect((await listFailedContactOutbox(username)).map((row) => row.id)).toEqual([
       "contacts-book",
@@ -61,6 +64,7 @@ describe("domain failed outbox notices", () => {
     ]);
     expect((await listFailedNotesOutbox(username)).map((row) => row.id)).toEqual(["notes-book"]);
     expect((await listFailedTaskOutbox(username)).map((row) => row.id)).toEqual(["tasks-item"]);
+    expect((await listFailedMeetChatOutbox(username)).map((row) => row.id)).toEqual(["chat-send"]);
   });
 
   it.each([
