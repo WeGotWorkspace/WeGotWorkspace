@@ -33,12 +33,12 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/calendars-hybrid-operations", () => ({
+vi.mock("@/lib/offline/calendars/calendars-hybrid-operations", () => ({
   createHybridCalendarOperations: vi.fn(),
   getCalendarsSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   readCalendarBootstrapFromCache: vi.fn(),
 }));
 

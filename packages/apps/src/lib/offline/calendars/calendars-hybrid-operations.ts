@@ -56,15 +56,15 @@ import {
   removeCalendarEventFromCache,
   upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import {
   flushCalendarsOutbox,
   type CalendarOutboxFlushResult,
-} from "@/lib/offline/calendars-outbox-flush";
+} from "@/lib/offline/calendars/calendars-outbox-flush";
 import {
   reportCalendarsSchedulingConflicts,
   reportCalendarsSyncConflicts,
-} from "@/lib/offline/calendars-sync-conflicts";
+} from "@/lib/offline/calendars/calendars-sync-conflicts";
 import { readOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 

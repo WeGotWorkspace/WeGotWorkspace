@@ -5,7 +5,7 @@ import {
   ingestRemoteCalendarDestroyed,
   ingestRemoteCalendarEvent,
   ingestRemoteCalendarEventDestroyed,
-} from "@/lib/offline/calendars-jmap-inbound";
+} from "@/lib/offline/calendars/calendars-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
 const upsert = vi.fn();
@@ -15,7 +15,7 @@ const removeCalendar = vi.fn();
 const listEventsForCalendar = vi.fn<() => Promise<Array<{ id: string }>>>();
 const reportConflicts = vi.fn();
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   listPendingCalendarEventIds: () => listPending(),
   upsertCalendarEventInCache: (...args: unknown[]) => upsert(...args),
   removeCalendarEventFromCache: (...args: unknown[]) => remove(...args),
@@ -24,7 +24,7 @@ vi.mock("@/lib/offline/calendars-offline-store", () => ({
   listCachedEventsForCalendar: () => listEventsForCalendar(),
 }));
 
-vi.mock("@/lib/offline/calendars-sync-conflicts", () => ({
+vi.mock("@/lib/offline/calendars/calendars-sync-conflicts", () => ({
   reportCalendarsSyncConflicts: (...args: unknown[]) => reportConflicts(...args),
 }));
 

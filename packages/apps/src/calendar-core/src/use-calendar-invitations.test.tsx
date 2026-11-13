@@ -8,14 +8,14 @@ import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   readCalendarSchedulingInbox,
   writeCalendarSchedulingInbox,
-} from "@/lib/offline/calendars-scheduling-offline-store";
-import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars-sync-conflicts";
+} from "@/lib/offline/calendars/calendars-scheduling-offline-store";
+import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars/calendars-sync-conflicts";
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/offline/calendars-scheduling-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-scheduling-offline-store", () => ({
   readCalendarSchedulingInbox: vi.fn(async () => []),
   writeCalendarSchedulingInbox: vi.fn(async () => undefined),
   readCalendarInviteesDirectory: vi.fn(async () => null),

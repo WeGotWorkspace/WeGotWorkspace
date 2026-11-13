@@ -1,11 +1,11 @@
-import { getCalendarsSyncRunner } from "@/lib/offline/calendars-hybrid-operations";
+import { getCalendarsSyncRunner } from "@/lib/offline/calendars/calendars-hybrid-operations";
 import {
   calendarsOutboxEventId,
   listOutboxMutations,
   removeCalendarEventFromCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import { putOutboxMutation, removeOutboxMutation } from "@/lib/offline/core/outbox-store";
-import type { CalendarOutboxFlushResult } from "@/lib/offline/calendars-outbox-flush";
+import type { CalendarOutboxFlushResult } from "@/lib/offline/calendars/calendars-outbox-flush";
 
 async function outboxRowsForEvent(username: string, eventId: string) {
   const rows = await listOutboxMutations(username);

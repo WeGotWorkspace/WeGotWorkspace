@@ -14,7 +14,7 @@ import {
   listOutboxMutations,
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 
 const username = "bob";
@@ -101,7 +101,7 @@ import {
   fetchCalendarHybridBootstrap,
   getCalendarsSyncRunner,
   loadCalendarRangeHybrid,
-} from "@/lib/offline/calendars-hybrid-operations";
+} from "@/lib/offline/calendars/calendars-hybrid-operations";
 
 async function enqueuePendingCreate(): Promise<void> {
   await enqueueOutboxMutation(username, {

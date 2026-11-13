@@ -14,7 +14,7 @@ import {
 import {
   ingestRemoteCalendarEvent,
   ingestRemoteCalendarEventDestroyed,
-} from "@/lib/offline/calendars-jmap-inbound";
+} from "@/lib/offline/calendars/calendars-jmap-inbound";
 
 const CALENDAR_EVENT_TYPE = "CalendarEvent";
 

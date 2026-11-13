@@ -11,14 +11,14 @@ import {
   listOutboxMutations,
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import {
   isPermanentlyFailedOutboxRow,
   isRetryableOutboxRow,
   putOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
-import { flushCalendarsOutbox } from "@/lib/offline/calendars-outbox-flush";
+import { flushCalendarsOutbox } from "@/lib/offline/calendars/calendars-outbox-flush";
 
 const username = "bob";
 
@@ -83,7 +83,8 @@ describe("flushCalendarsOutbox", () => {
     vi.clearAllMocks();
     await writeCalendarBootstrapToCache(username, bootstrap);
     for (const row of await listOutboxMutations(username)) {
-      const { removeOutboxMutation } = await import("@/lib/offline/calendars-offline-store");
+      const { removeOutboxMutation } =
+        await import("@/lib/offline/calendars/calendars-offline-store");
       await removeOutboxMutation(username, row.id);
     }
   });
@@ -357,7 +358,8 @@ describe("flushCalendarsOutbox", () => {
     const rowId = crypto.randomUUID();
     createCalendarEventLive.mockImplementation(async () => {
       // Undo of the offline create lands while the request is on its way.
-      const { removeOutboxMutation } = await import("@/lib/offline/calendars-offline-store");
+      const { removeOutboxMutation } =
+        await import("@/lib/offline/calendars/calendars-offline-store");
       await removeOutboxMutation(username, rowId);
       return wireEvent("ev-undone", "Created");
     });

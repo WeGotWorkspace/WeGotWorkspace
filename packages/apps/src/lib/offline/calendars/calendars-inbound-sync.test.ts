@@ -7,13 +7,13 @@ import {
   workCalendar,
 } from "@/lib/jmap-client/mock/fixtures";
 import { MockJmapServer } from "@/lib/jmap-client/mock/MockJmapServer";
-import { syncCalendarEventChanges } from "@/lib/offline/calendars-inbound-sync";
+import { syncCalendarEventChanges } from "@/lib/offline/calendars/calendars-inbound-sync";
 
 const pending = new Set<string>();
 const cache = new Map<string, string | undefined>();
 const reportConflicts = vi.fn();
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   listPendingCalendarEventIds: async () => [...pending],
   upsertCalendarEventInCache: async (_user: string, event: { id: string; title?: string }) => {
     cache.set(event.id, event.title);
@@ -26,7 +26,7 @@ vi.mock("@/lib/offline/calendars-offline-store", () => ({
   listCachedEventsForCalendar: async () => [],
 }));
 
-vi.mock("@/lib/offline/calendars-sync-conflicts", () => ({
+vi.mock("@/lib/offline/calendars/calendars-sync-conflicts", () => ({
   reportCalendarsSyncConflicts: (...args: unknown[]) => reportConflicts(...args),
 }));
 
