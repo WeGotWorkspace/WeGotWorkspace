@@ -5,6 +5,12 @@
 
 name: wegotworkspace
 
+x-wgw-logging: &wgw-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 x-wgw-web-volumes: &wgw-web-volumes
   - wgw-content:/var/wgw/content
   - wgw-api-storage:/var/wgw/storage
@@ -67,6 +73,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 40s
+    logging: *wgw-logging
 
   # Apache serves as www-data. A root scheduler creates storage/framework/cache/data
   # mode 755, and the install action then returns HTTP 500 on Cache::put.
@@ -100,6 +107,7 @@ services:
       timeout: 5s
       retries: 4
       start_period: 60s
+    logging: *wgw-logging
 
   db:
     profiles: ["mysql"]
@@ -122,6 +130,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+    logging: *wgw-logging
 
 volumes:
   wgw-content:
