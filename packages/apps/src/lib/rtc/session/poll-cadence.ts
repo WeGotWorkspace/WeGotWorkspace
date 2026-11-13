@@ -6,9 +6,18 @@ import type {
   SignalingChannel,
 } from "@/lib/rtc/types";
 
-/** Collab room with nobody else on the roster. Empty `.every()` is not "stable". */
+/** Collab room with nobody else on the roster, during its first minute. Empty `.every()` is not "stable". */
 const COLLAB_ALONE_POLL_INTERVAL_MS = 2_000;
-/** Every rostered collab peer already has a data channel. */
+/**
+ * How long an empty collab room keeps the 2 s poll after its roster last
+ * changed. A colleague who opens the same document right away is found within
+ * 2 s; one linked on the presence mesh wakes the poll at once through collab
+ * reuse, whatever the interval (#2156).
+ */
+export const COLLAB_ALONE_FAST_WINDOW_MS = 60_000;
+/** Collab room that has been empty (or held only peers that never linked) for a minute. */
+const COLLAB_ALONE_IDLE_POLL_INTERVAL_MS = 15_000;
+/** Every reachable collab peer already has a data channel. */
 const COLLAB_STABLE_POLL_INTERVAL_MS = 5_000;
 /** Meet idle backoff when connected with no knockers — shorter than collab for chat/control UX. */
 const MEET_IDLE_POLL_INTERVAL_MS = 4000;
@@ -26,6 +35,15 @@ export type MeshPollCadenceSnapshot = {
   linkStateOf: (peerId: string) => RtcLinkState | null;
   hidden: boolean;
   peerConnectionCount: number;
+  /**
+   * True while an unlinked peer is still new enough to be dialled at the fast
+   * poll (`RosterPeerClock`). Without it every unlinked peer counts as dialling.
+   */
+  isDialing?: (peerId: string, linkedNow: boolean) => boolean;
+  /** Milliseconds since the roster last changed. */
+  quietForMs?: number;
+  /** A collab peer linked through another channel (collab reuse over the presence mesh). */
+  linkedElsewhere?: (peerId: string) => boolean;
 };
 
 function allPeersConnected(
@@ -41,10 +59,39 @@ function isCollabDataMesh(snapshot: MeshPollCadenceSnapshot): boolean {
   );
 }
 
+function isCollabPeerLinked(snapshot: MeshPollCadenceSnapshot, peerId: string): boolean {
+  return (
+    snapshot.linkStateOf(peerId) === "connected" || snapshot.linkedElsewhere?.(peerId) === true
+  );
+}
+
 export function hasStableCollabTopology(snapshot: MeshPollCadenceSnapshot): boolean {
   if (!isCollabDataMesh(snapshot)) return false;
   if (snapshot.roomPeers.length === 0) return false;
-  return allPeersConnected(snapshot.roomPeers, snapshot.linkStateOf);
+  return snapshot.roomPeers.every((peer) => isCollabPeerLinked(snapshot, peer.id));
+}
+
+/**
+ * Collab steady delay. A peer that is being dialled keeps the configured fast
+ * cadence; one that did not link within `UNLINKED_PEER_FAST_WINDOW_MS` counts
+ * as absent, so a ghost or a browser without WebRTC cannot hold the room at
+ * the fast poll (#2156). The HTTP fallback sets its own cap for live peers.
+ */
+function collabDelayMs(intervals: RtcPollIntervals, snapshot: MeshPollCadenceSnapshot): number {
+  let dialing = false;
+  let linked = 0;
+  for (const peer of snapshot.roomPeers) {
+    const isLinked = isCollabPeerLinked(snapshot, peer.id);
+    if (isLinked) linked += 1;
+    if (snapshot.isDialing ? snapshot.isDialing(peer.id, isLinked) : !isLinked) dialing = true;
+  }
+  if (dialing) return intervals.steadyMs;
+  if (linked > 0) return Math.max(intervals.steadyMs, COLLAB_STABLE_POLL_INTERVAL_MS);
+  const alone =
+    (snapshot.quietForMs ?? 0) < COLLAB_ALONE_FAST_WINDOW_MS
+      ? COLLAB_ALONE_POLL_INTERVAL_MS
+      : COLLAB_ALONE_IDLE_POLL_INTERVAL_MS;
+  return Math.max(intervals.steadyMs, alone);
 }
 
 export function hasKnockersInRoster(peers: readonly RtcPeerDescriptor[]): boolean {
@@ -75,10 +122,8 @@ export function steadyPollDelayMs(
   snapshot: MeshPollCadenceSnapshot,
 ): number {
   let delay = intervals.steadyMs;
-  if (isCollabDataMesh(snapshot) && snapshot.roomPeers.length === 0) {
-    delay = Math.max(delay, COLLAB_ALONE_POLL_INTERVAL_MS);
-  } else if (hasStableCollabTopology(snapshot)) {
-    delay = Math.max(delay, COLLAB_STABLE_POLL_INTERVAL_MS);
+  if (isCollabDataMesh(snapshot)) {
+    delay = collabDelayMs(intervals, snapshot);
   } else if (hasStableMeetTopology(snapshot)) {
     delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
   }

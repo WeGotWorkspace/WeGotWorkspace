@@ -17,7 +17,7 @@ function harness(access: DocsCollabAccess, doc: Y.Doc) {
     sendStateVectorOnChannel: () => {},
     requestRelay: async () => ({ outcome: "relay_unavailable" }),
     onRelay: () => {},
-    setFastPoll: () => {},
+    setPollMode: () => {},
     getYDoc: () => doc,
     trust: () => ({ access: "write", user: "editor" }),
     myAccess: () => access,
@@ -74,7 +74,7 @@ describe("DocsCollabHttpSync relay refresh", () => {
         return { outcome: "issued", turn };
       },
       onRelay: () => {},
-      setFastPoll: () => {},
+      setPollMode: () => {},
       getYDoc: () => null,
       trust: () => ({ access: "write", user: "editor" }),
       myAccess: () => "write",
@@ -107,7 +107,7 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
 
   it("starts the mailbox fallback 5 s after a peer is first seen without another trigger", async () => {
     const sent: Array<{ to: string; type: string }> = [];
-    const fastPoll: boolean[] = [];
+    const pollModes: string[] = [];
     const doc = new Y.Doc();
     const sync = new DocsCollabHttpSync({
       now: () => Date.now(),
@@ -119,8 +119,8 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
       sendStateVectorOnChannel: () => {},
       requestRelay: async () => ({ outcome: "relay_unavailable" }),
       onRelay: () => {},
-      setFastPoll: (active) => {
-        fastPoll.push(active);
+      setPollMode: (mode) => {
+        pollModes.push(mode);
       },
       getYDoc: () => doc,
       trust: () => ({ access: "write", user: "editor" }),
@@ -133,9 +133,56 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
 
     await vi.advanceTimersByTimeAsync(1);
     expect(sent).toContainEqual({ to: "peer-b", type: "yjs-sv" });
-    expect(fastPoll).toContain(true);
+    expect(pollModes).toContain("fast");
 
     sync.stop();
+  });
+
+  it("polls fast while edits flow and idles once the document is quiet (#2156)", async () => {
+    const pollModes: string[] = [];
+    const doc = new Y.Doc();
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [{ id: "peer-b", name: "Bea", caps: ["yjs-http"], connected: false }],
+      webrtcUnavailable: () => true,
+      send: () => {},
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async () => ({ outcome: "relay_unavailable" }),
+      onRelay: () => {},
+      setPollMode: (mode) => {
+        pollModes.push(mode);
+      },
+      getYDoc: () => doc,
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.start();
+    expect(pollModes).toEqual(["fast"]);
+
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(pollModes).toEqual(["fast"]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(pollModes).toEqual(["fast", "idle"]);
+
+    // A remote edit wakes the fast poll; so does a local one.
+    const remote = new Y.Doc();
+    remote.getText("t").insert(0, "hi");
+    sync.ingest([
+      {
+        from: "peer-b",
+        type: "yjs",
+        payload: encodeYjsHttpPayload(Y.encodeStateAsUpdate(remote), 1),
+      },
+    ]);
+    expect(pollModes).toEqual(["fast", "idle", "fast"]);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(pollModes.at(-1)).toBe("idle");
+    sync.noteLocalUpdate(Y.encodeStateAsUpdate(remote));
+    expect(pollModes.at(-1)).toBe("fast");
+
+    sync.stop();
+    expect(pollModes.at(-1)).toBe("off");
   });
 
   it("asks for a relay 8 s after a peer is first seen without another trigger", async () => {
@@ -155,7 +202,7 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
       sendStateVectorOnChannel: () => {},
       requestRelay,
       onRelay: () => {},
-      setFastPoll: () => {},
+      setPollMode: () => {},
       getYDoc: () => null,
       trust: () => ({ access: "write", user: "editor" }),
       myAccess: () => "write",
@@ -184,7 +231,7 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
       sendStateVectorOnChannel: () => {},
       requestRelay,
       onRelay: () => {},
-      setFastPoll: () => {},
+      setPollMode: () => {},
       getYDoc: () => new Y.Doc(),
       trust: () => ({ access: "write", user: "editor" }),
       myAccess: () => "write",
@@ -210,7 +257,7 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
       sendStateVectorOnChannel: () => {},
       requestRelay: async () => ({ outcome: "relay_unavailable" }),
       onRelay: () => {},
-      setFastPoll: () => {},
+      setPollMode: () => {},
       getYDoc: () => new Y.Doc(),
       trust: () => ({ access: "write", user: "editor" }),
       myAccess: () => "write",

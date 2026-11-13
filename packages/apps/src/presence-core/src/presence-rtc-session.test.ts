@@ -13,6 +13,7 @@ type CapturedBinding = {
 const captured = vi.hoisted(() => ({
   bindingOptions: null as CapturedBinding | null,
   pollIntervals: null as { steadyMs: number } | null,
+  onPollData: null as ((data: { peers: Array<{ id: string }> }) => void) | null,
   mesh: {
     getMyId: vi.fn((): string | null => "me"),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string; user?: string }>),
@@ -34,10 +35,16 @@ vi.mock("@/lib/rtc/session/bindings", () => ({
 }));
 
 vi.mock("@/lib/rtc/session/create-rtc-session", () => ({
-  createRtcSession: vi.fn((options: { pollIntervals: { steadyMs: number } }) => {
-    captured.pollIntervals = options.pollIntervals;
-    return captured.mesh;
-  }),
+  createRtcSession: vi.fn(
+    (options: {
+      pollIntervals: { steadyMs: number };
+      onPollData: (data: { peers: Array<{ id: string }> }) => void;
+    }) => {
+      captured.pollIntervals = options.pollIntervals;
+      captured.onPollData = options.onPollData;
+      return captured.mesh;
+    },
+  ),
 }));
 
 describe("PresenceRtcSession principal link publishing", () => {
@@ -163,6 +170,29 @@ describe("PresenceRtcSession principal link publishing", () => {
     captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
     captured.bindingOptions?.onOpen("prin-wouter");
     expect(captured.pollIntervals?.steadyMs).toBe(20_000);
+  });
+});
+
+describe("PresenceRtcSession unlinked peers (#2156)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    captured.mesh.getRoomPeers.mockReturnValue([]);
+    captured.mesh.getDataChannel.mockReturnValue(null);
+  });
+
+  it("stops polling fast for a peer that has not linked after 20s", () => {
+    new PresenceRtcSession({ room: "workspace", rtcSettings: DEFAULT_RTC_SETTINGS });
+    const ghost = { id: "prin-ghost", name: "Ghost", user: "ghost" };
+    captured.mesh.getRoomPeers.mockReturnValue([ghost]);
+    captured.onPollData?.({ peers: [ghost] });
+    expect(captured.pollIntervals?.steadyMs).toBe(1_200);
+    vi.setSystemTime(19_999);
+    expect(captured.pollIntervals?.steadyMs).toBe(1_200);
+    vi.setSystemTime(20_000);
+    expect(captured.pollIntervals?.steadyMs).toBe(4_000);
+    vi.useRealTimers();
   });
 });
 

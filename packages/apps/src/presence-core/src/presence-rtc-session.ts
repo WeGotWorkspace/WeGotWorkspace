@@ -7,6 +7,7 @@ import {
 } from "@/lib/rtc/session/collab-reuse-envelope";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
+import { RosterPeerClock } from "@/lib/rtc/session/roster-peer-clock";
 import {
   getPrincipalLinkRegistry,
   type PrincipalLinkRegistry,
@@ -22,7 +23,11 @@ import type {
 
 const DC_LABEL = "presence";
 
-/** Fast cadence while data channels are still being established. */
+/**
+ * Fast cadence while data channels are still being established. A peer that
+ * has not linked after `UNLINKED_PEER_FAST_WINDOW_MS` no longer counts, so a
+ * ghost or a browser without WebRTC cannot keep the room here (#2156).
+ */
 const ACTIVE_STEADY_POLL_MS = 1200;
 
 /**
@@ -63,9 +68,9 @@ export type PresenceRtcSessionOptions = {
 
 /**
  * Principal-room mesh wrapper: one `RtcPeerMesh` on channel `principal` with a
- * data binding. `RtcPeerMesh` reads `pollIntervals` live on every schedule, so the
- * session owns a mutable intervals object and adapts `steadyMs` to DC topology
- * (fast while connecting, slow once the mesh is fully linked).
+ * data binding. `RtcPeerMesh` reads `pollIntervals` live on every schedule, so
+ * `steadyMs` is a getter over DC topology (fast while a peer is being dialled,
+ * slow once every reachable peer is linked).
  */
 export class PresenceRtcSession implements PresenceMeshSession {
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
@@ -79,12 +84,18 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   readonly room: string;
 
-  private readonly pollIntervals: RtcPollIntervals = {
-    connectingMs: 400,
-    steadyMs: ACTIVE_STEADY_POLL_MS,
-  };
+  private readonly rosterClock = new RosterPeerClock();
+
+  private readonly pollIntervals: RtcPollIntervals;
 
   constructor(options: PresenceRtcSessionOptions) {
+    const steadyPollMs = () => this.steadyPollMs();
+    this.pollIntervals = {
+      connectingMs: 400,
+      get steadyMs() {
+        return steadyPollMs();
+      },
+    };
     this.room = options.room;
     this.registry = options.linkRegistry ?? getPrincipalLinkRegistry();
     const binding = createDataBinding({
@@ -92,7 +103,6 @@ export class PresenceRtcSession implements PresenceMeshSession {
       onOpen: (remoteId) => {
         rtcLog({ channel: "principal", peerId: this.mesh.getMyId() }, "dc-open", { remoteId });
         this.syncPrincipalLinks();
-        this.updatePollCadence();
         this.emit({ type: "dc-open", peerId: remoteId });
       },
       onMessage: (remoteId, json, payload) => {
@@ -108,7 +118,6 @@ export class PresenceRtcSession implements PresenceMeshSession {
       },
       onClose: () => {
         this.syncPrincipalLinks();
-        this.updatePollCadence();
         this.emit({ type: "roster" });
       },
     });
@@ -124,16 +133,15 @@ export class PresenceRtcSession implements PresenceMeshSession {
       },
       onLinkChange: () => {
         this.syncPrincipalLinks();
-        this.updatePollCadence();
         this.emit({ type: "roster" });
       },
       onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
       onPollError: (error) => {
         if (error instanceof HttpSignalingError && error.status === 403) options.onRefused?.();
       },
-      onPollData: () => {
+      onPollData: (data) => {
+        this.rosterClock.noteRoster(data.peers.map((peer) => peer.id));
         this.syncPrincipalLinks();
-        this.updatePollCadence();
         this.emit({ type: "roster" });
       },
     });
@@ -144,17 +152,17 @@ export class PresenceRtcSession implements PresenceMeshSession {
     for (const listener of this.listeners) listener(event);
   }
 
-  private updatePollCadence(): void {
-    const peers = this.mesh.getRoomPeers();
-    if (peers.length === 0) {
-      this.pollIntervals.steadyMs = ALONE_STEADY_POLL_MS * this.steadyScale;
-      return;
+  private steadyPollMs(): number {
+    let dialing = false;
+    let linked = 0;
+    for (const peer of this.mesh.getRoomPeers()) {
+      const isLinked = this.isLinked(peer.id);
+      if (isLinked) linked += 1;
+      if (this.rosterClock.isDialing(peer.id, isLinked)) dialing = true;
     }
-    const allLinked = peers.every((peer) => this.isLinked(peer.id));
-    // Only the two slow states stretch: a peer that is still connecting keeps the fast cadence.
-    this.pollIntervals.steadyMs = allLinked
-      ? IDLE_STEADY_POLL_MS * this.steadyScale
-      : ACTIVE_STEADY_POLL_MS;
+    // Only the two slow states stretch: a peer that is still being dialled keeps the fast cadence.
+    if (dialing) return ACTIVE_STEADY_POLL_MS;
+    return (linked > 0 ? IDLE_STEADY_POLL_MS : ALONE_STEADY_POLL_MS) * this.steadyScale;
   }
 
   /**
@@ -164,7 +172,6 @@ export class PresenceRtcSession implements PresenceMeshSession {
    */
   setSteadyScale(scale: number): void {
     this.steadyScale = Math.max(1, scale);
-    this.updatePollCadence();
   }
 
   /** This tab's peer id in the room, once joined. Used for the leave beacon. */
@@ -205,6 +212,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
     this.registry.setPrincipalPoller(null);
     this.registry.retain(new Set());
     await this.mesh.leave();
+    this.rosterClock.reset();
   }
 
   private installDebugHook(): void {

@@ -49,6 +49,7 @@ import {
   type RtcPeerMeshPorts,
 } from "@/lib/rtc/session/peer-mesh-options";
 import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
+import { RosterPeerClock } from "@/lib/rtc/session/roster-peer-clock";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
@@ -70,6 +71,8 @@ export class RtcPeerMesh {
   private lastRosterSig: string | null = null;
 
   private lastRoomPeers: RtcPeerDescriptor[] = [];
+
+  private readonly rosterClock = new RosterPeerClock();
 
   private readonly droppedGhostIds = new Set<string>();
 
@@ -450,6 +453,7 @@ export class RtcPeerMesh {
 
     const roomIds = new Set(data.peers.map((peer) => peer.id));
     this.lastRoomPeers = collapsed.keep;
+    this.rosterClock.noteRoster(collapsed.keep.map((peer) => peer.id));
 
     if (this.rtcSignalsEnabled()) {
       this.dialRoomPeers();
@@ -502,6 +506,9 @@ export class RtcPeerMesh {
       linkStateOf: (peerId) => this.peers.linkStateOf(peerId),
       hidden: this.visibility?.getState() === "hidden",
       peerConnectionCount: this.peers.size,
+      isDialing: (peerId, linkedNow) => this.rosterClock.isDialing(peerId, linkedNow),
+      quietForMs: this.rosterClock.quietForMs(),
+      linkedElsewhere: this.options.linkedElsewhere,
     };
   }
 
@@ -781,6 +788,7 @@ export class RtcPeerMesh {
     this.inbox.reset();
     this.lastRosterSig = null;
     this.lastRoomPeers = [];
+    this.rosterClock.reset();
     this.droppedGhostIds.clear();
   }
 }

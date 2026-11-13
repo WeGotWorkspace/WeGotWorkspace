@@ -15,8 +15,21 @@ export const YJS_HTTP_RELAY_AFTER_MS = 8_000;
 
 export const YJS_HTTP_RESYNC_MS = 30_000;
 
-/** Steady poll while any peer is on the HTTP path. */
+/** Steady poll while a peer is on the HTTP path and the document changed lately. */
 export const YJS_HTTP_POLL_MS = 1_000;
+
+/**
+ * Steady poll while a peer is on the HTTP path but nothing changed for
+ * `YJS_HTTP_ACTIVE_WINDOW_MS`. A remote edit after a quiet spell arrives within
+ * this, then the poll is fast again (#2156).
+ */
+export const YJS_HTTP_IDLE_POLL_MS = 3_000;
+
+/** How long a local or remote edit, or a peer joining the HTTP path, keeps the fast poll. */
+export const YJS_HTTP_ACTIVE_WINDOW_MS = 30_000;
+
+/** Poll the HTTP fallback asks of the mesh: none, quiet, or while edits flow. */
+export type YjsHttpPollMode = "off" | "idle" | "fast";
 
 export type YjsHttpPayload = { u: string; n: number };
 
