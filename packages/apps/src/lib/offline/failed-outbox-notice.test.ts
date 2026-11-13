@@ -12,7 +12,7 @@ import {
   isRetryableOutboxRow,
   markOutboxError,
 } from "@/lib/offline/core/outbox-store";
-import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat-offline-store";
+import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
 import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
