@@ -97,6 +97,10 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
 
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
+  listCalendarSubscriptionsLive,
+  refreshStaleCalendarSubscriptionsLive,
+} from "@/lib/api/wgw/calendar-ics-webcal";
+import {
   createHybridCalendarOperations,
   fetchCalendarHybridBootstrap,
   getCalendarsSyncRunner,
@@ -290,6 +294,22 @@ describe("flushCalendarsOutboxAndReport", () => {
 
     expect(createCalendarEventLive).toHaveBeenCalledTimes(1);
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("lists subscriptions once on open and refreshes them only after the outbox flush", async () => {
+    const subscriptions = [{ id: "sub-1", url: "https://feeds.example.test/holidays.ics" }];
+    vi.mocked(listCalendarSubscriptionsLive).mockResolvedValueOnce(subscriptions as never);
+    fetchCalendarLiveBootstrap.mockResolvedValue(bootstrap);
+    createCalendarEventLive.mockResolvedValue(wireEvent("ev-2", "Created"));
+    await enqueuePendingCreate();
+
+    await fetchCalendarHybridBootstrap();
+
+    expect(listCalendarSubscriptionsLive).toHaveBeenCalledTimes(1);
+    expect(refreshStaleCalendarSubscriptionsLive).toHaveBeenCalledWith(subscriptions);
+    expect(
+      vi.mocked(refreshStaleCalendarSubscriptionsLive).mock.invocationCallOrder[0],
+    ).toBeGreaterThan(createCalendarEventLive.mock.invocationCallOrder[0]!);
   });
 
   it("does not queue subscribe or publish while offline", async () => {

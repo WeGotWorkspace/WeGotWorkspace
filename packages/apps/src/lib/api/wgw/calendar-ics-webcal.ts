@@ -94,10 +94,11 @@ export function subscriptionIsStale(
   return !Number.isFinite(fetched) || now - fetched >= CALENDAR_SUBSCRIPTION_STALE_MS;
 }
 
-export async function refreshStaleCalendarSubscriptionsLive(): Promise<boolean> {
-  const list = await listCalendarSubscriptionsLive();
+export async function refreshStaleCalendarSubscriptionsLive(
+  list?: CalendarSubscription[],
+): Promise<boolean> {
   let refreshed = false;
-  for (const subscription of list) {
+  for (const subscription of list ?? (await listCalendarSubscriptionsLive())) {
     if (!subscriptionIsStale(subscription.lastFetchedAt)) continue;
     await refreshCalendarSubscriptionLive(subscription.id);
     refreshed = true;
