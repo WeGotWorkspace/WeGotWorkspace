@@ -58,5 +58,28 @@
     "workspace-shell -> login-core": 1,
     "workspace-shell -> meet-core": 3,
     "workspace-shell -> notifications-core": 1
-  }
+  },
+  "twoWayPairs": [
+    "app-sidebar <-> settings-core",
+    "calendar-core <-> tasks-core",
+    "chat-ui <-> meet-core",
+    "docs-core <-> drive-core",
+    "docs-core <-> file-preview",
+    "docs-core <-> share-ui",
+    "docs-core <-> text-editor-core",
+    "drive-core <-> file-preview",
+    "drive-core <-> share-ui",
+    "drive-core <-> text-editor-core",
+    "login-core <-> share-ui",
+    "login-core <-> workspace-shell",
+    "meet-core <-> notifications-core",
+    "meet-core <-> user-avatar",
+    "meet-core <-> workspace-shell",
+    "note-detail-view <-> notes-core",
+    "notes-core <-> tasks-core",
+    "notice-bar <-> tasks-core",
+    "notifications-core <-> view-header",
+    "settings-core <-> sidebar-segmented-new-menu",
+    "text-editor-core <-> user-avatar"
+  ]
 }
