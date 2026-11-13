@@ -9,7 +9,7 @@ import {
   ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed,
   reconcileContactsSnapshot,
-} from "@/lib/offline/contacts-jmap-inbound";
+} from "@/lib/offline/contacts/contacts-jmap-inbound";
 import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 
 /** Inbound `/changes` poll while push is down. */

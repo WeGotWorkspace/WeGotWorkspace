@@ -2,11 +2,11 @@ import "fake-indexeddb/auto";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/offline/contacts-offline-store", () => ({
+vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   listFailedContactOutbox: vi.fn(),
 }));
 
-import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
+import { listFailedContactOutbox } from "@/lib/offline/contacts/contacts-offline-store";
 import { useContactsFailedSync } from "@/contacts-core/src/use-contacts-failed-sync";
 
 describe("useContactsFailedSync", () => {

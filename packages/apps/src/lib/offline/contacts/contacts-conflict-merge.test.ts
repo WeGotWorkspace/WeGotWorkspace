@@ -6,7 +6,7 @@ import {
   buildMergedContactEditDraft,
   buildResolvedContactPatch,
   defaultContactConflictFieldChoices,
-} from "@/lib/offline/contacts-conflict-merge";
+} from "@/lib/offline/contacts/contacts-conflict-merge";
 
 const baseCard = {
   id: "jane-doe",

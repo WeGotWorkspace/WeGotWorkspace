@@ -12,7 +12,7 @@ import {
   startContactsColdDownload,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
@@ -92,7 +92,7 @@ import {
   loadContactsBootstrapHybrid,
   readContactsCacheForBoot,
   refreshCachedContacts,
-} from "@/lib/offline/contacts-hybrid-operations";
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 
 type LiveOptions = NonNullable<Parameters<typeof fetchContactsLiveBootstrap>[0]>;
 

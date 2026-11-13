@@ -35,7 +35,7 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
+vi.mock("@/lib/offline/contacts/contacts-hybrid-operations", () => ({
   createHybridContactsOperations: vi.fn(),
   getContactsSyncRunner: () => ({ flush: mockFlush }),
   loadContactsBootstrapForBoot: vi.fn(),
@@ -65,11 +65,11 @@ vi.mock("@/hooks/use-app-toast", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/contacts-offline-store", () => ({
+vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("@/lib/offline/contacts-jmap-inbound", () => ({
+vi.mock("@/lib/offline/contacts/contacts-jmap-inbound", () => ({
   ingestRemoteContactCard: vi.fn(),
   ingestRemoteContactCardDestroyed: vi.fn(),
   ingestRemoteAddressBook: vi.fn(),
@@ -205,7 +205,8 @@ describe("useContactsAPI", () => {
 
     renderHook(() => useContactsAPI(source, { onSyncConflict }));
 
-    const { reportContactsSyncConflicts } = await import("@/lib/offline/contacts-sync-conflicts");
+    const { reportContactsSyncConflicts } =
+      await import("@/lib/offline/contacts/contacts-sync-conflicts");
     reportContactsSyncConflicts(["jane-doe"]);
 
     expect(onSyncConflict).toHaveBeenCalledWith(["jane-doe"]);

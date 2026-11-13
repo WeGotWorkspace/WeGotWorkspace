@@ -11,10 +11,10 @@ import {
   readContactsBootstrapFromCache,
   removeOutboxMutation,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { isPermanentlyFailedOutboxRow } from "@/lib/offline/core/outbox-store";
-import { flushContactsOutbox } from "@/lib/offline/contacts-outbox-flush";
+import { flushContactsOutbox } from "@/lib/offline/contacts/contacts-outbox-flush";
 
 const username = "bob";
 

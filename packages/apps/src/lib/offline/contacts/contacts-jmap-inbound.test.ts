@@ -6,7 +6,7 @@ import {
   ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed,
   reconcileContactsSnapshot,
-} from "@/lib/offline/contacts-jmap-inbound";
+} from "@/lib/offline/contacts/contacts-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
 const upsert = vi.fn();
@@ -21,7 +21,7 @@ const readCache = vi.fn<
 >();
 const reportConflicts = vi.fn();
 
-vi.mock("@/lib/offline/contacts-offline-store", () => ({
+vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   listPendingContactCardIds: () => listPending(),
   upsertContactCardInCache: (...args: unknown[]) => upsert(...args),
   removeContactCardFromCache: (...args: unknown[]) => remove(...args),
@@ -31,7 +31,7 @@ vi.mock("@/lib/offline/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: () => readCache(),
 }));
 
-vi.mock("@/lib/offline/contacts-sync-conflicts", () => ({
+vi.mock("@/lib/offline/contacts/contacts-sync-conflicts", () => ({
   reportContactsSyncConflicts: (...args: unknown[]) => reportConflicts(...args),
 }));
 

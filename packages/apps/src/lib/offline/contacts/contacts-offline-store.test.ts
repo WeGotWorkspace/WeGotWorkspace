@@ -12,7 +12,7 @@ import {
   readContactsBootstrapFromCache,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 
 const username = "bob";
 
