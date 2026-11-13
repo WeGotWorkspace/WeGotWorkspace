@@ -68,6 +68,18 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $this->assertSame('NEEDS-ACTION', $this->guestStatus());
     }
 
+    public function test_reply_arriving_before_the_first_poll_is_applied(): void
+    {
+        $this->server->messages = [1 => $this->plainMessage()];
+        $mailbox = $this->connect();
+        $this->server->messages[2] = $this->replyMessage();
+
+        $this->poller()->poll($mailbox);
+
+        $this->assertSame('ACCEPTED', $this->guestStatus());
+        $this->assertSame(2, $mailbox->fresh()?->last_uid);
+    }
+
     public function test_new_reply_is_applied_and_the_cursor_moves(): void
     {
         $this->server->messages = [1 => $this->plainMessage()];
@@ -246,7 +258,11 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
             'security' => 'ssl',
             'login' => 'bob@example.test',
             'folder' => 'INBOX',
-        ], 'mailbox-pass', $trusted);
+        ], 'mailbox-pass', [
+            'trustedServerId' => $trusted,
+            'uidValidity' => $this->server->uidValidity,
+            'highestUid' => $this->server->messages === [] ? 0 : max(array_keys($this->server->messages)),
+        ]);
     }
 
     private function poller(): ImipMailboxPoller

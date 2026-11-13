@@ -70,8 +70,8 @@ final class ImipMailboxPayload
         }
         $loginPassword = $password ?? $this->settings->password($existing);
 
-        $trusted = $this->connectionTest($username, $fields, $loginPassword);
-        $this->settings->save($username, $fields, $password, $trusted);
+        $test = $this->connectionTest($username, $fields, $loginPassword);
+        $this->settings->save($username, $fields, $password, $test);
 
         return $this->show($username);
     }
@@ -94,8 +94,8 @@ final class ImipMailboxPayload
             'login' => (string) $mailbox->login,
             'folder' => (string) $mailbox->folder,
         ];
-        $trusted = $this->connectionTest($username, $fields, $this->settings->password($mailbox));
-        $this->settings->save($username, $fields, null, $trusted);
+        $test = $this->connectionTest($username, $fields, $this->settings->password($mailbox));
+        $this->settings->save($username, $fields, null, $test);
 
         return $this->show($username);
     }
@@ -107,8 +107,9 @@ final class ImipMailboxPayload
 
     /**
      * @param  array{host: string, port: int, security: string, login: string, folder: string}  $fields
+     * @return array{trustedServerId: string, uidValidity: int, highestUid: int}
      */
-    private function connectionTest(string $username, array $fields, string $password): string
+    private function connectionTest(string $username, array $fields, string $password): array
     {
         $key = 'calendar-reply-mailbox-test:user:'.$username;
         if (RateLimiter::tooManyAttempts($key, self::TESTS_PER_WINDOW)) {
@@ -129,7 +130,7 @@ final class ImipMailboxPayload
                 $fields['login'],
                 $password,
                 $fields['folder'],
-            )['trustedServerId'];
+            );
         } catch (ImapException $exception) {
             throw new ApiHttpException(422, $this->failureSentence($exception->errorCode), $exception->errorCode);
         }

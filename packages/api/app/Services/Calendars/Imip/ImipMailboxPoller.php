@@ -103,9 +103,11 @@ class ImipMailboxPoller
 
     /**
      * Log in, open the folder and learn the receiving server id, without
-     * reading any reply. Used when the settings are saved.
+     * reading any reply. Used when the settings are saved. Also returns the
+     * folder's current UIDVALIDITY and highest UID, so a new mailbox reads
+     * mail that arrives after this moment, not after its first poll.
      *
-     * @return array{trustedServerId: string}
+     * @return array{trustedServerId: string, uidValidity: int, highestUid: int}
      */
     public function test(string $host, int $port, string $security, string $login, string $password, string $folder): array
     {
@@ -113,11 +115,13 @@ class ImipMailboxPoller
         try {
             $client->connect($this->endpoints->resolve($host, $port, $security), $login, $password);
             $state = $client->examine($folder);
+            $highest = $client->highestUid($state['exists'], $state['uidnext']);
 
-            return ['trustedServerId' => $this->learnTrustedServerId(
-                $client,
-                $client->highestUid($state['exists'], $state['uidnext']),
-            )];
+            return [
+                'trustedServerId' => $this->learnTrustedServerId($client, $highest),
+                'uidValidity' => $state['uidvalidity'],
+                'highestUid' => $highest,
+            ];
         } finally {
             $client->logout();
         }

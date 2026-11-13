@@ -66,6 +66,9 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             ->assertJsonPath('mailbox.active', true)
             ->assertJsonPath('mailbox.lastError', null);
         $this->assertStringNotContainsString('mailbox-pass', (string) $response->getContent());
+        $row = CalendarReplyMailbox::query()->find('bob');
+        $this->assertSame(1, $row?->uidvalidity, 'reading starts at the connection, not at the first poll');
+        $this->assertSame(1, $row?->last_uid);
         $this->assertStringNotContainsString(
             'mailbox-pass',
             (string) $this->withBearer($this->token)->getJson('/api/v1/calendars/reply-mailbox')->getContent(),
