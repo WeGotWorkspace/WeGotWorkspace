@@ -11,13 +11,16 @@ import {
 import {
   buildResolvedContactPatch,
   type ContactConflictFieldChoices,
-} from "@/lib/offline/contacts-conflict-merge";
+} from "@/lib/offline/contacts/contacts-conflict-merge";
 import {
   contactsOutboxCardId,
   removeContactCardFromCache,
   upsertContactCardInCache,
-} from "@/lib/offline/contacts-offline-store";
-import { flushContactsOutbox, type OutboxFlushResult } from "@/lib/offline/contacts-outbox-flush";
+} from "@/lib/offline/contacts/contacts-offline-store";
+import {
+  flushContactsOutbox,
+  type OutboxFlushResult,
+} from "@/lib/offline/contacts/contacts-outbox-flush";
 
 function cardState(card: { state?: string }): string | undefined {
   return card.state;

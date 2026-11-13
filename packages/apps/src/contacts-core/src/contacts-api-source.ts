@@ -8,7 +8,7 @@ import type { ContactsAPIOperations } from "@/lib/models/contacts-types";
 import {
   createHybridContactsOperations,
   loadContactsBootstrapHybrid,
-} from "@/lib/offline/contacts-hybrid-operations";
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
 
 export type ContactsApiSource = {

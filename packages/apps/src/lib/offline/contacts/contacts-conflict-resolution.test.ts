@@ -8,12 +8,12 @@ import {
   listOutboxMutations,
   readContactsBootstrapFromCache,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import {
   resolveConflictFieldMerge,
   resolveConflictKeepLocal,
   resolveConflictUseServer,
-} from "@/lib/offline/contacts-conflict-resolution";
+} from "@/lib/offline/contacts/contacts-conflict-resolution";
 
 const username = "bob";
 

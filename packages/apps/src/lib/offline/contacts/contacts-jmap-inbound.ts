@@ -8,8 +8,8 @@ import {
   removeContactCardFromCache,
   upsertAddressBookInCache,
   upsertContactCardInCache,
-} from "@/lib/offline/contacts-offline-store";
-import { reportContactsSyncConflicts } from "@/lib/offline/contacts-sync-conflicts";
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { reportContactsSyncConflicts } from "@/lib/offline/contacts/contacts-sync-conflicts";
 
 async function pendingSet(username: string): Promise<Set<string>> {
   return new Set(await listPendingContactCardIds(username));

@@ -8,7 +8,7 @@ import {
   readContactsBootstrapFromCache,
   readSyncToken,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
@@ -101,7 +101,7 @@ import {
   createHybridContactsOperations,
   fetchContactsHybridBootstrap,
   loadContactsBootstrapForBoot,
-} from "@/lib/offline/contacts-hybrid-operations";
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 
 describe("createHybridContactsOperations", () => {
   beforeEach(async () => {

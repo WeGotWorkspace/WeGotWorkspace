@@ -52,10 +52,13 @@ import {
   writeAddressBooksSyncToken,
   writeContactsBootstrapToCache,
   writeSyncToken,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
-import { flushContactsOutbox, type OutboxFlushResult } from "@/lib/offline/contacts-outbox-flush";
-import { reportContactsSyncConflicts } from "@/lib/offline/contacts-sync-conflicts";
+import {
+  flushContactsOutbox,
+  type OutboxFlushResult,
+} from "@/lib/offline/contacts/contacts-outbox-flush";
+import { reportContactsSyncConflicts } from "@/lib/offline/contacts/contacts-sync-conflicts";
 import { readOfflineContactsUsername } from "@/lib/offline/offline-session";
 import {
   ConnectivitySyncRunner,

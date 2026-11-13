@@ -12,13 +12,13 @@ import {
   loadContactsBootstrapForBoot,
   readContactsCacheForBoot,
   refreshCachedContacts,
-} from "@/lib/offline/contacts-hybrid-operations";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
+import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
 import {
   readOfflineContactsUsername,
   resolveContactsOfflineUsername,
 } from "@/lib/offline/offline-session";
-import { setContactsSyncConflictListener } from "@/lib/offline/contacts-sync-conflicts";
+import { setContactsSyncConflictListener } from "@/lib/offline/contacts/contacts-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";

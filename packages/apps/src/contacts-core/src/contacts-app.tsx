@@ -6,15 +6,15 @@ import {
   resolveConflictFieldMerge,
   resolveConflictKeepLocal,
   resolveConflictUseServer,
-} from "@/lib/offline/contacts-conflict-resolution";
+} from "@/lib/offline/contacts/contacts-conflict-resolution";
 import {
   buildContactConflictFieldRows,
   defaultContactConflictFieldChoices,
   type ContactConflictFieldChoices,
   type ContactConflictFieldRow,
-} from "@/lib/offline/contacts-conflict-merge";
+} from "@/lib/offline/contacts/contacts-conflict-merge";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
-import { contactsOutboxCardId } from "@/lib/offline/contacts-offline-store";
+import { contactsOutboxCardId } from "@/lib/offline/contacts/contacts-offline-store";
 import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
 import type { ContactsApiSource } from "@/contacts-core/src/contacts-api-source";
 import { ContactsConflictDialog } from "@/contacts-core/src/contacts-conflict-dialog";

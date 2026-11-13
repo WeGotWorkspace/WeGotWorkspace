@@ -1,4 +1,4 @@
-import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
+import { listFailedContactOutbox } from "@/lib/offline/contacts/contacts-offline-store";
 import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
 
 /**
