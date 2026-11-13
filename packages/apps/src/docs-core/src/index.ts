@@ -37,3 +37,4 @@ export {
   type DocsRouteSearch,
 } from "@/lib/files/docs-route-search";
 export { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
+export { useDocsDriveHandoff } from "@/docs-core/src/use-docs-drive-handoff";
