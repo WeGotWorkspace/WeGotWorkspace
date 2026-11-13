@@ -7,6 +7,7 @@ import type {
 } from "@/lib/models/meet-types";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
 import { isWireDmChannel, meetChannelFromWire, type WgwChatChannel } from "@/lib/api/wgw/meet-chat";
+import { readMirrorSession, writeMirrorSession } from "@/lib/offline/core/mirror-cache";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   enqueueOutboxMutation,
@@ -491,8 +492,8 @@ export async function writeMeetChatBootstrapMetaToCache(
   rtc: MeetRtcSettings,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await db.meta.put({ key: META_SESSION, value: JSON.stringify(session) });
-  await db.meta.put({ key: META_RTC, value: JSON.stringify(rtc) });
+  await writeMirrorSession(db, META_SESSION, session);
+  await writeMirrorSession(db, META_RTC, rtc);
   rememberOfflineMeetChatUsername(username);
 }
 
@@ -534,17 +535,17 @@ export async function readMeetChatBootstrapFromCache(
   username: string,
 ): Promise<MeetChatCachedBootstrap | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const sessionRow = await db.meta.get(META_SESSION);
-  const rtcRow = await db.meta.get(META_RTC);
-  if (!sessionRow?.value || !rtcRow?.value) return null;
+  const session = await readMirrorSession<WorkspaceSession>(db, META_SESSION);
+  const rtc = await readMirrorSession<MeetRtcSettings>(db, META_RTC);
+  if (!session || !rtc) return null;
   const wireChannels = await listCachedChatChannels(username);
   const directory = parseJsonMeta<CollectionSharePrincipal[]>(
     (await db.meta.get(META_DIRECTORY))?.value,
   );
   const groups = parseJsonMeta<MeetDirectoryGroup[]>((await db.meta.get(META_GROUPS))?.value);
   return {
-    session: JSON.parse(sessionRow.value) as WorkspaceSession,
-    rtc: JSON.parse(rtcRow.value) as MeetRtcSettings,
+    session,
+    rtc,
     channels: wireChannels.filter((row) => !isWireDmChannel(row)).map(meetChannelFromWire),
     messages: withSyncStates(
       await listCachedChatMessages(username),
