@@ -3,18 +3,18 @@ import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status
 export const NOTES_ACCESS_LOST_MESSAGE =
   "You no longer have access to this note. Unsaved edits were not stored.";
 
+/**
+ * HTTP status of a Notes write failure, from the typed error only. Every
+ * request error on the Notes path carries `status` (`ApiError`,
+ * `CollabHttpError`, `JmapRequestError`) or is a JMAP set error; the message
+ * text is never read.
+ */
 export function persistHttpStatus(error: unknown): number | undefined {
-  const status = httpStatusFromFlushError(error);
-  if (typeof status === "number") return status;
-  const message = error instanceof Error ? error.message : String(error);
-  const match = /\((\d{3})\)/.exec(message);
-  return match ? Number(match[1]) : undefined;
+  return httpStatusFromFlushError(error);
 }
 
 export function isNotesPersistForbidden(error: unknown): boolean {
-  if (persistHttpStatus(error) === 403) return true;
-  const message = error instanceof Error ? error.message : String(error);
-  return /\(403\)/.test(message);
+  return persistHttpStatus(error) === 403;
 }
 
 /**

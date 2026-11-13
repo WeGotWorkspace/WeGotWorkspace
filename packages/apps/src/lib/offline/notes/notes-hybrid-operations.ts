@@ -44,7 +44,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes/notes-offline-store";
-import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistGone, persistHttpStatus } from "@/lib/offline/notes/notes-persist-access";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
   baseUpdatedAt,
