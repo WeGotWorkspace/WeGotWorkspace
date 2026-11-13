@@ -1,7 +1,11 @@
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import {
   createCalendarEventLive,
   createCalendarJmapClient,
@@ -172,7 +176,7 @@ export function createMockCalendarApiSource(): CalendarApiSource {
 export function createDefaultCalendarApiSource(): CalendarApiSource {
   return createWorkspaceSource<CalendarApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: createMockCalendarApiSource,
+    createMockSource: mocksInBuild ? createMockCalendarApiSource : mocksNotInBuild,
     createLiveSource: createHybridCalendarApiSource,
   });
 }

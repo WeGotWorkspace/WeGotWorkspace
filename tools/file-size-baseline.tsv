@@ -9,4 +9,3 @@ packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	833
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/TimeLine/TimeLine.ts	2318	docs/architecture/calendar-react-lit.md
 packages/apps/src/lib/calendar-elements/controllers/TimedEventInteractionController.ts	1145	docs/architecture/calendar-react-lit.md
-packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx	852	grandfathered

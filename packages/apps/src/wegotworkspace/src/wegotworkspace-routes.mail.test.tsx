@@ -1,7 +1,7 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 function mockDomApis() {
   Object.defineProperty(window, "matchMedia", {
@@ -29,7 +29,7 @@ describe("unshipped mail routes", () => {
     "redirects %s to home when the shell is served from cache",
     async (path) => {
       const history = createMemoryHistory({ initialEntries: [path] });
-      const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+      const router = createMockWeGotWorkspaceRouter(history);
       render(<RouterProvider router={router} />);
 
       await waitFor(() => {

@@ -2,6 +2,7 @@
 import "@/lib/random-uuid-polyfill";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { cacheLoadedLazyAssets } from "@/lib/offline/cache-loaded-lazy-assets";
 import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";
 import { rememberLaunchPath } from "@/notifications-core/src/push-scope";
 import { syncDocumentTheme } from "@/lib/theme-preference";
@@ -21,6 +22,8 @@ if (
     hostname: location.hostname,
   })
 ) {
+  // Not after `serviceWorker.ready`: a cold load fetches its app chunk before then.
+  cacheLoadedLazyAssets();
   void import("virtual:pwa-register").then(({ registerSW }) => {
     const isLocalPreview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 

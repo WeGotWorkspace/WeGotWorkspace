@@ -8,6 +8,7 @@ import {
   docsSyncMatrixSpecPattern,
   liveTierSpecPattern,
   notesSyncMatrixSpecPattern,
+  pwaTierSpecPattern,
   relayTierSpecPattern,
   tasksSyncMatrixSpecPattern,
 } from "./e2e/live-tier.mjs";
@@ -57,6 +58,7 @@ export default defineConfig({
   testIgnore: [
     liveTierSpecPattern,
     chaosTierSpecPattern,
+    pwaTierSpecPattern,
     relayTierSpecPattern,
     notesSyncMatrixSpecPattern,
     tasksSyncMatrixSpecPattern,

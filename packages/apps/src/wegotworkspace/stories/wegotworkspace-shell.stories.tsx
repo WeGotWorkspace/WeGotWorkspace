@@ -69,3 +69,18 @@ export const WegotworkspaceApp: Story = {
     },
   },
 };
+
+export const WegotworkspaceMockRoutes: Story = {
+  name: "WegotworkspaceMockRoutes",
+  render: () => <WeGotWorkspace initialPath="/tasks" />,
+  parameters: {
+    // Same mock shell as the stories above; only the demo-route module is new (#1628).
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story:
+          "Demo routes (`wegotworkspace-mock-routes.tsx`) that the mock shell passes to the router. The live app never imports them.",
+      },
+    },
+  },
+};
