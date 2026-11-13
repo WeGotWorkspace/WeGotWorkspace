@@ -45,7 +45,7 @@ vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
 
 let mockReconnectSyncing = false;
 
-vi.mock("@/lib/offline/use-offline-reconnect-flush", () => ({
+vi.mock("@/lib/offline/core/use-offline-reconnect-flush", () => ({
   useOfflineReconnectFlush: () => mockReconnectSyncing,
 }));
 

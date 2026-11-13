@@ -13,11 +13,11 @@ import {
   subscribeMeetChatCacheChanged,
 } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { readMeetChatBootstrapFromCache } from "@/lib/offline/meet-chat/meet-chat-offline-store";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import {
   readOfflineMeetChatUsername,
   resolveMeetChatOfflineUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import type { MeetAppBootstrap, MeetUIData } from "@/lib/models/meet-types";
 import {
   createDefaultMeetChatApiSource,

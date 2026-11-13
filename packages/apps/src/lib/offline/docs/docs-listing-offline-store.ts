@@ -5,7 +5,7 @@ import {
   DOCS_HOME_SOURCES,
   sortDocsHomeResults,
 } from "@/lib/files/docs-home-listing";
-import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineDocsUsername } from "@/lib/offline/core/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readMeta } from "@/lib/offline/core/meta-store";
 import {

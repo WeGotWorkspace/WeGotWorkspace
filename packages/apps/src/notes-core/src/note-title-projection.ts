@@ -1,6 +1,6 @@
 import type { Note } from "@/lib/models/note";
 import { upsertNoteBodyPreviewInCache } from "@/lib/offline/notes-offline-store";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import { persistBestEffort } from "@/notes-core/src/notes-note-utils";
 import { enrichNote } from "@/lib/models/note-list-model";
 

@@ -5,7 +5,7 @@ import type {
   CalendarEventPatch,
   CalendarInfo,
 } from "@/lib/models/calendar-types";
-import { rememberOfflineCalendarsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   parseMirrorRows,

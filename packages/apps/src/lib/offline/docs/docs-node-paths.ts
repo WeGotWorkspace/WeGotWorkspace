@@ -1,6 +1,6 @@
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
-import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineDocsUsername } from "@/lib/offline/core/offline-session";
 
 /**
  * FileNode id ↔ path for Docs this browser opened online (#1751). The Drive

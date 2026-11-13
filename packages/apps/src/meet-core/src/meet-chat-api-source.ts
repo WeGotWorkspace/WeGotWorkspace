@@ -6,7 +6,7 @@ import {
   createHybridMeetChatOperations,
   loadMeetChatBootstrapHybrid,
 } from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
-import { resolveMeetChatOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveMeetChatOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { MeetAppBootstrap, MeetChatOperations } from "@/lib/models/meet-types";
 
 export type MeetChatApiSource = {

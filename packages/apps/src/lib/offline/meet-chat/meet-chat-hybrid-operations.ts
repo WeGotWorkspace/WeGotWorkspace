@@ -69,7 +69,7 @@ import {
   flushMeetChatOutbox,
   type MeetChatOutboxFlushResult,
 } from "@/lib/offline/meet-chat/meet-chat-outbox-flush";
-import { readOfflineMeetChatUsername } from "@/lib/offline/offline-session";
+import { readOfflineMeetChatUsername } from "@/lib/offline/core/offline-session";
 
 export type MeetChatAuthor = {
   id: string;

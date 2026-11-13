@@ -34,7 +34,7 @@ vi.mock("@/lib/api/wgw/http", async () => {
   };
 });
 
-vi.mock("@/lib/offline/offline-session", () => ({
+vi.mock("@/lib/offline/core/offline-session", () => ({
   readOfflineMeetChatUsername: () => "demo@example.com",
   resolveMeetChatOfflineUsername: (username: string | undefined) => username ?? null,
 }));
