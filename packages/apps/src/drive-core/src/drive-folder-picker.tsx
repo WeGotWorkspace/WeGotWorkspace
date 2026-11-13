@@ -5,7 +5,8 @@ import {
   buildDriveFolderPickerBreadcrumbs,
   DRIVE_FOLDER_PICKER_ROOT,
 } from "@/drive-core/src/drive-breadcrumbs";
-import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
+import { DriveGridView } from "@/drive-core/src/drive-browser";
+import { DriveListView } from "@/drive-core/src/drive-list-view";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import {
