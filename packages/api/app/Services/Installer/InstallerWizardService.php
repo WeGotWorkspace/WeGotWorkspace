@@ -447,11 +447,10 @@ final class InstallerWizardService
                 'enable_calendars' => true,
                 'enable_contacts' => true,
                 'show_browser_ui' => false,
-                'checks' => $this->env->checkAll('sqlite'),
+                'checks' => [],
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
                 'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
-                'data_dir' => $this->dataDirs->describe($this->wizardState()),
             ];
         }
 
