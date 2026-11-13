@@ -150,6 +150,26 @@ describe("flushMeetChatOutbox", () => {
     expect(await listPendingChatMessageIds(username)).toEqual([]);
   });
 
+  it("sends a reaction queued behind a re-keyed send to the new id", async () => {
+    await upsertChatMessageInCache(username, pendingMessage(ULID_A, "taken id"), true);
+    await enqueueChatSend(username, {
+      messageId: ULID_A,
+      channelId: "chat-general",
+      body: "taken id",
+      parentId: null,
+    });
+    await enqueueChatReactionToggle(username, { messageId: ULID_A, emoji: "👍" });
+    vi.mocked(sendChatMessage).mockImplementation(async (_channelId, body) =>
+      wireMessage(ULID_B, body.body),
+    );
+    vi.mocked(toggleChatReaction).mockImplementation(async (id) => wireMessage(id, "taken id"));
+
+    await flushMeetChatOutbox(username);
+
+    expect(toggleChatReaction).toHaveBeenCalledWith(ULID_B, "👍");
+    expect(await listMeetChatOutbox(username)).toEqual([]);
+  });
+
   it("keeps failed rows queued with the error recorded and retries the same ULID", async () => {
     await upsertChatMessageInCache(username, pendingMessage(ULID_A, "retry me"), true);
     await enqueueChatSend(username, {

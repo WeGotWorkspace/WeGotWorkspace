@@ -119,8 +119,9 @@ function chatMessagesBinding(
   return {
     readToken: (scope) => readMeetChatSyncToken(username, scope),
     writeToken: async (scope, token) => {
-      // Every remembered row has been ingested (or skipped for a queued write
-      // that holds the token, in which case this is not called).
+      // The cursor is the newest row this run saw. A re-list can show rows the
+      // delta did not name and that were not ingested; a later run that misses
+      // one on `since` re-lists the channel, so it is picked up then.
       const newest = [...rows.keys()].reduce<string | null>(
         (max, id) => (max === null || id > max ? id : max),
         null,

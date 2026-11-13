@@ -8,11 +8,14 @@ import {
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { getOutboxMutation, rebaseQueuedEntityRows } from "@/lib/offline/core/outbox-store";
+import { MEET_CHAT_DOMAIN } from "@/lib/offline/meet-chat/meet-chat-schema";
 import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   listMeetChatOutbox,
   markOutboxError,
+  meetChatOutboxMessageId,
   removeChatMessageFromCache,
   removeOutboxMutation,
   uiChatMessageForCache,
@@ -36,6 +39,29 @@ export type MeetChatOutboxFlushResult = {
 };
 
 /**
+ * A send the server answered with another id: the edits, deletes and
+ * reactions queued behind it name the old id, so they follow the new one
+ * instead of getting a 404 and being dropped.
+ */
+async function followReKeyedSend(
+  username: string,
+  sentRowId: string,
+  localId: string,
+  serverId: string,
+): Promise<void> {
+  await rebaseQueuedEntityRows(username, {
+    domain: MEET_CHAT_DOMAIN,
+    entityId: localId,
+    sentRowId,
+    entityIdFromRow: meetChatOutboxMessageId,
+    rebase: (queued) => ({
+      ...queued,
+      payload: JSON.stringify({ ...JSON.parse(queued.payload), messageId: serverId }),
+    }),
+  });
+}
+
+/**
  * Replay queued chat mutations oldest-first. Replay is idempotent by contract:
  *
  * - `send` retries carry the same client ULID; the server returns the existing
@@ -51,7 +77,10 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
   let flushed = 0;
   let failed = 0;
 
-  for (const row of rows) {
+  for (const listed of rows) {
+    // Re-read: a send the server re-keyed rebases the rows queued behind it.
+    const row = await getOutboxMutation(username, listed.id);
+    if (!row) continue;
     try {
       if (row.op === "send") {
         const payload = JSON.parse(row.payload) as MeetChatSendOutboxPayload;
@@ -68,6 +97,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
           // person's reach already has it; then the answer carries a fresh id.
           if (saved.id !== payload.messageId) {
             await removeChatMessageFromCache(username, payload.messageId);
+            await followReKeyedSend(username, row.id, payload.messageId, saved.id);
           }
           await upsertChatMessageInCache(
             username,
