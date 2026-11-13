@@ -25,16 +25,12 @@
     "notifications-core -> meet-core": 1,
     "rescue-ui -> notes-core": 2,
     "tasks-core -> calendar-core": 2,
-    "tasks-core -> notes-core": 2,
-    "text-editor-core -> docs-core": 29,
-    "text-editor-core -> drive-core": 2
+    "tasks-core -> notes-core": 2
   },
   "twoWayPairs": [
     "calendar-core <-> tasks-core",
     "docs-core <-> drive-core",
     "docs-core <-> file-preview",
-    "docs-core <-> text-editor-core",
-    "drive-core <-> text-editor-core",
     "note-detail-view <-> notes-core",
     "notes-core <-> tasks-core"
   ]
