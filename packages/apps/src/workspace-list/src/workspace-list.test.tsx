@@ -258,4 +258,47 @@ describe("WorkspaceList", () => {
     rerender(view(next));
     expect(renders).toEqual(["i-5"]);
   });
+
+  it("observes the rows that replace the old ones at the same indexes", () => {
+    const observed = new Set<Element>();
+    class FakeResizeObserver {
+      observe(target: Element) {
+        observed.add(target);
+      }
+      unobserve(target: Element) {
+        observed.delete(target);
+      }
+      disconnect() {
+        observed.clear();
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    const view = (list: Item[]) => (
+      <Scroller>
+        <WorkspaceList
+          items={list}
+          getKey={getKey}
+          renderItem={renderItem}
+          estimateSize={estimateSize}
+          isTouch={false}
+        />
+      </Scroller>
+    );
+    const { container, rerender } = render(view(makeItems(1000)));
+    const rowRoots = () => {
+      const rows = container.querySelector("[data-list-item-id]")!.parentElement!;
+      return Array.from(rows.children).filter(
+        (child) => !child.hasAttribute("data-workspace-list-spacer"),
+      );
+    };
+    const before = rowRoots();
+    expect(before.length).toBeGreaterThan(0);
+    expect(before.every((row) => observed.has(row))).toBe(true);
+
+    rerender(view(makeItems(1000).map((item) => ({ ...item, id: `other-${item.id}` }))));
+    const after = rowRoots();
+    expect(after.length).toBe(before.length);
+    for (const row of after) expect(observed.has(row)).toBe(true);
+    for (const row of before) expect(observed.has(row)).toBe(false);
+  });
 });
