@@ -1,4 +1,4 @@
-import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineDocsUsername } from "@/lib/offline/core/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import {

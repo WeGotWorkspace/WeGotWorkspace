@@ -3,6 +3,8 @@ import {
   listOutboxMutationsForDomain,
   markOutboxError,
   removeOutboxMutation,
+  sendChangedRowAgain,
+  type SentOutboxSettlement,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 
@@ -12,6 +14,21 @@ export type OutboxFlushFailure = {
   error: unknown;
   message: string;
   status: number | undefined;
+};
+
+/**
+ * What `send` may answer instead of resolving plainly: `"handled"` when the
+ * binding already settled, removed or marked the row itself (e.g. through
+ * `settleSentOutboxMutation`, or a refusal it records its own way).
+ */
+export type OutboxSendOutcome = void | "handled";
+
+export type OutboxFlushContext = {
+  /**
+   * A row that changed while it was sent (`settleSentOutboxMutation` answered
+   * `changed`) is sent again later in this flush, up to `MAX_RESENDS_PER_FLUSH`.
+   */
+  resend: (settlement: SentOutboxSettlement) => void;
 };
 
 /**
@@ -25,25 +42,41 @@ export type OutboxFlushFailure = {
 export type OutboxFlushBinding<TPayload> = {
   domain: string;
   /**
+   * Puts the listed rows (oldest first) in the order to send them, e.g.
+   * creates first so later rows can follow their server ids.
+   */
+  order?: (rows: OfflineOutboxRow[]) => OfflineOutboxRow[];
+  /**
    * Runs before the row is read. Answers the row to send (it may rewrite it),
    * or null to leave the row as it is for a later flush.
    */
   prepare?: (row: OfflineOutboxRow) => Promise<OfflineOutboxRow | null>;
-  /** The row's payload, or null when it cannot be read: such a row is dropped. */
-  parse: (row: OfflineOutboxRow) => TPayload | null;
-  /** Sends one payload; resolving means the server took it. */
-  send: (payload: TPayload, row: OfflineOutboxRow) => Promise<void>;
   /**
-   * Sees every failed send before the row records it, e.g. to collect the
-   * paths whose write hit a precondition.
+   * The row's payload, or null when it cannot be read: such a row is dropped.
+   * A parse that throws counts as a failed send instead.
    */
-  onFailure?: (failure: OutboxFlushFailure) => void | Promise<void>;
+  parse: (row: OfflineOutboxRow) => TPayload | null;
+  /**
+   * Sends one payload; resolving means the server took it and the runner
+   * removes the row. Answer `"handled"` when the binding finished the row itself.
+   */
+  send: (
+    payload: TPayload,
+    row: OfflineOutboxRow,
+    context: OutboxFlushContext,
+  ) => Promise<OutboxSendOutcome>;
+  /**
+   * Sees every failed send. Answer true when the binding handled the row
+   * itself (e.g. removed it, or recorded a conflict); otherwise the runner
+   * records the error and status on the row.
+   */
+  onFailure?: (failure: OutboxFlushFailure) => boolean | void | Promise<boolean | void>;
 };
 
 export type OutboxFlushCounts = {
   /** Rows the server took (and that left the outbox). */
   flushed: number;
-  /** Rows whose send failed; each keeps its error and status for the notices. */
+  /** Rows whose send failed; unless `onFailure` handled it, each keeps its error and status for the notices. */
   failed: number;
 };
 
@@ -51,21 +84,27 @@ export async function runOutboxFlush<TPayload>(
   username: string,
   binding: OutboxFlushBinding<TPayload>,
 ): Promise<OutboxFlushCounts> {
-  const rows = await listOutboxMutationsForDomain(username, binding.domain);
+  const listed = await listOutboxMutationsForDomain(username, binding.domain);
+  const rows = binding.order ? binding.order(listed) : listed;
   const counts: OutboxFlushCounts = { flushed: 0, failed: 0 };
+  const resends = new Map<string, number>();
+  const context: OutboxFlushContext = {
+    resend: (settlement) => sendChangedRowAgain(rows, resends, settlement),
+  };
 
-  for (const listed of rows) {
-    const row = binding.prepare ? await binding.prepare(listed) : listed;
+  // `resend` appends to `rows`, so the loop reaches a row sent again.
+  for (const next of rows) {
+    const row = binding.prepare ? await binding.prepare(next) : next;
     if (!row) continue;
-    const payload = binding.parse(row);
-    if (payload === null) {
-      // Nothing can ever send it, and leaving it would hold the rows behind it.
-      await removeOutboxMutation(username, row.id);
-      continue;
-    }
 
     try {
-      await binding.send(payload, row);
+      const payload = binding.parse(row);
+      if (payload === null) {
+        // Nothing can ever send it, and leaving it would hold the rows behind it.
+        await removeOutboxMutation(username, row.id);
+        continue;
+      }
+      if ((await binding.send(payload, row, context)) === "handled") continue;
       await removeOutboxMutation(username, row.id);
       counts.flushed += 1;
     } catch (error) {
@@ -76,7 +115,7 @@ export async function runOutboxFlush<TPayload>(
         message: error instanceof Error ? error.message : String(error),
         status: httpStatusFromFlushError(error),
       };
-      await binding.onFailure?.(failure);
+      if ((await binding.onFailure?.(failure)) === true) continue;
       await markOutboxError(username, row.id, failure.message, failure.status);
     }
   }

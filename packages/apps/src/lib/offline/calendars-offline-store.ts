@@ -5,13 +5,20 @@ import type {
   CalendarEventPatch,
   CalendarInfo,
 } from "@/lib/models/calendar-types";
-import { rememberOfflineCalendarsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import {
+  parseMirrorRows,
+  readMirrorSession,
+  replaceMirrorRows,
+  writeMirrorSession,
+} from "@/lib/offline/core/mirror-cache";
 import {
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import { createLocalEntityId, outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   CALENDARS_DOMAIN,
@@ -57,8 +64,8 @@ export async function readCalendarBootstrapFromCache(
   username: string,
 ): Promise<CalendarAppBootstrap | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const sessionRow = await db.meta.get(META_SESSION);
-  if (!sessionRow?.value) return null;
+  const session = await readMirrorSession<CalendarAppBootstrap["session"]>(db, META_SESSION);
+  if (!session) return null;
 
   const calendars = await calendarsCalendarsTable(db).toArray();
   const events = await calendarsEventsTable(db).toArray();
@@ -71,13 +78,11 @@ export async function readCalendarBootstrapFromCache(
   const groupsLoaded = groups.length > 0 || (await db.meta.get(META_GROUPS_LOADED)) !== undefined;
 
   return {
-    session: JSON.parse(sessionRow.value) as CalendarAppBootstrap["session"],
+    session,
     data: {
-      calendars: calendars.map((row) => JSON.parse(row.data) as CalendarInfo),
-      events: events.map((row) => JSON.parse(row.data) as JmapCalendarEvent),
-      groups: groupsLoaded
-        ? groups.map((row) => JSON.parse(row.data) as CalendarDirectoryGroup)
-        : undefined,
+      calendars: parseMirrorRows<CalendarInfo>(calendars),
+      events: parseMirrorRows<JmapCalendarEvent>(events),
+      groups: groupsLoaded ? parseMirrorRows<CalendarDirectoryGroup>(groups) : undefined,
     },
   };
 }
@@ -118,10 +123,10 @@ export async function writeCalendarBootstrapToCache(
   const events = calendarsEventsTable(db);
   const calendars = calendarsCalendarsTable(db);
   const groups = calendarsGroupsTable(db);
-  await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+  await writeMirrorSession(db, META_SESSION, bootstrap.session);
   rememberOfflineCalendarsUsername(username);
-  await calendars.clear();
-  await calendars.bulkPut(
+  await replaceMirrorRows(
+    calendars,
     bootstrap.data.calendars.map((calendar) => ({
       id: calendar.id,
       data: JSON.stringify(calendar),
@@ -129,8 +134,8 @@ export async function writeCalendarBootstrapToCache(
   );
   // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
   if (bootstrap.data.groups !== undefined) {
-    await groups.clear();
-    await groups.bulkPut(
+    await replaceMirrorRows(
+      groups,
       bootstrap.data.groups.map((group, sortOrder) => ({
         slug: group.slug,
         sortOrder,
@@ -144,14 +149,13 @@ export async function writeCalendarBootstrapToCache(
   await db.transaction("rw", events, async () => {
     const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
     const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
-    const keepRows = (await events.toArray()).filter((row) =>
-      keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window),
+    await replaceMirrorRows(
+      events,
+      bootstrap.data.events.map((event) => eventRow(event, false)),
+      {
+        keep: (row) => keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window),
+      },
     );
-    await events.clear();
-    await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
-    if (keepRows.length > 0) {
-      await events.bulkPut(keepRows);
-    }
   });
 }
 
@@ -267,19 +271,11 @@ export async function listPendingCalendarEventIds(username: string): Promise<str
   return rows.map((row) => row.id);
 }
 
-export function calendarsOutboxEventId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== CALENDARS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      eventId?: string;
-      tempEventId?: string;
-      creationId?: string;
-    };
-    return payload.eventId ?? payload.tempEventId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const calendarsOutboxEventId = outboxEntityIdReader(CALENDARS_DOMAIN, [
+  "eventId",
+  "tempEventId",
+  "creationId",
+]);
 
 export async function enqueueCoalescedCalendarEventUpdate(
   username: string,
@@ -321,9 +317,9 @@ export async function discardUnsentCalendarEvent(
 }
 
 export function createTempCalendarEventId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId();
 }
 
 export function createTempCalendarId(): string {
-  return `local-cal-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId("local-cal-");
 }

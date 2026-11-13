@@ -15,7 +15,7 @@ import {
   setDocsSyncConflictListener,
 } from "@/lib/offline/docs/docs-sync-conflicts";
 import { KEPT_UNSAVED_DOCUMENTS_META_KEY } from "@/lib/offline/drive/drive-fetched-set-prune";
-import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-notice";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import {

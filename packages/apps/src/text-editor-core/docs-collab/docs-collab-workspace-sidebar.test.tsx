@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { resetConnectivityHubForTests } from "@/lib/offline/browser-online";
+import { resetConnectivityHubForTests } from "@/lib/offline/core/browser-online";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import type { DocsCollabUrls } from "./docs-collab-types";

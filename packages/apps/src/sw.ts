@@ -2,7 +2,7 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
+import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/core/pwa-navigate-fallback-denylist";
 import {
   notificationClickTarget,
   pickNotificationClient,

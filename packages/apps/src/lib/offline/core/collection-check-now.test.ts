@@ -15,7 +15,7 @@ import {
 import {
   rememberOfflineCalendarsUsername,
   rememberOfflineTasksUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import { upsertTaskInCache, upsertTaskListInCache } from "@/lib/offline/tasks/tasks-offline-store";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client/calendars/types";

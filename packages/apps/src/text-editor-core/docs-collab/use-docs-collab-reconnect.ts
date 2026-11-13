@@ -7,7 +7,7 @@ import {
   wgwEnsureFreshAccessToken,
   wgwHasAuthenticatedSession,
 } from "@/lib/api/wgw/http";
-import { isFetchNetworkError } from "@/lib/offline/browser-online";
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { isReconnectGenerationCurrent } from "./docs-collab-join-lifecycle";
 import {
   markRoomServerFailure,

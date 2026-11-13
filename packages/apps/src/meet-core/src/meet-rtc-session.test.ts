@@ -49,9 +49,10 @@ function guestSignalingFetch() {
 }
 
 describe("MeetRtcSession SDP wiring", () => {
-  it("applies an inbound description as received, like principal and collab", async () => {
+  it("applies an inbound description with only Opus DTX and FEC added (#1626)", async () => {
     // Safari, Firefox and Chrome were measured against each other with video on
-    // 2026-10-18 without the Meet SDP rewrite (#1345). Meet now uses the mesh default.
+    // 2026-10-18 without the Meet SDP rewrite (#1345). Meet keeps the mesh default
+    // and adds only the Opus fmtp parameters for DTX and FEC.
     const session = new MeetRtcSession({
       rtcSettings: RTC_SETTINGS,
       apiBase: "/api/v1/meet",
@@ -64,7 +65,11 @@ describe("MeetRtcSession SDP wiring", () => {
     expect(options?.channel).toBe("meet");
     const format = options?.formatInboundDescription ?? toSessionDescriptionPayload;
     const payload = { type: "offer", sdp: REMOTE_OFFER_WITH_OPUS };
-    expect(format(payload, "offer")).toEqual(toSessionDescriptionPayload(payload, "offer"));
+    const plain = toSessionDescriptionPayload(payload, "offer");
+    expect(format(payload, "offer")).toEqual({
+      ...plain,
+      sdp: plain?.sdp?.replace("useinbandfec=1", "useinbandfec=1;usedtx=1"),
+    });
 
     await session.leave();
   });

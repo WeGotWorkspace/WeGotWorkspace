@@ -10,7 +10,7 @@ import {
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";

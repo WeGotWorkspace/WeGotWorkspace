@@ -3,13 +3,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS mail_user_credentials (
-    username TEXT NOT NULL PRIMARY KEY,
-    imap_username TEXT NOT NULL DEFAULT '',
-    password_enc TEXT NOT NULL DEFAULT '',
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS meet_peers (
     room TEXT NOT NULL,
     peer_id TEXT NOT NULL,

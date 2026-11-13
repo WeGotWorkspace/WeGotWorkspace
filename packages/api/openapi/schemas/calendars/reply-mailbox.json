@@ -1,0 +1,53 @@
+{
+  "CalendarReplyMailbox": {
+    "type": "object",
+    "required": ["host", "port", "security", "username", "folder", "passwordSet", "trustedServer", "active", "lastCheckedAt", "lastSuccessAt", "lastError"],
+    "additionalProperties": false,
+    "description": "The IMAP mailbox the caller's invitation replies are read from. The server only reads calendar replies in it and changes nothing in the mailbox. The password is never returned.",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+      "security": { "type": "string", "enum": ["ssl", "starttls"] },
+      "username": { "type": "string", "description": "IMAP login name." },
+      "folder": { "type": "string", "description": "Folder that is read, `INBOX` by default." },
+      "passwordSet": { "type": "boolean" },
+      "trustedServer": {
+        "type": ["string", "null"],
+        "description": "Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known."
+      },
+      "active": { "type": "boolean", "description": "False after repeated failed logins; saving the settings again turns reading back on." },
+      "lastCheckedAt": { "type": ["string", "null"], "format": "date-time" },
+      "lastSuccessAt": { "type": ["string", "null"], "format": "date-time" },
+      "lastError": {
+        "type": ["string", "null"],
+        "enum": ["auth_failed", "connect_failed", "tls_failed", "folder_missing", "host_not_allowed", "protocol_error", "untrusted_server_unknown", null]
+      }
+    }
+  },
+  "CalendarReplyMailboxState": {
+    "type": "object",
+    "required": ["mailbox"],
+    "additionalProperties": false,
+    "properties": {
+      "mailbox": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/CalendarReplyMailbox" },
+          { "type": "null" }
+        ]
+      }
+    }
+  },
+  "CalendarReplyMailboxUpdate": {
+    "type": "object",
+    "required": ["host", "security", "username"],
+    "additionalProperties": false,
+    "properties": {
+      "host": { "type": "string", "maxLength": 255 },
+      "port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "993 for ssl and 143 for starttls when left out." },
+      "security": { "type": "string", "enum": ["ssl", "starttls"] },
+      "username": { "type": "string", "maxLength": 320 },
+      "password": { "type": ["string", "null"], "maxLength": 1024, "description": "Required on the first save. Left out or null keeps the stored password." },
+      "folder": { "type": ["string", "null"], "maxLength": 255 }
+    }
+  }
+}

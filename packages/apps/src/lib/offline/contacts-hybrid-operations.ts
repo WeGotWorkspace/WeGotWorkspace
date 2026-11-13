@@ -28,7 +28,7 @@ import {
 } from "@/lib/api/wgw/contacts";
 import { syncContactBooksAfterAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
 import { countPendingContacts } from "@/lib/jmap-client";
-import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
+import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
@@ -56,7 +56,7 @@ import {
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { flushContactsOutbox, type OutboxFlushResult } from "@/lib/offline/contacts-outbox-flush";
 import { reportContactsSyncConflicts } from "@/lib/offline/contacts-sync-conflicts";
-import { readOfflineContactsUsername } from "@/lib/offline/offline-session";
+import { readOfflineContactsUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,

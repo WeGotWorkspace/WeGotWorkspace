@@ -13,7 +13,7 @@ import {
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotebooksTable, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";

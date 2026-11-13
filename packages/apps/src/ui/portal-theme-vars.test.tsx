@@ -102,8 +102,13 @@ describe("portal-theme-vars", () => {
 
     bridgePortalThemeFromOpenTrigger(content, { paintSurface: false });
 
-    expect(content.style.getPropertyValue("--workspace-foreground").trim()).toBe("#ffffff");
-    expect(content.style.getPropertyValue("--workspace-surface").trim()).toBe("#141414");
+    // Browsers (and jsdom 31+) resolve the seed to a computed rgb() color.
+    expect(content.style.getPropertyValue("--workspace-foreground").trim()).toMatch(
+      /^(?:#ffffff|rgb\(255,\s*255,\s*255\))$/,
+    );
+    expect(content.style.getPropertyValue("--workspace-surface").trim()).toMatch(
+      /^(?:#141414|rgb\(20,\s*20,\s*20\))$/,
+    );
     expect(content.style.backgroundColor).toBe("");
   });
 
@@ -123,11 +128,13 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     expect(target.style.getPropertyValue("--button-outline-hover-background")).toMatch(
-      /workspace-accent|#962fa8|rgba?\(|oklch\(/i,
+      /workspace-accent|#962fa8|rgba?\(|okl(?:ab|ch)\(/i,
     );
-    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#962fa8");
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
+      /^(?:#962fa8|rgb\(150,\s*47,\s*168\))$/,
+    );
     expect(target.style.getPropertyValue("--button-active-color").trim()).toMatch(
-      /#5a1c66|rgba?\(|oklch\(/i,
+      /#5a1c66|rgba?\(|okl(?:ab|ch)\(/i,
     );
   });
 
@@ -158,13 +165,15 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
-    expect(hover).toMatch(/workspace-accent|#ffc800|rgba?\(|oklch\(/i);
+    expect(hover).toMatch(/workspace-accent|#ffc800|rgba?\(|okl(?:ab|ch)\(/i);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).not.toMatch(/notes-detail/);
-    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#ffc800");
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
+      /^(?:#ffc800|rgb\(255,\s*200,\s*0\))$/,
+    );
     expect(target.style.getPropertyValue("--color-we-got-soft").trim()).toBe("#fff5e9");
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
-      /workspace-accent|#ffc800|rgba?\(|oklch\(/i,
+      /workspace-accent|#ffc800|rgba?\(|okl(?:ab|ch)\(/i,
     );
   });
 
@@ -200,8 +209,10 @@ describe("portal-theme-vars", () => {
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
     expect(hover.trim().length).toBeGreaterThan(0);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
-    expect(hover).toMatch(/workspace-accent|#962fa8|rgba?\(|oklch\(/i);
-    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#962fa8");
+    expect(hover).toMatch(/workspace-accent|#962fa8|rgba?\(|okl(?:ab|ch)\(/i);
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
+      /^(?:#962fa8|rgb\(150,\s*47,\s*168\))$/,
+    );
   });
 
   it("paints a portaled menu with the dialog paper, otherwise the main paper", () => {

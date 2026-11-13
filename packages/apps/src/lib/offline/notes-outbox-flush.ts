@@ -13,10 +13,13 @@ import {
 } from "@/lib/api/wgw/notes";
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
-import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import {
+  runOutboxFlush,
+  type OutboxFlushContext,
+  type OutboxSendOutcome,
+} from "@/lib/offline/core/outbox-flush";
 import {
   type SentOutboxSettlement,
-  sendChangedRowAgain,
   settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
@@ -31,7 +34,6 @@ import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-
 import {
   dropLocalNoteAfterServerGone,
   getNoteFromCache,
-  listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
   readNotesBootstrapFromCache,
@@ -200,6 +202,153 @@ async function upgradeLegacyLocalNotesOnce(username: string): Promise<void> {
   }
 }
 
+type NotesFlushState = {
+  username: string;
+  stateMismatches: string[];
+  /** Notes whose rows this flush already dropped (deleted or archived elsewhere). */
+  settled: Set<string>;
+};
+
+function trimmedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** A conflict the queue shows: the row stays, marked `stateMismatch`. */
+async function holdAsConflict(
+  state: NotesFlushState,
+  row: OfflineOutboxRow,
+  noteId: string,
+): Promise<"handled"> {
+  state.stateMismatches.push(noteId);
+  await markOutboxError(state.username, row.id, "stateMismatch");
+  return "handled";
+}
+
+/** The note is gone on the server: drop it here and drop the row. */
+async function dropGoneNote(
+  username: string,
+  row: OfflineOutboxRow,
+  noteId: string,
+): Promise<"handled"> {
+  await dropLocalNoteAfterServerGone(username, noteId);
+  await removeOutboxMutation(username, row.id);
+  return "handled";
+}
+
+async function sendNoteUpsert(
+  state: NotesFlushState,
+  upsert: NotesUpsertPayload,
+  row: OfflineOutboxRow,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  const { username } = state;
+  const noteId = upsert.noteId;
+  if (state.settled.has(noteId)) return "handled";
+  const metadataRequest = noteMetadataUpsertRequest(
+    noteId,
+    upsert.metadata,
+    row.ifInState,
+    upsert.patchNotebook,
+    upsert.create,
+  );
+  const result = await flushOutboxNoteUpsert(
+    username,
+    noteId,
+    upsert.metadata,
+    metadataRequest,
+    upsert.create,
+  );
+  if ("conflict" in result) return holdAsConflict(state, row, noteId);
+  if ("gone" in result) {
+    state.settled.add(noteId);
+    await removeOutboxMutation(username, row.id);
+    return "handled";
+  }
+  const settlement = await settleSentNoteUpsert(username, row, result.saved);
+  if (upsert.create) announceNoteCreated({ username, noteId: result.saved.id });
+  context.resend(settlement);
+  return "handled";
+}
+
+async function sendNoteDelete(
+  state: NotesFlushState,
+  payload: Record<string, unknown>,
+  row: OfflineOutboxRow,
+): Promise<OutboxSendOutcome> {
+  const noteId = String(payload.noteId ?? "");
+  const groupSlug = trimmedString(payload.groupSlug);
+  try {
+    await deleteNoteItem(noteId, {
+      notebook: String(payload.notebook ?? ""),
+      archived: Boolean(payload.archived),
+      ...(groupSlug ? { groupSlug } : {}),
+      ...(typeof payload.etag === "string" && payload.etag ? { etag: payload.etag } : {}),
+    });
+  } catch (error) {
+    if (isPreconditionFailed(error)) return holdAsConflict(state, row, noteId);
+    if (isNotesPersistGone(error)) return dropGoneNote(state.username, row, noteId);
+    throw error;
+  }
+  await removeNoteFromCache(state.username, noteId);
+}
+
+async function sendNoteArchiveOrRestore(
+  username: string,
+  payload: Record<string, unknown>,
+  row: OfflineOutboxRow,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  const noteId = String(payload.noteId ?? "");
+  const groupSlug = trimmedString(payload.groupSlug);
+  const options = groupSlug ? { groupSlug } : undefined;
+  let saved: Note;
+  try {
+    saved =
+      row.op === "archive"
+        ? await archiveNoteItem(noteId, options)
+        : await restoreNoteItem(noteId, options);
+  } catch (error) {
+    if (isNotesPersistGone(error)) return dropGoneNote(username, row, noteId);
+    throw error;
+  }
+  // Undo may have flipped the row while it was sent: then send it again.
+  const settlement = await settleSentOutboxMutation(username, row, {
+    cacheTables: (db) => [notesNotesTable(db)],
+    onRemoved: () => upsertNoteInCache(username, saved, false),
+  });
+  context.resend(settlement);
+  return "handled";
+}
+
+/** Sends one Notes row; resolving plainly lets the runner remove it. */
+async function sendNotesRow(
+  state: NotesFlushState,
+  payload: Record<string, unknown>,
+  row: OfflineOutboxRow,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  if (row.op === "upsert") {
+    return sendNoteUpsert(state, payload as NotesUpsertPayload, row, context);
+  } else if (row.op === "delete") {
+    return sendNoteDelete(state, payload, row);
+  } else if (row.op === "archive" || row.op === "restore") {
+    return sendNoteArchiveOrRestore(state.username, payload, row, context);
+  } else if (row.op === "createNotebook") {
+    const color = trimmedString(payload.color);
+    const groupSlug = trimmedString(payload.groupSlug);
+    const created = await createNotebook(String(payload.name ?? ""), {
+      ...(color ? { color } : {}),
+      ...(groupSlug ? { groupSlug } : {}),
+    });
+    await upsertNotebookInCache(state.username, created);
+  } else if (row.op === "renameNotebook") {
+    await renameNotebook(String(payload.from ?? ""), String(payload.to ?? ""));
+  } else if (row.op === "deleteNotebook") {
+    const action = payload.action as DeleteNotebookAction;
+    await deleteNotebook(String(payload.name ?? ""), action);
+  }
+}
+
 export async function flushNotesOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) {
@@ -207,140 +356,20 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
   }
 
   await upgradeLegacyLocalNotesOnce(username);
-  const rows = await listOutboxMutations(username);
-  const stateMismatches: string[] = [];
-  // Notes whose rows this flush already dropped (deleted or archived elsewhere).
-  const settled = new Set<string>();
-  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
-  const resends = new Map<string, number>();
+  const state: NotesFlushState = { username, stateMismatches: [], settled: new Set() };
 
-  for (const row of rows) {
-    if (row.domain !== NOTES_DOMAIN) continue;
-    try {
-      const payload = JSON.parse(row.payload) as Record<string, unknown>;
-      if (row.op === "upsert") {
-        const upsert = payload as NotesUpsertPayload;
-        const noteId = upsert.noteId;
-        if (settled.has(noteId)) continue;
-        const metadataRequest = noteMetadataUpsertRequest(
-          noteId,
-          upsert.metadata,
-          row.ifInState,
-          upsert.patchNotebook,
-          upsert.create,
-        );
-        const result = await flushOutboxNoteUpsert(
-          username,
-          noteId,
-          upsert.metadata,
-          metadataRequest,
-          upsert.create,
-        );
-        if ("conflict" in result) {
-          stateMismatches.push(noteId);
-          await markOutboxError(username, row.id, "stateMismatch");
-          continue;
-        }
-        if ("gone" in result) {
-          settled.add(noteId);
-          await removeOutboxMutation(username, row.id);
-          continue;
-        }
-        const settlement = await settleSentNoteUpsert(username, row, result.saved);
-        if (upsert.create) announceNoteCreated({ username, noteId: result.saved.id });
-        sendChangedRowAgain(rows, resends, settlement);
-        continue;
-      } else if (row.op === "delete") {
-        const noteId = String(payload.noteId ?? "");
-        const groupSlug =
-          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
-            ? payload.groupSlug.trim()
-            : undefined;
-        try {
-          await deleteNoteItem(noteId, {
-            notebook: String(payload.notebook ?? ""),
-            archived: Boolean(payload.archived),
-            ...(groupSlug ? { groupSlug } : {}),
-            ...(typeof payload.etag === "string" && payload.etag ? { etag: payload.etag } : {}),
-          });
-        } catch (error) {
-          if (isPreconditionFailed(error)) {
-            stateMismatches.push(noteId);
-            await markOutboxError(username, row.id, "stateMismatch");
-            continue;
-          }
-          if (isNotesPersistGone(error)) {
-            await dropLocalNoteAfterServerGone(username, noteId);
-            await removeOutboxMutation(username, row.id);
-            continue;
-          }
-          throw error;
-        }
-        await removeNoteFromCache(username, noteId);
-      } else if (row.op === "archive" || row.op === "restore") {
-        const noteId = String(payload.noteId ?? "");
-        const groupSlug =
-          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
-            ? payload.groupSlug.trim()
-            : undefined;
-        try {
-          const saved =
-            row.op === "archive"
-              ? await archiveNoteItem(noteId, groupSlug ? { groupSlug } : undefined)
-              : await restoreNoteItem(noteId, groupSlug ? { groupSlug } : undefined);
-          // Undo may have flipped the row while it was sent: then send it again.
-          const settlement = await settleSentOutboxMutation(username, row, {
-            cacheTables: (db) => [notesNotesTable(db)],
-            onRemoved: () => upsertNoteInCache(username, saved, false),
-          });
-          sendChangedRowAgain(rows, resends, settlement);
-          continue;
-        } catch (error) {
-          if (isNotesPersistGone(error)) {
-            await dropLocalNoteAfterServerGone(username, noteId);
-            await removeOutboxMutation(username, row.id);
-            continue;
-          }
-          throw error;
-        }
-      } else if (row.op === "createNotebook") {
-        const color =
-          typeof payload.color === "string" && payload.color.trim()
-            ? payload.color.trim()
-            : undefined;
-        const groupSlug =
-          typeof payload.groupSlug === "string" && payload.groupSlug.trim()
-            ? payload.groupSlug.trim()
-            : undefined;
-        const created = await createNotebook(String(payload.name ?? ""), {
-          ...(color ? { color } : {}),
-          ...(groupSlug ? { groupSlug } : {}),
-        });
-        await upsertNotebookInCache(username, created);
-      } else if (row.op === "renameNotebook") {
-        await renameNotebook(String(payload.from ?? ""), String(payload.to ?? ""));
-      } else if (row.op === "deleteNotebook") {
-        const action = payload.action as DeleteNotebookAction;
-        await deleteNotebook(String(payload.name ?? ""), action);
-      }
-      await removeOutboxMutation(username, row.id);
-    } catch (error) {
-      const status = httpStatusFromFlushError(error);
-      await markOutboxError(
-        username,
-        row.id,
-        error instanceof Error ? error.message : String(error),
-        status,
-      );
-    }
-  }
+  await runOutboxFlush<Record<string, unknown>>(username, {
+    domain: NOTES_DOMAIN,
+    parse: (row) => JSON.parse(row.payload) as Record<string, unknown>,
+    send: (payload, row, context) => sendNotesRow(state, payload, row, context),
+  });
 
   // Each row already updated the cache. Writing a read-back snapshot over the
   // table would drop a note another writer saved meanwhile.
   const nextBootstrap = await readNotesBootstrapFromCache(username);
   if (nextBootstrap) nextBootstrap.session = cached.session;
 
-  return { stateMismatches, bootstrap: nextBootstrap };
+  return { stateMismatches: state.stateMismatches, bootstrap: nextBootstrap };
 }
 
 /** Fetch a single note from VJOURNAL REST (used by conflict resolution). */

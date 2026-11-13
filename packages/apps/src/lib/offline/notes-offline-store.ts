@@ -2,13 +2,19 @@ import { announceNoteDropped } from "@/lib/offline/notes/notes-dropped-events";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
-import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import type { EntityTable } from "dexie";
 import {
   offlineAccountKeyFromUsername,
   offlineDbForAccount,
   type WgwOfflineDatabase,
 } from "@/lib/offline/core/offline-db";
+import {
+  parseMirrorRows,
+  readMirrorSession,
+  replaceMirrorRows,
+  writeMirrorSession,
+} from "@/lib/offline/core/mirror-cache";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
   isRetryableOutboxRow,
@@ -17,6 +23,7 @@ import {
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import { readPendingWrites, type PendingWrite } from "@/lib/offline/core/inbound-sync";
+import { outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   NOTES_DOMAIN,
@@ -245,19 +252,18 @@ export async function readNotesBootstrapFromCache(
   username: string,
 ): Promise<NotesAppBootstrap | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const sessionRow = await db.meta.get(META_SESSION);
-  if (!sessionRow?.value) return null;
+  const session = await readMirrorSession<NotesAppBootstrap["session"]>(db, META_SESSION);
+  if (!session) return null;
 
   const books = await notesNotebooksTable(db).toArray();
   const notes = await notesNotesTable(db).toArray();
   if (books.length === 0 && notes.length === 0) return null;
 
-  const session = JSON.parse(sessionRow.value) as NotesAppBootstrap["session"];
   const notebookCollections = await readCachedCollections(db);
   const notebooks = [
     ...new Set(notebookCollections.filter(isOwnedPersonalNotebook).map((item) => item.name)),
   ];
-  const noteEntities = notes.map((row) => JSON.parse(row.data) as Note);
+  const noteEntities = parseMirrorRows<Note>(notes);
   const groupsRow = await db.meta.get(META_GROUPS);
   const groups = groupsRow?.value
     ? (JSON.parse(groupsRow.value) as NotesAppBootstrap["data"]["groups"])
@@ -325,26 +331,26 @@ export async function writeNotesBootstrapToCache(
   rememberOfflineNotesUsername(username);
   await db.transaction("rw", [notes, books, db.meta], async () => {
     const snapshotIds = new Set(bootstrap.data.notes.map((note) => note.id));
-    const pendingRows = await notes.filter((row) => row.pendingSync).toArray();
-    const newerRows = await notes
-      .filter((row) => !row.pendingSync && row.updatedAt > takenAt && !snapshotIds.has(row.id))
-      .toArray();
-    await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+    await writeMirrorSession(db, META_SESSION, bootstrap.session);
     await writeCachedCollections(db, collections);
     if (bootstrap.data.groups !== undefined) {
       await db.meta.put({ key: META_GROUPS, value: JSON.stringify(bootstrap.data.groups) });
     }
-    await books.clear();
-    await books.bulkPut(
+    await replaceMirrorRows(
+      books,
       collections.map((collection) => ({ id: collection.id, data: JSON.stringify(collection) })),
     );
-    await notes.clear();
     const serverNotes = bootstrap.data.notes.map((note) => enrichNote(note));
-    await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
-    await notes.bulkPut(newerRows);
     const serverById = new Map(serverNotes.map((note) => [note.id, note]));
-    await notes.bulkPut(
-      pendingRows.map((row) => pendingRowOverServer(row, serverById.get(row.id))),
+    await replaceMirrorRows(
+      notes,
+      serverNotes.map((note) => noteRow(note, false)),
+      {
+        // A pending local change, or a note the cache got after the snapshot was taken.
+        keep: (row) => row.pendingSync || (row.updatedAt > takenAt && !snapshotIds.has(row.id)),
+        restore: (row) =>
+          row.pendingSync ? pendingRowOverServer(row, serverById.get(row.id)) : row,
+      },
     );
   });
 }
@@ -645,15 +651,7 @@ function notePendingFieldsOfRow(row: OfflineOutboxRow): NotePendingField[] {
 }
 
 /** Note id targeted by an outbox row. */
-export function notesOutboxNoteId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== NOTES_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as { noteId?: string };
-    return payload.noteId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const notesOutboxNoteId = outboxEntityIdReader(NOTES_DOMAIN, ["noteId"]);
 
 /** Drop pending outbox rows for a note so a delete is not undone by a later upsert flush. */
 export async function removeOutboxMutationsForNote(

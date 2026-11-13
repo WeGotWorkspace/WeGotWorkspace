@@ -9,7 +9,7 @@ import {
   readSyncToken,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
 const username = "alice";
@@ -48,7 +48,7 @@ vi.mock("@/lib/api/wgw/contacts-mutations", () => ({
   deleteCardWithState: vi.fn(),
 }));
 
-vi.mock("@/lib/offline/browser-online", () => ({
+vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
   isFetchNetworkError: vi.fn((error: unknown) => {
     if (error instanceof TypeError) {
@@ -96,7 +96,7 @@ vi.mock("@/lib/api/wgw/contacts-sync", () => ({
 
 import { deleteCardWithState, patchCardWithState } from "@/lib/api/wgw/contacts-mutations";
 import { fetchContactsLiveBootstrap } from "@/lib/api/wgw/contacts-bootstrap";
-import { readBrowserOnline } from "@/lib/offline/browser-online";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   createHybridContactsOperations,
   fetchContactsHybridBootstrap,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { Task } from "@/lib/models/tasks-types";
 import { writeTasksBootstrapToCache } from "@/lib/offline/tasks/tasks-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
   createHybridTasksOperations,

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
+import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 
 vi.mock("@/hooks/use-connectivity", () => ({ useConnectivity: () => ({ online: true }) }));
 

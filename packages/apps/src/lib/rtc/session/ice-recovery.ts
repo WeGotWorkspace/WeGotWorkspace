@@ -4,8 +4,11 @@ import { shouldRequestRelay } from "@/lib/rtc/session/relay-policy";
 /** Initiator restarts ICE after the link has been disconnected this long. */
 export const DISCONNECT_RESTART_MS = 2_000;
 
-/** Offer/answer or a relay apply that is still not `connected`. */
-export const RECOVERY_TIMEOUT_MS = 2_000;
+/** Offer/answer or an ICE restart that is still not `connected` asks for a relay. */
+export const RELAY_ASK_MS = 2_000;
+
+/** A relay apply that is still not `connected` re-dials relay-only. */
+export const RECOVERY_TIMEOUT_MS = 8_000;
 
 /** A stable link may try relay again after this, if it later fails. */
 export const RELAY_RESET_STABLE_MS = 60_000;
@@ -62,7 +65,7 @@ export class IceRecovery {
     );
   }
 
-  /** First offer or answer: give the pair 8 seconds before a relay request. */
+  /** First offer or answer: give the pair RELAY_ASK_MS before a relay request. */
   onSignaled(remoteId: string): void {
     if (this.giveUpTimers.has(remoteId)) return;
     this.armGiveUp(remoteId);
@@ -95,7 +98,7 @@ export class IceRecovery {
       this.schedule(() => {
         this.giveUpTimers.delete(remoteId);
         this.requestIfNeeded(remoteId, "timeout");
-      }, RECOVERY_TIMEOUT_MS),
+      }, RELAY_ASK_MS),
     );
   }
 

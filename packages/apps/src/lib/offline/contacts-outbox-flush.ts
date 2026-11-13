@@ -6,17 +6,13 @@ import type {
 import { contactCardSet, ContactStateMismatchError } from "@/lib/api/wgw/contacts-set";
 import { getCard, patchAddressBook } from "@/lib/api/wgw/contacts";
 import { JmapSetItemError } from "@/lib/jmap-client";
-import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { runOutboxFlush } from "@/lib/offline/core/outbox-flush";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import {
-  getOutboxMutation,
-  sendChangedRowAgain,
-  settleSentOutboxMutation,
-} from "@/lib/offline/core/outbox-store";
+import { getOutboxMutation, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { CONTACTS_DOMAIN, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 import {
-  listOutboxMutations,
   markOutboxError,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
@@ -49,34 +45,42 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
     return { stateMismatches: [], bootstrap: null };
   }
 
-  const rows = await listOutboxMutations(username);
   const stateMismatches: string[] = [];
-  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
-  const resends = new Map<string, number>();
 
-  for (const row of rows) {
-    if (row.domain !== CONTACTS_DOMAIN) continue;
-    try {
-      const payload = JSON.parse(row.payload) as Record<string, unknown>;
+  /** The server no longer has the card: drop the row and let the pull settle the cache. */
+  async function gone(row: OfflineOutboxRow, cardId: string): Promise<"handled"> {
+    if (cardId) stateMismatches.push(cardId);
+    await removeOutboxMutation(username, row.id);
+    return "handled";
+  }
+
+  /** The card changed on the server since the edit was queued: a conflict for the person. */
+  async function conflict(row: OfflineOutboxRow, cardId: string): Promise<"handled"> {
+    stateMismatches.push(cardId);
+    await markOutboxError(username, row.id, "stateMismatch");
+    return "handled";
+  }
+
+  await runOutboxFlush<Record<string, unknown>>(username, {
+    domain: CONTACTS_DOMAIN,
+    parse: (row) => JSON.parse(row.payload) as Record<string, unknown>,
+    send: async (payload, row, context) => {
       if (row.op === "create") {
         const creationId = String(payload.creationId ?? row.id);
         const body = payload.body as ContactCardCreate;
         const response = await contactCardSet({ create: { [creationId]: body } });
         const notCreated = response.notCreated[creationId];
         if (isNotFoundSetType(notCreated?.type)) {
-          const tempId = String(payload.tempCardId ?? creationId);
-          if (tempId) stateMismatches.push(tempId);
-          await removeOutboxMutation(username, row.id);
-          continue;
+          return gone(row, String(payload.tempCardId ?? creationId));
         }
-        // A refused create (`forbidden`) keeps its 403 in the catch below.
+        // A refused create (`forbidden`) keeps its 403 in the runner's record.
         if (notCreated) throw new JmapSetItemError("create", creationId, notCreated);
         const serverId = response.created[creationId];
         if (!serverId) throw new Error("Create failed");
         if (!(await getOutboxMutation(username, row.id))) {
           // Undone while it was sent (`dropQueuedContactCreate`): take it back.
           await contactCardSet({ destroy: [serverId] });
-          continue;
+          return "handled";
         }
         const tempId = String(payload.tempCardId ?? "");
         if (tempId) await removeContactCardFromCache(username, tempId);
@@ -88,18 +92,10 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         const updateEntry: ContactCardPatch & { ifInState?: string } = { ...patch };
         if (row.ifInState) updateEntry.ifInState = row.ifInState;
         const response = await contactCardSet({ update: { [cardId]: updateEntry } });
-        if (isNotFoundSetType(response.notUpdated[cardId]?.type)) {
-          stateMismatches.push(cardId);
-          await removeOutboxMutation(username, row.id);
-          continue;
-        }
-        if (response.notUpdated[cardId]?.type === "stateMismatch") {
-          stateMismatches.push(cardId);
-          await markOutboxError(username, row.id, "stateMismatch");
-          continue;
-        }
+        if (isNotFoundSetType(response.notUpdated[cardId]?.type)) return gone(row, cardId);
+        if (response.notUpdated[cardId]?.type === "stateMismatch") return conflict(row, cardId);
         // Never settle a refused update with the server copy: that loses the
-        // offline edit. `forbidden` becomes a permanent 403 in the catch below.
+        // offline edit. `forbidden` becomes a permanent 403 in the runner's record.
         const notUpdated = response.notUpdated[cardId];
         if (notUpdated) throw new JmapSetItemError("update", cardId, notUpdated);
         const card = await getCard(cardId);
@@ -109,22 +105,14 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
           cacheTables: (db) => [contactsCardsTable(db)],
           onRemoved: () => upsertContactCardInCache(username, card, false),
         });
-        sendChangedRowAgain(rows, resends, settlement);
-        continue;
+        context.resend(settlement);
+        return "handled";
       } else if (row.op === "delete") {
         const cardId = String(payload.cardId ?? "");
         const destroy = row.ifInState ? { [cardId]: { ifInState: row.ifInState } } : [cardId];
         const response = await contactCardSet({ destroy });
-        if (isNotFoundSetType(response.notDestroyed[cardId]?.type)) {
-          stateMismatches.push(cardId);
-          await removeOutboxMutation(username, row.id);
-          continue;
-        }
-        if (response.notDestroyed[cardId]?.type === "stateMismatch") {
-          stateMismatches.push(cardId);
-          await markOutboxError(username, row.id, "stateMismatch");
-          continue;
-        }
+        if (isNotFoundSetType(response.notDestroyed[cardId]?.type)) return gone(row, cardId);
+        if (response.notDestroyed[cardId]?.type === "stateMismatch") return conflict(row, cardId);
         await removeContactCardFromCache(username, cardId);
       } else if (row.op === "bookUpdate") {
         const addressBookId = String(payload.addressBookId ?? "");
@@ -132,29 +120,20 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         const book = await patchAddressBook(addressBookId, patch);
         await upsertAddressBookInCache(username, book);
       }
-      await removeOutboxMutation(username, row.id);
-    } catch (error) {
+    },
+    onFailure: async ({ row, error }) => {
       if (error instanceof ContactStateMismatchError) {
-        stateMismatches.push(error.cardId);
-        await markOutboxError(username, row.id, "stateMismatch");
-        continue;
+        await conflict(row, error.cardId);
+        return true;
       }
       if (isNotFoundSetError(error)) {
         const payload = JSON.parse(row.payload) as Record<string, unknown>;
-        const cardId = String(payload.cardId ?? payload.tempCardId ?? payload.creationId ?? "");
-        if (cardId) stateMismatches.push(cardId);
-        await removeOutboxMutation(username, row.id);
-        continue;
+        await gone(row, String(payload.cardId ?? payload.tempCardId ?? payload.creationId ?? ""));
+        return true;
       }
-      const status = httpStatusFromFlushError(error);
-      await markOutboxError(
-        username,
-        row.id,
-        error instanceof Error ? error.message : String(error),
-        status,
-      );
-    }
-  }
+      return false;
+    },
+  });
 
   await pullAddressBookChanges(username);
 

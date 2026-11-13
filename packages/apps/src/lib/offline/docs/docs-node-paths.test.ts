@@ -3,7 +3,7 @@
  */
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { readOfflineDocsUsername } from "@/lib/offline/offline-session";
+import { readOfflineDocsUsername } from "@/lib/offline/core/offline-session";
 import {
   readDocsNodeIdForPath,
   readDocsPathForNodeId,

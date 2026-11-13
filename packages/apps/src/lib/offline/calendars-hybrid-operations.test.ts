@@ -15,7 +15,7 @@ import {
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 
 const username = "bob";
 
