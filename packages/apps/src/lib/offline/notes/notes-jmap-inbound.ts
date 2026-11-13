@@ -12,8 +12,8 @@ import {
   upsertNoteInCache,
   upsertNotebookInCache,
   readNotesBootstrapFromCache,
-} from "@/lib/offline/notes-offline-store";
-import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
+} from "@/lib/offline/notes/notes-offline-store";
+import { reportNotesSyncConflicts } from "@/lib/offline/notes/notes-sync-conflicts";
 import { listRemovedIds, serverMovedSince } from "@/lib/offline/core/inbound-sync";
 
 async function pendingSet(username: string): Promise<Set<string>> {

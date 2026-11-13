@@ -6,7 +6,7 @@ import {
   ingestRemoteNotebook,
   ingestRemoteNotebookDestroyed,
   reconcileNotesSnapshot,
-} from "@/lib/offline/notes-jmap-inbound";
+} from "@/lib/offline/notes/notes-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
 const listOutboxIds = vi.fn<() => Promise<Set<string>>>();
@@ -24,7 +24,7 @@ const readCache = vi.fn<
 >();
 const reportConflicts = vi.fn();
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   listPendingNoteIds: () => listPending(),
   listOutboxNoteIds: () => listOutboxIds(),
   listPendingNoteFields: () => listPendingFields(),
@@ -37,7 +37,7 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
   readNotesBootstrapFromCache: () => readCache(),
 }));
 
-vi.mock("@/lib/offline/notes-sync-conflicts", () => ({
+vi.mock("@/lib/offline/notes/notes-sync-conflicts", () => ({
   reportNotesSyncConflicts: (...args: unknown[]) => reportConflicts(...args),
 }));
 

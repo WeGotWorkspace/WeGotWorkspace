@@ -43,7 +43,7 @@ import {
   upsertNoteInCache,
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
@@ -53,8 +53,8 @@ import {
 } from "@/lib/offline/notes/notes-metadata-selection";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notifyOtherTabsOnStructuralChanges } from "@/lib/offline/notes/notes-cross-tab-notify";
-import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
-import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
+import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes/notes-outbox-flush";
+import { reportNotesSyncConflicts } from "@/lib/offline/notes/notes-sync-conflicts";
 import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
