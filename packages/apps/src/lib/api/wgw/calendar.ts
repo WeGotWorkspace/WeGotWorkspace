@@ -110,20 +110,26 @@ export async function fetchCalendarEventsInRangeLive(
 /** Bootstrap against any client — the mock api source reuses this with a MockJmapServer client. */
 export async function fetchCalendarBootstrapForClient(
   client: JmapClient,
-  session: CalendarAppBootstrap["session"],
+  session: CalendarAppBootstrap["session"] | Promise<CalendarAppBootstrap["session"]>,
   window: CalendarUtcRange = calendarBootstrapWindow(),
 ): Promise<CalendarAppBootstrap> {
-  const { calendars, accountId } = await connectedCalendars(client);
-
-  const calendarGet = await calendars.getCalendars(accountId);
-  const events = await calendars.getCalendarEventsInRange(accountId, window);
+  const [resolvedSession, [calendarGet, events], groups] = await Promise.all([
+    session,
+    connectedCalendars(client).then(({ calendars, accountId }) =>
+      Promise.all([
+        calendars.getCalendars(accountId),
+        calendars.getCalendarEventsInRange(accountId, window),
+      ]),
+    ),
+    loadCalendarDirectoryGroups(),
+  ]);
 
   return {
-    session,
+    session: resolvedSession,
     data: {
       calendars: calendarGet.list.map(toCalendarInfo),
       events: events.list,
-      groups: await loadCalendarDirectoryGroups(),
+      groups,
     },
   };
 }
@@ -146,7 +152,7 @@ export async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGr
 export async function fetchCalendarLiveBootstrap(
   window?: CalendarUtcRange,
 ): Promise<CalendarAppBootstrap> {
-  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal(), window);
+  return fetchCalendarBootstrapForClient(calendarJmapClient(), wgwFetchPrincipal(), window);
 }
 
 export async function createCalendarEventLive(
