@@ -99,6 +99,65 @@ describe("runOutboxFlush", () => {
       send,
     });
 
-    expect(send).toHaveBeenCalledWith({ n: 5 }, expect.objectContaining({ id: "a" }));
+    expect(send).toHaveBeenCalledWith(
+      { n: 5 },
+      expect.objectContaining({ id: "a" }),
+      expect.anything(),
+    );
+  });
+
+  it("leaves a row the binding handled itself, sent or failed", async () => {
+    await queue("settled", '{"n":1}');
+    await queue("refused", '{"n":2}');
+
+    const counts = await runOutboxFlush<Payload>(username, {
+      domain: "demo",
+      parse,
+      send: async (payload) => {
+        if (payload.n === 2) throw new Error("conflict");
+        return "handled";
+      },
+      onFailure: () => true,
+    });
+
+    expect(counts).toEqual({ flushed: 0, failed: 1 });
+    const rows = await listOutboxMutations(username);
+    expect(rows.map((row) => [row.id, row.retries, row.lastError])).toEqual([
+      ["settled", 0, undefined],
+      ["refused", 0, undefined],
+    ]);
+  });
+
+  it("records a parse that throws as a failed send", async () => {
+    await queue("a", "{not json");
+
+    const counts = await runOutboxFlush<Payload>(username, {
+      domain: "demo",
+      parse: (row) => JSON.parse(row.payload) as Payload,
+      send: async () => undefined,
+    });
+
+    expect(counts).toEqual({ flushed: 0, failed: 1 });
+    const [kept] = await listOutboxMutations(username);
+    expect([kept?.id, kept?.retries]).toEqual(["a", 1]);
+  });
+
+  it("sends a row again that changed while it was sent", async () => {
+    await queue("a", '{"n":1}');
+    const sent: number[] = [];
+
+    await runOutboxFlush<Payload>(username, {
+      domain: "demo",
+      parse,
+      send: async (payload, row, context) => {
+        sent.push(payload.n);
+        if (payload.n === 1) {
+          context.resend({ kind: "changed", row: { ...row, payload: '{"n":2}' } });
+          return "handled";
+        }
+      },
+    });
+
+    expect(sent).toEqual([1, 2]);
   });
 });
