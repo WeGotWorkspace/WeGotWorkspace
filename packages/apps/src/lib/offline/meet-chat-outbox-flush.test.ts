@@ -122,13 +122,32 @@ describe("flushMeetChatOutbox", () => {
 
     const result = await flushMeetChatOutbox(username);
 
-    expect(result).toEqual({ flushed: 3, failedMessageIds: [] });
+    expect(result).toEqual({ flushed: 3, failed: 0 });
     expect(calls).toEqual(["send", "react", "readMarker"]);
     expect(await listMeetChatOutbox(username)).toHaveLength(0);
     expect(await listPendingChatMessageIds(username)).toEqual([]);
     expect((await getCachedChatMessage(username, ULID_B))?.reactions).toEqual([
       { emoji: "👍", authors: ["alice"] },
     ]);
+  });
+
+  it("re-keys a sent message when the server answers with another id", async () => {
+    await upsertChatMessageInCache(username, pendingMessage(ULID_A, "taken id"), true);
+    await enqueueChatSend(username, {
+      messageId: ULID_A,
+      channelId: "chat-general",
+      body: "taken id",
+      parentId: null,
+    });
+    vi.mocked(sendChatMessage).mockImplementation(async (_channelId, body) =>
+      wireMessage(ULID_B, body.body),
+    );
+
+    await flushMeetChatOutbox(username);
+
+    expect(await getCachedChatMessage(username, ULID_A)).toBeUndefined();
+    expect((await getCachedChatMessage(username, ULID_B))?.body).toBe("taken id");
+    expect(await listPendingChatMessageIds(username)).toEqual([]);
   });
 
   it("keeps failed rows queued with the error recorded and retries the same ULID", async () => {
@@ -143,7 +162,7 @@ describe("flushMeetChatOutbox", () => {
     vi.mocked(sendChatMessage).mockRejectedValueOnce(new TypeError("network request failed"));
     const first = await flushMeetChatOutbox(username);
     expect(first.flushed).toBe(0);
-    expect(first.failedMessageIds).toEqual([ULID_A]);
+    expect(first.failed).toBe(1);
 
     const queued = await listMeetChatOutbox(username);
     expect(queued).toHaveLength(1);
@@ -226,7 +245,7 @@ describe("flushMeetChatOutbox", () => {
 
     const result = await flushMeetChatOutbox(username);
 
-    expect(result).toEqual({ flushed: 1, failedMessageIds: [] });
+    expect(result).toEqual({ flushed: 1, failed: 0 });
     expect(openChatDm).toHaveBeenCalledWith("bob");
     expect(sendChatMessage).toHaveBeenCalledWith(
       dmChannel.id,

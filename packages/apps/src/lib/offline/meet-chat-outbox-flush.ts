@@ -8,11 +8,11 @@ import {
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
+import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   listMeetChatOutbox,
   markOutboxError,
-  meetChatOutboxMessageId,
   removeChatMessageFromCache,
   removeOutboxMutation,
   uiChatMessageForCache,
@@ -27,8 +27,12 @@ import {
 export type MeetChatOutboxFlushResult = {
   /** Rows replayed and removed. */
   flushed: number;
-  /** Message ids whose rows errored and stay queued for the next flush. */
-  failedMessageIds: string[];
+  /**
+   * Rows that errored and stay queued. Which messages failed is read from the
+   * outbox rows themselves (`readMeetChatBootstrapFromCache` sets each
+   * message's `syncState`), so every tab sees it, also after a reload.
+   */
+  failed: number;
 };
 
 /**
@@ -45,7 +49,7 @@ export type MeetChatOutboxFlushResult = {
 export async function flushMeetChatOutbox(username: string): Promise<MeetChatOutboxFlushResult> {
   const rows = await listMeetChatOutbox(username);
   let flushed = 0;
-  const failedMessageIds: string[] = [];
+  let failed = 0;
 
   for (const row of rows) {
     try {
@@ -60,6 +64,11 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
             body: payload.body,
             ...(payload.parentId ? { parentId: payload.parentId } : {}),
           });
+          // The server keeps the client ULID unless an object out of this
+          // person's reach already has it; then the answer carries a fresh id.
+          if (saved.id !== payload.messageId) {
+            await removeChatMessageFromCache(username, payload.messageId);
+          }
           await upsertChatMessageInCache(
             username,
             await uiChatMessageForCache(username, chatMessageFromWire(saved)),
@@ -113,8 +122,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
-      const messageId = meetChatOutboxMessageId(row);
-      if (messageId) failedMessageIds.push(messageId);
+      failed += 1;
       await markOutboxError(
         username,
         row.id,
@@ -124,5 +132,6 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
     }
   }
 
-  return { flushed, failedMessageIds };
+  if (rows.length > 0) notifyMeetChatCacheChanged(username);
+  return { flushed, failed };
 }

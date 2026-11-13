@@ -19,6 +19,8 @@ import {
   backfillChatChannelHistory,
   syncMeetChatInboundFromRest,
 } from "@/lib/offline/meet-chat-inbound-sync";
+import { markOutboxError } from "@/lib/offline/core/outbox-store";
+import { enqueueChatEdit, upsertChatMessageInCache } from "@/lib/offline/meet-chat-offline-store";
 
 vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/meet-chat")>();
@@ -64,10 +66,10 @@ function wireChannel(id: string): WgwChatChannel {
   } as WgwChatChannel;
 }
 
-function wireMessage(id: string, body: string): WgwChatMessage {
+function wireMessage(id: string, body: string, channelId = "chat-general"): WgwChatMessage {
   return {
     id,
-    channelId: "chat-general",
+    channelId,
     authorId: "bob",
     authorName: "Bob",
     body,
@@ -208,4 +210,157 @@ describe("meet-chat REST inbound sync", () => {
     expect(messages.map((row) => row.body)).toEqual(["edited body"]);
     expect(messages[0]?.editedAt).toBeTruthy();
   });
+
+  /** A cached, backfilled channel with a messages token and a cursor. */
+  async function syncedChannel(id: string, cursor = "01A0000000AAAAAAAAAAAAAAAA") {
+    await upsertChatChannelInCache(username, wireChannel(id));
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.meta.put({ key: `meet-chat:backfill:${id}`, value: "done" });
+    await db.meta.put({ key: `meet-chat:cursor:${id}`, value: cursor });
+    await writeMeetChatSyncToken(username, id, `${id}-state-0`);
+  }
+
+  function noChannelChanges() {
+    vi.mocked(listChatChannelChanges).mockResolvedValue({
+      oldState: "ch-state-0",
+      newState: "ch-state-0",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+  }
+
+  const messageChanges = (
+    channelId: string,
+    delta: { created?: string[]; updated?: string[]; destroyed?: string[] },
+  ) => ({
+    oldState: `${channelId}-state-0`,
+    newState: `${channelId}-state-1`,
+    created: delta.created ?? [],
+    updated: delta.updated ?? [],
+    destroyed: delta.destroyed ?? [],
+    hasMoreChanges: false,
+  });
+
+  it("keeps pulling the other channels when one channel fails, then reports the failure", async () => {
+    await syncedChannel("chat-a");
+    await syncedChannel("chat-b");
+    await writeMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE, "ch-state-0");
+    noChannelChanges();
+    vi.mocked(listChatMessageChanges).mockImplementation(async (channelId) => {
+      if (channelId === "chat-a") throw new Error("server error");
+      return messageChanges(channelId, { created: ["01A0000000DDDDDDDDDDDDDDDD"] });
+    });
+    vi.mocked(listChatMessages).mockResolvedValue({
+      list: [wireMessage("01A0000000DDDDDDDDDDDDDDDD", "from b", "chat-b")],
+      hasMore: false,
+    });
+
+    await expect(syncMeetChatInboundFromRest(username)).rejects.toThrow("server error");
+
+    expect((await listCachedChatMessages(username)).map((row) => row.body)).toEqual(["from b"]);
+    expect(await readMeetChatSyncToken(username, "chat-a")).toBe("chat-a-state-0");
+    expect(await readMeetChatSyncToken(username, "chat-b")).toBe("chat-b-state-1");
+  });
+
+  it("re-lists the channel for a new message the since-cursor cannot reach", async () => {
+    // A peer's offline message keeps the ULID it got offline: older than the cursor.
+    await syncedChannel("chat-general", "01A0000000CCCCCCCCCCCCCCCC");
+    await writeMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE, "ch-state-0");
+    noChannelChanges();
+    vi.mocked(listChatMessageChanges).mockResolvedValue(
+      messageChanges("chat-general", { created: ["01A0000000BBBBBBBBBBBBBBBB"] }),
+    );
+    vi.mocked(listChatMessages).mockImplementation(async (_channelId, opts) => {
+      if (opts?.since) return { list: [], hasMore: false };
+      return { list: [wireMessage("01A0000000BBBBBBBBBBBBBBBB", "sent offline")], hasMore: false };
+    });
+
+    await syncMeetChatInboundFromRest(username);
+
+    expect((await listCachedChatMessages(username)).map((row) => row.body)).toEqual([
+      "sent offline",
+    ]);
+    // The cursor never moves back.
+    expect(await readChatChannelMessageCursor(username, "chat-general")).toBe(
+      "01A0000000CCCCCCCCCCCCCCCC",
+    );
+  });
+
+  it("removes a message destroyed elsewhere without re-listing the channel", async () => {
+    await syncedChannel("chat-general");
+    await writeMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE, "ch-state-0");
+    await upsertChatMessageInCache(username, {
+      ...chatMessage("01A0000000AAAAAAAAAAAAAAAA", "doomed"),
+    });
+    noChannelChanges();
+    vi.mocked(listChatMessageChanges).mockResolvedValue(
+      messageChanges("chat-general", { destroyed: ["01A0000000AAAAAAAAAAAAAAAA"] }),
+    );
+
+    const result = await syncMeetChatInboundFromRest(username);
+
+    expect(result.changed).toBe(true);
+    expect(listChatMessages).not.toHaveBeenCalled();
+    expect(await listCachedChatMessages(username)).toEqual([]);
+  });
+
+  it("holds the channel token while a queued edit skips the server's change", async () => {
+    await syncedChannel("chat-general");
+    await writeMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE, "ch-state-0");
+    const id = "01A0000000AAAAAAAAAAAAAAAA";
+    await upsertChatMessageInCache(username, chatMessage(id, "mine, edited offline"));
+    await enqueueChatEdit(username, { messageId: id, body: "mine, edited offline" });
+    noChannelChanges();
+    vi.mocked(listChatMessageChanges).mockResolvedValue(
+      messageChanges("chat-general", { updated: [id] }),
+    );
+    vi.mocked(listChatMessages).mockResolvedValue({
+      list: [wireMessage(id, "server copy")],
+      hasMore: false,
+    });
+
+    await syncMeetChatInboundFromRest(username);
+
+    expect((await listCachedChatMessages(username))[0]?.body).toBe("mine, edited offline");
+    expect(await readMeetChatSyncToken(username, "chat-general")).toBe("chat-general-state-0");
+  });
+
+  it("does not hold the token for a queued write the server refused for good", async () => {
+    await syncedChannel("chat-general");
+    await writeMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE, "ch-state-0");
+    const id = "01A0000000AAAAAAAAAAAAAAAA";
+    await upsertChatMessageInCache(username, chatMessage(id, "mine, edited offline"));
+    await enqueueChatEdit(username, { messageId: id, body: "mine, edited offline" });
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const [row] = await db.outbox.toArray();
+    await markOutboxError(username, row!.id, "forbidden", 403);
+    noChannelChanges();
+    vi.mocked(listChatMessageChanges).mockResolvedValue(
+      messageChanges("chat-general", { updated: [id] }),
+    );
+    vi.mocked(listChatMessages).mockResolvedValue({
+      list: [wireMessage(id, "server copy")],
+      hasMore: false,
+    });
+
+    await syncMeetChatInboundFromRest(username);
+
+    expect((await listCachedChatMessages(username))[0]?.body).toBe("mine, edited offline");
+    expect(await readMeetChatSyncToken(username, "chat-general")).toBe("chat-general-state-1");
+  });
 });
+
+function chatMessage(id: string, body: string) {
+  return {
+    id,
+    channelId: "chat-general",
+    authorId: "alice",
+    authorName: "Alice",
+    body,
+    createdAt: Date.now(),
+    reactions: [],
+    mentions: [],
+    previews: [],
+  };
+}

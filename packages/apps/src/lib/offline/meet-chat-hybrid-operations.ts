@@ -23,6 +23,7 @@ import {
   putChatReadMarker,
   sendChatMessage,
   toggleChatReaction,
+  type WgwChatMessage,
 } from "@/lib/api/wgw/meet-chat";
 import { fetchMeetLiveBootstrap } from "@/lib/api/wgw/meet";
 import { fetchMeetChatDirectory, type MeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
@@ -33,6 +34,7 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { createChatMessageUlid, isChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
+import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   findCachedChannelForUiId,
@@ -208,7 +210,8 @@ export function createHybridMeetChatOperations(
         body: optimistic.body,
         parentId,
       });
-      return optimistic;
+      notifyMeetChatCacheChanged(username);
+      return { ...optimistic, syncState: "pending" };
     };
     if (!readBrowserOnline()) return queueSend();
     try {
@@ -227,11 +230,39 @@ export function createHybridMeetChatOperations(
       await upsertChatMessageInCache(username, saved, false);
       await writeChatChannelMessageCursor(username, restChannelId, saved.id);
       await bumpParentReplyCount(username, parentId);
+      notifyMeetChatCacheChanged(username);
       await runner.flush();
       return saved;
     } catch (error) {
       if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
       return queueSend();
+    }
+  };
+
+  /**
+   * An edit or reaction online: cache the server's answer, or queue the write
+   * when the network or the server fails for now. A message gone on the
+   * server leaves the cache.
+   */
+  const writeMessage = async (
+    messageId: string,
+    request: () => Promise<WgwChatMessage>,
+    queue: () => Promise<ChatMessage>,
+  ): Promise<ChatMessage> => {
+    if (!readBrowserOnline()) return queue();
+    try {
+      const saved = await uiChatMessageForCache(username, chatMessageFromWire(await request()));
+      await upsertChatMessageInCache(username, saved, false);
+      notifyMeetChatCacheChanged(username);
+      await runner.flush();
+      return saved;
+    } catch (error) {
+      if (isMeetChatGone(error)) {
+        await removeChatMessageFromCache(username, messageId);
+        throw error;
+      }
+      if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
+      return queue();
     }
   };
 
@@ -255,25 +286,10 @@ export function createHybridMeetChatOperations(
         if (!optimistic) throw new Error(`Unknown message ${messageId}`);
         await upsertChatMessageInCache(username, optimistic, true);
         await enqueueChatEdit(username, { messageId, body: optimistic.body });
-        return optimistic;
+        notifyMeetChatCacheChanged(username);
+        return { ...optimistic, syncState: "pending" };
       };
-      if (!readBrowserOnline()) return queueEdit();
-      try {
-        const saved = await uiChatMessageForCache(
-          username,
-          chatMessageFromWire(await patchChatMessage(messageId, { body })),
-        );
-        await upsertChatMessageInCache(username, saved, false);
-        await runner.flush();
-        return saved;
-      } catch (error) {
-        if (isMeetChatGone(error)) {
-          await removeChatMessageFromCache(username, messageId);
-          throw error;
-        }
-        if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
-        return queueEdit();
-      }
+      return writeMessage(messageId, () => patchChatMessage(messageId, { body }), queueEdit);
     },
     deleteMessage: async (messageId) => {
       const existing = await getCachedChatMessage(username, messageId);
@@ -285,14 +301,17 @@ export function createHybridMeetChatOperations(
         if (!serverDeleteQueued) {
           // The message only ever existed locally (queued send) — drop it fully.
           await removeChatMessageFromCache(username, messageId);
+          notifyMeetChatCacheChanged(username);
           return;
         }
         if (tombstone) await upsertChatMessageInCache(username, tombstone, true);
+        notifyMeetChatCacheChanged(username);
       };
       if (!readBrowserOnline()) return queueDelete();
       try {
         await deleteChatMessage(messageId);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
+        notifyMeetChatCacheChanged(username);
         await runner.flush();
       } catch (error) {
         if (isMeetChatGone(error)) {
@@ -310,25 +329,10 @@ export function createHybridMeetChatOperations(
       const queueReact = async (): Promise<ChatMessage> => {
         await upsertChatMessageInCache(username, optimistic, true);
         await enqueueChatReactionToggle(username, { messageId, emoji });
+        notifyMeetChatCacheChanged(username);
         return optimistic;
       };
-      if (!readBrowserOnline()) return queueReact();
-      try {
-        const saved = await uiChatMessageForCache(
-          username,
-          chatMessageFromWire(await toggleChatReaction(messageId, emoji)),
-        );
-        await upsertChatMessageInCache(username, saved, false);
-        await runner.flush();
-        return saved;
-      } catch (error) {
-        if (isMeetChatGone(error)) {
-          await removeChatMessageFromCache(username, messageId);
-          throw error;
-        }
-        if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
-        return queueReact();
-      }
+      return writeMessage(messageId, () => toggleChatReaction(messageId, emoji), queueReact);
     },
     openDm: async (principalId: string) => {
       // Find-or-create the DM with a workspace principal: cached hit is free

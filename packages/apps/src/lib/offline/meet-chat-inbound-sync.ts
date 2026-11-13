@@ -10,27 +10,32 @@ import {
   type WgwChatMessage,
 } from "@/lib/api/wgw/meet-chat";
 import {
+  runScopedInbound,
+  type ScopeChanges,
+  type ScopedInboundBinding,
+} from "@/lib/offline/core/inbound-sync";
+import {
   ingestRemoteChatChannel,
   ingestRemoteChatChannelDestroyed,
   ingestRemoteChatMessage,
+  ingestRemoteChatMessageDestroyed,
+  listChatMessageIdsBlockingSyncToken,
+  readChatProtectedMessageIds,
 } from "@/lib/offline/meet-chat-jmap-inbound";
 import {
-  isChatChannelBackfilled,
   listCachedChatChannels,
-  listCachedChatMessages,
-  listPendingChatMessageIds,
+  listCachedChatMessageIdsForChannel,
   markChatChannelBackfilled,
   MEET_CHAT_CHANNELS_TOKEN_SCOPE,
   readChatChannelMessageCursor,
   readMeetChatSyncToken,
   readUiChannelIdMap,
-  removeChatMessageFromCache,
   writeChatChannelMessageCursor,
   writeMeetChatSyncToken,
 } from "@/lib/offline/meet-chat-offline-store";
 
-const BACKFILL_PAGE_SIZE = 200;
-/** Safety cap on paging loops (backfill / changes drain) inside one sync pass. */
+const PAGE_SIZE = 200;
+/** Safety cap on paging loops (history, changes drain) inside one sync pass. */
 const MAX_PAGES = 500;
 
 export type MeetChatInboundSyncResult = {
@@ -38,92 +43,160 @@ export type MeetChatInboundSyncResult = {
   usedFullResync: boolean;
 };
 
-async function ingestWirePage(username: string, page: WgwChatMessage[]): Promise<boolean> {
-  let changed = false;
-  const uiIdByChannel = await readUiChannelIdMap(username);
-  for (const row of page) {
-    const result = await ingestRemoteChatMessage(username, chatMessageFromWire(row), uiIdByChannel);
-    if (result === "upserted") changed = true;
-  }
-  return changed;
-}
+type CachedChatMessage = { id: string; scope: string };
 
-async function bumpCursorFromPage(
-  username: string,
-  channelId: string,
-  page: WgwChatMessage[],
-): Promise<void> {
-  let max: string | null = null;
-  for (const row of page) {
-    if (max === null || row.id > max) max = row.id;
-  }
-  if (max) await writeChatChannelMessageCursor(username, channelId, max);
-}
-
-/**
- * Full-history backfill for one channel: page **older** history with the
- * `before` ULID cursor until `hasMore` clears, then prime the changes token so
- * the incremental path takes over. Local-first reads require the whole
- * timeline in Dexie (spec: "history always available offline").
- */
-export async function backfillChatChannelHistory(
-  username: string,
-  channelId: string,
-): Promise<void> {
+/** Every message of a channel, newest page first, paged with the `before` ULID cursor. */
+async function listWholeChannel(channelId: string): Promise<WgwChatMessage[]> {
+  const rows: WgwChatMessage[] = [];
   let before: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
     const result = await listChatMessages(channelId, {
       ...(before ? { before } : {}),
-      limit: BACKFILL_PAGE_SIZE,
+      limit: PAGE_SIZE,
     });
-    await ingestWirePage(username, result.list);
-    await bumpCursorFromPage(username, channelId, result.list);
+    rows.push(...result.list);
     if (!result.hasMore || result.list.length === 0) break;
     // Pages are ascending by ULID; the oldest id keys the next older window.
     before = result.list.reduce((min, row) => (row.id < min ? row.id : min), result.list[0]!.id);
   }
-  const primed = await listChatMessageChanges(channelId, null);
-  await writeMeetChatSyncToken(username, channelId, primed.newState);
-  await markChatChannelBackfilled(username, channelId);
+  return rows;
+}
+
+/** Messages newer than `since`, oldest page first. */
+async function listSinceCursor(channelId: string, since: string): Promise<WgwChatMessage[]> {
+  const rows: WgwChatMessage[] = [];
+  let cursor = since;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const result = await listChatMessages(channelId, { since: cursor, limit: PAGE_SIZE });
+    rows.push(...result.list);
+    if (!result.hasMore || result.list.length === 0) break;
+    cursor = result.list.reduce((max, row) => (row.id > max ? row.id : max), cursor);
+  }
+  return rows;
+}
+
+/** Drain a channel's `/changes` pages into one delta. */
+async function drainMessageChanges(channelId: string, since: string): Promise<ScopeChanges> {
+  const created = new Set<string>();
+  const updated = new Set<string>();
+  const destroyed = new Set<string>();
+  let state = since;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const delta = await listChatMessageChanges(channelId, state);
+    for (const id of delta.created) created.add(id);
+    for (const id of delta.updated) updated.add(id);
+    for (const id of delta.destroyed) destroyed.add(id);
+    state = delta.newState;
+    if (!delta.hasMoreChanges) break;
+  }
+  return {
+    created: [...created],
+    updated: [...updated],
+    destroyed: [...destroyed],
+    newState: state,
+  };
 }
 
 /**
- * Re-list a channel completely and reconcile Dexie against it (pending local
- * writes survive). REST fallback for edits/tombstones of old messages — the
- * REST surface has no message-by-id GET, so changed old ids cannot be fetched
- * individually; the JMAP poll (`ChatMessage/get`) is the efficient live path.
+ * One channel's messages bound to the shared inbound engine. The REST surface
+ * has no message-by-id GET, so `changes` reads the rows it names up front:
+ * new messages page from the `since` cursor (the highest ULID ingested), and
+ * an edit, or a message the cursor cannot reach (a ULID minted offline by a
+ * peer before the cursor), re-lists the channel. `fetch` answers from those
+ * rows; an id they lack is gone.
  */
-async function relistChannelMessages(username: string, channelId: string): Promise<boolean> {
-  const seen = new Set<string>();
-  let before: string | undefined;
-  let changed = false;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const result = await listChatMessages(channelId, {
-      ...(before ? { before } : {}),
-      limit: BACKFILL_PAGE_SIZE,
-    });
-    for (const row of result.list) seen.add(row.id);
-    if (await ingestWirePage(username, result.list)) changed = true;
-    await bumpCursorFromPage(username, channelId, result.list);
-    if (!result.hasMore || result.list.length === 0) break;
-    before = result.list.reduce((min, row) => (row.id < min ? row.id : min), result.list[0]!.id);
-  }
-  const pending = new Set(await listPendingChatMessageIds(username));
-  // DM messages cache under the virtual `dm:{peer}` id — prune against the id
-  // this channel's rows are actually keyed with.
-  const cachedChannelId = (await readUiChannelIdMap(username)).get(channelId) ?? channelId;
-  for (const message of await listCachedChatMessages(username)) {
-    if (message.channelId !== cachedChannelId) continue;
-    if (seen.has(message.id) || pending.has(message.id)) continue;
-    await removeChatMessageFromCache(username, message.id);
-    changed = true;
-  }
-  return changed;
+function chatMessagesBinding(
+  username: string,
+  channelId: string,
+  uiChannelId: string,
+  uiIdByChannel: ReadonlyMap<string, string>,
+): ScopedInboundBinding<WgwChatMessage, CachedChatMessage> {
+  const rows = new Map<string, WgwChatMessage>();
+  const remember = (list: readonly WgwChatMessage[]) => {
+    for (const row of list) rows.set(row.id, row);
+  };
+
+  return {
+    readToken: (scope) => readMeetChatSyncToken(username, scope),
+    writeToken: async (scope, token) => {
+      // Every remembered row has been ingested (or skipped for a queued write
+      // that holds the token, in which case this is not called).
+      const newest = [...rows.keys()].reduce<string | null>(
+        (max, id) => (max === null || id > max ? id : max),
+        null,
+      );
+      if (newest) await writeChatChannelMessageCursor(username, scope, newest);
+      await writeMeetChatSyncToken(username, scope, token);
+      await markChatChannelBackfilled(username, scope);
+    },
+    changes: async (scope, since) => {
+      const delta = await drainMessageChanges(scope, since);
+      const named = [...delta.created, ...delta.updated];
+      const missing = () => named.filter((id) => !rows.has(id));
+      const cursor = await readChatChannelMessageCursor(username, scope);
+      if (delta.updated.length === 0 && delta.created.length > 0 && cursor) {
+        remember(await listSinceCursor(scope, cursor));
+      }
+      if (missing().length > 0) remember(await listWholeChannel(scope));
+      return delta;
+    },
+    isCannotCalculateChanges: isMeetChatCannotCalculateChanges,
+    list: async (scope) => {
+      const list = await listWholeChannel(scope);
+      remember(list);
+      return list;
+    },
+    currentState: async (scope) => (await listChatMessageChanges(scope, null)).newState,
+    rowId: (row) => row.id,
+    fetch: async (id) => rows.get(id) ?? null,
+    readCached: async () => {
+      // DM messages cache under the virtual `dm:{peer}` id: read that one,
+      // and report them under this channel's REST id, the engine's scope.
+      const ids = await listCachedChatMessageIdsForChannel(username, uiChannelId);
+      const kept = await readChatProtectedMessageIds(username);
+      return {
+        items: ids.map((id) => ({ id, scope: channelId })),
+        keep: (item) => kept.has(item.id),
+      };
+    },
+    scopeGone: {
+      matches: isMeetChatGone,
+      apply: (scope) => ingestRemoteChatChannelDestroyed(username, scope).then(() => {}),
+    },
+    createApplier: async () => ({
+      ingest: (row) => ingestRemoteChatMessage(username, chatMessageFromWire(row), uiIdByChannel),
+      ingestDestroyed: (id) => ingestRemoteChatMessageDestroyed(username, id),
+      blocksToken: await listChatMessageIdsBlockingSyncToken(username),
+    }),
+  };
 }
 
-async function syncChannels(
+/**
+ * Pull one channel's messages through the shared engine: changes since its
+ * token, or, with no token yet, its whole history (the first backfill: the
+ * spec keeps the whole timeline offline).
+ */
+export async function syncChatChannelMessages(
   username: string,
-): Promise<{ changed: boolean; usedFullResync: boolean }> {
+  channelId: string,
+): Promise<MeetChatInboundSyncResult> {
+  const uiIdByChannel = await readUiChannelIdMap(username);
+  const uiChannelId = uiIdByChannel.get(channelId) ?? channelId;
+  return runScopedInbound(
+    [channelId],
+    chatMessagesBinding(username, channelId, uiChannelId, uiIdByChannel),
+  );
+}
+
+/** First pull of a channel shared or created elsewhere (live inbound). */
+export async function backfillChatChannelHistory(
+  username: string,
+  channelId: string,
+): Promise<void> {
+  await syncChatChannelMessages(username, channelId);
+}
+
+async function syncChannels(username: string): Promise<MeetChatInboundSyncResult> {
   const since = await readMeetChatSyncToken(username, MEET_CHAT_CHANNELS_TOKEN_SCOPE);
   let changed = false;
   try {
@@ -162,81 +235,12 @@ async function syncChannels(
   }
 }
 
-async function syncChannelMessages(
-  username: string,
-  channelId: string,
-): Promise<{ changed: boolean; usedFullResync: boolean }> {
-  if (!(await isChatChannelBackfilled(username, channelId))) {
-    await backfillChatChannelHistory(username, channelId);
-    return { changed: true, usedFullResync: false };
-  }
-  const since = await readMeetChatSyncToken(username, channelId);
-  if (!since) {
-    const primed = await listChatMessageChanges(channelId, null);
-    await writeMeetChatSyncToken(username, channelId, primed.newState);
-    return relistThenReport(username, channelId);
-  }
-  try {
-    let created = false;
-    let updatedOrDestroyed = false;
-    let state = since;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const delta = await listChatMessageChanges(channelId, state);
-      if (delta.created.length > 0) created = true;
-      if (delta.updated.length > 0 || delta.destroyed.length > 0) updatedOrDestroyed = true;
-      state = delta.newState;
-      if (!delta.hasMoreChanges) break;
-    }
-    let changed = false;
-    if (updatedOrDestroyed) {
-      changed = await relistChannelMessages(username, channelId);
-    } else if (created) {
-      changed = await ingestNewMessagesSinceCursor(username, channelId);
-    }
-    await writeMeetChatSyncToken(username, channelId, state);
-    return { changed, usedFullResync: false };
-  } catch (error) {
-    if (isMeetChatGone(error)) {
-      await ingestRemoteChatChannelDestroyed(username, channelId);
-      return { changed: true, usedFullResync: false };
-    }
-    if (!isMeetChatCannotCalculateChanges(error)) throw error;
-    const changed = await relistChannelMessages(username, channelId);
-    const primed = await listChatMessageChanges(channelId, null);
-    await writeMeetChatSyncToken(username, channelId, primed.newState);
-    return { changed, usedFullResync: true };
-  }
-}
-
-async function relistThenReport(
-  username: string,
-  channelId: string,
-): Promise<{ changed: boolean; usedFullResync: boolean }> {
-  const changed = await relistChannelMessages(username, channelId);
-  return { changed, usedFullResync: false };
-}
-
-/** New messages only: ascending `since`-cursor pages from the last ingested ULID. */
-async function ingestNewMessagesSinceCursor(username: string, channelId: string): Promise<boolean> {
-  const cursor = await readChatChannelMessageCursor(username, channelId);
-  if (!cursor) return relistChannelMessages(username, channelId);
-  let since = cursor;
-  let changed = false;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const result = await listChatMessages(channelId, { since, limit: BACKFILL_PAGE_SIZE });
-    if (await ingestWirePage(username, result.list)) changed = true;
-    await bumpCursorFromPage(username, channelId, result.list);
-    if (!result.hasMore || result.list.length === 0) break;
-    since = result.list.reduce((max, row) => (row.id > max ? row.id : max), since);
-  }
-  return changed;
-}
-
 /**
- * REST changes-feed inbound (reconnect / manual refresh / initial backfill).
- * The live poll uses `POST /jmap` via `JmapChatAdapter`. Channels first, then
- * per-cached-channel messages — full re-list only on `cannotCalculateChanges`
- * or when old messages changed (no by-id GET on the REST surface).
+ * REST changes-feed inbound (reconnect, manual refresh, first backfill). The
+ * live poll uses `POST /jmap` via `JmapChatAdapter`. Channels first, then each
+ * cached channel's messages through the shared engine. A channel whose pull
+ * fails keeps its token and the next channels still run; the first error is
+ * rethrown once every channel had its turn.
  */
 export async function syncMeetChatInboundFromRest(
   username: string,
@@ -246,12 +250,18 @@ export async function syncMeetChatInboundFromRest(
   const channels = await syncChannels(username);
   let changed = channels.changed;
   let usedFullResync = channels.usedFullResync;
+  let failure: { error: unknown } | null = null;
 
   for (const channel of await listCachedChatChannels(username)) {
-    const result = await syncChannelMessages(username, channel.id);
-    changed = changed || result.changed;
-    usedFullResync = usedFullResync || result.usedFullResync;
+    try {
+      const result = await syncChatChannelMessages(username, channel.id);
+      changed = changed || result.changed;
+      usedFullResync = usedFullResync || result.usedFullResync;
+    } catch (error) {
+      failure ??= { error };
+    }
   }
 
+  if (failure) throw failure.error;
   return { changed, usedFullResync };
 }
