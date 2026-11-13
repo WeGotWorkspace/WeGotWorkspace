@@ -16,6 +16,7 @@ node tools/team-sim/bin/sim.mjs up                 # worktree at origin/main, bu
 node tools/team-sim/bin/sim.mjs bootstrap          # reconcile the world for today (idempotent)
 node tools/team-sim/bin/sim.mjs plan --date 2026-11-12
 node tools/team-sim/bin/sim.mjs night --date 2026-11-12 --minutes 25
+node tools/team-sim/bin/sim.mjs night --date 2026-11-12 --habits all   # every Google habit and import type once
 node tools/team-sim/bin/sim.mjs replay 2026-11-12 --plan-only
 node tools/team-sim/bin/sim.mjs replay 2026-11-12 --action 41
 node tools/team-sim/bin/sim.mjs report 2026-11-12  # re-render from the run files
@@ -27,7 +28,8 @@ pnpm --dir tools/team-sim test [-- planner|instance|actors/api|oracles|report|re
 
 `night` takes `--minutes N` (default 55 minutes of actions; less squeezes the
 same action list into a shorter window and says so in the report),
-`--skip-upgrade`, `--ui-only`, `--api-only` and `--no-diary`. Scheduling (launchd, wake) is
+`--skip-upgrade`, `--ui-only`, `--api-only`, `--no-diary` and `--habits all`
+(also on `plan`; kept in the snapshot meta so replay plans the same list). Scheduling (launchd, wake) is
 not part of this phase.
 
 ## A night
@@ -40,8 +42,10 @@ not part of this phase.
    computes tonight's action list from that clone. `meta.json` keeps the
    commit and the action-list hash for replay.
 4. Actions in real time: each persona runs its own actions in order; three or
-   four personas use the app in Chromium, the rest the REST/JMAP API, one only
-   CalDAV/CardDAV.
+   four personas use the web apps in their own browser (Chrome or Safari on the
+   Mac; chat, notes and tasks sometimes on their iPhone or Android phone), the
+   rest the REST/JMAP API. Calendar, Contacts and Tasks of a persona who keeps
+   Apple's apps (or DAVx5 on Android) go through CalDAV/CardDAV as that app.
 5. Settle, then the oracles: `upgrade`, `errors`, `convergence`, `notify`,
    `visibility` (private), `dav-parity`, `timing` (flags only), `coverage`,
    `gap`.
@@ -73,6 +77,23 @@ never files it.
   that persona's actions. Caps: $0.08 per diary, $0.60 and 10 minutes per
   night. A missing or logged-out CLI skips the diaries with a note and fails
   nothing. The action list and replay never read a diary.
+- **Since Google** (deterministic). The studio moved from Google Workspace
+  together, for control over its own data. `habit` actions try the Google way
+  (`world/habits.json`); `migrate.import` actions bring in what is left in the
+  Google export (`world/takeout/`). A habit the suite lacks is friction, never
+  a failure; content an import loses fails the action. The report's table
+  shows per habit tries, how many worked and the 7-night history, per import
+  type what came over complete.
+- **Devices** (deterministic). Browser actions run in the persona's browser:
+  Chromium for Chrome, WebKit for Safari (with a profile on disk, because
+  WebKit's own contexts are like a private window where IndexedDB keeps no
+  files), the iPhone 15 and Pixel 7 profiles for phones. Meet calls stay in
+  Chromium (fake camera). Native apps keep a local copy, sync with
+  `sync-collection` at most every 3 minutes, write with `If-Match` and retry
+  once on `412`. Their dialects (`src/actors/api/dav.mjs`) are approximations
+  until recorded from the real apps; offline queueing on a phone is not built.
+  `dav-parity` checks that what a native app wrote tonight reads the same in
+  the web app and keeps its dialect's properties.
 - **Weekly digest** (Sunday). The model only groups the week's diary items
   into themes; frequency (distinct persona-days) and cost (goal time behind the
   cited actions) are counted in code, with evidence as `date #n`.
@@ -81,7 +102,7 @@ never files it.
 
 | Path | What |
 |---|---|
-| `world/` | Personas, Teams, clients, projects and rhythm (fictional, `example.org` clients) |
+| `world/` | Personas (with habits and devices), Teams, clients, projects and rhythm (fictional, `example.org` clients); `habits.json`; `takeout/` (the Google export fixtures) |
 | `src/planner/` | Pure planner: `(world, date, snapshot) → action list + hash` |
 | `src/instance/` | Guard, Compose, upgrade with rollback, snapshots |
 | `src/bootstrap/` | Idempotent world reconcile |

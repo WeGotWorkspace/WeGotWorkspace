@@ -102,6 +102,17 @@ None open. Decided by the product lead for chunk I:
 - **Origin** (2026-11-13): the whole team moved from Google Workspace together, for sovereignty. See [spec.md](./spec.md#moved-from-google-workspace).
 - **A freelancer** is decided (2026-11-12, product lead): a different target group, so a separate simulation with its own world (a freelancer's own business with several clients), not a persona in Studio Kade. Not in this plan; it gets its own issue when picked up.
 
+**Chosen overnight, to confirm** (2026-11-13, while building chunks I and J; the product lead confirms or changes these):
+
+- **Habit layers.** `suggest-edit` and `sheet-open` are browser-only (only a screen can show them); `folder-drop` and `expiring-link` run in the browser for browser personas and through the API otherwise. The API can give a link an expiry date; the Share dialog cannot, so only browser personas meet that gap.
+- **Calendar habits in a native app.** A persona who keeps Apple Calendar (or the Android calendar app) does `find-a-time` there, through CalDAV free/busy (the availability panel), and `meet-in-invite` by pasting a Meet link into the invite's URL field (friction: no one-step video link).
+- **Suggested edits.** Half the days the persona suggests a new paragraph and the rest a sentence at the end of the last paragraph. The doc's author accepts it; when the author is the persona, a colleague on the doc does.
+- **A .docx import** goes to a browser persona when one is working that night (the conversion runs in Docs in the browser); otherwise it lands in Drive with migration friction.
+- **"Worked"** in the Since Google table means the habit ran with no friction and no failure. A habit the suite lacks is friction; content an importer or an accepted suggestion loses is a failure.
+- **Browsers.** Safari personas run in WebKit with a profile on disk, because WebKit's own contexts behave like a private window where IndexedDB keeps no files (Drive's upload queue then does nothing). Meet calls run in Chromium for every desk (fake camera). Phones: Playwright's iPhone 15 and Pixel 7 profiles; one in three chat, note and task actions of a browser persona runs on the phone.
+- **Native phone share.** 40% of a native-app persona's actions run on the phone; on Android that phone app is DAVx5, on the Mac desk it is Apple's app.
+- **Dialects.** Inline approximations in `src/actors/api/dav.mjs`, marked not recorded, until the maintainer records the real Apple apps; the offline queue for native phone edits is not built yet.
+
 Everything else is decided. Choices made without a separate review: port `:9290` (replay `:9291`); Compose projects `wgw-sim` and `wgw-sim-replay`; Apache worker cap 5; data under `~/.wgw-sim/`; night slot 01:00–02:15 local time via launchd with a `pmset` wake one minute earlier (installed once by the maintainer, it needs `sudo`); a run that starts after 06:00 is skipped as missed; 14 snapshots kept as APFS clones; Drive volume cap 10 GB; convergence sample of 200 older objects per night; weekend nights run the light plan; coverage horizon 14 nights; rollback copy plus a snapshot after migrations and reconcile (not a pre-upgrade snapshot); every app through both actor layers each night, the Meet call itself browser-only; MailHog from `compose.dev.yml` as the SMTP sink, host ports `:2590`/`:2580` (replay `:2591`/`:2581`); dev Team `team` kept as dev seed. Phase 2 is decided by triage after three nights, not in this plan.
 
 ## Invariants
